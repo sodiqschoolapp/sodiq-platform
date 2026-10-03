@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+# One version of the tools that every package uses.
+catalog:
+  '@types/node': ^24.19.1
+  # 6.0.x until the NestJS CLI and typescript-eslint support TypeScript 7 (docs/decisions.md).
+  typescript: ~6.0.3
+  vitest: ^5.0.3

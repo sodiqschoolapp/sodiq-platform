@@ -1,0 +1,6 @@
+# Prettier never reformats the spec, the docs or the Claude Code pack.
+docs/
+.claude/
+*.md
+
+pnpm-lock.yaml

@@ -1,0 +1,33 @@
+{
+  "name": "sodiq-platform",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint && eslint eslint.config.js scripts && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "pnpm --filter @sodiq/web test:e2e",
+    "db:migrate": "node scripts/not-built-yet.mjs db:migrate 0.2",
+    "db:codegen": "node scripts/not-built-yet.mjs db:codegen 0.2",
+    "api:client": "node scripts/not-built-yet.mjs api:client 0.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9",
+    "turbo": "^2.11.7",
+    "typescript": "catalog:",
+    "typescript-eslint": "^8.71.0"
+  }
+}
