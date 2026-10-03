@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DatabaseModule } from './database/database.module.js';
 import { HealthController } from './health/health.controller.js';
 import { AccessModule } from './modules/access/access.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
@@ -14,6 +15,7 @@ import { TimetableModule } from './modules/timetable/timetable.module.js';
 
 @Module({
   imports: [
+    DatabaseModule,
     AuthModule,
     AccessModule,
     AuditModule,

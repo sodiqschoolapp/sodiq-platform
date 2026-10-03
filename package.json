@@ -15,8 +15,8 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:e2e": "pnpm --filter @sodiq/web test:e2e",
-    "db:migrate": "node scripts/not-built-yet.mjs db:migrate 0.2",
-    "db:codegen": "node scripts/not-built-yet.mjs db:codegen 0.2",
+    "db:migrate": "turbo run build --filter=@sodiq/api && pnpm --filter @sodiq/api db:migrate",
+    "db:codegen": "pnpm --filter @sodiq/api db:codegen",
     "api:client": "node scripts/not-built-yet.mjs api:client 0.4"
   },
   "devDependencies": {

@@ -6,7 +6,14 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  globalIgnores(['**/dist/**', '**/.turbo/**', '**/playwright-report/**', '**/test-results/**']),
+  globalIgnores([
+    '**/dist/**',
+    '**/.turbo/**',
+    '**/playwright-report/**',
+    '**/test-results/**',
+    // Written by `pnpm db:codegen`.
+    '**/*.generated.ts',
+  ]),
   eslint.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
   {

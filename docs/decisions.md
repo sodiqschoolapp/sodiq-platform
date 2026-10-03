@@ -2,6 +2,30 @@
 
 Decisions about how the system is built, with the reason. Product rules are in `docs/spec/`, not here. Add an entry when a choice is made that a later session would otherwise question or undo.
 
+## 4 October 2026: database, migrations and typed queries (task 0.2)
+
+| Decision | Reason |
+| --- | --- |
+| Two database users with fixed names: `sodiq_migrator` owns every table and runs the migrations; `sodiq_app` is what the API and the worker connect as | Append-only audit tables and the branch row filter only hold against a user that does not own the tables. The names are fixed because migrations name them in `grant` statements. |
+| Each migration grants `sodiq_app` its rights table by table; there are no default privileges | A forgotten grant fails loudly in the first test ("permission denied"). With default privileges a forgotten revoke on an audit table would fail silently. |
+| The migration runner is our own code (`apps/api/src/database/migrate.ts`), not a library | About 150 lines. It applies each file in its own transaction, takes an advisory lock so two runners cannot overlap, and refuses to run when an applied file was edited, renamed, removed or overtaken by a lower number. |
+| Migrations go forward only; there are no "down" files | A migration is never edited after merge; a mistake is corrected by a new file. Restore is by backup (task 10.2). |
+| The checksum of a migration ignores the difference between CRLF and LF | A Windows editor must not make an applied file look edited. |
+| The runner uses the `pg` driver directly; everything else uses Kysely | It sends whole SQL files and holds a session lock on one connection. |
+| `pg` is the PostgreSQL driver; `kysely-codegen` (development only) writes the types | `pg` is what Kysely and pg-boss use. The owner approved both on 4 October 2026. |
+| `.env` is read with Node's own `process.loadEnvFile`, only if the file exists | No dotenv library. Variables already set win, so CI and the servers are not affected. Task 0.4 replaces this with configuration loading. |
+| A `date` column arrives in TypeScript as the text `YYYY-MM-DD`; a `timestamptz` as a `Date` | The driver's default turns a date into local midnight, which becomes another day in another time zone. School dates are dates, lesson times are moments (`CLAUDE.md`, Conventions). A `date[]` arrives as an array of such texts. The generated types make a `date` column accept text only, so a `Date` cannot be written into one by mistake. How `bigint` and `numeric` arrive is decided with the first table that has one. |
+| Tests: one template database per run, built by the real runner from the real migrations; each test file copies it and connects as `sodiq_app` | Copying a template takes a fraction of a second, files stay independent and can run in parallel, and a missing right fails a test instead of production. `sodiq_migrator` may create databases for this, locally and in CI only. |
+| Every test database is named `sodiq_test_<start of the run>_<random>_...`; a run removes its own databases at the end and, at the start, those of runs older than an hour | Two runs at once (watch mode and `pnpm test`, or the owner and a Claude Code session) do not drop each other's databases, and an interrupted run does not leave databases for ever. |
+| The tests refuse to run unless `DATABASE_MIGRATION_URL` points at localhost | They create and force-drop databases. |
+| `createTestApp()` never connects to `sodiq_dev`: a test passes the `app` connection of its test database, otherwise every query fails | A route test must not read or change the developer database by accident. |
+| The runner refuses a file that contains `begin;`, `commit;` or `rollback;` | Such a statement would end the runner's own transaction and could leave the file half-applied and unrecorded. A migration that cannot run in a transaction (`create index concurrently`) needs a change to the runner first; it comes with the first migration that needs one. |
+| `0001` uses `create extension if not exists` | On a managed PostgreSQL the extension may already be installed by the provider; a merged migration cannot be edited to allow for that later. |
+| `types.generated.ts` is committed exactly as generated; Prettier and ESLint skip it | A test runs the generator in verify mode against a freshly migrated database and fails when the file is out of date. |
+| Local database passwords are in the repository (`db/setup/local.sql`, `.env.example`) | They are for a PostgreSQL on a developer machine or in a CI job only, and both files say so at the top. Test and production users are created in task 0.10 in the provider's dashboard. The owner agreed on 4 October 2026. |
+| PostgreSQL 18 everywhere: developer machines, CI, Neon | One version, so a constraint behaves the same in a test and in production. |
+| `pnpm dev` on Windows is stopped with Ctrl+C twice | Turborepo starts each task through `cmd.exe`, which asks "Terminate batch job (Y/N)?" after the first Ctrl+C and waits where nobody can answer. Tried in stream and in terminal-UI mode on Turborepo 2.11.7: both wait. No clean fix was found; `README.md` describes it. |
+
 ## 4 October 2026: repository skeleton (task 0.1)
 
 | Decision | Reason |

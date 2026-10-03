@@ -16,7 +16,7 @@ How to read the task lines:
   - Build: the owner has created the repository with a `main` branch holding this starter pack; work on a branch from it. pnpm workspace with Turborepo; `apps/web` (Vite, React, TypeScript strict, Tailwind, shadcn/ui); `apps/api` (NestJS on Node LTS) with the module folders named in `CLAUDE.md`; `packages/calc`, `packages/timetable-rules`, `packages/shared`; ESLint, Prettier and Vitest in every package; the scripts listed in `CLAUDE.md`; setup steps in `README.md`.
   - Done when: `pnpm install`, `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm dev` work on a clean clone, and the web app shows a placeholder page that calls an API health route.
 
-- [ ] **0.2 Database, migrations and typed queries**
+- [x] **0.2 Database, migrations and typed queries**
   - Read: `13`, `edge/developer-rules`.
   - Build: local PostgreSQL connection; a migration runner for numbered SQL files in `db/migrations`; extension `btree_gist`; separate database users for migrations and for the application; Kysely with types generated from the database; a test helper that gives each test file a clean database.
   - Done when: `pnpm db:migrate` and `pnpm db:codegen` work and a sample test writes and reads a row.
