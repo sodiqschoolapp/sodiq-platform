@@ -129,6 +129,35 @@ describe('migration runner', () => {
     },
   );
 
+  it.each([
+    'begin;\ncreate table scratch_one (id integer primary key);\ncommit;',
+    'create table scratch_one (id integer primary key);\n  COMMIT ;\nselect * from no_such_table;',
+    'create table scratch_one (id integer primary key);\nrollback;',
+    'start transaction;\ncreate table scratch_one (id integer primary key);',
+  ])('refuses a file with its own transaction control (%#)', async (content) => {
+    // Its own commit would end the runner's transaction and could leave the file half-applied.
+    await file('0001_own_transaction.sql', content);
+
+    await expect(run()).rejects.toThrow(/contains begin, commit or rollback/);
+    expect(await tableExists('scratch_one')).toBe(false);
+  });
+
+  it('accepts a function body, whose begin and end are not transaction control', async () => {
+    await file(
+      '0001_function.sql',
+      [
+        'create function scratch_one() returns integer language plpgsql as $$',
+        'begin',
+        '  return 1;',
+        'end;',
+        '$$;',
+        '-- commit; in a comment is not a statement',
+      ].join('\n'),
+    );
+
+    expect(await run()).toEqual(['0001_function']);
+  });
+
   it('refuses a new file numbered below the last applied one', async () => {
     await file('0002_create_table.sql', 'create table scratch_one (id integer primary key);');
     await run();

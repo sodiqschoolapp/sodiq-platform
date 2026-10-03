@@ -1,5 +1,8 @@
 import { sql, type Generated } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { Database } from '../database/database.js';
+import { DATABASE } from '../database/database.module.js';
+import { createTestApp } from './create-test-app.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
 // No product table exists yet, so the sample table lives only in the test
@@ -78,6 +81,14 @@ describe('test database', () => {
     expect(inserted.school_date).toBe('2027-01-01');
   });
 
+  it('keeps the dates of an array as text, with empty and missing ones', async () => {
+    const read = await sql<{ days: (string | null)[]; none: string[] }>`
+      select array['2026-10-05', null, '2027-01-01']::date[] as days, '{}'::date[] as none
+    `.execute(first.app);
+
+    expect(read.rows[0]).toEqual({ days: ['2026-10-05', null, '2027-01-01'], none: [] });
+  });
+
   it('starts with every migration applied and no other rows', async () => {
     const migrations = await second.app.selectFrom('schema_migrations').select('name').execute();
     const notes = await second.app
@@ -105,5 +116,37 @@ describe('test database', () => {
 
     expect(first.name).not.toBe(second.name);
     expect(inSecond).toEqual([]);
+  });
+});
+
+// Route tests must never reach the developer database `sodiq_dev`.
+describe('test application and the database', () => {
+  it('uses the test database it is given', async () => {
+    const database = await createTestDatabase();
+    const app = await createTestApp({ database: database.app });
+    try {
+      const rows = await app
+        .get<Database>(DATABASE)
+        .selectFrom('schema_migrations')
+        .select('name')
+        .execute();
+
+      expect(app.get<Database>(DATABASE)).toBe(database.app);
+      expect(rows.map((row) => row.name)).toContain('0001_foundations');
+    } finally {
+      await app.close();
+      await database.destroy();
+    }
+  });
+
+  it('has no usable database when none is given', async () => {
+    const app = await createTestApp();
+    try {
+      await expect(
+        app.get<Database>(DATABASE).selectFrom('schema_migrations').selectAll().execute(),
+      ).rejects.toThrow(/sodiq_test_database_not_passed/);
+    } finally {
+      await app.close();
+    }
   });
 });

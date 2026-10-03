@@ -5,7 +5,7 @@
 
 -- Exclusion constraints that combine "the same teacher, room or class" with
 -- "overlapping time" need this (docs/spec/edge-cases/developer-rules.md).
-create extension btree_gist;
+create extension if not exists btree_gist;
 
 -- Only the migration user creates objects. The application user gets its
 -- rights table by table, in the migration that creates the table.

@@ -5,6 +5,12 @@ import { Client } from 'pg';
 
 const FILE_NAME = /^\d{4}_[a-z0-9]+(?:_[a-z0-9]+)*\.sql$/;
 
+// The runner wraps each file in its own transaction. A file that ends that
+// transaction itself could be left half-applied, so it is refused unread.
+// (A PL/pgSQL `begin` has no semicolon and `end;` is not matched.)
+const TRANSACTION_CONTROL =
+  /^\s*(?:begin|start\s+transaction|commit|rollback)(?:\s+(?:work|transaction))?\s*;/im;
+
 // One runner at a time per database: a second one waits here until the first
 // has finished, then finds nothing left to apply.
 const LOCK_NAME = 'sodiq_schema_migrations';
@@ -51,6 +57,11 @@ export async function readMigrationFiles(directory: string): Promise<MigrationFi
       );
     }
     const sql = await readFile(path.join(directory, entry), 'utf8');
+    if (TRANSACTION_CONTROL.test(sql)) {
+      throw new MigrationError(
+        `"${entry}" contains begin, commit or rollback. The runner already runs each file in one transaction; remove the statement.`,
+      );
+    }
     files.push({
       number: Number(entry.slice(0, 4)),
       name: entry.slice(0, -'.sql'.length),
@@ -133,7 +144,8 @@ export async function migrate(options: MigrateOptions): Promise<string[]> {
         );
         await client.query('commit');
       } catch (error) {
-        await client.query('rollback');
+        // If the connection is gone the rollback fails too; the first error is the one to report.
+        await client.query('rollback').catch(() => undefined);
         const reason = error instanceof Error ? error.message : String(error);
         throw new MigrationError(`Migration ${file.name} failed and was rolled back: ${reason}`, {
           cause: error,

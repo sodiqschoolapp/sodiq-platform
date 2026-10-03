@@ -22,10 +22,10 @@ if (command === 'migrate') {
         : `Applied ${String(applied.length)} migration(s).`,
     );
   } catch (error) {
-    if (!(error instanceof MigrationError)) {
-      throw error;
-    }
-    console.error(error.message);
+    // A refused migration, a wrong password and a stopped server all end here.
+    const known = error instanceof MigrationError;
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error(known ? reason : `Could not migrate: ${reason}`);
     process.exitCode = 1;
   }
 } else {

@@ -11,11 +11,24 @@ export type Database = Kysely<DB>;
  * (`timestamptz`) are real instants and stay `Date`.
  */
 const DATE_OID: number = types.builtins.DATE;
+const DATE_ARRAY_OID = 1182;
 const keepText = (value: string): string => value;
+
+/** `{2026-10-05,NULL}` becomes `['2026-10-05', null]`. Dates are never quoted. */
+function dateArrayAsText(value: string): (string | null)[] {
+  const inner = value.slice(1, -1);
+  if (inner.includes('{')) {
+    throw new Error('A date array with more than one dimension is not supported.');
+  }
+  return inner === '' ? [] : inner.split(',').map((item) => (item === 'NULL' ? null : item));
+}
 
 function parserFor(oid: number, format?: 'text' | 'binary'): unknown {
   if (oid === DATE_OID) {
     return keepText;
+  }
+  if (oid === DATE_ARRAY_OID) {
+    return dateArrayAsText;
   }
   return format === 'binary'
     ? (types.getTypeParser(oid, 'binary') as unknown)
