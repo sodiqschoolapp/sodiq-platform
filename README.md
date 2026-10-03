@@ -13,7 +13,7 @@ The school's own platform for timetable, journal, results and lesson plans. Rele
 Install once:
 
 - Git
-- Node.js 24 (`winget install OpenJS.NodeJS.LTS`). `node --version` must print `v24`; `pnpm install` refuses any other major version.
+- Node.js 24. `node --version` must print `v24`; `pnpm install` refuses any other major version. `winget install OpenJS.NodeJS.LTS` installs 24 only while 24 is the newest long-term-support line; once a newer line takes over, download 24 from https://nodejs.org/en/download instead.
 - pnpm 12 (`npm install -g pnpm`)
 - PostgreSQL. It is not used yet; task 0.2 connects it.
 

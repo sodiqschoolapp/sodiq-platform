@@ -23,6 +23,12 @@ describe('GET /api/health', () => {
     expect(response.body).toEqual({ status: 'ok' });
   });
 
+  it('does not name the framework in its headers', async () => {
+    const response = await request(app.getHttpServer() as Server).get('/api/health');
+
+    expect(response.headers).not.toHaveProperty('x-powered-by');
+  });
+
   it('is not served outside the /api prefix', async () => {
     const response = await request(app.getHttpServer() as Server).get('/health');
 
