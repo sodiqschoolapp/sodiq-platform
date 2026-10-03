@@ -1,0 +1,10 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": ["$TURBO_DEFAULT$", "../../db/migrations/**", "../../.env"],
+      "env": ["DATABASE_URL", "DATABASE_MIGRATION_URL"]
+    }
+  }
+}

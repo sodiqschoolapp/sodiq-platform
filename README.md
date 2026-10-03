@@ -15,7 +15,7 @@ Install once:
 - Git
 - Node.js 24. `node --version` must print `v24`; `pnpm install` refuses any other major version. `winget install OpenJS.NodeJS.LTS` installs 24 only while 24 is the newest long-term-support line; once a newer line takes over, download 24 from https://nodejs.org/en/download instead.
 - pnpm 12 (`npm install -g pnpm`)
-- PostgreSQL. It is not used yet; task 0.2 connects it.
+- PostgreSQL 18, running on this machine on port 5432 (installer from postgresql.org). Remember the password you give the `postgres` user.
 
 Then, in the repository folder:
 
@@ -25,6 +25,16 @@ pnpm --filter @sodiq/web exec playwright install chromium
 ```
 
 The second command downloads the browser for `pnpm test:e2e` (about 115 MB, once per machine).
+
+Then the database, once per machine:
+
+```
+psql -U postgres -f db/setup/local.sql
+copy .env.example .env
+pnpm db:migrate
+```
+
+The first command asks for the `postgres` password. It creates two database users and the database `sodiq_dev`: `sodiq_migrator` owns the tables and runs the migrations; `sodiq_app` is what the API connects as and has only the rights the migrations give it. Their passwords are public and only for a PostgreSQL on your own machine; the file says so at the top. `.env` is never committed.
 
 ## Daily use
 
@@ -47,10 +57,11 @@ To stop it on Windows, press Ctrl+C twice. After the first press the servers are
 | `pnpm lint` | ESLint in every package, then the Prettier check. |
 | `pnpm format` | Rewrites code files in the Prettier style. Docs and Markdown are never touched. |
 | `pnpm typecheck` | Type-checks every package. |
-| `pnpm test` | Unit and API tests (Vitest). |
+| `pnpm test` | Unit and API tests (Vitest). The API tests need the local PostgreSQL. Each test file gets its own database, copied from a template that is built from `db/migrations` at the start of the run; nothing touches `sodiq_dev`. |
 | `pnpm test:e2e` | Browser tests (Playwright). Starts `pnpm dev` by itself if it is not running. |
 | `pnpm build` | Builds every package. |
-| `pnpm db:migrate`, `pnpm db:codegen` | Not built yet: task 0.2. They stop with a message. |
+| `pnpm db:migrate` | Applies the SQL files of `db/migrations` that `sodiq_dev` does not have yet, in number order. Refuses to run if an applied file was edited. |
+| `pnpm db:codegen` | Writes the Kysely types of `sodiq_dev` to `apps/api/src/database/types.generated.ts`. Run it after `pnpm db:migrate` and commit the file; a test fails if it is out of date. |
 | `pnpm api:client` | Not built yet: task 0.4. It stops with a message. |
 
 ## Layout
@@ -61,6 +72,8 @@ apps/api                 NestJS API; one folder per module in src/modules
 packages/calc            calculation module, no dependencies
 packages/timetable-rules timetable rule engine
 packages/shared          code used by both the web app and the API
+db/migrations            numbered SQL migrations, never edited after merge
+db/setup                 one-time setup of a local PostgreSQL
 ```
 
 The shared packages compile to `dist`; Turborepo builds them before anything that depends on them. Technical decisions and their reasons are in `docs/decisions.md`.
