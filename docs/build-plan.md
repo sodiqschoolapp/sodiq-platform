@@ -11,7 +11,7 @@ How to read the task lines:
 
 ## Phase 0. Foundations
 
-- [ ] **0.1 Repository skeleton**
+- [x] **0.1 Repository skeleton**
   - Read: `13`, `CLAUDE.md`.
   - Build: the owner has created the repository with a `main` branch holding this starter pack; work on a branch from it. pnpm workspace with Turborepo; `apps/web` (Vite, React, TypeScript strict, Tailwind, shadcn/ui); `apps/api` (NestJS on Node LTS) with the module folders named in `CLAUDE.md`; `packages/calc`, `packages/timetable-rules`, `packages/shared`; ESLint, Prettier and Vitest in every package; the scripts listed in `CLAUDE.md`; setup steps in `README.md`.
   - Done when: `pnpm install`, `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm dev` work on a clean clone, and the web app shows a placeholder page that calls an API health route.
