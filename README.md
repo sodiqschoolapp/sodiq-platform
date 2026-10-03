@@ -37,6 +37,8 @@ pnpm dev
 
 The web app shows a placeholder page that says whether the API answers. In development the web server forwards `/api` to the API, so the browser uses one address.
 
+To stop it on Windows, press Ctrl+C twice. After the first press the servers are already stopped, but each task's `cmd.exe` wrapper asks "Terminate batch job (Y/N)?" where nobody can answer, and Turborepo repeats "5 tasks shutting down..." for as long as it waits. The second press ends them and gives the prompt back. Typing Y does nothing.
+
 ## Commands
 
 | Command | What it does |
