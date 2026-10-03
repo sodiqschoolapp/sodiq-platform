@@ -1,0 +1,61 @@
+# Edge cases: timetable
+
+> Part of the Sodiq School platform spec, baseline of 3 October 2026 (document revision 88).
+> Index and reading order: `docs/spec/00-index.md`. Where an edge-case file is more specific than a module file, the edge-case file applies.
+
+## Structure
+
+| Case | Rule |
+| --- | --- |
+| Grades 1–4 have 40-minute lessons and grades 5–11 have 45. A teacher's slot 3 in one overlaps slot 2 in the other. | Every clash check uses real clock time, never slot numbers: in the grid, on the server, in the generator and in the database. Teacher and room views use a clock axis when more than one template is in force. |
+| A class is split for English, so two lessons run at once by design. | The unit that occupies a class is the lesson block. A whole-class lesson is a block of one; a split or a set of parallel groups is one block of several lessons. A block is valid when every student of its classes is in exactly one of its lessons. Blocks are placed and moved whole; one part can be cancelled or substituted alone. |
+| The two halves of a split have different lessons per week, or one teacher for both halves. | Blocked at the teaching load step: all parts have equal lessons per week and different teachers. A mixed block is allowed: boys have physical education while girls have technology, and the reverse in another slot. |
+| The sports hall holds two classes at once. | A room has a "shared" switch and a maximum number of lessons at the same time. Capacity is checked against the students of all of them together. |
+| Rules refer to settings that no record has. | Added: a teacher's lessons per week by contract and most lessons per day; a class's most lessons per day; a subject's "demanding" switch; a room's "shared" switch. |
+| A teacher works in two branches. | One person record and one account. Clashes are checked across all branches by clock time, availability is entered per branch, and the travel time between branches is enforced. See Timetable, Teachers who work in several branches. |
+| The Homework slot and Ma'naviyat soati. | They are ordinary teaching load rows with a named teacher, the class Tutor by default, and every clash rule applies. A Tutor of two classes cannot have both pinned at the same time; the load step lists this. |
+| Double lessons. | Two linked lessons in consecutive lesson slots with the same teacher and room. They are moved, cancelled and substituted together. They give two journal columns and two plan items, with a "copy attendance" button. |
+
+## Versions and drafts
+
+| Case | Rule |
+| --- | --- |
+| The teaching load is changed with no draft open. | The load belongs to a timetable version. The live load is read only; it changes only in a draft and takes effect on that version's start date. Journals are created and closed at publish. There is one journal per class or group and subject in a year; adding a removed subject again reopens its journal. |
+| A version is published to start on 1 December, then a fix must start on 12 November. | Published versions form a chain ordered by start date. Publishing before an already published later version asks: "run until that version starts" or "replace it". |
+| Two drafts are open. | Each draft remembers the version it started from. Any publish, or any change to templates, calendar, availability or rooms, marks the other drafts out of date. Bringing one up to date lists what changed on both sides, and the Academic Vice Principal picks. |
+| The pattern is valid but one date is not: a special template that day, or an earlier one-day change holding the room. | Publish, a calendar change and a template change each test every affected date with the full rule set. A blocked conflict on any date stops the save and is listed by date. |
+| A substitution and an extra lesson are already recorded for a date after the new version starts. | One-day changes, absences, room closures and extra lessons are stored on their own and applied again after a publish. The preview sorts them into kept, needs a decision and dropped. Publish waits until every "needs a decision" item is settled. |
+| A new version leaves most future lessons unchanged. | An unchanged lesson keeps its identity, so its comments, plan item and one-day changes stay. Only real differences are created or removed. |
+| A version starts on a Wednesday. | The preview shows, for each class and subject, the lessons of the transition week against the load. Differences are warnings to acknowledge. |
+| The generator placed 97 percent and the draft is published. | Fewer lessons than the load blocks publishing, unless the load row is marked "deliberately short" with a reason. More lessons than the load also blocks. |
+| A published version must be taken back. | "Withdraw" works only before the version's start date. After that, the only way is a new version. "Restore an earlier version" always means copy it to a new draft; entries whose teacher, room, subject or class is no longer active go to the "to place" list. |
+| The school needs next year's timetable in August. | Classes, groups, load and drafts can exist in a "planned" year. A version can be published there, starting on the first school day. |
+
+## Generator and editing
+
+| Case | Rule |
+| --- | --- |
+| Two locked lessons use one teacher at the same time. | Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons. |
+| The generator is down, slow, or the inputs change while it runs. | A run is a background job, one per draft, on a snapshot of the inputs. Results arrive as variants beside the draft and never overwrite it. A variant from older inputs is marked "inputs changed" and is rechecked before it can be used. With the generator down, everything except "Generate" works. |
+| The person editing a draft closes the laptop. | The edit lock is released after 5 minutes without activity. Another Academic Vice Principal can take over; the earlier holder is told. |
+| Publish is clicked twice, or two people publish. | One publish per branch at a time. A publish either succeeds completely or changes nothing. The start date is checked again at the moment of saving. |
+
+## After publishing
+
+| Case | Rule |
+| --- | --- |
+| A teacher is ill for weeks with no return date. | An absence record has a start and an end, or is open-ended. All lessons in the range go to "needs a teacher". One substitute can be assigned per journal for the whole absence in one action, each date still being checked. Shortening the absence returns future lessons to the teacher. After 10 school days the system suggests a permanent change. |
+| No teacher of the subject is free. | For a one-day change only, "subject in the teacher's profile" and "outside availability" become warnings that need a tick. Double booking stays blocked. |
+| The lesson time passes and nobody was assigned. | The lesson stays "unresolved" on the Academic Vice Principal's home page until it is cancelled with a reason or the person who taught it is recorded. It never counts as held, and never as "attendance not marked" against the absent teacher. |
+| A substitute wants to finish the numbers two days later. | The substitute is the teacher of that lesson and has the normal edit period for that column only. The journal's own teacher can also edit it until it locks. Every entry shows who typed it. |
+| A lesson that already has attendance must be cancelled. | Only the Academic Vice Principal, with a reason and a list of what is affected. The entries are kept, struck through and left out of every figure. Restoring the lesson brings them back. Not possible in a closed quarter. |
+| A cancelled lesson is restored after its room went to another lesson. | Every rule is checked again. The restore can be refused, with another room offered. |
+| 7 Oxford goes on an excursion, and group 7-M-1 has students from 7 Oxford and 7 Princeton. | The bulk cancel lists such blocks. For each, the Academic Vice Principal chooses: cancel the whole block, or keep it and exempt the students of the chosen classes for those slots in the same action. |
+| A laboratory is under repair for three weeks. | A room closure has a start, an end and a reason. Lessons in the range go to "needs a room", with "move all to room R for the period". The pattern is unchanged and the lessons return afterwards. |
+| A part-time teacher stops working Fridays from December. | Availability carries a start date. Future lessons outside it are flagged for the Academic Vice Principal; they are not removed. |
+| A class is renamed, merged or dissolved mid-year. | A rename keeps history; old printouts show the code valid on their date. Dissolving on a date means a version without the class from that date and a transfer for every student. Journals close and stay readable. A class cannot be archived while it has future lessons or members. |
+| A subject changes from whole class to two groups in quarter 3. | It is done by a new version. The old journal closes, new ones open, and each student is treated as transferred for that subject, so results use both. |
+| An extra lesson is needed on a Saturday. | An extra lesson belongs to an open journal, on a school day inside an open quarter, and passes all blocked rules. For a non-school day, a special date "extra lessons only" is added first. It can be marked "replaces the lesson of \[date\]" only when both dates are in the same quarter; then it is a normal lesson and takes a plan item by position. |
+| The Free now board with part-time teachers and different templates. | It is shown by clock intervals. A teacher is free only if their availability covers the whole interval, they have no lesson in any branch, and no lesson in another branch within the travel time. Teachers freed by a cancelled lesson are shown. Head Teachers and Senior Head Teachers see the board read only; the Academic Vice Principal acts from it. |
+| One publish changes thousands of lessons. | One notice per person per event, with the week before and after. A teacher whose week did not change gets none. |
+| The wall timetable is out of date. | A printed pattern carries the version, "valid from", the print time and "one-day changes not included". A printed day or week includes them with an "as of" time. A draft print is marked DRAFT. |

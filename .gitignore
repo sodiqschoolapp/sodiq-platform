@@ -1,0 +1,27 @@
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+*.log
+
+# secrets and local settings
+.env
+.env.local
+.env.*.local
+CLAUDE.local.md
+.claude/settings.local.json
+
+# editors and systems
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# test output
+playwright-report/
+test-results/
+
+# solver build output
+apps/solver/build/
+apps/solver/.gradle/

@@ -1,0 +1,23 @@
+# Edge cases: time, dates and the calendar
+
+> Part of the Sodiq School platform spec, baseline of 3 October 2026 (document revision 88).
+> Index and reading order: `docs/spec/00-index.md`. Where an edge-case file is more specific than a module file, the edge-case file applies.
+
+| Case | Rule |
+| --- | --- |
+| A lock, a plan window or an exemption ends at midnight and the server happens to be restarting. | Nothing is switched by a timed job. Whether a lesson is locked, a window is open or an exemption is in force is worked out from stored dates on every request. Timed jobs only send reminders. |
+| A teacher opens the journal at 08:00 and marks a 14:00 lesson. | Entry opens at the lesson's start time, not at the start of the day. |
+| A day off is announced for a future date. | Calendar changes apply from tomorrow. The lessons of that date are removed (no column in the journal), plan items shift, and the impact preview is shown first. |
+| The school closes at 11:00 today, or yesterday is declared a day off afterwards. | Today and past dates cannot become a day off. A bulk cancel is used instead, for the whole branch from a chosen slot. Cancelled lessons stay visible in grey with the reason. For a lesson that already has data, the Academic Vice Principal chooses "keep as held" or "cancel". |
+| A day off is taken back, or a school day is added. | Lessons are created from the timetable version in force on that date and checked like a publish. |
+| A Saturday is worked "by Monday's timetable". | A special working date has a day template and a "follows weekday" setting. Lessons come from that weekday's pattern. Teachers who are not available on the real day are listed as "needs a teacher". |
+| A shortened day has 5 lesson slots and a class has 7 lessons that weekday. | Lessons are matched by their order in the day. Those beyond the day's slots are created as cancelled with the reason "not in the day's template" and listed per class in the preview. The Academic Vice Principal can choose which lessons are kept. |
+| Grade 1 has an extra vacation week; grades 9 and 11 stop early for state exams. | Every calendar entry applies to the whole branch or to a range of grades. |
+| The last week of a quarter is an exam week. | The calendar entry says either "regular lessons on this template" or "no regular lessons", which is a bulk cancel with the reason "exam week". |
+| Quarter dates are edited after lessons exist. | Every school day lies in exactly one quarter. A closed quarter's dates are frozen. A boundary can move only over future dates, so a held lesson never changes quarter. |
+| The academic year is extended or shortened. | Extending adds lessons from the version in force. Shortening removes future empty lessons and is refused if it would drop a lesson with data. |
+| Vacations between quarters. | They are the gaps between quarter dates. They are not typed a second time as days off. |
+| A page is opened on a date that is in no quarter: vacation, summer. | The top bar shows "Vacation, quarter 2 starts on 10 November". "Current quarter" then means the latest quarter that has started. Before quarter 1, pages show a plain "quarter 1 starts on..." message. |
+| A slot type's length or a day template is changed mid-year. | The change takes effect from a chosen date, tomorrow at the earliest. Held lessons keep their times. Every future date is rechecked with the new times, and the change is refused if any teacher, room or student would overlap. A lesson slot used by the published timetable cannot be removed or reordered without a new version. |
+| A lesson is moved by a one-day change to a date in another quarter. | Not allowed. A one-day move stays inside the same quarter and targets a school day from today on. Across quarters, the lesson is cancelled and an extra lesson is added. |
+| Alternating (odd and even) weeks. | Not used at the school and not built. Every week of a timetable version follows the same weekly timetable. |

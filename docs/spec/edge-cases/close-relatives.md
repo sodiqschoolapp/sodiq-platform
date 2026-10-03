@@ -1,0 +1,16 @@
+# Edge cases: close relatives (Parents)
+
+> Part of the Sodiq School platform spec, baseline of 3 October 2026 (document revision 88).
+> Index and reading order: `docs/spec/00-index.md`. Where an edge-case file is more specific than a module file, the edge-case file applies.
+
+| Case | Rule |
+| --- | --- |
+| A father has a daughter in one branch and a son in another. | Relatives are school-wide records, and the phone is unique across the whole school. Staff can open a relative only if a student of their own branch is linked; students of other branches appear as a count. A change of name or phone is logged and the other branch's Academic Vice Principal is told. |
+| A new student's mother gives a number that is stored as the father of a student who left years ago: the operator gave the number to someone else. | On a phone match the person entering chooses "same person" (link) or "different person, the number has a new owner". The second choice asks for the earlier relative's new phone. If it is unknown, that relative is set to "no valid phone": sign-in blocked, and listed for the Academic Vice Principal while a linked student is active. |
+| The same mother was entered twice with two phones. | When a phone change is refused because the number exists, "Merge" is offered. The Academic Vice Principal picks the name and phone that stay; all links move to one record. Across branches, only the Super Admin merges. |
+| Mother and father share one phone. | The second parent is added as a relative "with no phone of their own": no sign-in and no notices. The uniqueness rule applies to relatives who have a phone. |
+| A father works abroad and has a foreign number; a landline is given. | Phones are stored in international format with +998 as the default; other country codes are accepted. A number that cannot receive SMS gets a warning. Extra phones can be added; they are not unique and not used for sign-in. |
+| The main contact is unlinked from a student. | Each student has exactly one main contact. Unlinking it requires choosing another in the same action. A student's only relative is the main contact automatically. |
+| Divorced parents; an uncle listed for emergencies. In Release 2 all of them would see the child's marks. | Every relative linked to a student has a Parent account, whatever the relationship. Each link between a relative and a student carries: relationship, main contact, portal access and "receives notices". Portal access is on by default for every link and can be switched off for one link, for example by a court decision (proposed). Only links with portal access will show the child's data. The fields exist from Release 1. |
+| A teacher is also a parent, and the staff phone is the relative's phone. | The staff record and the relative record stay separate and are marked as the same person. In Release 2, signing in by phone opens only the parent view; staff rights always need the password. Marks a staff member enters for their own child are listed in a report for the Academic Vice Principal and Principal. |
+| A young student's "own phone" is the mother's number. | A student's phone is used for sign-in only if it is not a relative's main phone or another student's sign-in phone. Otherwise the student signs in with UID and password (Release 2). |
