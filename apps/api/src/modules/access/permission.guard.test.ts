@@ -52,6 +52,15 @@ describe('the permission guard', () => {
     await database.destroy();
   });
 
+  // Left open by task 0.7b: nothing widens the table while the server runs.
+  it('freezes the table it is given', () => {
+    expect(Object.isFrozen(SAMPLE_PERMISSIONS)).toBe(true);
+    for (const rows of Object.values(SAMPLE_PERMISSIONS)) {
+      expect(Object.isFrozen(rows)).toBe(true);
+      expect(Object.isFrozen(rows.teacher)).toBe(true);
+    }
+  });
+
   const view = (cookies: string | undefined, branch?: string): Promise<Response> => {
     let call = request(server).get('/api/permission-sample/view');
     if (cookies !== undefined) {

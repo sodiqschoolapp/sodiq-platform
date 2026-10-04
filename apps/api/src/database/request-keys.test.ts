@@ -70,7 +70,7 @@ describe('request keys', () => {
     label: string,
     runs: { count: number },
     scope = 'journal.entry',
-    accountId: string | null = author,
+    accountId: string = author,
   ) {
     return transactions.run([], (transaction) =>
       requestKeys.runOnce(
@@ -245,11 +245,11 @@ describe('request keys', () => {
       await expect(
         requestKeys.runOnce(
           transaction,
-          // A route that forgot its account.
-          { key: randomUUID(), scope: 'journal.entry', accountId: null, input: {} },
+          // An account that does not exist.
+          { key: randomUUID(), scope: 'journal.entry', accountId: randomUUID(), input: {} },
           entry(transaction, 'refused key', runs),
         ),
-      ).rejects.toMatchObject({ code: '23514' });
+      ).rejects.toMatchObject({ code: '23503' });
       await sql`insert into scratch_entries (label) values ('after a refused key')`.execute(
         transaction,
       );
@@ -406,18 +406,46 @@ describe('request keys', () => {
       const key = randomUUID();
       const runs = { count: 0 };
 
-      const first = await send(key, 'a job', runs, 'job:sample.note', null);
-      const second = await send(key, 'a job', runs, 'job:sample.note', null);
+      const once = () =>
+        transactions.run([], (transaction) =>
+          requestKeys.runJobOnce(
+            transaction,
+            { key, jobName: 'sample.note', input: { label: 'a job' } },
+            entry(transaction, 'a job', runs),
+          ),
+        );
+
+      const first = await once();
+      const second = await once();
 
       expect(first.repeated).toBe(false);
       expect(second.repeated).toBe(true);
       expect(runs.count).toBe(1);
       const stored = await database.app
         .selectFrom('request_keys')
-        .select('account_id')
+        .select(['account_id', 'scope'])
         .where('key', '=', key)
         .executeTakeFirstOrThrow();
-      expect(stored.account_id).toBeNull();
+      expect(stored).toEqual({ account_id: null, scope: 'job:sample.note' });
+    });
+
+    // Found by the review: a route that named its scope `job:...` would store
+    // a key without an account, which every account could then repeat.
+    it('cannot be given the scope of a job by a request', async () => {
+      const key = randomUUID();
+      const runs = { count: 0 };
+
+      await expect(send(key, 'not a job', runs, 'job:sample.note')).rejects.toThrow(
+        'must not begin with "job:"',
+      );
+      expect(runs.count).toBe(0);
+      expect(
+        await database.app
+          .selectFrom('request_keys')
+          .select('key')
+          .where('key', '=', key)
+          .execute(),
+      ).toEqual([]);
     });
   });
 

@@ -250,7 +250,9 @@ describe('the harness and a route for every method', () => {
       callers: [{ name: 'nobody', role: null, cookies: undefined }],
     };
 
-    expect(await accessProblems(app, listed, nobody, handlerStop)).toEqual([]);
+    expect(await accessProblems(app, listed, nobody, handlerStop)).toEqual([
+      'ALL /api/permission-every-method: answers every method (@All) and was not called',
+    ]);
   });
 });
 

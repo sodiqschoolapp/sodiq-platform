@@ -15,16 +15,28 @@ export interface KeyedRequest {
   /**
    * The account that sends the request: `access.accountId` or the account of
    * the session, never one named in the request. A key belongs to it; the same
-   * key from another account is refused. `null` only for a job, whose scope
-   * begins with `job:` (the database refuses every other combination).
+   * key from another account is refused.
    */
-  accountId: string | null;
+  accountId: string;
   /**
    * Everything that decides what the action does: every path parameter and the
    * body. The branches of the transaction are added by `runOnce` itself.
    */
   input: JsonValue;
 }
+
+/** The key of one delivery of a job. A job runs for no account. */
+export interface KeyedJob {
+  /** The id of the job. */
+  key: string;
+  /** The name of the job definition, for example `notifications.deliver`. */
+  jobName: string;
+  /** The stored data of the job. */
+  input: JsonValue;
+}
+
+/** Scopes that begin with this belong to jobs; their keys have no account (migration 0010). */
+const JOB_SCOPE = 'job:';
 
 export interface RunOnceResult<T> {
   /** True when the key was seen before: `work` did not run and `result` is the stored answer. */
@@ -80,6 +92,35 @@ export class RequestKeys {
     request: KeyedRequest,
     work: () => Promise<T>,
   ): Promise<RunOnceResult<T>> {
+    if (request.scope.startsWith(JOB_SCOPE)) {
+      // Found by the review: a key without an account would be shared by every account.
+      throw new Error('The scope of a request must not begin with "job:"; that is for jobs.');
+    }
+    return this.claim(transaction, request, work);
+  }
+
+  /**
+   * The same for one delivery of a job (`JobRunner`): the job id is the key,
+   * the scope is `job:<name>`, and the key belongs to no account. Only the
+   * runner of jobs calls this; a route uses `runOnce`.
+   */
+  async runJobOnce<T extends JsonValue>(
+    transaction: Transaction,
+    job: KeyedJob,
+    work: () => Promise<T>,
+  ): Promise<RunOnceResult<T>> {
+    return this.claim(
+      transaction,
+      { key: job.key, scope: `${JOB_SCOPE}${job.jobName}`, accountId: null, input: job.input },
+      work,
+    );
+  }
+
+  private async claim<T extends JsonValue>(
+    transaction: Transaction,
+    request: Omit<KeyedRequest, 'accountId'> & { accountId: string | null },
+    work: () => Promise<T>,
+  ): Promise<RunOnceResult<T>> {
     // The hash also covers the branches of the transaction: the same key and
     // input sent for another branch is another request, whatever `input` holds.
     const requestHash = sql<string>`encode(sha256(convert_to(
@@ -104,8 +145,8 @@ export class RequestKeys {
       .returning('key')
       .executeTakeFirst()
       .catch(async (error: unknown) => {
-        // A key the database refuses (an account that does not fit the scope)
-        // is a fault of the caller; the rest of its transaction stays usable.
+        // A key the database refuses (an account that does not exist) is a
+        // fault of the caller; the rest of its transaction stays usable.
         await sql`rollback to savepoint request_key`.execute(transaction).catch(() => undefined);
         throw error;
       });

@@ -1,4 +1,5 @@
-import type { Server } from 'node:http';
+import { request as httpRequest, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { Logger, type INestApplication } from '@nestjs/common';
 import { apiErrorSchema } from '@sodiq/shared';
 import request from 'supertest';
@@ -298,6 +299,44 @@ describe('HTTP foundations', () => {
       const parsed = apiErrorSchema.parse(response.body);
       expect(parsed.error.code).toBe('unsupported_media_type');
       expect(parsed.error.requestId).toBe(response.headers['x-request-id']);
+    });
+
+    // Found by the review: a body without `Content-Length` is a body too.
+    it('refuses a form-encoded body that is sent in chunks, without a length', async () => {
+      if (!server.listening) {
+        await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      }
+      const { port } = server.address() as AddressInfo;
+
+      const answer = await new Promise<{ status: number | undefined; body: string }>(
+        (resolve, reject) => {
+          const call = httpRequest(
+            {
+              host: '127.0.0.1',
+              port,
+              method: 'POST',
+              path: '/api/sample',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Transfer-Encoding': 'chunked',
+              },
+            },
+            (response) => {
+              let body = '';
+              response.on('data', (chunk: Buffer) => (body += chunk.toString()));
+              response.on('end', () => resolve({ status: response.statusCode, body }));
+            },
+          );
+          call.on('error', reject);
+          call.write('name=Sample&');
+          call.end('count=1');
+        },
+      );
+
+      expect(answer.status).toBe(415);
+      expect(apiErrorSchema.parse(JSON.parse(answer.body)).error.code).toBe(
+        'unsupported_media_type',
+      );
     });
 
     it('refuses a body that names no type', async () => {

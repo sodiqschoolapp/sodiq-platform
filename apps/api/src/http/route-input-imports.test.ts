@@ -117,6 +117,44 @@ describe('the lint rule against unchecked route input', { timeout: 120_000 }, ()
       expect(await refusedImports(code, testFile)).toBe(1);
     });
 
+    // Found by both reviews: the token is the plain text 'REQUEST', so the
+    // whole request can be injected without importing anything.
+    it.each([
+      [
+        'as a text',
+        "import { Inject } from '@nestjs/common';\nexport const a = Inject('REQUEST');\n",
+      ],
+      [
+        'as a template',
+        "import { Inject } from '@nestjs/common';\nexport const a = Inject(`REQUEST`);\n",
+      ],
+    ])(
+      'refuses the token of the request %s, and allows it where REQUEST is allowed',
+      async (_name, code) => {
+        const refusedTexts = async (file: string): Promise<number> => {
+          const [result] = await eslint.lintText(code, { filePath: file });
+          return (result?.messages ?? []).filter(
+            (message) => message.ruleId === 'no-restricted-syntax',
+          ).length;
+        };
+
+        expect(await refusedTexts(moduleFile)).toBe(1);
+        expect(await refusedTexts(testingFile)).toBe(1);
+        expect(await refusedTexts(testFile)).toBe(1);
+        for (const file of [httpFile, sessionGuard, permissionGuard]) {
+          expect(await refusedTexts(file)).toBe(0);
+        }
+      },
+    );
+
+    it('refuses assignMetadata, which createParamDecorator is built on', async () => {
+      const code =
+        "import { assignMetadata } from '@nestjs/common';\nexport const a = assignMetadata;\n";
+
+      expect(await refusedImports(code, moduleFile)).toBe(1);
+      expect(await refusedImports(code, httpFile)).toBe(0);
+    });
+
     it('allows both inside apps/api/src/http and in the two guards', async () => {
       for (const file of [httpFile, sessionGuard, permissionGuard]) {
         expect(await refusedImports(ownDecorator, file)).toBe(0);

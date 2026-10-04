@@ -225,8 +225,13 @@ async function compare(
   const problems: string[] = [];
   for (const route of routesOf(app)) {
     const listed = expected[route.name];
-    if (listed === undefined || route.method === ALL_METHODS) {
-      // Named by `declarationProblems`; a route for every method cannot be called as one.
+    if (listed === undefined) {
+      // Named by `declarationProblems`.
+      continue;
+    }
+    if (route.method === ALL_METHODS) {
+      // Named here too, so that a caller of this function alone does not pass over it.
+      problems.push(`${route.name}: answers every method (@All) and was not called`);
       continue;
     }
     let kept = false;

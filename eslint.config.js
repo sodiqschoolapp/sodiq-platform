@@ -65,7 +65,8 @@ function apiImportRule({ rawInput, requestAccess, testing }) {
   // One entry per package: an import of the whole package is reported once.
   const fromCommon = [
     ...(rawInput ? rawInputDecorators : []),
-    ...(requestAccess ? ['createParamDecorator'] : []),
+    // `assignMetadata` is what `createParamDecorator` is built on.
+    ...(requestAccess ? ['createParamDecorator', 'assignMetadata'] : []),
   ];
   if (fromCommon.length > 0) {
     paths.push({
@@ -99,6 +100,30 @@ function apiImportRule({ rawInput, requestAccess, testing }) {
   return ['error', { paths, patterns }];
 }
 
+/** The `no-restricted-syntax` rule of one group of files in apps/api/src. */
+function apiSyntaxRule({ clock, branchSetting, request }) {
+  return [
+    'error',
+    ...(clock ? noSystemClock : []),
+    ...(branchSetting
+      ? ['Literal[value=/app\\.branch_ids/]', 'TemplateElement[value.raw=/app\\.branch_ids/]'].map(
+          (selector) => ({
+            selector,
+            message:
+              'Only apps/api/src/database/transactions.ts names the branch filter setting. Use Transactions.run.',
+          }),
+        )
+      : []),
+    // The injection token of the request is the plain text 'REQUEST': it needs no import.
+    ...(request
+      ? ["Literal[value='REQUEST']", "TemplateElement[value.raw='REQUEST']"].map((selector) => ({
+          selector,
+          message: requestAccessMessage,
+        }))
+      : []),
+  ];
+}
+
 export default defineConfig(
   globalIgnores([
     '**/dist/**',
@@ -130,37 +155,57 @@ export default defineConfig(
   {
     // docs/spec/edge-cases/developer-rules.md, Time-based state: business code
     // never reads the clock directly; it is passed in, so tests can set it.
-    files: ['apps/api/src/**/*.ts', 'packages/*/src/**/*.ts'],
-    ignores: ['**/*.test.ts', 'apps/api/src/testing/**', 'apps/api/src/clock/system-clock.ts'],
+    files: ['packages/*/src/**/*.ts'],
+    ignores: ['**/*.test.ts'],
     rules: {
       'no-restricted-syntax': ['error', ...noSystemClock],
     },
   },
   {
-    // docs/spec/edge-cases/developer-rules.md, Branch filter: set per transaction,
-    // never on a pooled connection. Only transactions.ts names the setting. This
-    // block repeats the clock selectors because a later block replaces the rule.
+    // The same in apps/api, with two more rules:
+    // - developer rules, Branch filter: set per transaction, never on a pooled
+    //   connection. Only transactions.ts names the setting.
+    // - task 0.7c: the whole request (`@Inject('REQUEST')`) stays inside
+    //   apps/api/src/http and the two guards.
+    // A later block replaces the rule of an earlier one, so each group of
+    // files names all of its parts (`apiSyntaxRule`).
     files: ['apps/api/src/**/*.ts'],
-    ignores: [
-      '**/*.test.ts',
-      'apps/api/src/testing/**',
-      'apps/api/src/clock/system-clock.ts',
-      'apps/api/src/database/transactions.ts',
+    rules: {
+      'no-restricted-syntax': apiSyntaxRule({ clock: true, branchSetting: true, request: true }),
+    },
+  },
+  {
+    files: ['apps/api/src/database/transactions.ts'],
+    rules: {
+      'no-restricted-syntax': apiSyntaxRule({ clock: true, branchSetting: false, request: true }),
+    },
+  },
+  {
+    files: ['apps/api/src/clock/system-clock.ts'],
+    rules: {
+      'no-restricted-syntax': apiSyntaxRule({ clock: false, branchSetting: false, request: true }),
+    },
+  },
+  {
+    files: [
+      'apps/api/src/http/**',
+      'apps/api/src/modules/auth/session.guard.ts',
+      'apps/api/src/modules/access/permission.guard.ts',
     ],
     rules: {
-      'no-restricted-syntax': [
-        'error',
-        ...noSystemClock,
-        ...[
-          'Literal[value=/app\\.branch_ids/]',
-          'TemplateElement[value.raw=/app\\.branch_ids/]',
-        ].map((selector) => ({
-          selector,
-          message:
-            'Only apps/api/src/database/transactions.ts names the branch filter setting. Use Transactions.run.',
-        })),
-      ],
+      'no-restricted-syntax': apiSyntaxRule({ clock: true, branchSetting: true, request: false }),
     },
+  },
+  {
+    // Tests set the clock and may name the setting; they keep away from the request.
+    files: ['apps/api/src/**/*.test.ts', 'apps/api/src/testing/**'],
+    rules: {
+      'no-restricted-syntax': apiSyntaxRule({ clock: false, branchSetting: false, request: true }),
+    },
+  },
+  {
+    files: ['apps/api/src/http/**/*.test.ts'],
+    rules: { 'no-restricted-syntax': 'off' },
   },
   {
     // CLAUDE.md, Conventions: validate every API input with a schema. A route
