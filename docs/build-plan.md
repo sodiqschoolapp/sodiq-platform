@@ -21,7 +21,7 @@ How to read the task lines:
   - Build: local PostgreSQL connection; a migration runner for numbered SQL files in `db/migrations`; extension `btree_gist`; separate database users for migrations and for the application; Kysely with types generated from the database; a test helper that gives each test file a clean database.
   - Done when: `pnpm db:migrate` and `pnpm db:codegen` work and a sample test writes and reads a row.
 
-- [ ] **0.3 Continuous integration**
+- [x] **0.3 Continuous integration**
   - Read: `14` (Whole system).
   - Build: GitHub Actions workflow that installs, lints, type-checks and runs the tests with a PostgreSQL service on every pull request.
   - Done when: a pull request shows the checks and fails when a test fails. The owner then turns on required checks for `main` in GitHub.

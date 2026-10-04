@@ -64,6 +64,17 @@ To stop it on Windows, press Ctrl+C twice. After the first press the servers are
 | `pnpm db:codegen` | Writes the Kysely types of `sodiq_dev` to `apps/api/src/database/types.generated.ts`. Run it after `pnpm db:migrate` and commit the file; a test fails if it is out of date. |
 | `pnpm api:client` | Not built yet: task 0.4. It stops with a message. |
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request and on every push to `main`. It has two jobs, each with its own PostgreSQL 18:
+
+- `checks`: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm test`.
+- `e2e`: `pnpm db:migrate`, then `pnpm test:e2e` in Chromium. When it fails or runs longer than 10 minutes, the Playwright traces are kept for 7 days as the artifact `playwright-traces` of the run.
+
+Both jobs create the database users with `db/setup/local.sql` and use the values of `.env.example`, so a failure is reproduced locally with the same commands. The actions are pinned to a commit; to update one, replace the commit and the version in the comment beside it.
+
+To do once, by the owner, after the workflow's first run on `main`: protect `main` in GitHub (Settings, Branches) and require the status checks `checks` and `e2e`. From then on a pull request can be merged only when both are green.
+
 ## Layout
 
 ```
