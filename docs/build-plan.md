@@ -96,6 +96,11 @@ How to read the task lines:
   - Build: navigation per role; role switcher and branch switcher; an empty home page for each role that later tasks fill.
   - Done when: a signed-in user of each of the 15 roles sees the right menu.
 
+- [ ] **0.8d Own account page**
+  - Read: `edge/people-roles-accounts` (Accounts and sign-in), `12` (Language), `02`.
+  - Build: the page of the own account: the session list with "sign out everywhere"; the list of trusted devices, each removable; turning the optional second step on and off; the language stored on the account (a column and a route of the own account) and taken from it at sign-in, so that 0.9 can send notices in the person's language. Split off from 0.8a by the owner.
+  - Done when: Playwright removes a trusted device, signs out everywhere, and a language chosen in one browser is in use after sign-in in another.
+
 - [ ] **0.9 Notifications to staff in the app**
   - Read: `10` (Notifications, and the last paragraph: staff notifications are Release 1), `edge/system-behaviour`.
   - Build: a notification record per person; the list and unread count in the top bar; delivery through a job; live arrival over Socket.IO; a helper that later tasks call for timetable changes, substitutions, locks, requests and plan windows. No SMS, no parents, no students.

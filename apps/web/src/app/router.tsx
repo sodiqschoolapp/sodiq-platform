@@ -1,0 +1,114 @@
+import type { QueryClient } from '@tanstack/react-query';
+import {
+  createRootRouteWithContext,
+  createRoute,
+  createRouter,
+  Outlet,
+  redirect,
+  type RouterHistory,
+} from '@tanstack/react-router';
+import { CodePage } from '@/features/auth/code-page';
+import { PasswordPage } from '@/features/auth/password-page';
+import { sessionQuery, STEP_PATH, stepOf, type Step } from '@/features/auth/session';
+import { SetUpPage } from '@/features/auth/set-up-page';
+import { SignInPage } from '@/features/auth/sign-in-page';
+import { AppLayout } from './app-layout';
+import { ErrorPage, HomePage, NotFoundPage, PendingPage } from './pages';
+
+interface RouterContext {
+  queryClient: QueryClient;
+}
+
+/**
+ * A page opens only for a session that stands at one of these steps; any other
+ * session is sent to the page of its own step. This is for the person's
+ * convenience: the server refuses every route a session may not call yet.
+ */
+function only(...steps: Step[]) {
+  return async ({ context }: { context: RouterContext }): Promise<void> => {
+    const step = stepOf(await context.queryClient.fetchQuery(sessionQuery));
+    if (!steps.includes(step)) {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- the router's way to redirect
+      throw redirect({ to: STEP_PATH[step] });
+    }
+  };
+}
+
+const rootRoute = createRootRouteWithContext<RouterContext>()({
+  component: Outlet,
+  notFoundComponent: NotFoundPage,
+});
+
+const signInRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sign-in',
+  // `ended`: the session was over when the person tried to go on.
+  validateSearch: (search: Record<string, unknown>): { reason?: 'ended' } =>
+    search.reason === 'ended' ? { reason: 'ended' } : {},
+  beforeLoad: only('sign_in'),
+  component: SignInPage,
+});
+
+const codeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sign-in/code',
+  beforeLoad: only('code'),
+  component: CodePage,
+});
+
+const passwordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/password',
+  // Forced while a first or reset password is in use, and by choice afterwards.
+  beforeLoad: only('password', 'none'),
+  component: PasswordPage,
+});
+
+const setUpRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/second-step/set-up',
+  beforeLoad: only('set_up'),
+  component: SetUpPage,
+});
+
+/** Every page inside the app layout needs a session that owes no step. */
+const appRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: 'app',
+  beforeLoad: only('none'),
+  component: AppLayout,
+});
+
+const homeRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/',
+  component: HomePage,
+});
+
+const routeTree = rootRoute.addChildren([
+  signInRoute,
+  codeRoute,
+  passwordRoute,
+  setUpRoute,
+  appRoute.addChildren([homeRoute]),
+]);
+
+/** `history` is given by tests; the browser's own is used otherwise. */
+export function createAppRouter(queryClient: QueryClient, history?: RouterHistory) {
+  return createRouter({
+    routeTree,
+    context: { queryClient },
+    defaultPendingComponent: PendingPage,
+    defaultErrorComponent: ErrorPage,
+    defaultNotFoundComponent: NotFoundPage,
+    ...(history === undefined ? {} : { history }),
+  });
+}
+
+export type AppRouter = ReturnType<typeof createAppRouter>;
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: AppRouter;
+  }
+}

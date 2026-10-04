@@ -15,7 +15,10 @@
     "db:migrate": "node dist/database/cli.js migrate",
     "db:codegen": "kysely-codegen --dialect postgres --env-file ../../.env --url \"env(DATABASE_MIGRATION_URL)\" --date-parser string --exclude-pattern \"pgboss.*\" --out-file src/database/types.generated.ts",
     "openapi": "node dist/openapi/cli.js",
-    "first-account": "node dist/modules/auth/cli.js first-account"
+    "first-account": "node dist/modules/auth/cli.js first-account",
+    "e2e:build": "tsc -p tsconfig.e2e.json",
+    "e2e:server": "node dist-e2e/testing/e2e/server.js",
+    "e2e:seed": "node dist-e2e/testing/e2e/seed.js"
   },
   "dependencies": {
     "@nestjs/common": "^12.1.2",

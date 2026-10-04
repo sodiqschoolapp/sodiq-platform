@@ -46,7 +46,7 @@ pnpm dev
 - API: http://127.0.0.1:3000/api/health
 - Jobs worker: no address; it logs "The jobs worker is running."
 
-The web app shows a placeholder page that says whether the API answers. In development the web server forwards `/api` to the API, so the browser uses one address.
+The web app opens on the sign-in page; `pnpm auth:first-account` creates the first account. In development the web server forwards `/api` to the API, so the browser uses one address.
 
 The API and the worker need the migrations applied (`pnpm db:migrate`): both stop at start when the job queue's schema is missing or belongs to another pg-boss version.
 
@@ -63,7 +63,7 @@ To stop it on Windows, press Ctrl+C twice. After the first press the servers are
 | `pnpm format` | Rewrites code files in the Prettier style. Docs and Markdown are never touched. |
 | `pnpm typecheck` | Type-checks every package. |
 | `pnpm test` | Unit and API tests (Vitest). The API tests need the local PostgreSQL. Each test file gets its own database, copied from a template that is built from `db/migrations` at the start of the run; nothing touches `sodiq_dev`. |
-| `pnpm test:e2e` | Browser tests (Playwright). Starts `pnpm dev` by itself if it is not running. |
+| `pnpm test:e2e` | Browser tests (Playwright). Starts an API and a web app of their own (ports 3001 and 5174) on the database `sodiq_e2e`, which is dropped and built again from the migrations at every run. `sodiq_dev` is not touched, and a running `pnpm dev` is not in the way. |
 | `pnpm build` | Builds every package. |
 | `pnpm db:migrate` | Applies the SQL files of `db/migrations` that `sodiq_dev` does not have yet, in number order. Refuses to run if an applied file was edited. |
 | `pnpm db:codegen` | Writes the Kysely types of `sodiq_dev` to `apps/api/src/database/types.generated.ts`. Run it after `pnpm db:migrate` and commit the file; a test fails if it is out of date. |
@@ -75,7 +75,7 @@ To stop it on Windows, press Ctrl+C twice. After the first press the servers are
 `.github/workflows/ci.yml` runs on every pull request and on every push to `main`. It has two jobs, each with its own PostgreSQL 18:
 
 - `checks`: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm test`.
-- `e2e`: `pnpm db:migrate`, then `pnpm test:e2e` in Chromium. When it fails or runs longer than 10 minutes, the Playwright traces are kept for 7 days as the artifact `playwright-traces` of the run.
+- `e2e`: `pnpm db:migrate`, then `pnpm test:e2e` in Chromium, on the database `sodiq_e2e` that the tests build themselves. When it fails or runs longer than 10 minutes, the Playwright traces are kept for 7 days as the artifact `playwright-traces` of the run.
 
 Both jobs create the database users with `db/setup/local.sql` and use the values of `.env.example`, so a failure is reproduced locally with the same commands. The actions are pinned to a commit; to update one, replace the commit and the version in the comment beside it.
 

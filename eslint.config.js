@@ -17,6 +17,21 @@ const noSystemClock = [
     'Do not read the system clock. Use the injected clock (CLOCK in apps/api, a Clock or a moment passed in elsewhere).',
 }));
 
+const hardCodedTextMessage =
+  'No hard-coded user-facing text. Add an i18n key in Uzbek, Russian and English (apps/web/src/i18n/locales) and use t().';
+
+/** Text a person reads or hears, written into a component instead of coming from an i18n key. */
+const hardCodedText = [
+  // <p>Text</p>
+  'JSXText[value=/\\p{L}/u]',
+  // <p>{'Text'}</p> and <p>{`Text`}</p>
+  ':matches(JSXElement, JSXFragment) > JSXExpressionContainer > Literal[value=/\\p{L}/u]',
+  ':matches(JSXElement, JSXFragment) > JSXExpressionContainer > TemplateLiteral',
+  // aria-label="Text", also as {'Text'} and {`Text`}
+  'JSXAttribute[name.name=/^(aria-label|aria-description|placeholder|title|alt)$/] > Literal',
+  'JSXAttribute[name.name=/^(aria-label|aria-description|placeholder|title|alt)$/] > JSXExpressionContainer > :matches(Literal, TemplateLiteral)',
+].map((selector) => ({ selector, message: hardCodedTextMessage }));
+
 /** Decorators of NestJS that hand a route unchecked input, or the whole request. */
 const rawInputDecorators = [
   'Body',
@@ -129,6 +144,8 @@ export default defineConfig(
     '**/dist/**',
     // The watch build of the jobs worker (apps/api, dev:worker).
     '**/dist-worker/**',
+    // The API and the seed command of the browser tests (apps/api, e2e:build).
+    '**/dist-e2e/**',
     '**/.turbo/**',
     '**/playwright-report/**',
     '**/test-results/**',
@@ -273,6 +290,16 @@ export default defineConfig(
     files: ['apps/web/src/**/*.{ts,tsx}'],
     extends: [reactHooks.configs.flat.recommended],
     languageOptions: { globals: globals.browser },
+  },
+  {
+    // docs/spec/12-ux-standards.md, Language: every label and message exists in
+    // Uzbek, Russian and English. A text written into a component would exist
+    // in one language only: it comes from an i18n key (apps/web/src/i18n).
+    files: ['apps/web/src/**/*.tsx'],
+    ignores: ['**/*.test.tsx'],
+    rules: {
+      'no-restricted-syntax': ['error', ...hardCodedText],
+    },
   },
   prettier,
 );
