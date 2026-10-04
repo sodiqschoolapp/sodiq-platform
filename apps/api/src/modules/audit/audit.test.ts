@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { Controller, Inject } from '@nestjs/common';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
@@ -228,6 +229,24 @@ describe('the audit log', () => {
         details: null,
         request_id: null,
       });
+      // Asked in SQL: the driver reads an empty column and a JSON null alike.
+      const empty = await sql<{ old_empty: boolean; new_empty: boolean }>`
+        select old_value is null as old_empty, new_value is null as new_empty
+        from audit_log_school where action = 'test.bare'
+      `.execute(database.migrator);
+      expect(empty.rows).toEqual([{ old_empty: true, new_empty: true }]);
+    });
+
+    // The service cannot write half a record; the database refuses it as well.
+    it.each(TABLES)('refuses a record type without a record id in %s', async (table) => {
+      const branch = table === 'audit_log' ? sql`branch_id,` : sql``;
+      const branchValue = table === 'audit_log' ? sql`${north},` : sql``;
+      await expect(
+        sql`
+          insert into ${sql.table(table)} (occurred_at, ${branch} action, record_type)
+          values ('2026-10-05T12:00:00Z', ${branchValue} 'test.half', 'room')
+        `.execute(database.migrator),
+      ).rejects.toMatchObject({ code: '23514' });
     });
 
     it('refuses an entry without an action', async () => {
@@ -347,9 +366,62 @@ describe('the audit log', () => {
     expect(definitions).toContain('(record_type, record_id)');
   });
 
+  // The rights themselves, for every partition: a later migration that adds
+  // months must not grant anything on them, nor more on the parents.
+  describe('gives the application user', () => {
+    const GRANTEES = sql`(0, (select oid from pg_roles where rolname = 'sodiq_app'))`;
+
+    it.each(TABLES)('exactly select and insert on %s', async (table) => {
+      const found = await sql<{ privilege: string }>`
+        select distinct a.privilege_type as privilege
+        from pg_class c, aclexplode(c.relacl) a
+        where c.oid = ${table}::regclass and a.grantee in ${GRANTEES}
+        order by 1
+      `.execute(database.migrator);
+
+      expect(found.rows.map((row) => row.privilege)).toEqual(['INSERT', 'SELECT']);
+    });
+
+    it.each(TABLES)('no right on any partition of %s', async (table) => {
+      const found = await sql<{ partitions: number; granted: string[] }>`
+        select count(*)::int as partitions,
+          coalesce(
+            array_agg(c.relname::text) filter (where exists (
+              select from aclexplode(c.relacl) a where a.grantee in ${GRANTEES}
+            )),
+            '{}'
+          ) as granted
+        from pg_inherits i join pg_class c on c.oid = i.inhrelid
+        where i.inhparent = ${table}::regclass
+      `.execute(database.migrator);
+
+      expect(found.rows[0]?.partitions).toBeGreaterThanOrEqual(40);
+      expect(found.rows[0]?.granted).toEqual([]);
+    });
+
+    it.each(TABLES)('no right on a single column of %s or its partitions', async (table) => {
+      const found = await sql<{ name: string }>`
+        select c.relname || '.' || a.attname as name
+        from pg_attribute a join pg_class c on c.oid = a.attrelid
+        where a.attacl is not null
+          and (c.oid = ${table}::regclass
+            or c.oid in (select inhrelid from pg_inherits where inhparent = ${table}::regclass))
+      `.execute(database.migrator);
+
+      expect(found.rows).toEqual([]);
+    });
+  });
+
+  // A module that does not import AuditModule can inject the service: the
+  // controller below belongs to the root module of the test application.
   it('is offered to every module of the application', async () => {
-    const app = await createTestApp();
-    expect(app.get(Audit)).toBeInstanceOf(Audit);
+    @Controller()
+    class AuditProbe {
+      constructor(@Inject(Audit) readonly audit: Audit) {}
+    }
+
+    const app = await createTestApp({ controllers: [AuditProbe] });
+    expect(app.get(AuditProbe).audit).toBeInstanceOf(Audit);
     await app.close();
   });
 });

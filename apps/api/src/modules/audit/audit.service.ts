@@ -22,6 +22,10 @@ export interface AuditEntry {
   action: string;
   /** The record that changed; left out for events without one (sign-in, export). */
   record?: { type: string; id: string };
+  /**
+   * Left out and `null` are stored alike, as "no value". To record that a field
+   * was cleared, name the field: `{ phone: null }`.
+   */
   oldValue?: JsonValue;
   newValue?: JsonValue;
   reason?: string;
