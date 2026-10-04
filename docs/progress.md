@@ -27,11 +27,14 @@ Decided by the owner at the plan:
 - Lists load a whole branch and search, sort and filter in the browser. "Tick all" means every row that matches the search and filters. Hidden columns and (0.8b-2) the theme are kept in the browser, not on the account.
 - 0.8b-2: the feedback reports go to a school-wide table through a route (roles from the session, never the body); a Save button on record forms with a warning before leaving; no `cmdk`; contrast only, brand colour and logo later.
 
+Decided by the owner at the end (the spec is silent on each; they stay as built):
+
+- A ticked row that a new search hides stays ticked, and the bar says "N of them are not shown by the current search and filters".
+- The search also finds text of a hidden column, and a list stays sorted by a column after it is hidden.
+- Closing the panel adds an entry to the history, so the Back button opens it again.
+
 Open, for the owner:
 
-- A ticked row that a new search hides stays ticked, and the bar says "N of them are not shown by the current search and filters". The spec is silent. The other way is to clear the ticks when the search changes.
-- The search also finds text of a hidden column, and a list stays sorted by a column after it is hidden. The spec is silent; from the review. Nothing was changed.
-- Closing the panel adds an entry to the history, so the Back button opens it again.
 - The Uzbek and Russian wording of the new texts was not reviewed by anybody yet.
 
 Not done from the review:
@@ -52,7 +55,8 @@ The next sessions must know:
 - 0.8c: `PageHeader` takes the breadcrumbs; the left menu is still the empty `<nav>`.
 - 2.2: the Export button hands `onExport(rows, columnKeys)`; the route gets the search, the filters and the column keys (or the ids), and the server decides what the role may see.
 - `prettier --write` over `apps/web/src` rewrites `schema.generated.ts`, and `tooling/api-types.test.ts` then fails: format single folders, or use `pnpm format`.
-- Browser tests: in one full run the first test stopped at the sign-in page (the language chooser was not found in time), right after lint, type-check and a build had run; the next two runs passed. The cause was not looked into; a cold Vite on this machine would fit, but that is not confirmed.
+- Browser tests: in one full run the first test stopped at the sign-in page (the language chooser was not found in time), right after lint, type-check and a build had run; the next two runs passed. A cold Vite fits (it compiles a module when a browser first asks, and prepares the libraries with a reload), though the failed run itself was not taken apart. By the owner's order the global setup (`apps/web/e2e/global-setup.ts`) now opens the sign-in page once in a browser, with up to 2 minutes, before any test runs; no check was removed. One run with Vite's cache deleted (`apps/web/node_modules/.vite`) passed 7 of 7 afterwards.
+- The owner decided the three open points of this task: ticked rows stay ticked when a search hides them, hidden columns are still searched and sorted by, and closing the panel adds an entry to the history. They stay as built.
 - The full run: API tests 47 files, 1056 tests, about 4m45s for everything; web tests 8 files, 163 tests, about 45 s; browser tests 7, about 1 minute.
 
 The next task is 0.8b-2.
