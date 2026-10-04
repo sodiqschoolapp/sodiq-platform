@@ -30,13 +30,13 @@ Decided by the owner:
 - 2.3: a typed date becomes 00:00 of that day in the time zone of the branch, or of the school for the two roles without a branch; screens show dates.
 - An account without a current assignment can sign in (30 minutes, no required second step); blocking sign-in is the Inactive and Left status of 2.2.
 
-Open, for the owner (from the review, not fixed):
+Decided by the owner after the review:
 
-- The database lets the application user empty or move an end that was written (`update (valid_until, ended_by)` has no condition). Only `Assignments.end` writes an end today. A trigger could make the end write-once ("not emptied, not moved later"); "not moved back before a moment that has passed" needs the clock and cannot be a trigger. Decide before 2.3.
-- `give` accepts a `validFrom` in the past; the spec says nothing about backdating a role. Decide before the routes of 2.3.
-- The idle limit is that of the roles at the request. A session of an Academic Vice Principal that was idle for 20 minutes and not seen since is in force again if the role ends before its next request (30 minutes then). And a session that was idle for 20 minutes when a strict role is given ends at its next request with the moment "last use plus 15 minutes", which lies before the role began. Both follow from "one reading of the roles decides"; an exact answer needs the start of the strict role in the calculation.
-- A sign-in with "Trust this device" by an account that owes the set-up of a required second step, whose strict role then ends before the set-up: the session needs no second step any more, but its trust never begins (it begins only at the code or at the end of a set-up). The spec is silent.
-- The first-account tests of 0.6a use the name "Islom Karimov", which is also the name of a real public person. `CLAUDE.md` asks for invented names. Not changed here; a small task of its own.
+- The end of an assignment: an end that has passed is final, and a new assignment is given instead; an end that is still ahead may be moved while it is still ahead. The database does not hold this yet (`update (valid_until, ended_by)` has no condition, and only `Assignments.end` writes an end today): the trigger comes with the routes in 2.3, where the rest is decided.
+- The service accepts a start in the past (`validFrom`); 2.3 decides what the screen offers.
+- The idle limit is that of the roles at the request, accepted as it is. A session of an Academic Vice Principal that was idle for 20 minutes and not seen since is in force again if the role ends before its next request. A session that was idle for 20 minutes when a strict role is given ends at its next request with the moment "last use plus 15 minutes", which lies before the role began.
+- A sign-in with "Trust this device" by an account that owes the set-up of a required second step, whose strict role then ends before the set-up: the session needs no second step any more and is not trusted. Accepted as it is: the person signs in again with the switch.
+- The first-account tests of 0.6a used the name of a real public person; replaced by an invented one in a commit of this task.
 
 The next sessions must know:
 
