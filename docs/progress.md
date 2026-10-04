@@ -2,6 +2,12 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 October 2026: spec change, routes that work without sign-in
+
+Made at the start of task 0.6a (`docs/spec-changes.md`). The next sessions must know:
+
+- 8.3a: the health check must be exempt from the rule "every request carries the application version" (`edge/system-behaviour`): the uptime monitor cannot send a version.
+
 ## 4 October 2026: task 0.5b Jobs
 
 Built:

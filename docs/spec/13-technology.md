@@ -38,7 +38,7 @@ All result calculations live in one module with no other dependencies. The journ
 
 - Passwords stored with Argon2id. Sessions in secure cookies, ended after a period without use, or kept for 7 days on a trusted device. Sign-in attempts limited. Sign-in is the platform's own module; no outside sign-in service is used.
 - Two-step sign-in for the Super Admin and Academic Vice Principal.
-- Permissions are checked on the server for every request, by role, branch, subjects and own classes. The menu hides what a role cannot use, but the server is what enforces it.
+- Permissions are checked on the server for every request, by role, branch, subjects and own classes. The menu hides what a role cannot use, but the server is what enforces it. The few routes that work without sign-in are listed in Roles and access.
 - Every change to timetable, journal, results, people and settings is written to an audit log that cannot be edited: who, when, old value, new value.
 - Personal data is encrypted in transit and at rest. Passport and birth certificate numbers and medical data are shown only to roles that need them, and each viewing is logged.
 - Parents see only their own children.

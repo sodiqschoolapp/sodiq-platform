@@ -46,6 +46,6 @@ Sign-in starts simple and grows. Permission checks do not: they are in place fro
 
 | When | Sign-in | Permissions |
 | --- | --- | --- |
-| From the first piece of work | Accounts created by an administrator. Login and password. Password change at first sign-in. Password reset by an administrator. Sessions end after a period without use. | Every record carries its branch. Every request passes one permission check on the server. Tests for what each role can and cannot do. Roles and permissions fixed in code. |
+| From the first piece of work | Accounts created by an administrator. Login and password. Password change at first sign-in. Password reset by an administrator. Sessions end after a period without use. | Every record carries its branch. Every request passes one permission check on the server. A short list of routes works without sign-in: the health check and sign-in (all its steps), and later password reset by email. Each is declared public in code, and a test holds the exact list. Tests for what each role can and cannot do. Roles and permissions fixed in code. |
 | Before the school goes live | Two-step sign-in for the Super Admin and Academic Vice Principal. A limit on failed sign-in attempts. Password reset by email. | No change: roles and permissions stay fixed in code. The permission matrix screen is built after go-live. |
 | Release 2 | Phone number and SMS code for parents and students. | Student and parent access switched on. |
