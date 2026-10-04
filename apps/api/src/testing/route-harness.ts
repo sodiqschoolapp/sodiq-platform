@@ -17,7 +17,7 @@ import {
 import type { Response } from 'express';
 import { of, type Observable } from 'rxjs';
 import request from 'supertest';
-import { expressRoutesOf, routesOf } from './routes.js';
+import { ALL_METHODS, expressRoutesOf, routesOf } from './routes.js';
 import { signInKit } from './sign-in-kit.js';
 
 /**
@@ -72,6 +72,12 @@ export function declarationProblems(
     if (!route.describesAnswer) {
       problems.push(`${route.name}: no @Returns or @ReturnsNothing`);
     }
+    if (route.method === ALL_METHODS) {
+      // Left open by 0.7b: such a route crashed the harness instead of being named.
+      problems.push(
+        `${route.name}: answers every method (@All); a route names its one method, so that it can be called and listed`,
+      );
+    }
     if (!Object.hasOwn(expected, route.name)) {
       problems.push(`${route.name}: not in the list of who may call it`);
       continue;
@@ -104,8 +110,12 @@ export function declarationProblems(
     }
   }
   // What Express answers by itself has no guard in front of it.
+  // A route for every method is in the router once per method; it is named above, once.
+  const everyMethod = new Set(
+    routes.filter((route) => route.method === ALL_METHODS).map((route) => route.path),
+  );
   for (const name of expressRoutesOf(app)) {
-    if (!names.has(name)) {
+    if (!names.has(name) && !everyMethod.has(name.slice(name.indexOf(' ') + 1))) {
       problems.push(`${name}: a route of the Express router that no controller explains`);
     }
   }
@@ -186,6 +196,8 @@ function expectedOutcome(listed: ExpectedAccess, caller: Caller, inHomeBranch: b
  * application as every caller, for the branch where the caller holds its role
  * and for another one, and compares with the list written by hand. Returns
  * what differs; an empty list means the server allows and refuses as listed.
+ * It also names a route whose answer may be kept by a browser (no
+ * `Cache-Control: no-store`), once per route.
  *
  * The application must be made with `handlerStop`. Subject, class
  * and own-lesson scope are not covered here: each route tests its own.
@@ -217,6 +229,12 @@ async function compare(
       // Named by `declarationProblems`.
       continue;
     }
+    if (route.method === ALL_METHODS) {
+      // Named here too, so that a caller of this function alone does not pass over it.
+      problems.push(`${route.name}: answers every method (@All) and was not called`);
+      continue;
+    }
+    let kept = false;
     // Every `:parameter` of the path becomes an id that names nothing.
     const path = route.path.replace(/:[A-Za-z0-9_]+/g, () => randomUUID());
     for (const caller of callers) {
@@ -237,6 +255,13 @@ async function compare(
               : response.status === 403 && code === 'permission_denied'
                 ? 'refused'
                 : `answered ${String(response.status)} ${code ?? ''}`.trim();
+        // Task 0.7c: every answer carries `Cache-Control: no-store`, allowed or refused.
+        if (response.headers['cache-control'] !== 'no-store' && !kept) {
+          kept = true;
+          problems.push(
+            `${route.name} as ${caller.name}: the answer does not carry Cache-Control: no-store`,
+          );
+        }
         const wanted = expectedOutcome(listed, caller, branch === home);
         if (outcome !== wanted) {
           problems.push(

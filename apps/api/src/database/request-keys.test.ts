@@ -22,9 +22,24 @@ describe('request keys', () => {
   const clock = new FixedClock('2026-10-05T23:59:00+05:00');
   const requestKeys = new RequestKeys(clock);
 
+  /** The account that sends the requests of these tests, and another one. */
+  let author: string;
+  let stranger: string;
+
+  async function insertAccount(login: string): Promise<string> {
+    const inserted = await sql<{ id: string }>`
+      insert into accounts (login, password_hash, must_change_password, created_at)
+      values (${login}, '$argon2id$not-a-real-hash', false, ${clock.now()})
+      returning id
+    `.execute(database.migrator);
+    return inserted.rows[0]?.id ?? '';
+  }
+
   beforeAll(async () => {
     database = await createTestDatabase();
     transactions = new Transactions(database.app);
+    author = await insertAccount('z.tursunova');
+    stranger = await insertAccount('b.yusupov');
     await sql`create table scratch_entries (label text not null)`.execute(database.migrator);
     await sql`grant select, insert on scratch_entries to sodiq_app`.execute(database.migrator);
     // Listed nowhere: this table exists only in this test database.
@@ -50,11 +65,17 @@ describe('request keys', () => {
     return found.rows[0]?.rows ?? -1;
   }
 
-  function send(key: string, label: string, runs: { count: number }, scope = 'journal.entry') {
+  function send(
+    key: string,
+    label: string,
+    runs: { count: number },
+    scope = 'journal.entry',
+    accountId: string = author,
+  ) {
     return transactions.run([], (transaction) =>
       requestKeys.runOnce(
         transaction,
-        { key, scope, input: { label } },
+        { key, scope, accountId, input: { label } },
         entry(transaction, label, runs),
       ),
     );
@@ -74,6 +95,7 @@ describe('request keys', () => {
       .where('key', '=', key)
       .executeTakeFirstOrThrow();
     expect(stored.scope).toBe('journal.entry');
+    expect(stored.account_id).toBe(author);
     expect(stored.result).toEqual({ label: 'first', status: 'saved' });
     expect(stored.created_at.toISOString()).toBe('2026-10-05T18:59:00.000Z');
   });
@@ -109,7 +131,7 @@ describe('request keys', () => {
       transactions.run([], async (transaction) => {
         await requestKeys.runOnce(
           transaction,
-          { key, scope: 'journal.entry', input: { label: 'retried' } },
+          { key, scope: 'journal.entry', accountId: author, input: { label: 'retried' } },
           entry(transaction, 'retried', runs),
         );
         throw new Error('the connection was lost');
@@ -129,8 +151,10 @@ describe('request keys', () => {
 
     await expect(
       transactions.run([], (transaction) =>
-        requestKeys.runOnce(transaction, { key, scope: 'journal.entry', input: {} }, () =>
-          Promise.reject(new Error('refused by a rule')),
+        requestKeys.runOnce(
+          transaction,
+          { key, scope: 'journal.entry', accountId: author, input: {} },
+          () => Promise.reject(new Error('refused by a rule')),
         ),
       ),
     ).rejects.toThrow('refused by a rule');
@@ -152,13 +176,23 @@ describe('request keys', () => {
     await transactions.run([], async (transaction) => {
       await requestKeys.runOnce(
         transaction,
-        { key: randomUUID(), scope: 'journal.entry', input: { label: 'batch kept' } },
+        {
+          key: randomUUID(),
+          scope: 'journal.entry',
+          accountId: author,
+          input: { label: 'batch kept' },
+        },
         entry(transaction, 'batch kept', runs),
       );
       await expect(
         requestKeys.runOnce(
           transaction,
-          { key: refusedKey, scope: 'journal.entry', input: { label: 'batch refused' } },
+          {
+            key: refusedKey,
+            scope: 'journal.entry',
+            accountId: author,
+            input: { label: 'batch refused' },
+          },
           async () => {
             await entry(transaction, 'batch refused', runs)();
             throw new Error('the lesson is locked');
@@ -187,10 +221,14 @@ describe('request keys', () => {
 
     await transactions.run([], async (transaction) => {
       await expect(
-        requestKeys.runOnce(transaction, { key, scope: 'journal.entry', input: {} }, async () => {
-          await sql`insert into scratch_entries (label) values (null)`.execute(transaction);
-          return 'not reached';
-        }),
+        requestKeys.runOnce(
+          transaction,
+          { key, scope: 'journal.entry', accountId: author, input: {} },
+          async () => {
+            await sql`insert into scratch_entries (label) values (null)`.execute(transaction);
+            return 'not reached';
+          },
+        ),
       ).rejects.toMatchObject({ code: '23502' });
       await sql`insert into scratch_entries (label) values ('after the error')`.execute(
         transaction,
@@ -200,8 +238,29 @@ describe('request keys', () => {
     expect(await entries('after the error')).toBe(1);
   });
 
+  it('a key the database refuses is a fault that leaves the rest of the transaction usable', async () => {
+    const runs = { count: 0 };
+
+    await transactions.run([], async (transaction) => {
+      await expect(
+        requestKeys.runOnce(
+          transaction,
+          // An account that does not exist.
+          { key: randomUUID(), scope: 'journal.entry', accountId: randomUUID(), input: {} },
+          entry(transaction, 'refused key', runs),
+        ),
+      ).rejects.toMatchObject({ code: '23503' });
+      await sql`insert into scratch_entries (label) values ('after a refused key')`.execute(
+        transaction,
+      );
+    });
+
+    expect(runs.count).toBe(0);
+    expect(await entries('after a refused key')).toBe(1);
+  });
+
   it('a key used again from inside its own work is a fault, not an empty answer', async () => {
-    const request = { key: randomUUID(), scope: 'journal.entry', input: {} };
+    const request = { key: randomUUID(), scope: 'journal.entry', accountId: author, input: {} };
 
     await expect(
       transactions.run([], (transaction) =>
@@ -226,7 +285,7 @@ describe('request keys', () => {
       transactions.run([], (transaction) =>
         requestKeys.runOnce(
           transaction,
-          { key, scope: 'journal.entry', input: { label: 'at once' } },
+          { key, scope: 'journal.entry', accountId: author, input: { label: 'at once' } },
           slow(transaction),
         ),
       );
@@ -270,7 +329,7 @@ describe('request keys', () => {
         transactions.run(branches, (transaction) =>
           requestKeys.runOnce(
             transaction,
-            { key, scope: 'journal.entry', input: { label: 'by branch' } },
+            { key, scope: 'journal.entry', accountId: author, input: { label: 'by branch' } },
             entry(transaction, 'by branch', runs),
           ),
         );
@@ -287,14 +346,106 @@ describe('request keys', () => {
       const key = randomUUID();
       const once = (input: Record<string, number>) =>
         transactions.run([], (transaction) =>
-          requestKeys.runOnce(transaction, { key, scope: 'journal.entry', input }, () =>
-            Promise.resolve('done'),
+          requestKeys.runOnce(
+            transaction,
+            { key, scope: 'journal.entry', accountId: author, input },
+            () => Promise.resolve('done'),
           ),
         );
 
       await once({ score: 7, total: 10 });
 
       expect(await once({ total: 10, score: 7 })).toEqual({ repeated: true, result: 'done' });
+    });
+  });
+
+  // docs/build-plan.md, task 0.7c: "the request key tied to the account"; done
+  // when "a key used by another account is refused with 409".
+  describe('a key belongs to the account that sent it', () => {
+    it('is refused for another account with the same action and input, and the work does not run', async () => {
+      const key = randomUUID();
+      const runs = { count: 0 };
+      const first = await send(key, 'by account', runs);
+
+      await expect(send(key, 'by account', runs, 'journal.entry', stranger)).rejects.toMatchObject(
+        KEY_REUSED,
+      );
+      expect(runs.count).toBe(1);
+      expect(await entries('by account')).toBe(1);
+      // The account it belongs to still gets its answer.
+      expect(await send(key, 'by account', runs)).toEqual({ repeated: true, result: first.result });
+    });
+
+    it('is refused for another account at the same moment too: the work runs once', async () => {
+      const key = randomUUID();
+      const runs = { count: 0 };
+      const slow = (accountId: string) =>
+        transactions.run([], (transaction) =>
+          requestKeys.runOnce(
+            transaction,
+            { key, scope: 'journal.entry', accountId, input: { label: 'two accounts' } },
+            async () => {
+              const result = await entry(transaction, 'two accounts', runs)();
+              await sql`select pg_sleep(0.3)`.execute(transaction);
+              return result;
+            },
+          ),
+        );
+
+      const answers = await Promise.allSettled([slow(author), slow(stranger)]);
+
+      expect(runs.count).toBe(1);
+      expect(await entries('two accounts')).toBe(1);
+      expect(answers.map((answer) => answer.status).sort()).toEqual(['fulfilled', 'rejected']);
+      const refused = answers.find((answer) => answer.status === 'rejected');
+      expect(refused?.reason).toMatchObject(KEY_REUSED);
+    });
+
+    // A job has no account: its key is the job id (apps/api/src/jobs/job-runner.ts).
+    it('has no account for a job, and the job still runs once', async () => {
+      const key = randomUUID();
+      const runs = { count: 0 };
+
+      const once = () =>
+        transactions.run([], (transaction) =>
+          requestKeys.runJobOnce(
+            transaction,
+            { key, jobName: 'sample.note', input: { label: 'a job' } },
+            entry(transaction, 'a job', runs),
+          ),
+        );
+
+      const first = await once();
+      const second = await once();
+
+      expect(first.repeated).toBe(false);
+      expect(second.repeated).toBe(true);
+      expect(runs.count).toBe(1);
+      const stored = await database.app
+        .selectFrom('request_keys')
+        .select(['account_id', 'scope'])
+        .where('key', '=', key)
+        .executeTakeFirstOrThrow();
+      expect(stored).toEqual({ account_id: null, scope: 'job:sample.note' });
+    });
+
+    // Found by the review: a route that named its scope `job:...` would store
+    // a key without an account, which every account could then repeat.
+    it('cannot be given the scope of a job by a request', async () => {
+      const key = randomUUID();
+      const runs = { count: 0 };
+
+      await expect(send(key, 'not a job', runs, 'job:sample.note')).rejects.toThrow(
+        'must not begin with "job:"',
+      );
+      expect(runs.count).toBe(0);
+      expect(
+        await database.app
+          .selectFrom('request_keys')
+          .select('key')
+          .where('key', '=', key)
+          .execute(),
+      ).toEqual([]);
     });
   });
 
@@ -308,8 +459,10 @@ describe('request keys', () => {
     const key = randomUUID();
     const once = () =>
       transactions.run([], (transaction) =>
-        requestKeys.runOnce(transaction, { key, scope: 'sample', input: null }, () =>
-          Promise.resolve(result),
+        requestKeys.runOnce(
+          transaction,
+          { key, scope: 'sample', accountId: author, input: null },
+          () => Promise.resolve(result),
         ),
       );
 
@@ -325,10 +478,11 @@ describe('request keys', () => {
       });
     });
 
-    it('cannot change a key, its action, its hash or its moment', async () => {
+    it('cannot change a key, its action, its account, its hash or its moment', async () => {
       for (const change of [
         { key: randomUUID() },
         { scope: 'other' },
+        { account_id: stranger },
         { request_hash: 'other' },
         { created_at: clock.now() },
       ]) {
@@ -340,12 +494,40 @@ describe('request keys', () => {
 
     it('cannot use a key twice past the helper: the database refuses', async () => {
       const key = randomUUID();
-      const row = { key, scope: 'sample', request_hash: 'x', created_at: clock.now() };
+      const row = {
+        key,
+        scope: 'sample',
+        account_id: author,
+        request_hash: 'x',
+        created_at: clock.now(),
+      };
       await database.app.insertInto('request_keys').values(row).execute();
 
       await expect(
         database.app.insertInto('request_keys').values(row).execute(),
       ).rejects.toMatchObject({ code: '23505' });
+    });
+
+    // Migration 0010: the database guards the rule, also past the helper.
+    it.each([
+      ['a key of a route without an account', 'journal.entry', null, '23514'],
+      ['a key of a job with an account', 'job:sample.note', 'author', '23514'],
+      ['a key of an account that does not exist', 'journal.entry', 'nobody', '23503'],
+    ] as const)('cannot store %s', async (_name, scope, who, code) => {
+      const account = who === 'author' ? author : who === 'nobody' ? randomUUID() : null;
+
+      await expect(
+        database.app
+          .insertInto('request_keys')
+          .values({
+            key: randomUUID(),
+            scope,
+            account_id: account,
+            request_hash: 'x',
+            created_at: clock.now(),
+          })
+          .execute(),
+      ).rejects.toMatchObject({ code });
     });
   });
 });

@@ -13,6 +13,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   malformed_request: 'The request could not be read.',
   not_found: 'Not found.',
   payload_too_large: 'The request is too large.',
+  unsupported_media_type: 'The body of the request is not JSON.',
   not_signed_in: 'Not signed in.',
   sign_in_failed: 'The login or the password is wrong.',
   too_many_attempts: 'Too many failed attempts. Wait before the next one.',
@@ -43,6 +44,8 @@ function codeOfStatus(status: number): ErrorCode {
       return 'not_found';
     case 413:
       return 'payload_too_large';
+    case 415:
+      return 'unsupported_media_type';
     default:
       return status >= 500 ? 'internal_error' : 'request_refused';
   }

@@ -14,12 +14,27 @@ export type PermissionRows = Readonly<Record<Role, readonly Action[]>>;
 export type PermissionTable = Readonly<Record<string, PermissionRows>>;
 
 /**
+ * Makes a table unchangeable while the program runs: its areas, the rows of
+ * each area and the list of actions of each row. Code that tries to add an
+ * action or an area afterwards fails instead of widening what a role may do.
+ */
+export function freezeTable<Table extends PermissionTable>(table: Table): Table {
+  for (const rows of Object.values(table)) {
+    for (const actions of Object.values(rows)) {
+      Object.freeze(actions);
+    }
+    Object.freeze(rows);
+  }
+  return Object.freeze(table);
+}
+
+/**
  * The table of the application, fixed in code for the 15 roles. It has no area
  * yet: each task adds the rows of its area with its first route, and writes
  * out an empty list for a role that may do nothing there. The server guard
  * reads it for every request; the menus read the same table.
  */
-export const PERMISSIONS = {} as const satisfies PermissionTable;
+export const PERMISSIONS = freezeTable({} as const satisfies PermissionTable);
 
 export type Area = keyof typeof PERMISSIONS;
 

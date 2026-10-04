@@ -103,10 +103,10 @@ export class JobRunner {
     const { branchIds } = envelope.data;
     const data = envelope.data.data;
     await this.transactions.run(branchIds, async (transaction) => {
-      await this.requestKeys.runOnce<JsonValue>(
+      await this.requestKeys.runJobOnce<JsonValue>(
         transaction,
         // The stored envelope is JSON, so it is a JsonValue.
-        { key: delivery.id, scope: `job:${definition.name}`, input: delivery.data as JsonValue },
+        { key: delivery.id, jobName: definition.name, input: delivery.data as JsonValue },
         async () => {
           await handler(transaction, data, { id: delivery.id });
           return null;

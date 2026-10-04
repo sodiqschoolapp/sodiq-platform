@@ -127,14 +127,18 @@ describe('a job is enqueued in the transaction of its change', () => {
     await transactions.run([north], async (transaction) => {
       await insertNote(transaction, kept, north);
       await requestKeys
-        .runOnce(transaction, { key: randomUUID(), scope: 'test.entry', input: {} }, async () => {
-          await insertNote(transaction, undone, north);
-          await jobs.enqueue(transaction, sampleJob, {
-            branchIds: [north],
-            data: { noteId: undone },
-          });
-          throw new Error('The entry was refused.');
-        })
+        .runJobOnce(
+          transaction,
+          { key: randomUUID(), jobName: 'test.entry', input: {} },
+          async () => {
+            await insertNote(transaction, undone, north);
+            await jobs.enqueue(transaction, sampleJob, {
+              branchIds: [north],
+              data: { noteId: undone },
+            });
+            throw new Error('The entry was refused.');
+          },
+        )
         .catch(() => undefined);
     });
 

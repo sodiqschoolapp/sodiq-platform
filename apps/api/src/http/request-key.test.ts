@@ -113,6 +113,32 @@ describe('a route with a request key', () => {
     expect(await notes(north)).toEqual(['once']);
   });
 
+  // docs/build-plan.md, task 0.7c: "a key used by another account is refused with 409".
+  it('the key of another account is refused, also with the same content, and changes nothing', async () => {
+    const key = randomUUID();
+    const first = await post(south, key, 'mine');
+    const kit = signInKit(app);
+    const other = await kit.fullSession('Bahrom', 'Yusupov');
+    await kit.giveRole(other.account.id, { role: 'head_teacher', branchId: south });
+    const before = await notes(south);
+
+    const response = await request(server)
+      .post(`/api/sample-notebooks/${NOTEBOOK}/notes`)
+      .set('Cookie', other.cookie)
+      .set(BRANCH_HEADER, south)
+      .set('Idempotency-Key', key)
+      .send({ label: 'mine' });
+
+    expect(first.status).toBe(201);
+    expect(response.status).toBe(409);
+    expect(apiErrorSchema.parse(response.body).error.code).toBe('request_key_reused');
+    // Not the stored answer of the first account.
+    expect(response.body).not.toHaveProperty('id');
+    expect(await notes(south)).toEqual(before);
+    // The first account still gets its answer.
+    expect((await post(south, key, 'mine')).body).toEqual(first.body);
+  });
+
   it.each([
     ['no key', undefined, 'invalid_type'],
     ['a key that is not a uuid', TYPED_VALUE, 'invalid_format'],

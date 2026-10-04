@@ -39,6 +39,7 @@ export { healthResponseSchema, type HealthResponse } from './health.js';
 export {
   ACTIONS,
   checkTable,
+  freezeTable,
   PERMISSIONS,
   permits,
   type Action,

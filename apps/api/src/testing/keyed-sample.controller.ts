@@ -49,6 +49,7 @@ export class KeyedSampleController {
         {
           key,
           scope: 'sample.note',
+          accountId: access.accountId,
           input: { notebookId: params.notebookId, label: body.label },
         },
         async () => {

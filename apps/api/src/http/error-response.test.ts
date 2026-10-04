@@ -76,7 +76,11 @@ describe('sendError', () => {
 
     expect(sent.status).toBe(415);
     expect(sent.body).toEqual({
-      error: { code: 'request_refused', message: 'The request was refused.', requestId: 'id-1' },
+      error: {
+        code: 'unsupported_media_type',
+        message: 'The body of the request is not JSON.',
+        requestId: 'id-1',
+      },
     });
     expect(logged).not.toHaveBeenCalled();
   });
