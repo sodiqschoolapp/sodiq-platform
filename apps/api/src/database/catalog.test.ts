@@ -13,7 +13,26 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
   schema_migrations: 'The list of applied migrations; the application can only read it.',
   branches: 'The branches themselves; the branch switcher shows their names.',
   request_keys: 'A key is unique across the school; a row holds ids and status only.',
+  audit_log_school:
+    'Audit entries of events without a branch (sign-ins, relatives); who reads them is decided by the guard (task 2.6).',
+  ...auditSchoolPartitions(),
 };
+
+/**
+ * The partitions of `audit_log_school` (db/migrations/0003): one per month from
+ * October 2026 to December 2029 and the default one. The application user has
+ * no right on any of them. A migration that adds months extends this range.
+ */
+function auditSchoolPartitions(): Record<string, string> {
+  const reason = 'A partition of audit_log_school; the application user has no right on it.';
+  const partitions: Record<string, string> = { audit_log_school_default: reason };
+  for (let year = 2026; year <= 2029; year += 1) {
+    for (let month = year === 2026 ? 10 : 1; month <= 12; month += 1) {
+      partitions[`audit_log_school_${String(year)}_${String(month).padStart(2, '0')}`] = reason;
+    }
+  }
+  return partitions;
+}
 
 /**
  * Functions that run with the rights of their owner, who is not filtered, each

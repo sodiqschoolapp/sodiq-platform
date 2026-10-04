@@ -23,6 +23,39 @@ export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface AuditLog {
+  action: string;
+  actor_id: string | null;
+  assignment_id: string | null;
+  branch_id: string;
+  details: Json | null;
+  id: Generated<string>;
+  new_value: Json | null;
+  occurred_at: Timestamp;
+  old_value: Json | null;
+  person_id: string | null;
+  reason: string | null;
+  record_id: string | null;
+  record_type: string | null;
+  request_id: string | null;
+}
+
+export interface AuditLogSchool {
+  action: string;
+  actor_id: string | null;
+  assignment_id: string | null;
+  details: Json | null;
+  id: Generated<string>;
+  new_value: Json | null;
+  occurred_at: Timestamp;
+  old_value: Json | null;
+  person_id: string | null;
+  reason: string | null;
+  record_id: string | null;
+  record_type: string | null;
+  request_id: string | null;
+}
+
 export interface Branches {
   created_at: Generated<Timestamp>;
   id: Generated<string>;
@@ -45,6 +78,8 @@ export interface SchemaMigrations {
 }
 
 export interface DB {
+  audit_log: AuditLog;
+  audit_log_school: AuditLogSchool;
   branches: Branches;
   request_keys: RequestKeys;
   schema_migrations: SchemaMigrations;
