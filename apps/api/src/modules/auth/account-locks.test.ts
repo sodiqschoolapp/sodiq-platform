@@ -104,6 +104,28 @@ describe('an account lock', () => {
     return found.rows;
   }
 
+  /**
+   * For a test that holds a transaction open while another one runs into its
+   * lock. `reached()` is called inside the held transaction once it has the
+   * lock; `whenReached(holding)` resolves then, and fails if the held
+   * transaction fails first. The other side is started only after that:
+   * started at the same moment, it can take the row first, finish at once, and
+   * nothing ever waits (seen in CI).
+   */
+  function gate() {
+    let reached: () => void = () => undefined;
+    const opened = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    return {
+      reached: () => {
+        reached();
+      },
+      whenReached: (holding: Promise<unknown>) =>
+        Promise.race([opened, holding.then(() => opened)]),
+    };
+  }
+
   /** How many connections to the test database wait for a lock right now. */
   async function waitingForALock(): Promise<number> {
     const found = await sql<{ waiting: number }>`
@@ -414,6 +436,8 @@ describe('an account lock', () => {
         release = resolve;
       });
 
+      const lockWritten = gate();
+
       // The lock is written and its transaction stays open.
       const locking = app.get(Transactions).run([], async (transaction) => {
         await app.get(AccountLocks).lock(transaction, {
@@ -421,8 +445,12 @@ describe('an account lock', () => {
           lockedBy: administrator.id,
           reason: 'Dismissed today.',
         });
+        lockWritten.reached();
         await held;
       });
+      // The sign-in starts only once the lock holds the row of the account. If
+      // the held transaction failed instead, nothing is held and the test ends here.
+      await lockWritten.whenReached(locking);
       const signingIn = kit.signIn(account.login, NEW_PASSWORD).then((response) => response);
       try {
         // The sign-in has checked the password and now waits for the row of the account.
@@ -448,6 +476,8 @@ describe('an account lock', () => {
         release = resolve;
       });
 
+      const sessionWritten = gate();
+
       // What a sign-in does in its transaction: the row of the account, then the session.
       const signingIn = app.get(Transactions).run([], async (transaction) => {
         await transaction
@@ -465,10 +495,14 @@ describe('an account lock', () => {
             last_used_at: clock.now(),
           })
           .execute();
+        sessionWritten.reached();
         await held;
       });
+      // The lock starts only once the sign-in holds the row of the account.
+      await sessionWritten.whenReached(signingIn);
       const locking = lock(account.id, administrator.id);
       try {
+        // The lock waits for the row of the account.
         await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
       } finally {
         release();

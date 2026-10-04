@@ -47,6 +47,7 @@ The next sessions must know:
 - 2.5 (Release 2): when Parent becomes a role without a branch, it does not get every branch: `decide` names `SCHOOL_WIDE_ROLES`.
 - 0.9: `APP_GUARD` also runs for Socket.IO gateways, and both guards assume an HTTP request; the gateway needs its own check at the handshake.
 - The harness reads controllers and the routes of the Express router. Something mounted with `app.use(path, router)` (static files, Swagger UI) or only in `main.ts` is not seen by it: nothing of the kind exists, and nothing that serves data may be added that way.
+- Fixed on this branch after CI failed: the two tests "at the same moment as a sign-in" in `account-locks.test.ts` started the held transaction and the other side together. When the other side took the row of the account first, it finished at once and nothing ever waited, so the poll saw 0 for 20 seconds (the timeout seen once in 0.7a was the same race, not load). Now `gate()` in that file lets the other side start only after the held transaction has its lock. A new test that holds a transaction and waits for the other side does the same.
 - A `MaxListenersExceededWarning` in the API test output is older than this task (it shows on `main` in the auth suites).
 
 The next task is 0.7c.
