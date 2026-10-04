@@ -22,7 +22,7 @@ describe('generated Kysely types', () => {
     // The same options as the `db:codegen` script, in verify mode. The address
     // is that of a throw-away local test database.
     const result = spawnSync(
-      `kysely-codegen --dialect postgres --url "${database.migrationUrl}" --date-parser string --out-file src/database/types.generated.ts --verify`,
+      `kysely-codegen --dialect postgres --url "${database.migrationUrl}" --date-parser string --exclude-pattern "pgboss.*" --out-file src/database/types.generated.ts --verify`,
       { cwd: packageDirectory, shell: true, encoding: 'utf8' },
     );
 

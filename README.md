@@ -44,8 +44,11 @@ pnpm dev
 
 - Web app: http://localhost:5173
 - API: http://127.0.0.1:3000/api/health
+- Jobs worker: no address; it logs "The jobs worker is running."
 
 The web app shows a placeholder page that says whether the API answers. In development the web server forwards `/api` to the API, so the browser uses one address.
+
+The API and the worker need the migrations applied (`pnpm db:migrate`): both stop at start when the job queue's schema is missing or belongs to another pg-boss version.
 
 The API checks its configuration when it starts and stops with the names of the variables that are missing or wrong. It answers only on this machine (`127.0.0.1`) unless `HOST` says otherwise; `.env.example` lists the variables.
 
@@ -55,7 +58,7 @@ To stop it on Windows, press Ctrl+C twice. After the first press the servers are
 
 | Command | What it does |
 | --- | --- |
-| `pnpm dev` | Runs the web app and the API, and rebuilds the shared packages on change. The jobs worker joins in task 0.5. |
+| `pnpm dev` | Runs the web app, the API and the jobs worker, and rebuilds the shared packages on change. |
 | `pnpm lint` | ESLint in every package, then the Prettier check. |
 | `pnpm format` | Rewrites code files in the Prettier style. Docs and Markdown are never touched. |
 | `pnpm typecheck` | Type-checks every package. |

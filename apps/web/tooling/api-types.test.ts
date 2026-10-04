@@ -30,4 +30,7 @@ it('schema.generated.ts is up to date (run "pnpm api:client" if this fails)', ()
   } finally {
     rmSync(folder, { recursive: true, force: true });
   }
-});
+  // The generator runs as a Node process of its own: about 1.5 s alone, but its
+  // start has to wait while every package is built and tested at once. The
+  // default of 5 s is too close; the comparison itself is not changed.
+}, 30_000);

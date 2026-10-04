@@ -12,5 +12,6 @@ paths:
 - Check permission and scope before `RequestKeys.runOnce`, on every request: a repeat does not run the work, so a check inside the work would be skipped.
 - A change that must be safe to repeat (publish, close, offline entries) takes `@RequestKey()` and runs inside `RequestKeys.runOnce` in the same transaction as the change.
 - Use the injected clock. Do not call `Date.now()` or `new Date()` in business code.
-- Write to the audit log in the same transaction as the change. Enqueue jobs in that transaction too.
+- Write to the audit log in the same transaction as the change. Enqueue jobs in that transaction too: `jobs.enqueue(transaction, definition, { branchIds, data })` (`apps/api/src/jobs/`), with ids only in `data`.
+- A job handler decides from stored moments and the injected clock, never from the fact that it was triggered; a job can run late or twice.
 - After changing a route, run `pnpm api:client` so the web client matches.

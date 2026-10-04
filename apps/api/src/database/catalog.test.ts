@@ -191,6 +191,103 @@ async function functionProblems(
   return problems;
 }
 
+/**
+ * The tables of pg-boss 12.36.0 (db/migrations/0004) and what the application
+ * user may do with each. They have no branch filter: a job holds ids and the
+ * branches it works for, never personal data (docs/decisions.md). An upgrade of
+ * pg-boss that adds a table, or a migration that widens a right, fails here.
+ */
+const JOB_TABLE_RIGHTS: Record<string, string[]> = {
+  bam: [],
+  instance: ['DELETE', 'SELECT', 'UPDATE'],
+  job: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
+  job_common: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
+  job_dependency: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
+  queue: ['INSERT', 'SELECT', 'UPDATE'],
+  queue_stats: [],
+  schedule: [],
+  subscription: [],
+  version: ['SELECT', 'UPDATE'],
+  warning: [],
+};
+
+/**
+ * What is wrong with schema pgboss; empty when it is as migration 0004 leaves
+ * it: owned by the migration user, nothing that runs with the owner's rights,
+ * and the application user unable to create or change anything in it.
+ */
+async function jobSchemaProblems(database: Database): Promise<string[]> {
+  const problems: string[] = [];
+
+  const schema = await sql<{ owner: string; app_creates: boolean }>`
+    select pg_get_userbyid(nspowner) as owner,
+      has_schema_privilege('sodiq_app', oid, 'CREATE') as app_creates
+    from pg_namespace where nspname = 'pgboss'
+  `.execute(database);
+  if (schema.rows[0]?.owner !== 'sodiq_migrator') {
+    problems.push('pgboss: the schema is not owned by sodiq_migrator');
+  }
+  if (schema.rows[0]?.app_creates !== false) {
+    problems.push('pgboss: sodiq_app may create objects in the schema');
+  }
+
+  const relations = await sql<{ name: string; kind: string; owner: string; rights: string[] }>`
+    select c.relname as name, c.relkind as kind, pg_get_userbyid(c.relowner) as owner,
+      -- The effective rights: also through a grant to public or on single columns.
+      array(
+        select p from unnest(
+          array['DELETE', 'INSERT', 'REFERENCES', 'SELECT', 'TRIGGER', 'TRUNCATE', 'UPDATE']
+        ) p
+        where has_table_privilege('sodiq_app', c.oid, p)
+          or (
+            p in ('INSERT', 'REFERENCES', 'SELECT', 'UPDATE')
+            and has_any_column_privilege('sodiq_app', c.oid, p)
+          )
+        order by 1
+      ) as rights
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'pgboss' and c.relkind in ('r', 'p', 'v', 'm', 'S', 'f')
+    order by c.relname
+  `.execute(database);
+  for (const relation of relations.rows) {
+    const name = `pgboss.${relation.name}`;
+    if (relation.owner !== 'sodiq_migrator') {
+      problems.push(`${name}: not owned by sodiq_migrator`);
+    }
+    const expected = JOB_TABLE_RIGHTS[relation.name];
+    if (!['r', 'p'].includes(relation.kind) || expected === undefined) {
+      problems.push(`${name}: not a table of pg-boss 12.36.0`);
+    } else if (relation.rights.join(',') !== expected.join(',')) {
+      problems.push(`${name}: the rights of sodiq_app are not the listed ones`);
+    }
+  }
+  const names = new Set(relations.rows.map((relation) => relation.name));
+  for (const name of Object.keys(JOB_TABLE_RIGHTS)) {
+    if (!names.has(name)) {
+      problems.push(`pgboss.${name}: listed but does not exist`);
+    }
+  }
+
+  const functions = await sql<{ name: string; owner: string; definer: boolean }>`
+    select p.oid::regprocedure::text as name, pg_get_userbyid(p.proowner) as owner,
+      p.prosecdef as definer
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'pgboss'
+    order by 1
+  `.execute(database);
+  for (const found of functions.rows) {
+    if (found.owner !== 'sodiq_migrator') {
+      problems.push(`${found.name}: not owned by sodiq_migrator`);
+    }
+    if (found.definer) {
+      problems.push(`${found.name}: SECURITY DEFINER`);
+    }
+  }
+  return problems;
+}
+
 // CLAUDE.md, "Branch on every row": every table that belongs to a branch has a
 // branch column and the row filter. These checks read the catalog of a database
 // built from the real migrations, so a later migration cannot forget the rule.
@@ -209,15 +306,21 @@ describe('the migrations', () => {
     expect(await tableProblems(database.migrator)).toEqual([]);
   });
 
-  // The checks read schema public only. A new schema (pg-boss in task 0.5) must
-  // be looked at and these checks extended before this list grows.
-  it('keep everything in schema public', async () => {
+  // The checks above read schema public only; `jobSchemaProblems` reads the
+  // schema of the job queue. Another schema must be looked at and given checks
+  // of its own before this list grows.
+  it('keep everything in schema public, apart from the job queue', async () => {
     const found = await sql<{ name: string }>`
       select nspname as name from pg_namespace
       where nspname !~ '^pg_' and nspname <> 'information_schema'
+      order by nspname
     `.execute(database.migrator);
 
-    expect(found.rows.map((row) => row.name)).toEqual(['public']);
+    expect(found.rows.map((row) => row.name)).toEqual(['pgboss', 'public']);
+  });
+
+  it('leave the job queue to its owner, with only the listed rights for the application user', async () => {
+    expect(await jobSchemaProblems(database.migrator)).toEqual([]);
   });
 
   // The policies do nothing for a superuser, a user with BYPASSRLS or a member
@@ -411,6 +514,62 @@ describe('the catalog checks', () => {
       ).toEqual([
         'scratch_listed: listed as school-wide but has branch_id',
         'scratch_gone: listed as school-wide but does not exist',
+      ]);
+    });
+  });
+
+  describe('for the job queue', () => {
+    // Also after a failed test, so one failure does not show up in the next test.
+    afterEach(async () => {
+      for (const statement of [
+        'drop table if exists pgboss.scratch_extra',
+        'drop view if exists pgboss.scratch_view',
+        'drop function if exists pgboss.scratch_count()',
+        'revoke delete on pgboss.queue from sodiq_app',
+        'revoke select on pgboss.warning from public',
+        'revoke update (message) on pgboss.warning from sodiq_app',
+        'revoke create on schema pgboss from sodiq_app',
+      ]) {
+        await sql.raw(statement).execute(database.migrator);
+      }
+      expect(await jobSchemaProblems(database.migrator)).toEqual([]);
+    });
+
+    it('name a table that pg-boss does not have, and a right that is not listed', async () => {
+      await sql`create table pgboss.scratch_extra (id integer)`.execute(database.migrator);
+      await sql`grant delete on pgboss.queue to sodiq_app`.execute(database.migrator);
+
+      expect(await jobSchemaProblems(database.migrator)).toEqual([
+        'pgboss.queue: the rights of sodiq_app are not the listed ones',
+        'pgboss.scratch_extra: not a table of pg-boss 12.36.0',
+      ]);
+    });
+
+    it.each([
+      ['a grant to every user', 'grant select on pgboss.warning to public'],
+      ['a grant on one column', 'grant update (message) on pgboss.warning to sodiq_app'],
+    ])('name a right that reaches the application user through %s', async (_name, statement) => {
+      await sql.raw(statement).execute(database.migrator);
+
+      expect(await jobSchemaProblems(database.migrator)).toEqual([
+        'pgboss.warning: the rights of sodiq_app are not the listed ones',
+      ]);
+    });
+
+    it('name a view, a SECURITY DEFINER function and the right to create', async () => {
+      await sql`create view pgboss.scratch_view as select * from pgboss.job`.execute(
+        database.migrator,
+      );
+      await sql`
+        create function pgboss.scratch_count() returns integer language sql security definer
+        as 'select count(*)::int from pgboss.job'
+      `.execute(database.migrator);
+      await sql`grant create on schema pgboss to sodiq_app`.execute(database.migrator);
+
+      expect(await jobSchemaProblems(database.migrator)).toEqual([
+        'pgboss: sodiq_app may create objects in the schema',
+        'pgboss.scratch_view: not a table of pg-boss 12.36.0',
+        'pgboss.scratch_count(): SECURITY DEFINER',
       ]);
     });
   });

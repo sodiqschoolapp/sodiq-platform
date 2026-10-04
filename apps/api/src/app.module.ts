@@ -3,6 +3,7 @@ import { ClockModule } from './clock/clock.module.js';
 import { ConfigModule } from './config/config.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthController } from './health/health.controller.js';
+import { JobsModule } from './jobs/jobs.module.js';
 import { AccessModule } from './modules/access/access.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -15,23 +16,29 @@ import { ResultsModule } from './modules/results/results.module.js';
 import { SetupModule } from './modules/setup/setup.module.js';
 import { TimetableModule } from './modules/timetable/timetable.module.js';
 
+/**
+ * What the API and the jobs worker share: the plumbing and the eleven product
+ * modules, which hold the job handlers beside the routes.
+ */
+export const SHARED_MODULES = [
+  ConfigModule,
+  ClockModule,
+  DatabaseModule,
+  AuthModule,
+  AccessModule,
+  AuditModule,
+  NotificationsModule,
+  SetupModule,
+  PeopleModule,
+  ClassesModule,
+  TimetableModule,
+  JournalModule,
+  PlansModule,
+  ResultsModule,
+];
+
 @Module({
-  imports: [
-    ConfigModule,
-    ClockModule,
-    DatabaseModule,
-    AuthModule,
-    AccessModule,
-    AuditModule,
-    NotificationsModule,
-    SetupModule,
-    PeopleModule,
-    ClassesModule,
-    TimetableModule,
-    JournalModule,
-    PlansModule,
-    ResultsModule,
-  ],
+  imports: [...SHARED_MODULES, JobsModule.forRoot({ worker: false })],
   controllers: [HealthController],
 })
 export class AppModule {}

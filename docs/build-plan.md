@@ -41,7 +41,7 @@ How to read the task lines:
   - Build: append-only audit table partitioned by month, which the application user cannot update or delete; an audit service used inside transactions.
   - Done when: tests prove an audit row cannot be changed.
 
-- [ ] **0.5b Jobs**
+- [x] **0.5b Jobs**
   - Read: `13` (Security), `edge/developer-rules`, `edge/system-behaviour`, `edge/people-roles-accounts` (Personal data and the audit log).
   - Build: pg-boss with a worker entry point; jobs enqueued in the same transaction as the data change (this is the "outbox" of the developer rules, see `docs/decisions.md`).
   - Done when: a test proves that no job exists when its transaction rolls back.

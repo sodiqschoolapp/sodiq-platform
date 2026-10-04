@@ -8,6 +8,9 @@
     },
     "dev": {
       "env": ["DATABASE_URL", "HOST", "PORT"]
+    },
+    "dev:worker": {
+      "env": ["DATABASE_URL"]
     }
   }
 }
