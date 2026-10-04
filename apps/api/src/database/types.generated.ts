@@ -32,6 +32,8 @@ export interface Accounts {
   password_changed_at: Timestamp | null;
   password_expires_at: Timestamp | null;
   password_hash: string;
+  password_reset_at: Timestamp | null;
+  password_reset_by: string | null;
 }
 
 export interface AuditLog {
@@ -73,6 +75,12 @@ export interface Branches {
   name: string;
 }
 
+export interface KnownDevices {
+  account_id: string;
+  first_signed_in_at: Timestamp;
+  token_hash: string;
+}
+
 export interface RequestKeys {
   created_at: Timestamp;
   key: string;
@@ -94,7 +102,17 @@ export interface Sessions {
   end_reason: string | null;
   ended_at: Timestamp | null;
   id: Generated<string>;
+  last_used_at: Timestamp;
   token_hash: string;
+  user_agent: string | null;
+}
+
+export interface SignInThrottle {
+  blocked_until: Timestamp | null;
+  device_key: string;
+  failures: number;
+  last_failure_at: Timestamp;
+  login_hash: string;
 }
 
 export interface DB {
@@ -102,7 +120,9 @@ export interface DB {
   audit_log: AuditLog;
   audit_log_school: AuditLogSchool;
   branches: Branches;
+  known_devices: KnownDevices;
   request_keys: RequestKeys;
   schema_migrations: SchemaMigrations;
   sessions: Sessions;
+  sign_in_throttle: SignInThrottle;
 }

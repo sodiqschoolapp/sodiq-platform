@@ -2,6 +2,59 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 October 2026: task 0.6b Limits, resets and idle sign-out
+
+Changed by the owner at the start: password reset by email and the mail service moved to 2.3 (`docs/build-plan.md`); an account has no email address before 2.2.
+
+Built:
+
+- `db/migrations/0006_sign_in_limits_idle_resets.sql`: `sessions.last_used_at` and `user_agent`, three new end reasons (`idle`, `sign_out_everywhere`, `password_reset`); `accounts.password_reset_by` and `password_reset_at`; the school-wide tables `known_devices` and `sign_in_throttle`.
+- Attempt limit (`sign-in-throttle.service.ts`): per login and device; five failures, then a wait of 30 seconds that doubles up to 15 minutes; 429 `too_many_attempts` with `Retry-After`; unknown logins counted alike; forgotten after 24 hours or a right password; each attempt removes up to 50 forgotten rows. It also covers the current password of `POST /api/auth/password`.
+- Device cookie `__Host-sodiq_device` (`apps/api/src/http/device-cookie.ts`), set at every successful sign-in.
+- Idle sign-out in `Sessions.resolve`, from `last_used_at` and the injected clock; `idle-limit.ts` holds the rule per role.
+- Routes: `GET /api/auth/sessions` and `POST /api/auth/sign-out-everywhere` (own session only). `GET /api/auth/session` and the sign-in answer gained `passwordResetBy`.
+- `PasswordResets.byAdministrator` (service, no route): one-time password for 24 hours, forced change, all sessions ended, the count of failed sign-ins of the login cleared, audit entry.
+- Audit actions: `auth.sign_in_failed`, `auth.password_change_failed`, `auth.session_idle`, `auth.sign_out_everywhere`, `account.password_reset`.
+- Reviewed by the spec reviewer and the permission reviewer. Fixed from the reviews: the count of an attempt no longer ends as a fault when its row is removed at the same moment; sessions already over by time keep their own end when all sessions are ended; a wrong current password leaves an audit entry; the last use never moves backwards; missing tests added.
+- `apps/api/src/testing/sign-in-kit.ts`: `signInKit(app)` with `newAccount`, `signIn`, `firstSession`, `fullSession`, `probe` for route tests that need a signed-in caller.
+
+Left out, with the task that brings it:
+
+- Password reset by email, the mail service, the route of the reset by an administrator and who may reset whom: 2.3.
+- The idle limit by real roles: 0.7 (see below). Trusted devices (no idle sign-out) and the second step: 0.6c.
+- The report "entries made within 48 hours of a reset" (edge cases, "Accounts and sign-in") is in no task: it belongs to 2.6 or 8.9, whichever builds audit reports. The data is there: `account.password_reset` entries in `audit_log_school`.
+- A screen for the session list, the text "your password was reset by X", translations: 0.8a. Own sign-in history: 2.6.
+- Ending one other session from the list: the spec names only the list and "sign out everywhere".
+
+Decided by the owner after the reviews (nothing changed in code):
+
+- 10.3: open risk, accepted for the pilot. All browsers that never signed in to an account share one count of failed sign-ins per login. Somebody who knows a login (they are guessable) and sends one wrong password each time the wait ends keeps every new browser out of that account, also on the first day, when no browser is known yet; a reset clears the count only until the next guess. 10.3 decides between the two candidate answers: count unknown devices per login and network address (needs a spec change, the spec says "not per network address": `/spec-change`), or a human check for unknown devices after repeated failures.
+- 0.6c: a session has no longest life: used every 14 minutes it lives until a password change, a reset or "sign out everywhere". Consider a longest life of 7 days for every session, matching trusted devices.
+- 10.2: `known_devices` has no cleanup: each sign-in without a device cookie adds a row. The cleanup job of 10.2 should cover it together with `sign_in_throttle`; the application user has no delete right on `known_devices` today, so that needs a migration.
+- 2.3: `PasswordResets.byAdministrator` hashes the new password inside the caller's transaction, as `Accounts.create` does since 0.6a. The route should keep that transaction short.
+- 0.10: migration 0006 on a database with open sessions: a session older than 15 minutes ends as idle at its next request. Nothing is deployed yet.
+- The audit entry `auth.password_change_failed` stays.
+
+The next sessions must know:
+
+- Whatever ends all sessions of an account calls `Sessions.writeIdleEnds(transaction, accountId)` first (0.6c: account lock; 2.3: lock and unlock).
+- 0.7: the Principal's "changes nothing" rule must exempt `POST /api/auth/password`, sign-out and sign-out-everywhere. Load the roles in `Sessions.resolve` beside the account, so the idle limit follows a role change at once.
+- 2.3: the reset entry `account.password_reset` is school-wide (`branchId: null`), so a reader of one branch's log does not see it. A `resetBy` that is no account ends as a foreign-key fault: the route passes the session's account.
+- 2.6: the own sign-in history finds `auth.sign_in_failed` by its record (the account); its actor is empty. The 48-hour report can only come from the `account.password_reset` entries: `accounts.password_reset_at` is emptied by the password change.
+- 0.8a: the browser name in the session list is text a caller chose: show it as plain text.
+- 0.7: today every session gets the 15-minute idle limit (`Sessions.idleLimitMs`). 0.7 must make it call `idleLimitMs(roles)` with the roles of the account: 30 minutes, 15 with Super Admin or Academic Vice Principal. The test "0.7: today every session gets the 15-minute limit" in `idle-sessions.test.ts` must be changed then (29:59 and 30:00 for the other roles), and `SHORT_IDLE_ROLES` in `idle-limit.ts` must use the role names of 0.7.
+- 0.7: the two new routes need their permission declaration (any signed-in account, own data). `GET /api/auth/sessions` must stay limited to the caller's account.
+- 10.2: `sign_in_throttle` is cleaned only by sign-in attempts, 50 rows each. A cleanup job should take this over (rows whose `last_failure_at` is older than 24 hours).
+- A test whose session must survive more than 15 minutes of clock time has to use it on the way (`advanceInUse` in `auth.test.ts`), or the session is over.
+- A route that the web app calls by itself on a timer (0.9 unread count, 8.3b) is a use and would keep a session alive for ever: such a route must not go through `Sessions.resolve` as it is, or resolve needs a way to read without refreshing. Decide in 0.9.
+- 0.6c: a trusted device has no idle sign-out: `Sessions.resolve` and `Sessions.list` both apply the limit. Trust is not the device cookie: `known_devices` only separates the counts of failed sign-ins and opens nothing. New end reasons need a migration again.
+- 2.3: `PasswordResets.byAdministrator(transaction, { accountId, resetBy, requestId })` throws `OwnPasswordResetError` and `UnknownAccountError`; the route turns them into coded refusals and checks who may reset whom before calling. A reset clears the count of failed sign-ins of that login on every device (`SignInThrottle.forget`), in the same transaction.
+- 2.2: `passwordResetBy` in the session answer is a login; with staff records it should become a name.
+- 0.8a: `too_many_attempts` comes with `Retry-After` in seconds; the sign-in page should show the wait. The browser must keep the device cookie (it is `HttpOnly`; nothing to do in code).
+- A new coded refusal with a wait: `new ApiException(code, 429, seconds)`.
+
+The next task is 0.6c.
+
 ## 4 October 2026: task 0.6a Accounts and sessions
 
 Built:

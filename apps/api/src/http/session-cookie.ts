@@ -24,13 +24,18 @@ const TOKEN = /^[A-Za-z0-9_-]{43,200}$/;
  * is "no session".
  */
 export function readSessionToken(request: Request): string | undefined {
+  return readTokenCookie(request, SESSION_COOKIE);
+}
+
+/** The same for any cookie of ours that holds a token (the device cookie). */
+export function readTokenCookie(request: Request, name: string): string | undefined {
   const header = request.headers.cookie;
   if (typeof header !== 'string') {
     return undefined;
   }
   for (const part of header.split(';')) {
     const separator = part.indexOf('=');
-    if (separator !== -1 && part.slice(0, separator).trim() === SESSION_COOKIE) {
+    if (separator !== -1 && part.slice(0, separator).trim() === name) {
       const value = part.slice(separator + 1).trim();
       return TOKEN.test(value) ? value : undefined;
     }

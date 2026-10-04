@@ -39,8 +39,10 @@ describe('OpenAPI document', () => {
       expect(Object.keys(document.paths).sort()).toEqual([
         '/api/auth/password',
         '/api/auth/session',
+        '/api/auth/sessions',
         '/api/auth/sign-in',
         '/api/auth/sign-out',
+        '/api/auth/sign-out-everywhere',
         '/api/health',
       ]);
       expect(document.paths['/api/health']?.get?.responses).toEqual({

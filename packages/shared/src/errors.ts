@@ -15,7 +15,12 @@ export const ERROR_CODES = [
   'not_signed_in',
   /** Unknown login or wrong password; the answer does not say which. */
   'sign_in_failed',
-  /** The password was right, but it is a first password older than 7 days. */
+  /**
+   * After five failures each further attempt waits: the password was not
+   * looked at. `Retry-After` of the answer says how many seconds are left.
+   */
+  'too_many_attempts',
+  /** The password was right, but it is a first password older than 7 days or a reset one older than 24 hours. */
   'password_expired',
   /** A first password is in use: only the password change, the session and sign-out answer. */
   'password_change_required',

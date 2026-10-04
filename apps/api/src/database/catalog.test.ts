@@ -18,7 +18,12 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
   ...auditSchoolPartitions(),
   accounts:
     'One person has one account for every branch, and sign-in happens before a branch is known; a row holds no name.',
-  sessions: 'A session belongs to an account, not to a branch; a row holds ids and moments only.',
+  sessions:
+    'A session belongs to an account, not to a branch; a row holds ids, moments and the name of a browser.',
+  known_devices:
+    'A browser that signed in to an account before; an account has no branch. A row holds a token hash, an id and a moment.',
+  sign_in_throttle:
+    'Failed sign-ins are counted before any branch is known, also for logins that do not exist; a row holds hashes, a count and moments.',
 };
 
 /**
