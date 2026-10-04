@@ -4,6 +4,7 @@ import type { Clock } from '@sodiq/shared';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import { rolesOf } from '../access/current-assignments.js';
 import { Audit } from '../audit/audit.service.js';
 import { FIRST_PASSWORD_LENGTH, randomFirstPassword } from './accounts.service.js';
 import { UnknownAccountError } from './password-resets.service.js';
@@ -135,7 +136,11 @@ export class TwoStep {
             .where('used_at', 'is', null)
             .executeTakeFirstOrThrow()
         : { codes: '0' };
-      return { on, required: this.rule.required(), recoveryCodesLeft: Number(left.codes) };
+      return {
+        on,
+        required: this.rule.required(rolesOf(session.assignments)),
+        recoveryCodesLeft: Number(left.codes),
+      };
     });
   }
 
@@ -288,7 +293,8 @@ export class TwoStep {
    * (docs/spec/02-roles-and-access.md, Rules: "optional for others").
    */
   async turnOff(session: ActiveSession, code: string, requestId?: string): Promise<void> {
-    if (this.rule.required()) {
+    // By the roles of this request: the guard read them a moment ago.
+    if (this.rule.required(rolesOf(session.assignments))) {
       throw new ApiException('second_step_cannot_turn_off', 403);
     }
     const checked = await this.transactions.run([], async (transaction) => {
@@ -314,8 +320,8 @@ export class TwoStep {
    * second step and its recovery codes are removed; where it is required, the
    * person sets it up again before anything else.
    *
-   * Until the screens of task 2.3 this has no route: who may reset whom is a
-   * question of roles (task 0.7). Only tests call it.
+   * Until the screens of task 2.3 this has no route: who may reset whom is
+   * checked there. Only tests call it.
    */
   async resetByAdministrator(transaction: Transaction, reset: SecondStepReset): Promise<void> {
     if (reset.resetBy === reset.accountId) {

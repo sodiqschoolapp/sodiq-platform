@@ -1,9 +1,10 @@
+import { STRICT_SIGN_IN_ROLES } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { idleLimitMs } from './idle-limit.js';
-import { secondStepRequired, SECOND_STEP_ROLES } from './second-step-rule.js';
+import { secondStepRequired } from './second-step-rule.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
 const UNIQUE_VIOLATION = '23505';
@@ -17,9 +18,12 @@ const NOBODY = '00000000-0000-7000-8000-000000000000';
 // docs/spec/02-roles-and-access.md, Rules: two-step verification is required
 // for the Super Admin and Academic Vice Principal and optional for others.
 describe('for whom the second step is required', () => {
-  it.each(['super_admin', 'academic_vice_principal'])('is required with the role %s', (role) => {
-    expect(secondStepRequired([role])).toBe(true);
-  });
+  it.each(['super_admin', 'academic_vice_principal'] as const)(
+    'is required with the role %s',
+    (role) => {
+      expect(secondStepRequired([role])).toBe(true);
+    },
+  );
 
   it('is required when one of several roles requires it', () => {
     expect(secondStepRequired(['teacher', 'tutor', 'academic_vice_principal'])).toBe(true);
@@ -30,9 +34,9 @@ describe('for whom the second step is required', () => {
     expect(secondStepRequired([])).toBe(false);
   });
 
-  // Task 0.7 renames the roles in one place for both rules.
   it('names the same roles as the short idle limit', () => {
-    for (const role of SECOND_STEP_ROLES) {
+    for (const role of STRICT_SIGN_IN_ROLES) {
+      expect(secondStepRequired([role])).toBe(true);
       expect(idleLimitMs([role])).toBeLessThan(idleLimitMs([]));
     }
   });

@@ -5,31 +5,21 @@ import {
   secondStepRecoveryCodesSchema,
   secondStepSetUpSchema,
   type Clock,
+  type Role,
 } from '@sodiq/shared';
 import request, { type Response, type Test } from 'supertest';
 import { CLOCK } from '../clock/clock.module.js';
 import { Transactions } from '../database/transactions.js';
 import { DEVICE_COOKIE } from '../http/device-cookie.js';
 import { SESSION_COOKIE } from '../http/session-cookie.js';
+import { Assignments } from '../modules/access/assignments.service.js';
 import { Accounts, type CreatedAccount } from '../modules/auth/accounts.service.js';
-import { SecondStepRule } from '../modules/auth/second-step-rule.js';
 import { CurrentSession } from '../modules/auth/session.guard.js';
 import type { ActiveSession } from '../modules/auth/sessions.service.js';
 import { totpCode, totpStep } from '../modules/auth/totp.js';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';
-
-/**
- * The second step is required for nobody: for the suites about passwords,
- * sessions and limits, whose accounts sign in with a password alone, and for
- * the tests of the optional second step.
- */
-export class OptionalSecondStep extends SecondStepRule {
-  override required(): boolean {
-    return false;
-  }
-}
 
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
@@ -90,19 +80,65 @@ export interface SignedInBrowser {
   device: string;
 }
 
+/** A role for a test account; `branchId` is left out for the two roles without a branch. */
+export interface RoleOfAccount {
+  role: Role;
+  branchId?: string;
+  /** The moment the role begins; now when left out. */
+  validFrom?: Date;
+}
+
+export interface SignInKitOptions {
+  /**
+   * A role that every account of `newAccount` (and so of `firstSession`,
+   * `fullSession` and `completeSession`) holds from its creation. Without it
+   * an account holds no role: no second step is required and the idle limit
+   * is 30 minutes. With the Academic Vice Principal of a branch the stricter
+   * sign-in holds: second step required, 15 minutes.
+   */
+  newAccountsHold?: RoleOfAccount;
+}
+
 /**
  * What the tests of sign-in need again and again, for an application made with
  * `createTestApp({ database, clock, controllers: [ProbeController] })`.
  */
-export function signInKit(app: INestApplication) {
+export function signInKit(app: INestApplication, options: SignInKitOptions = {}) {
   const server = app.getHttpServer() as Server;
 
-  function newAccount(firstName: string, lastName: string): Promise<CreatedAccount> {
+  /** Gives the account a role from now on, as the server command would: nobody is named as the giver. */
+  function giveRole(accountId: string, held: RoleOfAccount): Promise<{ id: string }> {
+    const branchId = held.branchId ?? null;
+    return app.get(Transactions).run(branchId === null ? [] : [branchId], (transaction) =>
+      app.get(Assignments).give(transaction, {
+        accountId,
+        role: held.role,
+        branchId,
+        givenBy: null,
+        ...(held.validFrom === undefined ? {} : { validFrom: held.validFrom }),
+      }),
+    );
+  }
+
+  /** Ends an assignment now; `branchId` is the branch of the assignment, if it has one. */
+  function endRole(assignmentId: string, endedBy: string, branchId?: string): Promise<void> {
     return app
+      .get(Transactions)
+      .run(branchId === undefined ? [] : [branchId], (transaction) =>
+        app.get(Assignments).end(transaction, { assignmentId, endedBy }),
+      );
+  }
+
+  async function newAccount(firstName: string, lastName: string): Promise<CreatedAccount> {
+    const account = await app
       .get(Transactions)
       .run([], (transaction) =>
         app.get(Accounts).create(transaction, { firstName, lastName, createdBy: null }),
       );
+    if (options.newAccountsHold !== undefined) {
+      await giveRole(account.id, options.newAccountsHold);
+    }
+    return account;
   }
 
   /**
@@ -183,7 +219,7 @@ export function signInKit(app: INestApplication) {
     };
   }
 
-  /** `fullSession` with a second step set up: a session that may use every route under the strict rule. */
+  /** `fullSession` with a second step set up: a session that owes no step, also where the second step is required. */
   async function completeSession(
     firstName: string,
     lastName: string,
@@ -205,6 +241,8 @@ export function signInKit(app: INestApplication) {
   return {
     server,
     newAccount,
+    giveRole,
+    endRole,
     signIn,
     changePassword,
     firstSession,

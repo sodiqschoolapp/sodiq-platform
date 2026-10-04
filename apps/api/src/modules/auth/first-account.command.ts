@@ -5,7 +5,7 @@ import { ConfigModule } from '../../config/config.module.js';
 import { DatabaseModule } from '../../database/database.module.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { AuthModule } from './auth.module.js';
-import { AccountsExistError, FirstAccount } from './first-account.service.js';
+import { FirstAccount, SuperAdminExistsError } from './first-account.service.js';
 import { LoginNameError } from './login.js';
 
 /** What the command needs of the application: no HTTP, no job queue. */
@@ -60,8 +60,8 @@ export function parseFirstAccountArguments(
 }
 
 /**
- * The one-time command on the server that creates the first account (edge
- * cases, "Accounts and sign-in"). Returns the exit code. The login and the
+ * The one-time command on the server that creates the first account and makes
+ * it Super Admin (edge cases, "Accounts and sign-in"). Returns the exit code. The login and the
  * first password go to `output.out` once and to no log; the names that were
  * typed are never repeated.
  */
@@ -81,6 +81,7 @@ export async function runFirstAccountCommand(
       const created = await app.get(FirstAccount).create(names.firstName, names.lastName);
       output.out(`Login: ${created.login}`);
       output.out(`First password: ${created.firstPassword}`);
+      output.out('Role: Super Admin');
       output.out(
         'The password is shown only now and is stored nowhere. It is valid for 7 days and must be changed at the first sign-in.',
       );
@@ -90,7 +91,7 @@ export async function runFirstAccountCommand(
       await app.close().catch(() => undefined);
     }
   } catch (error) {
-    const known = error instanceof AccountsExistError || error instanceof LoginNameError;
+    const known = error instanceof SuperAdminExistsError || error instanceof LoginNameError;
     const reason = error instanceof Error ? error.message : String(error);
     output.error(known ? reason : `Could not create the first account: ${reason}`);
     return 1;

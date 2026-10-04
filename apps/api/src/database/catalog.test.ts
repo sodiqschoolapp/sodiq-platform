@@ -26,8 +26,22 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'The second step of sign-in belongs to an account, which has no branch; a row holds an encrypted secret, a count and moments.',
   second_step_recovery_codes:
     'Recovery codes of the second step of an account; a row holds an id, a hash and a moment.',
+  assignments:
+    'The Super Admin and the Senior Head Teacher have no branch, and the roles of an account are read on every request before a branch is known; a row holds ids, a role and moments.',
   sign_in_throttle:
     'Failed sign-ins are counted before any branch is known, also for logins that do not exist; a row holds hashes, a count and moments.',
+};
+
+/**
+ * School-wide tables that name a branch all the same, each with its reason.
+ * Such a table is not filtered: every transaction reads all its rows. Its
+ * `branch_id` must reference `branches (id)` and it must have no policy at
+ * all. Every other school-wide table with a `branch_id` fails. Adding a name
+ * here is a decision for the owner, like the list above.
+ */
+const SCHOOL_WIDE_WITH_BRANCH: Record<string, string> = {
+  assignments:
+    'An assignment names the branch of a role; the rows of the Super Admin and the Senior Head Teacher have none, and the roles of an account are read before a branch is known. Who may act in which branch is decided by the permission guard (task 0.7b).',
 };
 
 /**
@@ -72,6 +86,7 @@ interface TableRow {
 async function tableProblems(
   database: Database,
   schoolWide: Record<string, string> = SCHOOL_WIDE_TABLES,
+  schoolWideWithBranch: Record<string, string> = SCHOOL_WIDE_WITH_BRANCH,
 ): Promise<string[]> {
   const found = await sql<TableRow>`
     select
@@ -111,9 +126,27 @@ async function tableProblems(
   const squeeze = (text: string | null) => text?.replace(/\s+/g, ' ') ?? '';
   for (const table of found.rows) {
     const listed = table.name in schoolWide;
+    const withBranch = table.name in schoolWideWithBranch;
     if (!table.has_branch_id) {
       if (!listed) {
         problems.push(`${table.name}: no branch_id and not in the list of school-wide tables`);
+      }
+      if (withBranch) {
+        problems.push(`${table.name}: named as school-wide with a branch but has no branch_id`);
+      }
+      continue;
+    }
+    if (withBranch) {
+      if (!listed) {
+        problems.push(
+          `${table.name}: named as school-wide with a branch but not in the list of school-wide tables`,
+        );
+      }
+      if (!table.references_branches) {
+        problems.push(`${table.name}: branch_id does not reference branches (id)`);
+      }
+      if (table.row_security || table.policies > 0) {
+        problems.push(`${table.name}: school-wide with a branch but has row security or a policy`);
       }
       continue;
     }
@@ -144,6 +177,11 @@ async function tableProblems(
   for (const name of Object.keys(schoolWide)) {
     if (!names.has(name)) {
       problems.push(`${name}: listed as school-wide but does not exist`);
+    }
+  }
+  for (const name of Object.keys(schoolWideWithBranch)) {
+    if (!names.has(name)) {
+      problems.push(`${name}: named as school-wide with a branch but does not exist`);
     }
   }
   return problems;
@@ -527,6 +565,93 @@ describe('the catalog checks', () => {
         'scratch_listed: listed as school-wide but has branch_id',
         'scratch_gone: listed as school-wide but does not exist',
       ]);
+    });
+
+    // Decided by the owner at task 0.7a: `assignments` is school-wide and names
+    // a branch. The exception is by name; nothing else gets through with it.
+    describe('with the list of school-wide tables that name a branch', () => {
+      const listedAs = (name: string) => ({
+        ...SCHOOL_WIDE_TABLES,
+        [name]: 'Listed for this test.',
+      });
+      const namedAs = (...names: string[]) => ({
+        ...SCHOOL_WIDE_WITH_BRANCH,
+        ...Object.fromEntries(names.map((name) => [name, 'Named for this test.'])),
+      });
+
+      it('hold exactly the assignments', () => {
+        expect(Object.keys(SCHOOL_WIDE_WITH_BRANCH)).toEqual(['assignments']);
+      });
+
+      it('accept a named table whose branch_id may be empty and points at a branch', async () => {
+        await scratchTable('scratch_named', 'uuid references branches (id)');
+
+        expect(
+          await tableProblems(
+            database.migrator,
+            listedAs('scratch_named'),
+            namedAs('scratch_named'),
+          ),
+        ).toEqual([]);
+      });
+
+      it('still name a school-wide table with a branch_id that is not named', async () => {
+        await scratchTable('scratch_unnamed', 'uuid references branches (id)');
+
+        expect(await tableProblems(database.migrator, listedAs('scratch_unnamed'))).toContain(
+          'scratch_unnamed: listed as school-wide but has branch_id',
+        );
+      });
+
+      it('name a named table that is not in the list of school-wide tables', async () => {
+        await scratchTable('scratch_named', 'uuid references branches (id)');
+
+        expect(
+          await tableProblems(database.migrator, SCHOOL_WIDE_TABLES, namedAs('scratch_named')),
+        ).toEqual([
+          'scratch_named: named as school-wide with a branch but not in the list of school-wide tables',
+        ]);
+      });
+
+      it('name a named table whose branch_id does not point at a branch', async () => {
+        await scratchTable('scratch_named', 'uuid');
+
+        expect(
+          await tableProblems(
+            database.migrator,
+            listedAs('scratch_named'),
+            namedAs('scratch_named'),
+          ),
+        ).toEqual(['scratch_named: branch_id does not reference branches (id)']);
+      });
+
+      it('name a named table with row security or a policy: it would look filtered and is not', async () => {
+        await scratchTable('scratch_named', 'uuid references branches (id)');
+        await addBranchFilter(database.migrator, 'scratch_named');
+
+        expect(
+          await tableProblems(
+            database.migrator,
+            listedAs('scratch_named'),
+            namedAs('scratch_named'),
+          ),
+        ).toEqual(['scratch_named: school-wide with a branch but has row security or a policy']);
+      });
+
+      it('name a named table without a branch_id, and one that does not exist', async () => {
+        await scratchTable('scratch_named', null);
+
+        expect(
+          await tableProblems(
+            database.migrator,
+            listedAs('scratch_named'),
+            namedAs('scratch_named', 'scratch_gone'),
+          ),
+        ).toEqual([
+          'scratch_named: named as school-wide with a branch but has no branch_id',
+          'scratch_gone: named as school-wide with a branch but does not exist',
+        ]);
+      });
     });
   });
 

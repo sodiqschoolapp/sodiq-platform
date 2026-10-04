@@ -37,3 +37,11 @@ export {
 } from './errors.js';
 export { healthResponseSchema, type HealthResponse } from './health.js';
 export { REQUEST_KEY_HEADER, requestKeySchema } from './request-keys.js';
+export {
+  MAX_SUPER_ADMINS,
+  ROLES,
+  roleSchema,
+  SCHOOL_WIDE_ROLES,
+  STRICT_SIGN_IN_ROLES,
+  type Role,
+} from './roles.js';

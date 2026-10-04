@@ -72,7 +72,7 @@ export const CurrentSession = createParamDecorator(
  * once. A session that still owes a step of sign-in (the second step, the
  * forced password change, the set-up of a required second step) reaches only
  * the routes declared for that step. Who may do what (role, branch, scope) is the permission guard of task
- * 0.7, which builds on this one.
+ * 0.7b, which builds on this one.
  */
 @Injectable()
 export class SessionGuard implements CanActivate {

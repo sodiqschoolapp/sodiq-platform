@@ -453,27 +453,40 @@ describe('the job schema', () => {
     });
   });
 
-  // docs/decisions.md: package and schema must match.
-  it('does not start on a schema of another pg-boss version', async () => {
-    const other = await createTestDatabase();
-    await sql`update pgboss.version set version = version - 1`.execute(other.migrator);
-    const queue = new JobQueue({ connectionString: other.appUrl, worker: false }, []);
-    try {
-      await expect(queue.ready()).rejects.toThrow('pg-boss database requires migrations');
-    } finally {
-      await queue.beforeApplicationShutdown();
-      await other.destroy();
-    }
-  });
+  // Each of the two needs a database of its own. They are made and dropped in
+  // hooks, which have the time for it (60 s), not inside the test (30 s).
+  describe('on another database', () => {
+    let other: TestDatabase;
+    let empty: TestDatabase;
 
-  it('does not start on a database without the schema', async () => {
-    const empty = await createTestDatabase({ empty: true });
-    const queue = new JobQueue({ connectionString: empty.appUrl, worker: false }, []);
-    try {
-      await expect(queue.ready()).rejects.toThrow('pg-boss is not installed');
-    } finally {
-      await queue.beforeApplicationShutdown();
+    beforeAll(async () => {
+      other = await createTestDatabase();
+      empty = await createTestDatabase({ empty: true });
+    });
+
+    afterAll(async () => {
+      await other.destroy();
       await empty.destroy();
-    }
+    });
+
+    // docs/decisions.md: package and schema must match.
+    it('does not start on a schema of another pg-boss version', async () => {
+      await sql`update pgboss.version set version = version - 1`.execute(other.migrator);
+      const queue = new JobQueue({ connectionString: other.appUrl, worker: false }, []);
+      try {
+        await expect(queue.ready()).rejects.toThrow('pg-boss database requires migrations');
+      } finally {
+        await queue.beforeApplicationShutdown();
+      }
+    });
+
+    it('does not start on a database without the schema', async () => {
+      const queue = new JobQueue({ connectionString: empty.appUrl, worker: false }, []);
+      try {
+        await expect(queue.ready()).rejects.toThrow('pg-boss is not installed');
+      } finally {
+        await queue.beforeApplicationShutdown();
+      }
+    });
   });
 });

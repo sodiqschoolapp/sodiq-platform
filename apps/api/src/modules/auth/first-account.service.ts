@@ -1,12 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import type { Clock } from '@sodiq/shared';
 import { sql } from 'kysely';
+import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions } from '../../database/transactions.js';
+import { Assignments } from '../access/assignments.service.js';
 import { Accounts, type CreatedAccount } from './accounts.service.js';
 
-/** The command was run although an account exists. */
-export class AccountsExistError extends Error {
+/** The command was run although a Super Admin exists. */
+export class SuperAdminExistsError extends Error {
   constructor() {
-    super('An account already exists. The first account is created only once.');
+    super('A Super Admin already exists. The first account is created only once.');
   }
 }
 
@@ -15,35 +18,56 @@ const FIRST_ACCOUNT_LOCK = 60_601;
 
 /**
  * Edge cases, "Accounts and sign-in": the first Super Admin is created by a
- * one-time command on the server, which is logged. Roles arrive with task 0.7,
- * which makes this command also write the Super Admin assignment; until then
- * it creates the first account.
+ * one-time command on the server, which is logged. It creates the account and
+ * gives it the Super Admin role, together. Every later account and role comes
+ * from a Super Admin (task 2.3).
  */
 @Injectable()
 export class FirstAccount {
   constructor(
     private readonly transactions: Transactions,
     private readonly accounts: Accounts,
+    private readonly assignments: Assignments,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
-  /** Throws `AccountsExistError` when there is an account, `LoginNameError` for a name without a login. */
+  /**
+   * Refused while a Super Admin assignment that has not ended exists, one that
+   * begins later included (decided by the owner); accounts without that role
+   * do not stand in its way. Throws `SuperAdminExistsError`, and
+   * `LoginNameError` for a name without a login.
+   */
   create(firstName: string, lastName: string): Promise<CreatedAccount> {
     return this.transactions.run([], async (transaction) => {
       await sql`select pg_advisory_xact_lock(${FIRST_ACCOUNT_LOCK})`.execute(transaction);
+      const now = this.clock.now();
       const existing = await transaction
-        .selectFrom('accounts')
+        .selectFrom('assignments')
         .select('id')
+        .where('role', '=', 'super_admin')
+        .where((builder) =>
+          builder.or([builder('valid_until', 'is', null), builder('valid_until', '>', now)]),
+        )
         .limit(1)
         .executeTakeFirst();
       if (existing !== undefined) {
-        throw new AccountsExistError();
+        throw new SuperAdminExistsError();
       }
-      return this.accounts.create(transaction, {
+      const details = { command: 'first-account' };
+      const created = await this.accounts.create(transaction, {
         firstName,
         lastName,
         createdBy: null,
-        details: { command: 'first-account' },
+        details,
       });
+      await this.assignments.give(transaction, {
+        accountId: created.id,
+        role: 'super_admin',
+        branchId: null,
+        givenBy: null,
+        details,
+      });
+      return created;
     });
   }
 }

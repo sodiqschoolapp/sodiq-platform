@@ -2,6 +2,26 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 October 2026: task 0.7a, the load of the API tests (written before `/finish-task`)
+
+The full `pnpm test` was not stable on the owner's machine (8 processors, 6 GB of memory): in each of two full runs a different test hit the 30-second limit, each one a test that creates a database inside its body. Almost every API test file creates a database of its own, starts the application and hashes passwords, and vitest ran one file per processor.
+
+Changed:
+
+- `apps/api/vitest.config.ts`: `maxWorkers: 4`, at most four test files at once. With the other programs open it was not faster (about 233 s for the API tests with the cap, 206 to 222 s without it); with memory free the API tests took 186 s.
+- Database creation moved out of test bodies into hooks, which have 60 s: the two tests "does not start on ..." in `jobs.test.ts` and "uses the test database it is given" in `test-database.test.ts`. No check was removed and no limit raised.
+
+Measured with the cap, full runs without the cache: four in a row passed (4m12s, 3m58s, 4m00s, 4m01s). The fifth lost three test files (40 of 43, 932 of 941 tests) with no failed test in the output, and the three runs after it did not start: Node stopped with a fatal error within seconds, in every package. At that moment the machine had about 0.2 GB of memory free and 1 GB of 21 GB virtual memory, held by other programs. The fifth run was not looked into further; lost workers for lack of memory would fit, but that is not confirmed.
+
+After the owner closed the other programs (about 1.1 GB of memory and 9 GB of virtual memory free): lint and type-check pass, and one full run without the cache passed in 3m10s (API tests 186 s, 941 of 941). The owner decided that one clean run is enough; CI runs the suite again on the pull request.
+
+0.7b must know:
+
+- The cap is 4 and its reason is in the config. 0.7b adds the route-by-role harness, the heaviest suite so far: watch the time and the memory of the full run, and lower the cap before raising a time limit.
+- A test that needs a database of its own creates and drops it in `beforeAll` and `afterAll`, never in the test body.
+- This machine has 6 GB of memory. The full `pnpm test` needs the other programs closed (other Claude sessions, OneDrive sync, VS Code windows, the browser): without free memory test files are lost or Node does not start at all, and that is not a fault of a test. Check the free memory before looking for a cause in the code.
+- Three full runs in a row were not seen on this machine; the longest row was two, twice, with the other programs open.
+
 ## 4 October 2026: task 0.6d Trusted devices and account lock
 
 Spec change at the start, by the owner (`docs/spec-changes.md`): the sign-in that starts the trust still asks for the second step where the account has one; removing a trusted device ends its session at once.

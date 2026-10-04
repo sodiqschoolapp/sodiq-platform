@@ -3,9 +3,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { Assignments } from '../access/assignments.service.js';
 import { Audit } from '../audit/audit.service.js';
 import { Accounts, FIRST_PASSWORD_LENGTH } from './accounts.service.js';
-import { AccountsExistError, FirstAccount } from './first-account.service.js';
+import { FirstAccount, SuperAdminExistsError } from './first-account.service.js';
 import { LoginNameError } from './login.js';
 import { verifyPassword } from './password-hash.js';
 
@@ -204,7 +205,13 @@ describe('the first-account command', () => {
   beforeAll(async () => {
     database = await createTestDatabase();
     const transactions = new Transactions(database.app);
-    firstAccount = new FirstAccount(transactions, new Accounts(clock, new Audit(clock)));
+    const audit = new Audit(clock);
+    firstAccount = new FirstAccount(
+      transactions,
+      new Accounts(clock, audit),
+      new Assignments(clock, audit),
+      clock,
+    );
   });
 
   afterAll(async () => {
@@ -226,7 +233,7 @@ describe('the first-account command', () => {
 
     expect(runs.map((run) => run.status).sort()).toEqual(['fulfilled', 'rejected']);
     const refused = runs.find((run) => run.status === 'rejected');
-    expect(refused?.reason).toBeInstanceOf(AccountsExistError);
+    expect(refused?.reason).toBeInstanceOf(SuperAdminExistsError);
     expect(await accountRows()).toBe(1);
   });
 
@@ -240,10 +247,70 @@ describe('the first-account command', () => {
     ]);
   });
 
-  it('is refused once an account exists', async () => {
+  it('makes the account the Super Admin, logged without an actor, naming the command', async () => {
+    const assignments = await sql<{
+      login: string;
+      role: string;
+      branch_id: string | null;
+      valid_from: Date;
+      valid_until: Date | null;
+      given_by: string | null;
+    }>`
+      select a.login, s.role, s.branch_id, s.valid_from, s.valid_until, s.given_by
+      from assignments s join accounts a on a.id = s.account_id
+    `.execute(database.migrator);
+    const entries = await sql<{ actor_id: string | null; new_value: unknown; details: unknown }>`
+      select actor_id, new_value, details from audit_log_school where action = 'assignment.given'
+    `.execute(database.migrator);
+
+    expect(assignments.rows).toEqual([
+      {
+        login: 'i.karimov',
+        role: 'super_admin',
+        branch_id: null,
+        valid_from: new Date('2026-10-05T09:00:00+05:00'),
+        valid_until: null,
+        given_by: null,
+      },
+    ]);
+    expect(entries.rows).toMatchObject([
+      {
+        actor_id: null,
+        new_value: { role: 'super_admin', branchId: null, validFrom: '2026-10-05T04:00:00.000Z' },
+        details: { command: 'first-account' },
+      },
+    ]);
+  });
+
+  it('is refused while a Super Admin exists', async () => {
     await expect(firstAccount.create('Jamila', 'Ergasheva')).rejects.toBeInstanceOf(
-      AccountsExistError,
+      SuperAdminExistsError,
     );
     expect(await accountRows()).toBe(1);
+  });
+
+  // Decided by the owner: a Super Admin assignment that has ended does not
+  // stand in its way, and accounts without the role do not either.
+  it('works again once no Super Admin assignment is left that has not ended', async () => {
+    await sql`
+      update assignments set valid_until = ${new Date('2026-10-05T09:00:00+05:00')}
+    `.execute(database.migrator);
+
+    const second = await firstAccount.create('Jamila', 'Ergasheva');
+
+    expect(second.login).toBe('j.ergasheva');
+    expect(await accountRows()).toBe(2);
+  });
+
+  it('is refused while the only Super Admin assignment begins later', async () => {
+    await sql`
+      update assignments set valid_from = ${new Date('2026-11-01T09:00:00+05:00')}
+      where valid_until is null
+    `.execute(database.migrator);
+
+    await expect(firstAccount.create('Kamol', 'Ergashev')).rejects.toBeInstanceOf(
+      SuperAdminExistsError,
+    );
+    expect(await accountRows()).toBe(2);
   });
 });

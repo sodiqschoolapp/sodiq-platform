@@ -247,13 +247,31 @@ describe('the first-account command', () => {
     it('is logged in the audit log without an actor, naming the command', async () => {
       const entries = await auditEntries();
 
-      expect(entries).toHaveLength(1);
+      expect(entries).toHaveLength(2);
       expect(entries[0]).toMatchObject({
         action: 'account.create',
         actor_id: null,
         details: { command: 'first-account' },
       });
-      expect(entries[0]?.text).not.toMatch(/Islom|Karimov/);
+      expect(entries[1]).toMatchObject({
+        action: 'assignment.given',
+        actor_id: null,
+        new_value: { role: 'super_admin', branchId: null },
+        details: { command: 'first-account' },
+      });
+      for (const entry of entries) {
+        expect(entry.text).not.toMatch(/Islom|Karimov/);
+      }
+    });
+
+    it('makes the account the Super Admin and says so', async () => {
+      const found = await sql<{ login: string; role: string; branch_id: string | null }>`
+        select a.login, s.role, s.branch_id
+        from assignments s join accounts a on a.id = s.account_id
+      `.execute(database.migrator);
+
+      expect(found.rows).toEqual([{ login: 'i.karimov', role: 'super_admin', branch_id: null }]);
+      expect(output).toContain('Role: Super Admin');
     });
   });
 
@@ -262,10 +280,12 @@ describe('the first-account command', () => {
 
     expect(await run('first-account', ...NAMES)).toBe(1);
 
-    expect(errors).toEqual(['An account already exists. The first account is created only once.']);
+    expect(errors).toEqual([
+      'A Super Admin already exists. The first account is created only once.',
+    ]);
     expect(out).toEqual([]);
     expect(await accounts()).toEqual(before);
-    expect(await auditEntries()).toHaveLength(1);
+    expect(await auditEntries()).toHaveLength(2);
   });
 
   it('says so, without a password in any output, when the database cannot be reached', async () => {

@@ -10,7 +10,6 @@ import {
   cookieOf,
   errorCode,
   NEW_PASSWORD,
-  OptionalSecondStep,
   ProbeController,
   setCookies,
   signInKit,
@@ -38,7 +37,6 @@ describe('the limit on sign-in attempts', () => {
       database: database.app,
       clock,
       controllers: [ProbeController],
-      secondStepRule: new OptionalSecondStep(),
     });
     kit = signInKit(app);
   });

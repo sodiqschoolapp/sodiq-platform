@@ -8,7 +8,6 @@ import {
   cookieOf,
   errorCode,
   NEW_PASSWORD,
-  OptionalSecondStep,
   ProbeController,
   signInKit,
   type SignInKit,
@@ -41,7 +40,6 @@ describe('a password reset by an administrator', () => {
       database: database.app,
       clock,
       controllers: [ProbeController],
-      secondStepRule: new OptionalSecondStep(),
     });
     kit = signInKit(app);
   });
@@ -177,7 +175,7 @@ describe('a password reset by an administrator', () => {
     clock.set('2026-10-08T14:00:00+05:00');
     const administrator = await kit.newAccount('Yulduz', 'Nazarova');
     const { account } = await kit.fullSession('Zafar', 'Nazarov');
-    clock.advance(20 * 60 * SECOND);
+    clock.advance(40 * 60 * SECOND);
     await kit.signIn(account.login, NEW_PASSWORD);
 
     await reset(account.id, administrator.id);
@@ -186,8 +184,8 @@ describe('a password reset by an administrator', () => {
       select ended_at, end_reason from sessions where account_id = ${account.id} order by id
     `.execute(database.migrator);
     expect(sessions.rows).toEqual([
-      { ended_at: new Date('2026-10-08T14:15:00+05:00'), end_reason: 'idle' },
-      { ended_at: new Date('2026-10-08T14:20:00+05:00'), end_reason: 'password_reset' },
+      { ended_at: new Date('2026-10-08T14:30:00+05:00'), end_reason: 'idle' },
+      { ended_at: new Date('2026-10-08T14:40:00+05:00'), end_reason: 'password_reset' },
     ]);
     const entries = await sql<{ details: unknown }>`
       select details from audit_log_school
