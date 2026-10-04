@@ -1,8 +1,25 @@
-import { applyDecorators, Body, Query, SetMetadata } from '@nestjs/common';
-import { ApiBody, ApiQuery, ApiResponse, type OpenAPIObject } from '@nestjs/swagger';
+import {
+  applyDecorators,
+  Body,
+  createParamDecorator,
+  Param,
+  Query,
+  SetMetadata,
+  type ExecutionContext,
+} from '@nestjs/common';
+import {
+  ApiBody,
+  ApiHeader,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  type OpenAPIObject,
+} from '@nestjs/swagger';
+import { REQUEST_KEY_HEADER, requestKeySchema } from '@sodiq/shared';
+import type { Request } from 'express';
 import { z } from 'zod';
 import { RESPONSE_SCHEMA } from './response-schema.interceptor.js';
-import { SchemaPipe } from './validation.js';
+import { HeaderPipe, SchemaPipe } from './validation.js';
 
 // The package does not export its schema type by name.
 type SchemaObject = Exclude<
@@ -59,6 +76,60 @@ export function ValidQuery(schema: z.ZodObject): ParameterDecorator {
         key,
       );
     }
+  };
+}
+
+/**
+ * The parameters in the path of a route (`:roomId`), checked and described by
+ * one shared object schema with one field per parameter.
+ *
+ *     read(@ValidParams(roomParamsSchema) params: RoomParams)
+ */
+export function ValidParams(schema: z.ZodObject): ParameterDecorator {
+  return (target, key, index) => {
+    if (key === undefined) {
+      throw new Error('ValidParams belongs on a parameter of a route method.');
+    }
+    Param(new SchemaPipe(schema))(target, key, index);
+    const described = toOpenApiSchema(schema, 'input');
+    for (const [name, property] of Object.entries(described.properties ?? {})) {
+      onMethod(ApiParam({ name, required: true, schema: property as SchemaObject }), target, key);
+    }
+  };
+}
+
+/** One header of the request, by its name in lower case. */
+const HeaderValue = createParamDecorator(
+  (name: string, context: ExecutionContext): unknown =>
+    context.switchToHttp().getRequest<Request>().headers[name],
+);
+
+/**
+ * The key of a repeat-safe action (docs/spec/edge-cases/developer-rules.md,
+ * "Repeat-safe actions"): the `Idempotency-Key` header, a uuid that the caller
+ * makes once per action and sends again on a retry. Give it to
+ * `RequestKeys.runOnce`.
+ *
+ *     publish(@RequestKey() key: string)
+ */
+export function RequestKey(): ParameterDecorator {
+  return (target, key, index) => {
+    if (key === undefined) {
+      throw new Error('RequestKey belongs on a parameter of a route method.');
+    }
+    HeaderValue(
+      REQUEST_KEY_HEADER.toLowerCase(),
+      new HeaderPipe(REQUEST_KEY_HEADER, requestKeySchema),
+    )(target, key, index);
+    onMethod(
+      ApiHeader({
+        name: REQUEST_KEY_HEADER,
+        required: true,
+        schema: toOpenApiSchema(requestKeySchema, 'input'),
+      }),
+      target,
+      key,
+    );
   };
 }
 

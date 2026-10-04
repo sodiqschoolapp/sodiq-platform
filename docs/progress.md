@@ -2,6 +2,51 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 October 2026: task 0.4b API foundations, database side
+
+Built:
+
+- `db/migrations/0002_branches_branch_filter_request_keys.sql`: the minimal `branches` table (id, name), the function `app_branch_ids()`, the `request_keys` table, and the policy pattern `branch_filter` as a comment for every later branch table.
+- Branch filter: the transaction setting `app.branch_ids`, a list of branch ids. Nothing set shows no rows; a value that is not a list of uuids is an error. Rows of another branch cannot be read, written, moved or deleted.
+- `Transactions.run(branchIds, work)` (`apps/api/src/database/transactions.ts`): the one place a transaction with the filter is opened. It refuses a database user that is not subject to row security.
+- Repeat-safe requests: `@RequestKey()` (header `Idempotency-Key`, a uuid) and `RequestKeys.runOnce(transaction, { key, scope, input }, work)`. A repeat does not run the work and gets the stored answer; the same key for another action, other input or other branches is a 409; work that fails leaves no key.
+- `ValidParams` for path parameters, described in OpenAPI like body and query.
+- Lint rules, each with a test: raw request decorators of `@nestjs/common` only inside `apps/api/src/http/`; the name `app.branch_ids` only in `transactions.ts`.
+- Catalog test (`apps/api/src/database/catalog.test.ts`): every table is branch-filtered in the standard way or named with a reason as school-wide; every view has `security_invoker = true`; no materialized view; no `SECURITY DEFINER` function outside the allow-list; `sodiq_app` is subject to row security; `public` is the only schema.
+- The sample route of the build plan exists only in tests: `apps/api/src/testing/keyed-sample.controller.ts`. No route was added to the running application.
+- Reviewed by the spec reviewer and the permission reviewer; their findings are fixed or listed below.
+
+Left out, with the task that brings it:
+
+- The branch list from the signed-in user: 0.6a (session) and 0.7 (guard). Today the caller of `Transactions.run` passes it.
+- A request key tied to the account that sent it, and an error code of its own for the 409: 0.6a.
+- Jobs that carry the branch, audit in the transaction: 0.5.
+- The full branch record and the right to create and edit branches: 1.1. The application user can only read `branches`.
+- How long request keys are kept, and the cleanup job: 8.3c. The application user has no delete right on `request_keys`.
+- A time limit for a repeat that waits for the first request with the same key (it waits until that one commits or rolls back): decide with publish, 5.5a.
+- A lint rule that stops business code from importing `src/testing` (still open from 0.4a).
+- Not fixed from the review, by choice: the application user may rewrite the stored answer of a key (a database rule against it would need a trigger); `request-key.test.ts` has tests that build on the row of the first test; `import x = require(...)` and an inline `eslint-disable` are not refused by the import rule.
+
+Open, for the owner:
+
+- 0.10: the database user of the application on Neon must not be a superuser, must not have BYPASSRLS and must not own the tables. Confirmed by the owner from Neon's documentation (neon.com/docs/manage/roles): roles created in the Neon Console, CLI or API are members of `neon_superuser`, which has BYPASSRLS; roles created with SQL are not. So `sodiq_app` and `sodiq_migrator` are created with SQL (`CREATE ROLE ... LOGIN PASSWORD`) from the SQL editor or psql, never in the console. With a wrong user the API refuses every transaction instead of showing all branches.
+- 0.7: whether `createParamDecorator` and `REQUEST` of `@nestjs/core` are also kept inside `apps/api/src/http/`.
+
+The next sessions must know:
+
+- A new branch table: `branch_id uuid not null references branches (id)`, then the two statements of the policy pattern in migration 0002, exactly. The cast `::uuid[]` in the policy is needed. `catalog.test.ts` fails until the table is right. A school-wide table goes into `SCHOOL_WIDE_TABLES` in that test, with a reason, after asking the owner.
+- Foreign keys and unique constraints are not filtered: a unique constraint on a branch table includes `branch_id`; an id from a request is checked against the branch first, or the error would tell whether the id exists in another branch (`.claude/rules/database.md`).
+- A query outside `Transactions.run` sees no branch rows. Tests of branch tables: `new Transactions(database.app)`; helpers in `apps/api/src/testing/branch-filter-sql.ts` (`addBranchFilter`, `insertBranch`). The migrator sees everything and is refused by `Transactions`.
+- A changing route that must be repeat-safe: `@RequestKey() key`, then `requestKeys.runOnce` inside `transactions.run`. `input` holds every path parameter and the body; the result is small JSON with ids and status, never personal data. Permission and scope checks come before `runOnce`.
+- `runOnce` uses a savepoint named `request_key`; work that throws is undone even when the caller catches the error.
+- 0.5: pg-boss brings its own schema: the catalog test "keep everything in schema public" will fail and the checks must be extended to that schema. Each monthly audit partition is a table of its own for the catalog test, and a partition read directly is not covered by the policy of its parent.
+- 0.7: the guard is the only source of the branch list; a branch id in a path is compared with the person's assignments first. The filter knows branches only: subject, class and own-lesson scope are the guard's work. A Super Admin gets the list of every branch id; there is no "all" value. `branchIdSchema` accepts upper-case letters: compare ids in lower case. The raw `DATABASE` connection is still injectable; it sees school-wide tables without any filter. The harness must also put the guard on test controllers.
+- 0.10: the API and the worker must never connect as `sodiq_migrator`.
+- To re-apply an unmerged migration locally, ask the owner before changing anything in `sodiq_dev` (`.claude/rules/database.md`).
+- In Git Bash here a heredoc breaks on apostrophes (again in this task): write a script file with the editor tools and run it.
+
+The next task is 0.5.
+
 ## 4 October 2026: task 0.4a API foundations, HTTP side
 
 Task 0.4 was split by the owner: 0.4a is the HTTP side, 0.4b the database side.
