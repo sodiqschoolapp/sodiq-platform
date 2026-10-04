@@ -219,16 +219,16 @@ describe('the first-account command', () => {
   });
 
   it('refuses a name that gives no login, and creates nothing', async () => {
-    await expect(firstAccount.create('Ислом', 'Каримов')).rejects.toBeInstanceOf(LoginNameError);
-    await expect(firstAccount.create('', 'Karimov')).rejects.toBeInstanceOf(LoginNameError);
+    await expect(firstAccount.create('Илхом', 'Кодиров')).rejects.toBeInstanceOf(LoginNameError);
+    await expect(firstAccount.create('', 'Qodirov')).rejects.toBeInstanceOf(LoginNameError);
 
     expect(await accountRows()).toBe(0);
   });
 
   it('creates exactly one account when it is run twice at the same moment', async () => {
     const runs = await Promise.allSettled([
-      firstAccount.create('Islom', 'Karimov'),
-      firstAccount.create('Islom', 'Karimov'),
+      firstAccount.create('Ilhom', 'Qodirov'),
+      firstAccount.create('Ilhom', 'Qodirov'),
     ]);
 
     expect(runs.map((run) => run.status).sort()).toEqual(['fulfilled', 'rejected']);
@@ -243,7 +243,7 @@ describe('the first-account command', () => {
     `.execute(database.migrator);
 
     expect(found.rows).toEqual([
-      { actor_id: null, new_value: { login: 'i.karimov' }, details: { command: 'first-account' } },
+      { actor_id: null, new_value: { login: 'i.qodirov' }, details: { command: 'first-account' } },
     ]);
   });
 
@@ -265,7 +265,7 @@ describe('the first-account command', () => {
 
     expect(assignments.rows).toEqual([
       {
-        login: 'i.karimov',
+        login: 'i.qodirov',
         role: 'super_admin',
         branch_id: null,
         valid_from: new Date('2026-10-05T09:00:00+05:00'),

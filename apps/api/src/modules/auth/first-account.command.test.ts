@@ -22,14 +22,14 @@ describe('the arguments of the first-account command', () => {
       parseFirstAccountArguments([
         'first-account',
         '--first-name',
-        'Islom',
+        'Ilhom',
         '--last-name',
-        'Karimov',
+        'Qodirov',
       ]),
-    ).toEqual({ firstName: 'Islom', lastName: 'Karimov' });
+    ).toEqual({ firstName: 'Ilhom', lastName: 'Qodirov' });
     expect(
-      parseFirstAccountArguments(['first-account', '--last-name=Karimov', '--first-name=Islom']),
-    ).toEqual({ firstName: 'Islom', lastName: 'Karimov' });
+      parseFirstAccountArguments(['first-account', '--last-name=Qodirov', '--first-name=Ilhom']),
+    ).toEqual({ firstName: 'Ilhom', lastName: 'Qodirov' });
   });
 
   // `pnpm auth:first-account -- --first-name ...` hands the `--` on.
@@ -39,11 +39,11 @@ describe('the arguments of the first-account command', () => {
         'first-account',
         '--',
         '--first-name',
-        'Islom',
+        'Ilhom',
         '--last-name',
-        'Karimov',
+        'Qodirov',
       ]),
-    ).toEqual({ firstName: 'Islom', lastName: 'Karimov' });
+    ).toEqual({ firstName: 'Ilhom', lastName: 'Qodirov' });
   });
 
   it('keep a name as it was typed, for the login rule to judge', () => {
@@ -54,20 +54,20 @@ describe('the arguments of the first-account command', () => {
 
   it.each([
     ['nothing', []],
-    ['another command', ['migrate', '--first-name', 'Islom', '--last-name', 'Karimov']],
-    ['no command', ['--first-name', 'Islom', '--last-name', 'Karimov']],
-    ['no first name', ['first-account', '--last-name', 'Karimov']],
-    ['no last name', ['first-account', '--first-name', 'Islom']],
-    ['a first name without its value', ['first-account', '--first-name', '--last-name', 'Karimov']],
-    ['a last name without its value', ['first-account', '--first-name', 'Islom', '--last-name']],
-    ['names without their options', ['first-account', 'Islom', 'Karimov']],
+    ['another command', ['migrate', '--first-name', 'Ilhom', '--last-name', 'Qodirov']],
+    ['no command', ['--first-name', 'Ilhom', '--last-name', 'Qodirov']],
+    ['no first name', ['first-account', '--last-name', 'Qodirov']],
+    ['no last name', ['first-account', '--first-name', 'Ilhom']],
+    ['a first name without its value', ['first-account', '--first-name', '--last-name', 'Qodirov']],
+    ['a last name without its value', ['first-account', '--first-name', 'Ilhom', '--last-name']],
+    ['names without their options', ['first-account', 'Ilhom', 'Qodirov']],
     [
       'a word too many',
-      ['first-account', '--first-name', 'Islom', '--last-name', 'Karimov', 'extra'],
+      ['first-account', '--first-name', 'Ilhom', '--last-name', 'Qodirov', 'extra'],
     ],
     [
       'an option the command does not have',
-      ['first-account', '--first-name', 'Islom', '--last-name', 'Karimov', '--role', 'teacher'],
+      ['first-account', '--first-name', 'Ilhom', '--last-name', 'Qodirov', '--role', 'teacher'],
     ],
   ])('are refused for %s', (_name, argv) => {
     expect(parseFirstAccountArguments(argv)).toBeUndefined();
@@ -104,7 +104,7 @@ describe('the first-account command', () => {
       open,
     );
 
-  const NAMES = ['--first-name', 'Islom', '--last-name', 'Karimov'];
+  const NAMES = ['--first-name', 'Ilhom', '--last-name', 'Qodirov'];
 
   async function accounts() {
     const found = await sql<{ login: string; password_hash: string; text: string }>`
@@ -156,7 +156,7 @@ describe('the first-account command', () => {
 
   it.each([
     ['without arguments', []],
-    ['without the last name', ['first-account', '--first-name', 'Islom']],
+    ['without the last name', ['first-account', '--first-name', 'Ilhom']],
     ['with an option it does not have', ['first-account', ...NAMES, '--role', 'teacher']],
   ])('run %s prints how it is used and creates nothing', async (_name, argv) => {
     expect(await run(...argv)).toBe(1);
@@ -168,9 +168,9 @@ describe('the first-account command', () => {
   });
 
   it.each([
-    ['a Cyrillic first name', ['--first-name', 'Ислом', '--last-name', 'Karimov'], 'Ислом'],
-    ['a Cyrillic last name', ['--first-name', 'Islom', '--last-name', 'Каримов'], 'Каримов'],
-    ['an empty last name', ['--first-name', 'Islom', '--last-name', ''], 'Islom'],
+    ['a Cyrillic first name', ['--first-name', 'Илхом', '--last-name', 'Qodirov'], 'Илхом'],
+    ['a Cyrillic last name', ['--first-name', 'Ilhom', '--last-name', 'Кодиров'], 'Кодиров'],
+    ['an empty last name', ['--first-name', 'Ilhom', '--last-name', ''], 'Ilhom'],
   ])('refuses %s without repeating the name, and creates nothing', async (_name, names, typed) => {
     expect(await run('first-account', ...names)).toBe(1);
 
@@ -218,11 +218,11 @@ describe('the first-account command', () => {
     it('creates the account and ends without an error', async () => {
       expect(exitCode).toBe(0);
       expect(errorOutput).toEqual([]);
-      expect((await accounts()).map((account) => account.login)).toEqual(['i.karimov']);
+      expect((await accounts()).map((account) => account.login)).toEqual(['i.qodirov']);
     });
 
     it('writes the login and the first password to the output exactly once', async () => {
-      expect(login).toBe('i.karimov');
+      expect(login).toBe('i.qodirov');
       expect(password).toHaveLength(FIRST_PASSWORD_LENGTH);
       const everything = output.join('\n');
       expect(everything.split(login)).toHaveLength(2);
@@ -235,7 +235,7 @@ describe('the first-account command', () => {
     it('writes neither of them, nor the names, to any log', () => {
       expect(log).not.toContain(password);
       expect(log).not.toContain(login);
-      expect(log).not.toMatch(/Islom|Karimov/);
+      expect(log).not.toMatch(/Ilhom|Qodirov/);
     });
 
     it('stores the first password nowhere: not in the account, not in the audit entry', async () => {
@@ -260,7 +260,7 @@ describe('the first-account command', () => {
         details: { command: 'first-account' },
       });
       for (const entry of entries) {
-        expect(entry.text).not.toMatch(/Islom|Karimov/);
+        expect(entry.text).not.toMatch(/Ilhom|Qodirov/);
       }
     });
 
@@ -270,7 +270,7 @@ describe('the first-account command', () => {
         from assignments s join accounts a on a.id = s.account_id
       `.execute(database.migrator);
 
-      expect(found.rows).toEqual([{ login: 'i.karimov', role: 'super_admin', branch_id: null }]);
+      expect(found.rows).toEqual([{ login: 'i.qodirov', role: 'super_admin', branch_id: null }]);
       expect(output).toContain('Role: Super Admin');
     });
   });
