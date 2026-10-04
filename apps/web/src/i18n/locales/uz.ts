@@ -1,0 +1,137 @@
+import type { Texts } from './shape';
+
+/**
+ * The Uzbek texts, in Latin script (decided by the owner, task 0.8a). The
+ * letters oʻ and gʻ are written with U+02BB and the tutuq belgisi with U+02BC,
+ * never with the apostrophe of the keyboard.
+ */
+export const uz: Texts<'one' | 'other'> = {
+  app: {
+    name: 'Sodiq School',
+    loading: 'Yuklanmoqda…',
+  },
+  language: {
+    label: 'Til',
+  },
+  problems: {
+    noAnswer: 'Server javob bermadi. Internet aloqasini tekshirib, qayta urinib koʻring.',
+    unexpected:
+      'Ilovada xatolik yuz berdi. Sahifani yangilang. Takrorlansa, administratorga xabar bering.',
+    title: 'Sahifani ochib boʻlmadi',
+    retry: 'Qayta urinish',
+    notFoundTitle: 'Sahifa topilmadi',
+    notFoundText: 'Bu manzilda sahifa yoʻq. Manzilni tekshiring yoki bosh sahifaga oʻting.',
+    toHome: 'Bosh sahifaga',
+    wait_one:
+      'Muvaffaqiyatsiz urinishlar juda koʻp. {{count}} soniyadan keyin qayta urinib koʻring.',
+    wait_other:
+      'Muvaffaqiyatsiz urinishlar juda koʻp. {{count}} soniyadan keyin qayta urinib koʻring.',
+  },
+  errors: {
+    validation_failed:
+      'Kiritilgan maʼlumotlarning bir qismi notoʻgʻri. Maydonlarni tekshirib, qayta urinib koʻring.',
+    malformed_request: 'Soʻrovni oʻqib boʻlmadi. Sahifani yangilab, qayta urinib koʻring.',
+    not_found: 'Topilmadi. Yozuv oʻchirilgan yoki manzil notoʻgʻri boʻlishi mumkin.',
+    payload_too_large:
+      'Bir martada juda koʻp maʼlumot yuborildi. Kamroq yuborib, qayta urinib koʻring.',
+    unsupported_media_type:
+      'Soʻrov server oʻqimaydigan shaklda yuborildi. Sahifani yangilab, qayta urinib koʻring.',
+    not_signed_in: 'Siz tizimga kirmagansiz. Qaytadan kiring.',
+    sign_in_failed: 'Login yoki parol notoʻgʻri. Ikkalasini tekshirib, qayta urinib koʻring.',
+    too_many_attempts: 'Muvaffaqiyatsiz urinishlar juda koʻp. Biroz kutib, qayta urinib koʻring.',
+    password_expired:
+      'Bu bir martalik parolning muddati tugagan. Administratordan yangisini soʻrang.',
+    account_locked: 'Bu hisob bloklangan. Administratorga murojaat qiling.',
+    password_change_required: 'Davom etishdan oldin parolingizni oʻzgartiring.',
+    current_password_wrong: 'Joriy parol notoʻgʻri.',
+    password_unchanged: 'Yangi parol joriy parol bilan bir xil. Boshqasini tanlang.',
+    second_step_required: 'Davom etishdan oldin ikkinchi bosqich kodini kiriting.',
+    second_step_set_up_required: 'Davom etishdan oldin ikkinchi bosqichni sozlang.',
+    second_step_code_wrong:
+      'Kod notoʻgʻri yoki avval ishlatilgan. Ilovadagi keyingi kodni kutib, qayta urinib koʻring.',
+    second_step_already_on: 'Ikkinchi bosqich allaqachon sozlangan.',
+    second_step_not_on: 'Ikkinchi bosqichni sozlash boshlanmagan. Qaytadan boshlang.',
+    second_step_cannot_turn_off:
+      'Sizning rolingiz uchun ikkinchi bosqich majburiy. Uni oʻchirib boʻlmaydi.',
+    permission_denied: 'Bu amal uchun sizda ruxsat yoʻq.',
+    own_request:
+      'Oʻz soʻrovingizni oʻzingiz koʻrib chiqa olmaysiz. U boshqa tasdiqlovchiga yuboriladi.',
+    cross_site_request:
+      'Soʻrov boshqa saytdan kelgani uchun rad etildi. Platformani bevosita ochib, qayta urinib koʻring.',
+    request_key_reused:
+      'Bu amal avval boshqa maʼlumotlar bilan yuborilgan. Sahifani yangilab, qayta urinib koʻring.',
+    request_refused:
+      'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
+    internal_error:
+      'Serverda xatolik yuz berdi. Birozdan keyin qayta urinib koʻring. Takrorlansa, administratorga xabar bering.',
+  },
+  signIn: {
+    title: 'Kirish',
+    login: 'Login',
+    password: 'Parol',
+    submit: 'Kirish',
+    trust: 'Bu qurilmaga ishonish',
+    trustNote: 'Bu yerda 7 kun davomida tizimda qolasiz. Umumiy kompyuterda yoqmang.',
+    loginMissing: 'Loginni kiriting.',
+    passwordMissing: 'Parolni kiriting.',
+    sessionEnded: 'Seansingiz tugadi. Qaytadan kiring.',
+  },
+  code: {
+    title: 'Ikkinchi bosqich',
+    text: 'Autentifikator ilovasidagi 6 xonali kodni yoki zaxira kodlaringizdan birini kiriting.',
+    label: 'Kod',
+    missing: 'Kodni kiriting.',
+    submit: 'Davom etish',
+  },
+  password: {
+    titleForced: 'Yangi parol oʻrnating',
+    titleOwn: 'Parolni oʻzgartirish',
+    textForced:
+      'Siz bir martalik parol bilan kirdingiz. Davom etishdan oldin oʻz parolingizni oʻrnating.',
+    resetBy: 'Parolingizni {{login}} tikladi.',
+    current: 'Joriy parol',
+    currentOneTime: 'Bir martalik parol',
+    new: 'Yangi parol',
+    repeat: 'Yangi parol yana bir marta',
+    currentMissing: 'Tizimga kirgan parolingizni kiriting.',
+    tooShort: 'Parol kamida {{min}} ta belgidan iborat boʻlishi kerak.',
+    tooLong: 'Parol koʻpi bilan {{max}} ta belgidan iborat boʻlishi mumkin.',
+    same: 'Yangi parol joriy paroldan farq qilishi kerak.',
+    mismatch: 'Ikki yangi parol bir xil emas.',
+    othersEnd: 'Boshqa seanslaringiz tugatiladi va bu qurilma ishonchli boʻlmay qoladi.',
+    submit: 'Parolni oʻzgartirish',
+    changed: 'Parol oʻzgartirildi.',
+    back: 'Orqaga',
+  },
+  setUp: {
+    title: 'Ikkinchi bosqichni sozlash',
+    intro:
+      'Sizning rolingiz uchun kirishda ikkinchi bosqich majburiy: telefondagi autentifikator ilovasidan olinadigan kod, masalan Google Authenticator. Ilovani oʻrnating, soʻng boshlang.',
+    start: 'Boshlash',
+    scan: 'Bu rasmni ilova bilan skanerlang yoki kalitni qoʻlda kiriting. Soʻng ilova koʻrsatgan kodni kiriting.',
+    qr: 'Autentifikator ilovasi uchun QR-kod',
+    key: 'Kalit',
+    code: 'Ilovadagi kod',
+    codeMissing: 'Ilovadagi kodni kiriting.',
+    confirm: 'Tasdiqlash',
+    codesTitle: 'Zaxira kodlar',
+    codesText:
+      'Har bir kod ilovadagi kod oʻrniga bir marta ishlaydi, masalan telefon yoʻqolganda. Ular faqat hozir koʻrsatiladi. Ularni yozib oling yoki chop eting va ishonchli joyda saqlang.',
+    saved: 'Kodlarni saqlab oldim',
+    continue: 'Davom etish',
+  },
+  layout: {
+    menu: 'Asosiy menyu',
+    account: 'Hisob',
+    changePassword: 'Parolni oʻzgartirish',
+    signOut: 'Chiqish',
+    notTrusted:
+      'Bu qurilma ishonchli deb belgilanmadi: kirishda bir martalik parol ishlatilgan. Unga ishonish uchun tizimdan chiqing va «Bu qurilmaga ishonish»ni yoqib, qaytadan kiring.',
+    dismiss: 'Yopish',
+  },
+  home: {
+    title: 'Bosh sahifa',
+    empty:
+      'Bu sahifada bugun bajarishingiz kerak boʻlgan ishlar koʻrsatiladi. Menyu va vazifalar platforma boʻlimlari ochilgani sari shu yerda paydo boʻladi.',
+  },
+};

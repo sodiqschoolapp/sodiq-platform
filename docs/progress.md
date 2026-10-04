@@ -2,6 +2,69 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 5 October 2026: task 0.8a Web shell: sign-in, layout and languages
+
+Split by the owner at the plan: 0.8a is the sign-in flow, the layout and the languages; the new task 0.8d "Own account page" (after 0.8c, before 0.9) has the session list, the trusted devices, the optional second step and the language on the account. Where an older entry below names 0.8a for one of those, read 0.8d.
+
+Built:
+
+- Languages (`apps/web/src/i18n`): `i18next` with one typed file per language (`locales/uz.ts`, `ru.ts`, `en.ts`; Uzbek in Latin script). A key missing in one language fails the type-check and the build of the web app; `translationProblems` (`check.ts`, run by `locales.test.ts`) also checks empty texts, `{{names}}`, plural forms and a text for every error code. A lint rule refuses text written into a component. The choice is kept in the browser; a first visit takes the browser language if it is one of the three, else Uzbek. `<html lang>` and the title follow.
+- API calls (`apps/web/src/api`): `answerOf(api.POST(...))` gives the body or throws `ApiFailure(code, retryAfterSeconds)`; `failureText(t, error)` is what a person reads. Every error code of `packages/shared` has a text in the three languages, `unsupported_media_type`, `permission_denied`, `own_request` and `account_locked` included.
+- Router and session (`apps/web/src/app`, `features/auth/session.ts`): TanStack Router with routes in code, TanStack Query for the session. Pages: `/sign-in`, `/sign-in/code`, `/password`, `/second-step/set-up`, `/` inside the layout. A page opens only for the step its session stands at, in the order of the server. A call refused because the session ended or owes a step sends the tab to that step (`createShell`).
+- Screens (`apps/web/src/features/auth`): sign-in with "Trust this device" (off, with its note) and the wait of `too_many_attempts`; the code page (app code or recovery code); the password page, forced and by choice, with "your password was reset by X"; the set-up of a required second step with QR picture (`qrcode.react`), key and the recovery codes.
+- Layout: top bar with the language chooser and the account menu (change password, sign out), an empty left menu, an empty home page, loading outline, error page with "Try again", page for an unknown address.
+- Browser tests: `pnpm test:e2e` builds an API of its own and runs it with Vite on ports 3001 and 5174 on the database `sodiq_e2e`, dropped and built from the migrations at every run (`apps/api/src/testing/e2e`, compiled into `apps/api/dist-e2e`). Playwright signs in and out in each language, sets up the required second step and signs in with a recovery code, checks the refusal of a wrong password, the session cookie and a trusted device.
+- The placeholder page of 0.1 and its three tests are gone (approved by the owner). The web app no longer calls the health route.
+- Reviewed by the spec reviewer. No route was added or changed, so no permission review. Fixed from the review: the recovery codes could be lost with the Back button after a minute on the page (now every move away is refused until "I have saved the codes"); the forced password page had no sign-out; a set-up refused with `second_step_already_on` left the person stuck; the note "not trusted" named the wrong reason after a password change by choice on a trusted device, and that page now says the trust ends; the lint rule let chosen and joined texts and further attributes through; an error of the app itself was shown as a lost connection; the server of the browser tests did not check that the application address is local; tests added (how often the session is asked, the three step refusals, a failed sign-out, the fourth Russian plural form, the letters of the Uzbek texts, a trusted device in the browser).
+
+Left out, with the task that brings it:
+
+- Session list, "sign out everywhere", trusted devices, the optional second step, the language on the account: 0.8d.
+- Menus per role, role and branch switchers, branch, year and quarter in the top bar, home pages: 0.8c and phase 1. The session answer has no roles yet.
+- The shared list, form, table, empty, loading and error patterns, Ctrl+K, the theme switch, the review of the look: 0.8b. `components/field.tsx` is a small labelled field for 0.8b to replace or grow.
+- Password reset by email: 2.3. The application version on requests: 8.3a.
+- No date is shown yet, so there is no date and number helper. The first screen that shows a moment (0.8d, the device list) builds it on `Intl` with the chosen language and Monday as the first day, and must decide between branch time and the time of the browser: no branch is known on the own account page.
+- No unit test opens the account menu (the browser tests sign out through it in every test).
+
+Not done from the review, for the owner:
+
+- The translation check cannot see a text left in English in the Uzbek or Russian file. The owner reads the two files in the pull request.
+- A key that ends in `_one`, `_other`, `_few`, `_many`, `_zero` or `_two` is read as a plural form by i18next, by `Shape` and by the check. An error code that ends so (for example `reason_other`) would need another name or a change of the check. None exists.
+- The wait text ("try again in 30 seconds") does not count down; the button turns on again by itself.
+- The Playwright traces of a failed run hold the typed first passwords of the seeded accounts. They belong to a database that is dropped at the next run; in CI the traces are kept 7 days.
+- A reload on the recovery codes that the person confirms loses the codes: the server shows them once.
+- The Uzbek and Russian wording, contrast, keyboard use and the dark theme were not reviewed by anybody yet (0.8b reviews the look).
+- CI: the `e2e` job still runs `pnpm db:migrate` on `sodiq_dev` before the browser tests. They do not need it any more; it was left as it is.
+
+Decided by the owner at the plan:
+
+- `qrcode.react` is added. The browser tests get `sodiq_e2e`; `sodiq_dev` collects no test accounts.
+- The owner reviews the Uzbek and Russian texts in the pull request.
+
+Open, for the owner:
+
+- The password page asks for the new password twice. The spec does not; a typing mistake would lock a person out until a reset, which has no route before 2.3.
+- `.claude/rules/web.md` was extended with how to add texts, pages and tests.
+
+The next sessions must know:
+
+- A new text: the same key in `en.ts`, `uz.ts` and `ru.ts`; the type-check names a missing one. A text with a number: `key_one`, `key_other`, and in Russian also `key_few`, `key_many`; call `t('key', { count })`. Uzbek letters oʻ and gʻ with U+02BB, never an apostrophe (a test refuses it).
+- A new error code in `packages/shared` fails the type-check of the web app until `errors.<code>` exists in the three files.
+- A new page: a route in `apps/web/src/app/router.tsx`, inside `appRoute` when it needs a complete session; the component lives in its feature folder. Calls go through `answerOf` inside `useQuery` or `useMutation`; show a failure with `FailureAlert` or `failureText`.
+- Nothing may call the API by itself (interval, focus, reconnect, retry): the defaults of the query client are off and a test pins them. 0.9 (unread count) and 8.3b must decide how a call on a timer avoids keeping an idle session alive (note of 0.6b) before turning any of this on.
+- Page tests render the whole app: `fakeApi({ 'POST /api/auth/sign-in': () => json(...) })`, then `renderApp('/address', 'en')`; `sessionOf({...})` builds a session, `refusal(code, status, retryAfter?)` a refused call. A route that is not named fails like a lost connection. Texts are looked up in `en`, `ru`, `uz`, never typed again in the test.
+- A component that takes a text under a new property name adds the name to `textAttribute` in `eslint.config.js`.
+- shadcn components come from the CLI (`pnpm dlx shadcn@latest add <name> -c apps/web`, then `pnpm format`). On Base UI a trigger takes `render={<Button />}`, not `asChild`, and a `DropdownMenuLabel` must sit inside a `DropdownMenuGroup`.
+- Browser tests: a test that signs in needs an account of its own in `apps/api/src/testing/e2e/seed.ts` (key, invented name) and in `AccountKey` of `apps/web/e2e/accounts.ts`; the first password is in use, so the test changes it first (`changeFirstPassword`). An account with a role that needs a branch: see `vicePrincipal` in the seed. Files run side by side: two files must not share an account. A code of the authenticator app counts once: a second sign-in in the same test uses a recovery code or waits 30 seconds.
+- `pnpm test:e2e` at the root builds the API and `dist-e2e` first; `pnpm --filter @sodiq/web test:e2e` alone uses the last build. It fails at once when the ports 3001 or 5174 are taken, for example by a run that was interrupted: stop that process. `pnpm dev` may stay open.
+- 0.8c: the roles and branches must come into the session answer (a change of `sessionResponseSchema` and `GET /api/auth/session`); the role and branch on display are kept per tab (edge cases), so in `sessionStorage` like the trust note, not in `localStorage`. The left menu is the empty `<nav>` of `app-layout.tsx`.
+- 0.8d: the language on the account is set at sign-in from the server when the browser has no choice of its own, or always; decide there. `startI18n` is the one place that reads and stores it. The set-up page (`set-up-page.tsx`) serves the required set-up only: its route opens for the step `set_up`.
+- 0.10: `apps/api/dist-e2e` must not reach a server. The web build is `pnpm --filter @sodiq/web build`; `vite.config.ts` reads `API_PROXY_TARGET` for the development proxy only.
+- The full run: API tests 47 files, about 190 s; web tests 104, about 40 s; browser tests 6, about 55 s.
+- In Git Bash here a heredoc also breaks on an apostrophe inside a quoted script (three times in this task): write a script file with the editor tools and run it.
+
+The next task is 0.8b.
+
 ## 5 October 2026: task 0.7c Request hygiene
 
 The owner added the leftovers of 0.7b to this task at the plan: the frozen table, the `@All()` route in the harness, three small guard tests.

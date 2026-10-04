@@ -17,6 +17,43 @@ const noSystemClock = [
     'Do not read the system clock. Use the injected clock (CLOCK in apps/api, a Clock or a moment passed in elsewhere).',
 }));
 
+const hardCodedTextMessage =
+  'No hard-coded user-facing text. Add an i18n key in Uzbek, Russian and English (apps/web/src/i18n/locales) and use t().';
+
+/** Braces between tags: `<p>{...}</p>`. */
+const textChild = ':matches(JSXElement, JSXFragment) > JSXExpressionContainer';
+
+/**
+ * Attributes whose value a person reads or hears: those of HTML and ARIA, and
+ * the text properties of our own components (Field, AuthPage). A new component
+ * that takes a text under another name adds the name here.
+ */
+const textAttribute =
+  'JSXAttribute[name.name=/^(aria-label|aria-description|aria-roledescription|aria-valuetext|placeholder|title|alt|label|note|text)$/]';
+
+/** A text chosen or joined inside braces: `on ? 'A' : 'B'`, `on && 'A'`, `name + ' text'`. */
+const chosen = ':matches(ConditionalExpression, LogicalExpression, BinaryExpression)';
+
+const textLiteral = ':matches(Literal[value=/\\p{L}/u], TemplateLiteral)';
+
+/**
+ * Text a person reads or hears, written into a component instead of coming
+ * from an i18n key. It catches the usual ways, not every way: a text built in
+ * a variable first, nested two choices deep or handed over under a property
+ * name that is not listed passes, and so does a text in a `.ts` file.
+ */
+const hardCodedText = [
+  // <p>Text</p>
+  'JSXText[value=/\\p{L}/u]',
+  // <p>{'Text'}</p>, <p>{`Text`}</p>, <p>{on ? 'Text' : 'Other'}</p>
+  `${textChild} > ${textLiteral}`,
+  `${textChild} > ${chosen} > ${textLiteral}`,
+  // aria-label="Text", also as {'Text'}, {`Text`} and {on ? 'Text' : 'Other'}
+  `${textAttribute} > Literal`,
+  `${textAttribute} > JSXExpressionContainer > :matches(Literal, TemplateLiteral)`,
+  `${textAttribute} > JSXExpressionContainer > ${chosen} > ${textLiteral}`,
+].map((selector) => ({ selector, message: hardCodedTextMessage }));
+
 /** Decorators of NestJS that hand a route unchecked input, or the whole request. */
 const rawInputDecorators = [
   'Body',
@@ -129,6 +166,8 @@ export default defineConfig(
     '**/dist/**',
     // The watch build of the jobs worker (apps/api, dev:worker).
     '**/dist-worker/**',
+    // The API and the seed command of the browser tests (apps/api, e2e:build).
+    '**/dist-e2e/**',
     '**/.turbo/**',
     '**/playwright-report/**',
     '**/test-results/**',
@@ -273,6 +312,16 @@ export default defineConfig(
     files: ['apps/web/src/**/*.{ts,tsx}'],
     extends: [reactHooks.configs.flat.recommended],
     languageOptions: { globals: globals.browser },
+  },
+  {
+    // docs/spec/12-ux-standards.md, Language: every label and message exists in
+    // Uzbek, Russian and English. A text written into a component would exist
+    // in one language only: it comes from an i18n key (apps/web/src/i18n).
+    files: ['apps/web/src/**/*.tsx'],
+    ignores: ['**/*.test.tsx'],
+    rules: {
+      'no-restricted-syntax': ['error', ...hardCodedText],
+    },
   },
   prettier,
 );

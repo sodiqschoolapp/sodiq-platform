@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-worker/
+dist-e2e/
 build/
 coverage/
 .turbo/

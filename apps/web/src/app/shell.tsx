@@ -1,0 +1,63 @@
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { RouterProvider, type RouterHistory } from '@tanstack/react-router';
+import type { i18n as I18n } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
+import { ApiFailure, type FailureCode } from '@/api/failure';
+import { forgetSession, refreshSession, SESSION_CHANGED_CODES } from '@/features/auth/session';
+import { createAppRouter, type AppRouter } from './router';
+
+export interface Shell {
+  queryClient: QueryClient;
+  router: AppRouter;
+}
+
+const sessionChanged = (code: FailureCode): boolean =>
+  SESSION_CHANGED_CODES.some((changed) => changed === code);
+
+/**
+ * The query client and the router of one tab, wired together: when any call
+ * is refused because the session ended or owes a step again (rights are read
+ * on every request), the tab goes to the page of that step.
+ */
+export function createShell(history?: RouterHistory): Shell {
+  const onError = (error: unknown): void => {
+    if (!(error instanceof ApiFailure) || !sessionChanged(error.code)) {
+      return;
+    }
+    if (error.code === 'not_signed_in') {
+      forgetSession(queryClient);
+      void router.navigate({ to: '/sign-in', search: { reason: 'ended' } });
+      return;
+    }
+    // The pages' own guards send the tab to the step the session owes now.
+    void refreshSession(queryClient)
+      .catch(() => undefined)
+      .then(() => router.invalidate());
+  };
+
+  const queryClient = new QueryClient({
+    queryCache: new QueryCache({ onError }),
+    mutationCache: new MutationCache({ onError }),
+    defaultOptions: {
+      // Nothing is asked again by itself: a repeat would count as use of the session.
+      queries: { retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false },
+    },
+  });
+  const router = createAppRouter(queryClient, history);
+  return { queryClient, router };
+}
+
+interface AppProps {
+  i18n: I18n;
+  shell: Shell;
+}
+
+export function App({ i18n, shell }: AppProps) {
+  return (
+    <I18nextProvider i18n={i18n}>
+      <QueryClientProvider client={shell.queryClient}>
+        <RouterProvider router={shell.router} />
+      </QueryClientProvider>
+    </I18nextProvider>
+  );
+}

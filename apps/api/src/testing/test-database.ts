@@ -1,9 +1,16 @@
 import { randomBytes } from 'node:crypto';
-import { setTimeout as delay } from 'node:timers/promises';
-import { Client, escapeIdentifier } from 'pg';
+import { escapeIdentifier } from 'pg';
 import { inject } from 'vitest';
-import { databaseUrl, loadLocalEnvFile } from '../database/config.js';
+import { databaseUrl } from '../database/config.js';
 import { createDatabase, type Database } from '../database/database.js';
+import {
+  createEmptyDatabase,
+  dropDatabaseOnceUnused,
+  onServer,
+  withDatabaseName,
+} from './database-server.js';
+
+export { createEmptyDatabase, withDatabaseName };
 
 declare module 'vitest' {
   interface ProvidedContext {
@@ -16,8 +23,6 @@ const PREFIX = 'sodiq_test_';
 // sodiq_test_<start of the run in seconds>_<random>_<template or random>
 const RUN_DATABASE = /^sodiq_test_(\d+)_[0-9a-f]+_/;
 const STALE_AFTER_SECONDS = 60 * 60;
-const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
-
 export interface TestDatabase {
   name: string;
   /** Connects as `sodiq_app`, like the API: a missing right fails the test. */
@@ -30,12 +35,6 @@ export interface TestDatabase {
   destroy: () => Promise<void>;
 }
 
-export function withDatabaseName(url: string, name: string): string {
-  const copy = new URL(url);
-  copy.pathname = `/${name}`;
-  return copy.toString();
-}
-
 /** Each run has its own prefix, so two runs at once do not touch each other's databases. */
 export function newRunPrefix(nowMs: number): string {
   return `${PREFIX}${String(Math.floor(nowMs / 1000))}_${randomBytes(3).toString('hex')}_`;
@@ -43,29 +42,6 @@ export function newRunPrefix(nowMs: number): string {
 
 export function templateOf(runPrefix: string): string {
   return `${runPrefix}template`;
-}
-
-/**
- * Runs statements as the migration user in the server's `postgres` database.
- * The tests create and force-drop databases, so they only ever talk to a
- * PostgreSQL on this machine.
- */
-async function onServer<T>(run: (client: Client) => Promise<T>): Promise<T> {
-  loadLocalEnvFile();
-  const url = withDatabaseName(databaseUrl('DATABASE_MIGRATION_URL'), 'postgres');
-  const host = new URL(url).hostname;
-  if (!LOCAL_HOSTS.includes(host)) {
-    throw new Error(
-      `The tests create and drop databases and refuse to run against "${host}". DATABASE_MIGRATION_URL must point at localhost.`,
-    );
-  }
-  const client = new Client({ connectionString: url });
-  await client.connect();
-  try {
-    return await run(client);
-  } finally {
-    await client.end();
-  }
 }
 
 async function dropWhere(shouldDrop: (name: string) => boolean): Promise<void> {
@@ -91,12 +67,6 @@ export function dropStaleTestDatabases(nowMs: number): Promise<void> {
     const startedAt = RUN_DATABASE.exec(name)?.[1];
     return startedAt === undefined || nowMs / 1000 - Number(startedAt) > STALE_AFTER_SECONDS;
   });
-}
-
-/** A database with nothing in it: for the template and for tests of the migration runner. */
-export async function createEmptyDatabase(name: string): Promise<string> {
-  await onServer((client) => client.query(`create database ${escapeIdentifier(name)}`));
-  return withDatabaseName(databaseUrl('DATABASE_MIGRATION_URL'), name);
 }
 
 /**
@@ -128,22 +98,7 @@ export async function createTestDatabase(options: { empty?: boolean } = {}): Pro
     destroy: async () => {
       await app.destroy();
       await migrator.destroy();
-      await onServer(async (client) => {
-        // A backend lives a moment longer than the connection that was just
-        // closed. `with (force)` would have to terminate it, and the owner may
-        // not terminate a backend of the application user: wait until it is gone.
-        for (let attempt = 0; attempt < 100; attempt += 1) {
-          const found = await client.query<{ open: number }>(
-            'select count(*)::int as open from pg_stat_activity where datname = $1',
-            [name],
-          );
-          if (found.rows[0]?.open === 0) {
-            break;
-          }
-          await delay(50);
-        }
-        await client.query(`drop database ${escapeIdentifier(name)} with (force)`);
-      });
+      await dropDatabaseOnceUnused(name);
     },
   };
 }
