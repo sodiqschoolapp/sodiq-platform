@@ -26,10 +26,15 @@ How to read the task lines:
   - Build: GitHub Actions workflow that installs, lints, type-checks and runs the tests with a PostgreSQL service on every pull request.
   - Done when: a pull request shows the checks and fails when a test fails. The owner then turns on required checks for `main` in GitHub.
 
-- [ ] **0.4 API foundations**
+- [x] **0.4a API foundations: HTTP side**
   - Read: `13` (Structure, Security), `edge/developer-rules`, `edge/system-behaviour`.
-  - Build: configuration loading; one error shape; request ids; input validation with shared schemas; OpenAPI document and the generated web client (`pnpm api:client`); an injected clock; repeat-safe request keys; a minimal `branches` table; the branch filter set per transaction, with row-filter policies that later tables reuse.
-  - Done when: a sample route is validated, documented, called from the web app through the generated client, tested with a fixed clock, and a test shows a row of another branch is invisible.
+  - Build: configuration loading; one error shape; request ids; input validation with shared schemas; OpenAPI document and the generated web client (`pnpm api:client`); an injected clock.
+  - Done when: a sample route is validated, documented, called from the web app through the generated client and tested with a fixed clock.
+
+- [ ] **0.4b API foundations: database side**
+  - Read: `13` (Structure, Security), `edge/developer-rules`, `edge/system-behaviour`.
+  - Build: a minimal `branches` table; the branch filter set per transaction (a list of branch ids, normally one; nothing set shows no rows), with row-filter policies that later tables reuse; a transaction helper; repeat-safe request keys.
+  - Done when: a test shows a row of another branch is invisible, the filter does not stay on a pooled connection, and a repeated request with the same key changes nothing.
 
 - [ ] **0.5 Audit log and jobs**
   - Read: `13` (Security), `edge/developer-rules`, `edge/system-behaviour`, `edge/people-roles-accounts` (Personal data and the audit log).

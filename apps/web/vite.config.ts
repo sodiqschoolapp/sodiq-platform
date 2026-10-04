@@ -14,13 +14,15 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     // In development the browser reaches the API through the web server, on one origin.
+    // The address is the default HOST of the API (apps/api/src/config/config.ts).
     proxy: {
-      '/api': 'http://localhost:3000',
+      '/api': 'http://127.0.0.1:3000',
     },
   },
   test: {
     environment: 'jsdom',
-    include: ['src/**/*.test.{ts,tsx}'],
+    // tooling: tests of generated files; they run in Node, not in a browser-like page.
+    include: ['src/**/*.test.{ts,tsx}', 'tooling/**/*.test.ts'],
     setupFiles: ['./src/test-setup.ts'],
   },
 });

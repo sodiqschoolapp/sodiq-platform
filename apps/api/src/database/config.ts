@@ -8,8 +8,8 @@ export const migrationsDirectory = path.join(repositoryRoot, 'db/migrations');
 
 /**
  * Reads the root `.env` on a developer machine. Variables that are already set
- * win, so CI and the servers, which have no `.env`, are not affected.
- * Task 0.4 replaces this with configuration loading.
+ * win, so CI and the servers, which have no `.env`, are not affected. The
+ * values are checked afterwards by `loadConfig` (src/config).
  */
 export function loadLocalEnvFile(): void {
   const file = path.join(repositoryRoot, '.env');

@@ -1,5 +1,6 @@
-import { parseHealthResponse } from '@sodiq/shared';
+import { healthResponseSchema } from '@sodiq/shared';
 import { useEffect, useState } from 'react';
+import { api } from '@/api/client';
 import { Button } from '@/components/ui/button';
 
 type ApiStatus = 'checking' | 'reachable' | 'unreachable';
@@ -11,13 +12,10 @@ const STATUS_TEXT: Record<ApiStatus, string> = {
   unreachable: 'API: not reachable',
 };
 
-// A plain fetch until task 0.4 brings the generated API client.
 async function checkApi(signal: AbortSignal): Promise<ApiStatus> {
   try {
-    const response = await fetch('/api/health', { signal });
-    if (!response.ok) return 'unreachable';
-    const body: unknown = await response.json();
-    return parseHealthResponse(body) ? 'reachable' : 'unreachable';
+    const { data } = await api.GET('/api/health', { signal });
+    return healthResponseSchema.safeParse(data).success ? 'reachable' : 'unreachable';
   } catch {
     return 'unreachable';
   }

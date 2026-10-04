@@ -8,3 +8,8 @@ catalog:
   # 6.0.x until the NestJS CLI and typescript-eslint support TypeScript 7 (docs/decisions.md).
   typescript: ~6.0.3
   vitest: ^5.0.3
+
+# Install scripts run only for packages allowed here. @scarf/scarf (a dependency
+# of the Swagger UI files inside @nestjs/swagger) only sends install statistics.
+allowBuilds:
+  '@scarf/scarf': false

@@ -43,9 +43,11 @@ pnpm dev
 ```
 
 - Web app: http://localhost:5173
-- API: http://localhost:3000/api/health
+- API: http://127.0.0.1:3000/api/health
 
 The web app shows a placeholder page that says whether the API answers. In development the web server forwards `/api` to the API, so the browser uses one address.
+
+The API checks its configuration when it starts and stops with the names of the variables that are missing or wrong. It answers only on this machine (`127.0.0.1`) unless `HOST` says otherwise; `.env.example` lists the variables.
 
 To stop it on Windows, press Ctrl+C twice. After the first press the servers are already stopped, but each task's `cmd.exe` wrapper asks "Terminate batch job (Y/N)?" where nobody can answer, and Turborepo repeats "5 tasks shutting down..." for as long as it waits. The second press ends them and gives the prompt back. Typing Y does nothing.
 
@@ -62,7 +64,7 @@ To stop it on Windows, press Ctrl+C twice. After the first press the servers are
 | `pnpm build` | Builds every package. |
 | `pnpm db:migrate` | Applies the SQL files of `db/migrations` that `sodiq_dev` does not have yet, in number order. Refuses to run if an applied file was edited. |
 | `pnpm db:codegen` | Writes the Kysely types of `sodiq_dev` to `apps/api/src/database/types.generated.ts`. Run it after `pnpm db:migrate` and commit the file; a test fails if it is out of date. |
-| `pnpm api:client` | Not built yet: task 0.4. It stops with a message. |
+| `pnpm api:client` | Writes the OpenAPI document of the API routes to `apps/api/openapi.generated.json` and the typed web client to `apps/web/src/api/schema.generated.ts`. Run it after changing a route or a shared schema and commit both files; two tests fail if they are out of date. |
 
 ## Continuous integration
 
