@@ -121,8 +121,18 @@ describe('test database', () => {
 
 // Route tests must never reach the developer database `sodiq_dev`.
 describe('test application and the database', () => {
+  let database: TestDatabase;
+
+  // Made and dropped in hooks, which have the time for it (60 s), not inside the test (30 s).
+  beforeAll(async () => {
+    database = await createTestDatabase();
+  });
+
+  afterAll(async () => {
+    await database.destroy();
+  });
+
   it('uses the test database it is given', async () => {
-    const database = await createTestDatabase();
     const app = await createTestApp({ database: database.app });
     try {
       const rows = await app
@@ -134,8 +144,8 @@ describe('test application and the database', () => {
       expect(app.get<Database>(DATABASE)).toBe(database.app);
       expect(rows.map((row) => row.name)).toContain('0001_foundations');
     } finally {
+      // Closing the application closes the connection it was given.
       await app.close();
-      await database.destroy();
     }
   });
 

@@ -8,7 +8,6 @@ import {
   cookieOf,
   errorCode,
   NEW_PASSWORD,
-  OptionalSecondStep,
   ProbeController,
   signInKit,
   type SignInKit,
@@ -18,7 +17,7 @@ import { endByTime, SESSION_MAX_LIFE_MS, type SessionMoments } from './session-l
 
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
-const IDLE = 15 * MINUTE;
+const IDLE = 30 * MINUTE;
 const START = '2026-10-05T09:00:00+05:00';
 const START_PLUS_7_DAYS = '2026-10-12T04:00:00.000Z';
 
@@ -94,7 +93,6 @@ describe('the longest life of a session', () => {
       database: database.app,
       clock,
       controllers: [ProbeController],
-      secondStepRule: new OptionalSecondStep(),
     });
     kit = signInKit(app);
   });
@@ -121,9 +119,9 @@ describe('the longest life of a session', () => {
     return found.rows;
   }
 
-  /** Moves the clock while the session is read every 14 minutes, so it is never idle. */
+  /** Moves the clock while the session is read every 29 minutes, so it is never idle. */
   async function advanceInUse(cookie: string, milliseconds: number): Promise<void> {
-    const step = 14 * MINUTE;
+    const step = 29 * MINUTE;
     let left = milliseconds;
     while (left > step) {
       clock.advance(step);
@@ -163,7 +161,7 @@ describe('the longest life of a session', () => {
 
     expect(errorCode(await kit.probe(cookie))).toBe('not_signed_in');
     expect((await sessionsOf(account.id))[0]).toMatchObject({
-      ended_at: new Date('2026-10-05T09:15:00+05:00'),
+      ended_at: new Date('2026-10-05T09:30:00+05:00'),
       end_reason: 'idle',
     });
     expect(await auditOf('auth.session_expired', account.id)).toEqual([]);

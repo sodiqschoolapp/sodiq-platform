@@ -1,13 +1,16 @@
 import type { INestApplication } from '@nestjs/common';
 import {
+  ROLES,
   secondStepRecoveryCodesSchema,
   secondStepSetUpSchema,
   sessionListSchema,
+  STRICT_SIGN_IN_ROLES,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
+import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import {
@@ -15,7 +18,6 @@ import {
   cookieOf,
   errorCode,
   NEW_PASSWORD,
-  OptionalSecondStep,
   ProbeController,
   signInKit,
   type SignInKit,
@@ -33,8 +35,8 @@ const STEP = 30 * SECOND;
 // Edge cases, "Accounts and sign-in": the second step is a code from an
 // authenticator app, with ten single-use recovery codes shown at set-up.
 // docs/spec/02-roles-and-access.md, Rules: required for the Super Admin and
-// Academic Vice Principal and optional for others. Until task 0.7 brings the
-// roles it is required for every account (decided by the owner).
+// Academic Vice Principal and optional for others. Every account of this suite
+// is an Academic Vice Principal.
 // All names are invented.
 describe('the second step of sign-in', () => {
   let database: TestDatabase;
@@ -45,7 +47,10 @@ describe('the second step of sign-in', () => {
   beforeAll(async () => {
     database = await createTestDatabase();
     app = await createTestApp({ database: database.app, clock, controllers: [ProbeController] });
-    kit = signInKit(app);
+    // The stricter sign-in holds for these accounts: each is the Academic Vice
+    // Principal of a branch.
+    const branchId = await insertBranch(database.migrator, 'North');
+    kit = signInKit(app, { newAccountsHold: { role: 'academic_vice_principal', branchId } });
   });
 
   afterAll(async () => {
@@ -1046,13 +1051,13 @@ describe('the second step of sign-in', () => {
   });
 });
 
-// docs/spec/02-roles-and-access.md, Rules: "optional for others". Until task
-// 0.7 no account of the running application is such an "other"; the rule is
-// replaced here so that the optional side is built and tested now.
+// docs/spec/02-roles-and-access.md, Rules: "optional for others". The accounts
+// of this suite hold no role.
 describe('the second step where it is optional', () => {
   let database: TestDatabase;
   let app: INestApplication;
   let kit: SignInKit;
+  let north: string;
   const clock = new FixedClock('2026-10-05T09:00:00+05:00');
 
   beforeAll(async () => {
@@ -1061,9 +1066,9 @@ describe('the second step where it is optional', () => {
       database: database.app,
       clock,
       controllers: [ProbeController],
-      secondStepRule: new OptionalSecondStep(),
     });
     kit = signInKit(app);
+    north = await insertBranch(database.migrator, 'North');
   });
 
   afterAll(async () => {
@@ -1194,6 +1199,107 @@ describe('the second step where it is optional', () => {
     expect(waiting.status).toBe(429);
     expect(waiting.headers['retry-after']).toBe('30');
     expect(await rowsOf(account.id)).toBe(11);
+  });
+
+  it.each(ROLES.filter((role) => !STRICT_SIGN_IN_ROLES.includes(role)))(
+    'is not asked for with the role %s',
+    async (role) => {
+      const { account, cookie } = await kit.fullSession('Gulom', 'Tursunov');
+      await kit.giveRole(
+        account.id,
+        role === 'senior_head_teacher' ? { role } : { role, branchId: north },
+      );
+
+      expect((await kit.probe(cookie)).status).toBe(200);
+      expect((await kit.get('/api/auth/second-step', cookie)).body).toMatchObject({
+        required: false,
+      });
+    },
+  );
+
+  // Edge cases, "Accounts and sign-in": rights are read again on every request.
+  describe('when the Academic Vice Principal role is given to a person with an open session', () => {
+    it('must be set up before anything else, from the next request on', async () => {
+      const { account, cookie } = await kit.fullSession('Hamid', 'Tursunov');
+      expect((await kit.probe(cookie)).status).toBe(200);
+
+      await kit.giveRole(account.id, { role: 'academic_vice_principal', branchId: north });
+
+      const refused = await kit.probe(cookie);
+      expect(refused.status).toBe(403);
+      expect(errorCode(refused)).toBe('second_step_set_up_required');
+      expect((await kit.get('/api/auth/session', cookie)).body).toMatchObject({
+        secondStep: 'set_up_required',
+      });
+      expect((await kit.signIn(account.login, NEW_PASSWORD)).body).toMatchObject({
+        secondStep: 'set_up_required',
+      });
+
+      await kit.setUpSecondStep(cookie);
+      expect((await kit.probe(cookie)).status).toBe(200);
+      expect((await kit.get('/api/auth/second-step', cookie)).body).toMatchObject({
+        on: true,
+        required: true,
+      });
+    });
+
+    // Noted at 0.6d: the session stays trusted while it owes the set-up.
+    it('must be set up on a trusted device too, which stays trusted', async () => {
+      clock.set('2026-10-05T09:00:00+05:00');
+      const { account } = await kit.fullSession('Iroda', 'Tursunova');
+      const trusted = await kit.signIn(account.login, NEW_PASSWORD, undefined, true);
+      const cookie = cookieOf(trusted) ?? '';
+      expect(trusted.body).toMatchObject({
+        secondStep: 'not_needed',
+        trustedUntil: '2026-10-12T04:00:00.000Z',
+      });
+
+      await kit.giveRole(account.id, { role: 'academic_vice_principal', branchId: north });
+
+      expect(errorCode(await kit.probe(cookie))).toBe('second_step_set_up_required');
+      expect((await kit.get('/api/auth/session', cookie)).body).toMatchObject({
+        secondStep: 'set_up_required',
+        trustedUntil: '2026-10-12T04:00:00.000Z',
+      });
+      // Trusted: no idle sign-out, also with the short limit of the role.
+      clock.advance(60 * MINUTE);
+      expect(errorCode(await kit.probe(cookie))).toBe('second_step_set_up_required');
+    });
+
+    it('cannot be turned off while the role is held, and can once it has ended', async () => {
+      const administrator = await kit.newAccount('Jamshid', 'Tursunov');
+      const { account, cookie, secret } = await kit.completeSession('Kamola', 'Tursunova');
+      const assignment = await kit.giveRole(account.id, {
+        role: 'academic_vice_principal',
+        branchId: north,
+      });
+
+      const refused = await turnOff(cookie, nextCode(secret));
+      expect(refused.status).toBe(403);
+      expect(errorCode(refused)).toBe('second_step_cannot_turn_off');
+      expect(await rowsOf(account.id)).toBe(11);
+
+      await kit.endRole(assignment.id, administrator.id, north);
+
+      expect((await turnOff(cookie, nextCode(secret))).status).toBe(204);
+      expect(await rowsOf(account.id)).toBe(0);
+    });
+
+    it('is not required before the role begins', async () => {
+      clock.set('2026-10-05T09:00:00+05:00');
+      const { account, cookie } = await kit.fullSession('Laziz', 'Tursunov');
+      await kit.giveRole(account.id, {
+        role: 'academic_vice_principal',
+        branchId: north,
+        validFrom: new Date('2026-10-05T09:10:00+05:00'),
+      });
+
+      clock.advance(10 * MINUTE - SECOND);
+      expect((await kit.probe(cookie)).status).toBe(200);
+
+      clock.advance(SECOND);
+      expect(errorCode(await kit.probe(cookie))).toBe('second_step_set_up_required');
+    });
   });
 
   it('is not there to turn off, and not there to pass, for an account without one', async () => {

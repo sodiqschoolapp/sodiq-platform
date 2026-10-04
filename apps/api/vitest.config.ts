@@ -6,6 +6,11 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     // Builds the template database that each test file copies (task 0.2).
     globalSetup: ['src/testing/global-setup.ts'],
+    // At most this many test files at once. Almost every file creates a database
+    // of its own, starts the application and hashes passwords; with one file per
+    // processor (the default) PostgreSQL and the machine were saturated, and a
+    // different test hit its time limit in each full run (task 0.7a).
+    maxWorkers: 4,
     // The local-only key of .env.example, so the tests do not depend on the
     // .env of the machine. It encrypts the invented second steps of the tests.
     env: { SECOND_STEP_KEY: 'c29kaXEtbG9jYWwtc2Vjb25kLXN0ZXAta2V5LTAwMDE=' },

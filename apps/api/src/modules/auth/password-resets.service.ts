@@ -48,7 +48,7 @@ export interface ResetPassword {
  * failed sign-ins of the login starts again, so the person need not wait.
  *
  * Until the screens of task 2.3 this service has no route: who may reset whom
- * is a question of roles, which arrive with the permission guard of task 0.7.
+ * is a question of roles, which arrive with the permission guard of task 0.7b.
  * Only tests call it.
  */
 @Injectable()

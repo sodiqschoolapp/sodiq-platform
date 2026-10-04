@@ -39,7 +39,7 @@ export class KeyedSampleController {
     @RequestKey() key: string,
     @ValidBody(keyedSampleBodySchema) body: KeyedSampleBody,
   ): Promise<KeyedSampleResponse> {
-    // Not a pattern for real routes: from task 0.7 the branches come from the
+    // Not a pattern for real routes: from task 0.7b the branches come from the
     // permission guard, never from the path, the query or the body.
     return this.transactions.run([params.branchId], async (transaction) => {
       const once = await this.requestKeys.runOnce(

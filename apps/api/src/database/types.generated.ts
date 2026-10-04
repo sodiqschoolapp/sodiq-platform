@@ -50,6 +50,18 @@ export interface AccountSecondSteps {
   secret: string;
 }
 
+export interface Assignments {
+  account_id: string;
+  branch_id: string | null;
+  created_at: Timestamp;
+  ended_by: string | null;
+  given_by: string | null;
+  id: Generated<string>;
+  role: string;
+  valid_from: Timestamp;
+  valid_until: Timestamp | null;
+}
+
 export interface AuditLog {
   action: string;
   actor_id: string | null;
@@ -142,6 +154,7 @@ export interface SignInThrottle {
 export interface DB {
   account_second_steps: AccountSecondSteps;
   accounts: Accounts;
+  assignments: Assignments;
   audit_log: AuditLog;
   audit_log_school: AuditLogSchool;
   branches: Branches;

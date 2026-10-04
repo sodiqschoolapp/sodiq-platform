@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { INestApplication } from '@nestjs/common';
+import { ROLES } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
@@ -107,10 +108,10 @@ describe('the check of the key of the second step at start', () => {
   });
 });
 
-// Task 0.6c, decided by the owner: until task 0.7 brings the roles, the second
-// step is required for every account. Several suites replace the rule
-// (`OptionalSecondStep`); this pins what the application itself is wired with.
-// Task 0.7 changes this test together with the rule.
+// docs/spec/02-roles-and-access.md, Rules: two-step verification is required
+// for the Super Admin and Academic Vice Principal and optional for others. This
+// pins what the application itself is wired with: the rule of the spec, by the
+// roles of the account, and nothing that replaces it.
 describe('the rule of the second step in the application as it runs', () => {
   let app: INestApplication;
 
@@ -123,10 +124,16 @@ describe('the rule of the second step in the application as it runs', () => {
     await app.close();
   });
 
-  it('is the strict one: required for every account', () => {
+  it('is the one of the spec: required with one of the two roles, optional otherwise', () => {
     const rule = app.get(SecondStepRule);
 
     expect(Object.getPrototypeOf(rule)).toBe(SecondStepRule.prototype);
-    expect(rule.required()).toBe(true);
+    for (const role of ROLES) {
+      expect(rule.required([role])).toBe(
+        role === 'super_admin' || role === 'academic_vice_principal',
+      );
+    }
+    expect(rule.required(['teacher', 'tutor', 'super_admin'])).toBe(true);
+    expect(rule.required([])).toBe(false);
   });
 });

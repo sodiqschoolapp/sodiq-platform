@@ -5,8 +5,13 @@ import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import {
+  currentAssignments,
+  rolesOf,
+  type CurrentAssignment,
+} from '../access/current-assignments.js';
 import { Audit } from '../audit/audit.service.js';
-import { SHORT_IDLE_LIMIT_MS } from './idle-limit.js';
+import { idleLimitMs } from './idle-limit.js';
 import { LOGIN_FORMAT } from './login.js';
 import { hashPassword, verifyPassword } from './password-hash.js';
 import { SecondStepRule } from './second-step-rule.js';
@@ -55,6 +60,12 @@ export interface ActiveSession {
    * sign-in. `null` while the session is not trusted.
    */
   trustedUntil: Date | null;
+  /**
+   * The assignments of the account that are in force at this request (role and
+   * branch). Read again on every request: a role that was given or ended
+   * counts at the next one.
+   */
+  assignments: CurrentAssignment[];
 }
 
 export interface SignedIn {
@@ -203,7 +214,13 @@ export class Sessions {
       if (current.locked_at !== null) {
         return 'locked' as const;
       }
-      const secondStep = await this.secondSteps.stateOf(transaction, account.id, null);
+      const assignments = await currentAssignments(transaction, account.id, now);
+      const secondStep = await this.secondSteps.stateOf(
+        transaction,
+        account.id,
+        null,
+        rolesOf(assignments),
+      );
       const trusted =
         origin.trustDevice && secondStep === 'not_needed' && !account.must_change_password;
       const session = await transaction
@@ -252,6 +269,7 @@ export class Sessions {
           mustChangePassword: account.must_change_password,
           passwordResetBy: await this.loginOf(transaction, account.password_reset_by),
           trustedUntil: trusted ? latestEndOf(session) : null,
+          assignments,
         },
       };
     });
@@ -304,11 +322,29 @@ export class Sessions {
    * the idle limit is over, unless its device is trusted, and every session is
    * over 7 days after its sign-in, whatever its row says; the first request
    * after that writes the end down. A locked account has no session.
+   *
+   * The roles of the account are read once, in the transaction of the use, and
+   * that one reading decides everything of this request: the idle limit of the
+   * use, the end that is written down if the session is over, the second step
+   * and the assignments of the answer. A session is therefore never used under
+   * one limit and ended under another; a role that is given or ended while the
+   * request runs counts from the next request.
    */
   async resolve(token: string): Promise<ActiveSession | undefined> {
     const now = this.clock.now();
-    const limit = this.idleLimitMs();
     return this.transactions.run([], async (transaction) => {
+      const owner = await transaction
+        .selectFrom('sessions')
+        .select('account_id')
+        .where('token_hash', '=', tokenHash(token))
+        .where('ended_at', 'is', null)
+        .executeTakeFirst();
+      if (owner === undefined) {
+        return undefined;
+      }
+      const assignments = await currentAssignments(transaction, owner.account_id, now);
+      const roles = rolesOf(assignments);
+      const limit = idleLimitMs(roles);
       const use = () =>
         transaction
           .updateTable('sessions')
@@ -361,10 +397,12 @@ export class Sessions {
           transaction,
           used.account_id,
           used.second_step_passed_at,
+          roles,
         ),
         mustChangePassword: account.must_change_password,
         passwordResetBy: await this.loginOf(transaction, account.password_reset_by),
         trustedUntil: isTrusted(used) ? latestEndOf(used) : null,
+        assignments,
       };
     });
   }
@@ -416,8 +454,9 @@ export class Sessions {
         .orderBy('id', 'desc')
         .execute(),
     );
+    const limit = idleLimitMs(rolesOf(session.assignments));
     return found
-      .filter((row) => endByTime(row, now, this.idleLimitMs()) === undefined)
+      .filter((row) => endByTime(row, now, limit) === undefined)
       .map((row) => ({
         id: row.id,
         startedAt: row.created_at,
@@ -625,16 +664,6 @@ export class Sessions {
   }
 
   /**
-   * How long a session may stay without use. Task 0.7 brings the roles and
-   * must call `idleLimitMs(roles)` here: 15 minutes for the Super Admin and
-   * the Academic Vice Principal, 30 for everybody else. Until then every
-   * session gets the short limit, the strict side (decided by the owner).
-   */
-  private idleLimitMs(): number {
-    return SHORT_IDLE_LIMIT_MS;
-  }
-
-  /**
    * Writes down the end of every session of the account that is over by time
    * (not used for the idle limit, or 7 days old) and was not seen since, each
    * with the moment it was over and its own audit entry. Whatever ends "all
@@ -642,11 +671,12 @@ export class Sessions {
    * lock) calls this first, in its transaction, so that it ends and counts
    * only sessions that were still in force (found by the review). The open
    * sessions of the account stay locked, in one order, until that transaction
-   * ends.
+   * ends. The idle limit is that of the roles the account holds now, read in
+   * the same transaction.
    */
   async writeEndsByTime(transaction: Transaction, accountId: string): Promise<void> {
     const now = this.clock.now();
-    const limit = this.idleLimitMs();
+    const limit = idleLimitMs(rolesOf(await currentAssignments(transaction, accountId, now)));
     const open = await transaction
       .selectFrom('sessions')
       .select(['id', 'created_at', 'last_used_at', 'trusted_from', 'trust_ended_at'])

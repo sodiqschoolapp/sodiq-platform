@@ -16,7 +16,7 @@ export interface AuditEntry {
   actorId: string | null;
   /** The person the entry is about, when there is one. */
   personId?: string;
-  /** The assignment that allowed the action (task 0.7). */
+  /** The assignment that allowed the action (task 0.7b). */
   assignmentId?: string;
   /** What happened, for example `branch.create`. */
   action: string;

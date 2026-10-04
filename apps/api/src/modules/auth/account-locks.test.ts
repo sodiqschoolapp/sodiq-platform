@@ -8,7 +8,6 @@ import {
   cookieOf,
   errorCode,
   NEW_PASSWORD,
-  OptionalSecondStep,
   ProbeController,
   setCookies,
   signInKit,
@@ -45,7 +44,6 @@ describe('an account lock', () => {
       database: database.app,
       clock,
       controllers: [ProbeController],
-      secondStepRule: new OptionalSecondStep(),
     });
     kit = signInKit(app);
   });
@@ -151,7 +149,7 @@ describe('an account lock', () => {
     clock.set(START);
     const administrator = await kit.newAccount('Charos', 'Nazarova');
     const { account } = await kit.fullSession('Dilshod', 'Nazarov');
-    clock.advance(20 * MINUTE);
+    clock.advance(40 * MINUTE);
     await kit.signIn(account.login, NEW_PASSWORD);
 
     await lock(account.id, administrator.id);

@@ -9,7 +9,6 @@ import { DEVICE_COOKIE } from '../../http/device-cookie.js';
 import { SESSION_COOKIE } from '../../http/session-cookie.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
-import { OptionalSecondStep } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { Accounts, type CreatedAccount } from './accounts.service.js';
 import { CurrentSession } from './session.guard.js';
@@ -45,10 +44,9 @@ describe('sign-in, sessions and the password change', () => {
     app = await createTestApp({
       database: database.app,
       clock,
+      // The accounts of this suite hold no role: they sign in with a password
+      // alone. The second step has its own suite (two-step.test.ts).
       controllers: [ProbeController],
-      // This suite is about passwords and sessions: its accounts sign in with
-      // a password alone. The second step has its own suite (two-step.test.ts).
-      secondStepRule: new OptionalSecondStep(),
     });
     server = app.getHttpServer() as Server;
   });

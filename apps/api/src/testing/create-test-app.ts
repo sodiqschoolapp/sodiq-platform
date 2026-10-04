@@ -10,7 +10,6 @@ import { createDatabase, type Database } from '../database/database.js';
 import { DATABASE } from '../database/database.module.js';
 import type { JobQueueOptions } from '../jobs/job-queue.js';
 import { JOB_QUEUE_OPTIONS } from '../jobs/jobs.tokens.js';
-import { SecondStepRule } from '../modules/auth/second-step-rule.js';
 import { withDatabaseName } from './test-database.js';
 
 /** Does not exist, so a test that forgot to pass a database fails instead of using `sodiq_dev`. */
@@ -28,12 +27,6 @@ export interface TestAppOptions {
   clock?: Clock;
   /** Controllers that exist only in tests, for example `SampleController`. */
   controllers?: Type[];
-  /**
-   * For whom the second step of sign-in is required. Without it the rule of
-   * the application holds; `OptionalSecondStep` (sign-in-kit) is for tests
-   * whose accounts sign in with a password alone.
-   */
-  secondStepRule?: SecondStepRule;
 }
 
 /**
@@ -60,9 +53,6 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
     .useValue(jobQueue);
   if (options.clock !== undefined) {
     builder.overrideProvider(CLOCK).useValue(options.clock);
-  }
-  if (options.secondStepRule !== undefined) {
-    builder.overrideProvider(SecondStepRule).useValue(options.secondStepRule);
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();

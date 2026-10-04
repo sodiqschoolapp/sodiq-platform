@@ -10,6 +10,7 @@ import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { SESSION_COOKIE } from '../../http/session-cookie.js';
+import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import {
@@ -17,7 +18,6 @@ import {
   cookieOf,
   errorCode,
   NEW_PASSWORD,
-  OptionalSecondStep,
   ProbeController,
   setCookies,
   signInKit,
@@ -108,7 +108,6 @@ describe('a trusted device', () => {
       database: database.app,
       clock,
       controllers: [ProbeController],
-      secondStepRule: new OptionalSecondStep(),
     });
     kit = signInKit(app);
   });
@@ -163,7 +162,7 @@ describe('a trusted device', () => {
         trust_requested: false,
         trusted_from: null,
       });
-      clock.advance(15 * MINUTE);
+      clock.advance(30 * MINUTE);
       expect(errorCode(await kit.probe(cookie))).toBe('not_signed_in');
     });
 
@@ -352,7 +351,7 @@ describe('a trusted device', () => {
       );
       expect((await readSession(cookie)).trustedUntil).toBeNull();
       expect(await auditOf('auth.device_trusted', created.id)).toEqual([]);
-      clock.advance(15 * MINUTE);
+      clock.advance(30 * MINUTE);
       expect(errorCode(await kit.probe(cookie))).toBe('not_signed_in');
     });
 
@@ -375,7 +374,7 @@ describe('a trusted device', () => {
       ).toBe(204);
 
       expect((await readSession(cookie)).trustedUntil).toBeNull();
-      clock.advance(15 * MINUTE);
+      clock.advance(30 * MINUTE);
       expect(errorCode(await kit.probe(cookie))).toBe('not_signed_in');
     });
   });
@@ -469,9 +468,9 @@ describe('a trusted device', () => {
       ]);
 
       // From now on the idle sign-out holds for it.
-      clock.advance(15 * MINUTE - 1);
+      clock.advance(30 * MINUTE - 1);
       expect((await kit.probe(cookie)).status).toBe(200);
-      clock.advance(15 * MINUTE);
+      clock.advance(30 * MINUTE);
       expect(errorCode(await kit.probe(cookie))).toBe('not_signed_in');
       expect((await sessionsOf(id))[1]).toMatchObject({ end_reason: 'idle' });
     });
@@ -757,8 +756,8 @@ describe('a trusted device', () => {
 });
 
 // "The sign-in that starts the trust still asks for the second step where the
-// account has one." Here the second step is required for every account, as in
-// the application until task 0.7.
+// account has one." Here the second step is required for every account: each
+// is an Academic Vice Principal.
 describe('a trusted device of an account with a second step', () => {
   let database: TestDatabase;
   let app: INestApplication;
@@ -769,7 +768,10 @@ describe('a trusted device of an account with a second step', () => {
   beforeAll(async () => {
     database = await createTestDatabase();
     app = await createTestApp({ database: database.app, clock, controllers: [ProbeController] });
-    kit = signInKit(app);
+    // The stricter sign-in holds for these accounts: each is the Academic Vice
+    // Principal of a branch.
+    const branchId = await insertBranch(database.migrator, 'North');
+    kit = signInKit(app, { newAccountsHold: { role: 'academic_vice_principal', branchId } });
   });
 
   afterAll(async () => {

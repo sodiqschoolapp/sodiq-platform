@@ -59,8 +59,8 @@ export interface AccountUnlock {
  * until it is unlocked; its password, second step and roles stay as they were.
  *
  * Until the screens of task 2.3 this service has no route: who may lock whom,
- * and the refusal to lock the last active Super Admin, are questions of roles
- * (task 0.7). Only tests call it.
+ * and the refusal to lock the last active Super Admin, are checked there. Only
+ * tests call it.
  */
 @Injectable()
 export class AccountLocks {

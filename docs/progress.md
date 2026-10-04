@@ -2,6 +2,76 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 October 2026: task 0.7a Roles and assignments
+
+Task 0.7 was split by the owner: 0.7a is the roles, the assignments and the sign-in rules that follow the roles; 0.7b is the permission table, the guard and the harness. The entry below this one is about the load of the API tests and belongs to this task.
+
+Built:
+
+- `packages/shared/src/roles.ts`: `ROLES` (15), `roleSchema`, `Role`, `SCHOOL_WIDE_ROLES` (Super Admin, Senior Head Teacher), `STRICT_SIGN_IN_ROLES` (Super Admin, Academic Vice Principal), `MAX_SUPER_ADMINS`.
+- `db/migrations/0009_assignments.sql`: the school-wide table `assignments` (account, role, branch, `valid_from`, `valid_until`, `created_at`, `given_by`, `ended_by`). Checks: one of the 15 roles; no branch for exactly the two school-wide roles; the end not before the start. Exclusion constraint: one account holds one role in one branch once at any moment. The application user may insert, and update only `valid_until` and `ended_by`.
+- `apps/api/src/modules/access/`: `Assignments.give` and `end` (service, no route) with the audit entries `assignment.given` and `assignment.ended`; `currentAssignments(transaction, accountId, now)`, `rolesOf`, `notEnded(now)`.
+- `give` refuses a role without its branch or with a branch it must not have, an unknown account or branch, a role the account holds in that branch already, and a fourth Super Admin. `end` refuses an unknown or ended assignment and the own Super Admin role.
+- The first-account command creates the account and its Super Admin assignment in one transaction and refuses while a Super Admin assignment that has not ended exists.
+- `Sessions`: `ActiveSession.assignments`; the idle limit is 30 minutes, 15 with a strict role, by the roles read at the request (`resolve`, `list`, `writeEndsByTime`). `SecondStepRule.required(roles)`: the second step is required with a strict role only.
+- `catalog.test.ts`: the list `SCHOOL_WIDE_WITH_BRANCH` (only `assignments`), decided by the owner; `.claude/rules/database.md` describes it.
+- Reviewed by the spec reviewer. No route was added or changed, so no permission review. Fixed from the review: an assignment that was taken back before it began no longer holds one of the 3 Super Admin places, no longer blocks the first-account command and cannot be ended a second time; a refused `give` leaves the caller's transaction usable; the test of the wrong branch names the refusal of the row filter; tests added (the list of sessions and "sign out everywhere" with the 15-minute limit, `end` in the wrong branch and of an end that is still to come, both sides of the 30 minutes for an account without a role and a Principal).
+
+Left out, with the task that brings it:
+
+- Permission table, guard, the branch of a request, `assignmentId` in the audit entries of routes, the own-request helper, the harness, JSON bodies only, `Cache-Control: no-store`, the request key per account, permission declarations of the existing routes: 0.7b.
+- Routes and screens to give and end roles, who may give which role, the last active Super Admin rule, subject scope and Head Teacher appointments: 2.3. Class scope: 3.1.
+- Roles in the session answer for the role and branch switchers: 0.8c. The alert "branch with no active Academic Vice Principal" and the banner "fewer than two Super Admins": 0.8c and 9.4b.
+- The hand test of the command against `sodiq_dev` was not run: it would leave a Super Admin whose password only the session saw. The owner runs it.
+
+Decided by the owner:
+
+- Release 2 (task 2.5): Parent becomes a role without a branch, by a spec change and a migration that relaxes the branch check on `assignments`; what a parent sees is decided by the children, and the branch of a request comes from the child.
+- 2.3: a typed date becomes 00:00 of that day in the time zone of the branch, or of the school for the two roles without a branch; screens show dates.
+- An account without a current assignment can sign in (30 minutes, no required second step); blocking sign-in is the Inactive and Left status of 2.2.
+
+Decided by the owner after the review:
+
+- The end of an assignment: an end that has passed is final, and a new assignment is given instead; an end that is still ahead may be moved while it is still ahead. The database does not hold this yet (`update (valid_until, ended_by)` has no condition, and only `Assignments.end` writes an end today): the trigger comes with the routes in 2.3, where the rest is decided.
+- The service accepts a start in the past (`validFrom`); 2.3 decides what the screen offers.
+- The idle limit is that of the roles at the request, accepted as it is. A session of an Academic Vice Principal that was idle for 20 minutes and not seen since is in force again if the role ends before its next request. A session that was idle for 20 minutes when a strict role is given ends at its next request with the moment "last use plus 15 minutes", which lies before the role began.
+- A sign-in with "Trust this device" by an account that owes the set-up of a required second step, whose strict role then ends before the set-up: the session needs no second step any more and is not trusted. Accepted as it is: the person signs in again with the switch.
+- The first-account tests of 0.6a used the name of a real public person; replaced by an invented one in a commit of this task.
+
+The next sessions must know:
+
+- A test account holds no role. `kit.giveRole(accountId, { role, branchId?, validFrom? })` gives one, `kit.endRole(assignmentId, endedBy, branchId?)` ends one, `signInKit(app, { newAccountsHold: { role, branchId } })` gives every new account one. With the Academic Vice Principal of a branch the strict sign-in holds (second step required, 15 minutes); a branch comes from `insertBranch(database.migrator, name)`. At most 3 accounts can be Super Admin, so a suite with many strict accounts uses the Academic Vice Principal.
+- `OptionalSecondStep` and the `secondStepRule` option of `createTestApp` are gone.
+- `Assignments.give` and `end` for a role with a branch must run in `Transactions.run([branchId], ...)`: the audit entry belongs to the branch's log, and the row filter refuses it elsewhere (code 42501).
+- "Has not ended" is `notEnded(now)`, never `valid_until is null or valid_until > now` alone: an assignment that was taken back before it began has its start as its end.
+- 0.7b: the guard reads `session.assignments` (`id`, `role`, `branchId`; `branchId` is `null` for the two school-wide roles) and never the table again for the same request. `TwoStep.turnOff` and `overview` already use them. `assignments` is not filtered by branch: a query on it must filter by hand.
+- 0.7b: the count of Super Admins relies on read committed (`Transactions.run`); under a stricter isolation the advisory lock would not be enough.
+- 2.3: the errors of `Assignments` (`AssignmentBranchError`, `AssignmentOverlapError`, `TooManySuperAdminsError`, `UnknownAssignmentError`, `AssignmentAlreadyEndedError`, `OwnSuperAdminRemovalError`, `UnknownAccountError`) become coded refusals in the route; the "last active Super Admin" check runs in the same transaction, under the lock `give` takes.
+- 2.6: `assignment.given` and `assignment.ended` of the two school-wide roles are in `audit_log_school`; those of a branch role are in the branch's `audit_log`.
+- A new role needs `ROLES` and a migration for `assignments_role_check`; a test compares the two.
+
+The next task is 0.7b.
+
+## 4 October 2026: task 0.7a, the load of the API tests (written before `/finish-task`)
+
+The full `pnpm test` was not stable on the owner's machine (8 processors, 6 GB of memory): in each of two full runs a different test hit the 30-second limit, each one a test that creates a database inside its body. Almost every API test file creates a database of its own, starts the application and hashes passwords, and vitest ran one file per processor.
+
+Changed:
+
+- `apps/api/vitest.config.ts`: `maxWorkers: 4`, at most four test files at once. With the other programs open it was not faster (about 233 s for the API tests with the cap, 206 to 222 s without it); with memory free the API tests took 186 s.
+- Database creation moved out of test bodies into hooks, which have 60 s: the two tests "does not start on ..." in `jobs.test.ts` and "uses the test database it is given" in `test-database.test.ts`. No check was removed and no limit raised.
+
+Measured with the cap, full runs without the cache: four in a row passed (4m12s, 3m58s, 4m00s, 4m01s). The fifth lost three test files (40 of 43, 932 of 941 tests) with no failed test in the output, and the three runs after it did not start: Node stopped with a fatal error within seconds, in every package. At that moment the machine had about 0.2 GB of memory free and 1 GB of 21 GB virtual memory, held by other programs. The fifth run was not looked into further; lost workers for lack of memory would fit, but that is not confirmed.
+
+After the owner closed the other programs (about 1.1 GB of memory and 9 GB of virtual memory free): lint and type-check pass, and one full run without the cache passed in 3m10s (API tests 186 s, 941 of 941). The owner decided that one clean run is enough; CI runs the suite again on the pull request.
+
+0.7b must know:
+
+- The cap is 4 and its reason is in the config. 0.7b adds the route-by-role harness, the heaviest suite so far: watch the time and the memory of the full run, and lower the cap before raising a time limit.
+- A test that needs a database of its own creates and drops it in `beforeAll` and `afterAll`, never in the test body.
+- This machine has 6 GB of memory. The full `pnpm test` needs the other programs closed (other Claude sessions, OneDrive sync, VS Code windows, the browser): without free memory test files are lost or Node does not start at all, and that is not a fault of a test. Check the free memory before looking for a cause in the code.
+- Three full runs in a row were not seen on this machine; the longest row was two, twice, with the other programs open.
+
 ## 4 October 2026: task 0.6d Trusted devices and account lock
 
 Spec change at the start, by the owner (`docs/spec-changes.md`): the sign-in that starts the trust still asks for the second step where the account has one; removing a trusted device ends its session at once.

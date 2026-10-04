@@ -4,16 +4,17 @@ import { sql } from 'kysely';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SESSION_COOKIE } from '../../http/session-cookie.js';
+import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import {
   cookieOf,
   errorCode,
   NEW_PASSWORD,
-  OptionalSecondStep,
   ProbeController,
   setCookies,
   signInKit,
+  type RoleOfAccount,
   type SignInKit,
 } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
@@ -31,10 +32,13 @@ describe('the idle limit of a person', () => {
     expect(idleLimitMs([])).toBe(IDLE_LIMIT_MS);
   });
 
-  it.each(['super_admin', 'academic_vice_principal'])('is 15 minutes with the role %s', (role) => {
-    expect(idleLimitMs([role])).toBe(15 * MINUTE);
-    expect(SHORT_IDLE_LIMIT_MS).toBe(15 * MINUTE);
-  });
+  it.each(['super_admin', 'academic_vice_principal'] as const)(
+    'is 15 minutes with the role %s',
+    (role) => {
+      expect(idleLimitMs([role])).toBe(15 * MINUTE);
+      expect(SHORT_IDLE_LIMIT_MS).toBe(15 * MINUTE);
+    },
+  );
 
   it('is 15 minutes when one of several roles has the short limit', () => {
     expect(idleLimitMs(['teacher', 'academic_vice_principal'])).toBe(15 * MINUTE);
@@ -46,6 +50,7 @@ describe('sessions over time', () => {
   let database: TestDatabase;
   let app: INestApplication;
   let kit: SignInKit;
+  let north: string;
   const clock = new FixedClock('2026-10-05T09:00:00+05:00');
 
   beforeAll(async () => {
@@ -54,9 +59,9 @@ describe('sessions over time', () => {
       database: database.app,
       clock,
       controllers: [ProbeController],
-      secondStepRule: new OptionalSecondStep(),
     });
     kit = signInKit(app);
+    north = await insertBranch(database.migrator, 'North');
   });
 
   afterAll(async () => {
@@ -86,31 +91,167 @@ describe('sessions over time', () => {
 
   // docs/spec/13-technology.md, Security: sessions end after a period without use.
   describe('idle sign-out', () => {
-    // Task 0.7: roles do not exist yet, so today every session gets the
-    // 15-minute limit of the Super Admin and the Academic Vice Principal (the
-    // strict side, decided by the owner). 0.7 MUST CHANGE THIS TEST: with the
-    // roles in place, `Sessions.idleLimitMs` calls `idleLimitMs(roles)`, and a
-    // session of any other role lives until 29:59 and ends at 30:00, while the
-    // two roles keep 14:59 and 15:00.
-    describe('0.7: today every session gets the 15-minute limit', () => {
-      it('answers one second before 15 minutes without use', async () => {
+    // Question 41: 30 minutes; the limit follows the roles the account holds
+    // at the request (edge cases, "Accounts and sign-in": rights are read
+    // again on every request).
+    describe('after 30 minutes', () => {
+      it.each([
+        ['an account without a role', undefined],
+        ['a Teacher', 'teacher'],
+        ['a Principal', 'principal'],
+      ] as const)(
+        'answers %s one second before, and is over at 30 minutes',
+        async (_name, role) => {
+          clock.set('2026-10-05T09:00:00+05:00');
+          const { account, cookie } = await kit.fullSession('Aziz', 'Latipov');
+          if (role !== undefined) {
+            await kit.giveRole(account.id, { role, branchId: north });
+          }
+
+          clock.advance(30 * MINUTE - SECOND);
+          expect((await kit.probe(cookie)).status).toBe(200);
+
+          // That request was a use: 30 minutes from it.
+          clock.advance(30 * MINUTE);
+          const response = await kit.probe(cookie);
+          expect(response.status).toBe(401);
+          expect(errorCode(response)).toBe('not_signed_in');
+        },
+      );
+
+      it('is over for a Teacher at 30 minutes without use', async () => {
         clock.set('2026-10-05T09:00:00+05:00');
-        const { cookie } = await kit.fullSession('Aziz', 'Latipov');
+        const { account, cookie } = await kit.fullSession('Barno', 'Latipova');
+        await kit.giveRole(account.id, { role: 'teacher', branchId: north });
 
-        clock.advance(15 * MINUTE - SECOND);
-
-        expect((await kit.probe(cookie)).status).toBe(200);
-      });
-
-      it('is over at 15 minutes without use', async () => {
-        clock.set('2026-10-05T09:00:00+05:00');
-        const { cookie } = await kit.fullSession('Barno', 'Latipova');
-
-        clock.advance(15 * MINUTE);
+        clock.advance(30 * MINUTE);
 
         const response = await kit.probe(cookie);
         expect(response.status).toBe(401);
         expect(errorCode(response)).toBe('not_signed_in');
+      });
+    });
+
+    // 15 minutes for the Super Admin and the Academic Vice Principal.
+    describe('after 15 minutes with the Super Admin or Academic Vice Principal role', () => {
+      /** A session of an account with the role, which owes no step: the second step is set up. */
+      async function strictSession(firstName: string, lastName: string, role: RoleOfAccount) {
+        const browser = await kit.fullSession(firstName, lastName);
+        await kit.giveRole(browser.account.id, role);
+        return { ...browser, ...(await kit.setUpSecondStep(browser.cookie)) };
+      }
+
+      // The list of sessions and whatever ends all sessions use the limit of the roles too.
+      it('leaves a session that is over after 15 minutes out of the list, with its own end', async () => {
+        clock.set('2026-10-05T09:00:00+05:00');
+        const { account, secret } = await strictSession('Behruz', 'Latipov', {
+          role: 'academic_vice_principal',
+          branchId: north,
+        });
+        clock.advance(20 * MINUTE);
+        const fresh = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
+        expect((await kit.passSecondStep(fresh, kit.codeOf(secret))).status).toBe(200);
+
+        const listed = sessionListSchema.parse(
+          (await kit.get('/api/auth/sessions', fresh)).body,
+        ).sessions;
+        expect(listed.map((session) => session.current)).toEqual([true]);
+
+        expect((await kit.post('/api/auth/sign-out-everywhere', fresh)).status).toBe(204);
+        expect(await sessionsOf(account.id)).toMatchObject([
+          { ended_at: new Date('2026-10-05T09:15:00+05:00'), end_reason: 'idle' },
+          { ended_at: new Date('2026-10-05T09:20:00+05:00'), end_reason: 'sign_out_everywhere' },
+        ]);
+        expect(await auditOf('auth.sign_out_everywhere', account.id)).toMatchObject([
+          { details: { endedSessions: 1 } },
+        ]);
+      });
+
+      it.each([
+        ['the Academic Vice Principal', 'academic_vice_principal'],
+        ['the Super Admin', 'super_admin'],
+      ] as const)(
+        'answers %s one second before, and is over at 15 minutes',
+        async (_name, role) => {
+          clock.set('2026-10-05T09:00:00+05:00');
+          const held = role === 'super_admin' ? { role } : { role, branchId: north };
+          const { cookie } = await strictSession('Bobur', 'Latipov', held);
+
+          clock.advance(15 * MINUTE - SECOND);
+          expect((await kit.probe(cookie)).status).toBe(200);
+
+          clock.advance(15 * MINUTE);
+          const response = await kit.probe(cookie);
+          expect(response.status).toBe(401);
+          expect(errorCode(response)).toBe('not_signed_in');
+        },
+      );
+
+      it('holds for a person who is also a Teacher', async () => {
+        clock.set('2026-10-05T09:00:00+05:00');
+        const { account, cookie } = await strictSession('Botir', 'Latipov', {
+          role: 'academic_vice_principal',
+          branchId: north,
+        });
+        await kit.giveRole(account.id, { role: 'teacher', branchId: north });
+
+        clock.advance(15 * MINUTE);
+
+        expect(errorCode(await kit.probe(cookie))).toBe('not_signed_in');
+      });
+
+      it('holds from the next request on when the role is given during a session', async () => {
+        clock.set('2026-10-05T09:00:00+05:00');
+        const { account, cookie } = await kit.completeSession('Bahrom', 'Latipov');
+        clock.advance(20 * MINUTE);
+        expect((await kit.probe(cookie)).status).toBe(200);
+
+        await kit.giveRole(account.id, { role: 'academic_vice_principal', branchId: north });
+        clock.advance(15 * MINUTE - SECOND);
+        expect((await kit.probe(cookie)).status).toBe(200);
+        clock.advance(15 * MINUTE);
+
+        expect(errorCode(await kit.probe(cookie))).toBe('not_signed_in');
+        expect((await sessionsOf(account.id)).at(-1)).toMatchObject({
+          ended_at: new Date('2026-10-05T09:49:59+05:00'),
+          end_reason: 'idle',
+        });
+      });
+
+      it('is 30 minutes again from the next request on when the role has ended', async () => {
+        clock.set('2026-10-05T09:00:00+05:00');
+        const { account, cookie } = await kit.completeSession('Bekzod', 'Latipov');
+        const assignment = await kit.giveRole(account.id, {
+          role: 'academic_vice_principal',
+          branchId: north,
+        });
+        const administrator = await kit.newAccount('Baxtiyor', 'Latipov');
+        clock.advance(10 * MINUTE);
+        expect((await kit.probe(cookie)).status).toBe(200);
+
+        await kit.endRole(assignment.id, administrator.id, north);
+        clock.advance(20 * MINUTE);
+
+        expect((await kit.probe(cookie)).status).toBe(200);
+      });
+
+      it('does not hold before the role begins', async () => {
+        clock.set('2026-10-05T09:00:00+05:00');
+        const { account, cookie } = await kit.fullSession('Bunyod', 'Latipov');
+        await kit.giveRole(account.id, {
+          role: 'academic_vice_principal',
+          branchId: north,
+          validFrom: new Date('2026-10-05T10:00:00+05:00'),
+        });
+
+        clock.advance(20 * MINUTE);
+        expect((await kit.probe(cookie)).status).toBe(200);
+
+        clock.advance(25 * MINUTE);
+        expect((await kit.probe(cookie)).status).toBe(200);
+        // The role has begun: 16 minutes without use are too many now.
+        clock.advance(16 * MINUTE);
+        expect(errorCode(await kit.probe(cookie))).toBe('not_signed_in');
       });
     });
 
@@ -119,11 +260,11 @@ describe('sessions over time', () => {
       const { cookie } = await kit.fullSession('Charos', 'Latipova');
 
       for (let use = 1; use <= 6; use += 1) {
-        clock.advance(10 * MINUTE);
+        clock.advance(20 * MINUTE);
         expect((await kit.probe(cookie)).status).toBe(200);
       }
 
-      clock.advance(15 * MINUTE);
+      clock.advance(30 * MINUTE);
       expect(errorCode(await kit.probe(cookie))).toBe('not_signed_in');
     });
 
@@ -132,11 +273,11 @@ describe('sessions over time', () => {
       clock.set('2026-10-05T09:00:00+05:00');
       const { account, cookie } = await kit.fullSession('Dilshod', 'Latipov');
 
-      clock.advance(10 * MINUTE);
+      clock.advance(20 * MINUTE);
       expect((await kit.get('/api/health', cookie)).status).toBe(200);
       expect((await kit.signIn(account.login, 'not-the-password', cookie)).status).toBe(401);
 
-      clock.advance(5 * MINUTE);
+      clock.advance(10 * MINUTE);
       expect(errorCode(await kit.probe(cookie))).toBe('not_signed_in');
     });
 
@@ -144,10 +285,10 @@ describe('sessions over time', () => {
       clock.set('2026-10-05T09:00:00+05:00');
       const { cookie } = await kit.firstSession('Elyor', 'Latipov');
 
-      clock.advance(10 * MINUTE);
+      clock.advance(20 * MINUTE);
       expect(errorCode(await kit.probe(cookie))).toBe('password_change_required');
 
-      clock.advance(10 * MINUTE);
+      clock.advance(20 * MINUTE);
       expect((await kit.get('/api/auth/session', cookie)).status).toBe(200);
     });
 
@@ -155,7 +296,7 @@ describe('sessions over time', () => {
       clock.set('2026-10-05T09:00:00+05:00');
       const { cookie } = await kit.firstSession('Feruza', 'Latipova');
 
-      clock.advance(15 * MINUTE);
+      clock.advance(30 * MINUTE);
 
       expect(errorCode(await kit.get('/api/auth/session', cookie))).toBe('not_signed_in');
     });
@@ -175,23 +316,23 @@ describe('sessions over time', () => {
 
       expect(await sessionsOf(account.id)).toEqual([
         {
-          ended_at: new Date('2026-10-05T09:20:00+05:00'),
+          ended_at: new Date('2026-10-05T09:35:00+05:00'),
           end_reason: 'idle',
           last_used_at: new Date('2026-10-05T09:05:00+05:00'),
         },
       ]);
       expect(await auditOf('auth.session_idle', account.id)).toEqual([
-        { record_type: 'session', details: { endedAt: '2026-10-05T04:20:00.000Z' } },
+        { record_type: 'session', details: { endedAt: '2026-10-05T04:35:00.000Z' } },
       ]);
     });
 
     it('leaves another session of the account that is in use', async () => {
       clock.set('2026-10-05T09:00:00+05:00');
       const { account, cookie: idle } = await kit.fullSession('Hilola', 'Latipova');
-      clock.advance(10 * MINUTE);
+      clock.advance(20 * MINUTE);
       const used = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
 
-      clock.advance(5 * MINUTE);
+      clock.advance(10 * MINUTE);
 
       expect(errorCode(await kit.probe(idle))).toBe('not_signed_in');
       expect((await kit.probe(used)).status).toBe(200);
@@ -271,7 +412,7 @@ describe('sessions over time', () => {
       const { account, cookie: idle } = await kit.fullSession('Malika', 'Latipova');
       const signedOut = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
       await kit.post('/api/auth/sign-out', signedOut);
-      clock.advance(15 * MINUTE);
+      clock.advance(30 * MINUTE);
       const fresh = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
 
       const sessions = await list(fresh);
@@ -368,14 +509,14 @@ describe('sessions over time', () => {
     it('leaves a session that was already over by time its own end and does not count it', async () => {
       clock.set('2026-10-09T16:00:00+05:00');
       const { account } = await kit.fullSession('Yulduz', 'Latipova');
-      clock.advance(20 * MINUTE);
+      clock.advance(40 * MINUTE);
       const fresh = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
 
       await kit.post('/api/auth/sign-out-everywhere', fresh);
 
       expect(await sessionsOf(account.id)).toMatchObject([
-        { ended_at: new Date('2026-10-09T16:15:00+05:00'), end_reason: 'idle' },
-        { ended_at: new Date('2026-10-09T16:20:00+05:00'), end_reason: 'sign_out_everywhere' },
+        { ended_at: new Date('2026-10-09T16:30:00+05:00'), end_reason: 'idle' },
+        { ended_at: new Date('2026-10-09T16:40:00+05:00'), end_reason: 'sign_out_everywhere' },
       ]);
       expect(await auditOf('auth.sign_out_everywhere', account.id)).toMatchObject([
         { details: { endedSessions: 1 } },
@@ -386,7 +527,7 @@ describe('sessions over time', () => {
     it('is the same for a password change', async () => {
       clock.set('2026-10-09T16:00:00+05:00');
       const { account } = await kit.fullSession('Zafar', 'Latipov');
-      clock.advance(20 * MINUTE);
+      clock.advance(40 * MINUTE);
       const fresh = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
 
       expect((await kit.changePassword(fresh, NEW_PASSWORD, 'another-password-88')).status).toBe(
