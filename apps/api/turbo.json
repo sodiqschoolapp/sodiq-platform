@@ -5,6 +5,9 @@
     "test": {
       "inputs": ["$TURBO_DEFAULT$", "../../db/migrations/**", "../../.env"],
       "env": ["DATABASE_URL", "DATABASE_MIGRATION_URL"]
+    },
+    "dev": {
+      "env": ["DATABASE_URL", "PORT"]
     }
   }
 }
