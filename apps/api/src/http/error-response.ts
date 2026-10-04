@@ -17,6 +17,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   sign_in_failed: 'The login or the password is wrong.',
   too_many_attempts: 'Too many failed attempts. Wait before the next one.',
   password_expired: 'The first or reset password is no longer valid.',
+  account_locked: 'The account is locked.',
   password_change_required: 'The password must be changed first.',
   current_password_wrong: 'The current password is wrong.',
   password_unchanged: 'The new password is the same as the current one.',

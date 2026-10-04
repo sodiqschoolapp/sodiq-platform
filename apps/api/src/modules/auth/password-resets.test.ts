@@ -238,6 +238,7 @@ describe('a password reset by an administrator', () => {
         expect((await kit.get('/api/auth/session', cookie)).body).toMatchObject({
           mustChangePassword: false,
           passwordResetBy: null,
+          trustedUntil: null,
         });
       }
     });
@@ -255,6 +256,7 @@ describe('a password reset by an administrator', () => {
         secondStep: 'not_needed',
         mustChangePassword: true,
         passwordResetBy: 'o.maxmudov',
+        trustedUntil: null,
       };
       expect(signedIn.body).toEqual(answer);
       const read = await kit.get('/api/auth/session', cookieOf(signedIn));
@@ -278,6 +280,7 @@ describe('a password reset by an administrator', () => {
         secondStep: 'not_needed',
         mustChangePassword: false,
         passwordResetBy: null,
+        trustedUntil: null,
       });
       expect(await accountRow(account.id)).toMatchObject({
         must_change_password: false,
@@ -295,6 +298,7 @@ describe('a password reset by an administrator', () => {
         secondStep: 'not_needed',
         mustChangePassword: true,
         passwordResetBy: null,
+        trustedUntil: null,
       });
     });
   });

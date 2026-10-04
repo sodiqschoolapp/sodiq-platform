@@ -166,6 +166,7 @@ describe('sign-in, sessions and the password change', () => {
         secondStep: 'not_needed',
         mustChangePassword: true,
         passwordResetBy: null,
+        trustedUntil: null,
       });
       expect(await sessionsOf(account.id)).toHaveLength(1);
     });
@@ -450,6 +451,7 @@ describe('sign-in, sessions and the password change', () => {
         secondStep: 'not_needed',
         mustChangePassword: true,
         passwordResetBy: null,
+        trustedUntil: null,
       });
     });
 
@@ -518,8 +520,12 @@ describe('sign-in, sessions and the password change', () => {
     describe('in a session that was opened in time, after the 7 days', () => {
       it('no longer accepts the first password as the current one', async () => {
         clock.set('2026-10-05T09:00:00+05:00');
-        const { account, cookie } = await firstSession('Tohir', 'Davronov');
-        await advanceInUse(cookie, 7 * DAY_MS);
+        const account = await newAccount('Tohir', 'Davronov');
+        // Since task 0.6d a session ends 7 days after its sign-in: signed in on the
+        // fourth day, the session is 4 days old when the first password is 7.
+        clock.advance(3 * DAY_MS);
+        const cookie = cookieOf(await signIn(account.login, account.firstPassword));
+        await advanceInUse(cookie, 4 * DAY_MS);
 
         const response = await change(cookie, account.firstPassword, NEW_PASSWORD);
 
@@ -540,8 +546,10 @@ describe('sign-in, sessions and the password change', () => {
 
       it('tells only the person who knows the password that it expired', async () => {
         clock.set('2026-10-05T09:00:00+05:00');
-        const { cookie } = await firstSession('Tursun', 'Davronov');
-        await advanceInUse(cookie, 8 * DAY_MS);
+        const account = await newAccount('Tursun', 'Davronov');
+        clock.advance(3 * DAY_MS);
+        const cookie = cookieOf(await signIn(account.login, account.firstPassword));
+        await advanceInUse(cookie, 5 * DAY_MS);
 
         expect(errorCode(await change(cookie, 'not-the-password', NEW_PASSWORD))).toBe(
           'current_password_wrong',
@@ -591,6 +599,7 @@ describe('sign-in, sessions and the password change', () => {
         secondStep: 'not_needed',
         mustChangePassword: false,
         passwordResetBy: null,
+        trustedUntil: null,
       });
     });
 
@@ -605,6 +614,7 @@ describe('sign-in, sessions and the password change', () => {
         secondStep: 'not_needed',
         mustChangePassword: false,
         passwordResetBy: null,
+        trustedUntil: null,
       });
     });
 

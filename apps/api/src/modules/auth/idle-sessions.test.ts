@@ -311,7 +311,7 @@ describe('sessions over time', () => {
       );
       expect(
         Object.keys((response.body as { sessions: object[] }).sessions[0] ?? {}).sort(),
-      ).toEqual(['current', 'id', 'lastUsedAt', 'startedAt', 'userAgent']);
+      ).toEqual(['current', 'id', 'lastUsedAt', 'startedAt', 'trusted', 'userAgent']);
     });
 
     it('is refused without a session, and while the first password is in use', async () => {

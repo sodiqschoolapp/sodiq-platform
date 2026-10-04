@@ -10,6 +10,8 @@ export {
   sessionListSchema,
   sessionResponseSchema,
   signInSchema,
+  trustedDeviceListSchema,
+  trustedDeviceParamsSchema,
   type ChangePassword,
   type SecondStepCode,
   type SecondStepOverview,
@@ -19,6 +21,8 @@ export {
   type SessionList,
   type SessionResponse,
   type SignIn,
+  type TrustedDeviceList,
+  type TrustedDeviceParams,
 } from './auth.js';
 export { branchIdSchema, type BranchId } from './branches.js';
 export type { Clock } from './clock.js';

@@ -61,7 +61,7 @@ How to read the task lines:
   - Build: TOTP second step with recovery codes, required for the Super Admin and Academic Vice Principal (for every account until 0.7 brings the roles); the forced steps at sign-in; the secret stored encrypted; reset of the second step by an administrator (as a service; its route comes in 2.3).
   - Done when: tests cover each rule with the injected clock, including the refusals.
 
-- [ ] **0.6d Trusted devices and account lock**
+- [x] **0.6d Trusted devices and account lock**
   - Read: the same files.
   - Build: "Trust this device" for 7 days with no idle sign-out (the sign-in that starts the trust still asks for the second step); every session ends 7 days after sign-in at the latest; the ways trust ends; list of trusted devices, where removing one ends that session; account lock and unlock (as a service; the routes come in 2.3).
   - Done when: tests cover trust ending on sign-out, password change, reset and account lock.

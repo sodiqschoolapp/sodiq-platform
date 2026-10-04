@@ -180,6 +180,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/trusted-devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TrustedDevicesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/trusted-devices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["TrustedDevicesController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -187,7 +219,7 @@ export interface components {
         ApiError: {
             error: {
                 /** @enum {string} */
-                code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "cross_site_request" | "request_key_reused" | "request_refused" | "internal_error";
+                code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "cross_site_request" | "request_key_reused" | "request_refused" | "internal_error";
                 message: string;
                 requestId: string;
                 details?: {
@@ -249,6 +281,7 @@ export interface operations {
                 "application/json": {
                     login: string;
                     password: string;
+                    trustDevice?: boolean;
                 };
             };
         };
@@ -264,6 +297,8 @@ export interface operations {
                         secondStep: "not_needed" | "pending" | "set_up_required" | "passed";
                         mustChangePassword: boolean;
                         passwordResetBy: string | null;
+                        /** Format: date-time */
+                        trustedUntil: string | null;
                     };
                 };
             };
@@ -298,6 +333,8 @@ export interface operations {
                         secondStep: "not_needed" | "pending" | "set_up_required" | "passed";
                         mustChangePassword: boolean;
                         passwordResetBy: string | null;
+                        /** Format: date-time */
+                        trustedUntil: string | null;
                     };
                 };
             };
@@ -336,6 +373,7 @@ export interface operations {
                             lastUsedAt: string;
                             userAgent: string | null;
                             current: boolean;
+                            trusted: boolean;
                         }[];
                     };
                 };
@@ -494,6 +532,8 @@ export interface operations {
                         secondStep: "not_needed" | "pending" | "set_up_required" | "passed";
                         mustChangePassword: boolean;
                         passwordResetBy: string | null;
+                        /** Format: date-time */
+                        trustedUntil: string | null;
                     };
                 };
             };
@@ -589,6 +629,75 @@ export interface operations {
                 };
             };
         };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    TrustedDevicesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        devices: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date-time */
+                            startedAt: string;
+                            /** Format: date-time */
+                            lastUsedAt: string;
+                            userAgent: string | null;
+                            /** Format: date-time */
+                            trustedUntil: string;
+                            current: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    TrustedDevicesController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             204: {
                 headers: {

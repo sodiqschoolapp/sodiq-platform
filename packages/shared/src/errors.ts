@@ -22,6 +22,8 @@ export const ERROR_CODES = [
   'too_many_attempts',
   /** The password was right, but it is a first password older than 7 days or a reset one older than 24 hours. */
   'password_expired',
+  /** The password was right, but the account is locked. A wrong password is answered as for any account. */
+  'account_locked',
   /** A first password is in use: only the password change, the session and sign-out answer. */
   'password_change_required',
   /** The current password given with a password change is wrong. */

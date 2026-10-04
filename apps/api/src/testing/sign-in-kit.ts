@@ -105,10 +105,15 @@ export function signInKit(app: INestApplication) {
       );
   }
 
-  /** `cookies` is what the browser sends along, for example its device cookie. */
-  function signIn(login: string, password: string, cookies?: string): Test {
+  /**
+   * `cookies` is what the browser sends along, for example its device cookie;
+   * `trustDevice` is the "Trust this device" switch, left out of the body when off.
+   */
+  function signIn(login: string, password: string, cookies?: string, trustDevice = false): Test {
     const call = request(server).post('/api/auth/sign-in');
-    return (cookies === undefined ? call : call.set('Cookie', cookies)).send({ login, password });
+    return (cookies === undefined ? call : call.set('Cookie', cookies)).send(
+      trustDevice ? { login, password, trustDevice } : { login, password },
+    );
   }
 
   function changePassword(cookies: string, currentPassword: string, newPassword: string): Test {

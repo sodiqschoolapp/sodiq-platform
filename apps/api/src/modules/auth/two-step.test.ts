@@ -137,6 +137,7 @@ describe('the second step of sign-in', () => {
         secondStep: 'set_up_required',
         mustChangePassword: true,
         passwordResetBy: null,
+        trustedUntil: null,
       });
       // The first password is changed before anything is added to the account.
       const early = await kit.post('/api/auth/second-step/set-up', cookie);
@@ -333,6 +334,7 @@ describe('the second step of sign-in', () => {
         secondStep: 'pending',
         mustChangePassword: false,
         passwordResetBy: null,
+        trustedUntil: null,
       });
       for (const refused of [
         await kit.probe(cookie),
@@ -366,6 +368,7 @@ describe('the second step of sign-in', () => {
         secondStep: 'passed',
         mustChangePassword: false,
         passwordResetBy: null,
+        trustedUntil: null,
       });
       expect((await kit.probe(cookie)).status).toBe(200);
       expect(errorCode(await kit.probe(other.cookie))).toBe('second_step_required');

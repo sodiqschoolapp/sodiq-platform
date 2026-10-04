@@ -2,6 +2,12 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 4 October 2026: a trusted device still gives the second step, and removing one ends its session
+
+- What changed: the "Trust this device" rule no longer says "no second step": the sign-in that starts the trust asks for the second step where the account has one. Removing a trusted device from the profile list ends its session at once.
+- Why: with "no second step", a password alone would open a Super Admin's or Academic Vice Principal's account for 7 days on any browser where the switch is set. "Can be removed" did not say what happens to the session. Decided by the owner after the reviews of task 0.6c.
+- Files: `docs/spec/edge-cases/people-roles-accounts.md` (Accounts and sign-in), `docs/spec/16-open-questions.md` (question 41).
+
 ## 4 October 2026: the password change on a trusted device, and the longest life of a session
 
 - What changed: the "Trust this device" rule now says that the one exception to "never asked for the password again" is changing one's own password, which always needs the current one; and every session ends 7 days after sign-in at the latest, trusted or not.

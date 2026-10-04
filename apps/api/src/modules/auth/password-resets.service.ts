@@ -85,7 +85,7 @@ export class PasswordResets {
       throw new UnknownAccountError();
     }
     await this.throttle.forget(transaction, changed.login);
-    await this.sessions.writeIdleEnds(transaction, reset.accountId);
+    await this.sessions.writeEndsByTime(transaction, reset.accountId);
     const ended = await transaction
       .updateTable('sessions')
       .set({ ended_at: now, end_reason: 'password_reset' })

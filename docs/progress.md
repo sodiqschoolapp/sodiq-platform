@@ -2,6 +2,53 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 October 2026: task 0.6d Trusted devices and account lock
+
+Spec change at the start, by the owner (`docs/spec-changes.md`): the sign-in that starts the trust still asks for the second step where the account has one; removing a trusted device ends its session at once.
+
+Built:
+
+- `db/migrations/0008_trusted_devices_account_lock.sql`: `sessions.trust_requested`, `trusted_from`, `trust_ended_at` with two checks; three new end reasons (`expired`, `account_locked`, `trusted_device_removed`); `accounts.locked_at`, `locked_by`, `lock_reason` with three checks. No new table.
+- The longest life (`session-life.ts`): a session is over 7 days after `created_at`, trusted or not, worked out on each request; the end is written as `expired` with the moment it was over (`auth.session_expired`). Of the idle end and the 7 days the earlier one counts.
+- Trust: `trustDevice` in the body of `POST /api/auth/sign-in` (off when left out). A trusted session has no idle sign-out. Trust begins when the session owes no step: at sign-in without a second step, at the code, or at the end of a required set-up (`Sessions.beginTrust`); never with a first or reset password. The session cookie of a trusted device carries `Expires` (7 days after the sign-in); every other one ends with the browser.
+- Trust ends with the session on sign-out, sign out everywhere, a password reset, an account lock and the removal of the device. The own password change keeps the session and ends its trust (`auth.trust_ended`); it still needs the current password.
+- Routes: `GET /api/auth/trusted-devices`, `DELETE /api/auth/trusted-devices/:id` (own devices only; anything else is 404 `not_found`; removing the device that asks clears the cookie). The session answers gained `trustedUntil`, the rows of `GET /api/auth/sessions` gained `trusted`.
+- `AccountLocks.lock` and `unlock` (service, no route): a lock needs a reason, ends all sessions (`account_locked`) and writes `account.locked`; a locked account gets 403 `account_locked` after the right password only (`auth.sign_in_locked`); `Sessions.resolve` refuses a locked account. Lock and sign-in both take the row of the account with `select ... for update`.
+- Audit actions: `auth.device_trusted`, `auth.trust_ended`, `auth.trusted_device_removed`, `auth.session_expired`, `auth.sign_in_locked`, `account.locked`, `account.unlocked`; `auth.sign_in` carries `details.trustRequested` when the switch was on.
+- Reviewed by the spec reviewer and the permission reviewer. Neither found a way to another account's devices or sessions, past the 7 days, or to trust before the second step. Fixed from the reviews: the cookie of a trusted device had no end and was gone when the browser closed; a password change now checks inside its transaction that its own session is still open; `TwoStep.remove` locks the sessions in the order of `writeEndsByTime`; tests added (cookie attributes, exact keys of the device list, a device whose 7 days are over, the code and a lock at the same moment, a password change after its session ended or its account was locked, a locked account with an expired password).
+
+Left out, with the task that brings it:
+
+- Routes for lock and unlock, who may lock whom, the last active Super Admin rule, a shared schema for the reason, who may read `lock_reason`: 2.3.
+- "The teacher's future lessons go to needs a teacher": 5.7a. Inactive and Left status that block sign-in: 2.2.
+- The idle limit and the second-step rule by real roles: 0.7.
+- The switch with its note "do not use on a shared computer", the device list, translations (also of `account_locked`): 0.8a.
+- Own sign-in history: 2.6.
+
+Decided by the owner after the reviews:
+
+- A trusted session whose second step is removed keeps its trust; no spec change. Turning off where optional needs a right code. The reset by an administrator comes with a password reset at 2.3, which ends every session and so the trust. An unreadable secret is the rare single row left after the start check, and that session proved a code once already.
+
+Open, for the owner:
+
+- A sign-in to a locked account with the right password is not limited: each one writes an `auth.sign_in_locked` entry. Low risk; decide in 10.3.
+- A code that arrives after the idle limit while a second request of the same session is in flight can end the session as idle just after its trust began. It fails on the safe side.
+
+The next sessions must know:
+
+- `Sessions.writeIdleEnds` is now `Sessions.writeEndsByTime`. Whatever ends all sessions of an account calls it first; it locks the open sessions of the account ordered by id.
+- An `ActiveSession` has `trustedUntil`. `SignInOrigin` needs `trustDevice`; `kit.signIn(login, password, cookies, true)` signs in with the switch.
+- `Sessions.changePassword` answers `{ trustEnded }`; `TwoStep.confirm` answers `{ recoveryCodes, trustedUntil }` and `TwoStep.pass` the moment a trusted session ends or `null`. A route that begins or ends trust calls `cookie.keep(until)` (`SessionCookieJar`).
+- A test that holds a transaction open and waits for the other side: `waitingForALock` in `account-locks.test.ts` reads `pg_locks`; `pg_stat_activity` hides the wait of another database user. Release the held transaction in a `finally`, or a failure hangs the suite.
+- 0.7: the two new routes need their permission declaration (any signed-in account, own data) and a wrong-account case in the harness. The Principal's "changes nothing" rule must decide about `DELETE /api/auth/trusted-devices/:id`: it works like sign-out; ask the owner. `SecondStepRule.required()` by roles changes when trust begins at sign-in (`Sessions.signIn`). A role that requires the second step, given to a person with a trusted session, turns that session into "set up required" while it stays trusted. Load the roles in `Sessions.resolve` beside the account, where `locked_at` is read on every request.
+- 2.3: `AccountLocks.lock(transaction, { accountId, lockedBy, reason, requestId })` and `unlock(transaction, { accountId, unlockedBy, requestId })` check no roles and throw `OwnAccountLockError`, `UnknownAccountError`, `AccountAlreadyLockedError`, `AccountNotLockedError`, `LockReasonError`; the route turns them into coded refusals and takes `lockedBy` from the session. The last-Super-Admin check must run in the same transaction, after the row of the account is locked. `account.locked` and `account.unlocked` are school-wide entries: a reader of one branch's log does not see them. A second-step reset must come with a password reset: alone it ends no session and no trust. The question of trust after a second-step reset is settled by that password reset, which ends every session of the account.
+- 2.6: the support account ("locked by default, opened for at most 24 hours") does not fit the lock as built: a lock needs a `locked_by` other than the account and a reason, and there is no stored moment for the 24 hours.
+- 0.8a: after the password, `trustedUntil` of the answer says whether the device is trusted and until when; with a second step it is `null` until the code. The browser keeps the cookie by itself (`HttpOnly`). After a forced password change the screen says to sign in again to trust the device.
+- 0.10: migration 0008 on a database with open sessions: a session older than 7 days ends at its next request. Nothing is deployed yet.
+- A new end reason of a session needs a migration (`sessions_end_reason_check`), as before.
+
+The next task is 0.7.
+
 ## 4 October 2026: task 0.6c Two-step sign-in
 
 Task 0.6c was split by the owner: 0.6c is the second step, 0.6d is trusted devices, the longest life of a session and the account lock. Where an older entry below names 0.6c for one of those three, read 0.6d.
@@ -90,7 +137,7 @@ Decided by the owner after the reviews (nothing changed in code):
 
 The next sessions must know:
 
-- Whatever ends all sessions of an account calls `Sessions.writeIdleEnds(transaction, accountId)` first (0.6c: account lock; 2.3: lock and unlock).
+- Whatever ends all sessions of an account calls `Sessions.writeEndsByTime(transaction, accountId)` first (named `writeIdleEnds` before 0.6d) (0.6c: account lock; 2.3: lock and unlock).
 - 0.7: the Principal's "changes nothing" rule must exempt `POST /api/auth/password`, sign-out and sign-out-everywhere. Load the roles in `Sessions.resolve` beside the account, so the idle limit follows a role change at once.
 - 2.3: the reset entry `account.password_reset` is school-wide (`branchId: null`), so a reader of one branch's log does not see it. A `resetBy` that is no account ends as a foreign-key fault: the route passes the session's account.
 - 2.6: the own sign-in history finds `auth.sign_in_failed` by its record (the account); its actor is empty. The 48-hour report can only come from the `account.password_reset` entries: `accounts.password_reset_at` is emptied by the password change.
