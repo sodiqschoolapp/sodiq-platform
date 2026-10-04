@@ -28,7 +28,7 @@ Left out, with the task that brings it:
 
 Not done from the reviews, for the owner:
 
-- The Principal and the spec text: the edge case names three exceptions to "changes nothing" (own password, language, notification settings); sign-out, the second step and the removal of a trusted device are open to the Principal by the owner's decision, recorded in `docs/decisions.md` only. The permission reviewer advises a `/spec-change` so that spec and code say the same.
+- The Principal and the spec text: settled by a spec change at the end of this task (`docs/spec-changes.md`). The edge case now names the changes to his own account as the exceptions to "changes nothing": password, language, notification settings and photo, his sessions and sign-out, his second step and his trusted devices. No code changed.
 - The quality plan asks for the owner's sign-off on a written checklist for a change to permissions; that checklist is task 10.3.
 - `{ branch: 'none' }` lets any role the table permits act without a branch (the sample table does it for a Head Teacher); `checkTable` has no rule that limits school-wide areas to the Super Admin and the Senior Head Teacher. Decide with the first such area (1.1).
 - `PERMISSIONS` is not frozen at run time. A route with `@All()` would crash the harness instead of being named. Small tests not written: a repeated `X-Branch-Id` header (read from the code: Node joins it and it fails the uuid check), HEAD on a `@Requires` route, a Super Admin naming an unknown branch (the Senior Head Teacher is tested).
@@ -43,6 +43,7 @@ The next sessions must know:
 - 0.7c: the JSON-only middleware must leave room for a declared exception per route, because the lesson-plan file uploads of 9.x send multipart. The exception itself is not built in 0.7c (note of the owner).
 - 0.7c: the lint work could also stop business code from importing `src/testing/**` and `requiresInTable` (advice of the permission reviewer; `tsconfig.build.json` leaves `src/testing` out, but an import would pull a file into `dist`).
 - 2.3 and 3.1: `decide` names the first permitting assignment by role and branch. With scope, that can be the Teacher assignment when only the Head Teacher assignment covers the subject: the scope check needs every permitting assignment, and the audit entry the one whose scope fits.
+- 2.2 or the profile screen, whichever builds the own photo, language and notification settings: these are routes of the own account (`@AnySignedIn()`, acting on the account of the session), not an edit in the people area. As a people-area edit the Principal could not have them: `checkTable` gives the Principal view and export only. Phone, email and name stay with the Super Admin and the Academic Vice Principal, for the Principal too.
 - 2.5 (Release 2): when Parent becomes a role without a branch, it does not get every branch: `decide` names `SCHOOL_WIDE_ROLES`.
 - 0.9: `APP_GUARD` also runs for Socket.IO gateways, and both guards assume an HTTP request; the gateway needs its own check at the handshake.
 - The harness reads controllers and the routes of the Express router. Something mounted with `app.use(path, router)` (static files, Swagger UI) or only in `main.ts` is not seen by it: nothing of the kind exists, and nothing that serves data may be added that way.

@@ -2,6 +2,12 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 4 October 2026: what the Principal may change on his own account
+
+- What changed: the rule "the server refuses every change by the Principal" now names its exceptions as the changes to his own account: password, language, notification settings and photo, his sessions and sign-out, his second step and his trusted devices. Before, it named only password, language and notification settings. The list is closed: phone, email and name stay with the Super Admin and the Academic Vice Principal.
+- Why: every account needs sign-out, "sign out everywhere", the second step and the list of trusted devices, and the row on own data already gives every staff member the photo. The Principal's "changes nothing" is a rule about school data. Decided by the owner in task 0.7b, after the permission review found that the code and the spec text differed.
+- Files: `docs/spec/edge-cases/people-roles-accounts.md` (Who can act). The roles table of `docs/spec/02-roles-and-access.md` ("Changes nothing") stays as it is: the edge-case file is the more specific one.
+
 ## 4 October 2026: a trusted device still gives the second step, and removing one ends its session
 
 - What changed: the "Trust this device" rule no longer says "no second step": the sign-in that starts the trust asks for the second step where the account has one. Removing a trusted device from the profile list ends its session at once.
