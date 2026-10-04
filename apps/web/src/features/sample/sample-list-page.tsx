@@ -36,7 +36,7 @@ export function sampleSearch(search: Record<string, unknown>): SampleSearch {
  * are invented and live in the page: nothing is asked of the server.
  */
 export function SampleListPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { demo, ...search } = useSearch({ from: '/app/dev/patterns' });
 
@@ -44,7 +44,7 @@ export function SampleListPage() {
   const [exported, setExported] = useState<number | null>(null);
 
   const rows = useMemo(() => {
-    if (demo === 'loading') {
+    if (demo === 'loading' || demo === 'error') {
       return undefined;
     }
     if (demo === 'empty') {
@@ -140,7 +140,10 @@ export function SampleListPage() {
       <p className="mb-4 max-w-prose text-sm text-muted-foreground">{t('sample.intro')}</p>
       {exported !== null && (
         <p role="status" className="mb-3 text-sm">
-          {t('sample.exported', { count: exported })}
+          {t('sample.exported', {
+            count: exported,
+            n: new Intl.NumberFormat(i18n.language).format(exported),
+          })}
         </p>
       )}
       <ListPage

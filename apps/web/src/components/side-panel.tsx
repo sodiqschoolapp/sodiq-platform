@@ -9,37 +9,60 @@ interface SidePanelProps {
   children: ReactNode;
 }
 
+/** A field a person types or chooses in: Escape there belongs to the field. */
+const isField = (target: EventTarget | null): boolean =>
+  target instanceof HTMLInputElement ||
+  target instanceof HTMLTextAreaElement ||
+  target instanceof HTMLSelectElement;
+
 /**
  * A record opened beside its list, without leaving the list
- * (docs/spec/12-ux-standards.md, Lists). Beside the list on a wide screen,
- * over it on a narrow one. Escape closes it; the heading takes the focus when
- * it opens, so a keyboard and a screen reader are where the record is.
+ * (docs/spec/12-ux-standards.md, Lists). Beside the list on a wide screen; on
+ * a narrow one the list makes room for it (the list hides itself, so nothing
+ * that cannot be seen takes the focus). Escape closes it; the heading takes
+ * the focus when it opens, so a keyboard and a screen reader are where the
+ * record is.
  */
 export function SidePanel({ title, onClose, children }: SidePanelProps) {
   const { t } = useTranslation();
+  const panel = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     heading.current?.focus();
   }, [title]);
 
+  // The newest function, so the listener is set once.
+  const close = useRef(onClose);
+  useEffect(() => {
+    close.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      // A menu or a dialog that is open takes its own Escape.
-      if (event.key === 'Escape' && !event.defaultPrevented) {
-        onClose();
+      // A menu or a dialog that is open takes its own Escape, and so does a
+      // field outside the panel: Escape in the search box clears the search.
+      if (event.key !== 'Escape' || event.defaultPrevented) {
+        return;
       }
+      const outside =
+        event.target instanceof Node && panel.current?.contains(event.target) !== true;
+      if (outside && isField(event.target)) {
+        return;
+      }
+      close.current();
     };
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <aside
+      ref={panel}
       aria-label={title}
-      className="fixed inset-0 z-40 overflow-y-auto bg-background p-4 lg:static lg:z-auto lg:w-96 lg:shrink-0 lg:rounded-lg lg:border"
+      className="w-full min-w-0 rounded-lg border p-4 lg:w-96 lg:shrink-0"
     >
       <div className="mb-3 flex items-start gap-2">
         <h2

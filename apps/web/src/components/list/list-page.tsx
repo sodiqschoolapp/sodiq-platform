@@ -1,8 +1,10 @@
+import { cn } from 'cn';
 import { Columns3Icon, DownloadIcon, SearchIcon } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FailureAlert } from '@/components/failure-alert';
 import { SidePanel } from '@/components/side-panel';
-import { EmptyState, ErrorState } from '@/components/states';
+import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { DataTable, DataTableOutline } from './data-table';
 import {
+  addressKey,
   hideable,
   listSearch,
   matchingRows,
@@ -48,13 +51,19 @@ interface ListPageProps<Row> {
   caption: string;
   /** Every row of the list; `undefined` while they are on the way. */
   rows: readonly Row[] | undefined;
-  /** Why the rows could not be loaded. */
+  /**
+   * Why the rows could not be loaded. Without rows the list shows the failure
+   * in place of the table; with rows (a later load failed) it shows it above
+   * the rows it has.
+   */
   error?: unknown;
   onRetry?: (() => void) | undefined;
   rowId: (row: Row) => string;
   /** What a person calls the row, for example the name of the student. */
   rowName: (row: Row) => string;
+  /** Keep the same array between renders (`useMemo`): the rows are matched again when it changes. */
   columns: readonly Column<Row>[];
+  /** As `columns`: the same array between renders. */
   filters?: readonly Filter<Row>[];
   /** The list state of the address (`validateSearch: listSearch` on the route). */
   search: ListSearch;
@@ -73,6 +82,9 @@ interface ListPageProps<Row> {
   /** The record of a row, shown in the side panel. Needs a column with `opens`. */
   panel?: ((row: Row) => ReactNode) | undefined;
 }
+
+const NO_FILTERS: readonly never[] = [];
+const NO_ACTIONS: readonly never[] = [];
 
 /**
  * The one way every list works (docs/spec/12-ux-standards.md, Lists): search,
@@ -94,53 +106,80 @@ export function ListPage<Row>({
   rowId,
   rowName,
   columns,
-  filters = [],
+  filters = NO_FILTERS,
   search,
   onSearchChange,
   empty,
-  bulkActions = [],
+  bulkActions = NO_ACTIONS,
   onExport,
   panel,
 }: ListPageProps<Row>) {
   const { t, i18n } = useTranslation();
   const searchId = useId();
   const root = useRef<HTMLDivElement>(null);
+  const number = useMemo(() => new Intl.NumberFormat(i18n.language), [i18n.language]);
 
-  // The search box answers at once; the address follows when the typing stops.
+  // The list shows its own state at once and writes it into the address, which
+  // follows a moment later. `sent` holds what was written and has not arrived
+  // yet: an address that arrives and is not among them was changed by somebody
+  // else (the Back button, a link), and the list follows it.
+  const [state, setState] = useState(search);
   const [typed, setTyped] = useState(search.q ?? '');
-  const [written, setWritten] = useState(search.q ?? '');
-  const [seen, setSeen] = useState(search.q ?? '');
-  if ((search.q ?? '') !== seen) {
-    setSeen(search.q ?? '');
-    // The address changed, and not by this box: the Back button, a link.
-    if ((search.q ?? '') !== written) {
+  const [sent, setSent] = useState<readonly string[]>([]);
+  const [seen, setSeen] = useState(() => addressKey(search));
+  const arrived = addressKey(search);
+  if (arrived !== seen) {
+    setSeen(arrived);
+    const own = sent.indexOf(arrived);
+    if (own === -1) {
+      setState(search);
       setTyped(search.q ?? '');
-      setWritten(search.q ?? '');
+      setSent([]);
+    } else {
+      setSent(sent.slice(own + 1));
     }
   }
-  const current = useMemo(() => listSearch({ ...search, q: typed }), [search, typed]);
 
-  const change = (patch: Record<string, unknown>, how: 'push' | 'replace'): void => {
-    setWritten(typed);
-    onSearchChange(listSearch({ ...current, ...patch }), how);
+  // The newest function of the feature, without asking it for a stable one.
+  const writeAddress = useRef(onSearchChange);
+  useEffect(() => {
+    writeAddress.current = onSearchChange;
+  }, [onSearchChange]);
+
+  const write = (next: ListSearch, how: 'push' | 'replace'): void => {
+    setState(next);
+    setSent((before) => [...before, addressKey(next)]);
+    writeAddress.current(next, how);
   };
 
+  /** A change of the list other than typing; what is typed goes into the address with it. */
+  const change = (patch: Record<string, unknown>, how: 'push' | 'replace'): void => {
+    write(listSearch({ ...state, q: typed, ...patch }), how);
+  };
+
+  // The search box answers at once; the address follows when the typing stops,
+  // in place: the Back button does not walk through every letter.
   useEffect(() => {
-    if (typed === (search.q ?? '')) {
+    if (typed === (state.q ?? '')) {
       return;
     }
     const timer = window.setTimeout(() => {
-      setWritten(typed);
-      onSearchChange(listSearch({ ...search, q: typed }), 'replace');
+      const next = listSearch({ ...state, q: typed });
+      setState(next);
+      setSent((before) => [...before, addressKey(next)]);
+      writeAddress.current(next, 'replace');
     }, SEARCH_TO_ADDRESS_MS);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [typed, search, onSearchChange]);
+  }, [typed, state]);
+
+  const current = useMemo(() => listSearch({ ...state, q: typed }), [state, typed]);
 
   const [hidden, setHidden] = useState(() => readHiddenColumns(listId));
+  const canHide = hideable(columns);
   const shownColumns = columns.filter(
-    (column) => !hidden.includes(column.key) || !hideable(columns).includes(column),
+    (column) => !hidden.includes(column.key) || !canHide.includes(column),
   );
 
   const matching = useMemo(
@@ -152,6 +191,9 @@ export function ListPage<Row>({
   // search. A new search, filter or order starts from the top again.
   const windowKey = JSON.stringify([current.q, current.f, current.sort]);
   const [drawn, setDrawn] = useState({ key: windowKey, count: ROWS_AT_ONCE });
+  if (drawn.key !== windowKey) {
+    setDrawn({ key: windowKey, count: ROWS_AT_ONCE });
+  }
   const count = drawn.key === windowKey ? drawn.count : ROWS_AT_ONCE;
 
   // A ticked row that left the list (archived, moved) is no longer ticked.
@@ -196,29 +238,37 @@ export function ListPage<Row>({
           },
         };
 
-  const openRow =
-    search.open === undefined ? undefined : rows?.find((row) => rowId(row) === search.open);
-  const close = (): void => {
-    change({ open: undefined }, 'push');
-  };
+  const openId = panel === undefined ? undefined : state.open;
+  const openRow = openId === undefined ? undefined : rows?.find((row) => rowId(row) === openId);
 
-  // When the panel closes, the focus goes back to the row it was opened from.
-  const openId = search.open;
+  // A button that goes away with its click hands the focus on, so the keyboard
+  // does not start again from the top of the page.
+  const focusOn = (selector: string): void => {
+    root.current?.querySelector<HTMLElement>(selector)?.focus();
+  };
+  const searchBox = `#${CSS.escape(searchId)}`;
+
+  // When the panel closes, the focus goes back to the row it was opened from,
+  // or to the search box when that row is not drawn.
   const lastOpen = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (openId === undefined && lastOpen.current !== undefined) {
-      root.current
-        ?.querySelector<HTMLElement>(`[data-open-row="${CSS.escape(lastOpen.current)}"]`)
-        ?.focus();
-    }
+    const before = lastOpen.current;
     lastOpen.current = openId;
-  }, [openId]);
+    if (openId === undefined && before !== undefined) {
+      const row = root.current?.querySelector<HTMLElement>(
+        `[data-open-row="${CSS.escape(before)}"]`,
+      );
+      (row ?? root.current?.querySelector<HTMLElement>(searchBox))?.focus();
+    }
+  }, [openId, searchBox]);
 
   const filtered = current.q !== undefined || current.f !== undefined;
+  const failed = error !== undefined && error !== null;
 
   return (
     <div ref={root} className="flex items-start gap-4">
-      <div className="grid min-w-0 flex-1 gap-3">
+      {/* On a narrow screen the open record takes the place of the list. */}
+      <div className={cn('min-w-0 flex-1 gap-3', openId === undefined ? 'grid' : 'hidden lg:grid')}>
         <div className="flex flex-wrap items-end gap-2">
           <div className="relative">
             <label htmlFor={searchId} className="sr-only">
@@ -271,14 +321,14 @@ export function ListPage<Row>({
             </label>
           ))}
           <div className="ml-auto flex items-center gap-2">
-            {hideable(columns).length > 0 && (
+            {canHide.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger render={<Button variant="outline" />}>
                   <Columns3Icon aria-hidden />
                   {t('list.columns')}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  {hideable(columns).map((column) => (
+                  {canHide.map((column) => (
                     <DropdownMenuCheckboxItem
                       key={column.key}
                       checked={!hidden.includes(column.key)}
@@ -314,15 +364,19 @@ export function ListPage<Row>({
           </div>
         </div>
 
-        {ticked.size > 0 && (
+        {/* Always there, also with nothing ticked: the table does not move
+            under the pointer at the first tick. */}
+        {selection !== undefined && rows !== undefined && rows.length > 0 && (
           <div
             role="group"
             aria-label={t('list.bulkActions')}
             className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm"
           >
-            <p role="status" className="font-medium">
-              {t('list.selected', { count: ticked.size })}
-              {notShown > 0 && <> {t('list.selectedNotShown', { count: notShown })}</>}
+            <p role="status" className={cn(ticked.size > 0 && 'font-medium')}>
+              {t('list.selected', { count: ticked.size, n: number.format(ticked.size) })}
+              {notShown > 0 && (
+                <> {t('list.selectedNotShown', { count: notShown, n: number.format(notShown) })}</>
+              )}
             </p>
             <div className="ml-auto flex flex-wrap items-center gap-2">
               {bulkActions.map((action) => (
@@ -330,6 +384,7 @@ export function ListPage<Row>({
                   key={action.key}
                   variant="outline"
                   size="sm"
+                  disabled={ticked.size === 0}
                   onClick={() => {
                     action.run(tickedRows);
                   }}
@@ -340,8 +395,10 @@ export function ListPage<Row>({
               <Button
                 variant="ghost"
                 size="sm"
+                disabled={ticked.size === 0}
                 onClick={() => {
                   setTickedIds(new Set());
+                  focusOn('thead input[type="checkbox"]');
                 }}
               >
                 {t('list.clearSelection')}
@@ -350,7 +407,7 @@ export function ListPage<Row>({
           </div>
         )}
 
-        {error !== undefined && error !== null ? (
+        {failed && rows === undefined ? (
           <ErrorState error={error} onRetry={onRetry} />
         ) : rows === undefined ? (
           <DataTableOutline
@@ -359,9 +416,13 @@ export function ListPage<Row>({
             withSelection={selection !== undefined}
           />
         ) : rows.length === 0 ? (
-          <EmptyState text={empty.text} action={empty.action} />
+          <>
+            {failed && <FailureAlert error={error} />}
+            <EmptyState text={empty.text} action={empty.action} />
+          </>
         ) : (
           <>
+            {failed && <FailureAlert error={error} />}
             <DataTable
               caption={caption}
               columns={shownColumns}
@@ -373,7 +434,7 @@ export function ListPage<Row>({
                 change({ sort: nextSort(sortOf(current), key) }, 'push');
               }}
               selection={selection}
-              openId={search.open}
+              openId={openId}
               onOpen={
                 panel === undefined
                   ? undefined
@@ -382,32 +443,33 @@ export function ListPage<Row>({
                     }
               }
             />
-            {matching.length === 0 && (
-              <div className="grid justify-items-start gap-2">
-                <p>{t('list.noMatch')}</p>
-                {filtered && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setTyped('');
-                      setWritten('');
-                      onSearchChange(listSearch({ ...search, q: undefined, f: undefined }), 'push');
-                    }}
-                  >
-                    {t('list.clearSearch')}
-                  </Button>
-                )}
-              </div>
-            )}
-            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              <p>
+            {/* Read out as the search narrows the list. */}
+            <div aria-live="polite" className="grid justify-items-start gap-2">
+              {matching.length === 0 && <p>{t('list.noMatch')}</p>}
+              <p className="text-sm text-muted-foreground">
                 {t('list.count', {
-                  shown: Math.min(count, matching.length),
-                  matching: matching.length,
-                  total: rows.length,
+                  shown: number.format(Math.min(count, matching.length)),
+                  matching: number.format(matching.length),
+                  total: number.format(rows.length),
                 })}
               </p>
-              {matching.length > count && (
+            </div>
+            {matching.length === 0 && filtered && (
+              <div>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setTyped('');
+                    write(listSearch({ ...state, q: undefined, f: undefined }), 'push');
+                    focusOn(searchBox);
+                  }}
+                >
+                  {t('list.clearSearch')}
+                </Button>
+              </div>
+            )}
+            {matching.length > count && (
+              <div>
                 <Button
                   variant="outline"
                   size="sm"
@@ -417,18 +479,36 @@ export function ListPage<Row>({
                 >
                   {t('list.showMore')}
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
           </>
         )}
       </div>
 
-      {panel !== undefined && search.open !== undefined && rows !== undefined && (
+      {panel !== undefined && openId !== undefined && !(failed && rows === undefined) && (
         <SidePanel
-          title={openRow === undefined ? t('list.recordGoneTitle') : rowName(openRow)}
-          onClose={close}
+          title={
+            rows === undefined
+              ? t('app.loading')
+              : openRow === undefined
+                ? t('list.recordGoneTitle')
+                : rowName(openRow)
+          }
+          onClose={() => {
+            change({ open: undefined }, 'push');
+          }}
         >
-          {openRow === undefined ? <p>{t('list.recordGone')}</p> : panel(openRow)}
+          {rows === undefined ? (
+            // The panel has its place before the rows arrive: the list does not
+            // change its width when they do.
+            failed ? null : (
+              <LoadingOutline />
+            )
+          ) : openRow === undefined ? (
+            <p>{t('list.recordGone')}</p>
+          ) : (
+            panel(openRow)
+          )}
         </SidePanel>
       )}
     </div>

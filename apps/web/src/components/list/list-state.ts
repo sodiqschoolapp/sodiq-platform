@@ -82,6 +82,16 @@ export function listSearch(search: Record<string, unknown>): ListSearch {
   return result;
 }
 
+/** One text per list state: two states with the same content have the same key. */
+export function addressKey(search: ListSearch): string {
+  return JSON.stringify([
+    search.q ?? null,
+    search.sort ?? null,
+    search.open ?? null,
+    Object.entries(search.f ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+  ]);
+}
+
 export interface Sort {
   key: string;
   descending: boolean;

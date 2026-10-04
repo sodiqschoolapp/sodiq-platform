@@ -27,6 +27,22 @@ const drawnNames = (): string[] =>
     (row) => row.querySelector('td:nth-child(2)')?.textContent ?? '',
   );
 
+const hasHeader = (name: string): boolean =>
+  [...document.querySelectorAll('thead th')].some((cell) => cell.textContent === name);
+
+const header = (name: string): HTMLElement => {
+  const found = [...document.querySelectorAll<HTMLElement>('thead th')].find(
+    (cell) => cell.textContent === name,
+  );
+  if (found === undefined) {
+    throw new Error(`The table has no column "${name}".`);
+  }
+  return found;
+};
+
+/** The button in a row that opens its record. */
+const rowButton = (name: string) => screen.getByText(name, { selector: 'button' });
+
 const searchBox = () => screen.getByRole<HTMLInputElement>('searchbox', { name: en.list.search });
 
 const type = (value: string): void => {
@@ -40,7 +56,7 @@ const countText = (shown: number, matching: number, total = ROWS.length): string
     .replace('{{total}}', String(total));
 
 const selectedText = (count: number): string =>
-  (count === 1 ? en.list.selected_one : en.list.selected_other).replace('{{count}}', String(count));
+  (count === 1 ? en.list.selected_one : en.list.selected_other).replace('{{n}}', String(count));
 
 const tickAll = () => screen.getByRole<HTMLInputElement>('checkbox', { name: en.list.selectAll });
 
@@ -157,9 +173,41 @@ describe('the search of a list', () => {
 
     expect(searchBox().value).toBe('');
     expect(drawnNames()).toHaveLength(ROWS_AT_ONCE);
+    // The button went away with its click: the keyboard goes on from the search box.
+    expect(document.activeElement).toBe(searchBox());
     await waitFor(() => {
       expect(router.state.location.search).toEqual({});
     });
+  });
+
+  it('keeps what is typed when a column is sorted before the address has the search', async () => {
+    const { router } = await openList();
+    type('ergashev');
+
+    // At once, before the typed search was written into the address.
+    fireEvent.click(within(header(en.sample.name)).getByRole('button'));
+
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ q: 'ergashev', sort: 'name' });
+    });
+    expect(searchBox().value).toBe('ergashev');
+    expect(drawnNames()).toHaveLength(20);
+    expect(drawnNames()[0]).toBe('Aziza Ergashev');
+    // Nothing is written a second time, and nothing takes the order back.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(router.state.location.search).toEqual({ q: 'ergashev', sort: 'name' });
+    expect(router.history.length).toBe(2);
+  });
+
+  it('starts from the top again after "Show more" when the search changes', async () => {
+    await openList();
+    fireEvent.click(screen.getByRole('button', { name: en.list.showMore }));
+    expect(drawnNames()).toHaveLength(2 * ROWS_AT_ONCE);
+
+    type('a');
+    type('');
+
+    expect(drawnNames()).toHaveLength(ROWS_AT_ONCE);
   });
 
   it('passes over an order and a filter the list does not have', async () => {
@@ -184,54 +232,62 @@ describe('the filters and the order of a list', () => {
     await waitFor(() => {
       expect(drawnNames()).toEqual(archived.map((row) => row.name));
     });
-    expect(router.state.location.search).toEqual({ f: { status: 'archived' } });
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ f: { status: 'archived' } });
+    });
 
     fireEvent.change(screen.getByRole('combobox', { name: en.sample.status }), {
       target: { value: '' },
     });
 
     expect(await screen.findByText(countText(ROWS_AT_ONCE, ROWS.length))).toBeDefined();
-    expect(router.state.location.search).toEqual({});
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({});
+    });
   });
 
   it('sorts by a column from the start, then from the end, then not at all', async () => {
     const { router } = await openList();
-    const header = () => screen.getByRole('columnheader', { name: en.sample.score });
-    const sortButton = () => within(header()).getByRole('button', { name: en.sample.score });
+    const scoreHeader = () => header(en.sample.score);
+    const sortButton = () => within(scoreHeader()).getByRole('button', { name: en.sample.score });
     const scores = ROWS.flatMap((row) => (row.score === null ? [] : [row.score]));
-    expect(header().getAttribute('aria-sort')).toBe('none');
+    expect(scoreHeader().getAttribute('aria-sort')).toBe('none');
 
     fireEvent.click(sortButton());
 
     await waitFor(() => {
-      expect(header().getAttribute('aria-sort')).toBe('ascending');
+      expect(scoreHeader().getAttribute('aria-sort')).toBe('ascending');
     });
     const firstScore = () => document.querySelector('tbody tr td:nth-child(6)')?.textContent;
     expect(firstScore()).toBe(String(Math.min(...scores)));
-    expect(router.state.location.search).toEqual({ sort: 'score' });
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ sort: 'score' });
+    });
 
     fireEvent.click(sortButton());
 
     await waitFor(() => {
-      expect(header().getAttribute('aria-sort')).toBe('descending');
+      expect(scoreHeader().getAttribute('aria-sort')).toBe('descending');
     });
     expect(firstScore()).toBe(String(Math.max(...scores)));
 
     fireEvent.click(sortButton());
 
     await waitFor(() => {
-      expect(header().getAttribute('aria-sort')).toBe('none');
+      expect(scoreHeader().getAttribute('aria-sort')).toBe('none');
     });
     expect(drawnNames()[0]).toBe('Aziza Abdullayev');
-    expect(router.state.location.search).toEqual({});
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({});
+    });
   });
 
   it('does not offer an order for a column that cannot be sorted', async () => {
     await openList();
 
-    const header = screen.getByRole('columnheader', { name: en.sample.status });
-    expect(header.getAttribute('aria-sort')).toBeNull();
-    expect(within(header).queryByRole('button')).toBeNull();
+    const statusHeader = header(en.sample.status);
+    expect(statusHeader.getAttribute('aria-sort')).toBeNull();
+    expect(within(statusHeader).queryByRole('button')).toBeNull();
   });
 });
 
@@ -246,9 +302,9 @@ describe('the column chooser of a list', () => {
     fireEvent.click(within(menu).getByRole('menuitemcheckbox', { name: en.sample.score }));
 
     await waitFor(() => {
-      expect(screen.queryByRole('columnheader', { name: en.sample.score })).toBeNull();
+      expect(hasHeader(en.sample.score)).toBe(false);
     });
-    expect(screen.getByRole('columnheader', { name: en.sample.status })).toBeDefined();
+    expect(hasHeader(en.sample.status)).toBe(true);
     expect(window.localStorage.getItem('sodiq.list.sample.hidden')).toBe('["score"]');
   });
 
@@ -257,9 +313,9 @@ describe('the column chooser of a list', () => {
 
     await openList();
 
-    expect(screen.queryByRole('columnheader', { name: en.sample.score })).toBeNull();
+    expect(hasHeader(en.sample.score)).toBe(false);
     // The column that opens the record cannot be hidden, whatever the browser kept.
-    expect(screen.getByRole('columnheader', { name: en.sample.name })).toBeDefined();
+    expect(hasHeader(en.sample.name)).toBe(true);
   });
 });
 
@@ -267,23 +323,33 @@ describe('the column chooser of a list', () => {
 // the owner (task 0.8b): "tick all" means every row that matches the search
 // and filters.
 describe('the checkboxes and bulk actions of a list', () => {
-  it('shows no actions while nothing is ticked, and the count when rows are', async () => {
+  it('offers no action while nothing is ticked, and says the count when rows are', async () => {
     await openList();
-    expect(screen.queryByRole('group', { name: en.list.bulkActions })).toBeNull();
+    // The bar is there from the start, so the table does not move at the first tick.
+    const bar = screen.getByRole('group', { name: en.list.bulkActions });
+    const archive = () =>
+      within(bar).getByRole<HTMLButtonElement>('button', { name: en.sample.archive });
+    const clear = () =>
+      within(bar).getByRole<HTMLButtonElement>('button', { name: en.list.clearSelection });
+    expect(within(bar).getByRole('status').textContent).toBe(selectedText(0));
+    expect(archive().disabled).toBe(true);
+    expect(clear().disabled).toBe(true);
 
     fireEvent.click(tickRow('Aziza Abdullayev'));
     fireEvent.click(tickRow('Bekzod Abdullayev'));
 
-    const bar = screen.getByRole('group', { name: en.list.bulkActions });
     expect(within(bar).getByRole('status').textContent).toBe(selectedText(2));
+    expect(archive().disabled).toBe(false);
     expect(tickAll().indeterminate).toBe(true);
 
     fireEvent.click(tickRow('Aziza Abdullayev'));
     expect(within(bar).getByRole('status').textContent).toBe(selectedText(1));
 
-    fireEvent.click(within(bar).getByRole('button', { name: en.list.clearSelection }));
-    expect(screen.queryByRole('group', { name: en.list.bulkActions })).toBeNull();
+    fireEvent.click(clear());
+    expect(within(bar).getByRole('status').textContent).toBe(selectedText(0));
     expect(tickRow('Bekzod Abdullayev').checked).toBe(false);
+    // The button turned itself off: the keyboard goes on from "tick all".
+    expect(document.activeElement).toBe(tickAll());
   });
 
   it('ticks every row that matches the search, and only those', async () => {
@@ -310,11 +376,14 @@ describe('the checkboxes and bulk actions of a list', () => {
 
     fireEvent.click(tickAll());
 
-    expect(screen.getByRole('status').textContent).toBe(selectedText(2500));
+    // docs/spec/12-ux-standards.md, Language: numbers follow the chosen language.
+    expect(screen.getByRole('status').textContent).toBe(
+      en.list.selected_other.replace('{{n}}', '2,500'),
+    );
 
     fireEvent.click(tickAll());
 
-    expect(screen.queryByRole('group', { name: en.list.bulkActions })).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe(selectedText(0));
   });
 
   it('says how many ticked rows the search does not show', async () => {
@@ -325,7 +394,7 @@ describe('the checkboxes and bulk actions of a list', () => {
     type('bekzod');
 
     expect(screen.getByRole('status').textContent).toBe(
-      `${selectedText(2)} ${en.list.selectedNotShown_one.replace('{{count}}', '1')}`,
+      `${selectedText(2)} ${en.list.selectedNotShown_one.replace('{{n}}', '1')}`,
     );
   });
 
@@ -357,9 +426,7 @@ describe('the checkboxes and bulk actions of a list', () => {
       fireEvent.click(box);
     }
 
-    expect(screen.getByRole('status').textContent).toBe(
-      ru.list.selected_few.replace('{{count}}', '2'),
-    );
+    expect(screen.getByRole('status').textContent).toBe(ru.list.selected_few.replace('{{n}}', '2'));
   });
 });
 
@@ -372,9 +439,7 @@ describe('the export of a list', () => {
 
     fireEvent.click(screen.getByRole('button', { name: en.list.export }));
 
-    expect(screen.getByRole('status').textContent).toBe(
-      en.sample.exported_other.replace('{{count}}', '20'),
-    );
+    expect(screen.getByText(en.sample.exported_other.replace('{{n}}', '20'))).toBeDefined();
   });
 
   it('is off when no row matches', async () => {
@@ -396,11 +461,13 @@ describe('the side panel of a list', () => {
   it('opens a record beside the list, with an address of its own', async () => {
     const { router } = await openList();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Bekzod Abdullayev' }));
+    fireEvent.click(rowButton('Bekzod Abdullayev'));
 
     const opened = await panel('Bekzod Abdullayev');
     expect(within(opened).getByText('6 Cambridge')).toBeDefined();
-    expect(router.state.location.search).toEqual({ open: 'sample-0002' });
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ open: 'sample-0002' });
+    });
     // The list is still there, and its row is marked as the open one.
     expect(drawnNames()).toHaveLength(ROWS_AT_ONCE);
     expect(document.querySelectorAll('tbody tr')[1]?.getAttribute('aria-current')).toBe('true');
@@ -411,7 +478,7 @@ describe('the side panel of a list', () => {
 
   it('closes with its button and with Escape, and gives the focus back to the row', async () => {
     const { router } = await openList();
-    const row = screen.getByRole('button', { name: 'Bekzod Abdullayev' });
+    const row = rowButton('Bekzod Abdullayev');
 
     fireEvent.click(row);
     fireEvent.click(
@@ -421,7 +488,9 @@ describe('the side panel of a list', () => {
     await waitFor(() => {
       expect(screen.queryByRole('complementary')).toBeNull();
     });
-    expect(router.state.location.search).toEqual({});
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({});
+    });
     expect(document.activeElement).toBe(row);
 
     fireEvent.click(row);
@@ -436,7 +505,7 @@ describe('the side panel of a list', () => {
 
   it('closes with the Back button of the browser', async () => {
     const { router } = await openList();
-    fireEvent.click(screen.getByRole('button', { name: 'Bekzod Abdullayev' }));
+    fireEvent.click(rowButton('Bekzod Abdullayev'));
     await panel('Bekzod Abdullayev');
 
     act(() => {
@@ -454,10 +523,45 @@ describe('the side panel of a list', () => {
 
     expect(await panel('Dilshod Abdullayev')).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Farida Abdullayev' }));
+    fireEvent.click(rowButton('Farida Abdullayev'));
 
     expect(await panel('Farida Abdullayev')).toBeDefined();
     expect(screen.getAllByRole('complementary')).toHaveLength(1);
+  });
+
+  it('gives the focus to the search box when the row of the record is not drawn', async () => {
+    // The 150th row: beyond the rows drawn at first.
+    await openList(`${PATH}?open=sample-0150`);
+    const opened = await panel(ROWS[149]?.name ?? '');
+
+    fireEvent.click(within(opened).getByRole('button', { name: en.list.closePanel }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('complementary')).toBeNull();
+    });
+    expect(document.activeElement).toBe(searchBox());
+  });
+
+  it('leaves Escape in the search box to the search box', async () => {
+    await openList(`${PATH}?open=sample-0003`);
+    const opened = await panel('Dilshod Abdullayev');
+
+    fireEvent.keyDown(searchBox(), { key: 'Escape' });
+    expect(screen.getByRole('complementary')).toBe(opened);
+
+    // Inside the panel, and anywhere that is not a field, Escape closes it.
+    fireEvent.keyDown(within(opened).getByRole('heading'), { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('complementary')).toBeNull();
+    });
+  });
+
+  // docs/spec/12-ux-standards.md, Look and feel: the page never jumps as it loads.
+  it('has its place while the rows are on the way', async () => {
+    await openList(`${PATH}?demo=loading&open=sample-0003`);
+
+    const waiting = await panel(en.app.loading);
+    expect(within(waiting).getByRole('status').getAttribute('aria-busy')).toBe('true');
   });
 
   it('says so when the record of the address is not in the list', async () => {

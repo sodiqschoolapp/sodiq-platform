@@ -26,7 +26,9 @@ const textChild = ':matches(JSXElement, JSXFragment) > JSXExpressionContainer';
 /**
  * Attributes whose value a person reads or hears: those of HTML and ARIA, and
  * the text properties of our own components (Field, AuthPage, EmptyState,
- * PageHeader, ListPage). A new component
+ * PageHeader, ListPage). A text handed over inside an object (the `header` of
+ * a column, the `label` of a filter, a bulk action or a breadcrumb) is not an
+ * attribute and is not seen. A new component
  * that takes a text under another name adds the name here.
  */
 const textAttribute =

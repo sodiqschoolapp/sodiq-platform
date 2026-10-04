@@ -149,7 +149,8 @@ export function DataTable<Row>({
               key={id}
               data-state={ticked ? 'selected' : undefined}
               aria-current={id === openId ? 'true' : undefined}
-              className="aria-[current=true]:bg-muted"
+              // The open record is marked by a bar at the start of its row, not by colour alone.
+              className="aria-[current=true]:bg-muted aria-[current=true]:shadow-[inset_4px_0_0_var(--foreground)]"
             >
               {selection !== undefined && (
                 <TableCell className="w-8">
