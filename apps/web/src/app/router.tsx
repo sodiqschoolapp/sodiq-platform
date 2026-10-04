@@ -3,6 +3,7 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  notFound,
   Outlet,
   redirect,
   type RouterHistory,
@@ -11,6 +12,7 @@ import { CodePage } from '@/features/auth/code-page';
 import { PasswordPage } from '@/features/auth/password-page';
 import { sessionQuery, STEP_PATH, stepOf, type Step } from '@/features/auth/session';
 import { SetUpPage } from '@/features/auth/set-up-page';
+import { SampleListPage, sampleSearch } from '@/features/sample/sample-list-page';
 import { SignInPage } from '@/features/auth/sign-in-page';
 import { AppLayout } from './app-layout';
 import { ErrorPage, HomePage, NotFoundPage, PendingPage } from './pages';
@@ -85,12 +87,30 @@ const homeRoute = createRoute({
   component: HomePage,
 });
 
+/**
+ * The sample list of task 0.8b-1, built only from the shared pieces. It opens
+ * in development and in the tests; in the built app the address does not
+ * exist, and the bundler leaves the page out.
+ */
+const patternsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/dev/patterns',
+  validateSearch: sampleSearch,
+  beforeLoad: () => {
+    if (!import.meta.env.DEV) {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- the router's way to say "no such page"
+      throw notFound();
+    }
+  },
+  component: import.meta.env.DEV ? SampleListPage : NotFoundPage,
+});
+
 const routeTree = rootRoute.addChildren([
   signInRoute,
   codeRoute,
   passwordRoute,
   setUpRoute,
-  appRoute.addChildren([homeRoute]),
+  appRoute.addChildren([homeRoute, patternsRoute]),
 ]);
 
 /** `history` is given by tests; the browser's own is used otherwise. */

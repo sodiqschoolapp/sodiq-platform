@@ -86,10 +86,15 @@ How to read the task lines:
   - Build: sign-in, password change and second-step screens; the app layout; i18next with Uzbek, Russian and English; a check that fails the build when a translation key is missing in any language.
   - Done when: Playwright signs in and out in each language.
 
-- [ ] **0.8b Web shell: shared patterns**
-  - Read: `12` (One pattern everywhere, No lost work, Look and feel), `14` (Whole system).
-  - Build: the shared list pattern (search, filters, column chooser, sorting, bulk actions, export, side panel); form, table, empty, loading and error patterns; Ctrl+K search (pages only for now; records are added as they are built); the feedback button; the unsent-changes banner.
-  - Done when: a sample list and form use only the shared pieces.
+- [x] **0.8b-1 Web shell: lists and page states**
+  - Read: `12` (One pattern everywhere, Look and feel).
+  - Build: the shared table; the shared list pattern (search, filters, column chooser, sorting, checkboxes with bulk actions, export, side panel), which loads the whole list of a branch and searches, sorts and filters in the browser, with room for server paging (2.6); the page header with breadcrumbs; empty, loading and error patterns; a sample list for development. Split off from 0.8b by the owner.
+  - Done when: a sample list uses only the shared pieces.
+
+- [ ] **0.8b-2 Web shell: forms and shell tools**
+  - Read: `12` (One pattern everywhere, No lost work, Look and feel), `14` (Whole system), `edge/developer-rules`.
+  - Build: the form pattern (a Save button on record forms, each field checked as it is typed, a warning before leaving with typed changes); the confirmation dialog for actions that cannot be undone, which names what will be affected; Ctrl+K search (pages only for now; records are added as they are built), without a further library; the feedback button with its school-wide table and route (roles from the session, never from the body); the unsent-changes banner (typed and not saved, or a save that failed; the journal queue of 8.3c joins it); the theme switch, kept in the browser; the review of the look (contrast only; brand colour and logo come as a small task when the owner provides them). Undo waits for the first action that offers it.
+  - Done when: a sample form uses only the shared pieces, and a feedback report reaches the table with the page and the roles of the session.
 
 - [ ] **0.8c Web shell: menus and home pages per role**
   - Read: `02`, `08` (Home pages by role).

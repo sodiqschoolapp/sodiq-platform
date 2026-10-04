@@ -25,11 +25,14 @@ const textChild = ':matches(JSXElement, JSXFragment) > JSXExpressionContainer';
 
 /**
  * Attributes whose value a person reads or hears: those of HTML and ARIA, and
- * the text properties of our own components (Field, AuthPage). A new component
+ * the text properties of our own components (Field, AuthPage, EmptyState,
+ * PageHeader, ListPage). A text handed over inside an object (the `header` of
+ * a column, the `label` of a filter, a bulk action or a breadcrumb) is not an
+ * attribute and is not seen. A new component
  * that takes a text under another name adds the name here.
  */
 const textAttribute =
-  'JSXAttribute[name.name=/^(aria-label|aria-description|aria-roledescription|aria-valuetext|placeholder|title|alt|label|note|text)$/]';
+  'JSXAttribute[name.name=/^(aria-label|aria-description|aria-roledescription|aria-valuetext|placeholder|title|alt|label|note|text|caption)$/]';
 
 /** A text chosen or joined inside braces: `on ? 'A' : 'B'`, `on && 'A'`, `name + ' text'`. */
 const chosen = ':matches(ConditionalExpression, LogicalExpression, BinaryExpression)';

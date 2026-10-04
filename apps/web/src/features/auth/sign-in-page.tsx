@@ -9,7 +9,8 @@ import { Field } from '@/components/field';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AuthPage } from './auth-page';
-import { FailureAlert, useWaiting } from './form-helpers';
+import { FailureAlert } from '@/components/failure-alert';
+import { useWaiting } from './form-helpers';
 import { keepSession, STEP_PATH, stepOf } from './session';
 import { rememberTrustAsked } from './trust-asked';
 

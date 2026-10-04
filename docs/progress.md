@@ -2,6 +2,65 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 5 October 2026: task 0.8b-1 Web shell: lists and page states
+
+Split by the owner at the plan: 0.8b-1 is the table, the list pattern and the page states; 0.8b-2 is the form pattern, the confirmation dialog, Ctrl+K, the feedback button with its table and route, the unsent-changes banner, the theme switch and the review of the look. Where an older entry below names 0.8b, read the one of the two that has the piece.
+
+Built:
+
+- The list pattern (`apps/web/src/components/list/`): `ListPage` with search, filters, column chooser, sorting, checkboxes with bulk actions, an Export button and the side panel. The whole list is loaded; searching, sorting and filtering happen in the browser (`matchingRows` in `list-state.ts`). The state of a list (`ListSearch`: search, order, filters, open record) lives in the address.
+- `DataTable` and its loading outline (`data-table.tsx`), `SidePanel`, `PageHeader` with breadcrumbs, `EmptyState`, `LoadingOutline`, `ErrorState` (`components/states.tsx`). `FailureAlert` moved from `features/auth` to `components/failure-alert.tsx`; the error page uses `ErrorState`.
+- The sample list `/dev/patterns` (`apps/web/src/features/sample/`), with invented rows that live in the page; `?demo=empty`, `loading`, `error`, `many` show the states. The address answers "page not found" in the built app, and the rows are not in the built bundle (checked once by hand: `pnpm --filter @sodiq/web build`, then a search for a sample name in `dist`).
+- Texts `list.*`, `sample.*` and `layout.breadcrumbs` in the three languages. shadcn components added: `table`, `skeleton`.
+- Tests: `list-state.test.ts` (search, filters, order, the address, hidden columns), `list-page.test.tsx` (rows that change under the list, what export and a bulk action are handed, a failed load), `sample-list.test.tsx` (the whole app at `/dev/patterns`), and the browser test `e2e/patterns.spec.ts` with an account of its own (`patterns`). The steps of sign-in shared by the browser tests moved to `e2e/steps.ts`.
+- Reviewed by the spec reviewer. No route was added or changed, so no permission review. Fixed from the review: the panel laid over the page on a narrow screen left the hidden list in the Tab order (now the record takes the place of the list, and the top bar stays); buttons that removed themselves dropped the keyboard focus; the page jumped when rows arrived with an open record and at the first tick; the open row was marked by colour alone; two races between the search box and the address; "Show more" was not reset by a search that came back; numbers were not written in the chosen language; an error hid rows already loaded; Escape in the search box also closed the panel; the count and "nothing matches" are now read out; missing tests added and the browser test now walks the controls with the Tab key.
+
+Left out, with the task that brings it:
+
+- Forms, the confirmation dialog, Ctrl+K, the feedback button, the unsent-changes banner, the theme switch, the review of contrast: 0.8b-2. `components/field.tsx` is still the small field of 0.8a.
+- A real export file and its route: each list, from 2.2. Server paging with the same `ListSearch`: 2.6.
+- A sticky table header: the table scrolls sideways in its own box. Decide with the first long list (2.2).
+- Undo: with the first action that offers it (decided by the owner).
+
+Decided by the owner at the plan:
+
+- Lists load a whole branch and search, sort and filter in the browser. "Tick all" means every row that matches the search and filters. Hidden columns and (0.8b-2) the theme are kept in the browser, not on the account.
+- 0.8b-2: the feedback reports go to a school-wide table through a route (roles from the session, never the body); a Save button on record forms with a warning before leaving; no `cmdk`; contrast only, brand colour and logo later.
+
+Decided by the owner at the end (the spec is silent on each; they stay as built):
+
+- A ticked row that a new search hides stays ticked, and the bar says "N of them are not shown by the current search and filters".
+- The search also finds text of a hidden column, and a list stays sorted by a column after it is hidden.
+- Closing the panel adds an entry to the history, so the Back button opens it again.
+
+Open, for the owner:
+
+- The Uzbek and Russian wording of the new texts was not reviewed by anybody yet.
+
+Not done from the review:
+
+- The lint rule for hard-coded text does not see a text inside an object (`header` of a column, `label` of a filter, a bulk action or a breadcrumb, `empty.text`). Written into `docs/decisions.md` and the comment of the rule; closing it would need a rule of our own.
+- The browser test puts the focus on a row and on an item of the column menu directly, and chooses a filter value directly; its comment says so. The rest is reached with the Tab key.
+- Not looked at in a real browser by a person: the height of the outline rows against real rows, the touch size of the checkboxes on a tablet, what a screen reader really says. 0.8b-2 reviews the look.
+
+The next sessions must know:
+
+- A new list: a route with `validateSearch: listSearch`, and a page that gives `ListPage` the rows (`undefined` while loading), `columns` and `filters` (the same arrays between renders: `useMemo`), `rowId`, `rowName`, `search` and `onSearchChange` (`navigate({ to, search: next, replace: how === 'replace' })`), `empty`, and where it has them `bulkActions`, `onExport`, `panel`. One column has `opens: true`. Copy `sample-list-page.tsx`.
+- `ListPage` with `rows` and `error` together keeps the rows and shows the failure above them: hand it `query.data` and `query.error` as they are.
+- A text with a number in a list: `t('key', { count, n: number.format(count) })` and `{{n}}` in the three files; `count` only chooses the plural form.
+- `caption` is now a text attribute of the lint rule. A text inside an object is not seen by it: take it from `t()`.
+- Tests of a page with a long table read the rows from the table (`document.querySelectorAll('tbody tr')`) and the headers from `thead th`: a query by role over hundreds of rows takes seconds in jsdom and ran into the 5-second limit of a test here. The address follows a click a moment later: wait for it. The search is written into the address 0.3 seconds after the last key.
+- The top bar has a chooser named "Language": a test that looks for a filter of that name looks inside `main`.
+- 0.8b-2: the sample form goes onto `/dev/patterns` (the button of the page header, or the side panel). The bar of bulk actions is where the confirmation dialog is needed first ("Archive").
+- 0.8c: `PageHeader` takes the breadcrumbs; the left menu is still the empty `<nav>`.
+- 2.2: the Export button hands `onExport(rows, columnKeys)`; the route gets the search, the filters and the column keys (or the ids), and the server decides what the role may see.
+- `prettier --write` over `apps/web/src` rewrites `schema.generated.ts`, and `tooling/api-types.test.ts` then fails: format single folders, or use `pnpm format`.
+- Browser tests: in one full run the first test stopped at the sign-in page (the language chooser was not found in time), right after lint, type-check and a build had run; the next two runs passed. A cold Vite fits (it compiles a module when a browser first asks, and prepares the libraries with a reload), though the failed run itself was not taken apart. By the owner's order the global setup (`apps/web/e2e/global-setup.ts`) now opens the sign-in page once in a browser, with up to 2 minutes, before any test runs; no check was removed. One run with Vite's cache deleted (`apps/web/node_modules/.vite`) passed 7 of 7 afterwards.
+- The owner decided the three open points of this task: ticked rows stay ticked when a search hides them, hidden columns are still searched and sorted by, and closing the panel adds an entry to the history. They stay as built.
+- The full run: API tests 47 files, 1056 tests, about 4m45s for everything; web tests 8 files, 163 tests, about 45 s; browser tests 7, about 1 minute.
+
+The next task is 0.8b-2.
+
 ## 5 October 2026: task 0.8a Web shell: sign-in, layout and languages
 
 Split by the owner at the plan: 0.8a is the sign-in flow, the layout and the languages; the new task 0.8d "Own account page" (after 0.8c, before 0.9) has the session list, the trusted devices, the optional second step and the language on the account. Where an older entry below names 0.8a for one of those, read 0.8d.

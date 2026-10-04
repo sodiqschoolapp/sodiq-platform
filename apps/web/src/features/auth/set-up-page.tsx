@@ -13,7 +13,8 @@ import { ApiFailure, answerOf } from '@/api/failure';
 import { Field } from '@/components/field';
 import { Button } from '@/components/ui/button';
 import { AuthPage } from './auth-page';
-import { FailureAlert, useWaiting } from './form-helpers';
+import { FailureAlert } from '@/components/failure-alert';
+import { useWaiting } from './form-helpers';
 import { refreshSession, STEP_PATH, stepOf } from './session';
 import { useSignOut } from './use-sign-out';
 

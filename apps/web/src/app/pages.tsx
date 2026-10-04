@@ -1,7 +1,7 @@
 import { Link, useRouter, type ErrorComponentProps } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { failureText } from '@/api/failure-text';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { ErrorState } from '@/components/states';
+import { buttonVariants } from '@/components/ui/button';
 
 /**
  * The home page of every role until task 0.8c gives each role its own
@@ -40,16 +40,12 @@ export function ErrorPage({ error }: ErrorComponentProps) {
   return (
     <main className="mx-auto grid max-w-prose gap-3 p-6">
       <h1 className="text-xl font-semibold">{t('problems.title')}</h1>
-      <p role="alert">{failureText(t, error)}</p>
-      <div>
-        <Button
-          onClick={() => {
-            void router.invalidate();
-          }}
-        >
-          {t('problems.retry')}
-        </Button>
-      </div>
+      <ErrorState
+        error={error}
+        onRetry={() => {
+          void router.invalidate();
+        }}
+      />
     </main>
   );
 }

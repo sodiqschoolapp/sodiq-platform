@@ -3,30 +3,11 @@ import { LANGUAGES } from '../src/i18n/languages';
 import { en } from '../src/i18n/locales/en';
 import { ru } from '../src/i18n/locales/ru';
 import { uz } from '../src/i18n/locales/uz';
-import { accountOf, NEW_PASSWORD, type Credentials } from './accounts';
+import { accountOf, NEW_PASSWORD } from './accounts';
+import { changeFirstPassword, heading, signIn, type PageTexts } from './steps';
 import { codeNow } from './totp';
 
 const TEXTS = { uz, ru, en };
-
-/** The texts every language has; the page is checked against the chosen one. */
-type PageTexts = (typeof TEXTS)[keyof typeof TEXTS];
-
-const heading = (page: Page, name: string) => page.getByRole('heading', { name, exact: true });
-
-async function signIn(page: Page, t: PageTexts, login: string, password: string): Promise<void> {
-  await page.getByLabel(t.signIn.login, { exact: true }).fill(login);
-  await page.getByLabel(t.signIn.password, { exact: true }).fill(password);
-  await page.getByRole('button', { name: t.signIn.submit, exact: true }).click();
-}
-
-/** The forced change of a first password. */
-async function changeFirstPassword(page: Page, t: PageTexts, account: Credentials): Promise<void> {
-  await expect(heading(page, t.password.titleForced)).toBeVisible();
-  await page.getByLabel(t.password.currentOneTime, { exact: true }).fill(account.password);
-  await page.getByLabel(t.password.new, { exact: true }).fill(NEW_PASSWORD);
-  await page.getByLabel(t.password.repeat, { exact: true }).fill(NEW_PASSWORD);
-  await page.getByRole('button', { name: t.password.submit, exact: true }).click();
-}
 
 async function signOut(page: Page, t: PageTexts): Promise<void> {
   await page.getByRole('button', { name: t.layout.account, exact: true }).click();
