@@ -11,6 +11,22 @@ export const ERROR_CODES = [
   'malformed_request',
   'not_found',
   'payload_too_large',
+  /** No session: none was sent, or it is unknown or has ended. */
+  'not_signed_in',
+  /** Unknown login or wrong password; the answer does not say which. */
+  'sign_in_failed',
+  /** The password was right, but it is a first password older than 7 days. */
+  'password_expired',
+  /** A first password is in use: only the password change, the session and sign-out answer. */
+  'password_change_required',
+  /** The current password given with a password change is wrong. */
+  'current_password_wrong',
+  /** The new password is the same as the current one. */
+  'password_unchanged',
+  /** A changing request that came from another site. */
+  'cross_site_request',
+  /** The request key was already used for another action, other input or other branches. */
+  'request_key_reused',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

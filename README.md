@@ -13,7 +13,7 @@ The school's own platform for timetable, journal, results and lesson plans. Rele
 Install once:
 
 - Git
-- Node.js 24. `node --version` must print `v24`; `pnpm install` refuses any other major version. `winget install OpenJS.NodeJS.LTS` installs 24 only while 24 is the newest long-term-support line; once a newer line takes over, download 24 from https://nodejs.org/en/download instead.
+- Node.js 24, version 24.7 or later (passwords are hashed with Node's own Argon2). `node --version` must print `v24`; `pnpm install` refuses any other major version and an older 24. `winget install OpenJS.NodeJS.LTS` installs 24 only while 24 is the newest long-term-support line; once a newer line takes over, download 24 from https://nodejs.org/en/download instead.
 - pnpm 12 (`npm install -g pnpm`)
 - PostgreSQL 18, running on this machine on port 5432 (installer from postgresql.org). Remember the password you give the `postgres` user.
 
@@ -68,6 +68,7 @@ To stop it on Windows, press Ctrl+C twice. After the first press the servers are
 | `pnpm db:migrate` | Applies the SQL files of `db/migrations` that `sodiq_dev` does not have yet, in number order. Refuses to run if an applied file was edited. |
 | `pnpm db:codegen` | Writes the Kysely types of `sodiq_dev` to `apps/api/src/database/types.generated.ts`. Run it after `pnpm db:migrate` and commit the file; a test fails if it is out of date. |
 | `pnpm api:client` | Writes the OpenAPI document of the API routes to `apps/api/openapi.generated.json` and the typed web client to `apps/web/src/api/schema.generated.ts`. Run it after changing a route or a shared schema and commit both files; two tests fail if they are out of date. |
+| `pnpm auth:first-account -- --first-name <name> --last-name <name>` | Creates the first account in `sodiq_dev`, once: it refuses when an account exists. Prints the generated login and the first password, which is stored nowhere, is valid for 7 days and must be changed at the first sign-in. Names in Latin letters. |
 
 ## Continuous integration
 

@@ -91,7 +91,7 @@ describe('a route with a request key', () => {
 
     for (const response of [otherBody, otherBranch]) {
       expect(response.status).toBe(409);
-      expect(apiErrorSchema.parse(response.body).error.code).toBe('request_refused');
+      expect(apiErrorSchema.parse(response.body).error.code).toBe('request_key_reused');
     }
     expect(await notes(south)).toEqual(['south note', 'kept']);
     expect(await notes(north)).toEqual(['once']);

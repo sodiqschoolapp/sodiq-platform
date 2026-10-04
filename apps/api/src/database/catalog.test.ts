@@ -16,6 +16,9 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
   audit_log_school:
     'Audit entries of events without a branch (sign-ins, relatives); who reads them is decided by the guard (task 2.6).',
   ...auditSchoolPartitions(),
+  accounts:
+    'One person has one account for every branch, and sign-in happens before a branch is known; a row holds no name.',
+  sessions: 'A session belongs to an account, not to a branch; a row holds ids and moments only.',
 };
 
 /**

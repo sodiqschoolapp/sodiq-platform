@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { createParamDecorator, type ExecutionContext } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 
 export const REQUEST_ID_HEADER = 'X-Request-Id';
@@ -25,3 +26,12 @@ export function requestIdOf(response: Response): string {
   }
   return fresh;
 }
+
+/**
+ * The id of the request, for the audit entries a route writes.
+ *
+ *     signIn(@RequestId() requestId: string)
+ */
+export const RequestId = createParamDecorator((_data: unknown, context: ExecutionContext): string =>
+  requestIdOf(context.switchToHttp().getResponse<Response>()),
+);

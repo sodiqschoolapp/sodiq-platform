@@ -1,3 +1,13 @@
+export {
+  changePasswordSchema,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  sessionResponseSchema,
+  signInSchema,
+  type ChangePassword,
+  type SessionResponse,
+  type SignIn,
+} from './auth.js';
 export { branchIdSchema, type BranchId } from './branches.js';
 export type { Clock } from './clock.js';
 export {

@@ -36,7 +36,13 @@ describe('OpenAPI document', () => {
     it('describes the health route and its answer', () => {
       const document = buildOpenApiDocument(app);
 
-      expect(Object.keys(document.paths)).toEqual(['/api/health']);
+      expect(Object.keys(document.paths).sort()).toEqual([
+        '/api/auth/password',
+        '/api/auth/session',
+        '/api/auth/sign-in',
+        '/api/auth/sign-out',
+        '/api/health',
+      ]);
       expect(document.paths['/api/health']?.get?.responses).toEqual({
         '200': {
           description: '',

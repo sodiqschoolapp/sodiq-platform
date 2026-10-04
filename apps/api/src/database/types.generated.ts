@@ -23,6 +23,17 @@ export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface Accounts {
+  created_at: Timestamp;
+  created_by: string | null;
+  id: Generated<string>;
+  login: string;
+  must_change_password: boolean;
+  password_changed_at: Timestamp | null;
+  password_expires_at: Timestamp | null;
+  password_hash: string;
+}
+
 export interface AuditLog {
   action: string;
   actor_id: string | null;
@@ -77,10 +88,21 @@ export interface SchemaMigrations {
   number: number;
 }
 
+export interface Sessions {
+  account_id: string;
+  created_at: Timestamp;
+  end_reason: string | null;
+  ended_at: Timestamp | null;
+  id: Generated<string>;
+  token_hash: string;
+}
+
 export interface DB {
+  accounts: Accounts;
   audit_log: AuditLog;
   audit_log_school: AuditLogSchool;
   branches: Branches;
   request_keys: RequestKeys;
   schema_migrations: SchemaMigrations;
+  sessions: Sessions;
 }

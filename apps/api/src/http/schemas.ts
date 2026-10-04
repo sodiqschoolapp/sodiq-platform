@@ -2,6 +2,7 @@ import {
   applyDecorators,
   Body,
   createParamDecorator,
+  HttpCode,
   Param,
   Query,
   SetMetadata,
@@ -143,4 +144,9 @@ export function Returns(schema: z.ZodType, status = 200): MethodDecorator {
     ApiResponse({ status, schema: toOpenApiSchema(schema, 'output') }),
     SetMetadata(RESPONSE_SCHEMA, schema),
   );
+}
+
+/** For a route that answers with no body: status 204, in the document too. */
+export function ReturnsNothing(): MethodDecorator {
+  return applyDecorators(HttpCode(204), ApiResponse({ status: 204 }));
 }

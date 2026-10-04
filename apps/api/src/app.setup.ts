@@ -5,6 +5,7 @@ import {
   notFoundFallback,
 } from './http/api-exception.filter.js';
 import { requestIdMiddleware } from './http/request-id.js';
+import { sameSiteMiddleware } from './http/same-site.js';
 import { ResponseSchemaInterceptor } from './http/response-schema.interceptor.js';
 
 /** Every route sits under this prefix, so the browser reaches web app and API on one origin. */
@@ -21,6 +22,8 @@ export function configureApp(app: NestExpressApplication): void {
   app.disable('x-powered-by');
   // Before the body parser, so that its refusals carry a request id too.
   app.use(requestIdMiddleware);
+  // Before the body parser too: a request from another site is not even read.
+  app.use(sameSiteMiddleware);
   app.useGlobalFilters(new ApiExceptionFilter());
   app.useGlobalInterceptors(new ResponseSchemaInterceptor());
 }

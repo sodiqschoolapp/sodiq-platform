@@ -1,6 +1,7 @@
 import { HttpException, Logger } from '@nestjs/common';
 import type { ApiError, ErrorCode } from '@sodiq/shared';
 import type { Response } from 'express';
+import { ApiException } from './api-exception.js';
 import { requestIdOf } from './request-id.js';
 import { ValidationFailedException } from './validation.js';
 
@@ -12,6 +13,14 @@ const MESSAGE: Record<ErrorCode, string> = {
   malformed_request: 'The request could not be read.',
   not_found: 'Not found.',
   payload_too_large: 'The request is too large.',
+  not_signed_in: 'Not signed in.',
+  sign_in_failed: 'The login or the password is wrong.',
+  password_expired: 'The first password is no longer valid.',
+  password_change_required: 'The password must be changed first.',
+  current_password_wrong: 'The current password is wrong.',
+  password_unchanged: 'The new password is the same as the current one.',
+  cross_site_request: 'The request came from another site.',
+  request_key_reused: 'The request key was already used for another request.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };
@@ -55,7 +64,11 @@ export function sendError(response: Response, error: unknown): void {
   const requestId = requestIdOf(response);
   const status = error instanceof HttpException ? error.getStatus() : statusOfForeignError(error);
   const code =
-    error instanceof ValidationFailedException ? 'validation_failed' : codeOfStatus(status);
+    error instanceof ValidationFailedException
+      ? 'validation_failed'
+      : error instanceof ApiException
+        ? error.code
+        : codeOfStatus(status);
   if (code === 'internal_error') {
     // Name, message and stack only: other fields of an error (for example the
     // detail of a database error) can hold values of a row.

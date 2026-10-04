@@ -14,7 +14,8 @@
     "test": "vitest run",
     "db:migrate": "node dist/database/cli.js migrate",
     "db:codegen": "kysely-codegen --dialect postgres --env-file ../../.env --url \"env(DATABASE_MIGRATION_URL)\" --date-parser string --exclude-pattern \"pgboss.*\" --out-file src/database/types.generated.ts",
-    "openapi": "node dist/openapi/cli.js"
+    "openapi": "node dist/openapi/cli.js",
+    "first-account": "node dist/modules/auth/cli.js first-account"
   },
   "dependencies": {
     "@nestjs/common": "^12.1.2",
