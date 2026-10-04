@@ -2,6 +2,18 @@
 
 Decisions about how the system is built, with the reason. Product rules are in `docs/spec/`, not here. Add an entry when a choice is made that a later session would otherwise question or undo.
 
+## 4 October 2026: continuous integration (task 0.3)
+
+| Decision | Reason |
+| --- | --- |
+| One workflow with two jobs: `checks` (lint, type-check, unit and API tests) and `e2e` (Playwright) | The pull request shows which kind of check failed, and the browser tests do not wait for the others. The owner chose to run the browser tests on every pull request (spec `14`, Whole system). |
+| The workflow runs on pull requests and on pushes to `main` | `main` has its own result after each merge; the deploy of task 0.10 can depend on it. |
+| CI creates its users and database with `db/setup/local.sql` and uses the public values of `.env.example` | One way to set up a database, on a developer machine and in CI. The PostgreSQL service lives only inside the job. |
+| Actions are pinned to a full commit, with the version in a comment | A tag can be moved to other code; a commit cannot. |
+| The workflow's token may only read the repository (`permissions: contents: read`) | Nothing in CI writes to GitHub. |
+| No Turborepo remote cache | A whole run takes minutes at this size. Look again if CI becomes slow. |
+| `pnpm db:codegen` does not run in CI | `codegen.test.ts` already fails when the generated types are out of date. |
+
 ## 4 October 2026: database, migrations and typed queries (task 0.2)
 
 | Decision | Reason |
