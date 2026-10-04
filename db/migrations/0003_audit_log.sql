@@ -14,10 +14,12 @@ create table audit_log (
   -- From the injected clock: later rules compare it (for example "entries made
   -- within 48 hours of a reset").
   occurred_at timestamptz not null,
+  -- The one foreign key of the log: every branch table references branches
+  -- (the catalog test requires it).
   branch_id uuid not null references branches (id),
   -- The account that acted; empty for the system (a server command, a job).
-  -- No foreign key: accounts arrive in task 0.6a, and the log must never be
-  -- blocked by, or block, another table.
+  -- No foreign key: accounts arrive in task 0.6a, and apart from branch_id the
+  -- log should not be blocked by, or block, another table.
   actor_id uuid,
   -- The person the entry is about, when there is one.
   person_id uuid,
@@ -83,41 +85,47 @@ create policy branch_filter on audit_log for all to sodiq_app
 -- A partition that is read directly is not covered by the policy of its
 -- parent. So each partition of audit_log gets the branch filter too, and the
 -- application user gets no right on any partition, only on the two parents.
+--
+-- Every name in this block is written with its schema, so the block does not
+-- depend on the search path.
 do $$
 declare
   month date;
   suffix text;
-  partition text;
+  partition name;
 begin
   for month in
     select generate_series(date '2026-10-01', date '2029-12-01', interval '1 month')::date
   loop
     suffix := to_char(month, 'YYYY_MM');
     execute format(
-      'create table %I partition of audit_log for values from (%L) to (%L)',
+      'create table public.%I partition of public.audit_log for values from (%L) to (%L)',
       'audit_log_' || suffix,
       to_char(month, 'YYYY-MM-DD') || ' 00:00:00+00',
       to_char(month + interval '1 month', 'YYYY-MM-DD') || ' 00:00:00+00'
     );
     execute format(
-      'create table %I partition of audit_log_school for values from (%L) to (%L)',
+      'create table public.%I partition of public.audit_log_school for values from (%L) to (%L)',
       'audit_log_school_' || suffix,
       to_char(month, 'YYYY-MM-DD') || ' 00:00:00+00',
       to_char(month + interval '1 month', 'YYYY-MM-DD') || ' 00:00:00+00'
     );
   end loop;
 
-  create table audit_log_default partition of audit_log default;
-  create table audit_log_school_default partition of audit_log_school default;
+  create table public.audit_log_default partition of public.audit_log default;
+  create table public.audit_log_school_default partition of public.audit_log_school default;
 
   for partition in
-    select inhrelid::regclass::text from pg_inherits where inhparent = 'audit_log'::regclass
+    select c.relname
+    from pg_catalog.pg_inherits i
+    join pg_catalog.pg_class c on c.oid = i.inhrelid
+    where i.inhparent = 'public.audit_log'::regclass
   loop
-    execute format('alter table %I enable row level security', partition);
+    execute format('alter table public.%I enable row level security', partition);
     execute format(
-      'create policy branch_filter on %I for all to sodiq_app
-         using (branch_id = any ((select app_branch_ids())::uuid[]))
-         with check (branch_id = any ((select app_branch_ids())::uuid[]))',
+      'create policy branch_filter on public.%I for all to sodiq_app
+         using (branch_id = any ((select public.app_branch_ids())::uuid[]))
+         with check (branch_id = any ((select public.app_branch_ids())::uuid[]))',
       partition
     );
   end loop;

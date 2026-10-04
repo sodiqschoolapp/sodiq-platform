@@ -20,7 +20,6 @@ Left out, with the task that brings it:
 - Journal cell history (also append-only and partitioned): 6.1.
 - Reading routes, rights per role, the screen, exports: 2.6.
 - Foreign keys of `actor_id` and `person_id`, and a column for the system actor: 0.6a. Foreign key of `assignment_id`: 0.7. A flag for the support account: 2.6.
-- Not changed after the review, by choice (the migration is applied in `sodiq_dev`, and an edit would mean re-applying it): the comment in 0003 that says the log is never blocked by another table does not name the exception `branch_id`; the `do` block quotes `inhrelid::regclass::text` with `%I`, which fails loudly if `public` is not in the search path.
 - No speed test at the spec's data volume: 10.1.
 
 The next sessions must know:
