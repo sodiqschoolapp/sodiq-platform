@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import { Client, escapeIdentifier } from 'pg';
 import { inject } from 'vitest';
 import { databaseUrl, loadLocalEnvFile } from '../database/config.js';
@@ -127,9 +128,22 @@ export async function createTestDatabase(options: { empty?: boolean } = {}): Pro
     destroy: async () => {
       await app.destroy();
       await migrator.destroy();
-      await onServer((client) =>
-        client.query(`drop database ${escapeIdentifier(name)} with (force)`),
-      );
+      await onServer(async (client) => {
+        // A backend lives a moment longer than the connection that was just
+        // closed. `with (force)` would have to terminate it, and the owner may
+        // not terminate a backend of the application user: wait until it is gone.
+        for (let attempt = 0; attempt < 100; attempt += 1) {
+          const found = await client.query<{ open: number }>(
+            'select count(*)::int as open from pg_stat_activity where datname = $1',
+            [name],
+          );
+          if (found.rows[0]?.open === 0) {
+            break;
+          }
+          await delay(50);
+        }
+        await client.query(`drop database ${escapeIdentifier(name)} with (force)`);
+      });
     },
   };
 }

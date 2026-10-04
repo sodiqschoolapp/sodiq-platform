@@ -46,6 +46,8 @@ const rawInputMessage =
 export default defineConfig(
   globalIgnores([
     '**/dist/**',
+    // The watch build of the jobs worker (apps/api, dev:worker).
+    '**/dist-worker/**',
     '**/.turbo/**',
     '**/playwright-report/**',
     '**/test-results/**',

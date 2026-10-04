@@ -5,10 +5,13 @@ import { initApp } from './app.setup.js';
 import { CONFIG } from './config/config.module.js';
 import type { AppConfig } from './config/config.js';
 import { loadLocalEnvFile } from './database/config.js';
+import { JobQueue } from './jobs/job-queue.js';
 
-// Entry point of the API. The jobs worker gets its own entry point in task 0.5.
+// Entry point of the API. The jobs worker has its own: src/worker.ts.
 loadLocalEnvFile();
 const app = await NestFactory.create<NestExpressApplication>(AppModule);
 await initApp(app);
+// Now, not with the first job: a missing or older job schema stops the start.
+await app.get(JobQueue).ready();
 const config = app.get<AppConfig>(CONFIG);
 await app.listen(config.port, config.host);
