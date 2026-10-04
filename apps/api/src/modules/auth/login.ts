@@ -42,6 +42,9 @@ const SEPARATORS = new RegExp(
 /** What is left of a diacritic once its letter is split off. */
 const MARKS = /\p{M}/gu;
 
+/** Every login has this form; the database checks it too (db/migrations/0005). */
+export const LOGIN_FORMAT = /^[a-z]\.[a-z]+[0-9]*$/;
+
 /** The name cannot give a login: after the rule it is empty or has a letter outside a to z. */
 export class LoginNameError extends Error {
   constructor() {

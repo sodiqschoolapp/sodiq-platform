@@ -1,5 +1,5 @@
 import type { Server } from 'node:http';
-import { Controller, Get, type INestApplication } from '@nestjs/common';
+import { Controller, Get, Post, type INestApplication } from '@nestjs/common';
 import { apiErrorSchema } from '@sodiq/shared';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
@@ -22,6 +22,11 @@ const NEW_PASSWORD = 'a-new-password-73';
 class ProbeController {
   @Get()
   read(@CurrentSession() session: ActiveSession): { login: string } {
+    return { login: session.login };
+  }
+
+  @Post()
+  change(@CurrentSession() session: ActiveSession): { login: string } {
     return { login: session.login };
   }
 }
@@ -207,6 +212,20 @@ describe('sign-in, sessions and the password change', () => {
       );
     });
 
+    // Found by the review: a zero byte in the login reached the database as a fault.
+    it.each([
+      ['a zero byte', 'a.karimov\u0000'],
+      ['a capital letter', 'A.karimov'],
+      ['a space', ' a.karimov'],
+      ['a quote', "a.karimov' or '1'='1"],
+      ['no dot', 'akarimov'],
+    ])('answers a login with %s like any unknown login', async (_name, login) => {
+      const response = await signIn(login, 'not-the-password');
+
+      expect(response.status).toBe(401);
+      expect(errorCode(response)).toBe('sign_in_failed');
+    });
+
     it('refuses input that is not a login and a password, without repeating it', async () => {
       const response = await request(server)
         .post('/api/auth/sign-in')
@@ -321,6 +340,31 @@ describe('sign-in, sessions and the password change', () => {
       expect(errorCode(response)).toBe('not_signed_in');
     });
 
+    // However the path or the method is written, the guard is asked.
+    it.each([
+      ['HEAD', 'head', '/api/probe'],
+      ['other letter case', 'get', '/API/Probe'],
+      ['a trailing slash', 'get', '/api/probe/'],
+      ['a changing method', 'post', '/api/probe'],
+    ] as const)('refuses %s without a session', async (_name, method, path) => {
+      expect((await request(server)[method](path)).status).toBe(401);
+    });
+
+    it('does not take the token from anywhere but the cookie', async () => {
+      const { cookie } = await fullSession('Olim', 'Boboyev');
+      const token = cookie.slice(`${SESSION_COOKIE}=`.length);
+
+      const header = await request(server)
+        .get('/api/probe')
+        .set('Authorization', `Bearer ${token}`);
+      const query = await request(server)
+        .get('/api/probe')
+        .query({ [SESSION_COOKIE]: token });
+
+      expect(header.status).toBe(401);
+      expect(query.status).toBe(401);
+    });
+
     it('finds the session among other cookies', async () => {
       const { cookie } = await fullSession('Nodir', 'Boboyev');
 
@@ -408,6 +452,83 @@ describe('sign-in, sessions and the password change', () => {
       expect(errorCode(await probe(cookie))).toBe('password_change_required');
 
       expect((await change(cookie, account.firstPassword, 'ten-chars!')).status).toBe(204);
+    });
+
+    it('refuses a changing route too while the first password is in use', async () => {
+      const { cookie } = await firstSession('Sanjar', 'Davronov');
+
+      const response = await request(server).post('/api/probe').set('Cookie', cookie);
+
+      expect(response.status).toBe(403);
+      expect(errorCode(response)).toBe('password_change_required');
+    });
+
+    it('accepts a new password of 128 characters and refuses one of 129', async () => {
+      const { account, cookie } = await firstSession('Shahlo', 'Davronova');
+
+      const long = await change(cookie, account.firstPassword, 'p'.repeat(129));
+      expect(long.status).toBe(400);
+      expect(errorCode(long)).toBe('validation_failed');
+
+      expect((await change(cookie, account.firstPassword, 'p'.repeat(128))).status).toBe(204);
+      expect((await signIn(account.login, 'p'.repeat(128))).status).toBe(200);
+    });
+
+    // Edge cases, "Accounts and sign-in": first passwords are valid for 7 days.
+    // Found by the review: a session opened in time kept the first password
+    // usable as the current password without limit.
+    describe('in a session that was opened in time, after the 7 days', () => {
+      it('no longer accepts the first password as the current one', async () => {
+        clock.set('2026-10-05T09:00:00+05:00');
+        const { account, cookie } = await firstSession('Tohir', 'Davronov');
+        clock.advance(7 * DAY_MS);
+
+        const response = await change(cookie, account.firstPassword, NEW_PASSWORD);
+
+        expect(response.status).toBe(401);
+        expect(errorCode(response)).toBe('password_expired');
+        expect(errorCode(await probe(cookie))).toBe('password_change_required');
+        expect(errorCode(await signIn(account.login, NEW_PASSWORD))).toBe('sign_in_failed');
+        expect(await auditOf('auth.password_change', account.id)).toEqual([]);
+      });
+
+      it('still accepts it one second before', async () => {
+        clock.set('2026-10-05T09:00:00+05:00');
+        const { account, cookie } = await firstSession('Tolib', 'Davronov');
+        clock.advance(7 * DAY_MS - 1000);
+
+        expect((await change(cookie, account.firstPassword, NEW_PASSWORD)).status).toBe(204);
+      });
+
+      it('tells only the person who knows the password that it expired', async () => {
+        clock.set('2026-10-05T09:00:00+05:00');
+        const { cookie } = await firstSession('Tursun', 'Davronov');
+        clock.advance(8 * DAY_MS);
+
+        expect(errorCode(await change(cookie, 'not-the-password', NEW_PASSWORD))).toBe(
+          'current_password_wrong',
+        );
+      });
+    });
+
+    // Two changes that both start from the same current password: one wins.
+    it('lets only one of two changes at the same moment through', async () => {
+      const { account, cookie } = await firstSession('Ulugbek', 'Davronov');
+
+      const responses = await Promise.all([
+        change(cookie, account.firstPassword, 'first-of-two-changes'),
+        change(cookie, account.firstPassword, 'second-of-two-changes'),
+      ]);
+
+      expect(responses.map((response) => response.status).sort()).toEqual([204, 403]);
+      const refused = responses.find((response) => response.status === 403);
+      expect(refused === undefined ? '' : errorCode(refused)).toBe('current_password_wrong');
+      expect(await auditOf('auth.password_change', account.id)).toHaveLength(1);
+      const works = await Promise.all([
+        signIn(account.login, 'first-of-two-changes'),
+        signIn(account.login, 'second-of-two-changes'),
+      ]);
+      expect(works.map((response) => response.status).sort()).toEqual([200, 401]);
     });
 
     it('refuses a new password that is the current one', async () => {
@@ -584,6 +705,44 @@ describe('sign-in, sessions and the password change', () => {
 
     it('lets a caller that is not a browser through: neither header', async () => {
       expect(errorCode(await post({}))).toBe('sign_in_failed');
+    });
+
+    // The case the check exists for: the browser of a signed-in person is made
+    // to send a changing request from another site.
+    it('refuses a password change from another site and leaves the password as it was', async () => {
+      const { account, cookie } = await firstSession('Ibrohim', 'Gafurov');
+
+      for (const headers of [
+        { 'Sec-Fetch-Site': 'cross-site' },
+        { 'Sec-Fetch-Site': 'same-site' },
+        { Host: 'school.test', Origin: 'https://other.test' },
+      ]) {
+        const response = await request(server)
+          .post('/api/auth/password')
+          .set('Cookie', cookie)
+          .set(headers)
+          .send({ currentPassword: account.firstPassword, newPassword: NEW_PASSWORD });
+
+        expect(response.status).toBe(403);
+        expect(errorCode(response)).toBe('cross_site_request');
+      }
+      expect((await signIn(account.login, account.firstPassword)).status).toBe(200);
+      expect(errorCode(await signIn(account.login, NEW_PASSWORD))).toBe('sign_in_failed');
+    });
+
+    it('refuses a sign-out from another site and leaves the session open', async () => {
+      const { account, cookie } = await fullSession('Jahongir', 'Gafurov');
+
+      const response = await request(server)
+        .post('/api/auth/sign-out')
+        .set('Cookie', cookie)
+        .set('Sec-Fetch-Site', 'cross-site');
+
+      expect(response.status).toBe(403);
+      expect(errorCode(response)).toBe('cross_site_request');
+      expect(setCookies(response)).toEqual([]);
+      expect((await probe(cookie)).status).toBe(200);
+      expect((await sessionsOf(account.id)).map((row) => row.end_reason)).toEqual([null]);
     });
 
     it('does not check a reading request', async () => {

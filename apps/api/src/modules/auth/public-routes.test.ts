@@ -1,9 +1,11 @@
-import { RequestMethod, type INestApplication } from '@nestjs/common';
+import type { Server } from 'node:http';
+import { Controller, Get, RequestMethod, type INestApplication } from '@nestjs/common';
 import { ModulesContainer } from '@nestjs/core';
+import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { API_PREFIX } from '../../app.setup.js';
 import { createTestApp } from '../../testing/create-test-app.js';
-import { PUBLIC_ROUTE } from './session.guard.js';
+import { Public, PUBLIC_ROUTE } from './session.guard.js';
 
 /**
  * docs/spec/02-roles-and-access.md, "Accounts and sign-in: build order": a short
@@ -25,6 +27,24 @@ interface Route {
 const PATH = 'path';
 const METHOD = 'method';
 
+/**
+ * The names of the methods of a controller, with those of the classes it
+ * extends: NestJS makes a route of an inherited handler too (found by the review).
+ */
+function methodNames(prototype: object): Set<string> {
+  const names = new Set<string>();
+  for (
+    let current: object | null = prototype;
+    current !== null && current !== Object.prototype;
+    current = Object.getPrototypeOf(current) as object | null
+  ) {
+    for (const name of Object.getOwnPropertyNames(current)) {
+      names.add(name);
+    }
+  }
+  return names;
+}
+
 /** Every route of the application as it runs, read from its controllers. */
 function routesOf(app: INestApplication): Route[] {
   const routes: Route[] = [];
@@ -38,7 +58,7 @@ function routesOf(app: INestApplication): Route[] {
       const prefixes = [Reflect.getMetadata(PATH, type) as string | string[] | undefined]
         .flat()
         .map((prefix) => prefix ?? '');
-      for (const name of Object.getOwnPropertyNames(prototype)) {
+      for (const name of methodNames(type.prototype as object)) {
         const handler = prototype[name];
         if (name === 'constructor' || typeof handler !== 'function') {
           continue;
@@ -102,6 +122,48 @@ describe('the routes that work without sign-in', () => {
       'POST /api/auth/password',
       'POST /api/auth/sign-in',
       'POST /api/auth/sign-out',
+    ]);
+  });
+});
+
+// The list is only exact if a public route cannot hide from it.
+describe('the list of routes', () => {
+  class InheritedBase {
+    @Get('inherited')
+    @Public()
+    inherited(): { ok: boolean } {
+      return { ok: true };
+    }
+  }
+
+  @Controller('scratch-child')
+  class ChildController extends InheritedBase {
+    @Get('own')
+    own(): { ok: boolean } {
+      return { ok: true };
+    }
+  }
+
+  let app: INestApplication;
+
+  beforeAll(async () => {
+    app = await createTestApp({ controllers: [ChildController] });
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('names a public handler that a controller inherits', async () => {
+    // It really is a route, and it really is open.
+    const response = await request(app.getHttpServer() as Server).get(
+      '/api/scratch-child/inherited',
+    );
+    expect(response.status).toBe(200);
+
+    expect(routesOf(app).filter((route) => route.name.includes('scratch-child'))).toEqual([
+      { name: 'GET /api/scratch-child/inherited', public: true },
+      { name: 'GET /api/scratch-child/own', public: false },
     ]);
   });
 });

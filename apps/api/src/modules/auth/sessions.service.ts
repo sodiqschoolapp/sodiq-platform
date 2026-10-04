@@ -5,6 +5,7 @@ import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import { Audit } from '../audit/audit.service.js';
+import { LOGIN_FORMAT } from './login.js';
 import { hashPassword, verifyPassword } from './password-hash.js';
 
 /**
@@ -56,13 +57,17 @@ export class Sessions {
    * `password_expired`, but only to somebody who typed it correctly.
    */
   async signIn(login: string, password: string, requestId?: string): Promise<SignedIn> {
-    const account = await this.transactions.run([], (transaction) =>
-      transaction
-        .selectFrom('accounts')
-        .select(['id', 'password_hash', 'must_change_password', 'password_expires_at'])
-        .where('login', '=', login)
-        .executeTakeFirst(),
-    );
+    // Text that no login can be is an unknown login. It is not sent to the
+    // database, which would refuse some of it (a zero byte) with a fault.
+    const account = LOGIN_FORMAT.test(login)
+      ? await this.transactions.run([], (transaction) =>
+          transaction
+            .selectFrom('accounts')
+            .select(['id', 'password_hash', 'must_change_password', 'password_expires_at'])
+            .where('login', '=', login)
+            .executeTakeFirst(),
+        )
+      : undefined;
     // Outside a transaction: the hash takes tens of milliseconds.
     const stored = account?.password_hash ?? (await this.unknownLoginHash());
     const matches = await verifyPassword(stored, password);
@@ -163,7 +168,8 @@ export class Sessions {
   /**
    * Edge cases, "Accounts and sign-in": staff change their own password with
    * the current one, and a password change ends all other sessions. This also
-   * lifts the forced change of a first password.
+   * lifts the forced change of a first password. A first password older than
+   * 7 days is no longer valid here either, in a session that was opened in time.
    */
   async changePassword(
     session: ActiveSession,
@@ -174,12 +180,15 @@ export class Sessions {
     const account = await this.transactions.run([], (transaction) =>
       transaction
         .selectFrom('accounts')
-        .select('password_hash')
+        .select(['password_hash', 'password_expires_at'])
         .where('id', '=', session.accountId)
         .executeTakeFirstOrThrow(),
     );
     if (!(await verifyPassword(account.password_hash, currentPassword))) {
       throw new ApiException('current_password_wrong', 403);
+    }
+    if (account.password_expires_at !== null && account.password_expires_at <= this.clock.now()) {
+      throw new ApiException('password_expired', 401);
     }
     if (newPassword === currentPassword) {
       throw new ApiException('password_unchanged', 400);
@@ -224,7 +233,11 @@ export class Sessions {
   }
 
   private unknownLoginHash(): Promise<string> {
-    this.dummyHash ??= hashPassword(randomBytes(16).toString('hex'));
+    this.dummyHash ??= hashPassword(randomBytes(16).toString('hex')).catch((error: unknown) => {
+      // Not kept: the next unknown login tries again.
+      this.dummyHash = undefined;
+      throw error;
+    });
     return this.dummyHash;
   }
 }

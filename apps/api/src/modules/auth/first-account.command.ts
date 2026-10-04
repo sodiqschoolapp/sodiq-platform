@@ -86,7 +86,8 @@ export async function runFirstAccountCommand(
       );
       return 0;
     } finally {
-      await app.close();
+      // A failed close must not turn a created account into "could not create".
+      await app.close().catch(() => undefined);
     }
   } catch (error) {
     const known = error instanceof AccountsExistError || error instanceof LoginNameError;

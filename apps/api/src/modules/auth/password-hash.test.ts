@@ -32,12 +32,23 @@ describe('the password hash', () => {
     expect(await verifyPassword(second, PASSWORD)).toBe(true);
   });
 
+  // Made with Node's own Argon2id from the password above, with 8 MiB and 1 pass:
+  // a hash stored before the parameters were raised.
+  const OLDER_HASH =
+    '$argon2id$v=19$m=8192,t=1,p=1$MDEyMzQ1Njc4OWFiY2RlZg$Id0lO95MG+hul3yE8vSkK7f0lIgXT0WHVgkeQbTu6lo';
+
+  it('verifies a hash that was made with other parameters, so older hashes keep working', async () => {
+    expect(await verifyPassword(OLDER_HASH, PASSWORD)).toBe(true);
+    expect(await verifyPassword(OLDER_HASH, 'correct-horse-42')).toBe(false);
+  });
+
   it('computes with the parameters of the stored text, not with its own', async () => {
     const stored = await hashPassword(PASSWORD);
     const otherCost = stored.replace('m=19456,t=2', 'm=8192,t=1');
 
     // Other parameters give another hash, so the stored tag no longer fits.
     expect(await verifyPassword(otherCost, PASSWORD)).toBe(false);
+    expect(await verifyPassword(OLDER_HASH.replace('t=1', 't=2'), PASSWORD)).toBe(false);
   });
 
   it.each([
@@ -59,6 +70,10 @@ describe('the password hash', () => {
       'no passes',
       '$argon2id$v=19$m=19456,t=0,p=1$c2FsdHNhbHRzYWx0c2FsdA$aGFzaGhhc2hoYXNoaGFzaGhhc2g',
     ],
+    ['more passes than we ever store', OLDER_HASH.replace('t=1', 't=17')],
+    ['more lanes than we ever store', OLDER_HASH.replace('p=1', 'p=17')],
+    ['no lanes', OLDER_HASH.replace('p=1', 'p=0')],
+    ['less memory than its lanes need', OLDER_HASH.replace('m=8192', 'm=7')],
     ['a cut-off text', '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHRzYWx0c2FsdA'],
   ])('refuses a stored text that is %s, without an error', async (_name, stored) => {
     expect(await verifyPassword(stored, PASSWORD)).toBe(false);
