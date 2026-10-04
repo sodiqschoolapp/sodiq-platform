@@ -521,7 +521,7 @@ export class Sessions {
     currentPassword: string,
     newPassword: string,
     origin: PasswordCheckOrigin,
-  ): Promise<void> {
+  ): Promise<{ trustEnded: boolean }> {
     const { account, key } = await this.transactions.run([], async (transaction) => ({
       account: await transaction
         .selectFrom('accounts')
@@ -549,7 +549,7 @@ export class Sessions {
     }
     const newHash = await hashPassword(newPassword);
 
-    await this.transactions.run([], async (transaction) => {
+    return this.transactions.run([], async (transaction) => {
       const now = this.clock.now();
       const changed = await transaction
         .updateTable('accounts')
@@ -570,6 +570,19 @@ export class Sessions {
         throw new ApiException('current_password_wrong', 403);
       }
       await this.writeEndsByTime(transaction, session.accountId);
+      // The session may have ended since the guard read it: an account lock,
+      // "sign out everywhere" or the removal of this device at the same moment.
+      // Then nothing is changed (found by the review). The open sessions of
+      // the account are locked by now, so this holds until the commit.
+      const own = await transaction
+        .selectFrom('sessions')
+        .select('id')
+        .where('id', '=', session.sessionId)
+        .where('ended_at', 'is', null)
+        .executeTakeFirst();
+      if (own === undefined) {
+        throw new ApiException('not_signed_in', 401);
+      }
       const ended = await transaction
         .updateTable('sessions')
         .set({ ended_at: now, end_reason: 'password_change' })
@@ -590,12 +603,14 @@ export class Sessions {
         .updateTable('sessions')
         .set({ trust_ended_at: now })
         .where('id', '=', session.sessionId)
+        .where('ended_at', 'is', null)
         .where('trust_requested', '=', true)
         .where('trust_ended_at', 'is', null)
         .returning('trusted_from')
         .executeTakeFirst();
       // Only trust that had begun has an end to record.
-      if (untrusted !== undefined && untrusted.trusted_from !== null) {
+      const trustEnded = untrusted !== undefined && untrusted.trusted_from !== null;
+      if (trustEnded) {
         await this.audit.record(transaction, {
           branchId: null,
           actorId: session.accountId,
@@ -605,6 +620,7 @@ export class Sessions {
           ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
         });
       }
+      return { trustEnded };
     });
   }
 

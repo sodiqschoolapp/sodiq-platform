@@ -23,6 +23,7 @@ import {
   OwnAccountLockError,
 } from './account-locks.service.js';
 import { UnknownAccountError } from './password-resets.service.js';
+import { Sessions } from './sessions.service.js';
 
 const MINUTE = 60 * 1000;
 const START = '2026-10-05T09:00:00+05:00';
@@ -202,6 +203,46 @@ describe('an account lock', () => {
       expect(response.status).toBe(401);
       expect(errorCode(response)).toBe('sign_in_failed');
       expect(await auditOf('auth.sign_in_locked', account.id)).toEqual([]);
+    });
+
+    // A first password older than 7 days: the lock is what the person is told.
+    it('also when the password of the account has expired', async () => {
+      clock.set(START);
+      const administrator = await kit.newAccount('Shahlo', 'Nazarova');
+      const account = await kit.newAccount('Sherzod', 'Nazarov');
+      await lock(account.id, administrator.id);
+      clock.advance(8 * 24 * 60 * MINUTE);
+
+      expect(errorCode(await kit.signIn(account.login, account.firstPassword))).toBe(
+        'account_locked',
+      );
+    });
+
+    // Found by the review: the guard reads the session before the change is
+    // written; a lock in between leaves the password as it was.
+    it('and from changing its password in a request the guard let through before the lock', async () => {
+      clock.set(START);
+      const administrator = await kit.newAccount('Sitora', 'Nazarova');
+      const { account, cookie } = await kit.fullSession('Sobir', 'Nazarov');
+      const token = cookie.slice(cookie.indexOf('=') + 1);
+      const read = await app.get(Sessions).resolve(token);
+      if (read === undefined) {
+        throw new Error('The session of the test was not found.');
+      }
+      await lock(account.id, administrator.id);
+
+      await expect(
+        app.get(Sessions).changePassword(read, NEW_PASSWORD, 'another-password-88', {
+          deviceToken: undefined,
+        }),
+      ).rejects.toMatchObject({ code: 'not_signed_in' });
+
+      await unlock(account.id, administrator.id);
+      expect(errorCode(await kit.signIn(account.login, 'another-password-88'))).toBe(
+        'sign_in_failed',
+      );
+      expect((await kit.signIn(account.login, NEW_PASSWORD)).status).toBe(200);
+      expect(await auditOf('auth.password_change', account.id)).toHaveLength(1);
     });
 
     it('with the trust switch as without it', async () => {

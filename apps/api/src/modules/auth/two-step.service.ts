@@ -64,6 +64,13 @@ export interface StartedSetUp {
   address: string;
 }
 
+/** A set-up that was confirmed: the recovery codes, shown once. */
+export interface ConfirmedSetUp {
+  recoveryCodes: string[];
+  /** The moment the session ends if its device is trusted now, otherwise `null`. */
+  trustedUntil: Date | null;
+}
+
 export interface SecondStepOverviewOf {
   on: boolean;
   required: boolean;
@@ -184,9 +191,11 @@ export class TwoStep {
   /**
    * The first right code puts the second step in force, marks this session as
    * having passed it, and answers the ten recovery codes, once. A wrong code
-   * here is not counted: whoever may confirm was just shown the secret.
+   * here is not counted: whoever may confirm was just shown the secret. With
+   * "Trust this device" the trust of the session begins here; `trustedUntil`
+   * is the moment a trusted session ends, or `null`.
    */
-  async confirm(session: ActiveSession, code: string, requestId?: string): Promise<string[]> {
+  async confirm(session: ActiveSession, code: string, requestId?: string): Promise<ConfirmedSetUp> {
     const confirmed = await this.transactions.run([], async (transaction) => {
       const row = await this.lockedRow(transaction, session.accountId);
       if (row === undefined) {
@@ -225,7 +234,7 @@ export class TwoStep {
           })),
         )
         .execute();
-      await this.markPassed(transaction, session, now, requestId);
+      const trustedUntil = await this.markPassed(transaction, session, now, requestId);
       await this.audit.record(transaction, {
         branchId: null,
         actorId: session.accountId,
@@ -233,7 +242,7 @@ export class TwoStep {
         record: { type: 'account', id: session.accountId },
         ...(requestId === undefined ? {} : { requestId }),
       });
-      return recoveryCodes.map(inGroups);
+      return { recoveryCodes: recoveryCodes.map(inGroups), trustedUntil };
     });
     switch (confirmed) {
       case 'not_on':
@@ -525,6 +534,17 @@ export class TwoStep {
    * by each of them, whatever the clock says (found by the review).
    */
   private async remove(transaction: Transaction, accountId: string): Promise<void> {
+    // The open sessions in the order `Sessions.writeEndsByTime` locks them, so
+    // that this and whatever ends all sessions of the account cannot wait for
+    // each other in a circle (found by the review).
+    await transaction
+      .selectFrom('sessions')
+      .select('id')
+      .where('account_id', '=', accountId)
+      .where('ended_at', 'is', null)
+      .orderBy('id')
+      .forUpdate()
+      .execute();
     await transaction
       .updateTable('sessions')
       .set({ second_step_passed_at: null })

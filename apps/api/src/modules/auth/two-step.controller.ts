@@ -13,6 +13,7 @@ import {
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
 import { Returns, ReturnsNothing, ValidBody } from '../../http/schemas.js';
+import { SessionCookie, type SessionCookieJar } from '../../http/session-cookie.js';
 import { answerOf } from './auth.controller.js';
 import {
   AllowedBeforeSecondStep,
@@ -40,9 +41,14 @@ export class TwoStepController {
   async pass(
     @CurrentSession() session: ActiveSession,
     @ValidBody(secondStepCodeSchema) body: SecondStepCode,
+    @SessionCookie() cookie: SessionCookieJar,
     @RequestId() requestId: string,
   ): Promise<SessionResponse> {
     const trustedUntil = await this.twoStep.pass(session, body.code, requestId);
+    if (trustedUntil !== null) {
+      // The trust of the device begins with the code: the browser keeps the cookie for its 7 days.
+      cookie.keep(trustedUntil);
+    }
     return answerOf({ ...session, secondStep: 'passed', trustedUntil });
   }
 
@@ -73,9 +79,14 @@ export class TwoStepController {
   async confirm(
     @CurrentSession() session: ActiveSession,
     @ValidBody(secondStepCodeSchema) body: SecondStepCode,
+    @SessionCookie() cookie: SessionCookieJar,
     @RequestId() requestId: string,
   ): Promise<SecondStepRecoveryCodes> {
-    return { recoveryCodes: await this.twoStep.confirm(session, body.code, requestId) };
+    const confirmed = await this.twoStep.confirm(session, body.code, requestId);
+    if (confirmed.trustedUntil !== null) {
+      cookie.keep(confirmed.trustedUntil);
+    }
+    return { recoveryCodes: confirmed.recoveryCodes };
   }
 
   /** Only where the second step is optional, and with a right code. */

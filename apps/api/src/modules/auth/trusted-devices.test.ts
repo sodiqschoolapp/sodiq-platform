@@ -1,13 +1,19 @@
 import type { INestApplication } from '@nestjs/common';
-import { sessionListSchema, sessionResponseSchema, trustedDeviceListSchema } from '@sodiq/shared';
+import {
+  secondStepSetUpSchema,
+  sessionListSchema,
+  sessionResponseSchema,
+  trustedDeviceListSchema,
+} from '@sodiq/shared';
 import { sql } from 'kysely';
-import request from 'supertest';
+import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { SESSION_COOKIE } from '../../http/session-cookie.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import {
+  base32Decode,
   cookieOf,
   errorCode,
   NEW_PASSWORD,
@@ -20,6 +26,7 @@ import {
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { AccountLocks } from './account-locks.service.js';
 import { PasswordResets } from './password-resets.service.js';
+import { Sessions } from './sessions.service.js';
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -28,6 +35,14 @@ const START = '2026-10-05T09:00:00+05:00';
 /** 7 days after `START`. */
 const START_PLUS_7_DAYS = '2026-10-12T04:00:00.000Z';
 const NOBODY = '00000000-0000-7000-8000-000000000000';
+
+/** 7 days after `START`, as a cookie names it. */
+const START_PLUS_7_DAYS_COOKIE = 'Expires=Mon, 12 Oct 2026 04:00:00 GMT';
+
+/** The `Set-Cookie` line of the session cookie in an answer, if it has one. */
+function sessionCookieLine(response: Response): string | undefined {
+  return setCookies(response).find((line) => line.startsWith(`${SESSION_COOKIE}=`));
+}
 
 interface SessionRow {
   id: string;
@@ -62,7 +77,17 @@ function helpers(database: () => TestDatabase) {
     return found.rows;
   }
 
-  return { sessionsOf, auditOf };
+  /** How many connections to the test database wait for a lock right now. */
+  async function waitingForALock(): Promise<number> {
+    const found = await sql<{ waiting: number }>`
+      select count(distinct l.pid)::int as waiting
+      from pg_locks l join pg_stat_activity a on a.pid = l.pid
+      where a.datname = current_database() and not l.granted
+    `.execute(database().migrator);
+    return found.rows[0]?.waiting ?? 0;
+  }
+
+  return { sessionsOf, auditOf, waitingForALock };
 }
 
 // Edge cases, "Accounts and sign-in": with "Trust this device" a browser stays
@@ -192,6 +217,73 @@ describe('a trusted device', () => {
     });
   });
 
+  // "That browser stays signed in for 7 days": without an end of its own the
+  // cookie would be gone when the browser closes (found by the reviews).
+  describe('keeps its cookie when the browser is closed, and no other session does', () => {
+    it('gives the cookie of a trusted sign-in the moment the 7 days are over', async () => {
+      clock.set(START);
+      const { login } = await account('Aziza', 'Salimova');
+
+      const line = sessionCookieLine(await kit.signIn(login, NEW_PASSWORD, undefined, true));
+
+      expect(line).toContain(START_PLUS_7_DAYS_COOKIE);
+      expect(line).not.toContain('Max-Age');
+      expect(line).toContain('HttpOnly');
+      expect(line).toContain('Secure');
+      expect(line).toContain('SameSite=Strict');
+    });
+
+    it('gives the cookie of a sign-in without the switch no end: it goes with the browser', async () => {
+      clock.set(START);
+      const { login } = await account('Bobur', 'Salimov');
+
+      const line = sessionCookieLine(await kit.signIn(login, NEW_PASSWORD));
+
+      expect(line).toBeDefined();
+      expect(line).not.toContain('Expires');
+      expect(line).not.toContain('Max-Age');
+    });
+
+    it('gives the cookie of a first sign-in with the switch no end either', async () => {
+      clock.set(START);
+      const created = await kit.newAccount('Dilnoza', 'Salimova');
+
+      const line = sessionCookieLine(
+        await kit.signIn(created.login, created.firstPassword, undefined, true),
+      );
+
+      expect(line).toBeDefined();
+      expect(line).not.toContain('Expires');
+    });
+
+    it('takes the end from the cookie again when a password change ends the trust', async () => {
+      clock.set(START);
+      const { login } = await account('Eldor', 'Salimov');
+      const cookie = await trust(login);
+
+      const refused = await kit.changePassword(cookie, 'not-the-password', 'another-password-88');
+      expect(sessionCookieLine(refused)).toBeUndefined();
+
+      const changed = await kit.changePassword(cookie, NEW_PASSWORD, 'another-password-88');
+      const line = sessionCookieLine(changed);
+      // The same session, now without an end of its own.
+      expect(line?.split(';')[0]).toBe(cookie);
+      expect(line).not.toContain('Expires');
+      expect(line).not.toContain('Max-Age');
+    });
+
+    it('leaves the cookie alone at a password change of a session that was not trusted', async () => {
+      clock.set(START);
+      const { login } = await account('Farida', 'Salimova');
+      const cookie = await plain(login);
+
+      const changed = await kit.changePassword(cookie, NEW_PASSWORD, 'another-password-88');
+
+      expect(changed.status).toBe(204);
+      expect(sessionCookieLine(changed)).toBeUndefined();
+    });
+  });
+
   // "Every session ends 7 days after sign-in at the latest, trusted or not."
   describe('stays signed in for 7 days from the sign-in', () => {
     it('works one millisecond before the 7 days are over, and is over with them', async () => {
@@ -285,6 +377,36 @@ describe('a trusted device', () => {
       expect((await readSession(cookie)).trustedUntil).toBeNull();
       clock.advance(15 * MINUTE);
       expect(errorCode(await kit.probe(cookie))).toBe('not_signed_in');
+    });
+  });
+
+  // Found by the review: the guard reads the session before the change is
+  // written. A session that ended in between changes nothing.
+  it('changes no password and ends no trust from a session that ended after the guard read it', async () => {
+    clock.set(START);
+    const { login, id } = await account('Gulbahor', 'Salimova');
+    const other = await plain(login);
+    const cookie = await trust(login);
+    const read = await app.get(Sessions).resolve(cookie.slice(`${SESSION_COOKIE}=`.length));
+    if (read === undefined) {
+      throw new Error('The trusted session of the test was not found.');
+    }
+    // Another session of the account removes this device.
+    const [device] = await devicesOf(other);
+    expect((await remove(device?.id ?? '', other)).status).toBe(204);
+
+    await expect(
+      app.get(Sessions).changePassword(read, NEW_PASSWORD, 'another-password-88', {
+        deviceToken: undefined,
+      }),
+    ).rejects.toMatchObject({ code: 'not_signed_in' });
+
+    expect((await kit.signIn(login, NEW_PASSWORD)).status).toBe(200);
+    expect((await kit.probe(other)).status).toBe(200);
+    expect(await auditOf('auth.trust_ended', id)).toEqual([]);
+    expect((await sessionsOf(id)).at(-2)).toMatchObject({
+      end_reason: 'trusted_device_removed',
+      trust_ended_at: null,
     });
   });
 
@@ -469,6 +591,21 @@ describe('a trusted device', () => {
       expect(devices[0]).toMatchObject({ current: true });
     });
 
+    it('with these fields and no token', async () => {
+      const { login } = await account('Hilola', 'Salimova');
+      const cookie = await trust(login);
+
+      const response = await kit.get('/api/auth/trusted-devices', cookie);
+
+      expect(JSON.stringify(response.body)).not.toContain(
+        cookie.slice(`${SESSION_COOKIE}=`.length),
+      );
+      expect(Object.keys(response.body as object)).toEqual(['devices']);
+      expect(Object.keys((response.body as { devices: object[] }).devices[0] ?? {}).sort()).toEqual(
+        ['current', 'id', 'lastUsedAt', 'startedAt', 'trustedUntil', 'userAgent'],
+      );
+    });
+
     it('to nobody without a session', async () => {
       const response = await kit.get('/api/auth/trusted-devices');
 
@@ -584,6 +721,22 @@ describe('a trusted device', () => {
       expect((await remove(NOBODY, cookie)).status).toBe(404);
     });
 
+    it('but not once its 7 days are over: it is no device any more', async () => {
+      clock.set(START);
+      const { login, id } = await account('Ilhom', 'Salimov');
+      await trust(login);
+      const old = (await sessionsOf(id)).at(-1)?.id ?? '';
+      clock.advance(7 * DAY);
+      const fresh = await trust(login);
+
+      const response = await remove(old, fresh);
+
+      expect(response.status).toBe(404);
+      expect(errorCode(response)).toBe('not_found');
+      expect(await auditOf('auth.trusted_device_removed', id)).toEqual([]);
+      expect((await kit.probe(fresh)).status).toBe(200);
+    });
+
     it('but not with an id that cannot be one', async () => {
       const { login } = await account('Farrux', 'Tursunov');
       const cookie = await trust(login);
@@ -611,7 +764,7 @@ describe('a trusted device of an account with a second step', () => {
   let app: INestApplication;
   let kit: SignInKit;
   const clock = new FixedClock(START);
-  const { sessionsOf, auditOf } = helpers(() => database);
+  const { sessionsOf, auditOf, waitingForALock } = helpers(() => database);
 
   beforeAll(async () => {
     database = await createTestDatabase();
@@ -660,12 +813,18 @@ describe('a trusted device of an account with a second step', () => {
     clock.set(START);
     const { account, secret } = await kit.completeSession('Barno', 'Rahimova');
     clock.set('2026-10-05T10:00:00+05:00');
-    const cookie = cookieOf(await kit.signIn(account.login, NEW_PASSWORD, undefined, true)) ?? '';
+    const signedIn = await kit.signIn(account.login, NEW_PASSWORD, undefined, true);
+    const cookie = cookieOf(signedIn) ?? '';
+    // Not trusted yet: the cookie of the password step ends with the browser.
+    expect(sessionCookieLine(signedIn)).not.toContain('Expires');
     clock.advance(10 * MINUTE);
 
     const passed = await kit.passSecondStep(cookie, kit.codeOf(secret));
 
     expect(passed.status).toBe(200);
+    // The same cookie once more, now until the 7 days of the sign-in are over.
+    expect(sessionCookieLine(passed)?.split(';')[0]).toBe(cookie);
+    expect(sessionCookieLine(passed)).toContain('Expires=Mon, 12 Oct 2026 05:00:00 GMT');
     // From the sign-in, not from the code.
     expect(passed.body).toMatchObject({
       secondStep: 'passed',
@@ -687,6 +846,7 @@ describe('a trusted device of an account with a second step', () => {
     const passed = await kit.passSecondStep(cookie, nextCode(secret));
 
     expect(passed.body).toMatchObject({ secondStep: 'passed', trustedUntil: null });
+    expect(sessionCookieLine(passed)).toBeUndefined();
     clock.advance(15 * MINUTE);
     expect(errorCode(await kit.probe(cookie))).toBe('not_signed_in');
   });
@@ -710,8 +870,17 @@ describe('a trusted device of an account with a second step', () => {
     const response = await kit.signIn(account.login, NEW_PASSWORD, undefined, true);
     const cookie = cookieOf(response) ?? '';
     expect(response.body).toMatchObject({ secondStep: 'set_up_required', trustedUntil: null });
+    expect(sessionCookieLine(response)).not.toContain('Expires');
 
-    await kit.setUpSecondStep(cookie);
+    const started = await kit.post('/api/auth/second-step/set-up', cookie);
+    const secret = base32Decode(secondStepSetUpSchema.parse(started.body).secret);
+    const confirmed = await kit
+      .post('/api/auth/second-step/confirm', cookie)
+      .send({ code: kit.codeOf(secret) });
+
+    expect(confirmed.status).toBe(200);
+    expect(sessionCookieLine(confirmed)?.split(';')[0]).toBe(cookie);
+    expect(sessionCookieLine(confirmed)).toContain(START_PLUS_7_DAYS_COOKIE);
 
     expect(await readSession(cookie)).toMatchObject({
       secondStep: 'passed',
@@ -801,7 +970,7 @@ describe('a trusted device of an account with a second step', () => {
       }
     });
 
-    it('and a device that owes the code again is removed like any other', async () => {
+    it('and by a session of the account that is not trusted itself', async () => {
       clock.set(START);
       const { account, secret, cookie: complete } = await kit.completeSession('Kamola', 'Rahimova');
       const trusted =
@@ -815,5 +984,46 @@ describe('a trusted device of an account with a second step', () => {
       expect((await remove(devices[0]?.id ?? '', complete)).status).toBe(204);
       expect(errorCode(await kit.probe(trusted))).toBe('not_signed_in');
     });
+  });
+
+  // Found by the review: the code and an account lock at the same moment. The
+  // lock ends the session first; the code that waited for it begins no trust.
+  it('begins no trust with a code that arrives while the account is being locked', async () => {
+    clock.set(START);
+    const administrator = await kit.newAccount('Lola', 'Rahimova');
+    const { account, secret } = await kit.completeSession('Mansur', 'Rahimov');
+    const cookie = cookieOf(await kit.signIn(account.login, NEW_PASSWORD, undefined, true)) ?? '';
+    const code = nextCode(secret);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    // The lock is written and its transaction stays open.
+    const locking = app.get(Transactions).run([], async (transaction) => {
+      await app.get(AccountLocks).lock(transaction, {
+        accountId: account.id,
+        lockedBy: administrator.id,
+        reason: 'Dismissed today.',
+      });
+      await held;
+    });
+    const passing = kit.passSecondStep(cookie, code).then((response) => response);
+    try {
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+    } finally {
+      release();
+    }
+    await locking;
+    const response = await passing;
+
+    expect(response.status).toBe(401);
+    expect(errorCode(response)).toBe('not_signed_in');
+    expect(sessionCookieLine(response)).toBeUndefined();
+    expect((await sessionsOf(account.id)).at(-1)).toMatchObject({
+      end_reason: 'account_locked',
+      trusted_from: null,
+    });
+    expect(await auditOf('auth.device_trusted', account.id)).toEqual([]);
   });
 });

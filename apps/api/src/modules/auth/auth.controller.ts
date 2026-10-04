@@ -57,7 +57,7 @@ export class AuthController {
       trustDevice: body.trustDevice ?? false,
       requestId,
     });
-    cookie.set(token);
+    cookie.set(token, session.trustedUntil);
     device.set(deviceToken);
     return answerOf(session);
   }
@@ -95,13 +95,20 @@ export class AuthController {
   async changePassword(
     @CurrentSession() session: ActiveSession,
     @ValidBody(changePasswordSchema) body: ChangePassword,
+    @SessionCookie() cookie: SessionCookieJar,
     @DeviceCookie() device: DeviceCookieJar,
     @RequestId() requestId: string,
   ): Promise<void> {
-    await this.sessions.changePassword(session, body.currentPassword, body.newPassword, {
-      deviceToken: device.token,
-      requestId,
-    });
+    const changed = await this.sessions.changePassword(
+      session,
+      body.currentPassword,
+      body.newPassword,
+      { deviceToken: device.token, requestId },
+    );
+    if (changed.trustEnded) {
+      // The device is trusted no more: its cookie ends with the browser again.
+      cookie.keep(null);
+    }
   }
 
   @Post('sign-out')
