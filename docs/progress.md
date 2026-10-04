@@ -2,6 +2,40 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 October 2026: task 0.5b Jobs
+
+Built:
+
+- `db/migrations/0004_job_queue.sql`: schema `pgboss` of pg-boss 12.36.0 (schema version 44), owned by `sodiq_migrator`, with the rights of `sodiq_app` table by table. pg-boss is pinned exactly and starts with `migrate: false, createSchema: false`; `@opentelemetry/api` 1.9.1 is declared because pg-boss cannot load without it (approved by the owner).
+- `apps/api/src/jobs/`: `defineJob` and the list `job-list.ts` (empty); `Jobs.enqueue(transaction, definition, { branchIds, data })`, which writes the job in the caller's transaction; `JobRunner`, which runs a handler inside `Transactions.run(branchIds, ...)` and `RequestKeys.runOnce` with the job id as key; `JobQueue`, the one pg-boss instance, not exported.
+- The worker: `apps/api/src/worker.ts` and `worker.module.ts`, the same modules as the API without HTTP. `pnpm dev` now runs web, API and worker (`dev:worker`, its own watch build in `apps/api/dist-worker`); `start:worker` for the server.
+- Tests: no job after a rollback (the done-when), change, audit entry and job committed together, no job after a failed keyed work, the refusals of `enqueue`, the handler sees only the job's branches, a run that fails half-way is undone and tried again, a job delivered twice changes the data once, the stored failure holds no other field of the error, the worker entry point, and the rights of the application user in schema `pgboss`.
+- `catalog.test.ts`: the schemas are exactly `public` and `pgboss`; in `pgboss` every object belongs to `sodiq_migrator`, the tables are those of pg-boss 12.36.0, the effective rights of `sodiq_app` are the listed ones, and there is no view and no `SECURITY DEFINER` function.
+- Reviewed by the spec reviewer. Its must-fix is fixed: a job may only name branches of the transaction that enqueues it. No route was added, so no permission review.
+- Test stability, found by repeated full runs: `destroy` of a test database waits until no session is left before the drop; the hook timeout of the API tests is 60 s; `apps/web/tooling/api-types.test.ts` has a limit of 30 s (it starts a Node process and came close to 5 s when builds ran beside the tests).
+
+Left out, with the task that brings it:
+
+- Any real job and handler: 0.9 (delivery of notifications) is the first.
+- Scheduled jobs (`schedule: true`): 9.2c with the nightly check.
+- Alerts on failed jobs, a dead-letter queue, how long failed jobs are kept: 10.2. The Render worker service: 0.10.
+- Not done from the review, by choice, for the owner to confirm: the message of a failure is stored in the job row and logged as thrown (the same rule as for a 500; some PostgreSQL messages repeat a value); `sodiq_app` may update all of `pgboss.version`, not only its timestamp columns (narrowing it means editing the migration and applying it again in `sodiq_dev`); no test ties the migration file to the output of `pg-boss plans create`.
+
+The next sessions must know:
+
+- A new job: `defineJob({ name, data, options })` beside the code that enqueues it, add it to `JOB_DEFINITIONS` in `job-list.ts`, and name its handler with `jobRunner.handle(definition, handler)` in a provider's `onModuleInit`. The worker refuses to start while a definition has no handler. `data` holds ids only: it is readable from a transaction of any branch.
+- Enqueue inside the `Transactions.run` of the change, next to `audit.record`. The job's `branchIds` must be among the branches of that transaction; a school-wide transaction (`[]`) cannot enqueue for a branch. Ask the owner before loosening this.
+- A handler decides from stored moments and the injected clock, never from the fact that it was triggered: a job can run late or twice (`.claude/rules/api.md`).
+- 0.9: the runner's repeat safety covers database changes only. A handler that sends something outside the database (Telegram, email) must send after its transaction commits and must be safe when the send is repeated.
+- A route test whose route enqueues a job: `createTestApp({ database: database.app, jobsDatabaseUrl: database.appUrl })`. Tests of a handler: build `JobQueue`, `Jobs` and `JobRunner` as in `jobs.test.ts`, with `pollingIntervalSeconds: 0.5` and the helpers of `src/testing/sample-job.ts`.
+- 10.2: a job in state `failed` does not prove that its work was not done (worker died after the commit; a run longer than 15 minutes). The request key with the job id and scope `job:<name>` is the proof. pg-boss has one retention for completed and failed jobs (`deleteAfterSeconds`, 7 days): "failed jobs for 30 days" needs every finished job kept for 30 days or a dead-letter queue.
+- 0.10: the worker on Render runs `pnpm --filter @sodiq/api start:worker` from the same build as the API, with `DATABASE_URL` of `sodiq_app`. API and worker stop at start when schema `pgboss` is missing or of another version, so migrations run first.
+- An upgrade of pg-boss: the new exact version and a new migration made from `pg-boss plans migrate` in one pull request; update `JOB_TABLE_RIGHTS` in `catalog.test.ts` if tables change. With `persistQueueStats` or `registerInstance` turned on, pg-boss needs rights it does not have; ask first.
+- pg-boss logs a failed run as an error line; in the tests these lines (`sample.note ...: The run failed.`) are expected.
+- In Git Bash here a heredoc breaks on apostrophes (again in this task): write a script file with the editor tools and run it.
+
+The next task is 0.6a.
+
 ## 4 October 2026: task 0.5a Audit log
 
 Task 0.5 was split by the owner: 0.5a is the audit log, 0.5b is jobs (pg-boss, the worker).
