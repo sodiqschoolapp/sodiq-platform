@@ -36,7 +36,7 @@ How to read the task lines:
   - Build: a minimal `branches` table; the branch filter set per transaction (a list of branch ids, normally one; nothing set shows no rows), with row-filter policies that later tables reuse; a transaction helper; repeat-safe request keys.
   - Done when: a test shows a row of another branch is invisible, the filter does not stay on a pooled connection, and a repeated request with the same key changes nothing.
 
-- [ ] **0.5a Audit log**
+- [x] **0.5a Audit log**
   - Read: `13` (Security), `edge/developer-rules`, `edge/system-behaviour`, `edge/people-roles-accounts` (Personal data and the audit log).
   - Build: append-only audit table partitioned by month, which the application user cannot update or delete; an audit service used inside transactions.
   - Done when: tests prove an audit row cannot be changed.

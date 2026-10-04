@@ -2,6 +2,41 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 October 2026: task 0.5a Audit log
+
+Task 0.5 was split by the owner: 0.5a is the audit log, 0.5b is jobs (pg-boss, the worker).
+
+Built:
+
+- `db/migrations/0003_audit_log.sql`: `audit_log` (belongs to a branch, standard branch filter) and `audit_log_school` (events without a branch), with the same columns: id, occurred_at, actor_id, person_id, assignment_id, action, record_type, record_id, old_value, new_value, reason, details, request_id. Both are partitioned by month (UTC borders) from October 2026 to December 2029, with a default partition each.
+- Append-only: `sodiq_app` has select and insert on the two parents and no right on any partition. Tests prove that update, delete and truncate are refused, that a partition cannot be reached directly, and read the rights of every partition from the catalog.
+- `Audit.record(transaction, entry)` (`apps/api/src/modules/audit/audit.service.ts`), in a global `AuditModule`: writes in the caller's transaction with the moment from the injected clock. `branchId: null` writes to `audit_log_school`.
+- `catalog.test.ts`: `audit_log_school` and its partitions are listed as school-wide (names generated for the range of the migration).
+- Reviewed by the spec reviewer: no must-fix finding; the weak tests it found are fixed. No route was added, so no permission review.
+
+Left out, with the task that brings it:
+
+- pg-boss, the worker entry point, jobs in the transaction, `pnpm dev` and CI wiring, the catalog checks for schema `pgboss`: 0.5b.
+- Journal cell history (also append-only and partitioned): 6.1.
+- Reading routes, rights per role, the screen, exports: 2.6.
+- Foreign keys of `actor_id` and `person_id`, and a column for the system actor: 0.6a. Foreign key of `assignment_id`: 0.7. A flag for the support account: 2.6.
+- Not changed after the review, by choice (the migration is applied in `sodiq_dev`, and an edit would mean re-applying it): the comment in 0003 that says the log is never blocked by another table does not name the exception `branch_id`; the `do` block quotes `inhrelid::regclass::text` with `%I`, which fails loudly if `public` is not in the search path.
+- No speed test at the spec's data volume: 10.1.
+
+The next sessions must know:
+
+- Every change to timetable, journal, results, people and settings: `await audit.record(transaction, { branchId, actorId, action, record, oldValue, newValue, ... })` inside the `Transactions.run` of the change. An entry for a branch the transaction does not work for is refused by the row filter. Left out and `null` values are stored alike; a cleared field is `{ field: null }`.
+- A query on the audit log should carry a date range, or PostgreSQL opens every partition.
+- A migration whose code needs the new types: `pnpm db:migrate` builds the API first and fails until the types are regenerated. Way out used here: in `apps/api`, `pnpm exec tsc -p tsconfig.build.json` (it emits despite the type errors), `node dist/database/cli.js migrate`, then `pnpm db:codegen`. Or write and apply the migration before the code that uses it.
+- Adding months (before mid-2029; a test fails from 1 July 2029): a new migration that creates the partitions before those months begin and while the default partitions are empty. Creating a partition locks the parent and scans the default partition; if the default partition holds a row of the new month the migration fails. Each new `audit_log` partition needs row security and the `branch_filter` policy and no grant; extend the range in `auditSchoolPartitions()` of `catalog.test.ts`.
+- 0.5b, found while planning: pg-boss is 12.36.0 (Node 22.12 or later). Its schema SQL comes from `pg-boss plans create --schema pgboss` and goes into a numbered migration (remove `begin` and `commit`: the runner refuses them); the application starts it with `migrate: false, createSchema: false`. Pin the exact version; an upgrade means a new migration from `plans migrate`. A job is sent in our transaction with `boss.send(name, data, { db: fromKysely(transaction) })` (`fromKysely` is part of pg-boss). Check first whether `createQueue` (default `partition: false`) needs more than insert rights; otherwise queues are created in the migration. Jobs carry `branchIds` and the handler opens `Transactions.run(branchIds, ...)`; payloads hold ids only. The catalog test "keep everything in schema public" must be extended. The notes of 0.2, 0.3 and 0.4b for 0.5 below still hold.
+- 0.6a: sign-ins and the first Super Admin command are school-wide entries (`branchId: null`, and for the command `actorId: null` with the command named in `details`).
+- 0.7: the guard supplies `assignmentId` and `requestId` for audit entries.
+- 2.6: the audit screen must apply the field-group rules of people-roles-accounts ("Personal data and the audit log") to `old_value` and `new_value`, so a role that sees identity or financial fields hidden does not read them through the audit log. 2.6 also decides who reads `audit_log_school` entries (sign-ins, settings): the spec gives the Principal and Academic Vice Principal "their branch" only, and at database level any transaction can read that table. Entries about a branch's person that are school-wide (sign-ins, relatives) are not in that branch's `audit_log`.
+- 0.10: `sodiq_migrator` owns the audit tables and could change them, so its password exists only in the deploy secret and is never used by the running application.
+
+The next task is 0.5b.
+
 ## 4 October 2026: task 0.4b API foundations, database side
 
 Built:
