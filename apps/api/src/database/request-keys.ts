@@ -13,6 +13,13 @@ export interface KeyedRequest {
   /** The action, for example `timetable.publish`. A key belongs to one action. */
   scope: string;
   /**
+   * The account that sends the request: `access.accountId` or the account of
+   * the session, never one named in the request. A key belongs to it; the same
+   * key from another account is refused. `null` only for a job, whose scope
+   * begins with `job:` (the database refuses every other combination).
+   */
+  accountId: string | null;
+  /**
    * Everything that decides what the action does: every path parameter and the
    * body. The branches of the transaction are added by `runOnce` itself.
    */
@@ -65,7 +72,8 @@ export class RequestKeys {
    * does not run `work`, so a check inside `work` would be skipped.
    *
    * The answer is stored, so it holds ids and status only, never personal data.
-   * The same key for another action or with other input is refused (409).
+   * The same key for another action, with other input or from another account
+   * is refused (409).
    */
   async runOnce<T extends JsonValue>(
     transaction: Transaction,
@@ -88,12 +96,19 @@ export class RequestKeys {
       .values({
         key: request.key,
         scope: request.scope,
+        account_id: request.accountId,
         request_hash: requestHash,
         created_at: this.clock.now(),
       })
       .onConflict((conflict) => conflict.column('key').doNothing())
       .returning('key')
-      .executeTakeFirst();
+      .executeTakeFirst()
+      .catch(async (error: unknown) => {
+        // A key the database refuses (an account that does not fit the scope)
+        // is a fault of the caller; the rest of its transaction stays usable.
+        await sql`rollback to savepoint request_key`.execute(transaction).catch(() => undefined);
+        throw error;
+      });
 
     if (claimed === undefined) {
       await sql`release savepoint request_key`.execute(transaction);
@@ -101,6 +116,7 @@ export class RequestKeys {
         .selectFrom('request_keys')
         .select([
           'scope',
+          'account_id',
           'result',
           sql<boolean>`request_hash = ${requestHash}`.as('same_input'),
           // A stored JSON null is an answer; no value at all means "not finished".
@@ -113,7 +129,13 @@ export class RequestKeys {
         // after it began (repeatable read or stricter).
         throw new Error('A request key is taken but not visible to this transaction.');
       }
-      if (stored.scope !== request.scope || !stored.same_input) {
+      // The account first: the stored answer goes to nobody but the account
+      // that sent the first request. The refusal is the same as for other input.
+      if (
+        stored.account_id !== request.accountId ||
+        stored.scope !== request.scope ||
+        !stored.same_input
+      ) {
         throw new ApiException('request_key_reused', 409);
       }
       if (stored.unfinished) {

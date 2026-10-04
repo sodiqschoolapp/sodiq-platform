@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ACTIONS,
   checkTable,
+  freezeTable,
   PERMISSIONS,
   permits,
   type Action,
@@ -55,6 +56,43 @@ describe('the permission table', () => {
 
     expect(permits(broken, 'tutor', 'rooms', 'view')).toBe(false);
     expect(permits(broken, 'teacher', 'rooms', 'view')).toBe(true);
+  });
+});
+
+// Left open by task 0.7b: the table must not change while the program runs.
+describe('a frozen permission table', () => {
+  const frozen = freezeTable({
+    rooms: rows({ super_admin: ['view'], teacher: ['view'] }),
+  });
+
+  it('is the table it was given', () => {
+    expect(permits(frozen, 'teacher', 'rooms', 'view')).toBe(true);
+    expect(permits(frozen, 'teacher', 'rooms', 'edit')).toBe(false);
+  });
+
+  it('refuses a new action for a role, another row and a new area', () => {
+    const open = frozen as unknown as Record<string, Record<string, string[]>>;
+
+    expect(() => open.rooms?.teacher?.push('edit')).toThrow(TypeError);
+    expect(() => {
+      // The test proves `rooms` exists; the assertion keeps the assignment a plain one.
+      (open.rooms as Record<string, string[]>).teacher = ['view', 'edit'];
+    }).toThrow(TypeError);
+    expect(() => {
+      open.journal = { teacher: ['edit'] };
+    }).toThrow(TypeError);
+    expect(permits(frozen, 'teacher', 'rooms', 'edit')).toBe(false);
+    expect(permits(frozen, 'teacher', 'journal', 'edit')).toBe(false);
+  });
+
+  it('is what the application reads', () => {
+    expect(Object.isFrozen(PERMISSIONS)).toBe(true);
+    for (const areaRows of Object.values<PermissionRows>(PERMISSIONS)) {
+      expect(Object.isFrozen(areaRows)).toBe(true);
+      for (const actions of Object.values(areaRows)) {
+        expect(Object.isFrozen(actions)).toBe(true);
+      }
+    }
   });
 });
 

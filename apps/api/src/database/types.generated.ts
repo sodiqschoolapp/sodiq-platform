@@ -108,6 +108,7 @@ export interface KnownDevices {
 }
 
 export interface RequestKeys {
+  account_id: string | null;
   created_at: Timestamp;
   key: string;
   request_hash: string;

@@ -279,6 +279,142 @@ describe('HTTP foundations', () => {
     });
   });
 
+  // docs/build-plan.md, task 0.7c: "JSON bodies only"; done when "a
+  // form-encoded body is refused". From the review of 0.6a: a plain HTML form of
+  // another site can build a form-encoded body, never a JSON one.
+  describe('JSON bodies only', () => {
+    it.each([
+      ['a form-encoded body', 'application/x-www-form-urlencoded', 'name=Sample&count=1'],
+      ['a plain-text body', 'text/plain', '{"name":"Sample","count":1}'],
+      ['a multipart body', 'multipart/form-data; boundary=x', '--x--\r\n'],
+      ['a body that only ends like JSON', 'application/not-json', '{"name":"Sample","count":1}'],
+    ])('refuses %s in the one error shape', async (_name, type, body) => {
+      const response = await request(server)
+        .post('/api/sample')
+        .set('Content-Type', type)
+        .send(body);
+
+      expect(response.status).toBe(415);
+      const parsed = apiErrorSchema.parse(response.body);
+      expect(parsed.error.code).toBe('unsupported_media_type');
+      expect(parsed.error.requestId).toBe(response.headers['x-request-id']);
+    });
+
+    it('refuses a body that names no type', async () => {
+      // Bytes are sent as they are, without a `Content-Type`.
+      const response = await request(server)
+        .post('/api/sample')
+        .send(Buffer.from('{"name":"Sample","count":1}'));
+
+      expect(response.request.getHeader('Content-Type')).toBeUndefined();
+      expect(response.status).toBe(415);
+      expect(apiErrorSchema.parse(response.body).error.code).toBe('unsupported_media_type');
+    });
+
+    // The route would accept this body as JSON: the refusal comes before the route.
+    it('does not hand a form-encoded body to a route that would accept its fields', async () => {
+      const response = await request(server).post('/api/sample').type('form').send({
+        name: 'Sample',
+        count: 1,
+      });
+
+      expect(response.status).toBe(415);
+      expect(response.body).not.toHaveProperty('receivedAt');
+    });
+
+    it('refuses it on a path that does not exist and on a reading request too', async () => {
+      const unknown = await request(server).post('/nowhere').type('form').send({ a: '1' });
+      const reading = await request(server).get('/api/health').type('form').send({ a: '1' });
+
+      expect(unknown.status).toBe(415);
+      expect(reading.status).toBe(415);
+    });
+
+    it.each(['application/json', 'application/json; charset=utf-8', 'Application/JSON'])(
+      'reads a body of the type "%s"',
+      async (type) => {
+        const response = await request(server)
+          .post('/api/sample')
+          .set('Content-Type', type)
+          .send('{"name":"Sample","count":1}');
+
+        expect(response.status).toBe(201);
+      },
+    );
+
+    it.each([
+      ['no body and no length', undefined],
+      ['an empty body, as a browser sends it', '0'],
+    ])('lets a request with %s through to its route', async (_name, length) => {
+      const call = request(server).post('/api/sample');
+      const response = await (length === undefined ? call : call.set('Content-Length', length));
+
+      // The route answers: it has no body to check.
+      expect(response.status).toBe(400);
+      expect(apiErrorSchema.parse(response.body).error.code).toBe('validation_failed');
+    });
+
+    // The cross-site check stands in front: its answer does not change.
+    it('still answers a form of another site as a request from another site', async () => {
+      const response = await request(server)
+        .post('/api/sample')
+        .set('Sec-Fetch-Site', 'cross-site')
+        .type('form')
+        .send({ name: 'Sample', count: '1' });
+
+      expect(response.status).toBe(403);
+      expect(apiErrorSchema.parse(response.body).error.code).toBe('cross_site_request');
+    });
+  });
+
+  // docs/build-plan.md, task 0.7c: "`Cache-Control: no-store` on every answer".
+  // From the review of 0.6a: a shared classroom computer keeps no answer.
+  describe('no answer may be kept', () => {
+    it.each([
+      ['an answer with a body', 'get', '/api/sample', 200],
+      ['the public health route', 'get', '/api/health', 200],
+      ['a refused input', 'get', '/api/sample?limit=1000', 400],
+      ['a refusal thrown by a route', 'get', '/api/sample/refused', 403],
+      ['an unknown path under /api', 'get', '/api/nowhere', 404],
+      ['an unknown path outside /api', 'get', '/nowhere', 404],
+      ['a path that cannot be decoded', 'get', '/api/%E0%A4%A', 400],
+      ['a preflight request', 'options', '/api/health', 404],
+    ] as const)('%s carries no-store', async (_name, method, path, status) => {
+      const response = await request(server)[method](path);
+
+      expect(response.status).toBe(status);
+      expect(response.headers['cache-control']).toBe('no-store');
+    });
+
+    it('so does a fault of the server', async () => {
+      vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+      const response = await request(server).get('/api/sample/fault');
+
+      expect(response.status).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+    });
+
+    it('so do the refusals that come before a route', async () => {
+      const post = () => request(server).post('/api/sample');
+      const answers = {
+        notJson: await post().type('form').send({ name: 'Sample' }),
+        broken: await post().set('Content-Type', 'application/json').send('{"name": '),
+        tooLarge: await post().send({ name: 'x'.repeat(200_000), count: 1 }),
+        otherSite: await post()
+          .set('Sec-Fetch-Site', 'cross-site')
+          .send({ name: 'Sample', count: 1 }),
+      };
+
+      expect(Object.values(answers).map((response) => response.status)).toEqual([
+        415, 400, 413, 403,
+      ]);
+      for (const response of Object.values(answers)) {
+        expect(response.headers['cache-control']).toBe('no-store');
+      }
+    });
+  });
+
   // Owner, 4 October 2026: CORS stays off; web app and API share one origin.
   describe('requests from another site', () => {
     it.each([

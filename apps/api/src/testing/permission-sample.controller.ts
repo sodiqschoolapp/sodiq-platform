@@ -1,4 +1,4 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { All, Controller, Get, Post } from '@nestjs/common';
 import {
   ROLES,
   type Action,
@@ -106,6 +106,17 @@ export class PermissionSampleController {
   @Public()
   @Returns(openAnswerSchema)
   open(): { ok: boolean } {
+    return { ok: true };
+  }
+}
+
+/** A route for every method: the harness names it, because it cannot call or list it as one route. */
+@Controller('permission-every-method')
+export class EveryMethodController {
+  @All()
+  @AnySignedIn()
+  @Returns(openAnswerSchema)
+  every(): { ok: boolean } {
     return { ok: true };
   }
 }

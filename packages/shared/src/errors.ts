@@ -11,6 +11,8 @@ export const ERROR_CODES = [
   'malformed_request',
   'not_found',
   'payload_too_large',
+  /** The request has a body that is not JSON. The API reads JSON bodies only. */
+  'unsupported_media_type',
   /** No session: none was sent, or it is unknown or has ended. */
   'not_signed_in',
   /** Unknown login or wrong password; the answer does not say which. */
@@ -51,7 +53,7 @@ export const ERROR_CODES = [
   'own_request',
   /** A changing request that came from another site. */
   'cross_site_request',
-  /** The request key was already used for another action, other input or other branches. */
+  /** The request key was already used for another action, other input or other branches, or by another account. */
   'request_key_reused',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',

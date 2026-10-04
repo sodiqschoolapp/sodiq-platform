@@ -208,6 +208,58 @@ describe('the permission guard', () => {
     expect(response.text).not.toContain(TYPED_VALUE);
   });
 
+  // Left open by task 0.7b. Node joins a header that is sent twice into one
+  // text, which is no id: the request names one branch or is refused.
+  it('refuses a request that names its branch twice', async () => {
+    const browser = await kit.fullSession('Umida', 'Sharipova');
+    await kit.giveRole(browser.account.id, { role: 'teacher', branchId: north });
+    await kit.giveRole(browser.account.id, { role: 'teacher', branchId: south });
+
+    const response = await request(server)
+      .get('/api/permission-sample/view')
+      .set('Cookie', browser.cookie)
+      .set({ [BRANCH_HEADER]: [north, south] });
+
+    expect(response.status).toBe(400);
+    const parsed = apiErrorSchema.parse(response.body);
+    expect(parsed.error.code).toBe('validation_failed');
+    expect(parsed.error.details).toEqual([
+      { path: 'X-Branch-Id', code: 'invalid_format', message: expect.any(String) as string },
+    ]);
+  });
+
+  // Left open by task 0.7b. Express answers HEAD with the route of GET: the guard stands before it too.
+  it('checks a HEAD request like the GET request of the same route', async () => {
+    const teacher = await kit.fullSession('Vohid', 'Nematov');
+    await kit.giveRole(teacher.account.id, { role: 'teacher', branchId: north });
+    const head = (cookies: string | undefined, branch: string) => {
+      const call = request(server).head('/api/permission-sample/view').set(BRANCH_HEADER, branch);
+      return cookies === undefined ? call : call.set('Cookie', cookies);
+    };
+
+    expect((await head(teacher.cookie, north)).status).toBe(200);
+    expect((await head(teacher.cookie, south)).status).toBe(403);
+    expect((await head(undefined, north)).status).toBe(401);
+  });
+
+  // Left open by task 0.7b; the Senior Head Teacher is tested above.
+  it('allows a Super Admin every branch that exists, and no branch that does not', async () => {
+    const strict = signInKit(app, { newAccountsHold: { role: 'super_admin' } });
+    const browser = await strict.completeSession('Xurshida', 'Boboyeva');
+
+    const known = await edit(browser.cookie, south);
+    const unknown = await edit(browser.cookie, randomUUID());
+
+    expect(known.status).toBe(201);
+    expect(accessAnswerSchema.parse(known.body)).toMatchObject({
+      role: 'super_admin',
+      branchId: south,
+      branchIds: [south],
+    });
+    expect(unknown.status).toBe(403);
+    expect(errorCode(unknown)).toBe('permission_denied');
+  });
+
   // Edge cases, "Accounts and sign-in": "Rights are read again on every request."
   it('refuses at the next request once the role has ended', async () => {
     const browser = await kit.fullSession('Iroda', 'Valieva');

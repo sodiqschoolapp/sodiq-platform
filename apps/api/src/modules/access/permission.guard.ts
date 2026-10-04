@@ -5,7 +5,13 @@ import {
   type CanActivate,
   type ExecutionContext,
 } from '@nestjs/common';
-import { BRANCH_HEADER, branchIdSchema, type PermissionTable, type Role } from '@sodiq/shared';
+import {
+  BRANCH_HEADER,
+  branchIdSchema,
+  freezeTable,
+  type PermissionTable,
+  type Role,
+} from '@sodiq/shared';
 import type { Request } from 'express';
 import { Transactions } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -63,10 +69,15 @@ const branchHeader = new HeaderPipe(BRANCH_HEADER, branchIdSchema);
  */
 @Injectable()
 export class PermissionGuard implements CanActivate {
+  private readonly table: PermissionTable;
+
   constructor(
-    @Inject(PERMISSION_TABLE) private readonly table: PermissionTable,
+    @Inject(PERMISSION_TABLE) table: PermissionTable,
     private readonly transactions: Transactions,
-  ) {}
+  ) {
+    // Whatever table was provided: nothing can widen it while the server runs.
+    this.table = freezeTable(table);
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const handler = context.getHandler();

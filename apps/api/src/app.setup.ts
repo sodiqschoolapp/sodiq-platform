@@ -4,6 +4,8 @@ import {
   errorFallback,
   notFoundFallback,
 } from './http/api-exception.filter.js';
+import { jsonOnlyMiddleware } from './http/json-only.js';
+import { noStoreMiddleware } from './http/no-store.js';
 import { requestIdMiddleware } from './http/request-id.js';
 import { sameSiteMiddleware } from './http/same-site.js';
 import { ResponseSchemaInterceptor } from './http/response-schema.interceptor.js';
@@ -22,8 +24,11 @@ export function configureApp(app: NestExpressApplication): void {
   app.disable('x-powered-by');
   // Before the body parser, so that its refusals carry a request id too.
   app.use(requestIdMiddleware);
+  app.use(noStoreMiddleware);
   // Before the body parser too: a request from another site is not even read.
   app.use(sameSiteMiddleware);
+  // Nor is a body that is not JSON.
+  app.use(jsonOnlyMiddleware);
   app.useGlobalFilters(new ApiExceptionFilter());
   app.useGlobalInterceptors(new ResponseSchemaInterceptor());
 }

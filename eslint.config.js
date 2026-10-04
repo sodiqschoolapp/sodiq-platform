@@ -41,7 +41,63 @@ const rawInputDecorators = [
 ];
 
 const rawInputMessage =
-  'Read route input through ValidBody, ValidQuery, ValidParams or RequestKey (apps/api/src/http/schemas.ts), which check it against a schema.';
+  'Read route input through ValidBody, ValidQuery, ValidParams or RequestKey (apps/api/src/http/schemas.ts), which check it against a schema. A decorator of your own (createParamDecorator) belongs in apps/api/src/http/ or in one of the two guards.';
+
+const requestAccessMessage =
+  'Only apps/api/src/http/ and the two guards (session.guard.ts, permission.guard.ts) reach the request itself. Use their decorators: CurrentSession, CurrentAccess, RequestId, RequestKey and the Valid... helpers.';
+
+const testingMessage =
+  'Code of the application does not import test helpers (apps/api/src/testing/, requiresInTable): the build leaves them out, and a sample table is not the permission table. Use Requires.';
+
+/**
+ * The `no-restricted-imports` rule of one group of files in apps/api/src. A
+ * later block replaces the rule of an earlier one, so each group names all of
+ * its parts.
+ *
+ * - `rawInput`: the raw request decorators of `@nestjs/common`.
+ * - `requestAccess`: `createParamDecorator` and `REQUEST`, the two other ways
+ *   to hand a route the whole request.
+ * - `testing`: test helpers.
+ */
+function apiImportRule({ rawInput, requestAccess, testing }) {
+  const paths = [];
+  const patterns = [];
+  // One entry per package: an import of the whole package is reported once.
+  const fromCommon = [
+    ...(rawInput ? rawInputDecorators : []),
+    ...(requestAccess ? ['createParamDecorator'] : []),
+  ];
+  if (fromCommon.length > 0) {
+    paths.push({
+      name: '@nestjs/common',
+      importNames: fromCommon,
+      message: rawInput ? rawInputMessage : requestAccessMessage,
+    });
+  }
+  if (rawInput) {
+    // The same decorators through a file inside the package.
+    patterns.push({ group: ['@nestjs/common/*'], message: rawInputMessage });
+  }
+  if (requestAccess) {
+    paths.push({
+      name: '@nestjs/core',
+      importNames: ['REQUEST', 'default'],
+      message: requestAccessMessage,
+    });
+    patterns.push({ group: ['@nestjs/core/*'], message: requestAccessMessage });
+  }
+  if (testing) {
+    patterns.push(
+      { group: ['**/testing', '**/testing/**'], message: testingMessage },
+      {
+        group: ['**/access.decorators.js'],
+        importNames: ['requiresInTable'],
+        message: testingMessage,
+      },
+    );
+  }
+  return ['error', { paths, patterns }];
+}
 
 export default defineConfig(
   globalIgnores([
@@ -110,21 +166,58 @@ export default defineConfig(
     // CLAUDE.md, Conventions: validate every API input with a schema. A route
     // reads its input only through the helpers of apps/api/src/http (ValidBody,
     // ValidQuery, ValidParams, RequestKey), which check it and describe it in
-    // the OpenAPI document. The raw decorators stay inside that folder.
+    // the OpenAPI document. The raw decorators stay inside that folder, and so
+    // do `createParamDecorator` and `REQUEST` (task 0.7c), which the two guards
+    // may use as well. Code of the application imports no test helper.
     files: ['apps/api/src/**/*.ts'],
-    ignores: ['apps/api/src/http/**'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            { name: '@nestjs/common', importNames: rawInputDecorators, message: rawInputMessage },
-          ],
-          // The same decorators through a file inside the package.
-          patterns: [{ group: ['@nestjs/common/*'], message: rawInputMessage }],
-        },
-      ],
+      'no-restricted-imports': apiImportRule({
+        rawInput: true,
+        requestAccess: true,
+        testing: true,
+      }),
     },
+  },
+  {
+    // Tests and test helpers keep to the same rules about the request; they
+    // are the ones that import test helpers.
+    files: ['apps/api/src/**/*.test.ts', 'apps/api/src/testing/**'],
+    rules: {
+      'no-restricted-imports': apiImportRule({
+        rawInput: true,
+        requestAccess: true,
+        testing: false,
+      }),
+    },
+  },
+  {
+    // The two guards read the request to find the session and the branch, and
+    // hand a route what they found (CurrentSession, CurrentAccess).
+    files: [
+      'apps/api/src/modules/auth/session.guard.ts',
+      'apps/api/src/modules/access/permission.guard.ts',
+    ],
+    rules: {
+      'no-restricted-imports': apiImportRule({
+        rawInput: true,
+        requestAccess: false,
+        testing: true,
+      }),
+    },
+  },
+  {
+    files: ['apps/api/src/http/**'],
+    rules: {
+      'no-restricted-imports': apiImportRule({
+        rawInput: false,
+        requestAccess: false,
+        testing: true,
+      }),
+    },
+  },
+  {
+    files: ['apps/api/src/http/**/*.test.ts'],
+    rules: { 'no-restricted-imports': 'off' },
   },
   {
     files: ['**/*.{js,mjs}'],

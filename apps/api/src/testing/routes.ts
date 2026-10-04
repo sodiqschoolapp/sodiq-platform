@@ -19,6 +19,9 @@ export interface Route {
   describesAnswer: boolean;
 }
 
+/** The method in the name of a route that answers every method (`@All()`). */
+export const ALL_METHODS = RequestMethod[RequestMethod.ALL];
+
 // Under these keys NestJS keeps the path, the method and the status of a controller and a handler.
 const PATH = 'path';
 const METHOD = 'method';
@@ -113,7 +116,9 @@ export function expressRoutesOf(app: NestExpressApplication): string[] {
     }
     for (const [method, on] of Object.entries(layer.route.methods)) {
       if (on === true) {
-        names.push(`${method.toUpperCase()} ${String(layer.route.path)}`);
+        // Express keeps a route for every method (`@All()`) under `_all`.
+        const name = method === '_all' ? ALL_METHODS : method.toUpperCase();
+        names.push(`${name} ${String(layer.route.path)}`);
       }
     }
   }

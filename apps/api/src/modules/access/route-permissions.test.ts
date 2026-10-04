@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ROLES } from '@sodiq/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -5,6 +6,7 @@ import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import {
+  EveryMethodController,
   FaultyAccessController,
   PermissionSampleController,
   SAMPLE_PERMISSIONS,
@@ -214,6 +216,41 @@ describe('the sample routes, as every role', () => {
       'GET /api/permission-sample/own: declared any_signed_in, listed as public',
       'GET /api/permission-sample/school: declared for the branch "none", listed for "request"',
     ]);
+  });
+});
+
+// Left open by task 0.7b: a route with `@All()` crashed the harness.
+describe('the harness and a route for every method', () => {
+  let app: NestExpressApplication;
+  const handlerStop = new StopBeforeHandler();
+  const listed: Record<string, ExpectedAccess> = {
+    ...ROUTE_ACCESS,
+    'ALL /api/permission-every-method': 'any_signed_in',
+  };
+
+  beforeAll(async () => {
+    app = await createTestApp({ controllers: [EveryMethodController], handlerStop });
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('names it', () => {
+    expect(declarationProblems(app, listed)).toEqual([
+      'ALL /api/permission-every-method: answers every method (@All); a route names its one method, so that it can be called and listed',
+    ]);
+  });
+
+  it('goes on to the other routes instead of stopping at it', async () => {
+    // Nobody is signed in, so no database is needed: every answer is "not signed in" or public.
+    const nobody: HarnessCallers = {
+      home: randomUUID(),
+      other: randomUUID(),
+      callers: [{ name: 'nobody', role: null, cookies: undefined }],
+    };
+
+    expect(await accessProblems(app, listed, nobody, handlerStop)).toEqual([]);
   });
 });
 
