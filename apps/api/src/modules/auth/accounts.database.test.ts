@@ -32,6 +32,7 @@ describe('accounts and sessions in the database', () => {
           login: 'a.karimov',
           password_hash: HASH,
           must_change_password: true,
+          password_expires_at: new Date('2026-10-12T09:00:00+05:00'),
           created_at: new Date('2026-10-05T09:00:00+05:00'),
         })
         .returning('id')
@@ -59,7 +60,7 @@ describe('accounts and sessions in the database', () => {
     it('refuse a second account with the same login', async () => {
       await expect(
         asApp(`insert into accounts (login, password_hash, must_change_password, created_at)
-               values ('a.karimov', '${HASH}', true, '2026-10-05T09:00:00+05:00')`),
+               values ('a.karimov', '${HASH}', false, '2026-10-05T09:00:00+05:00')`),
       ).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
     });
 
@@ -80,7 +81,7 @@ describe('accounts and sessions in the database', () => {
       async (login) => {
         await expect(
           asApp(`insert into accounts (login, password_hash, must_change_password, created_at)
-                 values ('${login}', '${HASH}', true, '2026-10-05T09:00:00+05:00')`),
+                 values ('${login}', '${HASH}', false, '2026-10-05T09:00:00+05:00')`),
         ).rejects.toMatchObject({ code: CHECK_VIOLATION });
       },
     );
@@ -90,6 +91,41 @@ describe('accounts and sessions in the database', () => {
   it('refuse a stored password that is not an Argon2id hash', async () => {
     await expect(asApp(`update accounts set password_hash = 'plain text'`)).rejects.toMatchObject({
       code: CHECK_VIOLATION,
+    });
+  });
+
+  // Edge cases, "Accounts and sign-in": first passwords are valid for 7 days.
+  // A password that must be changed and has no end would stay valid for ever.
+  describe('keep a forced change together with its end', () => {
+    it('refuse a new account that must change its password and has no expiry', async () => {
+      await expect(
+        asApp(`insert into accounts (login, password_hash, must_change_password, created_at)
+               values ('b.karimov', '${HASH}', true, '2026-10-05T09:00:00+05:00')`),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+    });
+
+    it('refuse the application user to remove the expiry while the change is still due', async () => {
+      await expect(
+        asApp(`update accounts set password_expires_at = null where login = 'a.karimov'`),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+    });
+
+    it('refuse the application user to set a forced change without an expiry', async () => {
+      await asApp(
+        `insert into accounts (login, password_hash, must_change_password, created_at)
+         values ('c.karimov', '${HASH}', false, '2026-10-05T09:00:00+05:00')`,
+      );
+
+      await expect(
+        asApp(`update accounts set must_change_password = true where login = 'c.karimov'`),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+    });
+
+    it('accept a forced change that has an expiry', async () => {
+      await asApp(
+        `update accounts set must_change_password = true,
+           password_expires_at = '2026-10-06T09:00:00+05:00' where login = 'c.karimov'`,
+      );
     });
   });
 

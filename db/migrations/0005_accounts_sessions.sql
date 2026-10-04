@@ -28,7 +28,10 @@ create table accounts (
   -- From the injected clock.
   created_at timestamptz not null,
   -- The account that created this one; empty for the first-account command.
-  created_by uuid references accounts (id)
+  created_by uuid references accounts (id),
+  -- A password that must be changed (a first password, later a reset) always
+  -- has an end: without one it would stay valid for ever.
+  check (must_change_password = false or password_expires_at is not null)
 );
 
 grant select, insert on accounts to sodiq_app;
