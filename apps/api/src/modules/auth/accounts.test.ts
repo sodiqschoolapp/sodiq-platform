@@ -313,4 +313,16 @@ describe('the first-account command', () => {
     );
     expect(await accountRows()).toBe(2);
   });
+
+  // Found by the review: such an assignment has its start as its end and is never in force.
+  it('works again when that one was taken back before it began', async () => {
+    await sql`
+      update assignments set valid_until = valid_from where valid_until is null
+    `.execute(database.migrator);
+
+    const third = await firstAccount.create('Kamol', 'Ergashev');
+
+    expect(third.login).toBe('k.ergashev');
+    expect(await accountRows()).toBe(3);
+  });
 });

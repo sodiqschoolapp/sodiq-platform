@@ -4,6 +4,7 @@ import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions } from '../../database/transactions.js';
 import { Assignments } from '../access/assignments.service.js';
+import { notEnded } from '../access/current-assignments.js';
 import { Accounts, type CreatedAccount } from './accounts.service.js';
 
 /** The command was run although a Super Admin exists. */
@@ -33,7 +34,8 @@ export class FirstAccount {
 
   /**
    * Refused while a Super Admin assignment that has not ended exists, one that
-   * begins later included (decided by the owner); accounts without that role
+   * begins later included and one that was taken back before it began not
+   * (decided by the owner); accounts without that role
    * do not stand in its way. Throws `SuperAdminExistsError`, and
    * `LoginNameError` for a name without a login.
    */
@@ -45,9 +47,7 @@ export class FirstAccount {
         .selectFrom('assignments')
         .select('id')
         .where('role', '=', 'super_admin')
-        .where((builder) =>
-          builder.or([builder('valid_until', 'is', null), builder('valid_until', '>', now)]),
-        )
+        .where(notEnded(now))
         .limit(1)
         .executeTakeFirst();
       if (existing !== undefined) {

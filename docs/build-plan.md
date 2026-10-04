@@ -66,7 +66,7 @@ How to read the task lines:
   - Build: "Trust this device" for 7 days with no idle sign-out (the sign-in that starts the trust still asks for the second step); every session ends 7 days after sign-in at the latest; the ways trust ends; list of trusted devices, where removing one ends that session; account lock and unlock (as a service; the routes come in 2.3).
   - Done when: tests cover trust ending on sign-out, password change, reset and account lock.
 
-- [ ] **0.7a Roles and assignments**
+- [x] **0.7a Roles and assignments**
   - Read: `02`, `edge/people-roles-accounts` (Who can act).
   - Build: the 15 roles; assignments (account, role, branch, with a start and an end as moments; subject and class scope are added in 2.3 and 3.1) with a service to give and end them (routes come in 2.3); the first-account command writes the Super Admin assignment; the idle limit and the required second step follow the roles of the account.
   - Done when: tests cover each rule built here with the injected clock, including the refusals.

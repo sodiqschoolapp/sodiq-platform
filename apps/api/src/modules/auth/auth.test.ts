@@ -44,9 +44,9 @@ describe('sign-in, sessions and the password change', () => {
     app = await createTestApp({
       database: database.app,
       clock,
+      // The accounts of this suite hold no role: they sign in with a password
+      // alone. The second step has its own suite (two-step.test.ts).
       controllers: [ProbeController],
-      // This suite is about passwords and sessions: its accounts sign in with
-      // a password alone. The second step has its own suite (two-step.test.ts).
     });
     server = app.getHttpServer() as Server;
   });

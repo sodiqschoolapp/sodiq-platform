@@ -6,6 +6,7 @@ import type { Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { Audit } from '../audit/audit.service.js';
 import { UnknownAccountError } from '../auth/password-resets.service.js';
+import { notEnded } from './current-assignments.js';
 
 /** A role that needs a branch was given without one, or the other way round, or the branch does not exist. */
 export class AssignmentBranchError extends Error {
@@ -98,8 +99,8 @@ export class Assignments {
    * belongs to the branch's log.
    *
    * Throws `AssignmentBranchError`, `UnknownAccountError`,
-   * `TooManySuperAdminsError`, and `AssignmentOverlapError`; after the last
-   * one the transaction can only be rolled back.
+   * `TooManySuperAdminsError` and `AssignmentOverlapError`. After each of them
+   * nothing is written and the caller's transaction can go on.
    */
   async give(transaction: Transaction, assignment: NewAssignment): Promise<{ id: string }> {
     const schoolWide = SCHOOL_WIDE_ROLES.includes(assignment.role);
@@ -130,6 +131,8 @@ export class Assignments {
       await this.refuseFourthSuperAdmin(transaction, assignment.accountId, now);
     }
     let inserted: { id: string };
+    // The refused insert is undone alone, so the caller's transaction stays usable.
+    await sql`savepoint assignment_given`.execute(transaction);
     try {
       inserted = await transaction
         .insertInto('assignments')
@@ -146,10 +149,12 @@ export class Assignments {
     } catch (error) {
       // The exclusion constraint is the guard, also for two at the same moment.
       if ((error as { code?: unknown }).code === EXCLUSION_VIOLATION) {
+        await sql`rollback to savepoint assignment_given`.execute(transaction);
         throw new AssignmentOverlapError();
       }
       throw error;
     }
+    await sql`release savepoint assignment_given`.execute(transaction);
     await this.audit.record(transaction, {
       branchId: assignment.branchId,
       actorId: assignment.givenBy,
@@ -187,7 +192,12 @@ export class Assignments {
       throw new UnknownAssignmentError();
     }
     const now = this.clock.now();
-    if (assignment.valid_until !== null && assignment.valid_until <= now) {
+    // Ended: its end has come, or it was taken back before it began (its end
+    // is its start, which can still be ahead).
+    if (
+      assignment.valid_until !== null &&
+      (assignment.valid_until <= now || assignment.valid_until <= assignment.valid_from)
+    ) {
       throw new AssignmentAlreadyEndedError();
     }
     if (assignment.role === 'super_admin' && assignment.account_id === ending.endedBy) {
@@ -213,8 +223,9 @@ export class Assignments {
 
   /**
    * "At most 3 accounts": counts the other accounts whose Super Admin
-   * assignment has not ended, those that begin later included. Under a lock,
-   * so that of two given at the same moment the second one sees the first.
+   * assignment has not ended, those that begin later included; one that was
+   * taken back before it began has ended. Under a lock, so that of two given
+   * at the same moment the second one sees the first.
    */
   private async refuseFourthSuperAdmin(
     transaction: Transaction,
@@ -228,9 +239,7 @@ export class Assignments {
       .distinct()
       .where('role', '=', 'super_admin')
       .where('account_id', '<>', accountId)
-      .where((builder) =>
-        builder.or([builder('valid_until', 'is', null), builder('valid_until', '>', now)]),
-      )
+      .where(notEnded(now))
       .execute();
     if (others.length >= MAX_SUPER_ADMINS) {
       throw new TooManySuperAdminsError();

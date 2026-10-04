@@ -99,17 +99,25 @@ describe('sessions over time', () => {
         ['an account without a role', undefined],
         ['a Teacher', 'teacher'],
         ['a Principal', 'principal'],
-      ] as const)('answers %s one second before', async (_name, role) => {
-        clock.set('2026-10-05T09:00:00+05:00');
-        const { account, cookie } = await kit.fullSession('Aziz', 'Latipov');
-        if (role !== undefined) {
-          await kit.giveRole(account.id, { role, branchId: north });
-        }
+      ] as const)(
+        'answers %s one second before, and is over at 30 minutes',
+        async (_name, role) => {
+          clock.set('2026-10-05T09:00:00+05:00');
+          const { account, cookie } = await kit.fullSession('Aziz', 'Latipov');
+          if (role !== undefined) {
+            await kit.giveRole(account.id, { role, branchId: north });
+          }
 
-        clock.advance(30 * MINUTE - SECOND);
+          clock.advance(30 * MINUTE - SECOND);
+          expect((await kit.probe(cookie)).status).toBe(200);
 
-        expect((await kit.probe(cookie)).status).toBe(200);
-      });
+          // That request was a use: 30 minutes from it.
+          clock.advance(30 * MINUTE);
+          const response = await kit.probe(cookie);
+          expect(response.status).toBe(401);
+          expect(errorCode(response)).toBe('not_signed_in');
+        },
+      );
 
       it('is over for a Teacher at 30 minutes without use', async () => {
         clock.set('2026-10-05T09:00:00+05:00');
@@ -130,9 +138,34 @@ describe('sessions over time', () => {
       async function strictSession(firstName: string, lastName: string, role: RoleOfAccount) {
         const browser = await kit.fullSession(firstName, lastName);
         await kit.giveRole(browser.account.id, role);
-        await kit.setUpSecondStep(browser.cookie);
-        return browser;
+        return { ...browser, ...(await kit.setUpSecondStep(browser.cookie)) };
       }
+
+      // The list of sessions and whatever ends all sessions use the limit of the roles too.
+      it('leaves a session that is over after 15 minutes out of the list, with its own end', async () => {
+        clock.set('2026-10-05T09:00:00+05:00');
+        const { account, secret } = await strictSession('Behruz', 'Latipov', {
+          role: 'academic_vice_principal',
+          branchId: north,
+        });
+        clock.advance(20 * MINUTE);
+        const fresh = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
+        expect((await kit.passSecondStep(fresh, kit.codeOf(secret))).status).toBe(200);
+
+        const listed = sessionListSchema.parse(
+          (await kit.get('/api/auth/sessions', fresh)).body,
+        ).sessions;
+        expect(listed.map((session) => session.current)).toEqual([true]);
+
+        expect((await kit.post('/api/auth/sign-out-everywhere', fresh)).status).toBe(204);
+        expect(await sessionsOf(account.id)).toMatchObject([
+          { ended_at: new Date('2026-10-05T09:15:00+05:00'), end_reason: 'idle' },
+          { ended_at: new Date('2026-10-05T09:20:00+05:00'), end_reason: 'sign_out_everywhere' },
+        ]);
+        expect(await auditOf('auth.sign_out_everywhere', account.id)).toMatchObject([
+          { details: { endedSessions: 1 } },
+        ]);
+      });
 
       it.each([
         ['the Academic Vice Principal', 'academic_vice_principal'],

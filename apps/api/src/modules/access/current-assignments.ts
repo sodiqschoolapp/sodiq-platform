@@ -1,5 +1,21 @@
 import { roleSchema, type Role } from '@sodiq/shared';
+import type { ExpressionBuilder } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
+import type { DB } from '../../database/types.generated.js';
+
+/**
+ * The condition "has not ended at `now`": in force, or beginning later. An
+ * assignment that was taken back before it began has its start as its end and
+ * has ended, also while that moment is still ahead.
+ */
+export const notEnded = (now: Date) => (builder: ExpressionBuilder<DB, 'assignments'>) =>
+  builder.or([
+    builder('valid_until', 'is', null),
+    builder.and([
+      builder('valid_until', '>', now),
+      builder('valid_until', '>', builder.ref('valid_from')),
+    ]),
+  ]);
 
 /** An assignment that is in force at the moment it was read. */
 export interface CurrentAssignment {

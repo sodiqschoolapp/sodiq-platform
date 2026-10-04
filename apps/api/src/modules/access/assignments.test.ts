@@ -20,6 +20,8 @@ import {
 import { currentAssignments } from './current-assignments.js';
 
 const NOBODY = '00000000-0000-7000-8000-000000000000';
+/** PostgreSQL answers a row that the row filter refuses with this code. */
+const ROW_SECURITY_VIOLATION = '42501';
 const START = '2026-10-05T09:00:00+05:00';
 const HOUR = 60 * 60 * 1000;
 
@@ -105,7 +107,7 @@ describe('assignments', () => {
     accounts = new Accounts(clock, audit);
     north = await insertBranch(database.migrator, 'North');
     south = await insertBranch(database.migrator, 'South');
-    administrator = await account('Islom', 'Karimov');
+    administrator = await account('Ilhom', 'Qodirov');
   });
 
   afterAll(async () => {
@@ -303,8 +305,40 @@ describe('assignments', () => {
               givenBy: administrator,
             }),
           ),
-        ).rejects.toThrow();
+        ).rejects.toMatchObject({
+          code: ROW_SECURITY_VIOLATION,
+          message: expect.stringContaining('audit_log') as unknown,
+        });
         expect(await rowsOf(person)).toEqual([]);
+      });
+
+      // A route may answer the refusal and go on in its transaction.
+      it('without spoiling the transaction of the caller', async () => {
+        const person = await account('Jahongir', 'Valiyev');
+        await give({ accountId: person, role: 'teacher', branchId: north });
+
+        const second = await transactions.run([north], async (transaction) => {
+          await expect(
+            assignments.give(transaction, {
+              accountId: person,
+              role: 'teacher',
+              branchId: north,
+              givenBy: administrator,
+            }),
+          ).rejects.toBeInstanceOf(AssignmentOverlapError);
+          return assignments.give(transaction, {
+            accountId: person,
+            role: 'tutor',
+            branchId: north,
+            givenBy: administrator,
+          });
+        });
+
+        expect((await current(person)).map((assignment) => assignment.role)).toEqual([
+          'teacher',
+          'tutor',
+        ]);
+        expect(await auditOf(second.id, 'audit_log')).toHaveLength(1);
       });
     });
   });
@@ -381,6 +415,35 @@ describe('assignments', () => {
       clock.set(START);
     });
 
+    // No service writes an end that is still to come; the rows allow it.
+    it('now, when their end was still to come', async () => {
+      clock.set(START);
+      const person = await account('Lola', 'Valiyeva');
+      const later = new Date(clock.now().getTime() + 48 * HOUR);
+      const inserted = await sql<{ id: string }>`
+        insert into assignments (account_id, role, branch_id, valid_from, valid_until, created_at)
+        values (${person}, 'teacher', ${north}, ${clock.now()}, ${later}, ${clock.now()})
+        returning id
+      `.execute(database.migrator);
+      const id = inserted.rows[0]?.id ?? '';
+      clock.advance(HOUR);
+
+      await end(id, north);
+
+      expect(await current(person)).toEqual([]);
+      expect(await rowsOf(person)).toMatchObject([
+        { valid_until: new Date('2026-10-05T10:00:00+05:00'), ended_by: administrator },
+      ]);
+      expect(await auditOf(id, 'audit_log')).toMatchObject([
+        {
+          action: 'assignment.ended',
+          old_value: { validUntil: later.toISOString() },
+          new_value: { validUntil: '2026-10-05T05:00:00.000Z' },
+        },
+      ]);
+      clock.set(START);
+    });
+
     describe('are refused', () => {
       it('a second time', async () => {
         const person = await account('Malika', 'Valiyeva');
@@ -391,8 +454,41 @@ describe('assignments', () => {
         expect(await auditOf(given.id, 'audit_log')).toHaveLength(2);
       });
 
+      // Found by the review: its end is its start, which is still ahead.
+      it('a second time for one that was taken back before it began', async () => {
+        clock.set(START);
+        const person = await account('Mansur', 'Valiyev');
+        const given = await give({
+          accountId: person,
+          role: 'tutor',
+          branchId: north,
+          validFrom: new Date(clock.now().getTime() + 24 * HOUR),
+        });
+        await end(given.id, north);
+        const colleague = await account('Munisa', 'Valiyeva');
+
+        await expect(end(given.id, north, colleague)).rejects.toBeInstanceOf(
+          AssignmentAlreadyEndedError,
+        );
+
+        expect(await rowsOf(person)).toMatchObject([{ ended_by: administrator }]);
+        expect(await auditOf(given.id, 'audit_log')).toHaveLength(2);
+      });
+
       it('for an assignment that does not exist', async () => {
         await expect(end(NOBODY, null)).rejects.toBeInstanceOf(UnknownAssignmentError);
+      });
+
+      it('in a transaction that does not work for the branch, and the assignment stays', async () => {
+        const person = await account('Nargiza', 'Valiyeva');
+        const given = await give({ accountId: person, role: 'teacher', branchId: north });
+
+        await expect(end(given.id, south)).rejects.toMatchObject({
+          code: ROW_SECURITY_VIOLATION,
+        });
+
+        expect(await current(person)).toMatchObject([{ id: given.id }]);
+        expect(await rowsOf(person)).toMatchObject([{ valid_until: null, ended_by: null }]);
       });
 
       // Edge cases, "Accounts and sign-in": nobody can remove their own Super Admin role.
@@ -520,6 +616,29 @@ describe('the Super Admin role', () => {
 
     const sixth = await account('Gulom', 'Saidov');
     await give(sixth);
+
+    expect(await superAdmins()).toBe(3);
+  });
+
+  // Found by the review: its end is its start, next month, and it holds no place.
+  it('does not count one that was taken back before it began', async () => {
+    const seventh = await account('Hilola', 'Saidova');
+    await expect(give(seventh)).rejects.toBeInstanceOf(TooManySuperAdminsError);
+    const later = await sql<{ id: string }>`
+      select id from assignments where valid_from > ${clock.now()}
+    `.execute(database.migrator);
+    const holder = await sql<{ account_id: string }>`
+      select account_id from assignments
+      where valid_until is null and valid_from <= ${clock.now()} limit 1
+    `.execute(database.migrator);
+
+    await transactions.run([], (transaction) =>
+      assignments.end(transaction, {
+        assignmentId: later.rows[0]?.id ?? '',
+        endedBy: holder.rows[0]?.account_id ?? '',
+      }),
+    );
+    await give(seventh);
 
     expect(await superAdmins()).toBe(3);
   });
