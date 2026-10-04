@@ -4,7 +4,7 @@ import {
   type SecondStepSetUp,
 } from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { useBlocker, useNavigate } from '@tanstack/react-router';
 import { QRCodeSVG } from 'qrcode.react';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,11 +44,37 @@ export function SetUpPage() {
   const [checked, setChecked] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // The codes are shown once. Until the person says they are saved, the page
+  // is not left by the Back button or a link, and the browser asks before a
+  // reload or before the tab is closed.
+  const codesUnsaved = recoveryCodes !== null && !saved;
+  useBlocker({
+    shouldBlockFn: () => true,
+    disabled: !codesUnsaved,
+    enableBeforeUnload: codesUnsaved,
+  });
+
+  const leave = useMutation({
+    mutationFn: () => refreshSession(queryClient),
+    onSuccess: (session) => {
+      void navigate({ to: STEP_PATH[stepOf(session)] });
+    },
+  });
+
+  // The second step is in force already: it was set up in another tab, or the
+  // answer of the confirmation was lost. The session says where to go.
+  const leaveWhenAlreadyOn = (error: unknown): void => {
+    if (error instanceof ApiFailure && error.code === 'second_step_already_on') {
+      leave.mutate();
+    }
+  };
+
   // Started by a button, not on arrival: every start makes a new key.
   const start = useMutation({
     mutationFn: async () =>
       secondStepSetUpSchema.parse(await answerOf(api.POST('/api/auth/second-step/set-up'))),
     onSuccess: setSetUp,
+    onError: leaveWhenAlreadyOn,
   });
 
   const confirm = useMutation({
@@ -60,6 +86,7 @@ export function SetUpPage() {
       setRecoveryCodes(answer.recoveryCodes);
     },
     onError: (error) => {
+      leaveWhenAlreadyOn(error);
       // The started set-up is gone on the server: begin again.
       if (error instanceof ApiFailure && error.code === 'second_step_not_on') {
         setSetUp(null);
@@ -69,13 +96,6 @@ export function SetUpPage() {
     },
   });
   const waiting = useWaiting(confirm.error);
-
-  const leave = useMutation({
-    mutationFn: () => refreshSession(queryClient),
-    onSuccess: (session) => {
-      void navigate({ to: STEP_PATH[stepOf(session)] });
-    },
-  });
 
   const typed = code.trim();
 

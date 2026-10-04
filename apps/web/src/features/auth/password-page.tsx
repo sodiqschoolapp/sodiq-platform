@@ -11,6 +11,8 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { AuthPage } from './auth-page';
 import { FailureAlert, useWaiting } from './form-helpers';
 import { refreshSession, sessionQuery, STEP_PATH, stepOf } from './session';
+import { rememberTrustAsked } from './trust-asked';
+import { useSignOut } from './use-sign-out';
 
 /**
  * docs/spec/02-roles-and-access.md, Rules: staff must change the password at
@@ -27,6 +29,7 @@ export function PasswordPage() {
   const navigate = useNavigate();
   const { data: session } = useQuery(sessionQuery);
   const forced = session?.mustChangePassword === true;
+  const signOut = useSignOut();
 
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -44,6 +47,9 @@ export function PasswordPage() {
         await navigate({ to: STEP_PATH[stepOf(after)] });
         return;
       }
+      // A password change ends the trust of this device; the note about a
+      // one-time password at sign-in would name the wrong reason.
+      rememberTrustAsked(false);
       setCurrent('');
       setNext('');
       setRepeat('');
@@ -130,7 +136,7 @@ export function PasswordPage() {
             setRepeat(event.target.value);
           }}
         />
-        <FailureAlert error={change.error} />
+        <FailureAlert error={change.error ?? signOut.error} />
         {changed && (
           <p role="status" className="text-sm font-medium">
             {t('password.changed')}
@@ -139,7 +145,19 @@ export function PasswordPage() {
         <Button type="submit" size="lg" disabled={change.isPending || waiting}>
           {t('password.submit')}
         </Button>
-        {!forced && (
+        {forced ? (
+          // Somebody whose one-time password is no longer valid can still leave.
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={signOut.isPending}
+            onClick={() => {
+              signOut.mutate();
+            }}
+          >
+            {t('layout.signOut')}
+          </Button>
+        ) : (
           <Link to="/" className={buttonVariants({ variant: 'ghost' })}>
             {t('password.back')}
           </Link>

@@ -3,6 +3,7 @@ import { migrate } from '../../database/migrate.js';
 import {
   createEmptyDatabase,
   dropDatabaseOnceUnused,
+  requireLocalDatabase,
   withDatabaseName,
 } from '../database-server.js';
 
@@ -21,19 +22,27 @@ export interface E2eDatabaseUrls {
   migrationUrl: string;
 }
 
-/** The two addresses of `.env` or of CI, with the name of the database replaced. */
+/**
+ * The two addresses of `.env` or of CI, with the name of the database
+ * replaced. Refused unless both point at this machine.
+ */
 export function e2eDatabaseUrls(): E2eDatabaseUrls {
   loadLocalEnvFile();
-  return {
+  const urls = {
     appUrl: withDatabaseName(databaseUrl('DATABASE_URL'), E2E_DATABASE),
     migrationUrl: withDatabaseName(databaseUrl('DATABASE_MIGRATION_URL'), E2E_DATABASE),
   };
+  requireLocalDatabase(urls.appUrl);
+  requireLocalDatabase(urls.migrationUrl);
+  return urls;
 }
 
 /** Drops what the last run left and builds the database again: every migration, no rows. */
 export async function rebuildE2eDatabase(): Promise<E2eDatabaseUrls> {
+  // First: nothing is dropped or created when an address is not local.
+  const urls = e2eDatabaseUrls();
   await dropDatabaseOnceUnused(E2E_DATABASE);
   const connectionString = await createEmptyDatabase(E2E_DATABASE);
   await migrate({ connectionString, directory: migrationsDirectory });
-  return e2eDatabaseUrls();
+  return urls;
 }

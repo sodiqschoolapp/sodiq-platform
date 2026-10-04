@@ -18,6 +18,8 @@ export const en = {
   },
   problems: {
     noAnswer: 'The server did not answer. Check the internet connection and try again.',
+    unexpected:
+      'Something went wrong in the app. Reload the page. If it happens again, tell an administrator.',
     title: 'The page could not be opened',
     retry: 'Try again',
     notFoundTitle: 'Page not found',
@@ -92,7 +94,7 @@ export const en = {
     tooLong: 'The password can have at most {{max}} characters.',
     same: 'The new password must differ from the current one.',
     mismatch: 'The two new passwords are not the same.',
-    othersEnd: 'Your other sessions will be signed out.',
+    othersEnd: 'Your other sessions will be signed out, and this device will no longer be trusted.',
     submit: 'Change password',
     changed: 'The password is changed.',
     back: 'Back',

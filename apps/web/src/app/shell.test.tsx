@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, nothing, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
@@ -141,30 +141,48 @@ describe('a session that ended or changed on the server', () => {
     expect(router.state.location.pathname).toBe('/sign-in');
   });
 
-  it('goes to the step the session owes when a call is refused for that step', async () => {
-    let session = sessionOf();
-    fakeApi({
-      'GET /api/auth/session': () => json(session),
-      'POST /api/auth/password': () => {
-        // Since the page was opened, an administrator reset the second step and the role requires one.
-        session = sessionOf({ secondStep: 'set_up_required' });
-        return refusal('second_step_set_up_required', 403);
-      },
-    });
-    renderApp('/password');
-    fireEvent.change(await screen.findByLabelText(en.password.current), {
-      target: { value: 'the-old-password' },
-    });
-    fireEvent.change(screen.getByLabelText(en.password.new), {
-      target: { value: 'a-new-password-73' },
-    });
-    fireEvent.change(screen.getByLabelText(en.password.repeat), {
-      target: { value: 'a-new-password-73' },
-    });
+  it.each([
+    ['second_step_required', { secondStep: 'pending' }, en.code.title],
+    ['password_change_required', { mustChangePassword: true }, en.password.titleForced],
+    ['second_step_set_up_required', { secondStep: 'set_up_required' }, en.setUp.title],
+  ] as const)(
+    'goes to the step the session owes when a call is refused with %s',
+    async (code, owed, title) => {
+      let session = sessionOf();
+      fakeApi({
+        'GET /api/auth/session': () => json(session),
+        'POST /api/auth/password': () => {
+          // Since the page was opened, the session came to owe a step on the server.
+          session = sessionOf(owed);
+          return refusal(code, 403);
+        },
+      });
+      renderApp('/password');
+      fireEvent.change(await screen.findByLabelText(en.password.current), {
+        target: { value: 'the-old-password' },
+      });
+      fireEvent.change(screen.getByLabelText(en.password.new), {
+        target: { value: 'a-new-password-73' },
+      });
+      fireEvent.change(screen.getByLabelText(en.password.repeat), {
+        target: { value: 'a-new-password-73' },
+      });
 
-    fireEvent.click(screen.getByRole('button', { name: en.password.submit }));
+      fireEvent.click(screen.getByRole('button', { name: en.password.submit }));
 
-    expect(await heading(en.setUp.title)).toBeDefined();
+      expect(await heading(title)).toBeDefined();
+    },
+  );
+
+  it('says that sign-out failed and stays signed in', async () => {
+    fakeApi({ 'GET /api/auth/session': () => json(sessionOf({ secondStep: 'pending' })) });
+    const { queryClient } = renderApp('/sign-in/code');
+
+    fireEvent.click(await screen.findByRole('button', { name: en.layout.signOut }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(en.problems.noAnswer);
+    expect(screen.getByRole('heading', { name: en.code.title })).toBeDefined();
+    expect(queryClient.getQueryData(['session'])).not.toBeNull();
   });
 
   it('signs out from a step page and forgets the session', async () => {
@@ -182,5 +200,66 @@ describe('a session that ended or changed on the server', () => {
     await waitFor(() => {
       expect(calls.map((call) => call.route)).toContain('POST /api/auth/sign-out');
     });
+  });
+});
+
+// docs/decisions.md, task 0.8a: the session is asked again when a page opens
+// more than a minute after the last answer, never by itself: a call the app
+// makes on its own would count as use and keep an idle session alive
+// (edge cases, "Accounts and sign-in": sessions end after a period without use).
+describe('how often the session is asked for', () => {
+  it('asks once for pages opened within a minute, not on focus, and again after a minute', async () => {
+    const calls = fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });
+    const asked = () => calls.filter((call) => call.route === 'GET /api/auth/session').length;
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const start = new Date('2026-10-05T09:00:00+05:00');
+      vi.setSystemTime(start);
+      const { router } = renderApp('/');
+      await heading(en.home.title);
+      expect(asked()).toBe(1);
+
+      await router.navigate({ to: '/password' });
+      await heading(en.password.titleOwn);
+      vi.setSystemTime(start.getTime() + 59_000);
+      window.dispatchEvent(new Event('focus'));
+      document.dispatchEvent(new Event('visibilitychange'));
+      window.dispatchEvent(new Event('online'));
+      await router.navigate({ to: '/' });
+      await heading(en.home.title);
+      expect(asked()).toBe(1);
+
+      vi.setSystemTime(start.getTime() + 61_000);
+      await router.navigate({ to: '/password' });
+      await heading(en.password.titleOwn);
+      expect(asked()).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('repeats no call by itself', () => {
+    fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });
+
+    const { queryClient } = renderApp('/');
+
+    expect(queryClient.getDefaultOptions().queries).toEqual({
+      retry: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    });
+  });
+});
+
+// docs/spec/12-ux-standards.md, Look and feel: error messages say what happened.
+describe('a fault of the app itself', () => {
+  it('is not blamed on the connection', async () => {
+    // An answer the app cannot read: the session without its fields.
+    fakeApi({ 'GET /api/auth/session': () => json({ login: 5 }) });
+
+    renderApp('/');
+
+    expect(await heading(en.problems.title)).toBeDefined();
+    expect(screen.getByRole('alert').textContent).toBe(en.problems.unexpected);
   });
 });

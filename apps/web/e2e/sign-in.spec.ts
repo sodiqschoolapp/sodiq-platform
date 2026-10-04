@@ -162,6 +162,8 @@ test('keeps the session in a cookie scripts cannot read, and says when a device 
 
   const cookie = (await context.cookies()).find((one) => one.name === '__Host-sodiq_session');
   expect(cookie).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Strict', path: '/' });
+  // Not trusted: the cookie ends with the browser.
+  expect(cookie?.expires).toBe(-1);
   // What a script of the page can read of the cookies.
   expect(await page.evaluate<string>('document.cookie')).not.toContain('sodiq_session');
 
@@ -180,5 +182,17 @@ test('keeps the session in a cookie scripts cannot read, and says when a device 
   await expect(page.getByRole('status')).toHaveText(en.password.changed);
 
   await page.getByRole('link', { name: en.password.back }).click();
+  await signOut(page, en);
+
+  // With a password of the person's own the switch works: the cookie is kept
+  // for 7 days, and nothing is said about trust.
+  await page.getByRole('checkbox', { name: en.signIn.trust }).check();
+  await signIn(page, en, account.login, 'another-password-74');
+  await expect(heading(page, en.home.title)).toBeVisible();
+  await expect(page.getByText(en.layout.notTrusted)).toBeHidden();
+  const trusted = (await context.cookies()).find((one) => one.name === '__Host-sodiq_session');
+  const days = ((trusted?.expires ?? 0) - Date.now() / 1000) / (24 * 60 * 60);
+  expect(days).toBeGreaterThan(6.9);
+  expect(days).toBeLessThanOrEqual(7);
   await signOut(page, en);
 });

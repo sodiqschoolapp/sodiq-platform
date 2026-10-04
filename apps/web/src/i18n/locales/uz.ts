@@ -15,6 +15,8 @@ export const uz: Texts<'one' | 'other'> = {
   },
   problems: {
     noAnswer: 'Server javob bermadi. Internet aloqasini tekshirib, qayta urinib koʻring.',
+    unexpected:
+      'Ilovada xatolik yuz berdi. Sahifani yangilang. Takrorlansa, administratorga xabar bering.',
     title: 'Sahifani ochib boʻlmadi',
     retry: 'Qayta urinish',
     notFoundTitle: 'Sahifa topilmadi',
@@ -96,7 +98,7 @@ export const uz: Texts<'one' | 'other'> = {
     tooLong: 'Parol koʻpi bilan {{max}} ta belgidan iborat boʻlishi mumkin.',
     same: 'Yangi parol joriy paroldan farq qilishi kerak.',
     mismatch: 'Ikki yangi parol bir xil emas.',
-    othersEnd: 'Boshqa seanslaringiz tugatiladi.',
+    othersEnd: 'Boshqa seanslaringiz tugatiladi va bu qurilma ishonchli boʻlmay qoladi.',
     submit: 'Parolni oʻzgartirish',
     changed: 'Parol oʻzgartirildi.',
     back: 'Orqaga',

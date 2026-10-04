@@ -56,8 +56,3 @@ export async function answerOf<T>(call: Promise<ClientResult<T>>): Promise<T> {
   }
   throw new ApiFailure(parsed.data.error.code, retryAfterOf(result.response));
 }
-
-/** The failure in an error of unknown kind; anything else counts as "no answer". */
-export function failureOf(error: unknown): ApiFailure {
-  return error instanceof ApiFailure ? error : new ApiFailure('no_answer');
-}

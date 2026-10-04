@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
 import { CircleUserRoundIcon, XIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LanguageChooser } from '@/components/language-chooser';
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
@@ -27,6 +27,13 @@ import { useSignOut } from '@/features/auth/use-sign-out';
 function NotTrustedNote({ trusted }: { trusted: boolean }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(() => trustWasAsked());
+
+  // The device is trusted: the switch did what it was asked, nothing to say later.
+  useEffect(() => {
+    if (trusted) {
+      rememberTrustAsked(false);
+    }
+  }, [trusted]);
 
   if (!open || trusted) {
     return null;

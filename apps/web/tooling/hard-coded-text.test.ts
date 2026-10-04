@@ -31,8 +31,19 @@ describe('the lint rule against hard-coded text in components', { timeout: 120_0
     ['a placeholder', '<input placeholder="Login" />'],
     ['a title', '<abbr title="Quarter">{text}</abbr>'],
     ['an alt text', '<img alt="Photo" />'],
+    ['a text joined to a value', "<p>{text + ' is signed in'}</p>"],
+    ['a text behind a condition', "<p>{text !== '' && 'Signed in'}</p>"],
+    ['a spoken role', '<input aria-roledescription="Switch" />'],
+    ['the label of a group of options', '<optgroup label="Languages" />'],
+    ['a text property of an own component', '<Fixture text="Sign in" />'],
+    ['a chosen text property', "<Fixture text={text === '' ? 'None' : text} />"],
   ])('refuses %s', async (_name, jsx) => {
     expect(await refused(jsx)).toBe(1);
+  });
+
+  it('refuses both sides of a chosen text, between tags and in an attribute', async () => {
+    expect(await refused("<p>{text === '' ? 'Signed out' : 'Signed in'}</p>")).toBe(2);
+    expect(await refused("<button aria-label={text === '' ? 'Open' : 'Close'} />")).toBe(2);
   });
 
   it.each([
@@ -40,6 +51,8 @@ describe('the lint rule against hard-coded text in components', { timeout: 120_0
     ['an aria-label from a key', '<button aria-label={text} />'],
     ['class names and other attributes', '<p className="text-sm" data-slot="note">{text}</p>'],
     ['signs without a letter', '<p>{text}: 7 / 10</p>'],
+    ['chosen class names', "<p className={text === '' ? 'hidden' : 'block'}>{text}</p>"],
+    ['a call inside a choice', "<p>{text === '' ? null : text.concat('')}</p>"],
   ])('accepts %s', async (_name, jsx) => {
     expect(await refused(jsx)).toBe(0);
   });

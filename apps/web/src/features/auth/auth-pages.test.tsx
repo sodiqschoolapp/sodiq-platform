@@ -513,7 +513,10 @@ describe('the language', () => {
     expect(document.title).toBe(uz.app.name);
     expect(startI18n().language).toBe('uz');
   });
+});
 
+// Edge cases, "Accounts and sign-in": after five failures each further attempt is delayed.
+describe('the wait after too many attempts', () => {
   it('turns the sign-in button on again when the wait is over', async () => {
     fakeApi({
       'GET /api/auth/session': signedOut,
@@ -533,5 +536,140 @@ describe('the language', () => {
       },
       { timeout: 3_000 },
     );
+  });
+});
+
+// The reviews of task 0.8a.
+describe('the recovery codes', () => {
+  const recoveryCodes = Array.from({ length: 10 }, (_, index) => `code-${String(index)}-abcd`);
+  const setUp = {
+    secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP',
+    address: 'otpauth://totp/Sodiq%20School:s.nazarov?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP',
+  };
+
+  // They are shown once: the page is left only after "I have saved the codes".
+  it('stay on the page when the person goes back or follows a link before saving them', async () => {
+    let session = sessionOf({ secondStep: 'set_up_required' });
+    fakeApi({
+      'GET /api/auth/session': () => json(session),
+      'POST /api/auth/second-step/set-up': () => json(setUp),
+      'POST /api/auth/second-step/confirm': () => {
+        session = sessionOf({ secondStep: 'passed' });
+        return json({ recoveryCodes });
+      },
+    });
+    const { router, queryClient } = renderApp('/second-step/set-up');
+    await heading(en.setUp.title);
+    press(en.setUp.start);
+    await screen.findByLabelText(en.setUp.code);
+    type(en.setUp.code, '123456');
+    press(en.setUp.confirm);
+    await heading(en.setUp.codesTitle);
+    // As after a minute on the page: the next page would ask the server, which says "passed".
+    await queryClient.invalidateQueries({ queryKey: ['session'], refetchType: 'none' });
+
+    // A refused move never completes: nothing to wait for but time.
+    void router.navigate({ to: '/password' });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(router.state.location.pathname).toBe('/second-step/set-up');
+    expect(screen.getByRole('heading', { name: en.setUp.codesTitle })).toBeDefined();
+    expect(screen.getAllByRole('listitem')).toHaveLength(10);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: en.setUp.saved }));
+    await router.navigate({ to: '/password' });
+
+    expect(await heading(en.password.titleOwn)).toBeDefined();
+  });
+
+  // The answer of the confirmation was lost, or the set-up was finished in another tab.
+  it.each(['set-up', 'confirm'] as const)(
+    'are not waited for when the %s call says the second step is on already: the session decides',
+    async (call) => {
+      let session = sessionOf({ secondStep: 'set_up_required' });
+      const alreadyOn = () => {
+        session = sessionOf({ secondStep: 'passed' });
+        return refusal('second_step_already_on', 409);
+      };
+      fakeApi({
+        'GET /api/auth/session': () => json(session),
+        'POST /api/auth/second-step/set-up': call === 'set-up' ? alreadyOn : () => json(setUp),
+        'POST /api/auth/second-step/confirm': alreadyOn,
+      });
+      renderApp('/second-step/set-up');
+      await heading(en.setUp.title);
+      press(en.setUp.start);
+      if (call === 'confirm') {
+        await screen.findByLabelText(en.setUp.code);
+        type(en.setUp.code, '123456');
+        press(en.setUp.confirm);
+      }
+
+      expect(await heading(en.home.title)).toBeDefined();
+    },
+  );
+});
+
+describe('the forced password change', () => {
+  // A one-time password can run out while the page is open: the person can still leave.
+  it('can be left by signing out', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(sessionOf({ mustChangePassword: true })),
+      'POST /api/auth/password': () => refusal('password_expired', 403),
+      'POST /api/auth/sign-out': nothing,
+    });
+    renderApp('/password');
+    await heading(en.password.titleForced);
+    type(en.password.currentOneTime, 'the-first-password');
+    type(en.password.new, 'a-new-password-73');
+    type(en.password.repeat, 'a-new-password-73');
+    press(en.password.submit);
+    expect((await screen.findByRole('alert')).textContent).toBe(en.errors.password_expired);
+
+    press(en.layout.signOut);
+
+    expect(await heading(en.signIn.title)).toBeDefined();
+    expect(calls.map((one) => one.route)).toContain('POST /api/auth/sign-out');
+  });
+});
+
+// Edge cases, "Trust this device": trust ends at once on a password change.
+describe('a password change on a trusted device', () => {
+  it('says beforehand that the trust ends, and afterwards does not blame a one-time password', async () => {
+    let session = sessionOf({ trustedUntil: '2026-10-12T04:00:00.000Z' });
+    fakeApi({
+      'GET /api/auth/session': signedOut,
+      'POST /api/auth/sign-in': () => json(session),
+    });
+    const { router } = renderApp('/sign-in');
+    await heading(en.signIn.title);
+    type(en.signIn.login, 'a.karimov');
+    type(en.signIn.password, 'the-old-password');
+    fireEvent.click(screen.getByRole('checkbox', { name: en.signIn.trust }));
+    press(en.signIn.submit);
+    await heading(en.home.title);
+    fakeApi({
+      'GET /api/auth/session': () => json(session),
+      'POST /api/auth/password': () => {
+        // The server keeps the session and ends its trust.
+        session = sessionOf();
+        return nothing();
+      },
+    });
+
+    await router.navigate({ to: '/password' });
+    await heading(en.password.titleOwn);
+    expect(screen.getByText(en.password.othersEnd).textContent).toContain(
+      'this device will no longer be trusted',
+    );
+    type(en.password.current, 'the-old-password');
+    type(en.password.new, 'a-new-password-73');
+    type(en.password.repeat, 'a-new-password-73');
+    press(en.password.submit);
+    await screen.findByRole('status');
+    fireEvent.click(screen.getByRole('link', { name: en.password.back }));
+
+    await heading(en.home.title);
+    expect(screen.queryByText(en.layout.notTrusted)).toBeNull();
   });
 });

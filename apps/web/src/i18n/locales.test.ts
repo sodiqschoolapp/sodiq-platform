@@ -30,6 +30,24 @@ describe('the texts of the three languages', () => {
     expect(i18n.t('problems.wait', { count: 1 })).toContain('1 секунду');
     expect(i18n.t('problems.wait', { count: 3 })).toContain('3 секунды');
     expect(i18n.t('problems.wait', { count: 30 })).toContain('30 секунд.');
+    expect(i18n.t('problems.wait', { count: 1.5 })).toContain('1.5 секунды');
+  });
+});
+
+// Decided by the owner (task 0.8a): Uzbek in Latin script. Its letters oʻ and gʻ
+// take U+02BB and the tutuq belgisi U+02BC, never a sign of the keyboard.
+describe('the Uzbek texts', () => {
+  const textsOf = (tree: TextTree): string[] =>
+    Object.values(tree).flatMap((value) => (typeof value === 'string' ? [value] : textsOf(value)));
+
+  it('have no apostrophe, quotation mark or accent of the keyboard in place of a letter', () => {
+    const wrong = textsOf(RESOURCES.uz).filter((text) => /['`\u2018\u2019]/.test(text));
+    expect(wrong).toEqual([]);
+  });
+
+  it('use the letters oʻ and gʻ', () => {
+    expect(textsOf(RESOURCES.uz).some((text) => text.includes('o\u02bb'))).toBe(true);
+    expect(textsOf(RESOURCES.uz).some((text) => text.includes('g\u02bb'))).toBe(true);
   });
 });
 

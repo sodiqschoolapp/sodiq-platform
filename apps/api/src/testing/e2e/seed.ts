@@ -5,7 +5,6 @@ import { Assignments } from '../../modules/access/assignments.service.js';
 import { Accounts } from '../../modules/auth/accounts.service.js';
 import { FirstAccountModule } from '../../modules/auth/first-account.command.js';
 import { insertBranch } from '../branch-filter-sql.js';
-import { requireLocalDatabase } from '../database-server.js';
 import { e2eDatabaseUrls } from './database.js';
 
 // Run by Playwright's global setup after the API of the browser tests has
@@ -25,8 +24,6 @@ const WITHOUT_ROLE = {
 type Credentials = { login: string; password: string };
 
 const urls = e2eDatabaseUrls();
-requireLocalDatabase(urls.appUrl);
-requireLocalDatabase(urls.migrationUrl);
 process.env.DATABASE_URL = urls.appUrl;
 
 const migrator = createDatabase(urls.migrationUrl);
