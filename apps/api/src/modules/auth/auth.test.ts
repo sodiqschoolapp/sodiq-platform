@@ -5,6 +5,7 @@ import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
+import { DEVICE_COOKIE } from '../../http/device-cookie.js';
 import { SESSION_COOKIE } from '../../http/session-cookie.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
@@ -101,6 +102,23 @@ describe('sign-in, sessions and the password change', () => {
     return cookie === undefined ? call : call.set('Cookie', cookie);
   };
 
+  /**
+   * Moves the clock like `clock.advance`, for a test whose session must still
+   * be open afterwards: since task 0.6b a session ends when it is not used for
+   * the idle limit, so the session is read every 14 minutes on the way.
+   */
+  async function advanceInUse(cookie: string, milliseconds: number): Promise<void> {
+    const step = 14 * 60 * 1000;
+    let left = milliseconds;
+    while (left > step) {
+      clock.advance(step);
+      left -= step;
+      const read = await request(server).get('/api/auth/session').set('Cookie', cookie);
+      expect(read.status).toBe(200);
+    }
+    clock.advance(left);
+  }
+
   const errorCode = (response: Response): string => apiErrorSchema.parse(response.body).error.code;
 
   async function sessionsOf(accountId: string) {
@@ -139,18 +157,28 @@ describe('sign-in, sessions and the password change', () => {
       const response = await signIn(account.login, account.firstPassword);
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ login: 'a.karimov', mustChangePassword: true });
+      expect(response.body).toEqual({
+        login: 'a.karimov',
+        mustChangePassword: true,
+        passwordResetBy: null,
+      });
       expect(await sessionsOf(account.id)).toHaveLength(1);
     });
 
-    it('sets one cookie that scripts cannot read, for HTTPS and this site only', async () => {
+    // Since task 0.6b a sign-in also sets the device cookie (limits.test.ts).
+    it('sets one session cookie that scripts cannot read, for HTTPS and this site only', async () => {
       const account = await newAccount('Barno', 'Aliyeva');
 
       const response = await signIn(account.login, account.firstPassword);
 
       const cookies = setCookies(response);
-      expect(cookies).toHaveLength(1);
-      const [pair, ...attributes] = (cookies[0] ?? '').split('; ');
+      expect(cookies.map((cookie) => cookie.split('=')[0]).sort()).toEqual([
+        DEVICE_COOKIE,
+        SESSION_COOKIE,
+      ]);
+      const [pair, ...attributes] = (
+        cookies.find((cookie) => cookie.startsWith(`${SESSION_COOKIE}=`)) ?? ''
+      ).split('; ');
       expect(pair?.startsWith('__Host-sodiq_session=')).toBe(true);
       expect(attributes.sort()).toEqual(['HttpOnly', 'Path=/', 'SameSite=Strict', 'Secure']);
     });
@@ -412,7 +440,11 @@ describe('sign-in, sessions and the password change', () => {
       const response = await request(server).get('/api/auth/session').set('Cookie', cookie);
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ login: 'p.davronova', mustChangePassword: true });
+      expect(response.body).toEqual({
+        login: 'p.davronova',
+        mustChangePassword: true,
+        passwordResetBy: null,
+      });
     });
 
     it('lets the person sign out without changing it', async () => {
@@ -481,7 +513,7 @@ describe('sign-in, sessions and the password change', () => {
       it('no longer accepts the first password as the current one', async () => {
         clock.set('2026-10-05T09:00:00+05:00');
         const { account, cookie } = await firstSession('Tohir', 'Davronov');
-        clock.advance(7 * DAY_MS);
+        await advanceInUse(cookie, 7 * DAY_MS);
 
         const response = await change(cookie, account.firstPassword, NEW_PASSWORD);
 
@@ -495,7 +527,7 @@ describe('sign-in, sessions and the password change', () => {
       it('still accepts it one second before', async () => {
         clock.set('2026-10-05T09:00:00+05:00');
         const { account, cookie } = await firstSession('Tolib', 'Davronov');
-        clock.advance(7 * DAY_MS - 1000);
+        await advanceInUse(cookie, 7 * DAY_MS - 1000);
 
         expect((await change(cookie, account.firstPassword, NEW_PASSWORD)).status).toBe(204);
       });
@@ -503,7 +535,7 @@ describe('sign-in, sessions and the password change', () => {
       it('tells only the person who knows the password that it expired', async () => {
         clock.set('2026-10-05T09:00:00+05:00');
         const { cookie } = await firstSession('Tursun', 'Davronov');
-        clock.advance(8 * DAY_MS);
+        await advanceInUse(cookie, 8 * DAY_MS);
 
         expect(errorCode(await change(cookie, 'not-the-password', NEW_PASSWORD))).toBe(
           'current_password_wrong',
@@ -548,7 +580,11 @@ describe('sign-in, sessions and the password change', () => {
 
       expect((await probe(cookie)).status).toBe(200);
       const session = await request(server).get('/api/auth/session').set('Cookie', cookie);
-      expect(session.body).toEqual({ login: 'u.davronova', mustChangePassword: false });
+      expect(session.body).toEqual({
+        login: 'u.davronova',
+        mustChangePassword: false,
+        passwordResetBy: null,
+      });
     });
 
     it('replaces the password: the old one no longer signs in, the new one does', async () => {
@@ -557,7 +593,11 @@ describe('sign-in, sessions and the password change', () => {
       expect(errorCode(await signIn(account.login, account.firstPassword))).toBe('sign_in_failed');
       const response = await signIn(account.login, NEW_PASSWORD);
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ login: 'v.davronov', mustChangePassword: false });
+      expect(response.body).toEqual({
+        login: 'v.davronov',
+        mustChangePassword: false,
+        passwordResetBy: null,
+      });
     });
 
     // Edge cases, "Accounts and sign-in": a password change ends all others.

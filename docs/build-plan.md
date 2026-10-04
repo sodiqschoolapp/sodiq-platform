@@ -53,7 +53,7 @@ How to read the task lines:
 
 - [ ] **0.6b Limits, resets and idle sign-out**
   - Read: the same files, and `16` (question 41).
-  - Build: attempt limiting per account and device; reset by an administrator with a one-time password; password reset by email through a mail service that only logs locally; idle sign-out after 30 minutes, 15 for the Super Admin and Academic Vice Principal; session list and "sign out everywhere".
+  - Build: attempt limiting per account and device; reset by an administrator with a one-time password (as a service; its route comes in 2.3); idle sign-out after 30 minutes, 15 for the Super Admin and Academic Vice Principal; session list and "sign out everywhere". Password reset by email and the mail service moved to 2.3: an account has no email address before the staff records of 2.2.
   - Done when: tests cover each rule with the injected clock.
 
 - [ ] **0.6c Two-step sign-in and trusted devices**
@@ -137,8 +137,8 @@ How to read the task lines:
 
 - [ ] **2.3 Accounts and role assignment screens**
   - Read: `02` (Head Teachers and Senior Head Teachers, Rules), `edge/people-roles-accounts` (Who can act, Accounts and sign-in).
-  - Build: Super Admin screens to create accounts and give roles per branch; Head Teacher appointments to subjects in a branch (at most one per subject per branch); Senior Head Teacher appointments to subjects across branches; subject scope in the permission guard; lock and unlock.
-  - Done when: the refusals in the spec are tested, including the last Super Admin rule.
+  - Build: Super Admin screens to create accounts and give roles per branch; Head Teacher appointments to subjects in a branch (at most one per subject per branch); Senior Head Teacher appointments to subjects across branches; subject scope in the permission guard; lock and unlock; the route for the password reset by an administrator (the service exists since 0.6b) with who may reset whom; password reset by email through a mail service that only logs locally, with the address taken from the staff record (moved from 0.6b; its routes are public and go into `PUBLIC_ROUTES`).
+  - Done when: the refusals in the spec are tested, including the last Super Admin rule, and tests cover each rule of the email reset with the injected clock.
 
 - [ ] **2.4 Student records**
   - Read: `04` (Student record, UID sets), `edge/students-classes-groups`, `edge/people-roles-accounts` (Personal data and the audit log), `16` (question 12 is open: the UID is typed by hand and must be unique; do not build automatic UIDs).

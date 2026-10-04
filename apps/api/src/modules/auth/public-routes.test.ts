@@ -118,10 +118,12 @@ describe('the routes that work without sign-in', () => {
   it('are found among all routes of the application', () => {
     expect(routesOf(app).map((route) => route.name)).toEqual([
       'GET /api/auth/session',
+      'GET /api/auth/sessions',
       'GET /api/health',
       'POST /api/auth/password',
       'POST /api/auth/sign-in',
       'POST /api/auth/sign-out',
+      'POST /api/auth/sign-out-everywhere',
     ]);
   });
 });

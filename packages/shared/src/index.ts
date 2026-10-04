@@ -2,9 +2,11 @@ export {
   changePasswordSchema,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
+  sessionListSchema,
   sessionResponseSchema,
   signInSchema,
   type ChangePassword,
+  type SessionList,
   type SessionResponse,
   type SignIn,
 } from './auth.js';

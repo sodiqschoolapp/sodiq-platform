@@ -15,7 +15,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   payload_too_large: 'The request is too large.',
   not_signed_in: 'Not signed in.',
   sign_in_failed: 'The login or the password is wrong.',
-  password_expired: 'The first password is no longer valid.',
+  too_many_attempts: 'Too many failed attempts. Wait before the next one.',
+  password_expired: 'The first or reset password is no longer valid.',
   password_change_required: 'The password must be changed first.',
   current_password_wrong: 'The current password is wrong.',
   password_unchanged: 'The new password is the same as the current one.',
@@ -81,6 +82,9 @@ export function sendError(response: Response, error: unknown): void {
     // The answer has started; all that is left is to end it.
     response.end();
     return;
+  }
+  if (error instanceof ApiException && error.retryAfterSeconds !== undefined) {
+    response.setHeader('Retry-After', String(error.retryAfterSeconds));
   }
   const body: ApiError = {
     error: {

@@ -6,6 +6,8 @@ import { createTestDatabase, type TestDatabase } from '../../testing/test-databa
 const INSUFFICIENT_PRIVILEGE = '42501';
 const UNIQUE_VIOLATION = '23505';
 const CHECK_VIOLATION = '23514';
+const NOT_NULL_VIOLATION = '23502';
+const FOREIGN_KEY_VIOLATION = '23503';
 
 const HASH = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHRzYWx0c2FsdA$aGFzaA';
 const TOKEN_HASH = 'a'.repeat(64);
@@ -46,6 +48,7 @@ describe('accounts and sessions in the database', () => {
           account_id: accountId,
           token_hash: TOKEN_HASH,
           created_at: new Date('2026-10-05T09:00:00+05:00'),
+          last_used_at: new Date('2026-10-05T09:00:00+05:00'),
         })
         .execute(),
     );
@@ -151,21 +154,24 @@ describe('accounts and sessions in the database', () => {
         `update sessions set account_id = '${'0'.repeat(8)}-0000-7000-8000-${'0'.repeat(12)}'`,
       ],
       ['its start', `update sessions set created_at = '2026-10-06T09:00:00+05:00'`],
+      ['the name of its browser', `update sessions set user_agent = 'another browser'`],
     ])('refuse the application user a change of %s', async (_name, statement) => {
       await expect(asApp(statement)).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
     });
 
     it('refuse a second session with the same token', async () => {
       await expect(
-        asApp(`insert into sessions (account_id, token_hash, created_at)
-               values ('${accountId}', '${TOKEN_HASH}', '2026-10-05T09:00:00+05:00')`),
+        asApp(`insert into sessions (account_id, token_hash, created_at, last_used_at)
+               values ('${accountId}', '${TOKEN_HASH}', '2026-10-05T09:00:00+05:00',
+                 '2026-10-05T09:00:00+05:00')`),
       ).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
     });
 
     it('refuse a token that is not stored as a SHA-256 hash', async () => {
       await expect(
-        asApp(`insert into sessions (account_id, token_hash, created_at)
-               values ('${accountId}', 'the-token-itself', '2026-10-05T09:00:00+05:00')`),
+        asApp(`insert into sessions (account_id, token_hash, created_at, last_used_at)
+               values ('${accountId}', 'the-token-itself', '2026-10-05T09:00:00+05:00',
+                 '2026-10-05T09:00:00+05:00')`),
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });
     });
 
@@ -182,6 +188,110 @@ describe('accounts and sessions in the database', () => {
       await asApp(
         `update sessions set ended_at = '2026-10-05T10:00:00+05:00', end_reason = 'sign_out'`,
       );
+    });
+
+    // Task 0.6b (db/migrations/0006): the further ways a session ends.
+    it.each(['idle', 'sign_out_everywhere', 'password_reset', 'password_change'])(
+      'accept the end reason %s',
+      async (reason) => {
+        await asApp(
+          `update sessions set ended_at = '2026-10-05T10:00:00+05:00', end_reason = '${reason}'`,
+        );
+      },
+    );
+
+    it('let the application user move the moment of the last use', async () => {
+      await asApp(`update sessions set last_used_at = '2026-10-05T09:10:00+05:00'`);
+    });
+
+    it('refuse a session without a moment of the last use', async () => {
+      await expect(
+        asApp(`insert into sessions (account_id, token_hash, created_at)
+               values ('${accountId}', '${'c'.repeat(64)}', '2026-10-05T09:00:00+05:00')`),
+      ).rejects.toMatchObject({ code: NOT_NULL_VIOLATION });
+    });
+
+    // Asked for by the owner: the name of the browser is cut to 200 characters.
+    it('refuse a browser name of 201 characters and accept one of 200', async () => {
+      const insert = (token: string, length: number) =>
+        asApp(`insert into sessions (account_id, token_hash, created_at, last_used_at, user_agent)
+               values ('${accountId}', '${token.repeat(64)}', '2026-10-05T09:00:00+05:00',
+                 '2026-10-05T09:00:00+05:00', '${'x'.repeat(length)}')`);
+
+      await expect(insert('d', 201)).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      await insert('e', 200);
+    });
+  });
+
+  // Edge cases, "Accounts and sign-in": a reset is logged as "reset by X for Y".
+  describe('keep a reset together with who made it', () => {
+    it('refuse a reset moment without the account that reset, and the other way round', async () => {
+      await expect(
+        asApp(`update accounts set password_reset_at = '2026-10-05T10:00:00+05:00'`),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      await expect(
+        asApp(`update accounts set password_reset_by = '${accountId}'`),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+    });
+
+    it('accept both together, and refuse an account that does not exist', async () => {
+      await asApp(
+        `update accounts set password_reset_by = '${accountId}',
+           password_reset_at = '2026-10-05T10:00:00+05:00' where login = 'c.karimov'`,
+      );
+      await expect(
+        asApp(`update accounts set password_reset_at = '2026-10-05T10:00:00+05:00',
+                 password_reset_by = '${'0'.repeat(8)}-0000-7000-8000-${'0'.repeat(12)}'`),
+      ).rejects.toMatchObject({ code: FOREIGN_KEY_VIOLATION });
+    });
+  });
+
+  // Edge cases, "Accounts and sign-in": attempts are limited per account and device.
+  describe('keep the devices and the count of failed sign-ins', () => {
+    it('let the application user add a known device, once', async () => {
+      const insert = () =>
+        asApp(`insert into known_devices (token_hash, account_id, first_signed_in_at)
+               values ('${'f'.repeat(64)}', '${accountId}', '2026-10-05T09:00:00+05:00')`);
+
+      await insert();
+      await expect(insert()).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
+    });
+
+    it('refuse the application user a change or a delete of a known device', async () => {
+      await expect(asApp('delete from known_devices')).rejects.toMatchObject({
+        code: INSUFFICIENT_PRIVILEGE,
+      });
+      await expect(
+        asApp(`update known_devices set first_signed_in_at = '2026-10-06T09:00:00+05:00'`),
+      ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+    });
+
+    it('refuse a device token that is not stored as a SHA-256 hash', async () => {
+      await expect(
+        asApp(`insert into known_devices (token_hash, account_id, first_signed_in_at)
+               values ('the-token-itself', '${accountId}', '2026-10-05T09:00:00+05:00')`),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+    });
+
+    it.each([
+      ['a login that is not stored as a SHA-256 hash', 'a.karimov', 'unknown', 1],
+      ['a device that is neither a token hash nor "unknown"', 'a'.repeat(64), 'my-phone', 1],
+      ['a count below zero', 'a'.repeat(64), 'unknown', -1],
+    ])('refuse a count with %s', async (_name, login, device, failures) => {
+      await expect(
+        asApp(`insert into sign_in_throttle (login_hash, device_key, failures, last_failure_at)
+               values ('${login}', '${device}', ${String(failures)}, '2026-10-05T09:00:00+05:00')`),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+    });
+
+    it('keep one count per login and device, which the application user may remove', async () => {
+      const insert = () =>
+        asApp(`insert into sign_in_throttle (login_hash, device_key, failures, last_failure_at)
+               values ('${'a'.repeat(64)}', 'unknown', 1, '2026-10-05T09:00:00+05:00')`);
+
+      await insert();
+      await expect(insert()).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
+      await asApp('delete from sign_in_throttle');
     });
   });
 });

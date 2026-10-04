@@ -52,6 +52,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AuthController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/password": {
         parameters: {
             query?: never;
@@ -84,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/sign-out-everywhere": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AuthController_signOutEverywhere"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -91,7 +123,7 @@ export interface components {
         ApiError: {
             error: {
                 /** @enum {string} */
-                code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "not_signed_in" | "sign_in_failed" | "password_expired" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "cross_site_request" | "request_key_reused" | "request_refused" | "internal_error";
+                code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "cross_site_request" | "request_key_reused" | "request_refused" | "internal_error";
                 message: string;
                 requestId: string;
                 details?: {
@@ -165,6 +197,7 @@ export interface operations {
                     "application/json": {
                         login: string;
                         mustChangePassword: boolean;
+                        passwordResetBy: string | null;
                     };
                 };
             };
@@ -196,6 +229,46 @@ export interface operations {
                     "application/json": {
                         login: string;
                         mustChangePassword: boolean;
+                        passwordResetBy: string | null;
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    AuthController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        sessions: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date-time */
+                            startedAt: string;
+                            /** Format: date-time */
+                            lastUsedAt: string;
+                            userAgent: string | null;
+                            current: boolean;
+                        }[];
                     };
                 };
             };
@@ -244,6 +317,32 @@ export interface operations {
         };
     };
     AuthController_signOut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    AuthController_signOutEverywhere: {
         parameters: {
             query?: never;
             header?: never;
