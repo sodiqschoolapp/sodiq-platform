@@ -116,6 +116,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/second-step": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TwoStepController_overview"];
+        put?: never;
+        post: operations["TwoStepController_pass"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/second-step/set-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TwoStepController_setUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/second-step/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TwoStepController_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/second-step/turn-off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TwoStepController_turnOff"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -123,7 +187,7 @@ export interface components {
         ApiError: {
             error: {
                 /** @enum {string} */
-                code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "cross_site_request" | "request_key_reused" | "request_refused" | "internal_error";
+                code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "cross_site_request" | "request_key_reused" | "request_refused" | "internal_error";
                 message: string;
                 requestId: string;
                 details?: {
@@ -196,6 +260,8 @@ export interface operations {
                 content: {
                     "application/json": {
                         login: string;
+                        /** @enum {string} */
+                        secondStep: "not_needed" | "pending" | "set_up_required" | "passed";
                         mustChangePassword: boolean;
                         passwordResetBy: string | null;
                     };
@@ -228,6 +294,8 @@ export interface operations {
                 content: {
                     "application/json": {
                         login: string;
+                        /** @enum {string} */
+                        secondStep: "not_needed" | "pending" | "set_up_required" | "passed";
                         mustChangePassword: boolean;
                         passwordResetBy: string | null;
                     };
@@ -350,6 +418,177 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    TwoStepController_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        on: boolean;
+                        required: boolean;
+                        recoveryCodesLeft: number;
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    TwoStepController_pass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        login: string;
+                        /** @enum {string} */
+                        secondStep: "not_needed" | "pending" | "set_up_required" | "passed";
+                        mustChangePassword: boolean;
+                        passwordResetBy: string | null;
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    TwoStepController_setUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        secret: string;
+                        address: string;
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    TwoStepController_confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        recoveryCodes: string[];
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    TwoStepController_turnOff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                };
+            };
+        };
         responses: {
             204: {
                 headers: {

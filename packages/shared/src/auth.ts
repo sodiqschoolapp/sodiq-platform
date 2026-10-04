@@ -25,9 +25,20 @@ export const changePasswordSchema = z.object({
 
 export type ChangePassword = z.infer<typeof changePasswordSchema>;
 
-/** Who is signed in, and whether the password must be changed before anything else. */
+/**
+ * Where a session stands with the second step of sign-in:
+ * `pending`: the account has one and this session has not given a code yet;
+ * `passed`: it has; `set_up_required`: the second step is required for the
+ * account and none is set up; `not_needed`: none is set up and none is required.
+ */
+export const secondStepStateSchema = z.enum(['not_needed', 'pending', 'set_up_required', 'passed']);
+
+export type SecondStepState = z.infer<typeof secondStepStateSchema>;
+
+/** Who is signed in, and what must be done before anything else. */
 export const sessionResponseSchema = z.object({
   login: z.string(),
+  secondStep: secondStepStateSchema,
   mustChangePassword: z.boolean(),
   /**
    * The login of the administrator who reset the password, while the reset
@@ -54,3 +65,41 @@ export const sessionListSchema = z.object({
 });
 
 export type SessionList = z.infer<typeof sessionListSchema>;
+
+/**
+ * A code of the second step: six digits from the authenticator app, or a
+ * recovery code. Nothing here says how either looks: a text that cannot be a
+ * code is answered like a wrong one.
+ */
+export const secondStepCodeSchema = z.object({
+  code: z.string().min(1).max(40),
+});
+
+export type SecondStepCode = z.infer<typeof secondStepCodeSchema>;
+
+/** A set-up that was started: what the authenticator app needs. Shown once. */
+export const secondStepSetUpSchema = z.object({
+  /** The secret in base32, for typing it into the app by hand. */
+  secret: z.string(),
+  /** The same as an `otpauth://` address, for a QR picture. */
+  address: z.string(),
+});
+
+export type SecondStepSetUp = z.infer<typeof secondStepSetUpSchema>;
+
+/** The recovery codes of a second step that was just confirmed. Shown once. */
+export const secondStepRecoveryCodesSchema = z.object({
+  recoveryCodes: z.array(z.string()),
+});
+
+export type SecondStepRecoveryCodes = z.infer<typeof secondStepRecoveryCodesSchema>;
+
+/** The second step of the signed-in account, for the profile. */
+export const secondStepOverviewSchema = z.object({
+  on: z.boolean(),
+  /** Required for the account: it cannot be turned off. */
+  required: z.boolean(),
+  recoveryCodesLeft: z.number().int(),
+});
+
+export type SecondStepOverview = z.infer<typeof secondStepOverviewSchema>;

@@ -28,6 +28,18 @@ export const ERROR_CODES = [
   'current_password_wrong',
   /** The new password is the same as the current one. */
   'password_unchanged',
+  /** The account has a second step and this session has not given a code yet. */
+  'second_step_required',
+  /** The second step is required for the account and none is set up: only the set-up answers. */
+  'second_step_set_up_required',
+  /** The code of the second step is wrong, was used before or cannot be a code. */
+  'second_step_code_wrong',
+  /** A set-up was asked for while a second step is in force. */
+  'second_step_already_on',
+  /** There is no second step to turn off, or no started set-up to confirm. */
+  'second_step_not_on',
+  /** The second step is required for the account and cannot be turned off. */
+  'second_step_cannot_turn_off',
   /** A changing request that came from another site. */
   'cross_site_request',
   /** The request key was already used for another action, other input or other branches. */

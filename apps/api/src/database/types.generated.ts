@@ -36,6 +36,17 @@ export interface Accounts {
   password_reset_by: string | null;
 }
 
+export interface AccountSecondSteps {
+  account_id: string;
+  blocked_until: Timestamp | null;
+  confirmed_at: Timestamp | null;
+  created_at: Timestamp;
+  failures: Generated<number>;
+  last_failure_at: Timestamp | null;
+  last_used_step: number | null;
+  secret: string;
+}
+
 export interface AuditLog {
   action: string;
   actor_id: string | null;
@@ -96,6 +107,12 @@ export interface SchemaMigrations {
   number: number;
 }
 
+export interface SecondStepRecoveryCodes {
+  account_id: string;
+  code_hash: string;
+  used_at: Timestamp | null;
+}
+
 export interface Sessions {
   account_id: string;
   created_at: Timestamp;
@@ -103,6 +120,7 @@ export interface Sessions {
   ended_at: Timestamp | null;
   id: Generated<string>;
   last_used_at: Timestamp;
+  second_step_passed_at: Timestamp | null;
   token_hash: string;
   user_agent: string | null;
 }
@@ -116,6 +134,7 @@ export interface SignInThrottle {
 }
 
 export interface DB {
+  account_second_steps: AccountSecondSteps;
   accounts: Accounts;
   audit_log: AuditLog;
   audit_log_school: AuditLogSchool;
@@ -123,6 +142,7 @@ export interface DB {
   known_devices: KnownDevices;
   request_keys: RequestKeys;
   schema_migrations: SchemaMigrations;
+  second_step_recovery_codes: SecondStepRecoveryCodes;
   sessions: Sessions;
   sign_in_throttle: SignInThrottle;
 }

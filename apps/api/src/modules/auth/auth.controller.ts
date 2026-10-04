@@ -13,12 +13,19 @@ import { DeviceCookie, UserAgent, type DeviceCookieJar } from '../../http/device
 import { RequestId } from '../../http/request-id.js';
 import { Returns, ReturnsNothing, ValidBody } from '../../http/schemas.js';
 import { SessionCookie, type SessionCookieJar } from '../../http/session-cookie.js';
-import { AllowedBeforePasswordChange, CurrentSession, Public } from './session.guard.js';
+import {
+  AllowedBeforePasswordChange,
+  AllowedBeforeSecondStep,
+  AllowedBeforeSecondStepSetUp,
+  CurrentSession,
+  Public,
+} from './session.guard.js';
 import { Sessions, type ActiveSession } from './sessions.service.js';
 
-function answerOf(session: ActiveSession): SessionResponse {
+export function answerOf(session: ActiveSession): SessionResponse {
   return {
     login: session.login,
+    secondStep: session.secondStep,
     mustChangePassword: session.mustChangePassword,
     passwordResetBy: session.passwordResetBy,
   };
@@ -54,7 +61,9 @@ export class AuthController {
   }
 
   @Get('session')
+  @AllowedBeforeSecondStep()
   @AllowedBeforePasswordChange()
+  @AllowedBeforeSecondStepSetUp()
   @Returns(sessionResponseSchema)
   read(@CurrentSession() session: ActiveSession): SessionResponse {
     return answerOf(session);
@@ -78,6 +87,7 @@ export class AuthController {
 
   @Post('password')
   @AllowedBeforePasswordChange()
+  @AllowedBeforeSecondStepSetUp()
   @ReturnsNothing()
   async changePassword(
     @CurrentSession() session: ActiveSession,
@@ -92,7 +102,9 @@ export class AuthController {
   }
 
   @Post('sign-out')
+  @AllowedBeforeSecondStep()
   @AllowedBeforePasswordChange()
+  @AllowedBeforeSecondStepSetUp()
   @ReturnsNothing()
   async signOut(
     @CurrentSession() session: ActiveSession,

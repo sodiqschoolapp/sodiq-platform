@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import type { Clock } from '@sodiq/shared';
+import type { Clock, SecondStepState } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
@@ -9,6 +9,7 @@ import { Audit } from '../audit/audit.service.js';
 import { SHORT_IDLE_LIMIT_MS } from './idle-limit.js';
 import { LOGIN_FORMAT } from './login.js';
 import { hashPassword, verifyPassword } from './password-hash.js';
+import { SecondStepRule } from './second-step-rule.js';
 import { deviceTokenHash, SignInThrottle } from './sign-in-throttle.service.js';
 
 /**
@@ -32,6 +33,11 @@ export interface ActiveSession {
   sessionId: string;
   accountId: string;
   login: string;
+  /**
+   * Where the session stands with the second step. `pending`: nothing but the
+   * second step is allowed; `set_up_required`: nothing but its set-up.
+   */
+  secondStep: SecondStepState;
   /** A first or reset password is in use: nothing but the password change is allowed. */
   mustChangePassword: boolean;
   /** The login of the administrator who reset the password, while the reset password is in use. */
@@ -82,11 +88,15 @@ export class Sessions {
     private readonly transactions: Transactions,
     private readonly audit: Audit,
     private readonly throttle: SignInThrottle,
+    private readonly secondSteps: SecondStepRule,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   /**
-   * Opens a session. An unknown login and a wrong password are refused alike
+   * Opens a session. For an account with a second step it is the first of two
+   * steps: the session exists, and reaches nothing but the second step until a
+   * code is given (`TwoStep.pass`).
+   * An unknown login and a wrong password are refused alike
    * (`sign_in_failed`), and both are counted: after five failures each further
    * attempt waits (`too_many_attempts`). A first password older than 7 days or
    * a reset password older than 24 hours is refused as `password_expired`, but
@@ -171,11 +181,13 @@ export class Sessions {
         })
         .onConflict((conflict) => conflict.columns(['token_hash', 'account_id']).doNothing())
         .execute();
+      const secondStep = await this.secondSteps.stateOf(transaction, account.id, null);
       await this.audit.record(transaction, {
         branchId: null,
         actorId: account.id,
         action: 'auth.sign_in',
         record: { type: 'session', id: session.id },
+        details: { secondStep },
         ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
       });
       return {
@@ -185,6 +197,7 @@ export class Sessions {
           sessionId: session.id,
           accountId: account.id,
           login,
+          secondStep,
           mustChangePassword: account.must_change_password,
           passwordResetBy: await this.loginOf(transaction, account.password_reset_by),
         },
@@ -210,7 +223,7 @@ export class Sessions {
           .where('token_hash', '=', tokenHash(token))
           .where('ended_at', 'is', null)
           .where('last_used_at', '>', new Date(now.getTime() - limit))
-          .returning(['id', 'account_id'])
+          .returning(['id', 'account_id', 'second_step_passed_at'])
           .executeTakeFirst();
       let used = await use();
       if (used === undefined && (await this.endIfIdle(transaction, token, now, limit))) {
@@ -229,6 +242,11 @@ export class Sessions {
         sessionId: used.id,
         accountId: used.account_id,
         login: account.login,
+        secondStep: await this.secondSteps.stateOf(
+          transaction,
+          used.account_id,
+          used.second_step_passed_at,
+        ),
         mustChangePassword: account.must_change_password,
         passwordResetBy: await this.loginOf(transaction, account.password_reset_by),
       };

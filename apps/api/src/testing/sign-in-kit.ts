@@ -1,16 +1,60 @@
 import type { Server } from 'node:http';
 import { Controller, Get, type INestApplication } from '@nestjs/common';
-import { apiErrorSchema } from '@sodiq/shared';
+import {
+  apiErrorSchema,
+  secondStepRecoveryCodesSchema,
+  secondStepSetUpSchema,
+  type Clock,
+} from '@sodiq/shared';
 import request, { type Response, type Test } from 'supertest';
+import { CLOCK } from '../clock/clock.module.js';
 import { Transactions } from '../database/transactions.js';
 import { DEVICE_COOKIE } from '../http/device-cookie.js';
 import { SESSION_COOKIE } from '../http/session-cookie.js';
 import { Accounts, type CreatedAccount } from '../modules/auth/accounts.service.js';
+import { SecondStepRule } from '../modules/auth/second-step-rule.js';
 import { CurrentSession } from '../modules/auth/session.guard.js';
 import type { ActiveSession } from '../modules/auth/sessions.service.js';
+import { totpCode, totpStep } from '../modules/auth/totp.js';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';
+
+/**
+ * The second step is required for nobody: for the suites about passwords,
+ * sessions and limits, whose accounts sign in with a password alone, and for
+ * the tests of the optional second step.
+ */
+export class OptionalSecondStep extends SecondStepRule {
+  override required(): boolean {
+    return false;
+  }
+}
+
+const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+/** What an authenticator app does with the secret it is shown. */
+export function base32Decode(text: string): Buffer {
+  let bits = '';
+  for (const character of text) {
+    const value = BASE32.indexOf(character);
+    if (value === -1) {
+      throw new Error('The text is not base32.');
+    }
+    bits += value.toString(2).padStart(5, '0');
+  }
+  const bytes: number[] = [];
+  for (let index = 0; index + 8 <= bits.length; index += 8) {
+    bytes.push(Number.parseInt(bits.slice(index, index + 8), 2));
+  }
+  return Buffer.from(bytes);
+}
+
+/** The second step of a test account: what its authenticator app and its drawer hold. */
+export interface SecondStepOfAccount {
+  secret: Buffer;
+  recoveryCodes: string[];
+}
 
 /** Stands for every route of a later task: it declares nothing, so it needs a full session. */
 @Controller('probe')
@@ -102,6 +146,47 @@ export function signInKit(app: INestApplication) {
     return browser;
   }
 
+  /** The code the authenticator app shows now, or so many 30-second steps from now. */
+  function codeOf(secret: Buffer, stepsFromNow = 0): string {
+    return totpCode(secret, totpStep(app.get<Clock>(CLOCK).now()) + stepsFromNow);
+  }
+
+  /** The second step of a sign-in. */
+  function passSecondStep(cookies: string, code: string): Test {
+    return request(server).post('/api/auth/second-step').set('Cookie', cookies).send({ code });
+  }
+
+  /** Sets up and confirms a second step for the account of a session whose password is changed. */
+  async function setUpSecondStep(cookies: string): Promise<SecondStepOfAccount> {
+    const started = await request(server)
+      .post('/api/auth/second-step/set-up')
+      .set('Cookie', cookies);
+    if (started.status !== 200) {
+      throw new Error(`The set-up of the second step failed with ${String(started.status)}.`);
+    }
+    const secret = base32Decode(secondStepSetUpSchema.parse(started.body).secret);
+    const confirmed = await request(server)
+      .post('/api/auth/second-step/confirm')
+      .set('Cookie', cookies)
+      .send({ code: codeOf(secret) });
+    if (confirmed.status !== 200) {
+      throw new Error(`The second step was not confirmed: ${String(confirmed.status)}.`);
+    }
+    return {
+      secret,
+      recoveryCodes: secondStepRecoveryCodesSchema.parse(confirmed.body).recoveryCodes,
+    };
+  }
+
+  /** `fullSession` with a second step set up: a session that may use every route under the strict rule. */
+  async function completeSession(
+    firstName: string,
+    lastName: string,
+  ): Promise<SignedInBrowser & SecondStepOfAccount> {
+    const browser = await fullSession(firstName, lastName);
+    return { ...browser, ...(await setUpSecondStep(browser.cookie)) };
+  }
+
   const get = (path: string, cookies?: string): Test => {
     const call = request(server).get(path);
     return cookies === undefined ? call : call.set('Cookie', cookies);
@@ -119,6 +204,10 @@ export function signInKit(app: INestApplication) {
     changePassword,
     firstSession,
     fullSession,
+    codeOf,
+    passSecondStep,
+    setUpSecondStep,
+    completeSession,
     get,
     post,
     probe: (cookies?: string) => get('/api/probe', cookies),

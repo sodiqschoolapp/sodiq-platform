@@ -3,11 +3,22 @@ import { z } from 'zod';
 /** A variable that is set but empty counts as not set. */
 const emptyAsUnset = (value: unknown): unknown => (value === '' ? undefined : value);
 
+/** 32 bytes in base64 are 43 characters and one `=`. */
+const KEY_OF_32_BYTES = /^[A-Za-z0-9+/]{43}=$/;
+
 const environmentSchema = z.object({
   // The API answers only on this machine unless the server sets HOST (task 0.10).
   HOST: z.preprocess(emptyAsUnset, z.string().default('127.0.0.1')),
   PORT: z.preprocess(emptyAsUnset, z.coerce.number().int().min(1).max(65535).default(3000)),
   DATABASE_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^postgres(ql)?$/ })),
+  // The key that encrypts the secrets of the second step of sign-in (task 0.6c).
+  SECOND_STEP_KEY: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .regex(KEY_OF_32_BYTES)
+      .refine((value) => Buffer.from(value, 'base64').length === 32),
+  ),
 });
 
 type VariableName = keyof z.infer<typeof environmentSchema>;
@@ -18,12 +29,16 @@ const PROBLEM: Record<VariableName, string> = {
   PORT: 'PORT must be a whole number from 1 to 65535',
   DATABASE_URL:
     'DATABASE_URL must be set to a postgres:// address (on a developer machine: copy .env.example to .env, see README.md, Setup)',
+  SECOND_STEP_KEY:
+    'SECOND_STEP_KEY must be set to 32 random bytes in base64 (on a developer machine: copy the line from .env.example to .env)',
 };
 
 export interface AppConfig {
   host: string;
   port: number;
   databaseUrl: string;
+  /** 32 bytes in base64. Only `SecondStepSecrets` reads it. */
+  secondStepKey: string;
 }
 
 export class ConfigError extends Error {}
@@ -43,5 +58,6 @@ export function loadConfig(environment: Record<string, string | undefined>): App
     host: result.data.HOST,
     port: result.data.PORT,
     databaseUrl: result.data.DATABASE_URL,
+    secondStepKey: result.data.SECOND_STEP_KEY,
   };
 }

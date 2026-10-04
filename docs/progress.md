@@ -2,6 +2,59 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 October 2026: task 0.6c Two-step sign-in
+
+Task 0.6c was split by the owner: 0.6c is the second step, 0.6d is trusted devices, the longest life of a session and the account lock. Where an older entry below names 0.6c for one of those three, read 0.6d.
+
+Spec change at the start, by the owner (`docs/spec-changes.md`): the password change always needs the current password, also on a trusted device; every session ends 7 days after sign-in at the latest.
+
+Built:
+
+- `db/migrations/0007_two_step.sql`: the school-wide tables `account_second_steps` (encrypted secret, moment of confirmation, last used step, count of wrong codes) and `second_step_recovery_codes` (hashes), and `sessions.second_step_passed_at`.
+- `totp.ts`: the code of an authenticator app (RFC 6238) with `node:crypto`, base32 and the `otpauth://` address. A code counts for its own 30 seconds and the step before and after, once.
+- `SecondStepSecrets`: the secret at rest, AES-256-GCM with `SECOND_STEP_KEY`, stored as `v1:...` with the account bound in. `SECOND_STEP_KEY` (32 bytes, base64) is checked at start; `.env.example`, `ci.yml`, `apps/api/turbo.json` and `apps/api/vitest.config.ts` hold the public local value.
+- `SecondStepKeyCheck.run()`, called by `main.ts` and `worker.ts`: the start is refused when the oldest stored secret does not decrypt. Not run by `pnpm api:client`.
+- `TwoStep`: set-up, confirmation with ten recovery codes, the code at sign-in, turning off where optional, the count of wrong codes per account, reset by an administrator (no route).
+- `SecondStepRule`: required for every account until 0.7; `secondStepRequired(roles)` holds the rule of the spec.
+- `SessionGuard`: one owed step at a time, in the order second step, forced password change, set-up of a required second step.
+- Routes: `POST /api/auth/second-step`, `GET /api/auth/second-step`, `POST /api/auth/second-step/set-up`, `.../confirm`, `.../turn-off`. The answers of `POST /api/auth/sign-in` and `GET /api/auth/session` gained `secondStep` (`not_needed`, `pending`, `set_up_required`, `passed`).
+- Error codes: `second_step_required`, `second_step_set_up_required`, `second_step_code_wrong`, `second_step_already_on`, `second_step_not_on`, `second_step_cannot_turn_off`.
+- Audit actions: `account.second_step_started`, `account.second_step_on`, `account.second_step_off`, `account.second_step_reset`, `account.second_step_unreadable`, `auth.second_step_passed`, `auth.second_step_failed`, `auth.recovery_code_used`; `auth.sign_in` carries `details.secondStep`.
+- Reviewed by the spec reviewer and the permission reviewer. Neither found a way past the second step or a stored or logged secret. Fixed from the reviews: tests of attempts at the same moment (they fail without the row lock; tried), of the 24 hours and the 15-minute cap of the count, of every route in the states "owes the code" and "passed with a reset password"; a set-up can no longer overwrite a second step in force; removing a second step empties the passed moment of every session; an unreadable started set-up leaves an audit entry; weak tests made exact.
+
+Left out, with the task that brings it:
+
+- Trusted devices, the longest life of a session (7 days), account lock and unlock: 0.6d.
+- "Required" from real roles: 0.7. Routes for the second-step reset, who may reset whom: 2.3 (now in its build-plan line).
+- Screens, the QR picture, translations: 0.8a.
+- New recovery codes without a new set-up, and moving to a new phone while the old one works: the spec names neither. Today: turn off and set up again where optional, or a reset by a Super Admin.
+- `Cache-Control: no-store` (already a 0.7 item from 0.6a) matters more now: the answers of set-up and confirm hold the secret and the recovery codes.
+
+Decided by the owner after the reviews:
+
+- 0.6d begins with a `/spec-change` for the "Trust this device" row, which still says "with no idle sign-out and no second step": the sign-in that starts the trust asks the code, and removing a device ends its session. Both are in the 0.6d line of the build plan, not yet in the spec.
+- 2.3: a second-step reset by an administrator always goes with a password reset, so the one-time password handed to the person is the proof; the exact wording is decided there. Reason: after a reset of the second step alone, anybody who has the password could set up the new one, from a new sign-in or from a session that was waiting for the code.
+- `Cache-Control: no-store` stays at 0.7.
+
+Open, for the owner:
+
+- 0.10: if the oldest stored secret is itself damaged, the API and the worker do not start until that row is removed by hand; the deploy notes should say how. The real `SECOND_STEP_KEY` is a secret of the server (`openssl rand -base64 32`), the same for API and worker, and must be kept with the backups in mind: without it no stored second step can be read.
+
+The next sessions must know:
+
+- Every developer machine needs the `SECOND_STEP_KEY` line of `.env.example` in `.env`; without it `pnpm dev`, `pnpm api:client` and the first-account command stop at start. The tests do not need it.
+- Route tests whose accounts should sign in with a password alone: `createTestApp({ ..., secondStepRule: new OptionalSecondStep() })` (`sign-in-kit.ts`). Under the rule of the application a session of `kit.fullSession` reaches only the set-up; `kit.completeSession` also sets up a second step and returns `secret` and `recoveryCodes`. `kit.codeOf(secret)` is the code of the clock's present step; a code counts once, so advance the clock by 30 seconds before the next one.
+- A new route is refused in the states "owes the code", "must change the password" and "must set up" unless it carries `@AllowedBeforeSecondStep()`, `@AllowedBeforePasswordChange()` or `@AllowedBeforeSecondStepSetUp()`. Almost no route should.
+- 0.6d: trust must not start before `second_step_passed_at` is set, and nothing may be built on `known_devices`: a right password alone writes a row there. A trusted session of an account with a second step still passes it once. New end reasons need a migration (`sessions_end_reason_check`).
+- 0.7: `SecondStepRule.required()` must answer `secondStepRequired(roles)` with the roles of the account; `second-step-key-check.test.ts` ("the rule of the second step in the application as it runs") and the strict expectations of `two-step.test.ts` change with it; the four suites with `OptionalSecondStep` can then drop it for accounts without the two roles. `SECOND_STEP_ROLES` is `SHORT_IDLE_ROLES`: rename both in one place. The five new routes need their permission declaration (any signed-in account, own data).
+- 0.7, a role given to a person who has no second step: their open sessions fall into "set up required" at the next request, by themselves.
+- 2.3: `TwoStep.resetByAdministrator(transaction, { accountId, resetBy, requestId })` throws `OwnSecondStepResetError` and `UnknownAccountError`; it ends no session. The entry `account.second_step_reset` is school-wide.
+- 2.6: second-step events for the own sign-in history are found by actor (the account); `auth.second_step_failed` has the session as record.
+- 0.8a: after the password, read `secondStep` of the answer: `pending` shows the code field (a recovery code goes into the same field; spaces and hyphens are ignored), `set_up_required` the set-up. `too_many_attempts` comes with `Retry-After` here too. After a forced password change the screen says to sign in again to trust the device (decided by the owner for 0.6d).
+- A key change later: the new key becomes version 2 with a variable of its own in `config.ts` and `SecondStepSecrets`; version 1 stays readable until no stored secret has it. No migration.
+
+The next task is 0.6d.
+
 ## 4 October 2026: task 0.6b Limits, resets and idle sign-out
 
 Changed by the owner at the start: password reset by email and the mail service moved to 2.3 (`docs/build-plan.md`); an account has no email address before 2.2.

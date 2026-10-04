@@ -8,6 +8,7 @@ import {
   cookieOf,
   errorCode,
   NEW_PASSWORD,
+  OptionalSecondStep,
   ProbeController,
   signInKit,
   type SignInKit,
@@ -36,7 +37,12 @@ describe('a password reset by an administrator', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    app = await createTestApp({ database: database.app, clock, controllers: [ProbeController] });
+    app = await createTestApp({
+      database: database.app,
+      clock,
+      controllers: [ProbeController],
+      secondStepRule: new OptionalSecondStep(),
+    });
     kit = signInKit(app);
   });
 
@@ -246,6 +252,7 @@ describe('a password reset by an administrator', () => {
 
       const answer = {
         login: 'p.maxmudova',
+        secondStep: 'not_needed',
         mustChangePassword: true,
         passwordResetBy: 'o.maxmudov',
       };
@@ -268,6 +275,7 @@ describe('a password reset by an administrator', () => {
 
       expect((await kit.get('/api/auth/session', cookie)).body).toEqual({
         login: 'r.maxmudova',
+        secondStep: 'not_needed',
         mustChangePassword: false,
         passwordResetBy: null,
       });
@@ -284,6 +292,7 @@ describe('a password reset by an administrator', () => {
 
       expect((await kit.signIn(account.login, account.firstPassword)).body).toEqual({
         login: 's.maxmudov',
+        secondStep: 'not_needed',
         mustChangePassword: true,
         passwordResetBy: null,
       });

@@ -7,10 +7,10 @@
       "env": ["DATABASE_URL", "DATABASE_MIGRATION_URL"]
     },
     "dev": {
-      "env": ["DATABASE_URL", "HOST", "PORT"]
+      "env": ["DATABASE_URL", "HOST", "PORT", "SECOND_STEP_KEY"]
     },
     "dev:worker": {
-      "env": ["DATABASE_URL"]
+      "env": ["DATABASE_URL", "SECOND_STEP_KEY"]
     }
   }
 }

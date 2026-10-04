@@ -38,6 +38,10 @@ describe('OpenAPI document', () => {
 
       expect(Object.keys(document.paths).sort()).toEqual([
         '/api/auth/password',
+        '/api/auth/second-step',
+        '/api/auth/second-step/confirm',
+        '/api/auth/second-step/set-up',
+        '/api/auth/second-step/turn-off',
         '/api/auth/session',
         '/api/auth/sessions',
         '/api/auth/sign-in',
