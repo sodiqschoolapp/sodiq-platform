@@ -29,7 +29,7 @@ Left out, with the task that brings it:
 
 Open, for the owner:
 
-- 0.10: check that the database user created for the application on Neon is not a superuser, has no BYPASSRLS and does not own the tables. The reviewer recalls that users made in Neon's console join a role with BYPASSRLS; this was not looked up. With such a user the API now refuses every transaction instead of showing all branches.
+- 0.10: the database user of the application on Neon must not be a superuser, must not have BYPASSRLS and must not own the tables. Confirmed by the owner from Neon's documentation (neon.com/docs/manage/roles): roles created in the Neon Console, CLI or API are members of `neon_superuser`, which has BYPASSRLS; roles created with SQL are not. So `sodiq_app` and `sodiq_migrator` are created with SQL (`CREATE ROLE ... LOGIN PASSWORD`) from the SQL editor or psql, never in the console. With a wrong user the API refuses every transaction instead of showing all branches.
 - 0.7: whether `createParamDecorator` and `REQUEST` of `@nestjs/core` are also kept inside `apps/api/src/http/`.
 
 The next sessions must know:
