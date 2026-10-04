@@ -58,6 +58,12 @@ const countText = (shown: number, matching: number, total = ROWS.length): string
 const selectedText = (count: number): string =>
   (count === 1 ? en.list.selected_one : en.list.selected_other).replace('{{n}}', String(count));
 
+/**
+ * The status of the page. The top bar has one of its own (the sign of unsaved
+ * changes, task 0.8b-2), so a test looks inside `main`.
+ */
+const pageStatus = () => within(screen.getByRole('main')).getByRole('status');
+
 const tickAll = () => screen.getByRole<HTMLInputElement>('checkbox', { name: en.list.selectAll });
 
 const tickRow = (name: string) =>
@@ -358,12 +364,12 @@ describe('the checkboxes and bulk actions of a list', () => {
 
     fireEvent.click(tickAll());
 
-    expect(screen.getByRole('status').textContent).toBe(selectedText(20));
+    expect(pageStatus().textContent).toBe(selectedText(20));
     expect(tickAll().checked).toBe(true);
 
     type('');
 
-    expect(screen.getByRole('status').textContent).toBe(selectedText(20));
+    expect(pageStatus().textContent).toBe(selectedText(20));
     expect(tickAll().checked).toBe(false);
     expect(tickAll().indeterminate).toBe(true);
     expect(tickRow('Aziza Abdullayev').checked).toBe(false);
@@ -377,13 +383,11 @@ describe('the checkboxes and bulk actions of a list', () => {
     fireEvent.click(tickAll());
 
     // docs/spec/12-ux-standards.md, Language: numbers follow the chosen language.
-    expect(screen.getByRole('status').textContent).toBe(
-      en.list.selected_other.replace('{{n}}', '2,500'),
-    );
+    expect(pageStatus().textContent).toBe(en.list.selected_other.replace('{{n}}', '2,500'));
 
     fireEvent.click(tickAll());
 
-    expect(screen.getByRole('status').textContent).toBe(selectedText(0));
+    expect(pageStatus().textContent).toBe(selectedText(0));
   });
 
   it('says how many ticked rows the search does not show', async () => {
@@ -393,7 +397,7 @@ describe('the checkboxes and bulk actions of a list', () => {
 
     type('bekzod');
 
-    expect(screen.getByRole('status').textContent).toBe(
+    expect(pageStatus().textContent).toBe(
       `${selectedText(2)} ${en.list.selectedNotShown_one.replace('{{n}}', '1')}`,
     );
   });
@@ -407,6 +411,13 @@ describe('the checkboxes and bulk actions of a list', () => {
     type('bekzod');
 
     fireEvent.click(screen.getByRole('button', { name: en.sample.archive }));
+    // The action asks first (task 0.8b-2) and names both rows, the hidden one too.
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Dilshod Abdullayev')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.sample.archive }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
     type('');
     fireEvent.change(screen.getByRole('combobox', { name: en.sample.status }), {
       target: { value: 'archived' },
@@ -426,7 +437,7 @@ describe('the checkboxes and bulk actions of a list', () => {
       fireEvent.click(box);
     }
 
-    expect(screen.getByRole('status').textContent).toBe(ru.list.selected_few.replace('{{n}}', '2'));
+    expect(pageStatus().textContent).toBe(ru.list.selected_few.replace('{{n}}', '2'));
   });
 });
 
@@ -464,7 +475,11 @@ describe('the side panel of a list', () => {
     fireEvent.click(rowButton('Bekzod Abdullayev'));
 
     const opened = await panel('Bekzod Abdullayev');
-    expect(within(opened).getByText('6 Cambridge')).toBeDefined();
+    // The record is a form (task 0.8b-2): its fields hold the values of the row.
+    expect(within(opened).getByLabelText<HTMLInputElement>(en.sample.grade).value).toBe('6');
+    expect(within(opened).getByLabelText<HTMLInputElement>(en.sample.className).value).toBe(
+      'Cambridge',
+    );
     await waitFor(() => {
       expect(router.state.location.search).toEqual({ open: 'sample-0002' });
     });
@@ -579,7 +594,7 @@ describe('the states of a list', () => {
   it('shows the outline of the table while the rows are on the way', async () => {
     await openList(`${PATH}?demo=loading`);
 
-    const outline = screen.getByRole('status');
+    const outline = pageStatus();
     expect(outline.getAttribute('aria-busy')).toBe('true');
     expect(within(outline).getByRole('columnheader', { name: en.sample.name })).toBeDefined();
     expect(within(outline).getAllByRole('row')).toHaveLength(9);

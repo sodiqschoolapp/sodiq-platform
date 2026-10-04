@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { FailureAlert } from '@/components/failure-alert';
+import { UnsentBanner, UnsentGuard, useLeave } from '@/components/unsent/unsent-changes';
 import { sessionQuery } from '@/features/auth/session';
 import { rememberTrustAsked, trustWasAsked } from '@/features/auth/trust-asked';
 import { useSignOut } from '@/features/auth/use-sign-out';
@@ -69,14 +70,17 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { data: session } = useQuery(sessionQuery);
   const signOut = useSignOut();
+  const { leave } = useLeave();
 
   return (
     <div className="flex min-h-svh flex-col">
+      <UnsentGuard />
       <header className="flex h-12 shrink-0 items-center gap-3 border-b px-4">
-        <Link to="/" className="font-semibold">
+        <Link to="/" className="shrink-0 font-semibold">
           {t('app.name')}
         </Link>
-        <div className="ml-auto flex items-center gap-2">
+        <UnsentBanner />
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <LanguageChooser />
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -99,7 +103,12 @@ export function AppLayout() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
-                  signOut.mutate();
+                  // Sign-out takes a form with typed changes away: ask first.
+                  void leave().then((leaves) => {
+                    if (leaves) {
+                      signOut.mutate();
+                    }
+                  });
                 }}
               >
                 {t('layout.signOut')}

@@ -56,3 +56,4 @@ export {
   STRICT_SIGN_IN_ROLES,
   type Role,
 } from './roles.js';
+export { sampleRecordSchema, type SampleRecord } from './sample.js';

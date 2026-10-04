@@ -77,9 +77,23 @@ test('the sample list is worked from the keyboard, and its state is in the addre
   await page.keyboard.press('Shift+Tab');
   await expect(page.getByRole('button', { name: en.list.clearSelection })).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(page.getByRole('button', { name: en.sample.archive })).toBeFocused();
+  const archive = page.getByRole('button', { name: en.sample.archive });
+  await expect(archive).toBeFocused();
   await page.keyboard.press('Enter');
+  // The action asks first and names what it will touch (task 0.8b-2). The
+  // focus starts on Cancel; Tab leads to the button that goes on.
+  const question = page.getByRole('alertdialog', {
+    name: en.sample.archiveTitle_other.replace('{{n}}', '20'),
+  });
+  await expect(question.getByRole('listitem').first()).toHaveText('Aziza Ergashev');
+  await expect(question.getByRole('button', { name: en.confirm.cancel })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(question.getByRole('button', { name: en.sample.archive })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(question).toBeHidden();
   await expect(rows.filter({ hasText: en.sample.archived })).toHaveCount(20);
+  // The dialog gives the focus back to the button it came from.
+  await expect(archive).toBeFocused();
 
   // Tab: the first column header. Sorting, from the end at the second press.
   const nameHeader = page.getByRole('columnheader', { name: en.sample.name });
