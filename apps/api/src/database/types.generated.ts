@@ -27,6 +27,9 @@ export interface Accounts {
   created_at: Timestamp;
   created_by: string | null;
   id: Generated<string>;
+  lock_reason: string | null;
+  locked_at: Timestamp | null;
+  locked_by: string | null;
   login: string;
   must_change_password: boolean;
   password_changed_at: Timestamp | null;
@@ -122,6 +125,9 @@ export interface Sessions {
   last_used_at: Timestamp;
   second_step_passed_at: Timestamp | null;
   token_hash: string;
+  trust_ended_at: Timestamp | null;
+  trust_requested: Generated<boolean>;
+  trusted_from: Timestamp | null;
   user_agent: string | null;
 }
 

@@ -117,9 +117,11 @@ describe('the routes that work without sign-in', () => {
   // The check above is only worth something if it sees every route.
   it('are found among all routes of the application', () => {
     expect(routesOf(app).map((route) => route.name)).toEqual([
+      'DELETE /api/auth/trusted-devices/:id',
       'GET /api/auth/second-step',
       'GET /api/auth/session',
       'GET /api/auth/sessions',
+      'GET /api/auth/trusted-devices',
       'GET /api/health',
       'POST /api/auth/password',
       'POST /api/auth/second-step',

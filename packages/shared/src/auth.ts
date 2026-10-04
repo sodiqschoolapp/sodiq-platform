@@ -13,6 +13,11 @@ export const PASSWORD_MAX_LENGTH = 128;
 export const signInSchema = z.object({
   login: z.string().min(1).max(100),
   password: z.string().min(1).max(PASSWORD_MAX_LENGTH),
+  /**
+   * The "Trust this device" switch, off when left out: the browser stays
+   * signed in for 7 days from this sign-in, with no idle sign-out.
+   */
+  trustDevice: z.boolean().optional(),
 });
 
 export type SignIn = z.infer<typeof signInSchema>;
@@ -45,6 +50,12 @@ export const sessionResponseSchema = z.object({
    * password is in use ("your password was reset by X"); otherwise `null`.
    */
   passwordResetBy: z.string().nullable(),
+  /**
+   * On a trusted device: the moment the session ends, 7 days after its
+   * sign-in. `null` while the session is not trusted; it then ends when it is
+   * not used, and 7 days after its sign-in at the latest.
+   */
+  trustedUntil: z.iso.datetime().nullable(),
 });
 
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
@@ -60,11 +71,40 @@ export const sessionListSchema = z.object({
       userAgent: z.string().nullable(),
       /** The session that asked. */
       current: z.boolean(),
+      /** The session of a trusted device: it has no idle sign-out. */
+      trusted: z.boolean(),
     }),
   ),
 });
 
 export type SessionList = z.infer<typeof sessionListSchema>;
+
+/**
+ * The trusted devices of the signed-in account, for the profile: its sessions
+ * whose sign-in set "Trust this device". Removing one ends that session.
+ */
+export const trustedDeviceListSchema = z.object({
+  devices: z.array(
+    z.object({
+      /** The id of the session of that device. */
+      id: z.uuid(),
+      startedAt: z.iso.datetime(),
+      lastUsedAt: z.iso.datetime(),
+      /** The browser as it named itself at sign-in, cut to 200 characters. */
+      userAgent: z.string().nullable(),
+      /** 7 days after the sign-in. */
+      trustedUntil: z.iso.datetime(),
+      /** The device that asked. */
+      current: z.boolean(),
+    }),
+  ),
+});
+
+export type TrustedDeviceList = z.infer<typeof trustedDeviceListSchema>;
+
+export const trustedDeviceParamsSchema = z.object({ id: z.uuid() });
+
+export type TrustedDeviceParams = z.infer<typeof trustedDeviceParamsSchema>;
 
 /**
  * A code of the second step: six digits from the authenticator app, or a

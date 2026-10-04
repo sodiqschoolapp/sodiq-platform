@@ -9,7 +9,7 @@ import { FIRST_PASSWORD_LENGTH, randomFirstPassword } from './accounts.service.j
 import { UnknownAccountError } from './password-resets.service.js';
 import { SecondStepRule } from './second-step-rule.js';
 import { SecondStepSecrets } from './second-step-secrets.js';
-import type { ActiveSession } from './sessions.service.js';
+import { Sessions, type ActiveSession } from './sessions.service.js';
 import { delayAfterMs, FORGET_AFTER_MS } from './sign-in-throttle.service.js';
 import {
   base32,
@@ -107,6 +107,7 @@ export class TwoStep {
     private readonly audit: Audit,
     private readonly rule: SecondStepRule,
     private readonly secrets: SecondStepSecrets,
+    private readonly sessions: Sessions,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -224,7 +225,7 @@ export class TwoStep {
           })),
         )
         .execute();
-      await this.markPassed(transaction, session.sessionId, now);
+      await this.markPassed(transaction, session, now, requestId);
       await this.audit.record(transaction, {
         branchId: null,
         actorId: session.accountId,
@@ -248,13 +249,16 @@ export class TwoStep {
 
   /**
    * The second step of a sign-in: a code from the app or a recovery code opens
-   * the session that the password started.
+   * the session that the password started. With "Trust this device" the trust
+   * of the session begins here; the answer is the moment a trusted session
+   * ends, or `null`.
    */
-  async pass(session: ActiveSession, code: string, requestId?: string): Promise<void> {
-    const checked = await this.transactions.run([], async (transaction) => {
+  async pass(session: ActiveSession, code: string, requestId?: string): Promise<Date | null> {
+    const { checked, trustedUntil } = await this.transactions.run([], async (transaction) => {
       const result = await this.check(transaction, session, code, requestId);
+      let until: Date | null = null;
       if (result.outcome === 'right') {
-        await this.markPassed(transaction, session.sessionId, this.clock.now());
+        until = await this.markPassed(transaction, session, this.clock.now(), requestId);
         await this.audit.record(transaction, {
           branchId: null,
           actorId: session.accountId,
@@ -264,9 +268,10 @@ export class TwoStep {
           ...(requestId === undefined ? {} : { requestId }),
         });
       }
-      return result;
+      return { checked: result, trustedUntil: until };
     });
     this.refuseUnlessRight(checked);
+    return trustedUntil;
   }
 
   /**
@@ -536,12 +541,23 @@ export class TwoStep {
       .execute();
   }
 
-  private async markPassed(transaction: Transaction, sessionId: string, now: Date): Promise<void> {
+  /**
+   * The session owes the second step no more. The trust its sign-in asked for
+   * begins with this and never before it; answers the moment a trusted session
+   * ends, or `null`.
+   */
+  private async markPassed(
+    transaction: Transaction,
+    session: ActiveSession,
+    now: Date,
+    requestId?: string,
+  ): Promise<Date | null> {
     await transaction
       .updateTable('sessions')
       .set({ second_step_passed_at: now })
-      .where('id', '=', sessionId)
+      .where('id', '=', session.sessionId)
       .where('ended_at', 'is', null)
       .execute();
+    return this.sessions.beginTrust(transaction, session, requestId);
   }
 }

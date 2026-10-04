@@ -90,7 +90,7 @@ Decided by the owner after the reviews (nothing changed in code):
 
 The next sessions must know:
 
-- Whatever ends all sessions of an account calls `Sessions.writeIdleEnds(transaction, accountId)` first (0.6c: account lock; 2.3: lock and unlock).
+- Whatever ends all sessions of an account calls `Sessions.writeEndsByTime(transaction, accountId)` first (named `writeIdleEnds` before 0.6d) (0.6c: account lock; 2.3: lock and unlock).
 - 0.7: the Principal's "changes nothing" rule must exempt `POST /api/auth/password`, sign-out and sign-out-everywhere. Load the roles in `Sessions.resolve` beside the account, so the idle limit follows a role change at once.
 - 2.3: the reset entry `account.password_reset` is school-wide (`branchId: null`), so a reader of one branch's log does not see it. A `resetBy` that is no account ends as a foreign-key fault: the route passes the session's account.
 - 2.6: the own sign-in history finds `auth.sign_in_failed` by its record (the account); its actor is empty. The 48-hour report can only come from the `account.password_reset` entries: `accounts.password_reset_at` is emptied by the password change.

@@ -28,6 +28,7 @@ export function answerOf(session: ActiveSession): SessionResponse {
     secondStep: session.secondStep,
     mustChangePassword: session.mustChangePassword,
     passwordResetBy: session.passwordResetBy,
+    trustedUntil: session.trustedUntil?.toISOString() ?? null,
   };
 }
 
@@ -53,6 +54,7 @@ export class AuthController {
     const { token, deviceToken, session } = await this.sessions.signIn(body.login, body.password, {
       deviceToken: device.token,
       userAgent,
+      trustDevice: body.trustDevice ?? false,
       requestId,
     });
     cookie.set(token);
@@ -81,6 +83,7 @@ export class AuthController {
         lastUsedAt: row.lastUsedAt.toISOString(),
         userAgent: row.userAgent,
         current: row.current,
+        trusted: row.trustedUntil !== null,
       })),
     };
   }

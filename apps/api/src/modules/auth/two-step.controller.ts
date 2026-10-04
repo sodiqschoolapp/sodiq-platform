@@ -42,8 +42,8 @@ export class TwoStepController {
     @ValidBody(secondStepCodeSchema) body: SecondStepCode,
     @RequestId() requestId: string,
   ): Promise<SessionResponse> {
-    await this.twoStep.pass(session, body.code, requestId);
-    return answerOf({ ...session, secondStep: 'passed' });
+    const trustedUntil = await this.twoStep.pass(session, body.code, requestId);
+    return answerOf({ ...session, secondStep: 'passed', trustedUntil });
   }
 
   @Get()

@@ -64,6 +64,9 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 128
+                  },
+                  "trustDevice": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -100,13 +103,20 @@
                     "passwordResetBy": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "trustedUntil": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                     }
                   },
                   "required": [
                     "login",
                     "secondStep",
                     "mustChangePassword",
-                    "passwordResetBy"
+                    "passwordResetBy",
+                    "trustedUntil"
                   ],
                   "additionalProperties": false
                 }
@@ -159,13 +169,20 @@
                     "passwordResetBy": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "trustedUntil": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                     }
                   },
                   "required": [
                     "login",
                     "secondStep",
                     "mustChangePassword",
-                    "passwordResetBy"
+                    "passwordResetBy",
+                    "trustedUntil"
                   ],
                   "additionalProperties": false
                 }
@@ -226,6 +243,9 @@
                           },
                           "current": {
                             "type": "boolean"
+                          },
+                          "trusted": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -233,7 +253,8 @@
                           "startedAt",
                           "lastUsedAt",
                           "userAgent",
-                          "current"
+                          "current",
+                          "trusted"
                         ],
                         "additionalProperties": false
                       }
@@ -411,13 +432,20 @@
                     "passwordResetBy": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "trustedUntil": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                     }
                   },
                   "required": [
                     "login",
                     "secondStep",
                     "mustChangePassword",
-                    "passwordResetBy"
+                    "passwordResetBy",
+                    "trustedUntil"
                   ],
                   "additionalProperties": false
                 }
@@ -638,6 +666,122 @@
           "TwoStep"
         ]
       }
+    },
+    "/api/auth/trusted-devices": {
+      "get": {
+        "operationId": "TrustedDevicesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "devices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "startedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "lastUsedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "userAgent": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "trustedUntil": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "current": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "startedAt",
+                          "lastUsedAt",
+                          "userAgent",
+                          "trustedUntil",
+                          "current"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "devices"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "TrustedDevices"
+        ]
+      }
+    },
+    "/api/auth/trusted-devices/{id}": {
+      "delete": {
+        "operationId": "TrustedDevicesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "TrustedDevices"
+        ]
+      }
     }
   },
   "info": {
@@ -667,6 +811,7 @@
                   "sign_in_failed",
                   "too_many_attempts",
                   "password_expired",
+                  "account_locked",
                   "password_change_required",
                   "current_password_wrong",
                   "password_unchanged",
