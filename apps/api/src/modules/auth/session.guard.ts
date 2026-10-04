@@ -50,6 +50,9 @@ export const AllowedBeforeSecondStepSetUp = (): MethodDecorator =>
 /** The session the guard found for a request. Not on the request object: nothing else can set it. */
 const SESSIONS = new WeakMap<Request, ActiveSession>();
 
+/** The session `SessionGuard` found for the request; none on a public route. For the permission guard. */
+export const sessionOf = (request: Request): ActiveSession | undefined => SESSIONS.get(request);
+
 /**
  * The session of the request, as the guard read it from the database.
  *
@@ -71,8 +74,8 @@ export const CurrentSession = createParamDecorator(
  * database on every request, so a session that was ended elsewhere stops at
  * once. A session that still owes a step of sign-in (the second step, the
  * forced password change, the set-up of a required second step) reaches only
- * the routes declared for that step. Who may do what (role, branch, scope) is the permission guard of task
- * 0.7b, which builds on this one.
+ * the routes declared for that step. Who may do what (role and branch) is
+ * decided by `PermissionGuard`, which runs after this one.
  */
 @Injectable()
 export class SessionGuard implements CanActivate {

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { AccessModule } from '../access/access.module.js';
+import { PermissionGuard } from '../access/permission.guard.js';
 import { AccountLocks } from './account-locks.service.js';
 import { Accounts } from './accounts.service.js';
 import { AuthController } from './auth.controller.js';
@@ -17,7 +18,7 @@ import { TwoStepController } from './two-step.controller.js';
 import { TwoStep } from './two-step.service.js';
 
 @Module({
-  // The first-account command gives the Super Admin role.
+  // The first-account command gives the Super Admin role; the permission guard reads the table.
   imports: [AccessModule],
   controllers: [AuthController, TwoStepController, TrustedDevicesController],
   providers: [
@@ -31,8 +32,10 @@ import { TwoStep } from './two-step.service.js';
     SecondStepKeyCheck,
     TwoStep,
     FirstAccount,
-    // On every route of the application, whichever module it belongs to.
+    // On every route of the application, whichever module it belongs to, in
+    // this order: the permission guard needs the session the first one found.
     { provide: APP_GUARD, useClass: SessionGuard },
+    { provide: APP_GUARD, useClass: PermissionGuard },
   ],
   exports: [
     Accounts,

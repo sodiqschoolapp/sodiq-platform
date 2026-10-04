@@ -14,6 +14,7 @@ import {
 import { RequestId } from '../../http/request-id.js';
 import { Returns, ReturnsNothing, ValidBody } from '../../http/schemas.js';
 import { SessionCookie, type SessionCookieJar } from '../../http/session-cookie.js';
+import { AnySignedIn } from '../access/access.decorators.js';
 import { answerOf } from './auth.controller.js';
 import {
   AllowedBeforeSecondStep,
@@ -35,6 +36,7 @@ export class TwoStepController {
 
   /** The second step of a sign-in: a code from the app, or a recovery code. */
   @Post()
+  @AnySignedIn()
   @AllowedBeforeSecondStep()
   @HttpCode(200)
   @Returns(sessionResponseSchema)
@@ -53,6 +55,7 @@ export class TwoStepController {
   }
 
   @Get()
+  @AnySignedIn()
   @AllowedBeforeSecondStepSetUp()
   @Returns(secondStepOverviewSchema)
   overview(@CurrentSession() session: ActiveSession): Promise<SecondStepOverview> {
@@ -61,6 +64,7 @@ export class TwoStepController {
 
   /** Starts a set-up: the secret for the authenticator app, shown once. */
   @Post('set-up')
+  @AnySignedIn()
   @AllowedBeforeSecondStepSetUp()
   @HttpCode(200)
   @Returns(secondStepSetUpSchema)
@@ -73,6 +77,7 @@ export class TwoStepController {
 
   /** The first right code puts the second step in force and answers the recovery codes, once. */
   @Post('confirm')
+  @AnySignedIn()
   @AllowedBeforeSecondStepSetUp()
   @HttpCode(200)
   @Returns(secondStepRecoveryCodesSchema)
@@ -91,6 +96,7 @@ export class TwoStepController {
 
   /** Only where the second step is optional, and with a right code. */
   @Post('turn-off')
+  @AnySignedIn()
   @ReturnsNothing()
   async turnOff(
     @CurrentSession() session: ActiveSession,

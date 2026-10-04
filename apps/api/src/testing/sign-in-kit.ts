@@ -12,6 +12,7 @@ import { CLOCK } from '../clock/clock.module.js';
 import { Transactions } from '../database/transactions.js';
 import { DEVICE_COOKIE } from '../http/device-cookie.js';
 import { SESSION_COOKIE } from '../http/session-cookie.js';
+import { AnySignedIn } from '../modules/access/access.decorators.js';
 import { Assignments } from '../modules/access/assignments.service.js';
 import { Accounts, type CreatedAccount } from '../modules/auth/accounts.service.js';
 import { CurrentSession } from '../modules/auth/session.guard.js';
@@ -46,10 +47,11 @@ export interface SecondStepOfAccount {
   recoveryCodes: string[];
 }
 
-/** Stands for every route of a later task: it declares nothing, so it needs a full session. */
+/** Stands for every route of a later task: it allows no owed step, so it needs a full session. */
 @Controller('probe')
 export class ProbeController {
   @Get()
+  @AnySignedIn()
   read(@CurrentSession() session: ActiveSession): { login: string } {
     return { login: session.login };
   }

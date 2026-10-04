@@ -821,6 +821,8 @@
                   "second_step_already_on",
                   "second_step_not_on",
                   "second_step_cannot_turn_off",
+                  "permission_denied",
+                  "own_request",
                   "cross_site_request",
                   "request_key_reused",
                   "request_refused",

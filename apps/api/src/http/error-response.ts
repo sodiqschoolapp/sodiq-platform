@@ -27,6 +27,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   second_step_already_on: 'A second step is already in force.',
   second_step_not_on: 'There is no second step, or no set-up was started.',
   second_step_cannot_turn_off: 'The second step is required for this account.',
+  permission_denied: 'No permission for this action in this branch.',
+  own_request: 'Nobody decides their own request.',
   cross_site_request: 'The request came from another site.',
   request_key_reused: 'The request key was already used for another request.',
   request_refused: 'The request was refused.',

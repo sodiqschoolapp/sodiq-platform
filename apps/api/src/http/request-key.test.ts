@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
 import type { INestApplication } from '@nestjs/common';
-import { apiErrorSchema } from '@sodiq/shared';
+import { apiErrorSchema, BRANCH_HEADER } from '@sodiq/shared';
 import { sql } from 'kysely';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -10,19 +10,24 @@ import { addBranchFilter, insertBranch } from '../testing/branch-filter-sql.js';
 import { createTestApp } from '../testing/create-test-app.js';
 import { FixedClock } from '../testing/fixed-clock.js';
 import { KeyedSampleController } from '../testing/keyed-sample.controller.js';
+import { SAMPLE_PERMISSIONS } from '../testing/permission-sample.controller.js';
+import { signInKit } from '../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../testing/test-database.js';
 
 // Stands for something a person typed.
 const TYPED_VALUE = 'Typed-Value-Zarina-4417';
 
 // docs/spec/edge-cases/developer-rules.md, "Repeat-safe actions" and "Branch
-// filter", through a route: path parameters, key header, transaction.
+// filter", through a route: path parameters, key header, transaction. The
+// branch is the one the permission guard allowed (`X-Branch-Id`).
 describe('a route with a request key', () => {
   let database: TestDatabase;
   let app: INestApplication;
   let server: Server;
   let north: string;
   let south: string;
+  /** The session of a Head Teacher of both branches, who may create in the sample area. */
+  let cookies: string;
 
   beforeAll(async () => {
     database = await createTestDatabase();
@@ -41,8 +46,14 @@ describe('a route with a request key', () => {
       database: database.app,
       clock: new FixedClock('2026-10-05T23:59:00+05:00'),
       controllers: [KeyedSampleController],
+      permissionTable: SAMPLE_PERMISSIONS,
     });
     server = app.getHttpServer() as Server;
+    const kit = signInKit(app);
+    const browser = await kit.fullSession('Zarina', 'Tursunova');
+    await kit.giveRole(browser.account.id, { role: 'head_teacher', branchId: north });
+    await kit.giveRole(browser.account.id, { role: 'head_teacher', branchId: south });
+    cookies = browser.cookie;
   });
 
   afterAll(async () => {
@@ -57,8 +68,13 @@ describe('a route with a request key', () => {
     return found.rows.map((row) => row.label);
   }
 
-  const post = (branch: string, key: string | undefined, label: string) => {
-    const call = request(server).post(`/api/sample-branches/${branch}/notes`);
+  const NOTEBOOK: string = randomUUID();
+
+  const post = (branch: string, key: string | undefined, label: string, notebook = NOTEBOOK) => {
+    const call = request(server)
+      .post(`/api/sample-notebooks/${notebook}/notes`)
+      .set('Cookie', cookies)
+      .set(BRANCH_HEADER, branch);
     return (key === undefined ? call : call.set('Idempotency-Key', key)).send({ label });
   };
 
@@ -74,7 +90,7 @@ describe('a route with a request key', () => {
     expect(await notes(north)).toEqual(['once']);
   });
 
-  it('a request with a new key is a new action, written to the branch of the path', async () => {
+  it('a request with a new key is a new action, written to the branch of the request', async () => {
     const response = await post(south, randomUUID(), 'south note');
 
     expect(response.status).toBe(201);
@@ -115,25 +131,26 @@ describe('a route with a request key', () => {
 
   // CLAUDE.md, Conventions: validate every API input with a schema.
   it('refuses a path parameter that does not fit its schema and names it', async () => {
-    const response = await post(TYPED_VALUE, randomUUID(), 'not written');
+    const response = await post(north, randomUUID(), 'not written', TYPED_VALUE);
 
     expect(response.status).toBe(400);
     const parsed = apiErrorSchema.parse(response.body);
     expect(parsed.error.code).toBe('validation_failed');
     expect(parsed.error.details).toEqual([
-      { path: 'branchId', code: 'invalid_format', message: expect.any(String) as string },
+      { path: 'notebookId', code: 'invalid_format', message: expect.any(String) as string },
     ]);
     expect(response.text).not.toContain(TYPED_VALUE);
+    expect(await notes(north)).toEqual(['once']);
   });
 
-  it('the OpenAPI document describes the path parameter and the key header', () => {
+  it('the OpenAPI document describes the path parameter, the key header and the branch header', () => {
     const operation =
-      buildOpenApiDocument(app).paths['/api/sample-branches/{branchId}/notes']?.post;
+      buildOpenApiDocument(app).paths['/api/sample-notebooks/{notebookId}/notes']?.post;
 
     expect(operation?.parameters).toEqual(
       expect.arrayContaining([
         {
-          name: 'branchId',
+          name: 'notebookId',
           in: 'path',
           required: true,
           schema: expect.objectContaining({ type: 'string', format: 'uuid' }) as unknown,
@@ -144,8 +161,14 @@ describe('a route with a request key', () => {
           required: true,
           schema: expect.objectContaining({ type: 'string', format: 'uuid' }) as unknown,
         },
+        {
+          name: 'X-Branch-Id',
+          in: 'header',
+          required: true,
+          schema: expect.objectContaining({ type: 'string', format: 'uuid' }) as unknown,
+        },
       ]),
     );
-    expect(operation?.parameters).toHaveLength(2);
+    expect(operation?.parameters).toHaveLength(3);
   });
 });
