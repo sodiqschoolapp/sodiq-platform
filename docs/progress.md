@@ -26,13 +26,14 @@ Left out, with the task that brings it:
 - A screen for the session list, the text "your password was reset by X", translations: 0.8a. Own sign-in history: 2.6.
 - Ending one other session from the list: the spec names only the list and "sign out everywhere".
 
-Open, for the owner (from the reviews, nothing changed in code):
+Decided by the owner after the reviews (nothing changed in code):
 
-- All browsers that never signed in to an account share one count per login. Somebody who knows a login (they are guessable) and sends one wrong password each time the wait ends keeps every new browser out of that account, also on the first day, when no browser is known yet. This follows from "per account and device, not per network address"; a reset clears the count only until the next guess. Decide before real data is loaded whether this needs an answer (for example a longer free count for first passwords, or an alert).
-- A session has no longest life: used every 14 minutes it lives until a password change, a reset or "sign out everywhere". The spec asks for idle sign-out only.
-- `known_devices` has no cleanup: each sign-in without a device cookie adds a row. Small rows, but without a bound; a cleanup belongs to the job of 10.2.
-- `PasswordResets.byAdministrator` hashes the new password inside the caller's transaction, as `Accounts.create` does since 0.6a. The route of 2.3 should keep that transaction short.
-- Migration 0006 on a database with open sessions: a session older than 15 minutes ends as idle at its next request. Nothing is deployed yet.
+- 10.3: open risk, accepted for the pilot. All browsers that never signed in to an account share one count of failed sign-ins per login. Somebody who knows a login (they are guessable) and sends one wrong password each time the wait ends keeps every new browser out of that account, also on the first day, when no browser is known yet; a reset clears the count only until the next guess. 10.3 decides between the two candidate answers: count unknown devices per login and network address (needs a spec change, the spec says "not per network address": `/spec-change`), or a human check for unknown devices after repeated failures.
+- 0.6c: a session has no longest life: used every 14 minutes it lives until a password change, a reset or "sign out everywhere". Consider a longest life of 7 days for every session, matching trusted devices.
+- 10.2: `known_devices` has no cleanup: each sign-in without a device cookie adds a row. The cleanup job of 10.2 should cover it together with `sign_in_throttle`; the application user has no delete right on `known_devices` today, so that needs a migration.
+- 2.3: `PasswordResets.byAdministrator` hashes the new password inside the caller's transaction, as `Accounts.create` does since 0.6a. The route should keep that transaction short.
+- 0.10: migration 0006 on a database with open sessions: a session older than 15 minutes ends as idle at its next request. Nothing is deployed yet.
+- The audit entry `auth.password_change_failed` stays.
 
 The next sessions must know:
 
