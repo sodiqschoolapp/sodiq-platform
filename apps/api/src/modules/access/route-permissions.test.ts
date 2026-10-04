@@ -56,25 +56,45 @@ const SAMPLE_ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   ...ROUTE_ACCESS,
   'GET /api/permission-sample/open': 'public',
   'GET /api/permission-sample/own': 'any_signed_in',
-  'GET /api/permission-sample/view': [
-    'super_admin',
-    'principal',
-    'academic_vice_principal',
-    'spiritual_vice_principal',
-    'head_tutor',
-    'tutor',
-    'senior_head_teacher',
-    'head_teacher',
-    'teacher',
-  ],
-  'POST /api/permission-sample/edit': [
-    'super_admin',
-    'academic_vice_principal',
-    'senior_head_teacher',
-    'head_teacher',
-  ],
-  'GET /api/permission-sample/school': ['super_admin', 'senior_head_teacher', 'head_teacher'],
-  'POST /api/permission-sample/school': ['super_admin'],
+  'GET /api/permission-sample/view': {
+    branch: 'request',
+    roles: [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'spiritual_vice_principal',
+      'head_tutor',
+      'tutor',
+      'senior_head_teacher',
+      'head_teacher',
+      'teacher',
+    ],
+  },
+  'POST /api/permission-sample/edit': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal', 'senior_head_teacher', 'head_teacher'],
+  },
+  'GET /api/permission-sample/school': {
+    branch: 'none',
+    roles: ['super_admin', 'senior_head_teacher', 'head_teacher'],
+  },
+  'POST /api/permission-sample/school': { branch: 'none', roles: ['super_admin'] },
+};
+
+/**
+ * The routes a session may reach while it still owes a step of sign-in, each
+ * with those steps, written by hand. Only routes of the own sign-in belong
+ * here: a route with a permission that carried such a mark would let a session
+ * without its second step act with its roles (found by the review).
+ */
+const STEP_ROUTES: Record<string, string[]> = {
+  'GET /api/auth/session': ['second_step', 'password_change', 'second_step_set_up'],
+  'POST /api/auth/sign-out': ['second_step', 'password_change', 'second_step_set_up'],
+  'POST /api/auth/password': ['password_change', 'second_step_set_up'],
+  'POST /api/auth/second-step': ['second_step'],
+  'GET /api/auth/second-step': ['second_step_set_up'],
+  'POST /api/auth/second-step/set-up': ['second_step_set_up'],
+  'POST /api/auth/second-step/confirm': ['second_step_set_up'],
 };
 
 const CLOCK = '2026-10-05T09:00:00+05:00';
@@ -113,6 +133,14 @@ describe('every route of the application, as every role', () => {
 
     expect(names).toHaveLength(Object.keys(ROUTE_ACCESS).length);
     expect(expressRoutesOf(app)).toEqual(names);
+  });
+
+  it('is reachable with an owed step of sign-in only where the list says so', () => {
+    const marked = routesOf(app)
+      .filter((route) => route.allowedBefore.length > 0)
+      .map((route) => [route.name, route.allowedBefore]);
+
+    expect(Object.fromEntries(marked)).toEqual(STEP_ROUTES);
   });
 
   it('is tried by 15 roles, an account without a role and nobody', () => {
@@ -162,8 +190,13 @@ describe('the sample routes, as every role', () => {
   it('are reported when the list names a role the server refuses, or leaves out one it allows', async () => {
     const wrong: Record<string, ExpectedAccess> = {
       ...SAMPLE_ROUTE_ACCESS,
-      'POST /api/permission-sample/edit': ['super_admin', 'teacher'],
+      'POST /api/permission-sample/edit': { branch: 'request', roles: ['super_admin', 'teacher'] },
       'GET /api/permission-sample/own': 'public',
+      // A route for no branch that the list holds to be for one branch.
+      'GET /api/permission-sample/school': {
+        branch: 'request',
+        roles: ['super_admin', 'senior_head_teacher', 'head_teacher'],
+      },
     };
 
     const problems = await accessProblems(app, wrong, callers, handlerStop);
@@ -174,10 +207,12 @@ describe('the sample routes, as every role', () => {
         'POST /api/permission-sample/edit as head_teacher in the own branch: allowed, listed as refused',
         'POST /api/permission-sample/edit as senior_head_teacher in another branch: allowed, listed as refused',
         'GET /api/permission-sample/own as nobody in the own branch: not_signed_in, listed as allowed',
+        'GET /api/permission-sample/school as head_teacher in another branch: allowed, listed as refused',
       ]),
     );
     expect(declarationProblems(app, wrong)).toEqual([
       'GET /api/permission-sample/own: declared any_signed_in, listed as public',
+      'GET /api/permission-sample/school: declared for the branch "none", listed for "request"',
     ]);
   });
 });
@@ -194,15 +229,17 @@ describe('the harness', () => {
     await app.close();
   });
 
-  it('names a route without a declaration, with two, without an answer schema, and one the list does not know', () => {
+  it('names a route without a declaration, with two, with a permission and an owed step, without an answer schema, and one the list does not know', () => {
     const listed: Record<string, ExpectedAccess> = {
       ...ROUTE_ACCESS,
       'GET /api/permission-faults/undeclared': 'any_signed_in',
       'GET /api/permission-faults/twice': 'public',
+      'GET /api/permission-faults/early': { branch: 'request', roles: ['teacher'] },
       'GET /api/removed': 'public',
     };
 
     expect(declarationProblems(app, listed)).toEqual([
+      'GET /api/permission-faults/early: open to a session that owes a step of sign-in (second_step), which only a route of the own account may be',
       'GET /api/permission-faults/no-answer-schema: no @Returns or @ReturnsNothing',
       'GET /api/permission-faults/no-answer-schema: not in the list of who may call it',
       'GET /api/permission-faults/twice: 2 access declarations, it needs exactly one',

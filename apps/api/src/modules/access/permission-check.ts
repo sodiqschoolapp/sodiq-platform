@@ -1,4 +1,4 @@
-import { permits, type Action, type PermissionTable } from '@sodiq/shared';
+import { permits, SCHOOL_WIDE_ROLES, type Action, type PermissionTable } from '@sodiq/shared';
 import type { CurrentAssignment } from './current-assignments.js';
 
 /** What a route asks of its caller: an action in an area of the permission table. */
@@ -16,8 +16,10 @@ export interface Requirement {
  * The assignment that permits the requirement, or none. Edge cases, "Who can
  * act": "The server allows an action if any current assignment permits it",
  * whatever the role switcher shows. An assignment with a branch counts for
- * that branch only; an assignment without one (Super Admin, Senior Head
- * Teacher) counts for every branch. When several permit, the first in the
+ * that branch only; an assignment of the Super Admin or the Senior Head
+ * Teacher, which has none, counts for every branch. The two roles are named
+ * here too: a later role without a branch (Parent, Release 2) must not get
+ * every branch by having none. When several permit, the first in the
  * order they were read (by id) is the one the audit log names.
  *
  * Subject, class and own-lesson scope are not decided here: the tasks that
@@ -37,7 +39,7 @@ export function decide(
     (assignment) =>
       permits(table, assignment.role, requirement.area, requirement.action) &&
       (requirement.branch === 'none' ||
-        assignment.branchId === null ||
-        assignment.branchId.toLowerCase() === branch),
+        (assignment.branchId === null && SCHOOL_WIDE_ROLES.includes(assignment.role)) ||
+        assignment.branchId?.toLowerCase() === branch),
   );
 }

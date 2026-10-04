@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { Returns } from '../http/schemas.js';
 import { AnySignedIn, requiresInTable } from '../modules/access/access.decorators.js';
 import { CurrentAccess, type Access } from '../modules/access/permission.guard.js';
-import { CurrentSession, Public } from '../modules/auth/session.guard.js';
+import { AllowedBeforeSecondStep, CurrentSession, Public } from '../modules/auth/session.guard.js';
 import type { ActiveSession } from '../modules/auth/sessions.service.js';
 
 /** A row for each of the 15 roles: nothing, unless named. */
@@ -126,6 +126,15 @@ export class FaultyAccessController {
   @AnySignedIn()
   @Returns(openAnswerSchema)
   twice(): { ok: boolean } {
+    return { ok: true };
+  }
+
+  /** A permission, and open to a session that has not passed the second step. */
+  @Get('early')
+  @requiresInTable('sample', 'view')
+  @AllowedBeforeSecondStep()
+  @Returns(openAnswerSchema)
+  early(): { ok: boolean } {
     return { ok: true };
   }
 

@@ -10,7 +10,7 @@ import type { Request } from 'express';
 import { Transactions } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import { HeaderPipe } from '../../http/validation.js';
-import { sessionOf } from '../auth/session.guard.js';
+import { owedStepsAllowedOn, sessionOf } from '../auth/session.guard.js';
 import { declarationsOf } from './access.decorators.js';
 import { decide } from './permission-check.js';
 import { PERMISSION_TABLE } from './permission-table.token.js';
@@ -88,6 +88,13 @@ export class PermissionGuard implements CanActivate {
     }
     if (access.kind === 'any_signed_in') {
       return true;
+    }
+    if (owedStepsAllowedOn(handler).length > 0) {
+      // Found by the review: such a mark would let a session that has not passed
+      // the second step, or still has a first password, act with its roles.
+      throw new Error(
+        `The route ${context.getClass().name}.${handler.name} needs a permission and is also open to a session that owes a step of sign-in.`,
+      );
     }
     const branchId =
       access.branch === 'none'

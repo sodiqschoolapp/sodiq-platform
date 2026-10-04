@@ -17,14 +17,17 @@ import {
 import type { Response } from 'express';
 import { of, type Observable } from 'rxjs';
 import request from 'supertest';
-import { expressRoutesOf, routesOf, type Route } from './routes.js';
+import { expressRoutesOf, routesOf } from './routes.js';
 import { signInKit } from './sign-in-kit.js';
 
 /**
  * Who may call a route, written by hand in the test of each application: no
- * sign-in needed, every signed-in account, or the roles that are allowed.
+ * sign-in needed, every signed-in account, or the roles that are allowed and
+ * whether the route works for the branch of the request or for none. Nothing
+ * the harness expects is taken from the declaration of the route itself.
  */
-export type ExpectedAccess = 'public' | 'any_signed_in' | readonly Role[];
+export type ExpectedAccess =
+  'public' | 'any_signed_in' | { roles: readonly Role[]; branch: 'request' | 'none' };
 
 const REACHED_HEADER = 'X-Harness-Reached-Handler';
 
@@ -78,6 +81,20 @@ export function declarationProblems(
     const kind = typeof listed === 'string' ? listed : 'requires';
     if (access !== undefined && route.access.length === 1 && access.kind !== kind) {
       problems.push(`${route.name}: declared ${access.kind}, listed as ${kind}`);
+    }
+    if (
+      access?.kind === 'requires' &&
+      typeof listed === 'object' &&
+      access.branch !== listed.branch
+    ) {
+      problems.push(
+        `${route.name}: declared for the branch "${access.branch}", listed for "${listed.branch}"`,
+      );
+    }
+    if (route.allowedBefore.length > 0 && access?.kind !== 'any_signed_in') {
+      problems.push(
+        `${route.name}: open to a session that owes a step of sign-in (${route.allowedBefore.join(', ')}), which only a route of the own account may be`,
+      );
     }
   }
   const names = new Set(routes.map((route) => route.name));
@@ -146,12 +163,7 @@ export async function harnessCallers(
 
 type Outcome = 'allowed' | 'not_signed_in' | 'refused';
 
-function expectedOutcome(
-  listed: ExpectedAccess,
-  route: Route,
-  caller: Caller,
-  inHomeBranch: boolean,
-): Outcome {
+function expectedOutcome(listed: ExpectedAccess, caller: Caller, inHomeBranch: boolean): Outcome {
   if (listed === 'public') {
     return 'allowed';
   }
@@ -161,13 +173,10 @@ function expectedOutcome(
   if (listed === 'any_signed_in') {
     return 'allowed';
   }
-  if (caller.role === null || !listed.includes(caller.role)) {
+  if (caller.role === null || !listed.roles.includes(caller.role)) {
     return 'refused';
   }
-  const [access] = route.access;
-  const anyBranch =
-    (access?.kind === 'requires' && access.branch === 'none') ||
-    SCHOOL_WIDE_ROLES.includes(caller.role);
+  const anyBranch = listed.branch === 'none' || SCHOOL_WIDE_ROLES.includes(caller.role);
   return inHomeBranch || anyBranch ? 'allowed' : 'refused';
 }
 
@@ -228,7 +237,7 @@ async function compare(
               : response.status === 403 && code === 'permission_denied'
                 ? 'refused'
                 : `answered ${String(response.status)} ${code ?? ''}`.trim();
-        const wanted = expectedOutcome(listed, route, caller, branch === home);
+        const wanted = expectedOutcome(listed, caller, branch === home);
         if (outcome !== wanted) {
           problems.push(
             `${route.name} as ${caller.name} in ${branch === home ? 'the own' : 'another'} branch: ${outcome}, listed as ${wanted}`,

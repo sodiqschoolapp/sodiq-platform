@@ -165,6 +165,21 @@ describe('the permission guard', () => {
     expect(inSouth.status).toBe(403);
   });
 
+  it('names the first by id when several assignments permit', async () => {
+    const browser = await kit.fullSession('Yulduz', 'Ahmedova');
+    const given = [
+      await kit.giveRole(browser.account.id, { role: 'head_teacher', branchId: north }),
+      await kit.giveRole(browser.account.id, { role: 'teacher', branchId: north }),
+      await kit.giveRole(browser.account.id, { role: 'senior_head_teacher' }),
+    ];
+    const first = given.map((assignment) => assignment.id).sort()[0];
+
+    const response = await view(browser.cookie, north);
+
+    expect(response.status).toBe(200);
+    expect(accessAnswerSchema.parse(response.body).assignmentId).toBe(first);
+  });
+
   it('reads a branch id in capital letters as the same branch', async () => {
     const browser = await kit.fullSession('Gulnora', 'Saidova');
     await kit.giveRole(browser.account.id, { role: 'teacher', branchId: north });
@@ -346,7 +361,7 @@ describe('the permission guard', () => {
   });
 
   describe('for a route that does not say exactly once who may call it', () => {
-    it.each(['undeclared', 'twice'])(
+    it.each(['undeclared', 'twice', 'early'])(
       'never runs the route "%s": it answers as a fault of the server',
       async (path) => {
         const browser = await kit.fullSession('Temur', 'Xolmatov');

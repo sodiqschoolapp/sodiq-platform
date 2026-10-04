@@ -67,8 +67,9 @@ export function requiresInTable(
   action: Action,
   options: RequiresOptions = {},
 ): MethodDecorator {
+  const refusal = ApiResponse({ status: 403, schema: toOpenApiSchema(apiErrorSchema, 'output') });
   if (options.branch === 'none') {
-    return declare({ kind: 'requires', area, action, branch: 'none' });
+    return applyDecorators(declare({ kind: 'requires', area, action, branch: 'none' }), refusal);
   }
   return applyDecorators(
     declare({ kind: 'requires', area, action, branch: 'request' }),
@@ -77,7 +78,7 @@ export function requiresInTable(
       required: true,
       schema: toOpenApiSchema(branchIdSchema, 'input'),
     }),
-    ApiResponse({ status: 403, schema: toOpenApiSchema(apiErrorSchema, 'output') }),
+    refusal,
   );
 }
 

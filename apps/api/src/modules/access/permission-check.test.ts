@@ -1,3 +1,4 @@
+import { checkTable } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import { SAMPLE_PERMISSIONS } from '../../testing/permission-sample.controller.js';
 import type { CurrentAssignment } from './current-assignments.js';
@@ -25,6 +26,12 @@ const decideIn = (
   assignments: CurrentAssignment[],
   branchId: string | null,
 ) => decide(requirement, assignments, branchId, SAMPLE_PERMISSIONS);
+
+describe('the sample table of the tests', () => {
+  it('keeps the rules no permission table may break', () => {
+    expect(checkTable(SAMPLE_PERMISSIONS)).toEqual([]);
+  });
+});
 
 describe('the permission check', () => {
   // docs/spec/02-roles-and-access.md, Rules: "Permissions are a table".
@@ -57,6 +64,13 @@ describe('the permission check', () => {
       expect(decideIn(EDIT, [schoolWide], SOUTH)).toBe(schoolWide);
     },
   );
+
+  // The database gives only these two roles no branch; the check does not rely on it.
+  it('does not count another role in every branch because its assignment has no branch', () => {
+    const stray = held('head_teacher', null);
+
+    expect(decideIn(EDIT, [stray], NORTH)).toBeUndefined();
+  });
 
   // Edge cases, "Who can act": "The server allows an action if any current
   // assignment permits it".
