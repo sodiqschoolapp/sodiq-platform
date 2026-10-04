@@ -30,10 +30,14 @@ Left out, with the task that brings it:
 - New recovery codes without a new set-up, and moving to a new phone while the old one works: the spec names neither. Today: turn off and set up again where optional, or a reset by a Super Admin.
 - `Cache-Control: no-store` (already a 0.7 item from 0.6a) matters more now: the answers of set-up and confirm hold the secret and the recovery codes.
 
+Decided by the owner after the reviews:
+
+- 0.6d begins with a `/spec-change` for the "Trust this device" row, which still says "with no idle sign-out and no second step": the sign-in that starts the trust asks the code, and removing a device ends its session. Both are in the 0.6d line of the build plan, not yet in the spec.
+- 2.3: a second-step reset by an administrator always goes with a password reset, so the one-time password handed to the person is the proof; the exact wording is decided there. Reason: after a reset of the second step alone, anybody who has the password could set up the new one, from a new sign-in or from a session that was waiting for the code.
+- `Cache-Control: no-store` stays at 0.7.
+
 Open, for the owner:
 
-- Before 0.6d, `/spec-change`: the "Trust this device" row still says "with no idle sign-out and no second step"; the owner decided that the sign-in that starts the trust still asks for the code, and that removing a trusted device ends its session. Both are in the 0.6d line of the build plan, not in the spec.
-- 2.3, the reset of a second step: afterwards anybody who has the password can set up a new second step, from a new sign-in or from a session that was waiting for the code. Ending sessions would not close it. The route of 2.3 could give the person a one-time proof (as a password reset gives a one-time password), or the Super Admin could reset password and second step together; decide there.
 - 0.10: if the oldest stored secret is itself damaged, the API and the worker do not start until that row is removed by hand; the deploy notes should say how. The real `SECOND_STEP_KEY` is a secret of the server (`openssl rand -base64 32`), the same for API and worker, and must be kept with the backups in mind: without it no stored second step can be read.
 
 The next sessions must know:
