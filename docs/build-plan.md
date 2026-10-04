@@ -46,7 +46,7 @@ How to read the task lines:
   - Build: pg-boss with a worker entry point; jobs enqueued in the same transaction as the data change (this is the "outbox" of the developer rules, see `docs/decisions.md`).
   - Done when: a test proves that no job exists when its transaction rolls back.
 
-- [ ] **0.6a Accounts and sessions**
+- [x] **0.6a Accounts and sessions**
   - Read: `02` (Accounts and sign-in: build order), `edge/people-roles-accounts` (Accounts and sign-in), `13` (Security).
   - Build: accounts created by an administrator; generated logins; Argon2id; cookie sessions kept in the database; sign-in and sign-out; forced password change at first sign-in; the one-time server command that creates the first Super Admin.
   - Done when: each rule built here has a test, including the refusals.
