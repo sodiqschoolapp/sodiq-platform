@@ -26,7 +26,7 @@ How to read the task lines:
   - Build: GitHub Actions workflow that installs, lints, type-checks and runs the tests with a PostgreSQL service on every pull request.
   - Done when: a pull request shows the checks and fails when a test fails. The owner then turns on required checks for `main` in GitHub.
 
-- [ ] **0.4a API foundations: HTTP side**
+- [x] **0.4a API foundations: HTTP side**
   - Read: `13` (Structure, Security), `edge/developer-rules`, `edge/system-behaviour`.
   - Build: configuration loading; one error shape; request ids; input validation with shared schemas; OpenAPI document and the generated web client (`pnpm api:client`); an injected clock.
   - Done when: a sample route is validated, documented, called from the web app through the generated client and tested with a fixed clock.

@@ -2,16 +2,50 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
-## 4 October 2026: task 0.4a API foundations, HTTP side (in work; `/finish-task` completes this entry)
+## 4 October 2026: task 0.4a API foundations, HTTP side
 
-Notes for later sessions, written while building:
+Task 0.4 was split by the owner: 0.4a is the HTTP side, 0.4b the database side.
 
+Built:
+
+- Configuration (`apps/api/src/config`): `HOST` (default `127.0.0.1`), `PORT`, `DATABASE_URL`, checked at start, injected as `CONFIG`. A wrong variable stops the API with its name, never its value.
+- One error shape (`apiErrorSchema` in `packages/shared`): `{ error: { code, message, requestId, details? } }`, also for unknown paths inside and outside `/api`, a body that is not JSON and a body over 100 kB. The text is always ours.
+- Request ids: `X-Request-Id` made by the server on every answer and repeated in every error body.
+- Validation (`apps/api/src/http`): `@ValidBody`, `@ValidQuery`, `@Returns` with zod schemas. The same schema checks and documents. `@Returns` also drops fields the schema does not know before the answer is sent. Validation details never repeat a submitted value.
+- Clock: `Clock` type in `packages/shared`; `CLOCK`, `SystemClock`, `ClockModule` in the API; `FixedClock` for tests; the lint rule against reading the system clock in `apps/api/src` and `packages/*/src`.
+- OpenAPI: `pnpm api:client` writes `apps/api/openapi.generated.json` and `apps/web/src/api/schema.generated.ts`; the placeholder page calls the health route through `apps/web/src/api/client.ts`. Two tests fail when a generated file is out of date.
+- The sample route of the build plan exists only in tests: `apps/api/src/testing/sample.controller.ts`.
+- Reviewed by the spec reviewer and the permission reviewer; their findings are fixed or listed below.
+
+Left out, with the task that brings it:
+
+- Branches table, branch filter, row policies, transaction helper, repeat-safe request keys: 0.4b.
+- Error codes of their own for 401, 403, 409, 429 and the way to throw them: 0.6a (first use).
+- Application version on every request: 8.3a. TanStack Query and Router: 0.8a. Request logging, Sentry: 0.10.
+- `NODE_ENV` in the configuration: nothing reads it yet.
+- The clock lint rule for `apps/web`: with its first code that has a time rule (8.3c).
+- A lint rule that stops business code from importing `src/testing` (advice of the permission reviewer; today only tests import it and the build leaves the folder out).
+
+Open, for the owner:
+
+- A 500 is logged with the message and stack of the error. PostgreSQL puts a typed value into the message of a few errors (for example "invalid input syntax for type date"). Input validation stops such values before a query, but the log rule itself allows it. Decide in 0.10 with Sentry whether messages of database errors are cut.
+
+The next sessions must know:
+
+- A new route: `@ValidBody(schema)` / `@ValidQuery(schema)` on the parameter, `@Returns(schema)` on the method, schemas in `packages/shared`. Then `pnpm api:client` and commit both generated files. `sample.controller.ts` is the example.
+- Route tests: `createTestApp({ clock: new FixedClock('2026-10-05T23:59:00+05:00'), controllers: [...] })`. `FixedClock` refuses a text without an offset.
+- Query schemas: `z.coerce.number()` also accepts `0x50` and `1e3`, and reads an empty value as 0. Real query schemas (first in the lists of 0.8b) should use a strict whole-number text instead of copying the sample.
+- An input schema must not use a record whose keys the caller chooses and that look like field names; such a key would appear in `details[].path` (`docs/decisions.md`).
+- Errors that Node answers before Express (malformed HTTP, headers too large, request timeout) cannot have the error shape.
+- NestJS turns every `SyntaxError` and `URIError` that reaches its Express error handler into a 400. 0.6a: middleware that parses stored data (sessions) must catch its own parse errors, or a server fault would be answered as `malformed_request` without a log line.
 - 0.6a: cookie sessions need the SameSite setting and CSRF protection decided there. CORS is off and must stay off (`docs/decisions.md`).
-- 0.4a added no route to the running application; there is nothing new to list for 0.7. A real route uses `@ValidBody`, `@ValidQuery` and `@Returns` from `apps/api/src/http/schemas.ts`; `apps/api/src/testing/sample.controller.ts` is the example.
-- After changing a route or a shared schema: `pnpm api:client`, commit both generated files.
-- Route tests: `createTestApp({ clock: new FixedClock('2026-10-05T23:59:00+05:00'), controllers: [...] })`.
-- 0.4b: the task as split in `docs/build-plan.md`. Decided already: the branch filter is a list of branch ids, normally one, and nothing set shows no rows.
-- 0.10: `HOST=0.0.0.0` on Render; Sentry must not send more of an error than the log does.
+- 0.7: 0.4a added no route to the running application. The guard must decide how test-only controllers passed to `createTestApp({ controllers })` declare access, without letting undeclared routes through. The two Express fallbacks (`initApp`) run outside NestJS, where no guard runs: nothing that serves data may be mounted there. The harness should also require `@Returns` on every route.
+- 0.4b: decided already: the branch filter is a list of branch ids, normally one; nothing set shows no rows. Moments that rules compare come from the clock, not SQL `now()` (`.claude/rules/database.md`).
+- 0.10: `HOST=0.0.0.0` on Render; a new variable goes into `config.ts`, `.env.example`, `apps/api/turbo.json` and `ci.yml`. Sentry must not send more of an error than the log does.
+- `pnpm peers check` shows one known warning: `openapi-typescript` wants TypeScript 5. The install script of `@scarf/scarf` is refused on purpose (`pnpm-workspace.yaml`).
+- In Git Bash on this machine a heredoc breaks on apostrophes and can lose backslashes: write files with the editor tools, not with shell text.
+
+The next task is 0.4b.
 
 ## 4 October 2026: task 0.3 Continuous integration
 
