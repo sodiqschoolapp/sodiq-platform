@@ -29,6 +29,7 @@ interface TableRow {
   name: string;
   has_branch_id: boolean;
   branch_id_not_null: boolean;
+  references_branches: boolean;
   row_security: boolean;
   policies: number;
   filter_policies: number;
@@ -46,6 +47,11 @@ async function tableProblems(
       c.relname as name,
       a.attname is not null as has_branch_id,
       coalesce(a.attnotnull, false) as branch_id_not_null,
+      exists (
+        select from pg_constraint k
+        where k.conrelid = c.oid and k.contype = 'f'
+          and k.confrelid = 'public.branches'::regclass and k.conkey = array[a.attnum]
+      ) as references_branches,
       c.relrowsecurity as row_security,
       (select count(*)::int from pg_policy p where p.polrelid = c.oid) as policies,
       (
@@ -85,6 +91,9 @@ async function tableProblems(
     }
     if (!table.branch_id_not_null) {
       problems.push(`${table.name}: branch_id may be empty`);
+    }
+    if (!table.references_branches) {
+      problems.push(`${table.name}: branch_id does not reference branches (id)`);
     }
     if (!table.row_security) {
       problems.push(`${table.name}: row security is off`);
@@ -181,6 +190,29 @@ describe('the migrations', () => {
     expect(await tableProblems(database.migrator)).toEqual([]);
   });
 
+  // The checks read schema public only. A new schema (pg-boss in task 0.5) must
+  // be looked at and these checks extended before this list grows.
+  it('keep everything in schema public', async () => {
+    const found = await sql<{ name: string }>`
+      select nspname as name from pg_namespace
+      where nspname !~ '^pg_' and nspname <> 'information_schema'
+    `.execute(database.migrator);
+
+    expect(found.rows.map((row) => row.name)).toEqual(['public']);
+  });
+
+  // The policies do nothing for a superuser, a user with BYPASSRLS or a member
+  // of the owner of the tables.
+  it('leave the application user subject to row security', async () => {
+    const found = await sql<{ rolsuper: boolean; rolbypassrls: boolean; memberships: number }>`
+      select r.rolsuper, r.rolbypassrls,
+        (select count(*)::int from pg_auth_members m where m.member = r.oid) as memberships
+      from pg_roles r where r.rolname = 'sodiq_app'
+    `.execute(database.migrator);
+
+    expect(found.rows).toEqual([{ rolsuper: false, rolbypassrls: false, memberships: 0 }]);
+  });
+
   it('give every school-wide table a reason', () => {
     for (const reason of Object.values(SCHOOL_WIDE_TABLES)) {
       expect(reason.length).toBeGreaterThan(10);
@@ -273,6 +305,34 @@ describe('the catalog checks', () => {
       expect(await tableProblems(database.migrator)).toEqual([
         'scratch_nullable: branch_id may be empty',
       ]);
+    });
+
+    it('name a table whose branch_id does not point at a branch', async () => {
+      await scratchTable('scratch_loose', 'uuid not null');
+      await addBranchFilter(database.migrator, 'scratch_loose');
+
+      expect(await tableProblems(database.migrator)).toEqual([
+        'scratch_loose: branch_id does not reference branches (id)',
+      ]);
+    });
+
+    // Audit and history will be partitioned by month (task 0.5). A partition
+    // that is read directly is not covered by the policy of its parent.
+    it('name each partition as a table of its own', async () => {
+      await sql`
+        create table scratch_parted (id integer, branch_id uuid not null references branches (id))
+        partition by range (id)
+      `.execute(database.migrator);
+      await addBranchFilter(database.migrator, 'scratch_parted');
+      await sql`
+        create table scratch_parted_1 partition of scratch_parted for values from (0) to (10)
+      `.execute(database.migrator);
+
+      expect(await tableProblems(database.migrator)).toEqual([
+        'scratch_parted_1: row security is off',
+        'scratch_parted_1: the branch_filter policy is missing or not the standard one',
+      ]);
+      await sql`drop table scratch_parted`.execute(database.migrator);
     });
 
     it('name a table with a second policy that lets more through', async () => {

@@ -15,6 +15,7 @@ import {
   ApiResponse,
   type OpenAPIObject,
 } from '@nestjs/swagger';
+import { REQUEST_KEY_HEADER, requestKeySchema } from '@sodiq/shared';
 import type { Request } from 'express';
 import { z } from 'zod';
 import { RESPONSE_SCHEMA } from './response-schema.interceptor.js';
@@ -102,9 +103,6 @@ const HeaderValue = createParamDecorator(
   (name: string, context: ExecutionContext): unknown =>
     context.switchToHttp().getRequest<Request>().headers[name],
 );
-
-export const REQUEST_KEY_HEADER = 'Idempotency-Key';
-const requestKeySchema = z.uuid();
 
 /**
  * The key of a repeat-safe action (docs/spec/edge-cases/developer-rules.md,

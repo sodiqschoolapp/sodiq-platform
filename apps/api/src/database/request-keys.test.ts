@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ConflictException } from '@nestjs/common';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { insertBranch } from '../testing/branch-filter-sql.js';
 import { FixedClock } from '../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../testing/test-database.js';
 import { canonicalJson, RequestKeys } from './request-keys.js';
@@ -140,6 +141,76 @@ describe('request keys', () => {
     expect(stored).toEqual([]);
   });
 
+  // An offline queue may send several entries in one request: one refused entry
+  // must not stop the others, and must stay possible to send again.
+  it('work that fails leaves no key and no change when the caller goes on and commits', async () => {
+    const refusedKey = randomUUID();
+    const runs = { count: 0 };
+
+    await transactions.run([], async (transaction) => {
+      await requestKeys.runOnce(
+        transaction,
+        { key: randomUUID(), scope: 'journal.entry', input: { label: 'batch kept' } },
+        entry(transaction, 'batch kept', runs),
+      );
+      await expect(
+        requestKeys.runOnce(
+          transaction,
+          { key: refusedKey, scope: 'journal.entry', input: { label: 'batch refused' } },
+          async () => {
+            await entry(transaction, 'batch refused', runs)();
+            throw new Error('the lesson is locked');
+          },
+        ),
+      ).rejects.toThrow('the lesson is locked');
+    });
+
+    expect(await entries('batch kept')).toBe(1);
+    expect(await entries('batch refused')).toBe(0);
+    const stored = await database.app
+      .selectFrom('request_keys')
+      .select('key')
+      .where('key', '=', refusedKey)
+      .execute();
+    expect(stored).toEqual([]);
+
+    // Later, with the same key, the entry is saved; it is not answered as "already done".
+    const again = await send(refusedKey, 'batch refused', runs);
+    expect(again.repeated).toBe(false);
+    expect(await entries('batch refused')).toBe(1);
+  });
+
+  it('work that fails on a database error leaves the rest of the transaction usable', async () => {
+    const key = randomUUID();
+
+    await transactions.run([], async (transaction) => {
+      await expect(
+        requestKeys.runOnce(transaction, { key, scope: 'journal.entry', input: {} }, async () => {
+          await sql`insert into scratch_entries (label) values (null)`.execute(transaction);
+          return 'not reached';
+        }),
+      ).rejects.toMatchObject({ code: '23502' });
+      await sql`insert into scratch_entries (label) values ('after the error')`.execute(
+        transaction,
+      );
+    });
+
+    expect(await entries('after the error')).toBe(1);
+  });
+
+  it('a key used again from inside its own work is a fault, not an empty answer', async () => {
+    const request = { key: randomUUID(), scope: 'journal.entry', input: {} };
+
+    await expect(
+      transactions.run([], (transaction) =>
+        requestKeys.runOnce(transaction, request, async () => {
+          await requestKeys.runOnce(transaction, request, () => Promise.resolve('inner'));
+          return 'outer';
+        }),
+      ),
+    ).rejects.toThrow('before its work finished');
+  });
+
   // docs/spec/edge-cases/system-behaviour.md: simultaneous actions.
   it('two requests with one key at the same moment do the work once', async () => {
     const key = randomUUID();
@@ -186,6 +257,28 @@ describe('request keys', () => {
       await expect(send(key, 'input two', runs)).rejects.toBeInstanceOf(ConflictException);
       expect(runs.count).toBe(1);
       expect(await entries('input two')).toBe(0);
+    });
+
+    it('is refused for another branch, also when the input does not name the branch', async () => {
+      const north = await insertBranch(database.migrator, 'North');
+      const south = await insertBranch(database.migrator, 'South');
+      const key = randomUUID();
+      const runs = { count: 0 };
+      const once = (branches: string[]) =>
+        transactions.run(branches, (transaction) =>
+          requestKeys.runOnce(
+            transaction,
+            { key, scope: 'journal.entry', input: { label: 'by branch' } },
+            entry(transaction, 'by branch', runs),
+          ),
+        );
+      await once([north]);
+
+      await expect(once([south])).rejects.toBeInstanceOf(ConflictException);
+      await expect(once([north, south])).rejects.toBeInstanceOf(ConflictException);
+      await expect(once([])).rejects.toBeInstanceOf(ConflictException);
+      expect(await once([north])).toMatchObject({ repeated: true });
+      expect(runs.count).toBe(1);
     });
 
     it('is accepted when the same input arrives with its fields in another order', async () => {

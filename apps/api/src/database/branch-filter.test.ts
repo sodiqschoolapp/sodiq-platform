@@ -177,9 +177,24 @@ describe('branch filter', () => {
     });
 
     it('two transactions at once each see their own branch', async () => {
+      // Each transaction reads only after both have begun, so they overlap.
+      let begun = 0;
+      let bothBegun: () => void = () => undefined;
+      const overlap = new Promise<void>((resolve) => {
+        bothBegun = resolve;
+      });
+      const read = async (transaction: Transaction) => {
+        await sql`select 1`.execute(transaction);
+        begun += 1;
+        if (begun === 2) {
+          bothBegun();
+        }
+        await overlap;
+        return labels(transaction);
+      };
       const [first, second] = await Promise.all([
-        transactions.run([north], labels),
-        transactions.run([south], labels),
+        transactions.run([north], read),
+        transactions.run([south], read),
       ]);
 
       expect(first).toEqual(['north row']);
@@ -191,11 +206,14 @@ describe('branch filter', () => {
     it('is refused by the helper before any query, without repeating it', () => {
       expect(() => branchFilterValue([north, 'everything'])).toThrow('not a branch id');
       expect(() => branchFilterValue([`${north}},{`])).toThrow('not a branch id');
+      let message = '';
       try {
         branchFilterValue(['Typed-Value-4417']);
       } catch (error) {
-        expect(String(error)).not.toContain('Typed-Value-4417');
+        message = String(error);
       }
+      expect(message).toContain('not a branch id');
+      expect(message).not.toContain('Typed-Value-4417');
     });
 
     it('is refused by the helper as a rejected promise', async () => {
@@ -213,6 +231,19 @@ describe('branch filter', () => {
   });
 
   describe('the transaction helper', () => {
+    // A superuser, a user with BYPASSRLS and the owner of the tables are not
+    // filtered at all. The application must never run as one of them.
+    it('gives no transaction to a database user that is not subject to the filter', async () => {
+      const asOwner = new Transactions(database.migrator);
+
+      await expect(asOwner.run([north], labels)).rejects.toThrow(
+        'not subject to the branch filter',
+      );
+      await expect(asOwner.run([], () => Promise.resolve('ran'))).rejects.toThrow(
+        'not subject to the branch filter',
+      );
+    });
+
     it('keeps the changes when the work returns', async () => {
       await transactions.run([east], (transaction) =>
         sql`insert into scratch_rows (id, branch_id, label) values (20, ${east}, 'kept')`.execute(

@@ -36,17 +36,36 @@ describe('the lint rule against unchecked route input', { timeout: 120_000 }, ()
       '',
     ].join('\n');
 
-  it.each(['Body', 'Query', 'Param', 'Headers', 'Req', 'Request'])(
-    'refuses %s from @nestjs/common in a controller',
-    async (name) => {
-      expect(await refusedImports(fixture(name), moduleFile)).toBe(1);
-    },
-  );
+  it.each([
+    'Body',
+    'Query',
+    'Param',
+    'Headers',
+    'Req',
+    'Request',
+    'Res',
+    'Response',
+    'Next',
+    'RawBody',
+    'HostParam',
+    'Ip',
+    'Session',
+    'UploadedFile',
+    'UploadedFiles',
+  ])('refuses %s from @nestjs/common in a controller', async (name) => {
+    expect(await refusedImports(fixture(name), moduleFile)).toBe(1);
+  });
 
   it('refuses them under another name and through the whole package', async () => {
     const renamed = "import { Body as Raw } from '@nestjs/common';\nexport const a = Raw;\n";
     const whole = "import * as common from '@nestjs/common';\nexport const a = common.Body;\n";
 
+    const byDefault = "import common from '@nestjs/common';\nexport const a = common;\n";
+    const inside =
+      "import { Body } from '@nestjs/common/decorators/index.js';\nexport const a = Body;\n";
+
+    expect(await refusedImports(byDefault, moduleFile)).toBe(1);
+    expect(await refusedImports(inside, moduleFile)).toBe(1);
     expect(await refusedImports(renamed, moduleFile)).toBe(1);
     expect(await refusedImports(whole, moduleFile)).toBe(1);
   });
