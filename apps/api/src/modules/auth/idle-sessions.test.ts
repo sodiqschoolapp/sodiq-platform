@@ -250,9 +250,14 @@ describe('sessions over time', () => {
     it('shows no session of anybody else', async () => {
       clock.set('2026-10-05T09:00:00+05:00');
       const { cookie } = await kit.fullSession('Kamola', 'Latipova');
-      await kit.fullSession('Laziz', 'Latipov');
+      const colleague = await kit.fullSession('Laziz', 'Latipov');
 
-      expect(await list(cookie)).toHaveLength(1);
+      const own = await list(cookie);
+      const theirs = await list(colleague.cookie);
+
+      expect(own).toHaveLength(1);
+      expect(theirs).toHaveLength(1);
+      expect(own[0]?.id).not.toBe(theirs[0]?.id);
     });
 
     it('leaves out a session that was signed out and one that is over by time', async () => {
@@ -350,6 +355,40 @@ describe('sessions over time', () => {
         'sign_out_everywhere',
         'sign_out',
       ]);
+    });
+
+    // Found by the review: a session that is over by time and was not seen
+    // since ended at its own moment, not at this one.
+    it('leaves a session that was already over by time its own end and does not count it', async () => {
+      clock.set('2026-10-09T16:00:00+05:00');
+      const { account } = await kit.fullSession('Yulduz', 'Latipova');
+      clock.advance(20 * MINUTE);
+      const fresh = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
+
+      await kit.post('/api/auth/sign-out-everywhere', fresh);
+
+      expect(await sessionsOf(account.id)).toMatchObject([
+        { ended_at: new Date('2026-10-09T16:15:00+05:00'), end_reason: 'idle' },
+        { ended_at: new Date('2026-10-09T16:20:00+05:00'), end_reason: 'sign_out_everywhere' },
+      ]);
+      expect(await auditOf('auth.sign_out_everywhere', account.id)).toMatchObject([
+        { details: { endedSessions: 1 } },
+      ]);
+      expect(await auditOf('auth.session_idle', account.id)).toHaveLength(1);
+    });
+
+    it('is the same for a password change', async () => {
+      clock.set('2026-10-09T16:00:00+05:00');
+      const { account } = await kit.fullSession('Zafar', 'Latipov');
+      clock.advance(20 * MINUTE);
+      const fresh = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
+
+      expect((await kit.changePassword(fresh, NEW_PASSWORD, 'another-password-88')).status).toBe(
+        204,
+      );
+
+      expect((await sessionsOf(account.id)).map((row) => row.end_reason)).toEqual(['idle', null]);
+      expect(await auditOf('auth.session_idle', account.id)).toHaveLength(1);
     });
 
     it('lets the person sign in again', async () => {

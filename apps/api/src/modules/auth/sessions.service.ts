@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Clock } from '@sodiq/shared';
+import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -201,16 +202,22 @@ export class Sessions {
     const now = this.clock.now();
     const limit = this.idleLimitMs();
     return this.transactions.run([], async (transaction) => {
-      const used = await transaction
-        .updateTable('sessions')
-        .set({ last_used_at: now })
-        .where('token_hash', '=', tokenHash(token))
-        .where('ended_at', 'is', null)
-        .where('last_used_at', '>', new Date(now.getTime() - limit))
-        .returning(['id', 'account_id'])
-        .executeTakeFirst();
+      const use = () =>
+        transaction
+          .updateTable('sessions')
+          // Never backwards: of two requests at the same moment the later clock stays.
+          .set({ last_used_at: sql<Date>`greatest(last_used_at, ${now})` })
+          .where('token_hash', '=', tokenHash(token))
+          .where('ended_at', 'is', null)
+          .where('last_used_at', '>', new Date(now.getTime() - limit))
+          .returning(['id', 'account_id'])
+          .executeTakeFirst();
+      let used = await use();
+      if (used === undefined && (await this.endIfIdle(transaction, token, now, limit))) {
+        // Another request used the session in between: it is in force.
+        used = await use();
+      }
       if (used === undefined) {
-        await this.endIfIdle(transaction, token, now, limit);
         return undefined;
       }
       const account = await transaction
@@ -281,6 +288,7 @@ export class Sessions {
   /** "Sign out everywhere": ends every session of the account, this one included. */
   async signOutEverywhere(session: ActiveSession, requestId?: string): Promise<void> {
     await this.transactions.run([], async (transaction) => {
+      await this.writeIdleEnds(transaction, session.accountId);
       const ended = await transaction
         .updateTable('sessions')
         .set({ ended_at: this.clock.now(), end_reason: 'sign_out_everywhere' })
@@ -331,6 +339,7 @@ export class Sessions {
     }));
     await this.throttle.begin(key);
     if (!(await verifyPassword(account.password_hash, currentPassword))) {
+      await this.recordFailedPasswordCheck(session, origin.requestId);
       throw new ApiException('current_password_wrong', 403);
     }
     await this.throttle.passed(key);
@@ -362,6 +371,7 @@ export class Sessions {
       if (changed === undefined) {
         throw new ApiException('current_password_wrong', 403);
       }
+      await this.writeIdleEnds(transaction, session.accountId);
       const ended = await transaction
         .updateTable('sessions')
         .set({ ended_at: now, end_reason: 'password_change' })
@@ -391,22 +401,59 @@ export class Sessions {
     return SHORT_IDLE_LIMIT_MS;
   }
 
-  /** Writes down the end of a session that was not used for the idle limit. */
+  /**
+   * Writes down the end of every session of the account that is over by time
+   * and was not seen since, each with the moment it was over and its own audit
+   * entry. Whatever ends "all sessions" (sign out everywhere, a password
+   * change, a reset) calls this first, in its transaction, so that it ends and
+   * counts only sessions that were still in force (found by the review).
+   */
+  async writeIdleEnds(transaction: Transaction, accountId: string): Promise<void> {
+    const limit = this.idleLimitMs();
+    const ended = await transaction
+      .updateTable('sessions')
+      .set({
+        ended_at: sql<Date>`last_used_at + ${limit} * interval '1 millisecond'`,
+        end_reason: 'idle',
+      })
+      .where('account_id', '=', accountId)
+      .where('ended_at', 'is', null)
+      .where('last_used_at', '<=', new Date(this.clock.now().getTime() - limit))
+      .returning(['id', 'ended_at'])
+      .execute();
+    for (const session of ended) {
+      await this.audit.record(transaction, {
+        branchId: null,
+        actorId: accountId,
+        action: 'auth.session_idle',
+        record: { type: 'session', id: session.id },
+        details: { endedAt: session.ended_at?.toISOString() ?? null },
+      });
+    }
+  }
+
+  /**
+   * Writes down the end of a session that was not used for the idle limit.
+   * Answers `true` when the session turned out to be in force after all.
+   */
   private async endIfIdle(
     transaction: Transaction,
     token: string,
     now: Date,
     limit: number,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const idle = await transaction
       .selectFrom('sessions')
       .select(['id', 'account_id', 'last_used_at'])
       .where('token_hash', '=', tokenHash(token))
       .where('ended_at', 'is', null)
       .executeTakeFirst();
+    if (idle === undefined) {
+      return false;
+    }
     // Used by another request since the update above found it idle: still in force.
-    if (idle === undefined || idle.last_used_at.getTime() + limit > now.getTime()) {
-      return;
+    if (idle.last_used_at.getTime() + limit > now.getTime()) {
+      return true;
     }
     // The moment it was over, not the moment somebody noticed.
     const endedAt = new Date(idle.last_used_at.getTime() + limit);
@@ -420,7 +467,7 @@ export class Sessions {
       .returning('id')
       .executeTakeFirst();
     if (ended === undefined) {
-      return;
+      return false;
     }
     await this.audit.record(transaction, {
       branchId: null,
@@ -429,6 +476,26 @@ export class Sessions {
       record: { type: 'session', id: idle.id },
       details: { endedAt: endedAt.toISOString() },
     });
+    return false;
+  }
+
+  /**
+   * A wrong current password at the password change: a password event like a
+   * failed sign-in (edge cases, "Personal data and the audit log").
+   */
+  private async recordFailedPasswordCheck(
+    session: ActiveSession,
+    requestId?: string,
+  ): Promise<void> {
+    await this.transactions.run([], (transaction) =>
+      this.audit.record(transaction, {
+        branchId: null,
+        actorId: session.accountId,
+        action: 'auth.password_change_failed',
+        record: { type: 'account', id: session.accountId },
+        ...(requestId === undefined ? {} : { requestId }),
+      }),
+    );
   }
 
   /** A wrong password for a login that exists. An unknown login leaves no entry: there is nobody to name. */

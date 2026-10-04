@@ -361,6 +361,24 @@ describe('the limit on sign-in attempts', () => {
       expect(await auditAbout('auth.sign_in_failed', account.id)).toHaveLength(5);
     });
 
+    // Edge cases, "Personal data and the audit log": the log records password events.
+    it('writes a wrong current password of a password change, without what was typed', async () => {
+      clock.set('2026-10-05T09:00:00+05:00');
+      const { account, cookie } = await kit.fullSession('Xurshid', 'Karimov');
+
+      const response = await kit.changePassword(cookie, 'a-wrong-password-41', 'another-one-88');
+
+      expect(response.status).toBe(403);
+      const entries = await auditAbout('auth.password_change_failed', account.id);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({
+        actor_id: account.id,
+        request_id: response.headers['x-request-id'],
+      });
+      expect(entries[0]?.text).not.toContain('a-wrong-password-41');
+      expect(entries[0]?.text).not.toContain('another-one-88');
+    });
+
     it('writes nothing for a login that no account has', async () => {
       const before = await sql<{ entries: number }>`
         select count(*)::int as entries from audit_log_school where action = 'auth.sign_in_failed'

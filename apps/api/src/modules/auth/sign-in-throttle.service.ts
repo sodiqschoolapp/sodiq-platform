@@ -109,7 +109,11 @@ export class SignInThrottle {
 
   /** Adds one failure to the count, or answers how long the wait still is. */
   private async count(transaction: Transaction, key: ThrottleKey, now: Date): Promise<number> {
-    await transaction
+    // One statement makes the row or locks the one that is there: a row that
+    // a right password, a reset or the cleanup removes at the same moment is
+    // made again, never missed (found by the review). The lock puts attempts
+    // at the same moment in a line.
+    const row = await transaction
       .insertInto('sign_in_throttle')
       .values({
         login_hash: key.loginHash,
@@ -117,15 +121,12 @@ export class SignInThrottle {
         failures: 0,
         last_failure_at: now,
       })
-      .onConflict((conflict) => conflict.columns(['login_hash', 'device_key']).doNothing())
-      .execute();
-    // The row lock puts attempts at the same moment in a line.
-    const row = await transaction
-      .selectFrom('sign_in_throttle')
-      .select(['failures', 'last_failure_at', 'blocked_until'])
-      .where('login_hash', '=', key.loginHash)
-      .where('device_key', '=', key.deviceKey)
-      .forUpdate()
+      .onConflict((conflict) =>
+        conflict
+          .columns(['login_hash', 'device_key'])
+          .doUpdateSet((builder) => ({ failures: builder.ref('sign_in_throttle.failures') })),
+      )
+      .returning(['failures', 'last_failure_at', 'blocked_until'])
       .executeTakeFirstOrThrow();
     if (row.blocked_until !== null && row.blocked_until > now) {
       return row.blocked_until.getTime() - now.getTime();

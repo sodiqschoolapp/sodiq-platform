@@ -14,7 +14,8 @@ Built:
 - Idle sign-out in `Sessions.resolve`, from `last_used_at` and the injected clock; `idle-limit.ts` holds the rule per role.
 - Routes: `GET /api/auth/sessions` and `POST /api/auth/sign-out-everywhere` (own session only). `GET /api/auth/session` and the sign-in answer gained `passwordResetBy`.
 - `PasswordResets.byAdministrator` (service, no route): one-time password for 24 hours, forced change, all sessions ended, the count of failed sign-ins of the login cleared, audit entry.
-- Audit actions: `auth.sign_in_failed`, `auth.session_idle`, `auth.sign_out_everywhere`, `account.password_reset`.
+- Audit actions: `auth.sign_in_failed`, `auth.password_change_failed`, `auth.session_idle`, `auth.sign_out_everywhere`, `account.password_reset`.
+- Reviewed by the spec reviewer and the permission reviewer. Fixed from the reviews: the count of an attempt no longer ends as a fault when its row is removed at the same moment; sessions already over by time keep their own end when all sessions are ended; a wrong current password leaves an audit entry; the last use never moves backwards; missing tests added.
 - `apps/api/src/testing/sign-in-kit.ts`: `signInKit(app)` with `newAccount`, `signIn`, `firstSession`, `fullSession`, `probe` for route tests that need a signed-in caller.
 
 Left out, with the task that brings it:
@@ -25,8 +26,21 @@ Left out, with the task that brings it:
 - A screen for the session list, the text "your password was reset by X", translations: 0.8a. Own sign-in history: 2.6.
 - Ending one other session from the list: the spec names only the list and "sign out everywhere".
 
+Open, for the owner (from the reviews, nothing changed in code):
+
+- All browsers that never signed in to an account share one count per login. Somebody who knows a login (they are guessable) and sends one wrong password each time the wait ends keeps every new browser out of that account, also on the first day, when no browser is known yet. This follows from "per account and device, not per network address"; a reset clears the count only until the next guess. Decide before real data is loaded whether this needs an answer (for example a longer free count for first passwords, or an alert).
+- A session has no longest life: used every 14 minutes it lives until a password change, a reset or "sign out everywhere". The spec asks for idle sign-out only.
+- `known_devices` has no cleanup: each sign-in without a device cookie adds a row. Small rows, but without a bound; a cleanup belongs to the job of 10.2.
+- `PasswordResets.byAdministrator` hashes the new password inside the caller's transaction, as `Accounts.create` does since 0.6a. The route of 2.3 should keep that transaction short.
+- Migration 0006 on a database with open sessions: a session older than 15 minutes ends as idle at its next request. Nothing is deployed yet.
+
 The next sessions must know:
 
+- Whatever ends all sessions of an account calls `Sessions.writeIdleEnds(transaction, accountId)` first (0.6c: account lock; 2.3: lock and unlock).
+- 0.7: the Principal's "changes nothing" rule must exempt `POST /api/auth/password`, sign-out and sign-out-everywhere. Load the roles in `Sessions.resolve` beside the account, so the idle limit follows a role change at once.
+- 2.3: the reset entry `account.password_reset` is school-wide (`branchId: null`), so a reader of one branch's log does not see it. A `resetBy` that is no account ends as a foreign-key fault: the route passes the session's account.
+- 2.6: the own sign-in history finds `auth.sign_in_failed` by its record (the account); its actor is empty. The 48-hour report can only come from the `account.password_reset` entries: `accounts.password_reset_at` is emptied by the password change.
+- 0.8a: the browser name in the session list is text a caller chose: show it as plain text.
 - 0.7: today every session gets the 15-minute idle limit (`Sessions.idleLimitMs`). 0.7 must make it call `idleLimitMs(roles)` with the roles of the account: 30 minutes, 15 with Super Admin or Academic Vice Principal. The test "0.7: today every session gets the 15-minute limit" in `idle-sessions.test.ts` must be changed then (29:59 and 30:00 for the other roles), and `SHORT_IDLE_ROLES` in `idle-limit.ts` must use the role names of 0.7.
 - 0.7: the two new routes need their permission declaration (any signed-in account, own data). `GET /api/auth/sessions` must stay limited to the caller's account.
 - 10.2: `sign_in_throttle` is cleaned only by sign-in attempts, 50 rows each. A cleanup job should take this over (rows whose `last_failure_at` is older than 24 hours).

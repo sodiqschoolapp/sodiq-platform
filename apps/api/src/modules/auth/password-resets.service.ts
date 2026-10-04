@@ -5,6 +5,7 @@ import type { Transaction } from '../../database/transactions.js';
 import { Audit } from '../audit/audit.service.js';
 import { randomFirstPassword } from './accounts.service.js';
 import { hashPassword } from './password-hash.js';
+import { Sessions } from './sessions.service.js';
 import { SignInThrottle } from './sign-in-throttle.service.js';
 
 /** Edge cases, "Accounts and sign-in": a reset gives a one-time password valid for 24 hours. */
@@ -56,6 +57,7 @@ export class PasswordResets {
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly audit: Audit,
     private readonly throttle: SignInThrottle,
+    private readonly sessions: Sessions,
   ) {}
 
   async byAdministrator(transaction: Transaction, reset: PasswordReset): Promise<ResetPassword> {
@@ -83,6 +85,7 @@ export class PasswordResets {
       throw new UnknownAccountError();
     }
     await this.throttle.forget(transaction, changed.login);
+    await this.sessions.writeIdleEnds(transaction, reset.accountId);
     const ended = await transaction
       .updateTable('sessions')
       .set({ ended_at: now, end_reason: 'password_reset' })

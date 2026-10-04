@@ -322,7 +322,7 @@ describe('sign-in, sessions and the password change', () => {
       expect(entries[0]?.text).not.toContain(cookieOf(response).split('=')[1]);
     });
 
-    it('writes nothing to the audit log when it fails', async () => {
+    it('writes no sign-in to the audit log when it fails', async () => {
       const account = await newAccount('Kamola', 'Aliyeva');
 
       await signIn(account.login, 'not-the-password');

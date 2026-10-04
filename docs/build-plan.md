@@ -51,7 +51,7 @@ How to read the task lines:
   - Build: accounts created by an administrator; generated logins; Argon2id; cookie sessions kept in the database; sign-in and sign-out; forced password change at first sign-in; the one-time server command that creates the first Super Admin.
   - Done when: each rule built here has a test, including the refusals.
 
-- [ ] **0.6b Limits, resets and idle sign-out**
+- [x] **0.6b Limits, resets and idle sign-out**
   - Read: the same files, and `16` (question 41).
   - Build: attempt limiting per account and device; reset by an administrator with a one-time password (as a service; its route comes in 2.3); idle sign-out after 30 minutes, 15 for the Super Admin and Academic Vice Principal; session list and "sign out everywhere". Password reset by email and the mail service moved to 2.3: an account has no email address before the staff records of 2.2.
   - Done when: tests cover each rule with the injected clock.

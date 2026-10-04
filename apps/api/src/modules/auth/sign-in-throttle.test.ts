@@ -122,6 +122,39 @@ describe('the count of failed attempts', () => {
     expect(outcomes.filter((outcome) => outcome.status === 'rejected')).toHaveLength(5);
   });
 
+  // Found by the review: an attempt whose row was removed at the same moment
+  // (by a right password, a reset or the cleanup) ended as a fault. The moment
+  // cannot be forced, so many attempts and removals run against each other.
+  it('never ends as a fault when counts are removed while attempts are counted', async () => {
+    clock.set('2026-10-05T09:00:00+05:00');
+    const transactions = new Transactions(database.app);
+    const key = keyOf('9');
+
+    for (let round = 1; round <= 15; round += 1) {
+      const outcomes = await Promise.allSettled(
+        Array.from({ length: 12 }, (_unused, index) => {
+          if (index % 3 === 1) {
+            return throttle.passed(key);
+          }
+          if (index % 3 === 2) {
+            return transactions.run([], (transaction) =>
+              sql`delete from sign_in_throttle where login_hash = ${key.loginHash}`.execute(
+                transaction,
+              ),
+            );
+          }
+          return throttle.begin(key);
+        }),
+      );
+
+      for (const outcome of outcomes) {
+        if (outcome.status === 'rejected') {
+          expect(outcome.reason).toMatchObject({ code: 'too_many_attempts' });
+        }
+      }
+    }
+  });
+
   it('starts again after a right password', async () => {
     clock.set('2026-10-05T09:00:00+05:00');
     for (let attempt = 1; attempt <= 4; attempt += 1) {

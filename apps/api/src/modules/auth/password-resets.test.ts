@@ -166,6 +166,30 @@ describe('a password reset by an administrator', () => {
     ]);
   });
 
+  // Found by the review: a session that was over by time keeps its own end.
+  it('leaves a session that was already over by time its own end and does not count it', async () => {
+    clock.set('2026-10-08T14:00:00+05:00');
+    const administrator = await kit.newAccount('Yulduz', 'Nazarova');
+    const { account } = await kit.fullSession('Zafar', 'Nazarov');
+    clock.advance(20 * 60 * SECOND);
+    await kit.signIn(account.login, NEW_PASSWORD);
+
+    await reset(account.id, administrator.id);
+
+    const sessions = await sql<{ ended_at: Date | null; end_reason: string | null }>`
+      select ended_at, end_reason from sessions where account_id = ${account.id} order by id
+    `.execute(database.migrator);
+    expect(sessions.rows).toEqual([
+      { ended_at: new Date('2026-10-08T14:15:00+05:00'), end_reason: 'idle' },
+      { ended_at: new Date('2026-10-08T14:20:00+05:00'), end_reason: 'password_reset' },
+    ]);
+    const entries = await sql<{ details: unknown }>`
+      select details from audit_log_school
+      where action = 'account.password_reset' and record_id = ${account.id}
+    `.execute(database.migrator);
+    expect(entries.rows).toEqual([{ details: { endedSessions: 1 } }]);
+  });
+
   it('is logged as "reset by X for Y", without any password', async () => {
     clock.set('2026-10-08T14:00:00+05:00');
     const administrator = await kit.newAccount('Malika', 'Maxmudova');
@@ -197,6 +221,21 @@ describe('a password reset by an administrator', () => {
   });
 
   describe('tells the person who reset the password', () => {
+    it('and tells nobody else: not the administrator, not a third person', async () => {
+      const administrator = await kit.fullSession('Hamid', 'Nazarov');
+      const third = await kit.fullSession('Jahongir', 'Nazarov');
+      const { account } = await kit.fullSession('Kamola', 'Nazarova');
+
+      await reset(account.id, administrator.account.id);
+
+      for (const cookie of [administrator.cookie, third.cookie]) {
+        expect((await kit.get('/api/auth/session', cookie)).body).toMatchObject({
+          mustChangePassword: false,
+          passwordResetBy: null,
+        });
+      }
+    });
+
     it('at the next sign-in and while the one-time password is in use', async () => {
       clock.set('2026-10-08T14:00:00+05:00');
       const administrator = await kit.newAccount('Odil', 'Maxmudov');
