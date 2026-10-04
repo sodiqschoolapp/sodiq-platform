@@ -24,7 +24,7 @@ export {
   type TrustedDeviceList,
   type TrustedDeviceParams,
 } from './auth.js';
-export { branchIdSchema, type BranchId } from './branches.js';
+export { BRANCH_HEADER, branchIdSchema, type BranchId } from './branches.js';
 export type { Clock } from './clock.js';
 export {
   apiErrorSchema,
@@ -36,6 +36,16 @@ export {
   type ErrorDetail,
 } from './errors.js';
 export { healthResponseSchema, type HealthResponse } from './health.js';
+export {
+  ACTIONS,
+  checkTable,
+  PERMISSIONS,
+  permits,
+  type Action,
+  type Area,
+  type PermissionRows,
+  type PermissionTable,
+} from './permissions.js';
 export { REQUEST_KEY_HEADER, requestKeySchema } from './request-keys.js';
 export {
   MAX_SUPER_ADMINS,

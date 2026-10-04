@@ -5,8 +5,15 @@ paths:
 
 # API
 
-- Every route declares its permission and passes through the permission guard. The route-by-role test harness must cover it.
-- Check branch and scope (subjects, class, own lessons) on the server for every request.
+- Every route declares who may call it, exactly once, on the handler (`apps/api/src/modules/access/access.decorators.ts`). A route with no declaration or with two is never run (500) and fails the harness.
+  - `@Public()`: works without sign-in. A decision for the owner; the route goes into `PUBLIC_ROUTES` in `public-routes.test.ts` with a reason.
+  - `@AnySignedIn()`: every signed-in account, whatever its roles. Only for a route that acts on the account of the session and never on one named in the request.
+  - `@Requires(area, action)`: a role that the permission table (`PERMISSIONS` in `packages/shared/src/permissions.ts`) gives the action in the area. A new area is a new entry of the table with a row for each of the 15 roles; changing the table needs the owner (`CLAUDE.md`).
+- A `@Requires` route works for one branch, named by the request in the header `X-Branch-Id`. The route reads `@CurrentAccess() access: Access`, passes `access.branchIds` to `Transactions.run` and `access.assignmentId` to `audit.record`. A branch never comes from the path, the query or the body. `@Requires(area, action, { branch: 'none' })` is for school-wide work only (a branch, an account): no header, and `access.branchIds` is empty.
+- The guard allows a request when any current assignment of the account permits it: a role with a branch counts in that branch only, the Super Admin and the Senior Head Teacher in every branch. When several assignments permit, the first by id is the one named (`access.assignmentId`); the rule is in `permission-check.ts` and is the same for every route.
+- Every new or changed route is added by hand to `ROUTE_ACCESS` in `apps/api/src/modules/access/route-permissions.test.ts`, with the roles that may call it and whether it works for the branch of the request or for none. A route with a permission never carries an `@AllowedBefore...` mark; those are for the own sign-in only (`STEP_ROUTES` in the same test). The harness calls it as each of the 15 roles, without a role and without sign-in, in the own and in another branch.
+- The guard decides role and branch only. Check scope (subjects, class, own lessons) in the route for every request, and test it there.
+- A route that decides a request (unlock, plan edit) calls `refuseOwnRequest(access.accountId, requestedBy)` (`own-request.ts`): nobody approves their own.
 - Validate input with schemas from `packages/shared`. Return the one shared error shape.
 - A route reads its input only through `ValidBody`, `ValidQuery`, `ValidParams` and `RequestKey` (`apps/api/src/http/schemas.ts`). `Body`, `Query`, `Param`, `Headers`, `Req`, `Request` and the other raw request decorators of `@nestjs/common` (the list is in `eslint.config.js`) may be imported only inside `apps/api/src/http/`; a lint rule refuses them elsewhere.
 - Check permission and scope before `RequestKeys.runOnce`, on every request: a repeat does not run the work, so a check inside the work would be skipped.

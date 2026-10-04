@@ -47,8 +47,27 @@ export const AllowedBeforeSecondStep = (): MethodDecorator => SetMetadata(BEFORE
 export const AllowedBeforeSecondStepSetUp = (): MethodDecorator =>
   SetMetadata(BEFORE_SECOND_STEP_SET_UP, true);
 
+/**
+ * The owed steps of sign-in that the handler may be reached with. Only routes
+ * of the own sign-in carry such a mark; the permission guard refuses a route
+ * with a permission that carries one, and a test holds the list.
+ */
+export function owedStepsAllowedOn(handler: object): string[] {
+  const marks: [symbol, string][] = [
+    [BEFORE_SECOND_STEP, 'second_step'],
+    [BEFORE_PASSWORD_CHANGE, 'password_change'],
+    [BEFORE_SECOND_STEP_SET_UP, 'second_step_set_up'],
+  ];
+  return marks
+    .filter(([key]) => Reflect.getMetadata(key, handler) === true)
+    .map(([, name]) => name);
+}
+
 /** The session the guard found for a request. Not on the request object: nothing else can set it. */
 const SESSIONS = new WeakMap<Request, ActiveSession>();
+
+/** The session `SessionGuard` found for the request; none on a public route. For the permission guard. */
+export const sessionOf = (request: Request): ActiveSession | undefined => SESSIONS.get(request);
 
 /**
  * The session of the request, as the guard read it from the database.
@@ -71,8 +90,8 @@ export const CurrentSession = createParamDecorator(
  * database on every request, so a session that was ended elsewhere stops at
  * once. A session that still owes a step of sign-in (the second step, the
  * forced password change, the set-up of a required second step) reaches only
- * the routes declared for that step. Who may do what (role, branch, scope) is the permission guard of task
- * 0.7b, which builds on this one.
+ * the routes declared for that step. Who may do what (role and branch) is
+ * decided by `PermissionGuard`, which runs after this one.
  */
 @Injectable()
 export class SessionGuard implements CanActivate {

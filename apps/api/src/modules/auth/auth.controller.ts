@@ -13,6 +13,7 @@ import { DeviceCookie, UserAgent, type DeviceCookieJar } from '../../http/device
 import { RequestId } from '../../http/request-id.js';
 import { Returns, ReturnsNothing, ValidBody } from '../../http/schemas.js';
 import { SessionCookie, type SessionCookieJar } from '../../http/session-cookie.js';
+import { AnySignedIn } from '../access/access.decorators.js';
 import {
   AllowedBeforePasswordChange,
   AllowedBeforeSecondStep,
@@ -63,6 +64,7 @@ export class AuthController {
   }
 
   @Get('session')
+  @AnySignedIn()
   @AllowedBeforeSecondStep()
   @AllowedBeforePasswordChange()
   @AllowedBeforeSecondStepSetUp()
@@ -73,6 +75,7 @@ export class AuthController {
 
   /** Edge cases, "Accounts and sign-in": the profile lists the sessions. Own sessions only. */
   @Get('sessions')
+  @AnySignedIn()
   @Returns(sessionListSchema)
   async list(@CurrentSession() session: ActiveSession): Promise<SessionList> {
     const sessions = await this.sessions.list(session);
@@ -89,6 +92,7 @@ export class AuthController {
   }
 
   @Post('password')
+  @AnySignedIn()
   @AllowedBeforePasswordChange()
   @AllowedBeforeSecondStepSetUp()
   @ReturnsNothing()
@@ -112,6 +116,7 @@ export class AuthController {
   }
 
   @Post('sign-out')
+  @AnySignedIn()
   @AllowedBeforeSecondStep()
   @AllowedBeforePasswordChange()
   @AllowedBeforeSecondStepSetUp()
@@ -127,6 +132,7 @@ export class AuthController {
 
   /** "Sign out everywhere": every session of the account, this one included. */
   @Post('sign-out-everywhere')
+  @AnySignedIn()
   @ReturnsNothing()
   async signOutEverywhere(
     @CurrentSession() session: ActiveSession,

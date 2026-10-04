@@ -1,7 +1,7 @@
 import type { Type } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
-import type { Clock } from '@sodiq/shared';
+import type { Clock, PermissionTable } from '@sodiq/shared';
 import { AppModule } from '../app.module.js';
 import { initApp } from '../app.setup.js';
 import { CLOCK } from '../clock/clock.module.js';
@@ -10,6 +10,8 @@ import { createDatabase, type Database } from '../database/database.js';
 import { DATABASE } from '../database/database.module.js';
 import type { JobQueueOptions } from '../jobs/job-queue.js';
 import { JOB_QUEUE_OPTIONS } from '../jobs/jobs.tokens.js';
+import { PERMISSION_TABLE } from '../modules/access/permission-table.token.js';
+import type { StopBeforeHandler } from './route-harness.js';
 import { withDatabaseName } from './test-database.js';
 
 /** Does not exist, so a test that forgot to pass a database fails instead of using `sodiq_dev`. */
@@ -27,6 +29,16 @@ export interface TestAppOptions {
   clock?: Clock;
   /** Controllers that exist only in tests, for example `SampleController`. */
   controllers?: Type[];
+  /**
+   * The permission table the guard reads, for test controllers with areas of
+   * their own (`SAMPLE_PERMISSIONS`). Without it: the table of the application.
+   */
+  permissionTable?: PermissionTable;
+  /**
+   * For the route-by-role harness: while it is switched on, a request that
+   * passes the guards is answered before its handler runs.
+   */
+  handlerStop?: StopBeforeHandler;
 }
 
 /**
@@ -54,8 +66,15 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
   if (options.clock !== undefined) {
     builder.overrideProvider(CLOCK).useValue(options.clock);
   }
+  if (options.permissionTable !== undefined) {
+    builder.overrideProvider(PERMISSION_TABLE).useValue(options.permissionTable);
+  }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
+  if (options.handlerStop !== undefined) {
+    // Before the interceptors of the application, so that none of them sees the empty answer.
+    app.useGlobalInterceptors(options.handlerStop);
+  }
   await initApp(app);
   return app;
 }

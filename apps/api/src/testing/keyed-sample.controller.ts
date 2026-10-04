@@ -1,13 +1,13 @@
 import { Controller, Post } from '@nestjs/common';
-import { branchIdSchema } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { RequestKeys } from '../database/request-keys.js';
 import { Transactions } from '../database/transactions.js';
 import { RequestKey, Returns, ValidBody, ValidParams } from '../http/schemas.js';
-import { Public } from '../modules/auth/session.guard.js';
+import { requiresInTable } from '../modules/access/access.decorators.js';
+import { CurrentAccess, type Access } from '../modules/access/permission.guard.js';
 
-export const keyedSampleParamsSchema = z.object({ branchId: branchIdSchema });
+export const keyedSampleParamsSchema = z.object({ notebookId: z.uuid() });
 export const keyedSampleBodySchema = z.object({ label: z.string().min(1).max(50) });
 export const keyedSampleResponseSchema = z.object({ id: z.uuid() });
 
@@ -19,36 +19,42 @@ type KeyedSampleResponse = z.infer<typeof keyedSampleResponseSchema>;
 export const KEYED_SAMPLE_TABLE = 'scratch_notes';
 
 /**
- * Exists only in tests (docs/build-plan.md, task 0.4b). It shows the pieces
- * every changing route uses: checked path parameters, a transaction with the
- * branch filter, and a request key that makes a repeat harmless.
+ * Exists only in tests (docs/build-plan.md, tasks 0.4b and 0.7b). It shows the
+ * pieces every changing route uses: a declared permission, checked path
+ * parameters, a transaction for the branch the guard allowed, and a request
+ * key that makes a repeat harmless. For an application made with
+ * `permissionTable: SAMPLE_PERMISSIONS`.
  */
-@Controller('sample-branches')
+@Controller('sample-notebooks')
 export class KeyedSampleController {
   constructor(
     private readonly transactions: Transactions,
     private readonly requestKeys: RequestKeys,
   ) {}
 
-  @Post(':branchId/notes')
-  // Public only because it never is part of the running application.
-  @Public()
+  @Post(':notebookId/notes')
+  @requiresInTable('sample', 'create')
   @Returns(keyedSampleResponseSchema, 201)
   create(
+    @CurrentAccess() access: Access,
     @ValidParams(keyedSampleParamsSchema) params: KeyedSampleParams,
     @RequestKey() key: string,
     @ValidBody(keyedSampleBodySchema) body: KeyedSampleBody,
   ): Promise<KeyedSampleResponse> {
-    // Not a pattern for real routes: from task 0.7b the branches come from the
-    // permission guard, never from the path, the query or the body.
-    return this.transactions.run([params.branchId], async (transaction) => {
+    // The branch comes from the permission guard, never from the path, the
+    // query or the body. The permission was checked before `runOnce`.
+    return this.transactions.run(access.branchIds, async (transaction) => {
       const once = await this.requestKeys.runOnce(
         transaction,
-        { key, scope: 'sample.note', input: { branchId: params.branchId, label: body.label } },
+        {
+          key,
+          scope: 'sample.note',
+          input: { notebookId: params.notebookId, label: body.label },
+        },
         async () => {
           const inserted = await sql<{ id: string }>`
             insert into ${sql.table(KEYED_SAMPLE_TABLE)} (branch_id, label)
-            values (${params.branchId}, ${body.label})
+            values (${access.branchId}, ${body.label})
             returning id
           `.execute(transaction);
           return { id: inserted.rows[0]?.id ?? '' };

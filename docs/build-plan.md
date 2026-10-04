@@ -71,10 +71,15 @@ How to read the task lines:
   - Build: the 15 roles; assignments (account, role, branch, with a start and an end as moments; subject and class scope are added in 2.3 and 3.1) with a service to give and end them (routes come in 2.3); the first-account command writes the Super Admin assignment; the idle limit and the required second step follow the roles of the account.
   - Done when: tests cover each rule built here with the injected clock, including the refusals.
 
-- [ ] **0.7b Permission table and guard**
+- [x] **0.7b Permission table and guard**
   - Read: the same files.
-  - Build: the permission table in `packages/shared` (its shape; each later task adds the rows of its area); a server guard used by every route, with the branch of the request; the "nobody approves their own request" helper; a test harness that checks every route against every role; permission declarations for the existing routes of the own sign-in (open to every signed-in account); JSON bodies only; `Cache-Control: no-store`; the request key tied to the account.
+  - Build: the permission table in `packages/shared` (its shape; each later task adds the rows of its area); a server guard used by every route, with the branch of the request (header `X-Branch-Id`); the "nobody approves their own request" helper; a test harness that checks every route against every role; permission declarations for the existing routes of the own sign-in (open to every signed-in account).
   - Done when: the harness fails if a route has no permission declaration, and sample routes pass for all 15 roles.
+
+- [ ] **0.7c Request hygiene**
+  - Read: `13` (Security), `edge/developer-rules` (Repeat-safe actions).
+  - Build: JSON bodies only; `Cache-Control: no-store` on every answer; the request key tied to the account (migration 0010); the lint rule that keeps `createParamDecorator` and `REQUEST` inside `apps/api/src/http/` and the guard files.
+  - Done when: a form-encoded body is refused, every answer carries `no-store`, and a key used by another account is refused with 409.
 
 - [ ] **0.8a Web shell: sign-in, layout and languages**
   - Read: `12`, `02`.

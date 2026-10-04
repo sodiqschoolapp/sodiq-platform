@@ -8,6 +8,7 @@ import {
 import { RequestId } from '../../http/request-id.js';
 import { Returns, ReturnsNothing, ValidParams } from '../../http/schemas.js';
 import { SessionCookie, type SessionCookieJar } from '../../http/session-cookie.js';
+import { AnySignedIn } from '../access/access.decorators.js';
 import { CurrentSession } from './session.guard.js';
 import { Sessions, type ActiveSession } from './sessions.service.js';
 
@@ -22,6 +23,7 @@ export class TrustedDevicesController {
   constructor(private readonly sessions: Sessions) {}
 
   @Get()
+  @AnySignedIn()
   @Returns(trustedDeviceListSchema)
   async list(@CurrentSession() session: ActiveSession): Promise<TrustedDeviceList> {
     const devices = await this.sessions.trustedDevices(session);
@@ -39,6 +41,7 @@ export class TrustedDevicesController {
 
   /** Removing the device that asks works like sign-out: its cookie is cleared. */
   @Delete(':id')
+  @AnySignedIn()
   @ReturnsNothing()
   async remove(
     @CurrentSession() session: ActiveSession,

@@ -42,6 +42,13 @@ export const ERROR_CODES = [
   'second_step_not_on',
   /** The second step is required for the account and cannot be turned off. */
   'second_step_cannot_turn_off',
+  /**
+   * No current assignment of the account permits the action in the branch of
+   * the request, or that branch does not exist; the answer does not say which.
+   */
+  'permission_denied',
+  /** Nobody approves their own request. */
+  'own_request',
   /** A changing request that came from another site. */
   'cross_site_request',
   /** The request key was already used for another action, other input or other branches. */

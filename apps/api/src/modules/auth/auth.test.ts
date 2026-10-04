@@ -10,6 +10,7 @@ import { SESSION_COOKIE } from '../../http/session-cookie.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { AnySignedIn } from '../access/access.decorators.js';
 import { Accounts, type CreatedAccount } from './accounts.service.js';
 import { CurrentSession } from './session.guard.js';
 import { SESSION_TOKEN_BYTES, type ActiveSession } from './sessions.service.js';
@@ -22,11 +23,13 @@ const NEW_PASSWORD = 'a-new-password-73';
 @Controller('probe')
 class ProbeController {
   @Get()
+  @AnySignedIn()
   read(@CurrentSession() session: ActiveSession): { login: string } {
     return { login: session.login };
   }
 
   @Post()
+  @AnySignedIn()
   change(@CurrentSession() session: ActiveSession): { login: string } {
     return { login: session.login };
   }
