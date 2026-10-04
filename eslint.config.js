@@ -40,7 +40,9 @@ export default defineConfig(
       'no-restricted-syntax': [
         'error',
         ...[
-          "CallExpression[callee.object.name='Date'][callee.property.name='now']",
+          // Also without a call, so the function cannot be kept under another name.
+          "MemberExpression[object.name='Date'][property.name='now']",
+          "MemberExpression[object.name='globalThis'][property.name='Date']",
           "NewExpression[callee.name='Date'][arguments.length=0]",
           "CallExpression[callee.name='Date']",
         ].map((selector) => ({

@@ -1,6 +1,7 @@
-import { Body, Query } from '@nestjs/common';
+import { applyDecorators, Body, Query, SetMetadata } from '@nestjs/common';
 import { ApiBody, ApiQuery, ApiResponse, type OpenAPIObject } from '@nestjs/swagger';
 import { z } from 'zod';
+import { RESPONSE_SCHEMA } from './response-schema.interceptor.js';
 import { SchemaPipe } from './validation.js';
 
 // The package does not export its schema type by name.
@@ -61,7 +62,14 @@ export function ValidQuery(schema: z.ZodObject): ParameterDecorator {
   };
 }
 
-/** Describes what a route answers, from the shared schema of the answer. */
+/**
+ * What a route answers. The same shared schema describes the answer in the
+ * OpenAPI document and is applied to it before it is sent
+ * (`ResponseSchemaInterceptor`), so the two cannot differ.
+ */
 export function Returns(schema: z.ZodType, status = 200): MethodDecorator {
-  return ApiResponse({ status, schema: toOpenApiSchema(schema, 'output') });
+  return applyDecorators(
+    ApiResponse({ status, schema: toOpenApiSchema(schema, 'output') }),
+    SetMetadata(RESPONSE_SCHEMA, schema),
+  );
 }

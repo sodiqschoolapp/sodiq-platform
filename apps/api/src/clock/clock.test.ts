@@ -29,7 +29,26 @@ describe('FixedClock', () => {
   });
 
   it('refuses a moment that is not one', () => {
-    expect(() => new FixedClock('yesterday')).toThrow('valid moment');
+    expect(() => new FixedClock('2026-13-45T00:00:00+05:00')).toThrow('valid moment');
+  });
+
+  // A moment without an offset is read in the time zone of the machine: a test
+  // would pass in Tashkent and fail in CI.
+  it.each(['2026-10-05T23:59:00', '2026-10-05', 'yesterday'])(
+    'refuses %s, which has no offset',
+    (moment) => {
+      expect(() => new FixedClock(moment)).toThrow('offset');
+      expect(() => {
+        new FixedClock('2026-10-05T23:59:00Z').set(moment);
+      }).toThrow('offset');
+    },
+  );
+
+  it('accepts UTC and a Date', () => {
+    expect(new FixedClock('2026-10-05T18:59:00Z').now().toISOString()).toBe(
+      '2026-10-05T18:59:00.000Z',
+    );
+    expect(new FixedClock(new Date(0)).now().getTime()).toBe(0);
   });
 });
 
@@ -61,6 +80,9 @@ describe('the lint rule against reading the system clock', { timeout: 120_000 },
     ['Date.now()', 'export const a = Date.now();\n'],
     ['new Date()', 'export const a = new Date();\n'],
     ['Date()', 'export const a = Date();\n'],
+    ['Date.now under another name', 'const f = Date.now;\nexport const a = f();\n'],
+    ['globalThis.Date.now()', 'export const a = globalThis.Date.now();\n'],
+    ['new globalThis.Date()', 'export const a = new globalThis.Date();\n'],
   ])('refuses %s in business code', async (_name, code) => {
     expect(await clockReadsIn(code)).toBe(1);
   });

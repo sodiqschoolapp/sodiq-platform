@@ -5,6 +5,7 @@ import {
   notFoundFallback,
 } from './http/api-exception.filter.js';
 import { requestIdMiddleware } from './http/request-id.js';
+import { ResponseSchemaInterceptor } from './http/response-schema.interceptor.js';
 
 /** Every route sits under this prefix, so the browser reaches web app and API on one origin. */
 export const API_PREFIX = 'api';
@@ -21,6 +22,7 @@ export function configureApp(app: NestExpressApplication): void {
   // Before the body parser, so that its refusals carry a request id too.
   app.use(requestIdMiddleware);
   app.useGlobalFilters(new ApiExceptionFilter());
+  app.useGlobalInterceptors(new ResponseSchemaInterceptor());
 }
 
 /**

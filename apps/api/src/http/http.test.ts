@@ -5,7 +5,7 @@ import request from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createTestApp } from '../testing/create-test-app.js';
 import { FixedClock } from '../testing/fixed-clock.js';
-import { SAMPLE_SECRET, SampleController } from '../testing/sample.controller.js';
+import { SAMPLE_ROW_VALUE, SAMPLE_SECRET, SampleController } from '../testing/sample.controller.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 // Stands for something a person typed, for example a name or a passport number.
@@ -72,7 +72,12 @@ describe('HTTP foundations', () => {
       ['a missing field', { count: 1 }, 'name', 'invalid_type'],
       ['a text that is too long', { name: 'x'.repeat(51), count: 1 }, 'name', 'too_big'],
       ['a number that is too small', { name: 'Sample', count: -1 }, 'count', 'too_small'],
-      ['a fraction where a whole number is needed', { name: 'Sample', count: 1.5 }, 'count', null],
+      [
+        'a fraction where a whole number is needed',
+        { name: 'Sample', count: 1.5 },
+        'count',
+        'invalid_type',
+      ],
     ])('refuses %s and names the field', async (_name, body, path, code) => {
       const response = await request(server).post('/api/sample').send(body);
 
@@ -81,9 +86,7 @@ describe('HTTP foundations', () => {
       expect(parsed.error.code).toBe('validation_failed');
       expect(parsed.error.details).toHaveLength(1);
       expect(parsed.error.details?.[0]?.path).toBe(path);
-      if (code !== null) {
-        expect(parsed.error.details?.[0]?.code).toBe(code);
-      }
+      expect(parsed.error.details?.[0]?.code).toBe(code);
     });
 
     it('refuses a request without a body', async () => {
@@ -145,6 +148,32 @@ describe('HTTP foundations', () => {
     });
   });
 
+  // docs/spec/13-technology.md, Server: with a generated client the browser and
+  // the server cannot disagree about a field.
+  describe('answers follow their schema', () => {
+    it('drops a field that the schema of the answer does not know', async () => {
+      const response = await request(server).get('/api/sample/extra-field');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ limit: 1 });
+      expect(response.text).not.toContain(SAMPLE_SECRET);
+    });
+
+    it('treats an answer that does not fit its schema as a fault, without its values', async () => {
+      const logged = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+      const response = await request(server).get('/api/sample/wrong-answer');
+
+      expect(response.status).toBe(500);
+      expect(apiErrorSchema.parse(response.body).error.code).toBe('internal_error');
+      expect(response.text).not.toContain(SAMPLE_SECRET);
+      const log = logged.mock.calls.flat().join('\n');
+      expect(log).toContain('SampleController.wrongAnswer');
+      expect(log).toContain('limit: invalid_type');
+      expect(log).not.toContain(SAMPLE_SECRET);
+    });
+  });
+
   // CLAUDE.md, Conventions: the API returns one error shape everywhere.
   describe('one error shape', () => {
     it.each([
@@ -196,8 +225,12 @@ describe('HTTP foundations', () => {
       const parsed = apiErrorSchema.parse(response.body);
       expect(parsed.error.code).toBe('internal_error');
       expect(response.text).not.toContain(SAMPLE_SECRET);
+      expect(response.text).not.toContain(SAMPLE_ROW_VALUE);
       expect(logged).toHaveBeenCalledTimes(1);
       expect(logged.mock.calls[0]?.[0]).toContain(parsed.error.requestId);
+      // The stack names the fault; the other fields of the error stay out of the log.
+      expect(logged.mock.calls.flat().join('\n')).toContain(SAMPLE_SECRET);
+      expect(logged.mock.calls.flat().join('\n')).not.toContain(SAMPLE_ROW_VALUE);
     });
 
     it('a refusal is not logged as a fault', async () => {

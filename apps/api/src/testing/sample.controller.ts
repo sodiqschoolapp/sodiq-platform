@@ -19,12 +19,18 @@ export const sampleResponseSchema = z.object({
   receivedAt: z.iso.datetime(),
 });
 
+/** What the query looks like after its defaults are filled. */
+export const sampleListSchema = z.object({ limit: z.number().int() });
+
 type SampleBody = z.infer<typeof sampleBodySchema>;
 type SampleQuery = z.infer<typeof sampleQuerySchema>;
 type SampleResponse = z.infer<typeof sampleResponseSchema>;
 
 /** Never appears in an answer; the tests check that. */
 export const SAMPLE_SECRET = 'internal-detail-7f3a';
+
+/** Stands for a value of a row inside a database error. It appears neither in an answer nor in the log. */
+export const SAMPLE_ROW_VALUE = 'row-value-91c2';
 
 /**
  * Exists only in tests (docs/build-plan.md, task 0.4a: "a sample route"). It
@@ -42,6 +48,7 @@ export class SampleController {
   }
 
   @Get()
+  @Returns(sampleListSchema)
   list(@ValidQuery(sampleQuerySchema) query: SampleQuery): SampleQuery {
     return query;
   }
@@ -51,8 +58,25 @@ export class SampleController {
     throw new ForbiddenException(SAMPLE_SECRET);
   }
 
+  /** Returns more than its schema knows, as a query with one column too many would. */
+  @Get('extra-field')
+  @Returns(sampleListSchema)
+  extraField(): SampleQuery {
+    const row = { limit: 1, hidden: SAMPLE_SECRET };
+    return row;
+  }
+
+  /** Returns something its schema refuses. */
+  @Get('wrong-answer')
+  @Returns(sampleListSchema)
+  wrongAnswer(): SampleQuery {
+    const row: { limit: unknown } = { limit: SAMPLE_SECRET };
+    return row as SampleQuery;
+  }
+
+  /** Fails like a database error: the message names the fault, `detail` holds values of a row. */
   @Get('fault')
   fault(): never {
-    throw new Error(SAMPLE_SECRET);
+    throw Object.assign(new Error(SAMPLE_SECRET), { detail: SAMPLE_ROW_VALUE });
   }
 }

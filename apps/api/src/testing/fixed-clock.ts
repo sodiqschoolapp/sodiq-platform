@@ -1,5 +1,7 @@
 import type { Clock } from '@sodiq/shared';
 
+const WITH_OFFSET = /T\d{2}:\d{2}.*(Z|[+-]\d{2}:\d{2})$/;
+
 /** A clock that shows the moment a test gives it and moves only when told. */
 export class FixedClock implements Clock {
   private moment: number;
@@ -22,6 +24,11 @@ export class FixedClock implements Clock {
   }
 
   private static toMilliseconds(moment: string | Date): number {
+    // Without an offset the text would mean another moment on a machine in
+    // another time zone: a test would pass in Tashkent and fail in CI.
+    if (typeof moment === 'string' && !WITH_OFFSET.test(moment)) {
+      throw new Error('FixedClock needs a moment with its offset, for example +05:00 or Z.');
+    }
     const value = new Date(moment).getTime();
     if (Number.isNaN(value)) {
       throw new Error('FixedClock needs a valid moment.');
