@@ -233,9 +233,16 @@ async function jobSchemaProblems(database: Database): Promise<string[]> {
 
   const relations = await sql<{ name: string; kind: string; owner: string; rights: string[] }>`
     select c.relname as name, c.relkind as kind, pg_get_userbyid(c.relowner) as owner,
+      -- The effective rights: also through a grant to public or on single columns.
       array(
-        select g.privilege_type::text from information_schema.role_table_grants g
-        where g.table_schema = 'pgboss' and g.table_name = c.relname and g.grantee = 'sodiq_app'
+        select p from unnest(
+          array['DELETE', 'INSERT', 'REFERENCES', 'SELECT', 'TRIGGER', 'TRUNCATE', 'UPDATE']
+        ) p
+        where has_table_privilege('sodiq_app', c.oid, p)
+          or (
+            p in ('INSERT', 'REFERENCES', 'SELECT', 'UPDATE')
+            and has_any_column_privilege('sodiq_app', c.oid, p)
+          )
         order by 1
       ) as rights
     from pg_class c
@@ -512,6 +519,22 @@ describe('the catalog checks', () => {
   });
 
   describe('for the job queue', () => {
+    // Also after a failed test, so one failure does not show up in the next test.
+    afterEach(async () => {
+      for (const statement of [
+        'drop table if exists pgboss.scratch_extra',
+        'drop view if exists pgboss.scratch_view',
+        'drop function if exists pgboss.scratch_count()',
+        'revoke delete on pgboss.queue from sodiq_app',
+        'revoke select on pgboss.warning from public',
+        'revoke update (message) on pgboss.warning from sodiq_app',
+        'revoke create on schema pgboss from sodiq_app',
+      ]) {
+        await sql.raw(statement).execute(database.migrator);
+      }
+      expect(await jobSchemaProblems(database.migrator)).toEqual([]);
+    });
+
     it('name a table that pg-boss does not have, and a right that is not listed', async () => {
       await sql`create table pgboss.scratch_extra (id integer)`.execute(database.migrator);
       await sql`grant delete on pgboss.queue to sodiq_app`.execute(database.migrator);
@@ -520,8 +543,17 @@ describe('the catalog checks', () => {
         'pgboss.queue: the rights of sodiq_app are not the listed ones',
         'pgboss.scratch_extra: not a table of pg-boss 12.36.0',
       ]);
-      await sql`drop table pgboss.scratch_extra`.execute(database.migrator);
-      await sql`revoke delete on pgboss.queue from sodiq_app`.execute(database.migrator);
+    });
+
+    it.each([
+      ['a grant to every user', 'grant select on pgboss.warning to public'],
+      ['a grant on one column', 'grant update (message) on pgboss.warning to sodiq_app'],
+    ])('name a right that reaches the application user through %s', async (_name, statement) => {
+      await sql.raw(statement).execute(database.migrator);
+
+      expect(await jobSchemaProblems(database.migrator)).toEqual([
+        'pgboss.warning: the rights of sodiq_app are not the listed ones',
+      ]);
     });
 
     it('name a view, a SECURITY DEFINER function and the right to create', async () => {
@@ -539,10 +571,6 @@ describe('the catalog checks', () => {
         'pgboss.scratch_view: not a table of pg-boss 12.36.0',
         'pgboss.scratch_count(): SECURITY DEFINER',
       ]);
-      await sql`drop view pgboss.scratch_view`.execute(database.migrator);
-      await sql`drop function pgboss.scratch_count()`.execute(database.migrator);
-      await sql`revoke create on schema pgboss from sodiq_app`.execute(database.migrator);
-      expect(await jobSchemaProblems(database.migrator)).toEqual([]);
     });
   });
 

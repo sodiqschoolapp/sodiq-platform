@@ -17,6 +17,14 @@ export interface JobQueueOptions {
   onError?: (error: Error) => void;
 }
 
+/** One log line for a fault that pg-boss reports: where, what kind, and its message. */
+export function faultLine(fault: { name?: unknown; message?: unknown; queue?: unknown }): string {
+  const queue = typeof fault.queue === 'string' ? `${fault.queue}: ` : '';
+  const name = typeof fault.name === 'string' && fault.name !== '' ? fault.name : 'Error';
+  const message = typeof fault.message === 'string' ? fault.message : 'no message';
+  return `${queue}${name}: ${message}`;
+}
+
 /**
  * The one pg-boss instance of the process. It is not exported by the module:
  * business code sends through `Jobs.enqueue`, which needs the transaction of
@@ -65,10 +73,12 @@ export class JobQueue implements BeforeApplicationShutdown {
       // Scheduled jobs arrive with the nightly check (task 9.2c).
       schedule: false,
     });
-    boss.on('error', (error: Error) => {
+    // pg-boss also emits plain objects: a fault while fetching has no name and
+    // carries the queue it happened in.
+    boss.on('error', (error: Error & { queue?: unknown }) => {
       if (this.options.onError === undefined) {
         // Name and message only, as for a fault of a request (docs/decisions.md).
-        this.logger.error(`${error.name}: ${error.message}`);
+        this.logger.error(faultLine(error));
       } else {
         this.options.onError(error);
       }

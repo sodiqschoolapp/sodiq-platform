@@ -16,7 +16,7 @@ import {
 } from '../testing/sample-job.js';
 import { createTestDatabase, type TestDatabase } from '../testing/test-database.js';
 import { defineJob } from './job-definition.js';
-import { JobQueue } from './job-queue.js';
+import { faultLine, JobQueue } from './job-queue.js';
 import { JobRunner, type JobHandler } from './job-runner.js';
 import { Jobs } from './jobs.service.js';
 
@@ -39,6 +39,7 @@ describe('a job is enqueued in the transaction of its change', () => {
   let queue: JobQueue;
   let jobs: Jobs;
   let north: string;
+  let south: string;
   const audit = new Audit(clock);
   const requestKeys = new RequestKeys(clock);
   const faults: Error[] = [];
@@ -47,6 +48,7 @@ describe('a job is enqueued in the transaction of its change', () => {
     database = await createTestDatabase();
     transactions = new Transactions(database.app);
     north = await insertBranch(database.migrator, 'North');
+    south = await insertBranch(database.migrator, 'South');
     await createScratchNotes(database.migrator);
     // As the API: it sends and does not fetch.
     queue = new JobQueue(
@@ -187,6 +189,29 @@ describe('a job is enqueued in the transaction of its change', () => {
       ).rejects.not.toThrow('Invented');
     });
 
+    it('a branch that the transaction does not work for', async () => {
+      await expectRefused(
+        (transaction) =>
+          jobs.enqueue(transaction, sampleJob, {
+            branchIds: [north, south],
+            data: { noteId: randomUUID() },
+          }),
+        'a branch that its transaction does not work for',
+      );
+    });
+
+    it('a branch for a transaction that works for no branch', async () => {
+      await expect(
+        transactions.run([], (transaction) =>
+          jobs.enqueue(transaction, sampleJob, {
+            branchIds: [north],
+            data: { noteId: randomUUID() },
+          }),
+        ),
+      ).rejects.toThrow('a branch that its transaction does not work for');
+      expect(await storedJobs(database.migrator)).toEqual(before);
+    });
+
     it('a branch that is not a branch id', async () => {
       await expectRefused(
         (transaction) =>
@@ -197,6 +222,27 @@ describe('a job is enqueued in the transaction of its change', () => {
         'not a branch id',
       );
     });
+  });
+
+  it('accepts a job for some of the branches of its transaction, and for none', async () => {
+    const before = (await storedJobs(database.migrator)).length;
+
+    await transactions.run([north, south], async (transaction) => {
+      await jobs.enqueue(transaction, sampleJob, {
+        branchIds: [south],
+        data: { noteId: randomUUID() },
+      });
+      await jobs.enqueue(transaction, sampleJob, { branchIds: [], data: { noteId: randomUUID() } });
+    });
+
+    expect(await storedJobs(database.migrator)).toHaveLength(before + 2);
+  });
+
+  it('logs a fault of pg-boss with its queue, also when it has no name', () => {
+    expect(faultLine({ message: 'The fetch failed.', queue: 'sample.note' })).toBe(
+      'sample.note: Error: The fetch failed.',
+    );
+    expect(faultLine(new TypeError('The value is wrong.'))).toBe('TypeError: The value is wrong.');
   });
 
   it('refuses a job name that is not lower-case words joined by dots', () => {
@@ -333,6 +379,22 @@ describe('the worker', () => {
     expect(keys.rows).toEqual([{ scope: 'job:sample.note' }]);
   });
 
+  // The worker died after the handler's commit and before pg-boss marked the
+  // job as completed: the queue hands the same job out again.
+  it('changes nothing when the queue delivers a finished job again', async () => {
+    const { northNote } = await addNotes();
+    const id = await enqueue([north], northNote);
+    await waitForJob(database.migrator, id, 'completed');
+
+    await sql`
+      update pgboss.job set state = 'created', started_on = null, completed_on = null
+      where id = ${id}
+    `.execute(database.migrator);
+    await waitForJob(database.migrator, id, 'completed');
+
+    expect((await handledCounts(database.migrator))[northNote]).toBe(1);
+  });
+
   it('refuses a delivery whose data does not fit the definition', async () => {
     await expect(
       runner.deliver('sample.note', {
@@ -389,6 +451,19 @@ describe('the job schema', () => {
     await expect(sql.raw(statement).execute(database.app)).rejects.toMatchObject({
       code: INSUFFICIENT_PRIVILEGE,
     });
+  });
+
+  // docs/decisions.md: package and schema must match.
+  it('does not start on a schema of another pg-boss version', async () => {
+    const other = await createTestDatabase();
+    await sql`update pgboss.version set version = version - 1`.execute(other.migrator);
+    const queue = new JobQueue({ connectionString: other.appUrl, worker: false }, []);
+    try {
+      await expect(queue.ready()).rejects.toThrow('pg-boss database requires migrations');
+    } finally {
+      await queue.beforeApplicationShutdown();
+      await other.destroy();
+    }
   });
 
   it('does not start on a database without the schema', async () => {

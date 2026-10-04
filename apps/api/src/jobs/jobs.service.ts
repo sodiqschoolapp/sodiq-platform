@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { sql } from 'kysely';
 import { fromKysely } from 'pg-boss';
 import { branchFilterValue, type Transaction } from '../database/transactions.js';
 import { envelopeSchema, type JobDefinition, type JobEnvelope } from './job-definition.js';
@@ -27,7 +28,8 @@ export class Jobs {
   /**
    * Writes one job in the caller's transaction, together with the change that
    * causes it: if the transaction rolls back, the job is gone too, and the
-   * worker cannot see it before the commit. Returns the id of the job.
+   * worker cannot see it before the commit. The branches of the job must be
+   * among those of the transaction. Returns the id of the job.
    */
   async enqueue<Data>(
     transaction: Transaction,
@@ -49,6 +51,18 @@ export class Jobs {
     }
     // Safe: the schema's output is the envelope of this definition.
     const envelope = checked.data as JobEnvelope<Data>;
+    // The handler will see the branches of the job. A transaction must not hand
+    // on more than it works for itself, or a wrong list here would reach rows
+    // that the branch filter keeps from the caller.
+    const filter = await sql<{ ids: string[] }>`
+      select app_branch_ids()::text[] as ids
+    `.execute(transaction);
+    const own = new Set(filter.rows[0]?.ids.map((id) => id.toLowerCase()));
+    if (!envelope.branchIds.every((id) => own.has(id.toLowerCase()))) {
+      throw new Error(
+        `A "${definition.name}" job was given a branch that its transaction does not work for.`,
+      );
+    }
     const boss = await this.queue.ready();
     const id = await boss.send(definition.name, envelope, { db: fromKysely(transaction) });
     if (id === null) {
