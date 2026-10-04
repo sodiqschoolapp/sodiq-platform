@@ -12,6 +12,8 @@ Decisions about how the system is built, with the reason. Product rules are in `
 | Actions are pinned to a full commit, with the version in a comment | A tag can be moved to other code; a commit cannot. |
 | The workflow's token may only read the repository (`permissions: contents: read`) | Nothing in CI writes to GitHub. |
 | No Turborepo remote cache | A whole run takes minutes at this size. Look again if CI becomes slow. |
+| A variable that a Turborepo task reads from the environment is named in that package's `turbo.json` (`DATABASE_URL` and `PORT` for the API's `dev`) | Turborepo passes a task only the variables it names. With `.env` the API reads the file itself, so the gap shows only where there is no `.env`: in CI the API did not start under `pnpm dev` until this was added. |
+| In CI Playwright prints the output of the servers it starts | Otherwise a server that fails to start shows only as a timeout. |
 | `pnpm db:codegen` does not run in CI | `codegen.test.ts` already fails when the generated types are out of date. |
 
 ## 4 October 2026: database, migrations and typed queries (task 0.2)
