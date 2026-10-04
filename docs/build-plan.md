@@ -56,7 +56,7 @@ How to read the task lines:
   - Build: attempt limiting per account and device; reset by an administrator with a one-time password (as a service; its route comes in 2.3); idle sign-out after 30 minutes, 15 for the Super Admin and Academic Vice Principal; session list and "sign out everywhere". Password reset by email and the mail service moved to 2.3: an account has no email address before the staff records of 2.2.
   - Done when: tests cover each rule with the injected clock.
 
-- [ ] **0.6c Two-step sign-in**
+- [x] **0.6c Two-step sign-in**
   - Read: the same files.
   - Build: TOTP second step with recovery codes, required for the Super Admin and Academic Vice Principal (for every account until 0.7 brings the roles); the forced steps at sign-in; the secret stored encrypted; reset of the second step by an administrator (as a service; its route comes in 2.3).
   - Done when: tests cover each rule with the injected clock, including the refusals.

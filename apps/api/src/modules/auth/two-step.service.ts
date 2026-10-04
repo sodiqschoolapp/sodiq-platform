@@ -152,11 +152,23 @@ export class TwoStep {
         last_failure_at: null,
         blocked_until: null,
       };
-      await transaction
+      // Never over a second step in force: when no row was there to lock above,
+      // another session of the account may have set one up and confirmed it in
+      // between (found by the review).
+      const written = await transaction
         .insertInto('account_second_steps')
         .values({ account_id: session.accountId, ...fresh })
-        .onConflict((conflict) => conflict.column('account_id').doUpdateSet(fresh))
-        .execute();
+        .onConflict((conflict) =>
+          conflict
+            .column('account_id')
+            .doUpdateSet(fresh)
+            .where('account_second_steps.confirmed_at', 'is', null),
+        )
+        .returning('account_id')
+        .executeTakeFirst();
+      if (written === undefined) {
+        throw new ApiException('second_step_already_on', 409);
+      }
       await this.audit.record(transaction, {
         branchId: null,
         actorId: session.accountId,
@@ -185,7 +197,7 @@ export class TwoStep {
       const secret = this.secrets.open(session.accountId, row.secret);
       if (secret === undefined) {
         // A started set-up that cannot be read is no set-up: the person starts again.
-        await this.remove(transaction, session.accountId);
+        await this.removeUnreadable(transaction, session, requestId);
         return 'not_on' as const;
       }
       const now = this.clock.now();
@@ -406,14 +418,7 @@ export class TwoStep {
     if (secret === undefined) {
       // Decided by the owner: a secret that cannot be decrypted is never a
       // fault of the server. The second step is gone and must be set up again.
-      await this.remove(transaction, session.accountId);
-      await this.audit.record(transaction, {
-        branchId: null,
-        actorId: session.accountId,
-        action: 'account.second_step_unreadable',
-        record: { type: 'account', id: session.accountId },
-        ...(requestId === undefined ? {} : { requestId }),
-      });
+      await this.removeUnreadable(transaction, session, requestId);
       return 'unreadable';
     }
     const step = matchingTotpStep(secret, typed, now);
@@ -493,7 +498,34 @@ export class TwoStep {
       .executeTakeFirst();
   }
 
+  /** Removes a second step whose secret cannot be decrypted, and says so in the log. */
+  private async removeUnreadable(
+    transaction: Transaction,
+    session: ActiveSession,
+    requestId?: string,
+  ): Promise<void> {
+    await this.remove(transaction, session.accountId);
+    await this.audit.record(transaction, {
+      branchId: null,
+      actorId: session.accountId,
+      action: 'account.second_step_unreadable',
+      record: { type: 'account', id: session.accountId },
+      ...(requestId === undefined ? {} : { requestId }),
+    });
+  }
+
+  /**
+   * Removes the second step of an account with its recovery codes. No session
+   * of the account has passed anything afterwards: a later second step is owed
+   * by each of them, whatever the clock says (found by the review).
+   */
   private async remove(transaction: Transaction, accountId: string): Promise<void> {
+    await transaction
+      .updateTable('sessions')
+      .set({ second_step_passed_at: null })
+      .where('account_id', '=', accountId)
+      .where('second_step_passed_at', 'is not', null)
+      .execute();
     await transaction
       .deleteFrom('second_step_recovery_codes')
       .where('account_id', '=', accountId)

@@ -231,8 +231,17 @@ describe('the second step of sign-in', () => {
 
       expect(wrong.status).toBe(403);
       expect(errorCode(wrong)).toBe('second_step_code_wrong');
-      expect(await secondStepRows(account.id)).toMatchObject([{ confirmed_at: null }]);
       expect(await recoveryRows(account.id)).toEqual([]);
+      // Not counted: whoever may confirm was just shown the secret.
+      for (let attempt = 2; attempt <= 7; attempt += 1) {
+        const again = await kit
+          .post('/api/auth/second-step/confirm', cookie)
+          .send({ code: wrongCode(secret) });
+        expect(again.status).toBe(403);
+      }
+      expect(await secondStepRows(account.id)).toMatchObject([
+        { confirmed_at: null, failures: 0, blocked_until: null },
+      ]);
       expect(
         (await kit.post('/api/auth/second-step/confirm', cookie).send({ code: kit.codeOf(secret) }))
           .status,
@@ -331,6 +340,8 @@ describe('the second step of sign-in', () => {
         await kit.get('/api/auth/second-step', cookie),
         await kit.post('/api/auth/second-step/set-up', cookie),
         await kit.post('/api/auth/sign-out-everywhere', cookie),
+        await kit.post('/api/auth/second-step/confirm', cookie).send({ code: '123456' }),
+        await kit.post('/api/auth/second-step/turn-off', cookie).send({ code: '123456' }),
         await kit.changePassword(cookie, NEW_PASSWORD, 'another-password-88'),
       ]) {
         expect(refused.status).toBe(403);
@@ -405,11 +416,42 @@ describe('the second step of sign-in', () => {
 
         const refused = await kit.passSecondStep(cookie, text);
 
-        expect([400, 403]).toContain(refused.status);
-        expect(['validation_failed', 'second_step_code_wrong']).toContain(errorCode(refused));
+        // Empty or longer than 40 characters is no input at all; everything
+        // else is a wrong code like any other: counted and logged.
+        const input = text.length >= 1 && text.length <= 40;
+        expect(refused.status).toBe(input ? 403 : 400);
+        expect(errorCode(refused)).toBe(input ? 'second_step_code_wrong' : 'validation_failed');
+        expect(JSON.stringify(refused.body)).not.toContain('xxxxx');
+        expect(await secondStepRows(account.id)).toMatchObject([{ failures: input ? 1 : 0 }]);
+        expect(await auditOf('auth.second_step_failed', account.id)).toHaveLength(input ? 1 : 0);
         expect(errorCode(await kit.probe(cookie))).toBe('second_step_required');
       },
     );
+
+    it('lets a session that has passed give a code again, without harm', async () => {
+      const { account, cookie, secret } = await kit.completeSession('Nargiza', 'Rahimova');
+
+      const again = await kit.passSecondStep(cookie, nextCode(secret));
+
+      expect(again.status).toBe(200);
+      expect(again.body).toMatchObject({ secondStep: 'passed' });
+      expect((await kit.probe(cookie)).status).toBe(200);
+      expect(await secondStepRows(account.id)).toHaveLength(1);
+    });
+
+    // A changing request that another site started is refused before it is read.
+    it('is not passed by a request from another site, even with the right code', async () => {
+      const { account, secret } = await kit.completeSession('Nigora', 'Rahimova');
+      const { cookie } = await passwordStep(account.login);
+
+      const refused = await kit
+        .passSecondStep(cookie, nextCode(secret))
+        .set('Sec-Fetch-Site', 'cross-site');
+
+      expect(refused.status).toBe(403);
+      expect(errorCode(refused)).toBe('cross_site_request');
+      expect(errorCode(await kit.probe(cookie))).toBe('second_step_required');
+    });
 
     // The clock of a phone drifts: the code of the step before and after counts.
     describe('with a phone whose clock is not exact', () => {
@@ -622,10 +664,26 @@ describe('the second step of sign-in', () => {
       expect(change.status).toBe(403);
       expect(errorCode(change)).toBe('second_step_required');
       expect(errorCode(await kit.probe(cookie))).toBe('second_step_required');
+      expect(errorCode(await kit.get('/api/auth/second-step', cookie))).toBe(
+        'second_step_required',
+      );
 
       // The person, who has the phone: the code, then the forced change.
       expect((await kit.passSecondStep(cookie, nextCode(secret))).status).toBe(200);
       expect(errorCode(await kit.probe(cookie))).toBe('password_change_required');
+      // Passed, and the reset password still in use: nothing but the password change.
+      for (const refused of [
+        await kit.get('/api/auth/second-step', cookie),
+        await kit.passSecondStep(cookie, '123456'),
+        await kit.post('/api/auth/second-step/set-up', cookie),
+        await kit.post('/api/auth/second-step/confirm', cookie).send({ code: '123456' }),
+        await kit.post('/api/auth/second-step/turn-off', cookie).send({ code: '123456' }),
+        await kit.get('/api/auth/sessions', cookie),
+        await kit.post('/api/auth/sign-out-everywhere', cookie),
+      ]) {
+        expect(refused.status).toBe(403);
+        expect(errorCode(refused)).toBe('password_change_required');
+      }
       expect(
         (await kit.changePassword(cookie, oneTimePassword, 'another-password-88')).status,
       ).toBe(204);
@@ -652,6 +710,11 @@ describe('the second step of sign-in', () => {
 
       expect(await secondStepRows(account.id)).toEqual([]);
       expect(await recoveryRows(account.id)).toEqual([]);
+      const passed = await sql<{ sessions: number }>`
+        select count(*)::int as sessions from sessions
+        where account_id = ${account.id} and second_step_passed_at is not null
+      `.execute(database.migrator);
+      expect(passed.rows).toEqual([{ sessions: 0 }]);
       const entries = await auditOf('account.second_step_reset', account.id);
       expect(entries).toMatchObject([
         { actor_id: administrator.id, record_type: 'account', details: { wasOn: true } },
@@ -677,7 +740,7 @@ describe('the second step of sign-in', () => {
       for (const cookie of [laptop, phone]) {
         expect(errorCode(await kit.probe(cookie))).toBe('second_step_set_up_required');
       }
-      clock.advance(MINUTE);
+      // At the very moment the phone passed the old one: no clock decides this.
       const renewed = await kit.setUpSecondStep(laptop);
       expect((await kit.probe(laptop)).status).toBe(200);
       expect(errorCode(await kit.probe(phone))).toBe('second_step_required');
@@ -825,6 +888,159 @@ describe('the second step of sign-in', () => {
       });
     });
   });
+
+  // The count of wrong codes: forgotten 24 hours after the last one, and a
+  // wait of 15 minutes at most (the lengths of the password limit).
+  describe('the count of wrong codes over time', () => {
+    const HOUR = 60 * MINUTE;
+
+    async function fourWrongCodes(firstName: string) {
+      clock.set('2026-10-05T09:00:00+05:00');
+      const complete = await kit.completeSession(firstName, 'Yusupov');
+      const { cookie } = await passwordStep(complete.account.login);
+      for (let attempt = 1; attempt <= 4; attempt += 1) {
+        await kit.passSecondStep(cookie, wrongCode(complete.secret));
+      }
+      return complete;
+    }
+
+    it('is forgotten 24 hours after the last wrong code', async () => {
+      const { account, secret } = await fourWrongCodes('Aziz');
+
+      clock.advance(24 * HOUR);
+
+      const { cookie } = await passwordStep(account.login);
+      for (let attempt = 1; attempt <= 4; attempt += 1) {
+        expect(errorCode(await kit.passSecondStep(cookie, wrongCode(secret)))).toBe(
+          'second_step_code_wrong',
+        );
+      }
+      expect(await secondStepRows(account.id)).toMatchObject([
+        { failures: 4, blocked_until: null },
+      ]);
+      expect((await kit.passSecondStep(cookie, kit.codeOf(secret))).status).toBe(200);
+    });
+
+    it('is not forgotten one second before', async () => {
+      const { account, secret } = await fourWrongCodes('Bahrom');
+
+      clock.advance(24 * HOUR - SECOND);
+
+      const { cookie } = await passwordStep(account.login);
+      expect(errorCode(await kit.passSecondStep(cookie, wrongCode(secret)))).toBe(
+        'second_step_code_wrong',
+      );
+      const waiting = await kit.passSecondStep(cookie, kit.codeOf(secret));
+      expect(waiting.status).toBe(429);
+      expect(waiting.headers['retry-after']).toBe('30');
+    });
+
+    it('makes nobody wait longer than 15 minutes, and never locks for good', async () => {
+      const { account, secret } = await fourWrongCodes('Charos');
+
+      for (const seconds of [30, 60, 120, 240, 480, 900, 900, 900]) {
+        // A new session each time: the longest wait is as long as the idle limit.
+        const { cookie } = await passwordStep(account.login);
+        expect(errorCode(await kit.passSecondStep(cookie, wrongCode(secret)))).toBe(
+          'second_step_code_wrong',
+        );
+        const waiting = await kit.passSecondStep(cookie, kit.codeOf(secret));
+        expect(waiting.status).toBe(429);
+        expect(waiting.headers['retry-after']).toBe(String(seconds));
+        clock.advance(seconds * SECOND);
+      }
+
+      const { cookie } = await passwordStep(account.login);
+      expect((await kit.passSecondStep(cookie, kit.codeOf(secret))).status).toBe(200);
+    });
+  });
+
+  // The row of the second step is locked for each check, so attempts at the
+  // same moment stand in a line (found by both reviews: it had no test).
+  describe('with attempts at the same moment', () => {
+    it('accepts one code of the app in one of two sessions only', async () => {
+      const { account, secret } = await kit.completeSession('Dilnoza', 'Yusupova');
+      const first = await passwordStep(account.login);
+      const second = await passwordStep(account.login);
+      const code = nextCode(secret);
+
+      const answers = await Promise.all([
+        kit.passSecondStep(first.cookie, code),
+        kit.passSecondStep(second.cookie, code),
+      ]);
+
+      expect(answers.map((answer) => answer.status).sort()).toEqual([200, 403]);
+      expect(await auditOf('auth.second_step_passed', account.id)).toHaveLength(1);
+      expect(await auditOf('auth.second_step_failed', account.id)).toHaveLength(1);
+    });
+
+    it('accepts one recovery code in one of three sessions only', async () => {
+      const { account, recoveryCodes } = await kit.completeSession('Eldor', 'Yusupov');
+      const sessions = [
+        await passwordStep(account.login),
+        await passwordStep(account.login),
+        await passwordStep(account.login),
+      ];
+
+      const answers = await Promise.all(
+        sessions.map(({ cookie }) => kit.passSecondStep(cookie, recoveryCodes[0] ?? '')),
+      );
+
+      expect(answers.map((answer) => answer.status).sort()).toEqual([200, 403, 403]);
+      expect((await recoveryRows(account.id)).filter((row) => row.used_at !== null)).toHaveLength(
+        1,
+      );
+      expect(await auditOf('auth.recovery_code_used', account.id)).toHaveLength(1);
+    });
+
+    it('counts every wrong code', async () => {
+      const { account, secret } = await kit.completeSession('Farrux', 'Yusupov');
+      const { cookie } = await passwordStep(account.login);
+      const wrong = wrongCode(secret);
+
+      const answers = await Promise.all([1, 2, 3, 4].map(() => kit.passSecondStep(cookie, wrong)));
+
+      expect(answers.map((answer) => answer.status)).toEqual([403, 403, 403, 403]);
+      expect(await secondStepRows(account.id)).toMatchObject([{ failures: 4 }]);
+      expect(await auditOf('auth.second_step_failed', account.id)).toHaveLength(4);
+    });
+
+    it('lets at most five of ten wrong codes be looked at', async () => {
+      const { account, secret } = await kit.completeSession('Gulnora', 'Yusupova');
+      const { cookie } = await passwordStep(account.login);
+      const wrong = wrongCode(secret);
+
+      const answers = await Promise.all(
+        Array.from({ length: 10 }, () => kit.passSecondStep(cookie, wrong)),
+      );
+
+      expect(answers.map((answer) => answer.status).sort()).toEqual([
+        403, 403, 403, 403, 403, 429, 429, 429, 429, 429,
+      ]);
+      expect(await secondStepRows(account.id)).toMatchObject([{ failures: 5 }]);
+    });
+  });
+
+  // Found by the review: a started set-up whose secret cannot be decrypted was
+  // removed without an entry in the log.
+  it('removes a started set-up that cannot be decrypted, with an audit entry, and lets it start again', async () => {
+    const { account, cookie } = await kit.fullSession('Husan', 'Yusupov');
+    await kit.post('/api/auth/second-step/set-up', cookie);
+    await sql`
+      update account_second_steps set secret = 'v1:AAAA:AAAA' where account_id = ${account.id}
+    `.execute(database.migrator);
+
+    const answer = await kit.post('/api/auth/second-step/confirm', cookie).send({ code: '123456' });
+
+    expect(answer.status).toBe(409);
+    expect(errorCode(answer)).toBe('second_step_not_on');
+    expect(await secondStepRows(account.id)).toEqual([]);
+    expect(await auditOf('account.second_step_unreadable', account.id)).toMatchObject([
+      { actor_id: account.id, request_id: answer.headers['x-request-id'] },
+    ]);
+    await kit.setUpSecondStep(cookie);
+    expect((await kit.probe(cookie)).status).toBe(200);
+  });
 });
 
 // docs/spec/02-roles-and-access.md, Rules: "optional for others". Until task
@@ -930,6 +1146,26 @@ describe('the second step where it is optional', () => {
     expect(entries.rows).toEqual([
       { actor_id: account.id, request_id: off.headers['x-request-id'] },
     ]);
+  });
+
+  // Somebody who has only the password must not turn the second step off or
+  // replace it, also where it is optional.
+  it('cannot be turned off, set up or confirmed by a session that owes the code', async () => {
+    const { account, secret, recoveryCodes } = await kit.completeSession('Davron', 'Tursunov');
+    const pending = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
+
+    for (const refused of [
+      await turnOff(pending, nextCode(secret)),
+      await turnOff(pending, recoveryCodes[0] ?? ''),
+      await kit.post('/api/auth/second-step/set-up', pending),
+      await kit.post('/api/auth/second-step/confirm', pending).send({ code: kit.codeOf(secret) }),
+      await kit.get('/api/auth/second-step', pending),
+      await kit.probe(pending),
+    ]) {
+      expect(refused.status).toBe(403);
+      expect(errorCode(refused)).toBe('second_step_required');
+    }
+    expect(await rowsOf(account.id)).toBe(11);
   });
 
   it('is turned off with a recovery code too', async () => {
