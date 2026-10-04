@@ -2,6 +2,49 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 5 October 2026: task 0.7c Request hygiene
+
+The owner added the leftovers of 0.7b to this task at the plan: the frozen table, the `@All()` route in the harness, three small guard tests.
+
+Built:
+
+- JSON bodies only: `apps/api/src/http/json-only.ts`, a middleware before the body parser. A request with a body whose `Content-Type` is not `application/json`, or that names no type, gets 415 `unsupported_media_type` (new error code, also for the body parser's own 415). A request without a body passes, also with `Content-Length: 0`.
+- `Cache-Control: no-store` on every answer: `apps/api/src/http/no-store.ts`, the second middleware of `configureApp`. The harness checks the header on the answer of every route for every caller.
+- The request key per account: `db/migrations/0010_request_key_account.sql` adds `request_keys.account_id` (references `accounts`) and the check "no account exactly when the scope begins with `job:`". `KeyedRequest.accountId` is required; the same key from another account is 409 `request_key_reused` and the work does not run. Jobs use `RequestKeys.runJobOnce`; `runOnce` refuses a scope that begins with `job:`.
+- A key the database refuses is rolled back to the savepoint of `runOnce`, so the caller's transaction stays usable.
+- Lint (`eslint.config.js`, tests in `route-input-imports.test.ts`): `createParamDecorator`, `assignMetadata`, `REQUEST` of `@nestjs/core` and the text `'REQUEST'` are refused outside `apps/api/src/http/`, `session.guard.ts` and `permission.guard.ts`; imports from `apps/api/src/testing/` and of `requiresInTable` are refused outside tests and `src/testing`. The two rules are built per group of files by `apiImportRule` and `apiSyntaxRule`.
+- From 0.7b: `freezeTable` in `packages/shared` (`PERMISSIONS` is frozen, and the guard freezes the table it is given); the harness names an `@All()` route in `declarationProblems` and in `accessProblems` and does not call it; tests for a repeated `X-Branch-Id` header (400), HEAD on a permission route, and a Super Admin with an unknown branch (403).
+- `.claude/rules/api.md` and `docs/decisions.md` have the rules and decisions of this task. No route of the application was added or changed; `ROUTE_ACCESS` is as it was.
+- Reviewed by the spec reviewer and the permission reviewer. Neither found a must-fix. Fixed from the reviews: `@Inject('REQUEST')` and `assignMetadata` passed the lint rule; a route could name its scope `job:...` and store a key without an account (now two entry points); tests added for a chunked body, for the guard freezing its table, and `accessProblems` alone no longer passes over an `@All()` route.
+
+Left out, with the task that brings it:
+
+- The exception of JSON-only for file uploads (a short list of method and path in `apps/api/src/http/`, pinned by a test against the declaration of the route): the upload task, 7.1a. `FileInterceptor` of `@nestjs/platform-express` is not refused by lint; decide there.
+- Retention and cleanup of request keys: 8.3c. The foreign key `request_keys.account_id` has no `on delete`, and the application user cannot delete keys: a forced delete of an account (Super Admin) is blocked by its keys until that cleanup exists.
+- The translation of `unsupported_media_type`: 0.8a.
+
+Not done from the reviews, for the owner:
+
+- Known limits of the lint rules, written in `docs/decisions.md`: a dynamic `import()` or `createRequire`, `context.switchToHttp().getRequest()` in a guard, pipe or interceptor of a module, and `Requires('x' as never, ...)` are not refused. The task named two imports; closing the whole class would need a rule of our own. An area that is not in the table is refused by the guard anyway.
+- A request with no body and a form content type passes the JSON-only check (there is nothing to read). A route that needs no body (sign-out) is protected from a form of another site by the cross-site check and the `SameSite=Strict` cookie, as before.
+- No test proves that the harness reports a missing `no-store`: there is no application without the middleware to run it against.
+- Migration 0010 carries no line about its assumption (no key of a route exists yet); it was already applied to `sodiq_dev` when the review found this, and an applied file is not edited without asking. The assumption is in `docs/decisions.md`.
+- Still open from 0.7b: `{ branch: 'none' }` for any role the table permits (decide with 1.1).
+
+The next sessions must know:
+
+- A keyed route passes `accountId: access.accountId` (or the account of the session) to `runOnce`; the type requires it. A scope never begins with `job:`.
+- A test of `runOnce` needs a real account (`request_keys.account_id` references `accounts`): see `insertAccount` in `request-keys.test.ts`.
+- Tests that send a body with supertest: an object is sent as JSON. A text sent with `.send('...')` is form-encoded by supertest and is now answered 415; set `Content-Type: application/json` for a JSON text.
+- A new `no-restricted-syntax` or `no-restricted-imports` rule for `apps/api/src` goes into `apiSyntaxRule` or `apiImportRule`, never into a block of its own: a later block replaces the whole rule of an earlier one.
+- A route declares one method; `@All()` fails the harness.
+- 0.8a: the web client must send `Content-Type: application/json` with every body (the generated client does). Answers are never cached by the browser, so TanStack Query is the only cache.
+- 0.9: a Socket.IO handshake does not pass these middlewares in the same way; check `no-store` and the session there.
+- 0.10: a proxy or CDN in front of the API must not add its own `Cache-Control`.
+- The full run: API tests 47 files, about 180 s with `maxWorkers: 4`.
+
+The next task is 0.8a.
+
 ## 4 October 2026: task 0.7b Permission table and guard
 
 Task 0.7b was split by the owner at the plan: 0.7b is the table, the guard, the declarations, the own-request helper and the harness; 0.7c is JSON bodies only, `Cache-Control: no-store`, the request key per account and the lint rule for `createParamDecorator` and `REQUEST`.
