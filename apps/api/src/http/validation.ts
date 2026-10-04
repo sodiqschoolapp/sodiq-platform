@@ -43,7 +43,7 @@ export function toErrorDetails(error: z.ZodError): ErrorDetail[] {
   }));
 }
 
-/** Checks one input of a route (body or query) against a shared schema. */
+/** Checks one input of a route (body, query or path parameters) against a shared schema. */
 export class SchemaPipe<Schema extends z.ZodType> implements PipeTransform<
   unknown,
   z.output<Schema>
@@ -54,6 +54,27 @@ export class SchemaPipe<Schema extends z.ZodType> implements PipeTransform<
     const result = this.schema.safeParse(value);
     if (!result.success) {
       throw new ValidationFailedException(toErrorDetails(result.error));
+    }
+    return result.data;
+  }
+}
+
+/** Checks one header of a route. A refusal names the header, never what it held. */
+export class HeaderPipe<Schema extends z.ZodType> implements PipeTransform<
+  unknown,
+  z.output<Schema>
+> {
+  constructor(
+    private readonly header: string,
+    private readonly schema: Schema,
+  ) {}
+
+  transform(value: unknown): z.output<Schema> {
+    const result = this.schema.safeParse(value);
+    if (!result.success) {
+      throw new ValidationFailedException(
+        toErrorDetails(result.error).map((detail) => ({ ...detail, path: this.header })),
+      );
     }
     return result.data;
   }

@@ -54,6 +54,30 @@ export default defineConfig(
     },
   },
   {
+    // CLAUDE.md, Conventions: validate every API input with a schema. A route
+    // reads its input only through the helpers of apps/api/src/http (ValidBody,
+    // ValidQuery, ValidParams, RequestKey), which check it and describe it in
+    // the OpenAPI document. The raw decorators stay inside that folder.
+    files: ['apps/api/src/**/*.ts'],
+    ignores: ['apps/api/src/http/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@nestjs/common',
+              // `Request` is the other name of `Req`.
+              importNames: ['Body', 'Query', 'Param', 'Headers', 'Req', 'Request'],
+              message:
+                'Read route input through ValidBody, ValidQuery, ValidParams or RequestKey (apps/api/src/http/schemas.ts), which check it against a schema.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.{js,mjs}'],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: { globals: globals.node },

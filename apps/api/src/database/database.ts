@@ -37,11 +37,16 @@ function parserFor(oid: number, format?: 'text' | 'binary'): unknown {
 
 const schoolDatesAsText = { getTypeParser: parserFor as typeof types.getTypeParser };
 
+export interface DatabaseOptions {
+  /** The most connections the pool opens. A test of the pool itself uses 1. */
+  max?: number;
+}
+
 /** The pool connects on the first query, not here. */
-export function createDatabase(connectionString: string): Database {
+export function createDatabase(connectionString: string, options: DatabaseOptions = {}): Database {
   return new Kysely<DB>({
     dialect: new PostgresDialect({
-      pool: new Pool({ connectionString, types: schoolDatesAsText }),
+      pool: new Pool({ connectionString, types: schoolDatesAsText, ...options }),
     }),
   });
 }

@@ -1,3 +1,4 @@
+export { branchIdSchema, type BranchId } from './branches.js';
 export type { Clock } from './clock.js';
 export {
   apiErrorSchema,
