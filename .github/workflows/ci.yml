@@ -8,9 +8,10 @@ on:
 permissions:
   contents: read
 
-# A newer push to a pull request stops the older run. Runs on main always finish.
+# A newer push to a pull request stops the older run. On main each commit has its
+# own group, so no run is cancelled or replaced by a later merge.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -18,8 +19,6 @@ env:
   # creates in the PostgreSQL service of this job. Never a real server.
   DATABASE_URL: postgres://sodiq_app:sodiq_app_local@localhost:5432/sodiq_dev
   DATABASE_MIGRATION_URL: postgres://sodiq_migrator:sodiq_migrator_local@localhost:5432/sodiq_dev
-  # The superuser of the service container, used once to run db/setup/local.sql.
-  PGPASSWORD: postgres
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
@@ -49,6 +48,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Create the database users and sodiq_dev
         run: psql -h localhost -U postgres -f db/setup/local.sql
+        env:
+          # The superuser of the service container; only this step uses it.
+          PGPASSWORD: postgres
       - name: Lint
         run: pnpm lint
       - name: Type-check
@@ -82,11 +84,17 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Create the database users and sodiq_dev
         run: psql -h localhost -U postgres -f db/setup/local.sql
+        env:
+          # The superuser of the service container; only this step uses it.
+          PGPASSWORD: postgres
       - name: Apply migrations
         run: pnpm db:migrate
       - name: Install Chromium
         run: pnpm --filter @sodiq/web exec playwright install --with-deps chromium
       - name: Browser tests
+        # Shorter than the job's limit: a run that hangs fails here, and the next
+        # step still keeps its traces.
+        timeout-minutes: 10
         run: pnpm test:e2e
       - name: Keep the Playwright traces of a failure
         if: failure()

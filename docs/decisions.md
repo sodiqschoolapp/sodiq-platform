@@ -7,9 +7,11 @@ Decisions about how the system is built, with the reason. Product rules are in `
 | Decision | Reason |
 | --- | --- |
 | One workflow with two jobs: `checks` (lint, type-check, unit and API tests) and `e2e` (Playwright) | The pull request shows which kind of check failed, and the browser tests do not wait for the others. The owner chose to run the browser tests on every pull request (spec `14`, Whole system). |
-| The workflow runs on pull requests and on pushes to `main` | `main` has its own result after each merge; the deploy of task 0.10 can depend on it. |
+| The workflow runs on pull requests and on pushes to `main` | `main` has its own result after each merge; the deploy of task 0.10 can depend on it. On `main` the concurrency group is the commit, so a later merge never cancels or replaces an earlier run; on a pull request a newer push stops the older run. |
 | CI creates its users and database with `db/setup/local.sql` and uses the public values of `.env.example` | One way to set up a database, on a developer machine and in CI. The PostgreSQL service lives only inside the job. |
 | Actions are pinned to a full commit, with the version in a comment | A tag can be moved to other code; a commit cannot. |
+| The PostgreSQL service is `postgres:18`, the official image, not pinned to a digest | CI should follow the minor releases of version 18, as the developer machines and Neon do. The image runs only the throwaway database of a job and never sees the repository token. |
+| The superuser password of the service is given only to the `psql` step | No other step needs it, and `pg` would quietly use it for a connection string without a password. |
 | The workflow's token may only read the repository (`permissions: contents: read`) | Nothing in CI writes to GitHub. |
 | No Turborepo remote cache | A whole run takes minutes at this size. Look again if CI becomes slow. |
 | A variable that a Turborepo task reads from the environment is named in that package's `turbo.json` (`DATABASE_URL` and `PORT` for the API's `dev`) | Turborepo passes a task only the variables it names. With `.env` the API reads the file itself, so the gap shows only where there is no `.env`: in CI the API did not start under `pnpm dev` until this was added. |
