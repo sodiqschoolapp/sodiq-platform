@@ -2,6 +2,21 @@
 
 Decisions about how the system is built, with the reason. Product rules are in `docs/spec/`, not here. Add an entry when a choice is made that a later session would otherwise question or undo.
 
+## 4 October 2026: audit log (task 0.5a)
+
+| Decision | Reason |
+| --- | --- |
+| Task 0.5 is split: 0.5a is the audit log, 0.5b is pg-boss and the worker | Two smaller reviews; the pg-boss half has unknowns (the rights its schema needs at run time) that are better reviewed alone. The owner chose this. |
+| Two audit tables with the same columns: `audit_log` (`branch_id` not null, the standard branch filter) and `audit_log_school` (events without a branch: sign-ins, relatives, appointments across branches), named school-wide in `catalog.test.ts` | The catalog rule refuses a branch table whose `branch_id` may be empty. With two tables the database itself keeps a branch reader to the branch's entries; who reads the school-wide table is the guard's work (2.6). The owner chose this over one school-wide table. |
+| `Audit.record(transaction, entry)` is the only way to write an entry; the transaction and `branchId` (a branch or `null`) are required | An entry cannot be written outside the transaction of its change, and nobody writes a school-wide entry by forgetting the branch. |
+| The monthly partitions come from the migration (October 2026 to December 2029) with a default partition per table; a test fails while fewer than 6 months remain | The application user cannot create tables. The owner chose this over a `SECURITY DEFINER` function called by a job. The default partition means a write never fails for a missing month. Month borders are UTC. |
+| The application user has select and insert on the two parent tables and no right on any partition; each partition of `audit_log` also has the branch filter | A partition that is read directly is not covered by the policy of its parent. Tests check the rights of every partition from the catalog. |
+| `actor_id`, `person_id` and `assignment_id` have no foreign key | Accounts and assignments arrive in 0.6a and 0.7; decide there. The exception is `branch_id`, which the catalog rule requires to reference `branches`. |
+| `person_id` is the person an entry is about; "search by person" (2.6) means the actor or that person | Decided by the owner on 4 October 2026. |
+| `actor_id` empty means the system (a server command, a job); which one goes into `details` | A column of its own is decided in 0.6a with the first Super Admin command. The owner agreed. |
+| `oldValue`, `newValue` and `details` left out or `null` are stored as an empty column, never as a JSON null | One meaning of "no value". A cleared field is recorded by name: `{ phone: null }`. |
+| No trigger stops the owner of the tables (`sodiq_migrator`) from changing audit rows | The developer rules ask it of the application's user. The migration user's password exists only in the deploy secret (0.10). |
+
 ## 4 October 2026: API foundations, database side (task 0.4b)
 
 | Decision | Reason |
