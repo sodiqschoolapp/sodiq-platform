@@ -8,3 +8,6 @@ pnpm-lock.yaml
 # Written by `pnpm db:codegen`; the test that compares it with the database
 # needs it exactly as generated.
 *.generated.ts
+
+# Written by `pnpm api:client`.
+*.generated.json

@@ -2,6 +2,17 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 October 2026: task 0.4a API foundations, HTTP side (in work; `/finish-task` completes this entry)
+
+Notes for later sessions, written while building:
+
+- 0.6a: cookie sessions need the SameSite setting and CSRF protection decided there. CORS is off and must stay off (`docs/decisions.md`).
+- 0.4a added no route to the running application; there is nothing new to list for 0.7. A real route uses `@ValidBody`, `@ValidQuery` and `@Returns` from `apps/api/src/http/schemas.ts`; `apps/api/src/testing/sample.controller.ts` is the example.
+- After changing a route or a shared schema: `pnpm api:client`, commit both generated files.
+- Route tests: `createTestApp({ clock: new FixedClock('2026-10-05T23:59:00+05:00'), controllers: [...] })`.
+- 0.4b: the task as split in `docs/build-plan.md`. Decided already: the branch filter is a list of branch ids, normally one, and nothing set shows no rows.
+- 0.10: `HOST=0.0.0.0` on Render; Sentry must not send more of an error than the log does.
+
 ## 4 October 2026: task 0.3 Continuous integration
 
 Built:

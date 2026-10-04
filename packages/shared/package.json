@@ -16,6 +16,9 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.build.json --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
   "devDependencies": {
     "@types/node": "catalog:",
     "typescript": "catalog:",

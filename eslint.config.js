@@ -32,6 +32,26 @@ export default defineConfig(
     },
   },
   {
+    // docs/spec/edge-cases/developer-rules.md, Time-based state: business code
+    // never reads the clock directly; it is passed in, so tests can set it.
+    files: ['apps/api/src/**/*.ts', 'packages/*/src/**/*.ts'],
+    ignores: ['**/*.test.ts', 'apps/api/src/testing/**', 'apps/api/src/clock/system-clock.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...[
+          "CallExpression[callee.object.name='Date'][callee.property.name='now']",
+          "NewExpression[callee.name='Date'][arguments.length=0]",
+          "CallExpression[callee.name='Date']",
+        ].map((selector) => ({
+          selector,
+          message:
+            'Do not read the system clock. Use the injected clock (CLOCK in apps/api, a Clock or a moment passed in elsewhere).',
+        })),
+      ],
+    },
+  },
+  {
     files: ['**/*.{js,mjs}'],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: { globals: globals.node },

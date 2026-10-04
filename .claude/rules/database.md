@@ -12,4 +12,5 @@ Read `docs/spec/edge-cases/developer-rules.md` before writing a migration.
 - A change that rewrites or locks a large table is split into two steps.
 - Each migration grants `sodiq_app` its rights table by table; no default privileges.
 - After a migration, run `pnpm db:migrate` and `pnpm db:codegen` and commit the generated types.
+- A moment that a business rule compares (locks, windows, exemption ends, lesson times) is written from the injected clock, never from SQL `now()` or `current_timestamp`. `default now()` is allowed only for bookkeeping columns that no rule reads.
 - Audit and history tables are append-only: the application user has no update or delete rights on them.

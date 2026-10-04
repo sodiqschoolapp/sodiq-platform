@@ -7,7 +7,7 @@
       "env": ["DATABASE_URL", "DATABASE_MIGRATION_URL"]
     },
     "dev": {
-      "env": ["DATABASE_URL", "PORT"]
+      "env": ["DATABASE_URL", "HOST", "PORT"]
     }
   }
 }

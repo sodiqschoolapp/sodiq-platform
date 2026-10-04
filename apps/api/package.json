@@ -11,17 +11,20 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "node dist/database/cli.js migrate",
-    "db:codegen": "kysely-codegen --dialect postgres --env-file ../../.env --url \"env(DATABASE_MIGRATION_URL)\" --date-parser string --out-file src/database/types.generated.ts"
+    "db:codegen": "kysely-codegen --dialect postgres --env-file ../../.env --url \"env(DATABASE_MIGRATION_URL)\" --date-parser string --out-file src/database/types.generated.ts",
+    "openapi": "node dist/openapi/cli.js"
   },
   "dependencies": {
     "@nestjs/common": "^12.1.2",
     "@nestjs/core": "^12.1.2",
     "@nestjs/platform-express": "^12.1.2",
+    "@nestjs/swagger": "^12.0.2",
     "@sodiq/shared": "workspace:*",
     "kysely": "^0.29.6",
     "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.8",

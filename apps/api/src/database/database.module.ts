@@ -1,5 +1,6 @@
 import { Global, Inject, Module, type OnApplicationShutdown } from '@nestjs/common';
-import { databaseUrl } from './config.js';
+import { CONFIG } from '../config/config.module.js';
+import type { AppConfig } from '../config/config.js';
 import { createDatabase, type Database } from './database.js';
 
 /** Injection token of the Kysely instance that connects as the application user. */
@@ -10,7 +11,8 @@ export const DATABASE = Symbol('DATABASE');
   providers: [
     {
       provide: DATABASE,
-      useFactory: (): Database => createDatabase(databaseUrl('DATABASE_URL')),
+      inject: [CONFIG],
+      useFactory: (config: AppConfig): Database => createDatabase(config.databaseUrl),
     },
   ],
   exports: [DATABASE],

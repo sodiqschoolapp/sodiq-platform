@@ -27,7 +27,11 @@ describe('placeholder page', () => {
     expect(screen.getByRole('status').textContent).toBe('API: checking…');
     await screen.findByText('API: reachable');
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/health');
+    // The generated client hands fetch a Request object.
+    const sent = fetchMock.mock.calls[0]?.[0];
+    expect(sent).toBeInstanceOf(Request);
+    expect(new URL((sent as Request).url).pathname).toBe('/api/health');
+    expect((sent as Request).method).toBe('GET');
   });
 
   it.each([
