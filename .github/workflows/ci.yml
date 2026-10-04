@@ -19,6 +19,7 @@ env:
   # creates in the PostgreSQL service of this job. Never a real server.
   DATABASE_URL: postgres://sodiq_app:sodiq_app_local@localhost:5432/sodiq_dev
   DATABASE_MIGRATION_URL: postgres://sodiq_migrator:sodiq_migrator_local@localhost:5432/sodiq_dev
+  SECOND_STEP_KEY: c29kaXEtbG9jYWwtc2Vjb25kLXN0ZXAta2V5LTAwMDE=
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:

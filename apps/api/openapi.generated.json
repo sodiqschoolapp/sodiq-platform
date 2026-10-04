@@ -85,6 +85,15 @@
                     "login": {
                       "type": "string"
                     },
+                    "secondStep": {
+                      "type": "string",
+                      "enum": [
+                        "not_needed",
+                        "pending",
+                        "set_up_required",
+                        "passed"
+                      ]
+                    },
                     "mustChangePassword": {
                       "type": "boolean"
                     },
@@ -95,6 +104,7 @@
                   },
                   "required": [
                     "login",
+                    "secondStep",
                     "mustChangePassword",
                     "passwordResetBy"
                   ],
@@ -134,6 +144,15 @@
                     "login": {
                       "type": "string"
                     },
+                    "secondStep": {
+                      "type": "string",
+                      "enum": [
+                        "not_needed",
+                        "pending",
+                        "set_up_required",
+                        "passed"
+                      ]
+                    },
                     "mustChangePassword": {
                       "type": "boolean"
                     },
@@ -144,6 +163,7 @@
                   },
                   "required": [
                     "login",
+                    "secondStep",
                     "mustChangePassword",
                     "passwordResetBy"
                   ],
@@ -340,6 +360,284 @@
           "Auth"
         ]
       }
+    },
+    "/api/auth/second-step": {
+      "post": {
+        "operationId": "TwoStepController_pass",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "login": {
+                      "type": "string"
+                    },
+                    "secondStep": {
+                      "type": "string",
+                      "enum": [
+                        "not_needed",
+                        "pending",
+                        "set_up_required",
+                        "passed"
+                      ]
+                    },
+                    "mustChangePassword": {
+                      "type": "boolean"
+                    },
+                    "passwordResetBy": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "login",
+                    "secondStep",
+                    "mustChangePassword",
+                    "passwordResetBy"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "TwoStep"
+        ]
+      },
+      "get": {
+        "operationId": "TwoStepController_overview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "on": {
+                      "type": "boolean"
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "recoveryCodesLeft": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "on",
+                    "required",
+                    "recoveryCodesLeft"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "TwoStep"
+        ]
+      }
+    },
+    "/api/auth/second-step/set-up": {
+      "post": {
+        "operationId": "TwoStepController_setUp",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "secret": {
+                      "type": "string"
+                    },
+                    "address": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "secret",
+                    "address"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "TwoStep"
+        ]
+      }
+    },
+    "/api/auth/second-step/confirm": {
+      "post": {
+        "operationId": "TwoStepController_confirm",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "recoveryCodes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "recoveryCodes"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "TwoStep"
+        ]
+      }
+    },
+    "/api/auth/second-step/turn-off": {
+      "post": {
+        "operationId": "TwoStepController_turnOff",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "TwoStep"
+        ]
+      }
     }
   },
   "info": {
@@ -372,6 +670,12 @@
                   "password_change_required",
                   "current_password_wrong",
                   "password_unchanged",
+                  "second_step_required",
+                  "second_step_set_up_required",
+                  "second_step_code_wrong",
+                  "second_step_already_on",
+                  "second_step_not_on",
+                  "second_step_cannot_turn_off",
                   "cross_site_request",
                   "request_key_reused",
                   "request_refused",

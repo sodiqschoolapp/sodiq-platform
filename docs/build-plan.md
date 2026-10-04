@@ -56,9 +56,14 @@ How to read the task lines:
   - Build: attempt limiting per account and device; reset by an administrator with a one-time password (as a service; its route comes in 2.3); idle sign-out after 30 minutes, 15 for the Super Admin and Academic Vice Principal; session list and "sign out everywhere". Password reset by email and the mail service moved to 2.3: an account has no email address before the staff records of 2.2.
   - Done when: tests cover each rule with the injected clock.
 
-- [ ] **0.6c Two-step sign-in and trusted devices**
+- [ ] **0.6c Two-step sign-in**
   - Read: the same files.
-  - Build: TOTP second step with recovery codes, required for the Super Admin and Academic Vice Principal; "Trust this device" for 7 days with no idle sign-out and no second step; the ways trust ends; list of trusted devices.
+  - Build: TOTP second step with recovery codes, required for the Super Admin and Academic Vice Principal (for every account until 0.7 brings the roles); the forced steps at sign-in; the secret stored encrypted; reset of the second step by an administrator (as a service; its route comes in 2.3).
+  - Done when: tests cover each rule with the injected clock, including the refusals.
+
+- [ ] **0.6d Trusted devices and account lock**
+  - Read: the same files.
+  - Build: "Trust this device" for 7 days with no idle sign-out (the sign-in that starts the trust still asks for the second step); every session ends 7 days after sign-in at the latest; the ways trust ends; list of trusted devices, where removing one ends that session; account lock and unlock (as a service; the routes come in 2.3).
   - Done when: tests cover trust ending on sign-out, password change, reset and account lock.
 
 - [ ] **0.7 Roles, assignments and the permission guard**
@@ -137,7 +142,7 @@ How to read the task lines:
 
 - [ ] **2.3 Accounts and role assignment screens**
   - Read: `02` (Head Teachers and Senior Head Teachers, Rules), `edge/people-roles-accounts` (Who can act, Accounts and sign-in).
-  - Build: Super Admin screens to create accounts and give roles per branch; Head Teacher appointments to subjects in a branch (at most one per subject per branch); Senior Head Teacher appointments to subjects across branches; subject scope in the permission guard; lock and unlock; the route for the password reset by an administrator (the service exists since 0.6b) with who may reset whom; password reset by email through a mail service that only logs locally, with the address taken from the staff record (moved from 0.6b; its routes are public and go into `PUBLIC_ROUTES`).
+  - Build: Super Admin screens to create accounts and give roles per branch; Head Teacher appointments to subjects in a branch (at most one per subject per branch); Senior Head Teacher appointments to subjects across branches; subject scope in the permission guard; lock and unlock; the route for the password reset by an administrator (the service exists since 0.6b) with who may reset whom; the route for the second-step reset by a Super Admin (the service exists since 0.6c); password reset by email through a mail service that only logs locally, with the address taken from the staff record (moved from 0.6b; its routes are public and go into `PUBLIC_ROUTES`).
   - Done when: the refusals in the spec are tested, including the last Super Admin rule, and tests cover each rule of the email reset with the injected clock.
 
 - [ ] **2.4 Student records**

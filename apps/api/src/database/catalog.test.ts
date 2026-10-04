@@ -22,6 +22,10 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'A session belongs to an account, not to a branch; a row holds ids, moments and the name of a browser.',
   known_devices:
     'A browser that signed in to an account before; an account has no branch. A row holds a token hash, an id and a moment.',
+  account_second_steps:
+    'The second step of sign-in belongs to an account, which has no branch; a row holds an encrypted secret, a count and moments.',
+  second_step_recovery_codes:
+    'Recovery codes of the second step of an account; a row holds an id, a hash and a moment.',
   sign_in_throttle:
     'Failed sign-ins are counted before any branch is known, also for logins that do not exist; a row holds hashes, a count and moments.',
 };

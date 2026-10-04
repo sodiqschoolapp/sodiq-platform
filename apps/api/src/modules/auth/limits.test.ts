@@ -10,6 +10,7 @@ import {
   cookieOf,
   errorCode,
   NEW_PASSWORD,
+  OptionalSecondStep,
   ProbeController,
   setCookies,
   signInKit,
@@ -33,7 +34,12 @@ describe('the limit on sign-in attempts', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    app = await createTestApp({ database: database.app, clock, controllers: [ProbeController] });
+    app = await createTestApp({
+      database: database.app,
+      clock,
+      controllers: [ProbeController],
+      secondStepRule: new OptionalSecondStep(),
+    });
     kit = signInKit(app);
   });
 

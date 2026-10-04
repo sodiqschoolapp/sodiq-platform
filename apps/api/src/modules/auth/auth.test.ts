@@ -9,6 +9,7 @@ import { DEVICE_COOKIE } from '../../http/device-cookie.js';
 import { SESSION_COOKIE } from '../../http/session-cookie.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
+import { OptionalSecondStep } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { Accounts, type CreatedAccount } from './accounts.service.js';
 import { CurrentSession } from './session.guard.js';
@@ -45,6 +46,9 @@ describe('sign-in, sessions and the password change', () => {
       database: database.app,
       clock,
       controllers: [ProbeController],
+      // This suite is about passwords and sessions: its accounts sign in with
+      // a password alone. The second step has its own suite (two-step.test.ts).
+      secondStepRule: new OptionalSecondStep(),
     });
     server = app.getHttpServer() as Server;
   });
@@ -159,6 +163,7 @@ describe('sign-in, sessions and the password change', () => {
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         login: 'a.karimov',
+        secondStep: 'not_needed',
         mustChangePassword: true,
         passwordResetBy: null,
       });
@@ -442,6 +447,7 @@ describe('sign-in, sessions and the password change', () => {
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         login: 'p.davronova',
+        secondStep: 'not_needed',
         mustChangePassword: true,
         passwordResetBy: null,
       });
@@ -582,6 +588,7 @@ describe('sign-in, sessions and the password change', () => {
       const session = await request(server).get('/api/auth/session').set('Cookie', cookie);
       expect(session.body).toEqual({
         login: 'u.davronova',
+        secondStep: 'not_needed',
         mustChangePassword: false,
         passwordResetBy: null,
       });
@@ -595,6 +602,7 @@ describe('sign-in, sessions and the password change', () => {
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         login: 'v.davronov',
+        secondStep: 'not_needed',
         mustChangePassword: false,
         passwordResetBy: null,
       });
