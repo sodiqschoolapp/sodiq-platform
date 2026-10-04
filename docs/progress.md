@@ -2,6 +2,54 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 October 2026: task 0.7b Permission table and guard
+
+Task 0.7b was split by the owner at the plan: 0.7b is the table, the guard, the declarations, the own-request helper and the harness; 0.7c is JSON bodies only, `Cache-Control: no-store`, the request key per account and the lint rule for `createParamDecorator` and `REQUEST`.
+
+Built:
+
+- `packages/shared/src/permissions.ts`: `ACTIONS` (view, create, edit, archive, export), `PERMISSIONS` (area, role, actions; no area yet), `permits`, and `checkTable` with three fixed rules: a row for each of the 15 roles, the Principal has view and export only, the Super Admin has every action any other role has. `BRANCH_HEADER` (`X-Branch-Id`) in `branches.ts`. Error codes `permission_denied` and `own_request`.
+- `apps/api/src/modules/access/`: `@AnySignedIn()`, `@Requires(area, action[, { branch: 'none' }])` (`access.decorators.ts`); the pure `decide` (`permission-check.ts`); `PermissionGuard` and `@CurrentAccess()` (`permission.guard.ts`), a second global guard after `SessionGuard`; `refuseOwnRequest` (`own-request.ts`); the token `PERMISSION_TABLE`.
+- The guard: exactly one declaration per route, else 500 and the route never runs; a `@Requires` route names its branch in `X-Branch-Id` (missing or malformed: 400 `validation_failed`); no permitting assignment in that branch, or a branch that does not exist: 403 `permission_denied`, the same answer; `Access` holds the account, the assignment that allowed the action (the first by id), the role and the branch.
+- The 12 own sign-in routes carry `@AnySignedIn()`; health and sign-in stay `@Public()`.
+- The harness: `src/testing/routes.ts` (`routesOf`, moved out of `public-routes.test.ts`, and `expressRoutesOf`), `src/testing/route-harness.ts`, and `modules/access/route-permissions.test.ts` with the hand-written `ROUTE_ACCESS` and `STEP_ROUTES`. It runs on the application as it is and on sample routes with a sample table (`src/testing/permission-sample.controller.ts`).
+- `KeyedSampleController` is now `POST /api/sample-notebooks/:notebookId/notes` with a declared permission and the branch from the guard; `request-key.test.ts` kept every check.
+- `.claude/rules/api.md` says how a route declares access; `docs/decisions.md` has the section of this task.
+- Reviewed by the spec reviewer and the permission reviewer. Neither found a way to a handler past the guard. Fixed from the reviews: the hand-written list now states the branch mode of a route (before, a branch route wrongly declared `branch: 'none'` would have passed the harness); a route with a permission that is also open to a session owing a step of sign-in is refused by the guard, named by the harness, and the routes with such a mark are pinned; `decide` names the two school-wide roles instead of relying on "no branch"; tests added (first by id through a request, the sample table against `checkTable`); the 403 is in OpenAPI for routes without a branch too.
+
+Left out, with the task that brings it:
+
+- JSON bodies only, `Cache-Control: no-store`, the request key per account (migration 0010), the lint rule for `createParamDecorator` and `REQUEST`: 0.7c.
+- Rows of real areas: each task from 1.1 on. Subject scope, Head Teacher appointments, routes to give roles, who may reset or lock whom: 2.3. Class scope: 3.1. Own-lesson scope: 5.x and 6.x.
+- A list of all branches for one request (the Super Admin reading every branch's log, the teacher home page): 2.6 and 5.9.
+- Roles and branches in the session answer, the switchers, menus from the table, the translations of the two new codes: 0.8a and 0.8c.
+- Who decides a request in place of its author: 7.2 and 8.4. No route calls `refuseOwnRequest` yet and nothing forces a deciding route to call it.
+- No route passes `access.assignmentId` to `audit.record` yet: the first `@Requires` route that changes something (1.1) does.
+
+Not done from the reviews, for the owner:
+
+- The Principal and the spec text: the edge case names three exceptions to "changes nothing" (own password, language, notification settings); sign-out, the second step and the removal of a trusted device are open to the Principal by the owner's decision, recorded in `docs/decisions.md` only. The permission reviewer advises a `/spec-change` so that spec and code say the same.
+- The quality plan asks for the owner's sign-off on a written checklist for a change to permissions; that checklist is task 10.3.
+- `{ branch: 'none' }` lets any role the table permits act without a branch (the sample table does it for a Head Teacher); `checkTable` has no rule that limits school-wide areas to the Super Admin and the Senior Head Teacher. Decide with the first such area (1.1).
+- `PERMISSIONS` is not frozen at run time. A route with `@All()` would crash the harness instead of being named. Small tests not written: a repeated `X-Branch-Id` header (read from the code: Node joins it and it fails the uuid check), HEAD on a `@Requires` route, a Super Admin naming an unknown branch (the Senior Head Teacher is tested).
+
+The next sessions must know:
+
+- A new route: one declaration on the handler, then a line in `ROUTE_ACCESS` (`route-permissions.test.ts`): `'public'`, `'any_signed_in'` or `{ roles, branch: 'request' | 'none' }`, the roles written by hand. A new area: an entry in `PERMISSIONS` with a row for each of the 15 roles; `checkTable` fails otherwise. Changing the table needs the owner.
+- A `@Requires` route takes `@CurrentAccess() access: Access`, runs `transactions.run(access.branchIds, ...)` and gives `access.assignmentId` to `audit.record`. Tests send `.set(BRANCH_HEADER, branchId)`.
+- Test controllers with a permission: `requiresInTable('sample', action)` and `createTestApp({ permissionTable: SAMPLE_PERMISSIONS })`; `permissionRows({...})` builds a row set. In the sample table a Head Teacher may view, create and edit, a Teacher may view. A test controller without a declaration answers 500 to a signed-in caller.
+- The harness callers are 15 accounts with one role each in one branch, one account without a role, and nobody. `accessProblems` needs the application made with `handlerStop: new StopBeforeHandler()`; the stop is on only while the harness runs, so no handler runs and no route needs a valid body. Scope by subject, class and own lessons is outside the harness: each route tests its own.
+- `route-permissions.test.ts` takes about 46 s alone (two applications, 17 sign-ins each). The full run was 188 s for the API tests with `maxWorkers: 4`.
+- 0.7c: the JSON-only middleware must leave room for a declared exception per route, because the lesson-plan file uploads of 9.x send multipart. The exception itself is not built in 0.7c (note of the owner).
+- 0.7c: the lint work could also stop business code from importing `src/testing/**` and `requiresInTable` (advice of the permission reviewer; `tsconfig.build.json` leaves `src/testing` out, but an import would pull a file into `dist`).
+- 2.3 and 3.1: `decide` names the first permitting assignment by role and branch. With scope, that can be the Teacher assignment when only the Head Teacher assignment covers the subject: the scope check needs every permitting assignment, and the audit entry the one whose scope fits.
+- 2.5 (Release 2): when Parent becomes a role without a branch, it does not get every branch: `decide` names `SCHOOL_WIDE_ROLES`.
+- 0.9: `APP_GUARD` also runs for Socket.IO gateways, and both guards assume an HTTP request; the gateway needs its own check at the handshake.
+- The harness reads controllers and the routes of the Express router. Something mounted with `app.use(path, router)` (static files, Swagger UI) or only in `main.ts` is not seen by it: nothing of the kind exists, and nothing that serves data may be added that way.
+- A `MaxListenersExceededWarning` in the API test output is older than this task (it shows on `main` in the auth suites).
+
+The next task is 0.7c.
+
 ## 4 October 2026: task 0.7a Roles and assignments
 
 Task 0.7 was split by the owner: 0.7a is the roles, the assignments and the sign-in rules that follow the roles; 0.7b is the permission table, the guard and the harness. The entry below this one is about the load of the API tests and belongs to this task.
