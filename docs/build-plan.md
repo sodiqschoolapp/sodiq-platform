@@ -81,7 +81,7 @@ How to read the task lines:
   - Build: JSON bodies only; `Cache-Control: no-store` on every answer; the request key tied to the account (migration 0010); the lint rule that keeps `createParamDecorator` and `REQUEST` inside `apps/api/src/http/` and the guard files.
   - Done when: a form-encoded body is refused, every answer carries `no-store`, and a key used by another account is refused with 409.
 
-- [ ] **0.8a Web shell: sign-in, layout and languages**
+- [x] **0.8a Web shell: sign-in, layout and languages**
   - Read: `12`, `02`.
   - Build: sign-in, password change and second-step screens; the app layout; i18next with Uzbek, Russian and English; a check that fails the build when a translation key is missing in any language.
   - Done when: Playwright signs in and out in each language.
