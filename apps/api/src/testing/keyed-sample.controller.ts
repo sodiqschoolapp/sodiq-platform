@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { RequestKeys } from '../database/request-keys.js';
 import { Transactions } from '../database/transactions.js';
 import { RequestKey, Returns, ValidBody, ValidParams } from '../http/schemas.js';
+import { Public } from '../modules/auth/session.guard.js';
 
 export const keyedSampleParamsSchema = z.object({ branchId: branchIdSchema });
 export const keyedSampleBodySchema = z.object({ label: z.string().min(1).max(50) });
@@ -30,6 +31,8 @@ export class KeyedSampleController {
   ) {}
 
   @Post(':branchId/notes')
+  // Public only because it never is part of the running application.
+  @Public()
   @Returns(keyedSampleResponseSchema, 201)
   create(
     @ValidParams(keyedSampleParamsSchema) params: KeyedSampleParams,

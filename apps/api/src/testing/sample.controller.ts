@@ -3,6 +3,7 @@ import type { Clock } from '@sodiq/shared';
 import { z } from 'zod';
 import { CLOCK } from '../clock/clock.module.js';
 import { Returns, ValidBody, ValidQuery } from '../http/schemas.js';
+import { Public } from '../modules/auth/session.guard.js';
 
 export const sampleBodySchema = z.object({
   name: z.string().min(1).max(50),
@@ -35,31 +36,36 @@ export const SAMPLE_ROW_VALUE = 'row-value-91c2';
 /**
  * Exists only in tests (docs/build-plan.md, task 0.4a: "a sample route"). It
  * shows the pieces every real route uses: validated input, the injected clock
- * and the one error shape. Pass it to `createTestApp({ controllers })`.
+ * and the one error shape. Pass it to `createTestApp({ controllers })`. Its
+ * routes are public: they are never part of the running application.
  */
 @Controller('sample')
 export class SampleController {
   constructor(@Inject(CLOCK) private readonly clock: Clock) {}
 
   @Post()
+  @Public()
   @Returns(sampleResponseSchema, 201)
   create(@ValidBody(sampleBodySchema) body: SampleBody): SampleResponse {
     return { ...body, receivedAt: this.clock.now().toISOString() };
   }
 
   @Get()
+  @Public()
   @Returns(sampleListSchema)
   list(@ValidQuery(sampleQuerySchema) query: SampleQuery): SampleQuery {
     return query;
   }
 
   @Get('refused')
+  @Public()
   refused(): never {
     throw new ForbiddenException(SAMPLE_SECRET);
   }
 
   /** Returns more than its schema knows, as a query with one column too many would. */
   @Get('extra-field')
+  @Public()
   @Returns(sampleListSchema)
   extraField(): SampleQuery {
     const row = { limit: 1, hidden: SAMPLE_SECRET };
@@ -68,6 +74,7 @@ export class SampleController {
 
   /** Returns something its schema refuses. */
   @Get('wrong-answer')
+  @Public()
   @Returns(sampleListSchema)
   wrongAnswer(): SampleQuery {
     const row: { limit: unknown } = { limit: SAMPLE_SECRET };
@@ -76,6 +83,7 @@ export class SampleController {
 
   /** Fails like a database error: the message names the fault, `detail` holds values of a row. */
   @Get('fault')
+  @Public()
   fault(): never {
     throw Object.assign(new Error(SAMPLE_SECRET), { detail: SAMPLE_ROW_VALUE });
   }

@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { Clock } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../clock/clock.module.js';
+import { ApiException } from '../http/api-exception.js';
 import { BRANCH_SETTING, type Transaction } from './transactions.js';
 import type { JsonValue } from './types.generated.js';
 
@@ -113,7 +114,7 @@ export class RequestKeys {
         throw new Error('A request key is taken but not visible to this transaction.');
       }
       if (stored.scope !== request.scope || !stored.same_input) {
-        throw new ConflictException('The request key was already used for another request.');
+        throw new ApiException('request_key_reused', 409);
       }
       if (stored.unfinished) {
         // Only this transaction can see an unfinished key: the key is being

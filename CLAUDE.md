@@ -62,6 +62,8 @@ pnpm test:e2e         browser tests (Playwright)
 pnpm db:migrate       apply SQL migrations to the local database
 pnpm db:codegen       regenerate Kysely types from the database
 pnpm api:client       regenerate the web API client from OpenAPI
+pnpm auth:first-account -- --first-name <name> --last-name <name>
+                      create the first account, once (prints login and first password)
 ```
 
 ## How to work on a task

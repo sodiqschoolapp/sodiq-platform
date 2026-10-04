@@ -2,6 +2,53 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 October 2026: task 0.6a Accounts and sessions
+
+Built:
+
+- `db/migrations/0005_accounts_sessions.sql`: `accounts` (login, Argon2id hash, forced change, expiry of the first password; no name) and `sessions` (hash of the token, start, end with reason). Both school-wide. The application user cannot delete an account, change a login, or delete or alter a session; it can only end one. A check constraint refuses a forced password change without an expiry.
+- `apps/api/src/modules/auth/`: `Accounts.create` (generated login, random first password valid 7 days, shown once), `Sessions` (sign-in, resolve, sign-out, password change), `SessionGuard` (global), `AuthController`, `FirstAccount` and the command `pnpm auth:first-account -- --first-name <name> --last-name <name>`.
+- Routes: `POST /api/auth/sign-in` (public), `GET /api/auth/session`, `POST /api/auth/password`, `POST /api/auth/sign-out`. `GET /api/health` is declared public on its handler.
+- `apps/api/src/http/`: `ApiException(code, status)` and eight new error codes; the session cookie (`__Host-sodiq_session`, read by hand); the cross-site check for changing requests; `@RequestId()`; `@ReturnsNothing()` (204).
+- Password hashing with Node's own `crypto.argon2` (no library); `engines.node` is `>=24.7 <25`.
+- Spec change, by the owner: a short list of routes works without sign-in (`docs/spec-changes.md`). `public-routes.test.ts` holds the exact list.
+- Reviewed by the spec reviewer and the permission reviewer. Fixed from the reviews: the public-routes test now sees inherited handlers; a first password older than 7 days is refused as the current password inside an open session; a login that cannot be a login (zero byte) no longer reaches the database; missing tests added (cross-site check with a real session, other parameters of a stored hash, two password changes at once, HEAD and other spellings of a path).
+- Hand test against `sodiq_dev`: command, sign-in, forced change, sign-out. The two accounts it made were removed afterwards by the owner's order; their audit entries remain in `audit_log_school`.
+
+Left out, with the task that brings it:
+
+- A route and screens to create accounts, lock and unlock, the last Super Admin rule: 2.3. The Super Admin assignment written by the command, `assignmentId` in audit entries, role, branch and scope checks, the route-by-role harness: 0.7.
+- Attempt limit, reset by an administrator and by email, idle sign-out, session list, "sign out everywhere", failed sign-ins as records: 0.6b. Second step and trusted devices: 0.6c.
+- Link from an account to a person or staff record, "inactive cannot sign in", re-hiring: 2.2. Printed slips and the "accounts never used" report: with the staff screens.
+- A request key tied to the account that sent it (noted for 0.6a in the 0.4b entry): moved to 0.7, where the guard supplies the account.
+- Screens and translations: 0.8a.
+- From the reviews, moved to 0.7 by the owner: accept JSON bodies only (a form-encoded body is accepted today; the cookie and the cross-site check still stand in front of it), and `Cache-Control: no-store` on API answers.
+- No test reaches the re-check of the password hash inside sign-in (a password change between the check and the session); the code was read by both reviewers.
+
+The next sessions must know:
+
+- Every route is refused without a session unless its handler has `@Public()` (`session.guard.ts`). A new public route is a decision for the owner and must be added to `PUBLIC_ROUTES` in `public-routes.test.ts` with a reason. `@Public()` works on a handler only.
+- A route gets the caller with `@CurrentSession() session: ActiveSession` (session id, account id, login). Never take an account id from the path or the body for "own" actions.
+- Route tests that need a signed-in caller: see `firstSession` and `fullSession` in `auth.test.ts` (create an account through `Accounts`, sign in, send the `Cookie` header by hand). Test-only controllers need `@Public()` on each handler or a session.
+- A coded refusal: add the code to `ERROR_CODES` (`packages/shared`), its text to `error-response.ts`, and throw `new ApiException(code, status)`.
+- A route without a body in its answer: `@ReturnsNothing()`. Audit entries of a route carry `@RequestId()`.
+- 0.6b: the attempt limit must also cover the current password of `POST /api/auth/password`. Idle sign-out goes into `Sessions.resolve`; public routes do not call it, so they do not refresh the last use. A reset must set `must_change_password` and `password_expires_at` together (24 hours). A session with an expired first password can only be read and signed out: it needs the reset. Signing in again leaves the old session of that browser open until it ends by time. `end_reason` has a check constraint: new reasons need a migration.
+- 0.6b, password reset by email: its routes are public and go into `PUBLIC_ROUTES`.
+- 0.7, two items from the 0.6a reviews: (1) accept only JSON bodies on the API (today a form-encoded body is parsed too, so a plain HTML form of another site can build a valid body; refuse other content types before the routes); (2) send `Cache-Control: no-store` on every API answer, so a shared classroom computer keeps no answer of a GET route.
+- 0.7: the permission guard builds on `SessionGuard`; `POST /api/auth/password` must stay allowed for every role, also the Principal. `Sessions.resolve` must refuse locked accounts once that state exists. The command must also write the Super Admin assignment and then refuse by "a Super Admin exists". The harness must list routes the way `routesOf` in `public-routes.test.ts` does (inherited handlers included) and should also look at the Express router for what is not a controller.
+- 0.9: a Socket.IO gateway is not behind `APP_GUARD` nor behind the cross-site check; it needs its own session check at the handshake.
+- 0.8a: the web client sends JSON and needs no CSRF token. The first Playwright sign-in shows whether Chromium accepts the `__Host-` cookie with `Secure` on `http://localhost`; if not, name and `Secure` become configuration (`docs/decisions.md`). The sign-in field should switch off auto-capitalisation: a login is compared exactly.
+- 0.10: Node 24.7 or later on Render. `trust proxy` must be set, or the `Origin` fallback of the cross-site check refuses HTTPS requests of browsers that send no `Sec-Fetch-Site`. The first-account command runs on the server as `node dist/modules/auth/cli.js first-account --first-name ... --last-name ...` with `DATABASE_URL` of `sodiq_app`.
+- In Git Bash here a heredoc also loses backslashes (`\\u`, `\\.` arrive as `\u`, `\.`): use the editor tools for anything with a backslash.
+
+The next task is 0.6b.
+
+## 4 October 2026: spec change, routes that work without sign-in
+
+Made at the start of task 0.6a (`docs/spec-changes.md`). The next sessions must know:
+
+- 8.3a: the health check must be exempt from the rule "every request carries the application version" (`edge/system-behaviour`): the uptime monitor cannot send a version.
+
 ## 4 October 2026: task 0.5b Jobs
 
 Built:

@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { ConflictException } from '@nestjs/common';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../testing/branch-filter-sql.js';
@@ -7,6 +6,9 @@ import { FixedClock } from '../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../testing/test-database.js';
 import { canonicalJson, RequestKeys } from './request-keys.js';
 import { Transactions, type Transaction } from './transactions.js';
+
+/** The refusal of a key that was used for something else: 409 with its own code. */
+const KEY_REUSED = { code: 'request_key_reused', status: 409 };
 
 const INSUFFICIENT_PRIVILEGE = '42501';
 
@@ -243,8 +245,8 @@ describe('request keys', () => {
       const runs = { count: 0 };
       await send(key, 'other action', runs);
 
-      await expect(send(key, 'other action', runs, 'timetable.publish')).rejects.toBeInstanceOf(
-        ConflictException,
+      await expect(send(key, 'other action', runs, 'timetable.publish')).rejects.toMatchObject(
+        KEY_REUSED,
       );
       expect(runs.count).toBe(1);
     });
@@ -254,7 +256,7 @@ describe('request keys', () => {
       const runs = { count: 0 };
       await send(key, 'input one', runs);
 
-      await expect(send(key, 'input two', runs)).rejects.toBeInstanceOf(ConflictException);
+      await expect(send(key, 'input two', runs)).rejects.toMatchObject(KEY_REUSED);
       expect(runs.count).toBe(1);
       expect(await entries('input two')).toBe(0);
     });
@@ -274,9 +276,9 @@ describe('request keys', () => {
         );
       await once([north]);
 
-      await expect(once([south])).rejects.toBeInstanceOf(ConflictException);
-      await expect(once([north, south])).rejects.toBeInstanceOf(ConflictException);
-      await expect(once([])).rejects.toBeInstanceOf(ConflictException);
+      await expect(once([south])).rejects.toMatchObject(KEY_REUSED);
+      await expect(once([north, south])).rejects.toMatchObject(KEY_REUSED);
+      await expect(once([])).rejects.toMatchObject(KEY_REUSED);
       expect(await once([north])).toMatchObject({ repeated: true });
       expect(runs.count).toBe(1);
     });
