@@ -7,7 +7,8 @@ export interface Credentials {
 }
 
 /** The keys of apps/api/src/testing/e2e/seed.ts. Each test has an account of its own. */
-export type AccountKey = 'uz' | 'ru' | 'en' | 'wrongPassword' | 'trust' | 'vicePrincipal';
+export type AccountKey =
+  'uz' | 'ru' | 'en' | 'wrongPassword' | 'trust' | 'patterns' | 'vicePrincipal';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

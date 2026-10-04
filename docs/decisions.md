@@ -2,6 +2,23 @@
 
 Decisions about how the system is built, with the reason. Product rules are in `docs/spec/`, not here. Add an entry when a choice is made that a later session would otherwise question or undo.
 
+## 5 October 2026: web shell: lists and page states (task 0.8b-1)
+
+| Decision | Reason |
+| --- | --- |
+| A list loads every row of its branch and searches, sorts and filters in the browser (`matchingRows` in `apps/web/src/components/list/list-state.ts`). The state of a list (`ListSearch`: search, order, filters, open record) lives in the address of its page; a list too long for the browser (the audit log, 2.6) keeps the same state in its address and asks the server | Decided by the owner: the lists of a branch are small (at most a few thousand rows) and the search must answer while typing, under 0.2 seconds (`12`, Speed targets). `12`, Navigation: every page has its own address, so links and the Back button work. |
+| "Tick all" ticks every row that matches the search and filters, also rows not drawn yet. Ticked rows stay ticked when the search changes; the bar says how many are ticked and how many of them the search does not show now. A bulk action is given every ticked row | "Tick all" decided by the owner. Keeping the ticks lets a person search for one name after another and tick each (the placing screens of 3.2). The spec does not say what happens to a ticked row that the search hides: the count of rows not shown is my answer to "a person sees what an action will touch"; the owner may decide otherwise. |
+| Only 100 rows are drawn at once, with "Show more"; a new search, filter or order starts from the top | A table of thousands of rows redrawn at every key would miss the 0.2 seconds on the school's older computers. No virtual scrolling library. |
+| Typing in the search box filters at once; the address follows 0.3 seconds after the last key and replaces the entry of the history. A filter, an order and an opened record add an entry | The router changes an address asynchronously: a box bound to the address loses letters typed quickly. The Back button undoes a filter or closes a record, and does not walk back through every letter. |
+| The search ignores case, composed letters, and the difference between the apostrophe of the keyboard and its look-alikes (U+02BB, U+02BC, U+2018, U+2019, the grave and acute accents) | A person types `o'` where the record has `oʻ`, and the other way round. |
+| Texts sort with `Intl.Collator` of the chosen language (numbers inside a text by value); a row without a value is last in both directions; rows that sort alike keep the order the list came in | A list sorted by score shows the students with a score first whichever way it is sorted. |
+| The hidden columns of a list are kept in the browser (`localStorage`, key `sodiq.list.<list>.hidden`), not on the account. The column that opens the record cannot be hidden | Decided by the owner. Without that column a record could not be opened. |
+| The Export button of a list hands the feature the matching rows and the keys of the columns shown; the list makes no file | `CLAUDE.md`: exports follow the role and are logged, so the server makes the file (`13`: ExcelJS). Each list brings its export route (from 2.2). |
+| The side panel is a region beside the list, not a dialog: the list stays usable and a click on another row moves the panel to that record. On a narrow screen it covers the page. Its heading takes the focus when it opens; Escape and its button close it and give the focus back to the row | `12`, Lists: "a side panel that opens a record without leaving the list"; Look and feel: full keyboard use. A dialog would lock the list behind it. |
+| Checkboxes of the table are plain HTML checkboxes, the filters plain HTML selects | As in 0.8a: they work with the keyboard, a screen reader and a phone without further code. "Some rows ticked" is the `indeterminate` property of the box. |
+| The sample list is the page `/dev/patterns`, with invented rows that live in the page. The route answers "no such page" unless `import.meta.env.DEV` is true, and the bundler leaves the page out of the built app. `?demo=empty`, `loading`, `error` and `many` show the states | "Done when: a sample list uses only the shared pieces." The browser tests and `pnpm dev` run Vite in development mode. Task 0.8b-2 adds the sample form. |
+| The table header is not sticky | The table scrolls sideways in its own box on a narrow screen, and a header cannot stick to the page from inside such a box without a fixed height. Decide with the first long list (2.2) whether the list gets a height of its own. |
+
 ## 5 October 2026: web shell: sign-in, layout and languages (task 0.8a)
 
 | Decision | Reason |

@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { FailureAlert } from '@/features/auth/form-helpers';
+import { FailureAlert } from '@/components/failure-alert';
 import { sessionQuery } from '@/features/auth/session';
 import { rememberTrustAsked, trustWasAsked } from '@/features/auth/trust-asked';
 import { useSignOut } from '@/features/auth/use-sign-out';

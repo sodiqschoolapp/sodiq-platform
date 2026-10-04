@@ -19,6 +19,7 @@ const WITHOUT_ROLE = {
   en: ['Kamila', 'Yusupova'],
   wrongPassword: ['Bobur', 'Karimov'],
   trust: ['Zarina', 'Tursunova'],
+  patterns: ['Malika', 'Sobirova'],
 } as const;
 
 type Credentials = { login: string; password: string };
