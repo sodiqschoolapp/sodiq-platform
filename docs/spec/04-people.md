@@ -81,6 +81,7 @@ A close relative is a person record of its own, not a set of fields inside the s
 - Teacher list columns: checkbox, number, photo, name, ID, category, branches, department, subjects, grades (7-sinf, 8-sinf), languages of instruction, phone, status. A last column shows the quarter average of the teacher's students.
 - Excel export as for students. An import is added later, in the format the school gives.
 - In Release 1 the Super Admin creates staff accounts; the Academic Vice Principal sees the teacher list. HR takes this over in Release 3.
+- **Vacancy.** A vacancy is a staff record that stands for a teacher not yet hired: a name such as "English vacancy 2", one branch, the Academic division and one department, subjects with the grades taught, languages of instruction, availability and contract load, and nothing personal. It has no staff ID, no account, no category and no roles; it cannot be a Tutor, a Head Teacher or hold any assignment. The Academic Vice Principal of the branch creates, edits, fills and closes it. The teacher list shows vacancies in a section of their own, and exports leave them out unless asked. Status: open or closed; its history lists every fill with the date, the person and the rows. A vacancy cannot be closed while a load row names it or a future lesson is under it. One that never held a load can be deleted; one that did is closed and kept.
 
 ## Movements
 

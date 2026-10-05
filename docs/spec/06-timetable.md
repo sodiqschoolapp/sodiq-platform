@@ -9,7 +9,7 @@ The timetable is generated automatically and then edited by hand in a grid, all 
 
 | Term | Meaning |
 | --- | --- |
-| Teaching load | For each class or group and subject: the teacher and the lessons per week. A lesson has one teacher. The timetable is built from the load and checked against it. |
+| Teaching load | For each class or group and subject: the teacher, or the vacancy that stands for a teacher not yet hired, and the lessons per week. A lesson has one teacher or one vacancy. The timetable is built from the load and checked against it. |
 | Version | One weekly pattern for a branch. It is valid from a start date until the next version starts. States: draft, published, archived. |
 | Pattern entry | Weekday, slot, class or group, subject, teacher, room. Repeats every week. |
 | Dated lesson | A real lesson on a real date, generated from the published pattern using the academic calendar and that day's template. On publishing, dated lessons are created up to the end of the academic year, so every future lesson has a date from the first day. Days off produce no lessons. A dated lesson is one column in the journal. |
@@ -25,7 +25,7 @@ The builder is one screen with a checklist of steps on the left, in the manner o
 | Step | What the Academic Vice Principal does | Ready when |
 | --- | --- | --- |
 | 1. Period and day template | Confirms the day template of each weekday. The start date is chosen at step 8; a version has no end date. | Every school weekday has a template. |
-| 2. Teaching load | For each class and group: subjects, lessons per week, teacher. Copied from an earlier version or year. | The weekly lessons of every class fit into the week's lesson slots, and every load has a teacher. |
+| 2. Teaching load | For each class and group: subjects, lessons per week, teacher. Copied from an earlier version or year. | The weekly lessons of every class fit into the week's lesson slots, and every load has a teacher or a vacancy. |
 | 3. Teachers | Availability by day and slot, most lessons per day, school days of part-time teachers. | No teacher has more lessons than free slots. |
 | 4. Rooms | Main classroom of each class; special rooms by subject (laboratory, sports hall, robotics). | Every subject that needs a special room has one. |
 | 5. Rules | Reviews the fixed rules, sets the weight of each preference, and pins lessons that must stay at a fixed time (for example the Homework slot at the end of the day). | Confirmed. |
@@ -84,6 +84,7 @@ Later and optional (Release 2): an assistant that takes a request in plain words
 | Blocked | No lesson on a day off, outside the academic year, or outside that day's lesson times. |
 | Blocked | The teacher must have that subject and grade in their profile. Inactive teachers, subjects and rooms cannot be used. |
 | Blocked | The teacher must be able to teach in the language of the class or group, unless the subject is outside the language rule. |
+| Blocked | A vacancy is bound by every blocked rule that binds a teacher: one place at a time, availability, subject and grade, language. The warnings on contract load and lessons per day apply to it as to a teacher. A vacancy is never offered as a substitute and never shown as free. |
 | Blocked | Between a teacher's lesson in one branch and their next lesson in another branch there is at least the travel time set for those two branches. |
 | Blocked | A lesson fills exactly one lesson slot of the day template. It cannot be placed in a break or lunch slot, across two slots, or at a time typed by hand. |
 | Blocked | All groups or parts of one split are in the same slot, so that every student of the class has a lesson at that time. |
@@ -116,6 +117,7 @@ Later and optional (Release 2): an assistant that takes a request in plain words
 - **Substitution.** The one way to put another teacher on a lesson. It can be started from a single lesson (pick a substitute for it) or from a teacher (mark them absent for one or more dates). In the second case the system lists all their lessons in the period and, for each, suggests teachers who are free in that slot: same subject first, then same department. Teachers who cannot teach in the class's language are listed last and marked. Either way one substitution record is kept: who was replaced, by whom, for which lessons and why. The substitute can enter and edit that lesson's column for the normal edit period. The rule check has one exception, described under Edge cases: when no teacher of the subject is free.
 - **Bulk cancel.** For an event: chosen classes, date and slots, with a reason.
 - **Extra lesson.** A one-day lesson added on a date; it appears in the journal like any other.
+- **Filling a vacancy.** When the teacher is hired, the Academic Vice Principal fills the vacancy with the person from a date, tomorrow at the earliest, for all of its load rows or the chosen ones. It is a permanent change: the system prepares and publishes a version that differs from the live one only in the teacher of those rows, with the impact preview and every rule of publishing. Every later published version that still names the vacancy is changed in the same way from its own start date, in the same step and the same preview; an open draft is marked out of date. The person must have the subject, grade and language of each row and be free at every dated lesson of the row from the fill date, in every branch, by the rules of publishing; a row with a blocked date stays with the vacancy and is listed, and the fill goes ahead for the rest. Lessons from the date go to the teacher as in "Teacher changed"; lessons already held under a substitute stay recorded under the substitute. A vacancy with no load left is closed.
 - **Permanent change.** Prepared in a draft, by hand or by regenerating, and published as a new version from a start date.
 
 ## What a change does to existing data
@@ -142,7 +144,7 @@ The rule behind every row: the past is never rewritten, and a journal belongs to
 - **Start date.** A permanent change starts on a chosen date, next Monday by default and tomorrow at the earliest. A change for today goes through a one-day change with a reason.
 - **Out-of-date draft.** If the live timetable changed after a draft was started, the draft must be brought up to date before publishing; the differences are shown.
 - **Everyone is told.** Each affected teacher receives a notice showing before and after. Changed lessons carry a "changed" mark on every timetable view for a week. Students and parents are told from Release 2.
-- **No lesson without a teacher or room.** When a teacher's status is set to inactive or left from a date, or a room is closed, the system lists the future lessons that depend on them and asks for a replacement, or marks them "needs a teacher" or "needs a room" on the Academic Vice Principal's home page. An account can always be locked at once, whatever lessons remain.
+- **No lesson without a teacher or room.** When a teacher's status is set to inactive or left from a date, or a room is closed, the system lists the future lessons that depend on them and asks for a replacement, or marks them "needs a teacher" or "needs a room" on the Academic Vice Principal's home page. An account can always be locked at once, whatever lessons remain. A dated lesson of a vacancy keeps the vacancy as its teacher and is "needs a teacher" from the day it is created; a substitute is recorded on it as for an absence.
 - **One source.** The platform always shows the timetable in force on the date being viewed. Printed and exported timetables carry the version number and "valid from" date, so an old printout can be recognised.
 - **Lesson plans follow.** Topics stay attached to lessons in order when lessons move.
 - **Withdraw.** A published version can be withdrawn only before its start date. After that, a correction is a new version.

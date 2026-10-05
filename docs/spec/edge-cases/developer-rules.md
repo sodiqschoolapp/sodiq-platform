@@ -8,7 +8,7 @@ These are the guarantees that must hold even if the application code has a fault
 | Rule | How |
 | --- | --- |
 | Lesson times | Every dated lesson stores its own start and end with time zone, copied when it is created. Ranges are half-open: a lesson ending at 09:45 does not overlap one starting at 09:45. |
-| Teacher in one place | Exclusion constraint on (teacher, time range) over lessons that are not cancelled and have a teacher, across all branches. |
+| Teacher in one place | Exclusion constraint on (teacher, time range) over lessons that are not cancelled and have a teacher, across all branches. A vacancy is a staff record and stays in the teacher column of its lessons while they are "needs a teacher", so the same constraint covers it. |
 | Room in one use | The same for rooms that are not shared; the "shared" flag is copied onto the lesson row so the constraint can read it. Shared rooms are limited by a trigger that counts simultaneous lessons and students. |
 | Class in one block | A table of (block, class, time range) with an exclusion constraint for blocks that are not cancelled. A constraint trigger checks that each student of a block's classes is in at most one of its lessons, using membership on the lesson date. |
 | Membership | One class per student per date, and one group per student per subject per date, by date ranges that cannot overlap. |
