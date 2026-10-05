@@ -16,7 +16,7 @@ The timetable is generated automatically and then edited by hand in a grid, all 
 | Parallel group lessons | All groups of one subject and one grade or pair of grades (7-M-1, 7-M-2 and so on) placed in the same period, each with its own teacher and room. Placed and moved as one block. |
 | Slot | A lesson slot of the day template. A lesson always fills exactly one lesson slot. Break and lunch slots cannot hold lessons, and no lesson can have a time typed by hand. |
 
-A timetable is not made for a month or a quarter. A version stays in force until a new version replaces it, and never runs past the end of the academic year. In practice the school publishes one version at the start of the year and a new one only when something changes: a new teacher, a changed load, a new quarter with different hours.
+A version is not bound to a month or a quarter: it stays in force until a new version replaces it, and never runs past the end of the academic year. In practice the school publishes one version per quarter, often all four before the year starts, and another when something changes: a new teacher, a changed load, a vacancy filled.
 
 ## Building a timetable
 
@@ -24,14 +24,14 @@ The builder is one screen with a checklist of steps on the left, in the manner o
 
 | Step | What the Academic Vice Principal does | Ready when |
 | --- | --- | --- |
-| 1. Period and day template | Confirms the day templates of each weekday, per grade range where they differ, from the table in School setup. The start date is chosen at step 8; a version has no end date. | The table of templates per weekday and grade is confirmed. |
+| 1. Period and day template | Sets the intended start date — next Monday by default, the first day of a coming quarter as a shortcut — and confirms the day templates of each weekday in force on that date, per grade range where they differ, from the table in School setup. A version has no end date. | The start date is set and the table of templates per weekday and grade is confirmed. |
 | 2. Teaching load | For each class and group: subjects, lessons per week, teacher. Copied from an earlier version or year. | The weekly lessons of every class fit into the week's lesson slots, and every load has a teacher or a vacancy. |
 | 3. Teachers | Availability by day and slot, most lessons per day, school days of part-time teachers. | No teacher has more lessons than free slots. |
 | 4. Rooms | Main classroom of each class; special rooms by subject (laboratory, sports hall, robotics). | Every subject that needs a special room has one. |
 | 5. Rules | Reviews the fixed rules, sets the weight of each preference, and pins lessons that must stay at a fixed time (for example the Homework slot at the end of the day). | Confirmed. |
 | 6. Generate | Starts generation and receives one or more variants, each with a score and a list of anything not placed. | A variant is chosen. |
 | 7. Edit in the grid | Drags, swaps, changes rooms and teachers, locks lessons and regenerates the rest. | The conflict panel shows no errors. |
-| 8. Review and publish | Reads the impact preview, chooses the start date, publishes. Print and export. | Published. |
+| 8. Review and publish | Reads the impact preview, confirms or changes the start date, publishes. Print and export. | Published. |
 
 A draft can also be started empty or copied from any earlier version, and built entirely by hand.
 
@@ -43,7 +43,7 @@ A draft can also be started empty or copied from any earlier version, and built 
 - "Suggest a place" on a selected lesson shows the best free slots, or a swap of two or three lessons that makes room for it.
 - A conflict panel lists every error and warning in the draft, with a button that jumps to the lesson.
 - Undo and redo. The draft saves by itself. Several people can view a draft; one edits at a time.
-- Publish: choose the start date (next Monday by default). The system shows the impact preview, then creates dated lessons from that date. A draft with errors cannot be published.
+- Publish: confirm the start date set at step 1, or change it — next Monday by default, the first day of a coming quarter as a shortcut, or any date; a changed date rechecks the draft against the templates and availability in force on it. The system shows the impact preview, then creates dated lessons from that date. A draft with errors cannot be published.
 
 ## Auto-generation
 
@@ -80,7 +80,7 @@ Later and optional (Release 2): an assistant that takes a request in plain words
 | Blocked | A teacher cannot be in two lessons at the same time. |
 | Blocked | A room cannot hold two lessons at the same time, unless the room is marked as shared (for example a sports hall). |
 | Blocked | A class cannot have two lessons at the same time. No student can be in two lessons at once; this covers a class lesson against a group lesson, and two groups that share a student. |
-| Blocked | A teacher cannot be placed outside the days and hours in their availability. |
+| Blocked | A teacher cannot be placed outside the days and hours in their availability. A draft is checked against the availability entry in force on its intended start date; dates on which a later entry applies are checked at publish and listed as warnings by date, because a version from that date is expected, and the lessons stay flagged until it is published. |
 | Blocked | No lesson on a day off, outside the academic year, or outside that day's lesson times. |
 | Blocked | The teacher must have that subject and every grade of the class or group in their profile. Inactive teachers, subjects and rooms cannot be used. |
 | Blocked | The teacher must be able to teach in the language of the class or group, unless the subject is outside the language rule. |
@@ -101,7 +101,7 @@ Later and optional (Release 2): an assistant that takes a request in plain words
 
 - **One person, one account.** The staff record lists a main branch and the other branches where the person works. The Teacher role is given per branch.
 - **Home page.** Today's lessons from all branches appear together in time order, each labelled with its branch. Teaching needs no branch switching.
-- **Availability per branch.** For each branch: the days and hours the teacher is there. Hours in two branches cannot overlap. Each branch's Academic Vice Principal edits the hours of own branch and sees the others read only.
+- **Availability per branch.** For each branch: the days and hours the teacher is there, as entries that each apply from a date. Hours in two branches cannot overlap on any date. Each branch's Academic Vice Principal edits the hours of own branch and sees the others read only.
 - **Travel time.** The Super Admin sets the travel time between each pair of branches. A lesson in one branch and the teacher's next lesson in another must be at least that far apart. This is blocked in the grid, in the generator and on the server.
 - **One clash check.** A teacher cannot be in two lessons at once, counted across all branches by clock time, also when the branches use different day templates.
 - **Busy elsewhere.** In a branch's timetable the teacher's lessons in other branches show as grey blocks marked with the branch. They cannot be moved from here, and the generator treats them, and the travel time around them, as fixed.
@@ -145,7 +145,7 @@ The rule behind every row: the past is never rewritten, and a journal belongs to
 - **Draft, then publish.** The live timetable is never edited in place. A permanent change is prepared in a draft and published in one step, so nobody sees a half-changed timetable.
 - **The past is closed.** Publishing or regenerating cannot change any lesson dated today or earlier. Today's lessons change only through a one-day change with a reason. A past lesson can only be corrected one at a time by the Academic Vice Principal, with a reason.
 - **Impact preview.** Before publishing, the system lists the teachers, classes and rooms affected, the lessons that will be created, moved and removed, any lesson holding data that blocks a removal, and who will be notified.
-- **Start date.** A permanent change starts on a chosen date, next Monday by default and tomorrow at the earliest. A change for today goes through a one-day change with a reason.
+- **Start date.** A permanent change starts on a chosen date, next Monday by default and tomorrow at the earliest, with the first day of each coming quarter offered as a shortcut. A change for today goes through a one-day change with a reason.
 - **Out-of-date draft.** If the live timetable changed after a draft was started, the draft must be brought up to date before publishing; the differences are shown.
 - **Everyone is told.** Each affected teacher receives a notice showing before and after. Changed lessons carry a "changed" mark on every timetable view for a week. Students and parents are told from Release 2.
 - **No lesson without a teacher or room.** When a teacher's status is set to inactive or left from a date, or a room is closed, the system lists the future lessons that depend on them and asks for a replacement, or marks them "needs a teacher" or "needs a room" on the Academic Vice Principal's home page. An account can always be locked at once, whatever lessons remain. A dated lesson of a vacancy keeps the vacancy as its teacher and is "needs a teacher" from the day it is created; a substitute is recorded on it as for an absence.
@@ -157,7 +157,7 @@ The rule behind every row: the past is never rewritten, and a journal belongs to
 
 - A dated lesson that already has attendance or marks cannot be deleted and cannot change its class, group or subject. Its teacher, room and time can change, with a log entry.
 - Forced delete is for Super Admin only, with a typed reason. The attendance and marks are kept for 30 days and can be restored.
-- Version history shows every version, compares two versions, and can reopen an old one as a new draft.
+- Version history shows every version in the order of their start dates, names the version in force on the first day of each quarter, compares two versions, and can reopen an old one as a new draft.
 - Every change records who, when, the value before and the value after.
 
 ## Views and outputs

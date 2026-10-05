@@ -75,7 +75,7 @@ A close relative is a person record of its own, not a set of fields inside the s
 | --- | --- |
 | Personal | Category (Tutor, Teacher, Head Teacher, Senior Head Teacher), photo, full name, sex, date of birth, education level, phone, email. Staff ID generated automatically (example SI-001). |
 | Academic | Branches: one main branch and any further branches where the person works. Division: one main division and any further divisions. Department: required in Academic, optional in other divisions; a teacher's subjects come from one department. Subjects, each with the grades taught (multiple). Languages of instruction: Uzbek, Russian or both. Classes taught, filled from the teaching load. Admission date. Contract type (full or part time) and date. |
-| Availability | Days and hours the teacher is at school, entered for each branch where they work. Used by the timetable. |
+| Availability | Days and hours the teacher is at school, entered for each branch where they work as entries that each apply from a date. Used by the timetable. |
 | Status | Active, inactive, left. |
 
 - Teacher list columns: checkbox, number, photo, name, ID, category, branches, department, subjects, grades (7-sinf, 8-sinf), languages of instruction, phone, status. A last column shows the quarter average of the teacher's students.
