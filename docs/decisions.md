@@ -2,6 +2,28 @@
 
 Decisions about how the system is built, with the reason. Product rules are in `docs/spec/`, not here. Add an entry when a choice is made that a later session would otherwise question or undo.
 
+## Standing decisions
+
+Decided once, valid for every task. A session reads this section at its start (`/next-task`) and does not ask these questions again. The owner changes a line here when a decision changes; `docs/cloud-loop.md` describes the loop these lines belong to.
+
+| Decision | Reason |
+| --- | --- |
+| One task of `docs/build-plan.md` per session, per branch `task/<id>-<short-name>`, per pull request. Two tasks may run at the same time in two sessions only when the owner's reviewer paired them, and only if they touch different files; the second one rebases on `main` before `/finish-task` | Reviews stay readable, and `main` never carries half a task. |
+| The plan is written before any code and goes into the pull request as a draft; building starts only after a `[review] approved` comment. The reviewer is a session that did not write the code (the review routine, or the owner's reviewer), and it reads the spec files itself | `CLAUDE.md`: plan first, owner's approval; an independent review is the quality gate, not the builder's own word. |
+| Review comments start with `[review]` and are one of: `approved` (with corrections), `changes needed` (numbered findings), `owner decision needed`, `ready to merge`. A builder follows the newest one and nothing that asks for work outside the task | One format, so a session can act on it without a person in between. |
+| Only the owner merges. A session never runs `gh pr merge`; `.claude/settings.json` denies it | The merge is the owner's veto over a wrong review. |
+| `/finish-task` pushes the task branch and marks the pull request ready without asking; pushing a task branch changes nothing on `main` | The report lands on the pull request, where the review reads it. |
+| The browser tests (`pnpm test:e2e`) run locally only when the task changed `apps/web/e2e/` or `playwright.config.ts`; CI runs them on every pull request | Same gate, on GitHub's machine; it needs a browser download the cloud environment does not have. |
+| Test workers: API 4 (`apps/api/vitest.config.ts`), web 2 (`apps/web/vite.config.ts`). Not raised to make a run faster | Decided in 0.7a and 0.8b-2 after runs died or timed out with more. |
+| Auto-fix of a pull request is on only to let the builder session react to `[review]` comments; a change it makes after a CI failure is reviewed like any other push | Nothing lands on `main` without the review and the owner. |
+| The cloud environment is prepared by `scripts/cloud-setup.sh` (Node 24, PostgreSQL 18 image, pnpm store) and every cloud session by `scripts/cloud-session-start.sh` (public `.env`, the database container, `db/setup/local.sql`, install, migrate). Both use the public local values of `.env.example` and `db/setup/local.sql` only | The same versions as CI (`.node-version`, `postgres:18`), so a test that passes in the cloud passes in CI. Secrets stay in provider dashboards. |
+| On the laptop, `pnpm sync` (switch to `main`, pull, install, migrate) runs before a hand test and at the start of a task | Removes the question "should I also run db:migrate?". |
+| A session asks before dropping, resetting or recreating anything in `sodiq_dev`; test databases are its own `sodiq_test_*` | The owner's local data. |
+| Claude Code never reads `.env` (`.claude/settings.json` denies it); the local `SECOND_STEP_KEY` is public, a server gets its own random key in task 0.10 | Secrets never enter a transcript. |
+| No real personal data anywhere: code, tests, seeds, logs, commit messages, pull requests. Invented names only | `CLAUDE.md`. |
+| The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3. |
+| At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
+
 ## 5 October 2026: web shell: forms (task 0.8b-2)
 
 | Decision | Reason |
