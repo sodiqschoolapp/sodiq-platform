@@ -13,7 +13,7 @@ The timetable is generated automatically and then edited by hand in a grid, all 
 | Version | One weekly pattern for a branch. It is valid from a start date until the next version starts. States: draft, published, archived. |
 | Pattern entry | Weekday, slot, class or group, subject, teacher, room. Repeats every week. |
 | Dated lesson | A real lesson on a real date, generated from the published pattern using the academic calendar and that day's template. On publishing, dated lessons are created up to the end of the academic year, so every future lesson has a date from the first day. Days off produce no lessons. A dated lesson is one column in the journal. |
-| Parallel group lessons | All groups of one subject and grade (7-M-1, 7-M-2 and so on) placed in the same period, each with its own teacher and room. Placed and moved as one block. |
+| Parallel group lessons | All groups of one subject and one grade or pair of consecutive grades (7-M-1, 7-M-2 and so on) placed in the same period, each with its own teacher and room. Placed and moved as one block. |
 | Slot | A lesson slot of the day template. A lesson always fills exactly one lesson slot. Break and lunch slots cannot hold lessons, and no lesson can have a time typed by hand. |
 
 A timetable is not made for a month or a quarter. A version stays in force until a new version replaces it, and never runs past the end of the academic year. In practice the school publishes one version at the start of the year and a new one only when something changes: a new teacher, a changed load, a new quarter with different hours.
@@ -82,9 +82,9 @@ Later and optional (Release 2): an assistant that takes a request in plain words
 | Blocked | A class cannot have two lessons at the same time. No student can be in two lessons at once; this covers a class lesson against a group lesson, and two groups that share a student. |
 | Blocked | A teacher cannot be placed outside the days and hours in their availability. |
 | Blocked | No lesson on a day off, outside the academic year, or outside that day's lesson times. |
-| Blocked | The teacher must have that subject and grade in their profile. Inactive teachers, subjects and rooms cannot be used. |
+| Blocked | The teacher must have that subject and every grade of the class or group in their profile. Inactive teachers, subjects and rooms cannot be used. |
 | Blocked | The teacher must be able to teach in the language of the class or group, unless the subject is outside the language rule. |
-| Blocked | A vacancy is bound by every blocked rule that binds a teacher: one place at a time, availability, subject and grade, language. The warnings on contract load and lessons per day apply to it as to a teacher. A vacancy is never offered as a substitute and never shown as free. |
+| Blocked | A vacancy is bound by every blocked rule that binds a teacher: one place at a time, availability, subject and grades, language. The warnings on contract load and lessons per day apply to it as to a teacher. A vacancy is never offered as a substitute and never shown as free. |
 | Blocked | Between a teacher's lesson in one branch and their next lesson in another branch there is at least the travel time set for those two branches. |
 | Blocked | A lesson fills exactly one lesson slot of the day template. It cannot be placed in a break or lunch slot, across two slots, or at a time typed by hand. |
 | Blocked | All groups or parts of one split are in the same slot, so that every student of the class has a lesson at that time. |
