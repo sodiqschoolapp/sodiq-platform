@@ -39,8 +39,8 @@ Do the steps in this order, one per task, so that a piece that misbehaves is the
 Ask Claude Code, in a session on `main`, to make these changes and commit them (it asks for approval; the file holds permissions, so it is changed by hand and never by a script):
 
 - Move `Bash(git push *)` and `PowerShell(git push *)` out of `ask`; add to `allow`: `Bash(git push -u origin task/*)`, `Bash(git push origin task/*)` and the same two for PowerShell. Any other push form still asks, because it is in no list.
-- Add to `allow`, for Bash and for PowerShell: `gh pr list *`, `gh pr view *`, `gh pr diff *`, `gh pr checks *`, `gh pr checkout *`, `gh pr create *`, `gh pr edit *`, `gh pr ready *`, `gh pr comment *`, `gh label *`.
-- Add to `deny`, for Bash and for PowerShell: `gh pr merge *` and `git push -f *`.
+- Add to `allow`, for Bash and for PowerShell: `gh api repos/sodiqschoolapp/sodiq-platform/*` and `gh pr ready *`. The skills use the REST form of the GitHub commands because cloud sessions cannot use GraphQL, which most `gh pr …` commands need.
+- Add to `deny`, for Bash and for PowerShell: `gh pr merge *` and `git push -f *`. A merge through the REST form cannot be written as a rule; the skills forbid it and only the owner merges.
 - Add the session-start hook:
 
 ```json

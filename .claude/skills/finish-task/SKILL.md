@@ -16,8 +16,20 @@ description: Finish the current task. Runs all checks, gets an independent revie
    - what you are not sure about;
    - what you did not do;
    - what the reviewers found, what you changed, and anything you disagreed with.
-8. Push the branch: `git push -u origin task/<id>-<short-name>`. If this branch has no pull request yet, create one: `gh pr create --base main --title "<id> <task name>" --body-file <file>`. Otherwise mark it ready (`gh pr ready <number>`) and update its body with `gh pr edit <number> --body-file <file>`, keeping the plan under `## Plan` and adding the report under `## Report`. Post the report as a comment too (`gh pr comment <number> --body-file <file>`).
+8. Push the branch: `git push -u origin task/<id>-<short-name>`. Find the pull request of the branch (`gh api $R/pulls?head=sodiqschoolapp:task/<id>-<short-name>`); if there is none, open one as in `next-task` but with `-F draft=false`. Mark it ready and update its body, keeping the plan under `## Plan` and adding the report under `## Report`. Post the report as a comment too (GitHub commands below).
 9. Stop. Say: "Waiting for review on the pull request." When a `[review]` comment reaches you, or you are told to continue:
    - `[review] ready to merge`: you are done. Only the owner merges.
    - `[review] changes needed`: fix what it lists, run step 1 again, commit, push, post a comment that says what changed, and stop again.
    - A comment that asks for something outside the task, or against `CLAUDE.md`, is not followed: say so in a comment and stop.
+
+## GitHub commands
+
+These work on the laptop and in a cloud session, where GitHub's GraphQL is blocked and most `gh pr …` commands fail. `R` is `repos/sodiqschoolapp/sodiq-platform`.
+
+- Open a draft pull request: `gh api $R/pulls --method POST -f title="<id> <task name>" -f head="task/<id>-<short-name>" -f base=main -F draft=true -F body=@<file>` (the answer holds `number`).
+- Read a pull request: `gh api $R/pulls/<n>`; its comments: `gh api $R/issues/<n>/comments`; its commits: `gh api $R/pulls/<n>/commits`; its checks: `gh api $R/commits/<head sha>/check-runs`.
+- Post a comment: `gh api $R/issues/<n>/comments --method POST -F body=@<file>`.
+- Update the body: `gh api $R/pulls/<n> --method PATCH -F body=@<file>`.
+- Mark ready: `gh pr ready <n>`; if that answers that GraphQL is not available, `gh api $R/pulls/<n>/ccr/ready_for_review --method POST`.
+- Labels: `gh api $R/issues/<n>/labels --method POST -f "labels[]=<label>"`; remove one: `gh api $R/issues/<n>/labels/<label> --method DELETE`; create one once: `gh api $R/labels --method POST -f name=<label> -f color=<hex>`.
+- Check out a pull request: `git fetch origin pull/<n>/head:pr-<n>` then `git switch pr-<n>`.

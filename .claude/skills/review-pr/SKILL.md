@@ -11,8 +11,8 @@ You are the independent reviewer. You did not write this code and you do not tru
 
 ## Find the pull request
 
-1. If a number or an address was given above, or a `routine-fire-payload` block names one, review that pull request. Otherwise list the open pull requests against `main`: `gh pr list --state open --base main --json number,title,isDraft,headRefName,updatedAt` and review every one whose newest `[review]` comment is older than its last push (`gh pr view <n> --json comments,commits`), or that has no `[review]` comment yet. If nothing needs a review, say so and stop.
-2. Read it: `gh pr view <n> --json title,body,isDraft,headRefName,labels` and `gh pr view <n> --comments`. The body holds the plan under `## Plan` and, once the work is done, the report under `## Report`.
+1. If a number or an address was given above, or a `routine-fire-payload` block names one, review that pull request. Otherwise list the open pull requests against `main` (`gh api "$R/pulls?state=open&base=main"`) and review every one whose newest `[review]` comment is older than its last commit, or that has no `[review]` comment yet. If nothing needs a review, say so and stop.
+2. Read it: the pull request, its comments and its commits (GitHub commands below). The body holds the plan under `## Plan` and, once the work is done, the report under `## Report`.
 3. Find the task in `docs/build-plan.md` by the id at the start of the title. Read the task, every spec file it lists in full, `docs/spec/edge-cases/00-definitions.md`, `docs/progress.md`, and the "Standing decisions" section of `docs/decisions.md`. A pull request without a task id (a spec change, tooling) is reviewed against `CLAUDE.md` and the files it touches.
 
 ## A draft pull request: review the plan
@@ -30,8 +30,8 @@ You are the independent reviewer. You did not write this code and you do not tru
 
 ## A ready pull request: review the code
 
-6. Check out the branch (`gh pr checkout <n>`). Read `git diff main...HEAD --stat` and the whole diff; read every changed file in full where the diff is not enough to judge it.
-7. Read the result of CI: `gh pr checks <n>`. If the environment has the database, also run `pnpm lint`, `pnpm typecheck` and `pnpm test`.
+6. Check out the branch (GitHub commands below). Read `git diff main...HEAD --stat` and the whole diff; read every changed file in full where the diff is not enough to judge it.
+7. Read the result of CI for the head commit. If the environment has the database, also run `pnpm lint`, `pnpm typecheck` and `pnpm test`.
 8. Check, naming the file and line for every finding:
    - every spec rule of the task is built as worded and has a test; every edge case of the edge-case files that the task covers has a test;
    - calculations only in `packages/calc`, exact arithmetic, no floating point, rounding once at the end;
@@ -49,11 +49,23 @@ You are the independent reviewer. You did not write this code and you do not tru
 9. Post one comment:
    - `[review] ready to merge`, with at most three remarks that need no change; or
    - `[review] changes needed`, with numbered findings: file and line, the rule it breaks (spec file and heading, or the `CLAUDE.md` rule), and what is wrong.
-   Then set the label `review-ready` or `review-changes` on the pull request (`gh pr edit <n> --add-label … --remove-label …`; create the two labels once with `gh label create` if they do not exist). If labels cannot be set, the comment is enough.
+   Then set the label `review-ready` or `review-changes` on the pull request and remove the other (create the two labels once if they do not exist). If labels cannot be set, the comment is enough.
 
 ## Rules
 
 - Do not praise. Do not suggest features the spec does not ask for.
 - When the spec is silent or unclear, say so; never fill the gap with a rule of your own.
 - A `[review]` comment newer than the last push means there is nothing to do.
-- Never run `git push`, `gh pr merge`, `gh pr ready`, or any command that changes the repository or the pull request beyond comments and labels.
+- Never run `git push`, `gh pr merge`, `gh pr ready`, a `PUT` on `…/merge`, or any command that changes the repository or the pull request beyond comments and labels.
+
+## GitHub commands
+
+These work on the laptop and in a cloud session, where GitHub's GraphQL is blocked and most `gh pr …` commands fail. `R` is `repos/sodiqschoolapp/sodiq-platform`.
+
+- Open a draft pull request: `gh api $R/pulls --method POST -f title="<id> <task name>" -f head="task/<id>-<short-name>" -f base=main -F draft=true -F body=@<file>` (the answer holds `number`).
+- Read a pull request: `gh api $R/pulls/<n>`; its comments: `gh api $R/issues/<n>/comments`; its commits: `gh api $R/pulls/<n>/commits`; its checks: `gh api $R/commits/<head sha>/check-runs`.
+- Post a comment: `gh api $R/issues/<n>/comments --method POST -F body=@<file>`.
+- Update the body: `gh api $R/pulls/<n> --method PATCH -F body=@<file>`.
+- Mark ready: `gh pr ready <n>`; if that answers that GraphQL is not available, `gh api $R/pulls/<n>/ccr/ready_for_review --method POST`.
+- Labels: `gh api $R/issues/<n>/labels --method POST -f "labels[]=<label>"`; remove one: `gh api $R/issues/<n>/labels/<label> --method DELETE`; create one once: `gh api $R/labels --method POST -f name=<label> -f color=<hex>`.
+- Check out a pull request: `git fetch origin pull/<n>/head:pr-<n>` then `git switch pr-<n>`.
