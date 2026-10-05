@@ -90,6 +90,7 @@ Later and optional (Release 2): an assistant that takes a request in plain words
 | Blocked | All groups or parts of one split are in the same slot, so that every student of the class has a lesson at that time. |
 | Warning | Room capacity is smaller than the class or group. |
 | Warning | Teacher's weekly lessons exceed the contract load. |
+| Warning | A teacher has more lessons in a day than the teacher's most lessons per day. |
 | Warning | A class has more lessons in a day than the daily maximum in settings. |
 | Warning | The same subject twice in one day for a class; a free period in the middle of a class's day. |
 | Warning | Lessons placed per week differ from the teaching load. This is a warning while editing a draft and blocks publishing, unless the load row is marked "deliberately short" with a reason. |
