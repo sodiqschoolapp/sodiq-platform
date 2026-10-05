@@ -18,6 +18,7 @@ Every teacher must have a lesson plan for each class or group they teach, for ea
 
 - One plan for each class or group, subject and quarter. The form shows one row for every dated lesson of the quarter, with number and date already filled; the teacher fills in the rest.
 - A teacher who teaches the same subject to several classes of one grade (7 Oxford and 7 Princeton) can share one plan between them, if the classes have the same language of instruction. It is written once, and each class has its own dates. A shared plan can be separated later.
+- A group of two grades (Classes, groups and subjects, "Group") has its own plan like any group. Where a plan rule names a grade, both of its grades count: the plan can be copied from a master or a plan of either grade, can be shared only with groups of the same two grades and language, is readable by teachers who have the subject and either grade in their profile, and appears under both grades in the Head Teacher's side-by-side view.
 - A plan can be copied from another class, from another teacher of the same subject and grade, or from last year.
 - A plan is complete when every lesson of the quarter has a topic. Classwork and homework can be left empty for any lesson.
 - A plan is required for every graded subject. Attendance-only subjects, which are the Homework slot and Ma'naviyat soati, have no plan. This is not a setting.
