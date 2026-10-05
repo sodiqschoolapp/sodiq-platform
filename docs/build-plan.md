@@ -91,10 +91,15 @@ How to read the task lines:
   - Build: the shared table; the shared list pattern (search, filters, column chooser, sorting, checkboxes with bulk actions, export, side panel), which loads the whole list of a branch and searches, sorts and filters in the browser, with room for server paging (2.6); the page header with breadcrumbs; empty, loading and error patterns; a sample list for development. Split off from 0.8b by the owner.
   - Done when: a sample list uses only the shared pieces.
 
-- [ ] **0.8b-2 Web shell: forms and shell tools**
-  - Read: `12` (One pattern everywhere, No lost work, Look and feel), `14` (Whole system), `edge/developer-rules`.
-  - Build: the form pattern (a Save button on record forms, each field checked as it is typed, a warning before leaving with typed changes); the confirmation dialog for actions that cannot be undone, which names what will be affected; Ctrl+K search (pages only for now; records are added as they are built), without a further library; the feedback button with its school-wide table and route (roles from the session, never from the body); the unsent-changes banner (typed and not saved, or a save that failed; the journal queue of 8.3c joins it); the theme switch, kept in the browser; the review of the look (contrast only; brand colour and logo come as a small task when the owner provides them). Undo waits for the first action that offers it.
-  - Done when: a sample form uses only the shared pieces, and a feedback report reaches the table with the page and the roles of the session.
+- [x] **0.8b-2 Web shell: forms**
+  - Read: `12` (One pattern everywhere, No lost work, Look and feel).
+  - Build: the form pattern (a Save button on record forms, each field checked as it is typed, a warning before leaving with typed changes); the confirmation dialog for actions that cannot be undone, which names what will be affected; the unsent-changes banner (typed and not saved, or a save that failed; the journal queue of 8.3c joins it); a sample form for development. Undo waits for the first action that offers it. Split off from 0.8b by the owner.
+  - Done when: a sample form uses only the shared pieces.
+
+- [ ] **0.8b-3 Web shell: shell tools**
+  - Read: `12` (One pattern everywhere, Look and feel), `14` (Whole system), `edge/developer-rules`.
+  - Build: Ctrl+K search (pages only for now; records are added as they are built), without a further library; the feedback button, inside the layout only, with its school-wide table and route in a module `feedback` (roles from the session, never from the body; the page is the path without the query; at most 20 reports a day per account; no audit entry; the owner reads the table until a screen exists); the theme switch (light, dark, as the device), kept in the browser; the review of the look (contrast to WCAG 2.1 AA only; brand colour and logo come as a small task when the owner provides them). Split off from 0.8b-2 by the owner.
+  - Done when: a feedback report reaches the table with the page and the roles of the session, and the contrast test passes in both themes.
 
 - [ ] **0.8c Web shell: menus and home pages per role**
   - Read: `02`, `08` (Home pages by role).

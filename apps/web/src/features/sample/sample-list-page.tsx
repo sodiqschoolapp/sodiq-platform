@@ -1,3 +1,4 @@
+import type { SampleRecord } from '@sodiq/shared';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,10 +12,11 @@ import {
 } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { SampleForm } from './sample-form';
 import { sampleRows, type SampleRow } from './sample-rows';
 
 /** The states of a list a developer can look at: `?demo=empty` and so on. */
-const DEMOS = ['empty', 'loading', 'error', 'many'] as const;
+const DEMOS = ['empty', 'loading', 'error', 'many', 'save-fails'] as const;
 
 export type Demo = (typeof DEMOS)[number];
 
@@ -31,9 +33,11 @@ export function sampleSearch(search: Record<string, unknown>): SampleSearch {
 }
 
 /**
- * Task 0.8b-1, done when: "a sample list uses only the shared pieces". For
- * development and the tests; the page does not open in the built app. Its rows
- * are invented and live in the page: nothing is asked of the server.
+ * Tasks 0.8b-1 and 0.8b-2, done when: "a sample list uses only the shared
+ * pieces" and "a sample form uses only the shared pieces". For development and
+ * the tests; the page does not open in the built app. Its rows are invented
+ * and live in the page: nothing is asked of the server. `?demo=save-fails`
+ * shows a save that is refused.
  */
 export function SampleListPage() {
   const { t, i18n } = useTranslation();
@@ -42,6 +46,7 @@ export function SampleListPage() {
 
   const [archived, setArchived] = useState<ReadonlySet<string>>(new Set());
   const [exported, setExported] = useState<number | null>(null);
+  const [edited, setEdited] = useState<ReadonlyMap<string, SampleRecord>>(new Map());
 
   const rows = useMemo(() => {
     if (demo === 'loading' || demo === 'error') {
@@ -50,10 +55,12 @@ export function SampleListPage() {
     if (demo === 'empty') {
       return [];
     }
-    return sampleRows(demo === 'many' ? 2500 : 240).map((row): SampleRow =>
-      archived.has(row.id) ? { ...row, status: 'archived' } : row,
-    );
-  }, [demo, archived]);
+    return sampleRows(demo === 'many' ? 2500 : 240).map((row): SampleRow => ({
+      ...row,
+      ...edited.get(row.id),
+      status: archived.has(row.id) ? 'archived' : row.status,
+    }));
+  }, [demo, archived, edited]);
 
   const columns = useMemo(
     (): Column<SampleRow>[] => [
@@ -125,9 +132,17 @@ export function SampleListPage() {
         run: (ticked) => {
           setArchived((before) => new Set([...before, ...ticked.map((row) => row.id)]));
         },
+        confirm: (ticked) => ({
+          title: t('sample.archiveTitle', {
+            count: ticked.length,
+            n: new Intl.NumberFormat(i18n.language).format(ticked.length),
+          }),
+          text: t('sample.archiveText'),
+          action: t('sample.archive'),
+        }),
       },
     ],
-    [t],
+    [t, i18n.language],
   );
 
   const open = (next: SampleSearch, how: 'push' | 'replace'): void => {
@@ -179,16 +194,18 @@ export function SampleListPage() {
           setExported(matching.length);
         }}
         panel={(row) => (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-            <dt className="text-muted-foreground">{t('sample.class')}</dt>
-            <dd>{classOf(row)}</dd>
-            <dt className="text-muted-foreground">{t('sample.language')}</dt>
-            <dd>{t(row.language === 'uz' ? 'sample.uzbek' : 'sample.russian')}</dd>
-            <dt className="text-muted-foreground">{t('sample.status')}</dt>
-            <dd>{t(row.status === 'active' ? 'sample.active' : 'sample.archived')}</dd>
-            <dt className="text-muted-foreground">{t('sample.score')}</dt>
-            <dd>{row.score}</dd>
-          </dl>
+          <SampleForm
+            key={row.id}
+            row={row}
+            onSave={async (record) => {
+              // As a call of the server: the answer comes a moment later.
+              await Promise.resolve();
+              if (demo === 'save-fails') {
+                throw new ApiFailure('no_answer');
+              }
+              setEdited((before) => new Map(before).set(row.id, record));
+            }}
+          />
         )}
       />
     </>

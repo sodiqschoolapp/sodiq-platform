@@ -3,6 +3,8 @@ import { RouterProvider, type RouterHistory } from '@tanstack/react-router';
 import type { i18n as I18n } from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import { ApiFailure, type FailureCode } from '@/api/failure';
+import { ConfirmProvider } from '@/components/confirm-dialog';
+import { UnsentProvider } from '@/components/unsent/unsent-changes';
 import { forgetSession, refreshSession, SESSION_CHANGED_CODES } from '@/features/auth/session';
 import { createAppRouter, type AppRouter } from './router';
 
@@ -26,7 +28,9 @@ export function createShell(history?: RouterHistory): Shell {
     }
     if (error.code === 'not_signed_in') {
       forgetSession(queryClient);
-      void router.navigate({ to: '/sign-in', search: { reason: 'ended' } });
+      // Nothing can be saved without a session, so the warning before leaving
+      // with typed changes is not asked (decided by the owner, task 0.8b-2).
+      void router.navigate({ to: '/sign-in', search: { reason: 'ended' }, ignoreBlocker: true });
       return;
     }
     // The pages' own guards send the tab to the step the session owes now.
@@ -56,7 +60,11 @@ export function App({ i18n, shell }: AppProps) {
   return (
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={shell.queryClient}>
-        <RouterProvider router={shell.router} />
+        <ConfirmProvider>
+          <UnsentProvider>
+            <RouterProvider router={shell.router} />
+          </UnsentProvider>
+        </ConfirmProvider>
       </QueryClientProvider>
     </I18nextProvider>
   );

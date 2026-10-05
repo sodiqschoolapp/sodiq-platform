@@ -1,0 +1,250 @@
+import type { SampleRecord } from '@sodiq/shared';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { useState } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { describe, expect, it, vi } from 'vitest';
+import { ApiFailure } from '@/api/failure';
+import { ConfirmProvider } from '@/components/confirm-dialog';
+import { UnsentProvider, useLeave, useUnsent } from '@/components/unsent/unsent-changes';
+import { SampleForm } from '@/features/sample/sample-form';
+import type { SampleRow } from '@/features/sample/sample-rows';
+import { createI18n } from '@/i18n/i18n';
+import type { Language } from '@/i18n/languages';
+import { en } from '@/i18n/locales/en';
+import { uz } from '@/i18n/locales/uz';
+
+const ROW: SampleRow = {
+  id: 'sample-0002',
+  name: 'Bekzod Abdullayev',
+  grade: 6,
+  className: 'Cambridge',
+  language: 'uz',
+  status: 'active',
+  score: 77,
+};
+
+const LEAVE = 'leave';
+
+/** Something beside the form that would take it away, and what it was answered. */
+function Leaver() {
+  const { leave } = useLeave();
+  const unsent = useUnsent();
+  const [answers, setAnswers] = useState<readonly boolean[]>([]);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          void leave().then((leaves) => {
+            setAnswers((before) => [...before, leaves]);
+          });
+        }}
+      >
+        {LEAVE}
+      </button>
+      <output data-testid="answers">{answers.join(',')}</output>
+      <output data-testid="unsent">{unsent.map((entry) => entry.state).join(',')}</output>
+    </>
+  );
+}
+
+type Save = (record: SampleRecord) => Promise<void>;
+
+function renderForm(save: Save, language: Language = 'en') {
+  render(
+    <I18nextProvider i18n={createI18n(language)}>
+      <ConfirmProvider>
+        <UnsentProvider>
+          <SampleForm row={ROW} onSave={save} />
+          <Leaver />
+        </UnsentProvider>
+      </ConfirmProvider>
+    </I18nextProvider>,
+  );
+}
+
+/** A save whose answer the test gives when it wants. */
+function heldSave() {
+  const answers: { saved: () => void; refused: () => void }[] = [];
+  const save = vi.fn<Save>(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        answers.push({
+          saved: resolve,
+          refused: () => {
+            reject(new ApiFailure('no_answer'));
+          },
+        });
+      }),
+  );
+  const answer = async (index: number, how: 'saved' | 'refused'): Promise<void> => {
+    await act(async () => {
+      answers[index]?.[how]();
+      await Promise.resolve();
+    });
+  };
+  return { save, answer };
+}
+
+const score = () => screen.getByLabelText<HTMLInputElement>(en.sample.score);
+
+const type = (value: string): void => {
+  fireEvent.change(score(), { target: { value } });
+};
+
+const pressSave = (): void => {
+  fireEvent.submit(screen.getByRole('form'));
+};
+
+const savedSign = () => within(screen.getByRole('form')).getByRole('status').textContent;
+
+const unsent = () => screen.getByTestId('unsent').textContent;
+
+const answers = () => screen.getByTestId('answers').textContent;
+
+const tryToLeave = (): void => {
+  fireEvent.click(screen.getByRole('button', { name: LEAVE }));
+};
+
+// docs/spec/12-ux-standards.md, No lost work: a visible saved sign. The sign
+// must be true while a save is on its way.
+describe('a record form while its save is on the way', () => {
+  it('does not say "Saved" of what was typed after Save was pressed', async () => {
+    const { save, answer } = heldSave();
+    renderForm(save);
+    type('90');
+    pressSave();
+
+    type('91');
+    await answer(0, 'saved');
+
+    expect(savedSign()).toBe('');
+    expect(unsent()).toBe('typed');
+
+    // The next Save sends what is in the fields now.
+    pressSave();
+    await answer(1, 'saved');
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save.mock.calls[1]?.[0].score).toBe(91);
+    expect(savedSign()).toBe(en.form.saved);
+    expect(unsent()).toBe('');
+  });
+
+  it('sends once when Save is pressed twice', async () => {
+    const { save, answer } = heldSave();
+    renderForm(save);
+    type('90');
+
+    pressSave();
+    pressSave();
+    await answer(0, 'saved');
+
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(savedSign()).toBe(en.form.saved);
+  });
+
+  // The warning before leaving must say what is true: it waits for the answer.
+  it('lets the person leave without a question when the save arrives', async () => {
+    const { save, answer } = heldSave();
+    renderForm(save);
+    type('90');
+    pressSave();
+
+    tryToLeave();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(answers()).toBe('');
+    await answer(0, 'saved');
+
+    await waitFor(() => {
+      expect(answers()).toBe('true');
+    });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    // Nothing was dropped: the field holds what was saved.
+    expect(score().value).toBe('90');
+  });
+
+  it('asks when the save is refused, and keeps what was typed when the person stays', async () => {
+    const { save, answer } = heldSave();
+    renderForm(save);
+    type('90');
+    pressSave();
+
+    tryToLeave();
+    await answer(0, 'refused');
+
+    const dialog = await screen.findByRole('alertdialog', { name: en.unsent.leaveTitle });
+    expect(within(dialog).getByText(ROW.name)).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.stay }));
+
+    await waitFor(() => {
+      expect(answers()).toBe('false');
+    });
+    expect(score().value).toBe('90');
+    expect(unsent()).toBe('failed');
+  });
+});
+
+describe('the question about leaving', () => {
+  it('is asked once when two things ask at the same moment, and answers both', async () => {
+    renderForm(() => Promise.resolve());
+    type('90');
+
+    tryToLeave();
+    tryToLeave();
+
+    const dialog = await screen.findByRole('alertdialog', { name: en.unsent.leaveTitle });
+    expect(screen.getAllByRole('alertdialog')).toHaveLength(1);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.leave }));
+
+    await waitFor(() => {
+      expect(answers()).toBe('true,true');
+    });
+    // Leaving by choice drops what was typed.
+    expect(score().value).toBe('77');
+    expect(unsent()).toBe('');
+  });
+});
+
+describe('a record form whose save was refused', () => {
+  it('is no longer unsaved once the fields hold what is saved again', async () => {
+    renderForm(() => Promise.reject(new ApiFailure('no_answer')));
+    type('90');
+    pressSave();
+    expect((await screen.findByRole('alert')).textContent).toBe(en.problems.noAnswer);
+    expect(unsent()).toBe('failed');
+
+    type('77');
+
+    expect(unsent()).toBe('');
+    expect(screen.queryByRole('alert')).toBeNull();
+    tryToLeave();
+    await waitFor(() => {
+      expect(answers()).toBe('true');
+    });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+});
+
+// docs/spec/12-ux-standards.md, Language: every message in the three languages.
+describe('the messages of a field', () => {
+  it('are said in Uzbek', () => {
+    renderForm(() => Promise.resolve(), 'uz');
+    const name = screen.getByLabelText<HTMLInputElement>(uz.sample.name);
+
+    fireEvent.change(name, { target: { value: 'B' } });
+
+    expect(screen.getByText(uz.form.tooShort_other.replace('{{n}}', '2'))).toBeDefined();
+    fireEvent.change(screen.getByLabelText(uz.sample.grade), { target: { value: '6,5' } });
+    expect(screen.getByText(uz.form.wholeNumber)).toBeDefined();
+  });
+
+  // A message that arrives while typing is read out.
+  it('arrive in a region a screen reader follows', () => {
+    renderForm(() => Promise.resolve());
+
+    type('101');
+
+    const message = screen.getByText(en.form.tooBig.replace('{{max}}', '100'));
+    expect(message.parentElement?.getAttribute('aria-live')).toBe('polite');
+  });
+});

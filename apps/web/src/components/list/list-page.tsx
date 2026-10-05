@@ -2,7 +2,9 @@ import { cn } from 'cn';
 import { Columns3Icon, DownloadIcon, SearchIcon } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useConfirm, type Confirmation } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
+import { useLeave } from '@/components/unsent/unsent-changes';
 import { SidePanel } from '@/components/side-panel';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -42,6 +44,12 @@ export interface BulkAction<Row> {
   label: string;
   /** Given every ticked row, also those the search and filters do not show now. */
   run: (rows: Row[]) => void;
+  /**
+   * With it the action asks first (docs/spec/12-ux-standards.md, No lost
+   * work: actions that cannot be undone ask for confirmation and name what
+   * will be affected). The list adds the names of the ticked rows.
+   */
+  confirm?: (rows: Row[]) => Pick<Confirmation, 'title' | 'text' | 'action' | 'destructive'>;
 }
 
 interface ListPageProps<Row> {
@@ -238,6 +246,29 @@ export function ListPage<Row>({
           },
         };
 
+  const confirm = useConfirm();
+  const { unsent, leave } = useLeave();
+
+  /**
+   * Another record in the panel, or none. The record that is open may hold a
+   * form with typed changes: the person is asked first, and the panel stays
+   * as it is when they stay.
+   */
+  const openRecord = (id: string | undefined): void => {
+    if (id === state.open) {
+      return;
+    }
+    if (!unsent()) {
+      change({ open: id }, 'push');
+      return;
+    }
+    void leave().then((leaves) => {
+      if (leaves) {
+        change({ open: id }, 'push');
+      }
+    });
+  };
+
   const openId = panel === undefined ? undefined : state.open;
   const openRow = openId === undefined ? undefined : rows?.find((row) => rowId(row) === openId);
 
@@ -386,7 +417,18 @@ export function ListPage<Row>({
                   size="sm"
                   disabled={ticked.size === 0}
                   onClick={() => {
-                    action.run(tickedRows);
+                    if (action.confirm === undefined) {
+                      action.run(tickedRows);
+                      return;
+                    }
+                    void confirm({
+                      ...action.confirm(tickedRows),
+                      names: tickedRows.map(rowName),
+                    }).then((went) => {
+                      if (went) {
+                        action.run(tickedRows);
+                      }
+                    });
                   }}
                 >
                   {action.label}
@@ -435,13 +477,7 @@ export function ListPage<Row>({
               }}
               selection={selection}
               openId={openId}
-              onOpen={
-                panel === undefined
-                  ? undefined
-                  : (id) => {
-                      change({ open: id }, 'push');
-                    }
-              }
+              onOpen={panel === undefined ? undefined : openRecord}
             />
             {/* Read out as the search narrows the list. */}
             <div aria-live="polite" className="grid justify-items-start gap-2">
@@ -494,8 +530,9 @@ export function ListPage<Row>({
                 ? t('list.recordGoneTitle')
                 : rowName(openRow)
           }
+          recordKey={openId}
           onClose={() => {
-            change({ open: undefined }, 'push');
+            openRecord(undefined);
           }}
         >
           {rows === undefined ? (

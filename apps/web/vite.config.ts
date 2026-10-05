@@ -25,5 +25,11 @@ export default defineConfig({
     // tooling: tests of generated files; they run in Node, not in a browser-like page.
     include: ['src/**/*.test.{ts,tsx}', 'tooling/**/*.test.ts'],
     setupFiles: ['./src/test-setup.ts'],
+    // At most this many test files at once, as in the API (apps/api/vitest.config.ts).
+    // A page test draws the whole app in jsdom; with one file per processor the
+    // first test of the sample list, 2 seconds alone, ran past its 5 seconds in
+    // the full run once a further file of page tests existed (task 0.8b-2).
+    // `pnpm test` runs these beside the API tests, which take 4 processors.
+    maxWorkers: 2,
   },
 });

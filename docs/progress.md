@@ -2,6 +2,61 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 5 October 2026: task 0.8b-2 Web shell: forms
+
+Split by the owner at the plan: 0.8b-2 is the form pattern, the confirmation dialog, the leave warning, the unsent-changes sign and the sample form; the new task 0.8b-3 has Ctrl+K, the feedback button with its table and route, the theme switch and the contrast review. Where an older entry below names 0.8b-2 for one of those four, read 0.8b-3.
+
+Built:
+
+- The record form (`apps/web/src/components/form/`): `useRecordForm` (schema of `packages/shared`, the typed texts, `read`, `save`) and `RecordForm` (the fields, the refusal of a save, the Save button, the sign "Saved"). A field says what to fix once it was typed into, every field after Save; Save puts the focus into the first wrong field. The texts for the kinds of issue are `form.*`; `wholeNumber` reads a number field.
+- Fields (`components/field.tsx`): `Field` as before, `NumberField`, `SelectField`; the message of a field is in a live region.
+- The confirmation dialog (`components/confirm-dialog.tsx`): `ConfirmProvider` in `App`, `useConfirm()`; the first 10 names and "and N more". shadcn component added: `alert-dialog`. A bulk action of a list asks when it has `confirm`.
+- Unsaved changes (`components/unsent/unsent-changes.tsx`): the store of the tab, `UnsentGuard` and `UnsentBanner` in the layout, `useLeave()`. The list asks before another record is opened or the panel is closed; sign-out asks; the browser asks at reload and tab close.
+- The sample: the side panel of `/dev/patterns` is a form of the row (`features/sample/sample-form.tsx`, schema `sampleRecordSchema` in `packages/shared/src/sample.ts`); `?demo=save-fails` refuses the save; "Archive" asks first.
+- Tests: `record-form.test.tsx` (a save on its way, the question asked once, a refused save, Uzbek messages), `sample-form.test.tsx` (the whole app: fields, Save, the sign, leaving, sign-out, the confirmation of a bulk action), `form-messages.test.ts`, and the browser test `e2e/forms.spec.ts` with the account `forms` (keyboard entry, the Back button, the question of the browser).
+- Reviewed by the spec reviewer. No route was added or changed, so no permission review. Fixed from the review: "Saved." stood beside text typed while the save was on its way; the question about leaving said "will be lost" while a save landed anyway (it now waits for the answer); saving a changed name threw the focus to the heading of the panel; the focus after "Stay" at sign-out; one question for the tab; a refused save stayed "failed" after the old values were typed back; an open question could outlive its page; field messages were not read out while typing; the Russian archive question; missing tests added.
+
+Left out, with the task that brings it:
+
+- Ctrl+K, the feedback button, the theme switch, the contrast review, a text-area field: 0.8b-3.
+- Undo: with the first action that offers it (decided by the owner).
+- Other kinds of field (date, checkbox, a choice with search): with the first form that needs them.
+
+Decided by the owner at the plan:
+
+- A record with typed changes: another row, closing the panel and Escape ask; a search, a filter or an order behind it does not.
+- When the session ends while something is typed, the text is lost without a question. The sign-in box over the page of 8.3c may later serve record forms too.
+- For 0.8b-3: the feedback code is a new module `feedback` (the owner adds the name to `CLAUDE.md`); at most 20 reports a day per account, refused with `too_many_attempts`; no audit entry; the owner reads the table until a screen exists; the button inside the layout only; the page is the path without the query; the theme is light, dark or as the device, "as the device" by default; contrast to WCAG 2.1 AA.
+
+Open, for the owner:
+
+- The Uzbek and Russian wording of the new texts (`form.*`, `confirm.*`, `unsent.*`, the additions to `sample.*`) was not reviewed by anybody yet.
+- `.claude/rules/web.md` gained two lines (forms; confirmations and `useLeave`).
+- The web tests run at most 2 files at once (`apps/web/vite.config.ts`); they take about 115 s inside `pnpm test`. The first test of the sample list is the one that ran past 5 seconds under load; it draws 100 rows in jsdom and takes 2 s alone.
+
+Not done from the review:
+
+- If the open row leaves the list while its form has typed changes (archived by somebody else, a reload of the rows), the panel shows "record not in the list" and the text is gone without a question. Not reachable in the sample; settle it with the first real list that edits in the panel (2.2).
+- When sign-out fails after "Leave without saving", the person is still on the page and the typed text is gone; they had agreed to lose it.
+- A field message that appears moves the fields below it. `12` says "never jumps" of loading; left as it is.
+- The button of the unsaved-changes sign is named by its state ("Changes not saved"), not by what it does.
+- A number of 16 digits or more gets the message "enter a whole number".
+- Not looked at in a real browser by a person: the dialog and the form in the dark theme, the top bar with the sign at phone width. 0.8b-3 reviews the look.
+
+The next sessions must know:
+
+- A new form: `const form = useRecordForm({ schema, initial, read, save })`, then `<RecordForm form={form} label={name of the record}>` with `<Field label={...} {...form.bind('field')} />`. `initial` is texts; `read` turns them into what the schema checks (`wholeNumber(text)` for a number, `?? null` for an empty one). `save` throws the refusal (`answerOf`). A form for another record gets `key={id}`. Copy `sample-form.tsx`.
+- The web app does not import `zod`: a schema comes from `packages/shared`, and `FormSchema` in `form-messages.ts` is what the form reads of it. A kind of issue without a text of its own gets `form.invalid`; a feature gives its own with `message`.
+- Asking before an action: `if (await confirm({ title, text, names, action })) ...`. Whatever takes a form away without a change of page: `const { unsent, leave } = useLeave()`, then `if (await leave()) ...`. A navigation that must not ask passes `ignoreBlocker: true`.
+- `SidePanel` needs `recordKey`. The top bar has a `role="status"` of its own: a test looks for the status of a page inside `main`, and for the top bar's in the first `header`.
+- The history of the unit tests does not ask at Back and has no `beforeunload`: such a rule is tested in `e2e/`.
+- A test of a save on its way: `heldSave()` in `record-form.test.tsx`.
+- Page tests are faster on a narrowed list (`?q=abdullayev` draws 20 rows).
+- 8.3c: the journal queue joins the store with entries of its own (`useUnsentEntry`: `label`, `state`, `discard`, `focus`, `settled`); "leave" calls `discard`, which a queue that must survive must not treat as "delete".
+- The full run: API tests 47 files, 1056 tests, about 5m15s; web tests 11 files, 196 tests; browser tests 8, about 1m20s.
+
+The next task is 0.8b-3.
+
 ## 5 October 2026: task 0.8b-1 Web shell: lists and page states
 
 Split by the owner at the plan: 0.8b-1 is the table, the list pattern and the page states; 0.8b-2 is the form pattern, the confirmation dialog, Ctrl+K, the feedback button with its table and route, the unsent-changes banner, the theme switch and the review of the look. Where an older entry below names 0.8b, read the one of the two that has the piece.
