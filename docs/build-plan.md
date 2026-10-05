@@ -91,7 +91,7 @@ How to read the task lines:
   - Build: the shared table; the shared list pattern (search, filters, column chooser, sorting, checkboxes with bulk actions, export, side panel), which loads the whole list of a branch and searches, sorts and filters in the browser, with room for server paging (2.6); the page header with breadcrumbs; empty, loading and error patterns; a sample list for development. Split off from 0.8b by the owner.
   - Done when: a sample list uses only the shared pieces.
 
-- [ ] **0.8b-2 Web shell: forms**
+- [x] **0.8b-2 Web shell: forms**
   - Read: `12` (One pattern everywhere, No lost work, Look and feel).
   - Build: the form pattern (a Save button on record forms, each field checked as it is typed, a warning before leaving with typed changes); the confirmation dialog for actions that cannot be undone, which names what will be affected; the unsent-changes banner (typed and not saved, or a save that failed; the journal queue of 8.3c joins it); a sample form for development. Undo waits for the first action that offers it. Split off from 0.8b by the owner.
   - Done when: a sample form uses only the shared pieces.
