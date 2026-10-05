@@ -145,7 +145,7 @@ How to read the task lines:
 
 - [ ] **1.5 Slot types and day templates**
   - Read: `03`, `06` (Model), `edge/time-dates-calendar`.
-  - Build: slot types (lesson or break, length in minutes); day templates as an ordered list of slots with calculated times; default template, weekday templates, special-date templates and templates per grade range; the order in which a special date (for a grade range, then for the branch), weekday with grade range, weekday, grade range and the default decide the template of a class on a date.
+  - Build: slot types (lesson or break, length in minutes); day templates as an ordered list of slots with calculated times; default template, weekday templates, special-date templates and templates per grade range; the order in which a special date (for a grade range, then for the branch), weekday with grade range, weekday, grade range and the default decide the template of a class on a date; the table of the resulting template per weekday and grade, shown again with the changes marked as the preview when a template is saved at any level.
   - Done when: times are never typed, reordering recalculates them, and a lesson can only sit in a lesson slot.
 
 - [ ] **1.6 Settings and the setup checklist**
@@ -161,7 +161,7 @@ How to read the task lines:
   - Done when: a graded subject cannot be saved with weights that do not total 100.
 
 - [ ] **2.2 Staff records**
-  - Read: `04` (Teacher and staff record), `03` (Divisions), `edge/people-roles-accounts` (Staff over time).
+  - Read: `04` (Teacher and staff record), `03` (Divisions), `02` (roles table), `06` (Rules), `edge/people-roles-accounts` (Who can act, Staff over time), `edge/timetable` (After publishing).
   - Build: staff record with main and further branches, main and further divisions, department, subjects with grades, languages of instruction, availability per branch, and status with dates; the staff list with the columns in the spec, filters and Excel export; vacancies (a staff record for a teacher not yet hired; no account, no roles).
   - Done when: availability in two branches cannot overlap and status changes keep history.
 
@@ -193,7 +193,7 @@ How to read the task lines:
   - Done when: the database refuses a student in two classes on one date and the Tutor language rule is enforced.
 
 - [ ] **3.2 Groups and splits**
-  - Read: `05`, `06` (Model), `edge/timetable` (Structure), `edge/students-classes-groups`.
+  - Read: `05`, `06` (Model, Rules), `03` (Slot types and day templates), `edge/timetable` (Structure), `edge/time-dates-calendar`, `edge/students-classes-groups`.
   - Build: groups across classes and splits of one class; membership by date ranges, one group per student per subject per date (database constraint); group language rules; the bulk placement screen; the list of students not yet placed; a group across two grades, lessons only in slots with the same times in both grades' templates.
   - Done when: every student of the classes involved must be in exactly one group before a load row is valid.
 
@@ -203,7 +203,7 @@ How to read the task lines:
   - Done when: history shows each move with dates and a move into the past is handled as the spec says.
 
 - [ ] **3.4 Teaching load**
-  - Read: `05`, `06` (Building a timetable, Rules), `edge/timetable` (Structure).
+  - Read: `05`, `04` (Teacher and staff record), `06` (Building a timetable, Rules), `edge/timetable` (Structure, After publishing).
   - Build: load rows (class or group, subject, one teacher, lessons per week, room needs, double lessons); checks for subject and grade in the teacher's profile, the language rule, split rules, weekly totals against slots and against the contract load across branches; the load belongs to a timetable version; a load row may name a vacancy.
   - Done when: each blocked case in the spec has a test.
 
@@ -227,7 +227,7 @@ How to read the task lines:
 ## Phase 5. Timetable
 
 - [ ] **5.1 Data model and database constraints**
-  - Read: `06` (Model), `edge/timetable`, `edge/developer-rules`, `edge/time-dates-calendar`.
+  - Read: `06` (Model, Changes after publishing), `edge/timetable`, `edge/developer-rules`, `edge/time-dates-calendar`.
   - Build: versions, pattern entries, lesson blocks, and dated lessons with their own start and end; exclusion constraints for teacher, room and class block across all branches; the shared-room trigger; exams in their own tables; the teacher, room and class constraints run over one table of time claims for lessons and exams.
   - Done when: the database itself refuses each double booking in tests, also when application checks are bypassed.
 
@@ -237,7 +237,7 @@ How to read the task lines:
   - Done when: each rule in the Rules table has passing and failing test cases.
 
 - [ ] **5.3 Draft builder, steps 1 to 5**
-  - Read: `06` (Building a timetable).
+  - Read: `06` (Building a timetable, Rules), `03` (Slot types and day templates), `04` (Teacher and staff record), `edge/timetable` (After publishing).
   - Build: draft versions; the steps for templates, load, teachers, rooms and rules with their "ready when" checks; pinned lessons; availability as dated entries; a draft checks the entries in force on its intended start date.
   - Done when: a draft cannot move to generation while a readiness check fails.
 
@@ -257,7 +257,7 @@ How to read the task lines:
   - Done when: a second Academic Vice Principal can take over a draft and the first is told.
 
 - [ ] **5.5a Publish: preview and checks**
-  - Read: `06` (Changes after publishing, How surprises are prevented), `edge/timetable` (Versions and drafts).
+  - Read: `06` (Editing in the grid, Rules, Changes after publishing, How surprises are prevented), `edge/timetable` (Versions and drafts, After publishing).
   - Build: the impact preview; start date rules; the out-of-date draft check; one publish per branch at a time; a publish that fails changes nothing; quarter shortcuts for the start date; dates under a later availability entry are warnings by date; carry a teacher or room change into later versions.
   - Done when: two publishes at the same moment are tested.
 
@@ -277,18 +277,18 @@ How to read the task lines:
   - Done when: each row of the "After publishing" table that concerns these actions has a test.
 
 - [ ] **5.6b Calendar and template changes after publishing**
-  - Read: `edge/time-dates-calendar`, `06` (What a change does to existing data).
-  - Build: what happens to existing dated lessons when a day off is added or removed, a day template changes, or quarter dates change.
+  - Read: `edge/time-dates-calendar`, `06` (Rules, What a change does to existing data), `edge/timetable` (Structure, Versions and drafts).
+  - Build: what happens to existing dated lessons when a day off is added or removed, a day template changes, or quarter dates change; for a group of two grades, the choice when a calendar entry leaves school to only one grade (cancel the block, or keep it and exempt the grade that is off), and a lesson in a slot that does not match in both templates created as cancelled.
   - Done when: every row of the edge-case table has a test.
 
 - [ ] **5.6c Exams in the timetable**
-  - Read: `06` (Changes after publishing, Exam), `edge/timetable` (Exams).
+  - Read: `06` (Changes after publishing, Rules, Free now board), `edge/timetable` (Exams, Versions and drafts), `edge/developer-rules`, `edge/calculation` (the rating exam), `edge/time-dates-calendar`.
   - Build: create, change and cancel an exam; cancellation of the classes' lessons in the same save; refusal while other lessons hold the rooms or the invigilators; the rating-exam link; exams on every view and print; notices.
   - Done when: an exam cannot be saved with a double-booked invigilator or room, and cancelling it restores the lessons.
 
 - [ ] **5.7a Teacher absence**
-  - Read: `06` (Changes after publishing, Teachers who work in several branches), `edge/timetable` (After publishing), `edge/people-roles-accounts` (Staff over time).
-  - Build: an absence entered once for the person, covering every branch; "needs a teacher" and "unresolved" lessons on the Academic Vice Principal's home page; what happens when a teacher goes inactive or leaves, or a room is closed; filling a vacancy publishes a version that changes only the teacher of its rows.
+  - Read: `06` (Changes after publishing, Teachers who work in several branches), `04` (Teacher and staff record), `edge/timetable` (Versions and drafts, After publishing), `edge/people-roles-accounts` (Staff over time), `07` (Closing a quarter, Who can do what), `09` (When something else changes).
+  - Build: an absence entered once for the person, covering every branch; "needs a teacher" and "unresolved" lessons on the Academic Vice Principal's home page; what happens when a teacher goes inactive or leaves, or a room is closed; filling a vacancy publishes a version that changes only the teacher of its rows; an acting teacher named for a vacancy's journal for a period, who owns the plan, adds works and enters the rating exam.
   - Done when: an absence entered in one branch reaches the Academic Vice Principal of the other.
 
 - [ ] **5.7b Substitution**
@@ -302,7 +302,7 @@ How to read the task lines:
   - Done when: a teacher with a lesson in another branch within the travel time is not shown as free.
 
 - [ ] **5.8 Protection and version history**
-  - Read: `06` (Protection).
+  - Read: `06` (Protection), `03` (Quarters), `edge/timetable` (Versions and drafts).
   - Build: a dated lesson with data cannot be deleted or change its class, group or subject; forced delete by the Super Admin with a reason and 30-day restore; version history, comparison of two versions, reopening an old version as a new draft; the version in force on the first day of each quarter.
   - Done when: each of the four Protection rules has a test.
 
