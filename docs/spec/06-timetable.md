@@ -24,7 +24,7 @@ The builder is one screen with a checklist of steps on the left, in the manner o
 
 | Step | What the Academic Vice Principal does | Ready when |
 | --- | --- | --- |
-| 1. Period and day template | Confirms the day template of each weekday. The start date is chosen at step 8; a version has no end date. | Every school weekday has a template. |
+| 1. Period and day template | Confirms the day templates of each weekday, per grade range where they differ, from the table in School setup. The start date is chosen at step 8; a version has no end date. | The table of templates per weekday and grade is confirmed. |
 | 2. Teaching load | For each class and group: subjects, lessons per week, teacher. Copied from an earlier version or year. | The weekly lessons of every class fit into the week's lesson slots, and every load has a teacher or a vacancy. |
 | 3. Teachers | Availability by day and slot, most lessons per day, school days of part-time teachers. | No teacher has more lessons than free slots. |
 | 4. Rooms | Main classroom of each class; special rooms by subject (laboratory, sports hall, robotics). | Every subject that needs a special room has one. |
@@ -85,6 +85,7 @@ Later and optional (Release 2): an assistant that takes a request in plain words
 | Blocked | The teacher must have that subject and every grade of the class or group in their profile. Inactive teachers, subjects and rooms cannot be used. |
 | Blocked | The teacher must be able to teach in the language of the class or group, unless the subject is outside the language rule. |
 | Blocked | A vacancy is bound by every blocked rule that binds a teacher: one place at a time, availability, subject and grades, language. The warnings on contract load and lessons per day apply to it as to a teacher. A vacancy is never offered as a substitute and never shown as free. |
+| Blocked | A lesson of a group of two grades in a lesson slot that the day template of one of its grades does not have on that date, or whose start or end time differs between the two templates. |
 | Blocked | Between a teacher's lesson in one branch and their next lesson in another branch there is at least the travel time set for those two branches. |
 | Blocked | A lesson fills exactly one lesson slot of the day template. It cannot be placed in a break or lunch slot, across two slots, or at a time typed by hand. |
 | Blocked | All groups or parts of one split are in the same slot, so that every student of the class has a lesson at that time. |
