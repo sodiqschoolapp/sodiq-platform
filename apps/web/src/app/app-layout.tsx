@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useDismissQuestionsOnLeave } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { UnsentBanner, UnsentGuard, useLeave } from '@/components/unsent/unsent-changes';
 import { sessionQuery } from '@/features/auth/session';
@@ -71,6 +72,7 @@ export function AppLayout() {
   const { data: session } = useQuery(sessionQuery);
   const signOut = useSignOut();
   const { leave } = useLeave();
+  useDismissQuestionsOnLeave();
 
   return (
     <div className="flex min-h-svh flex-col">

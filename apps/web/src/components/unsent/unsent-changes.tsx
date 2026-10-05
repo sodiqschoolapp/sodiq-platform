@@ -25,12 +25,16 @@ export interface UnsentEntry {
   discard: () => void;
   /** Puts the focus where the changes are. */
   focus: () => void;
+  /** Over when no save of it is on its way; a question about leaving waits for it. */
+  settled: () => Promise<void>;
 }
 
 class UnsentStore {
   private readonly entries = new Map<string, UnsentEntry>();
   private readonly listeners = new Set<() => void>();
   private list: readonly UnsentEntry[] = [];
+  /** The question about leaving that is open now: one for the tab, whoever asks. */
+  asking: Promise<boolean> | null = null;
 
   readonly subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
@@ -113,6 +117,7 @@ export function useUnsentEntry(entry: UnsentEntry | null): void {
       state,
       discard: () => latest.current?.discard(),
       focus: () => latest.current?.focus(),
+      settled: () => latest.current?.settled() ?? Promise.resolve(),
     });
     return () => {
       store.set(id, null);
@@ -140,35 +145,47 @@ export function useLeave(): Leave {
   const { t } = useTranslation();
   const store = useContext(UnsentContext);
   const confirm = useConfirm();
-  const asking = useRef<Promise<boolean> | null>(null);
 
-  return useMemo(
-    () => ({
-      unsent: () => store !== null && store.snapshot().length > 0,
+  return useMemo(() => {
+    if (store === null) {
+      return { unsent: () => false, leave: () => Promise.resolve(true) };
+    }
+    const ask = async (): Promise<boolean> => {
+      // A save on its way is waited for first: the question must be true.
+      // Saved, there is nothing to lose and nothing is asked; refused, the
+      // question names it. One turn more lets the forms say where they stand.
+      await Promise.all(store.snapshot().map((entry) => entry.settled()));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      if (store.snapshot().length === 0) {
+        return true;
+      }
+      const leaves = await confirm({
+        title: t('unsent.leaveTitle'),
+        text: t('unsent.leaveText'),
+        names: store.snapshot().map((entry) => entry.label),
+        action: t('unsent.leave'),
+        cancel: t('unsent.stay'),
+        destructive: true,
+      });
+      if (leaves) {
+        store.discardAll();
+      }
+      return leaves;
+    };
+    return {
+      unsent: () => store.snapshot().length > 0,
       leave: () => {
-        if (store === null || store.snapshot().length === 0) {
+        if (store.snapshot().length === 0) {
           return Promise.resolve(true);
         }
-        // Asked twice at once (a click and the address it changes): one dialog.
-        asking.current ??= confirm({
-          title: t('unsent.leaveTitle'),
-          text: t('unsent.leaveText'),
-          names: store.snapshot().map((entry) => entry.label),
-          action: t('unsent.leave'),
-          cancel: t('unsent.stay'),
-          destructive: true,
-        }).then((leaves) => {
-          asking.current = null;
-          if (leaves) {
-            store.discardAll();
-          }
-          return leaves;
+        // Asked twice at once, by whoever: one question, one answer for both.
+        store.asking ??= ask().finally(() => {
+          store.asking = null;
         });
-        return asking.current;
+        return store.asking;
       },
-    }),
-    [store, confirm, t],
-  );
+    };
+  }, [store, confirm, t]);
 }
 
 /** The record open in a side panel is part of where a person is (`ListSearch.open`). */

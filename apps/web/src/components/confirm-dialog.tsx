@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertDialog,
@@ -32,6 +40,18 @@ export interface Confirmation {
 type Confirm = (question: Confirmation) => Promise<boolean>;
 
 const ConfirmContext = createContext<Confirm | null>(null);
+
+const DismissContext = createContext<() => void>(() => undefined);
+
+/**
+ * Answers a question that is still open "no" when the pages that could have
+ * asked it go away (the layout, when the session has ended): a dialog must not
+ * outlive its page and then run that page's action.
+ */
+export function useDismissQuestionsOnLeave(): void {
+  const dismiss = useContext(DismissContext);
+  useEffect(() => dismiss, [dismiss]);
+}
 
 /**
  * Asks before an action, and answers whether the person went on.
@@ -68,8 +88,14 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         // A question that is still open is answered "no" by the next one.
         answerTo.current?.(false);
         answerTo.current = resolve;
-        before.current =
+        // An item of a menu goes away with its menu: the focus then returns to
+        // the button the menu was opened with.
+        const active =
           document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        before.current =
+          active?.closest('[role="menu"]') == null
+            ? active
+            : document.querySelector<HTMLElement>('[aria-haspopup="menu"][aria-expanded="true"]');
         setQuestion(next);
         setOpen(true);
       }),
@@ -83,12 +109,18 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     setOpen(false);
   };
 
+  const dismiss = useCallback((): void => {
+    answerTo.current?.(false);
+    answerTo.current = null;
+    setOpen(false);
+  }, []);
+
   const names = question?.names ?? [];
   const more = names.length - NAMES_SHOWN;
 
   return (
     <ConfirmContext.Provider value={confirm}>
-      {children}
+      <DismissContext.Provider value={dismiss}>{children}</DismissContext.Provider>
       <AlertDialog
         open={open}
         onOpenChange={(next) => {

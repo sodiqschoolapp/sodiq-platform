@@ -174,6 +174,22 @@ describe('the Save button of a record form', () => {
     expect(banner().textContent).toBe(en.unsent.typed);
   });
 
+  // docs/spec/12-ux-standards.md, Look and feel: full keyboard use.
+  it('leaves the focus in the field when the saved name changes the title of the panel', async () => {
+    const { panel } = await openForm();
+    const name = field(panel, en.sample.name);
+    name.focus();
+    type(name, 'Bekzod Aliyev');
+
+    save(panel);
+
+    const renamed = await screen.findByRole('complementary', { name: 'Bekzod Aliyev' });
+    await waitFor(() => {
+      expect(within(renamed).getByRole('status').textContent).toBe(en.form.saved);
+    });
+    expect(document.activeElement).toBe(field(renamed, en.sample.name));
+  });
+
   it('keeps what was typed when the save is refused, and says what happened', async () => {
     const { panel } = await openForm('&demo=save-fails');
     type(field(panel, en.sample.score), '90');
@@ -264,6 +280,34 @@ describe('leaving a record form with typed changes', () => {
     });
   });
 
+  it('takes Escape on the question as "stay", once: the panel stays open', async () => {
+    const { panel } = await openForm();
+    type(field(panel, en.sample.score), '90');
+    fireEvent.click(rowButton(DILSHOD));
+
+    fireEvent.keyDown(await leaveDialog(), { key: 'Escape' });
+
+    await noDialog();
+    expect(field(screen.getByRole('complementary', { name: BEKZOD }), en.sample.score).value).toBe(
+      '90',
+    );
+  });
+
+  it('asks also when a save was refused and nothing was typed since', async () => {
+    const { panel } = await openForm('&demo=save-fails');
+    type(field(panel, en.sample.score), '90');
+    save(panel);
+    await within(panel).findByRole('alert');
+
+    fireEvent.click(rowButton(DILSHOD));
+
+    const dialog = await leaveDialog();
+    expect(within(dialog).getByText(BEKZOD)).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.stay }));
+    await noDialog();
+    expect(field(panel, en.sample.score).value).toBe('90');
+  });
+
   it('asks before a link leads to another page', async () => {
     const { panel, router } = await openForm();
     type(field(panel, en.sample.score), '90');
@@ -327,6 +371,10 @@ describe('leaving a record form with typed changes', () => {
     await noDialog();
     expect(sent()).toHaveLength(0);
     expect(field(panel, en.sample.score).value).toBe('90');
+    // The menu item is gone with its menu: the keyboard goes on from the menu's button.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: en.layout.account }));
+    });
 
     await signOut();
     fireEvent.click(within(await leaveDialog()).getByRole('button', { name: en.unsent.leave }));

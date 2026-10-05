@@ -43,11 +43,15 @@ function Labelled({
           {note}
         </p>
       )}
-      {error !== undefined && (
-        <p id={errorId} className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
+      {/* Always there, so a message that arrives while typing is read out;
+          empty, it takes no room (the gap of the grid is taken back). */}
+      <div aria-live="polite" className="empty:-mt-1.5">
+        {error !== undefined && (
+          <p id={errorId} className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

@@ -530,6 +530,7 @@ export function ListPage<Row>({
                 ? t('list.recordGoneTitle')
                 : rowName(openRow)
           }
+          recordKey={openId}
           onClose={() => {
             openRecord(undefined);
           }}

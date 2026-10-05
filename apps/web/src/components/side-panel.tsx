@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 
 interface SidePanelProps {
   title: string;
+  /** Which record is open: the heading takes the focus when it changes. */
+  recordKey: string;
   onClose: () => void;
   children: ReactNode;
 }
@@ -23,14 +25,16 @@ const isField = (target: EventTarget | null): boolean =>
  * the focus when it opens, so a keyboard and a screen reader are where the
  * record is.
  */
-export function SidePanel({ title, onClose, children }: SidePanelProps) {
+export function SidePanel({ title, recordKey, onClose, children }: SidePanelProps) {
   const { t } = useTranslation();
   const panel = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
+  // Once per record: a title that changes under an open record (its name was
+  // edited and saved) does not take the focus out of the field.
   useEffect(() => {
     heading.current?.focus();
-  }, [title]);
+  }, [recordKey]);
 
   // The newest function, so the listener is set once.
   const close = useRef(onClose);

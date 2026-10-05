@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formMessage, type FormIssue, type FormSchema } from './form-messages';
 
@@ -40,6 +40,8 @@ export interface RecordFormState<Field extends string> {
    * sent, and every field now says what to fix.
    */
   submit: () => Promise<boolean>;
+  /** Over when no save is on its way: at once, or with the answer of the one that is. */
+  settled: () => Promise<void>;
   /** Back to what was saved last; what was typed since is dropped. */
   reset: () => void;
 }
@@ -83,7 +85,16 @@ export function useRecordForm<Field extends string, Values>({
   };
 
   const fields = Object.keys(initial) as Field[];
-  const dirty = fields.some((field) => typed[field] !== saved[field]);
+  const same = (one: Record<Field, string>, other: Record<Field, string>): boolean =>
+    fields.every((field) => one[field] === other[field]);
+
+  // The newest of each for the answer of a save, which arrives renders later:
+  // what is typed and saved now, the save on its way, and how often the form
+  // was reset.
+  const typedNow = useRef(initial);
+  const savedNow = useRef(initial);
+  const flight = useRef<Promise<void> | null>(null);
+  const resets = useRef(0);
 
   return {
     bind: (field) => ({
@@ -91,17 +102,26 @@ export function useRecordForm<Field extends string, Values>({
       value: typed[field],
       error: errorOf(field),
       onChange: (event) => {
-        setTyped((before) => ({ ...before, [field]: event.target.value }));
+        const next = { ...typedNow.current, [field]: event.target.value };
+        typedNow.current = next;
+        setTyped(next);
         setTouched((before) => new Set(before).add(field));
-        // "Saved" is true of what was saved, not of what is typed now.
-        setStatus((before) => (before === 'saved' ? 'idle' : before));
+        const back = same(next, savedNow.current);
+        // "Saved" is true of what was saved, not of what is typed now. A save
+        // that failed is over once the fields hold what is saved again.
+        setStatus((before) =>
+          before === 'saved' || (before === 'failed' && back) ? 'idle' : before,
+        );
+        if (back) {
+          setFailure(null);
+        }
       },
     }),
-    dirty,
+    dirty: !same(typed, saved),
     status,
     failure,
     submit: async () => {
-      if (status === 'saving') {
+      if (flight.current !== null) {
         return true;
       }
       setPressed(true);
@@ -109,21 +129,40 @@ export function useRecordForm<Field extends string, Values>({
         return false;
       }
       const sent = typed;
+      const values = checked.data;
+      const resetsBefore = resets.current;
       setStatus('saving');
       setFailure(null);
-      try {
-        await save(checked.data);
-        setSaved(sent);
-        setStatus('saved');
-      } catch (error) {
-        // What was typed stays in the fields: nothing is lost by a refusal.
-        setFailure(error);
-        setStatus('failed');
-      }
+      const run = (async () => {
+        try {
+          await save(values);
+          savedNow.current = sent;
+          setSaved(sent);
+          if (resets.current !== resetsBefore) {
+            // The form was reset while the save was on its way: the server has
+            // what was sent, so the fields show that, not what was there before.
+            typedNow.current = sent;
+            setTyped(sent);
+          }
+          // Typed on while the save was on its way: that is not saved.
+          setStatus(same(typedNow.current, sent) ? 'saved' : 'idle');
+        } catch (error) {
+          // What was typed stays in the fields: nothing is lost by a refusal.
+          setFailure(error);
+          setStatus('failed');
+        } finally {
+          flight.current = null;
+        }
+      })();
+      flight.current = run;
+      await run;
       return true;
     },
+    settled: () => flight.current ?? Promise.resolve(),
     reset: () => {
-      setTyped(saved);
+      resets.current += 1;
+      typedNow.current = savedNow.current;
+      setTyped(savedNow.current);
       setTouched(new Set());
       setPressed(false);
       setStatus('idle');

@@ -49,6 +49,7 @@ export function RecordForm<Field extends string>({
           label,
           state: form.status === 'failed' ? 'failed' : 'typed',
           discard: form.reset,
+          settled: form.settled,
           focus: () => {
             const fields =
               element.current?.querySelectorAll<HTMLElement>('input, select, textarea');
