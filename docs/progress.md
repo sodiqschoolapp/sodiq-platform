@@ -2,6 +2,12 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 6 October 2026: the working loop (tooling, no task)
+
+Changed: `/next-task` now brings `main` up to date itself, has the `spec-reviewer` check the plan, opens a draft pull request with the plan and stops for a `[review]` comment; `/finish-task` may be run by the session itself, pushes without asking, marks the pull request ready and posts the report with hand-test steps; a new `/review-pr` skill holds the reviewer's checklist and posts `[review]` verdicts. `pnpm sync` for the laptop. `scripts/cloud-setup.sh` and `scripts/cloud-session-start.sh` prepare a Claude Code cloud environment (Node 24, PostgreSQL 18 in a container, public `.env`). The standing decisions are a section at the top of `docs/decisions.md`; the loop, the cloud environment, the review routine and auto-fix are described in `docs/cloud-loop.md`. `feedback` is a module name in `CLAUDE.md`.
+
+Next session must know: `.claude/settings.json` still has to be changed by hand on the laptop (`docs/cloud-loop.md`, setup step 1) before the hook and the new `gh` commands work without prompts; until the review routine exists, the owner's reviewer posts the `[review]` comments. Next task: 0.8b-3 Shell tools, as the trial in the cloud (setup step 3).
+
 ## 5 October 2026: task 0.8b-2 Web shell: forms
 
 Split by the owner at the plan: 0.8b-2 is the form pattern, the confirmation dialog, the leave warning, the unsent-changes sign and the sample form; the new task 0.8b-3 has Ctrl+K, the feedback button with its table and route, the theme switch and the contrast review. Where an older entry below names 0.8b-2 for one of those four, read 0.8b-3.

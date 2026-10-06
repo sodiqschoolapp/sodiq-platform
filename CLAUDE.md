@@ -46,7 +46,7 @@ docs/decisions.md        technical decisions and their reasons
 docs/spec-changes.md     log of approved spec changes
 ```
 
-API code is grouped by module in `apps/api/src/modules/<module>/`, and web code by feature in `apps/web/src/features/<feature>/`, with the same names: `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`.
+API code is grouped by module in `apps/api/src/modules/<module>/`, and web code by feature in `apps/web/src/features/<feature>/`, with the same names: `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback`.
 
 ## Commands
 
@@ -60,6 +60,7 @@ pnpm typecheck        type-check all packages
 pnpm test             unit and API tests
 pnpm test:e2e         browser tests (Playwright)
 pnpm db:migrate       apply SQL migrations to the local database
+pnpm sync             switch to main, pull, install, migrate (before a hand test)
 pnpm db:codegen       regenerate Kysely types from the database
 pnpm api:client       regenerate the web API client from OpenAPI
 pnpm auth:first-account -- --first-name <name> --last-name <name>
@@ -68,12 +69,14 @@ pnpm auth:first-account -- --first-name <name> --last-name <name>
 
 ## How to work on a task
 
-1. One task from `docs/build-plan.md` per session and per branch. Start from an up-to-date `main`. Branch name: `task/<id>-<short-name>`.
-2. Read the task, the spec files it lists, and `docs/progress.md`. Look at the existing code before proposing anything.
-3. Write a plan first: files to change, database changes, tests to add, open questions. Wait for the owner's approval before editing code.
+1. One task from `docs/build-plan.md` per session and per branch. Start from an up-to-date `main` (`pnpm sync`). Branch name: `task/<id>-<short-name>`. The owner runs `/next-task`; it does steps 2 and 3.
+2. Read the task, the spec files it lists, `docs/progress.md` and the standing decisions in `docs/decisions.md`. Look at the existing code before proposing anything.
+3. Write a plan first: files to change, database changes, tests to add, open questions. Have the `spec-reviewer` agent check it, then open a draft pull request with the plan and stop. Build only after a `[review] approved` comment on the pull request; follow its corrections. `[review] owner decision needed` waits for the owner.
 4. Write the tests with the code. For `packages/calc`, `packages/timetable-rules`, permissions and database constraints, write the failing test first.
 5. Run `pnpm lint`, `pnpm typecheck` and `pnpm test` and fix every failure. Never skip, delete or weaken a test to get to green. If a test is wrong, say so and ask.
-6. When the work is ready, stop and tell the owner. The owner runs the `/finish-task` skill: independent review, update of the plan and progress files, pull request.
+6. When the work is ready, run `/finish-task`: independent review, update of the plan and progress files, push, pull request marked ready with the report and the hand-test steps. Then stop and wait for the `[review]` comment: fix what `changes needed` lists, or you are done at `ready to merge`. Only the owner merges.
+
+The whole loop, the review routine and the cloud environment are described in `docs/cloud-loop.md`. A reviewer uses `/review-pr`.
 
 ## Conventions
 
