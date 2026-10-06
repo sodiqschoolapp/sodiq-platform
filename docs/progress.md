@@ -2,6 +2,52 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 6 October 2026: task 0.8b-3 Web shell: shell tools
+
+Decided at the plan: the Principal may send a feedback report (the owner changed the spec on 6 October, pull request #26: edge cases, "Who can act", and `docs/spec-changes.md`); "at most 20 reports a day" is the last 24 hours; the feedback dialog has a Send button of its own and is not a record form.
+
+Built:
+
+- Feedback reports: `db/migrations/0011_feedback_reports.sql` (school-wide, insert-only for the application, checks on the roles, the page and the text), the module `apps/api/src/modules/feedback/` with `POST /api/feedback` (`@AnySignedIn()`; the roles of the session each once in the order of `ROLES`, the page without the query, the trimmed text, the moment of the injected clock and the request id; at most 20 in the last 24 hours per account under a lock on the account row, the 21st `429 too_many_attempts` with `Retry-After` rounded up; no audit entry), `feedbackReportSchema` and its constants in `packages/shared/src/feedback.ts`. The dialog in the top bar (`apps/web/src/features/feedback/feedback-button.tsx`) on `useRecordForm` and the new `TextAreaField`; a text typed and not sent is kept while the dialog is closed; after a send the form is new and a status sign says so.
+- The Ctrl+K search over the pages of the app (`apps/web/src/app/page-index.ts`, `apps/web/src/components/search/command-search.tsx`): Ctrl+K, Cmd+K and a button in the top bar open it; a combobox over a listbox, matched like the lists (`searchWords` of `list-state.ts` is exported now); the arrows, Enter and Escape; Escape leaves an open side panel open.
+- The theme (`apps/web/src/theme/theme.ts`, `apps/web/src/components/theme-switch.tsx`): light, dark or as the device, as the device by default, kept in the browser under `sodiq.theme`, applied before the first render (`startTheme` in `main.tsx`; `App` takes the store); the switch beside the language chooser in the layout and on the pages before sign-in; `color-scheme` in `index.css`.
+- The contrast review: `apps/web/src/theme/contrast.ts` and `apps/web/tooling/contrast.test.ts` check every text and control pair the components draw, with the alpha of the class list, to WCAG 2.1 AA in both themes. Changed to pass: light `--muted-foreground` 0.556 to 0.54, `--input` 0.922 to 0.65, `--ring` 0.708 to 0.556, `--destructive` 0.577 to 0.53; dark `--destructive` 0.704/0.191 to 0.8/0.17, `--muted-foreground` 0.708 to 0.74; `alert.tsx` draws the destructive description at full strength; `button.tsx` keeps the dark destructive tint at 10% and shows a border on hover. The look was looked at in the environment's Chromium in both themes, at laptop and phone width (screenshots of the sign-in page, the home page, the sample list with its panel, the confirmation, the search and the feedback dialog).
+- shadcn `dialog` and `textarea` (`apps/web/src/components/ui/`) written by hand after `alert-dialog.tsx` and `input.tsx`: the registry is not reachable from the cloud environment.
+- Texts `theme.*`, `search.*`, `feedback.*` in the three languages.
+- Tests: API `feedback.test.ts` (the stored row, the roles of the session, the refusals of the schema, the limit with the clock, two sends at once, the owed steps, no audit entry) and `feedback.database.test.ts` (the constraints and the rights); the route in `ROUTE_ACCESS`, the table in `catalog.test.ts`, the module and the OpenAPI path. Web `theme.test.tsx`, `command-search.test.tsx`, `feedback.test.tsx`, `tooling/contrast.test.ts`. The browser test `e2e/shell-tools.spec.ts` with the account `shellTools` (the theme before and after sign-in, Ctrl+K and Enter, the search button at phone width, a report sent); the browser tests name the language chooser (`languageChooser` in `e2e/steps.ts`), which is no longer the only select.
+- REVIEW_PLACEHOLDER
+
+Left out, with the task that brings it:
+
+- Search over students, staff, classes and groups: each with the task that builds the records (2.x, 3.x), with the rights of the role.
+- The page index by the menu of the role: 0.8c. Every signed-in account may send a report, so the feedback button needs no hiding.
+- A screen for the feedback reports: none in the plan; the owner reads the table (`select * from feedback_reports order by created_at`).
+- An audit entry (owner), the application version on the report (8.3a), the UI language and the browser on the report (not asked for).
+- Brand colour and logo: a small task when the owner provides them. The theme on the account: 0.8d decides the language on the account and may take the theme with it.
+
+Decided by the owner at the plan (`[review] approved` of pull request #25): see `docs/decisions.md`, 6 October 2026.
+
+Open, for the owner:
+
+- The Uzbek and Russian wording of `theme.*`, `search.*` and `feedback.*` was not reviewed by anybody yet.
+- The light theme looks different: the border of every text field and the focus border are darker (3.2:1 and 4.7:1 where they were 1.3:1 and 2.6:1), the destructive red is deeper, muted text a little darker. The dark destructive button hovers with a border, not a stronger tint. All of it follows from WCAG 2.1 AA; say if the brand colours should settle any of it differently.
+
+Not done from the review:
+
+- NOT_DONE_PLACEHOLDER
+
+The next sessions must know:
+
+- A new page: add it to `PAGE_INDEX` (`apps/web/src/app/page-index.ts`) with the key of its title; 0.8c filters the index by the menu of the role.
+- A new dialog: the shadcn `Dialog` (`components/ui/dialog.tsx`) has no close cross; name a Cancel or Close button with a translated text (`DialogClose`). Escape in a dialog does not close a side panel behind it (Base UI marks the key as handled).
+- A new token or a component that draws text on a tint: add its pair to `tooling/contrast.test.ts`; the test names the ratio that fails.
+- The theme: `useTheme()` and `ThemeSwitch`; `renderApp(path, language, new ThemeStore())` in a test, `fakeDevice()` of `theme.test.tsx` for the device's preference (jsdom has no `matchMedia`).
+- A one-shot dialog with a form: `useRecordForm` without `RecordForm`, as `feedback-button.tsx`; keep the draft in the parent and remount the form with a `key` after a send.
+- Browser tests in the cloud environment: Playwright 1.63 looks for the browser build 1243 and the environment has 1194. A directory with the 1243 names linked to the installed binaries, given as `PLAYWRIGHT_BROWSERS_PATH`, runs them: see the report of pull request #25. CI installs its own Chromium.
+- The full run in the cloud environment: API tests 49 files, 1097 tests; web tests 15 files, 242 tests; shared 47; `pnpm test` about 1m20s with the two caches warm; browser tests 9, about 45 s.
+
+The next task is 0.8c.
+
 ## 6 October 2026: the working loop (tooling, no task)
 
 Changed: `/next-task` now brings `main` up to date itself, has the `spec-reviewer` check the plan, opens a draft pull request with the plan and stops for a `[review]` comment; `/finish-task` may be run by the session itself, pushes without asking, marks the pull request ready and posts the report with hand-test steps; a new `/review-pr` skill holds the reviewer's checklist and posts `[review]` verdicts. `pnpm sync` for the laptop. `scripts/cloud-setup.sh` and `scripts/cloud-session-start.sh` prepare a Claude Code cloud environment (Node 24, PostgreSQL 18 in a container, public `.env`). The standing decisions are a section at the top of `docs/decisions.md`; the loop, the cloud environment, the review routine and auto-fix are described in `docs/cloud-loop.md`. `feedback` is a module name in `CLAUDE.md`.
