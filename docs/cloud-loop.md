@@ -36,7 +36,7 @@ Do the steps in this order, one per task, so that a piece that misbehaves is the
 
 ### 1. `.claude/settings.json` on the laptop
 
-Ask Claude Code, in a session on `main`, to make these changes and commit them (it asks for approval; the file holds permissions, so it is changed by hand and never by a script):
+Ask Claude Code, in a session on `main`, to make these changes on a branch and open a pull request (the repository rules allow no direct push to `main`; the file holds permissions, so it is changed by hand and never by a script):
 
 - Move `Bash(git push *)` and `PowerShell(git push *)` out of `ask`; add to `allow`: `Bash(git push -u origin task/*)`, `Bash(git push origin task/*)` and the same two for PowerShell. Any other push form still asks, because it is in no list.
 - Add to `allow`, for Bash and for PowerShell: `gh api repos/sodiqschoolapp/sodiq-platform/*` and `gh pr ready *`. The skills use the REST form of the GitHub commands because cloud sessions cannot use GraphQL, which most `gh pr …` commands need.
@@ -69,9 +69,9 @@ At claude.ai/code, open the environment selector and create an environment:
 | Field | Value |
 | --- | --- |
 | Name | `sodiq-platform` |
-| Network access | Trusted (the default list: npm, GitHub, Docker Hub are on it) |
+| Network access | Custom: tick "Also include default list of common package managers" (npm, GitHub, Docker Hub) and add the domain `nodejs.org` (Node 24 is downloaded from there; the VM has only Node 20 to 22) |
 | Environment variables | `TURBO_TELEMETRY_DISABLED=1` |
-| Setup script | The whole of `scripts/cloud-setup.sh`, pasted |
+| Setup script | The whole of `scripts/cloud-setup.sh`, pasted. It never aborts: a failed step prints `!! … failed` and the session still starts, so the trial can report it |
 
 Create a second environment for the review routine, the same but named `sodiq-review`, with one more variable: `SODIQ_REVIEW_ONLY=1`. Its sessions install the dependencies and skip the database.
 
@@ -82,10 +82,16 @@ The Claude GitHub App must be installed on `sodiqschoolapp/sodiq-platform` (it i
 Start a session at claude.ai/code on the repository with the `sodiq-platform` environment, and send:
 
 ```
-Run check-tools, then node --version, pnpm --version, docker ps, and psql -h localhost -U sodiq_app -d sodiq_dev -c "select 1" through docker exec on sodiq-pg. Then run pnpm lint, pnpm typecheck and pnpm test. Report every result; change nothing.
+Change nothing. Run these and report every output in full:
+echo $PATH; which node; node --version; /opt/node24/bin/node --version;
+pnpm --version; docker ps; ls /opt;
+docker exec sodiq-pg psql -U sodiq_app -d sodiq_dev -c "select 1".
+Then run pnpm lint, pnpm typecheck and pnpm test and report the results.
 ```
 
-Expected: Node 24.x, pnpm 12.8.1, the container `sodiq-pg`, `1`, and three green runs. If Node is not 24, add the variable `PATH=/opt/node24/bin:/opt/node22/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin` to the environment. If Docker does not run, replace the container by `apt install postgresql-18` from `apt.postgresql.org` in the setup script and add that domain to a Custom network list.
+Expected: `node --version` is 24.x, pnpm 12.8.1, a container `sodiq-pg`, `1`, and three green runs. The session's own setup log (the box above the first answer) shows the setup script and the hook; a line starting with `!!` names a failed step.
+
+If `/opt/node24/bin/node` is 24 but `node --version` is not: the session's `PATH` puts `/opt/node22/bin` first. Add the variable `PATH=/opt/node24/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin` to the environment and start a new session. If `/opt/node24/bin/node` is missing: the download from `nodejs.org` failed; check that the domain is in the network list. If `docker ps` fails: replace the container by `apt install postgresql-18` from `apt.postgresql.org` in the setup script and add that domain to the network list.
 
 When all is green, send `/next-task` in the same session. It plans, opens the draft pull request and stops. The reviewer (step 4 once it exists; the owner's reviewer until then) posts `[review] …`; the owner sends "read the review on the pull request and proceed" from the phone or the browser. From here the task runs as on the laptop, and ends with the owner merging and hand-testing after `pnpm sync`.
 
