@@ -64,13 +64,13 @@ On the laptop the hook exits at once (`CLAUDE_CODE_REMOTE` is not `true`); in th
 
 ### 2. The cloud environment
 
-At claude.ai/code, open the environment selector and create an environment:
+At claude.ai/code, open the environment selector (the cloud icon by the prompt box) and create an environment:
 
 | Field | Value |
 | --- | --- |
 | Name | `sodiq-platform` |
-| Network access | Trusted (the default list: npm, GitHub, Docker Hub). Node 24 comes from the npm registry; Custom with the default list plus `nodejs.org` is the fallback if that ever fails |
-| Environment variables | `TURBO_TELEMETRY_DISABLED=1` |
+| Network access | Custom: tick "Also include default list of common package managers" (npm, GitHub, Ubuntu's apt) and add the domains `apt.postgresql.org` and `www.postgresql.org` (PostgreSQL 18; the VM has 16) and `nodejs.org` (fallback for Node 24) |
+| Environment variables | `TURBO_TELEMETRY_DISABLED=1` and `PATH=/opt/node24/bin:/nix/var/nix/profiles/default/bin:/root/.local/bin:/root/.cargo/bin:/usr/local/go/bin:/opt/node22/bin:/opt/maven/bin:/opt/gradle/bin:/opt/rbenv/bin:/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin` (the VM's own PATH with `/opt/node24/bin` in front; without it the shell's `node` is 22) |
 | Setup script | The whole of `scripts/cloud-setup.sh`, pasted. It never aborts: a failed step prints `!! … failed` and the session still starts, so the trial can report it |
 
 Create a second environment for the review routine, the same but named `sodiq-review`, with one more variable: `SODIQ_REVIEW_ONLY=1`. Its sessions install the dependencies and skip the database.
@@ -83,17 +83,21 @@ Start a session at claude.ai/code on the repository with the `sodiq-platform` en
 
 ```
 Change nothing. Run these and report every output in full:
-echo $PATH; which node; node --version; /opt/node24/bin/node --version;
-pnpm --version; docker ps; ls /opt;
-docker exec sodiq-pg psql -U sodiq_app -d sodiq_dev -c "select 1".
+echo $PATH; which node; node --version; which pnpm; pnpm --version;
+pg_lsclusters; pg_isready -h 127.0.0.1 -p 5432;
+PGPASSWORD=sodiq_app_local psql -h 127.0.0.1 -U sodiq_app -d sodiq_dev -c "select 1".
 Then run pnpm lint, pnpm typecheck and pnpm test and report the results.
 ```
 
-Expected: `node --version` is 24.x, pnpm 12.8.1, a container `sodiq-pg`, `1`, and three green runs. The session's own setup log (the box above the first answer) shows the setup script and the hook; a line starting with `!!` names a failed step.
+Expected: `node --version` 24.x from `/opt/node24/bin`, `pnpm --version` 12.8.1 from `/opt/node24/bin`, one cluster `18 main 5432 online`, `accepting connections`, `1`, and three green runs. The session's own setup log (the box above the first answer) shows the setup script and the hook; a line starting with `!!` names a failed step.
 
-If `/opt/node24/bin/node` is 24 but `node --version` is not: the session's `PATH` puts `/opt/node22/bin` first. Add the variable `PATH=/opt/node24/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin` to the environment and start a new session. If `/opt/node24/bin/node` is missing: both Node installs failed; the setup log says which. If `docker ps` fails in the session as well: replace the container by `apt install postgresql-18` from `apt.postgresql.org` in the setup script (drop the cluster of the preinstalled 16 first, so 18 takes port 5432), add `apt.postgresql.org` and `www.postgresql.org` to a Custom network list, and start it in the hook with `service postgresql start`.
+What the first runs taught, and the fix for each:
 
-Known from the first runs: the setup script has no GitHub credentials (nothing is cloned in it), Docker's daemon needs a few seconds after `service docker start`, and a setup script that aborts means no session at all.
+- The setup script has no GitHub credentials: nothing is cloned in it.
+- A setup script that aborts means no session at all: both scripts report and go on.
+- Docker has no daemon in this VM, although the docs list it: PostgreSQL 18 is installed from `apt.postgresql.org` and started with `pg_ctlcluster` in the hook.
+- `/opt/node22/bin` comes before `/usr/local/bin` on the session's PATH: the environment variable `PATH` above puts `/opt/node24/bin` first. If `node --version` is still 22 after that, the variable was not applied: tell the owner's reviewer; the fallback is a symlink of `/opt/node22/bin/node` to Node 24 in the setup script.
+- The pnpm that pnpm installs for itself from `packageManager` is a stub without a shebang, which turbo cannot run (`Exec format error`): pnpm of the pinned version is installed with npm into `/opt/node24/bin`, and `/opt/node22/bin/pnpm` points there.
 
 When all is green, send `/next-task` in the same session. It plans, opens the draft pull request and stops. The reviewer (step 4 once it exists; the owner's reviewer until then) posts `[review] …`; the owner sends "read the review on the pull request and proceed" from the phone or the browser. From here the task runs as on the laptop, and ends with the owner merging and hand-testing after `pnpm sync`.
 
