@@ -151,7 +151,8 @@ export const uz: Texts<'one' | 'other'> = {
     message: 'Xabar',
     send: 'Yuborish',
     sent: 'Rahmat. Xabaringiz yuborildi.',
-    tooMany: 'Soʻnggi 24 soatda {{n}} ta xabar yubordingiz. Keyinroq urinib koʻring.',
+    tooMany_one: 'Soʻnggi 24 soatda {{n}} ta xabar yubordingiz. Keyinroq urinib koʻring.',
+    tooMany_other: 'Soʻnggi 24 soatda {{n}} ta xabar yubordingiz. Keyinroq urinib koʻring.',
   },
   list: {
     search: 'Qidirish',

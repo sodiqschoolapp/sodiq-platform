@@ -77,12 +77,15 @@ describe('the search of pages', () => {
     });
   });
 
-  it('opens from the button in the top bar, for a tablet or a phone', async () => {
+  it('opens from the button in the top bar and closes with its own button, for a tablet or a phone', async () => {
     await openHome();
 
     fireEvent.click(screen.getByRole('button', { name: en.search.label }));
+    const open = await dialog();
 
-    await dialog();
+    fireEvent.click(within(open).getByRole('button', { name: en.layout.dismiss }));
+
+    await noDialog();
   });
 
   it.each([
@@ -202,9 +205,11 @@ describe('the search of pages', () => {
 describe('the shortcut', () => {
   const press = (init: KeyboardEventInit) => new KeyboardEvent('keydown', init);
 
-  it('is Ctrl+K or Cmd+K, in either case', () => {
+  it('is Ctrl+K or Cmd+K, in either case, also on a Cyrillic layout', () => {
     expect(isSearchShortcut(press({ key: 'k', ctrlKey: true }))).toBe(true);
     expect(isSearchShortcut(press({ key: 'K', metaKey: true }))).toBe(true);
+    // The same key of a Russian or Cyrillic Uzbek layout.
+    expect(isSearchShortcut(press({ key: 'л', code: 'KeyK', ctrlKey: true }))).toBe(true);
   });
 
   it('is not K alone, nor with Shift or Alt, nor another key', () => {

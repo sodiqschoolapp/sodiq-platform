@@ -7,7 +7,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/80',
+        // Hovered at 90%, not 80%: at 80% the text had 3.91:1 in the light theme
+        // (task 0.8b-3, WCAG 2.1 AA; tooling/contrast.test.ts).
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         outline:
           'border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
         secondary:
@@ -15,10 +17,11 @@ const buttonVariants = cva(
         ghost:
           'hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50',
         // In the dark theme the tint stays at 10% and the hover is a border: the
-        // light red text has 4.5:1 on no stronger tint (task 0.8b-3, WCAG 2.1 AA;
-        // the ratios are in tooling/contrast.test.ts).
+        // light red text has 4.5:1 on no stronger tint. The focus border is the
+        // shared `border-ring` of the base, not a red one at 40%, which had 1.49:1
+        // (task 0.8b-3, WCAG 2.1 AA; the ratios are in tooling/contrast.test.ts).
         destructive:
-          'bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/10 dark:hover:border-destructive/60 dark:hover:bg-destructive/10 dark:focus-visible:ring-destructive/40',
+          'bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:ring-destructive/20 dark:bg-destructive/10 dark:hover:border-destructive/60 dark:hover:bg-destructive/10 dark:focus-visible:ring-destructive/40',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {

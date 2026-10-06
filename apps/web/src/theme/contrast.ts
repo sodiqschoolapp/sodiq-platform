@@ -85,15 +85,20 @@ export function contrastRatio(one: Rgb, other: Rgb): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-/** The custom properties of one block of a stylesheet, for example `:root` or `.dark`. */
+/**
+ * The custom properties of one block of a stylesheet, for example `:root` or
+ * `.dark`. Comments are dropped first: a comment that mentions a token must
+ * not be read as its declaration.
+ */
 export function tokensOf(css: string, selector: string): Record<string, string> {
-  const start = css.indexOf(`${selector} {`);
+  const withoutComments = css.replaceAll(/\/\*[\s\S]*?\*\//g, '');
+  const start = withoutComments.indexOf(`${selector} {`);
   if (start === -1) {
     throw new Error(`The stylesheet has no block ${selector}.`);
   }
-  const end = css.indexOf('}', start);
+  const end = withoutComments.indexOf('}', start);
   const tokens: Record<string, string> = {};
-  for (const match of css.slice(start, end).matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)) {
+  for (const match of withoutComments.slice(start, end).matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)) {
     const [, name, value] = match;
     if (name !== undefined && value !== undefined) {
       tokens[name] = value.trim();

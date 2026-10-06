@@ -86,7 +86,8 @@
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Like the ring: 4.53:1 on the sidebar (0.708 was 2.48:1); the menu of 0.8c inherits it. */
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 .dark {

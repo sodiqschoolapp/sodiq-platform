@@ -162,6 +162,7 @@ function FeedbackForm({ initialText, focusOnMount, onTyped, onSent }: FeedbackFo
         // The shared text of the code speaks of failed attempts; this is about reports.
         <p role="alert" className="text-sm text-destructive">
           {t('feedback.tooMany', {
+            count: FEEDBACK_REPORTS_PER_DAY,
             n: new Intl.NumberFormat(i18n.language).format(FEEDBACK_REPORTS_PER_DAY),
           })}
         </p>

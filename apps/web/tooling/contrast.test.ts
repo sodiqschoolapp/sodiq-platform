@@ -28,13 +28,17 @@ interface Pair {
 
 /**
  * Every pair the components draw, with the alpha its class list gives it.
- * Read the class lists, not only the tokens: `button.tsx` draws the
- * destructive button as `bg-destructive/10 text-destructive` with the hover
- * `/20` in the light theme, and in the dark theme keeps the tint at `/10` and
- * shows a border `border-destructive/60` on hover; `alert.tsx` draws the
- * destructive alert's text in `text-destructive`; `input.tsx` and
- * `textarea.tsx` fill a field with `dark:bg-input/30` and write the
- * placeholder in `text-muted-foreground`.
+ * Read the class lists, not only the tokens: `button.tsx` draws the default
+ * button hovered as `bg-primary/90`, the secondary one hovered as its colour
+ * mixed with 5% of the foreground, the ghost and outline ones hovered as
+ * `bg-muted text-foreground`, the link one as `text-primary`, and the
+ * destructive one as `bg-destructive/10 text-destructive` with the hover `/20`
+ * in the light theme and, in the dark theme, the tint kept at `/10` and a
+ * border `border-destructive/60` on hover; every variant's focus border is
+ * the base `focus-visible:border-ring`. `alert.tsx` draws the destructive
+ * alert's text in `text-destructive`; `input.tsx` and `textarea.tsx` fill a
+ * field with `dark:bg-input/30` and write the placeholder in
+ * `text-muted-foreground`.
  * `border` is not here: dividers and card edges are decorative, and a button is
  * identified by its text. Nor is the 50% halo of `ring-ring/50`: the solid
  * `focus-visible:border-ring` is the focus indicator.
@@ -87,6 +91,25 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
       bg: over(token('primary'), background),
       min: TEXT,
     },
+    {
+      name: 'default button hovered: primary-foreground on primary at 90% over background',
+      fg: token('primary-foreground'),
+      bg: over(token('primary'), background, 0.9),
+      min: TEXT,
+    },
+    {
+      name: 'secondary button hovered: secondary-foreground on secondary mixed with 5% foreground',
+      fg: token('secondary-foreground'),
+      bg: over(token('foreground'), over(token('secondary'), background), 0.05),
+      min: TEXT,
+    },
+    {
+      name: 'ghost and outline buttons hovered: foreground on muted',
+      fg: token('foreground'),
+      bg: over(token('muted'), background),
+      min: TEXT,
+    },
+    { name: 'link button: primary on background', fg: token('primary'), bg: background, min: TEXT },
     {
       name: 'secondary-foreground on secondary',
       fg: token('secondary-foreground'),
@@ -175,6 +198,12 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
       bg: background,
       min: CONTROL,
     },
+    {
+      name: 'sidebar-ring (focus border of the menu) on sidebar',
+      fg: over(token('sidebar-ring'), over(token('sidebar'), background)),
+      bg: over(token('sidebar'), background),
+      min: CONTROL,
+    },
   ];
 }
 
@@ -238,9 +267,9 @@ describe('the contrast arithmetic', () => {
     expect(faint.r).toBeCloseTo(0.045, 5);
   });
 
-  it('reads the tokens of a block', () => {
+  it('reads the tokens of a block, and not what a comment says about one', () => {
     const tokens = tokensOf(
-      ':root {\n  --a: oklch(1 0 0);\n  --b-c: oklch(0 0 0 / 10%);\n}\n.dark {\n  --a: oklch(0 0 0);\n}',
+      ':root {\n  --a: oklch(1 0 0);\n  --b-c: oklch(0 0 0 / 10%);\n}\n.dark {\n  --a: oklch(0 0 0);\n  /* Like --a: 4.5:1 on --b-c; see the test. */\n}',
       '.dark',
     );
     expect(tokens).toEqual({ a: 'oklch(0 0 0)' });

@@ -144,7 +144,7 @@ describe('the feedback dialog', () => {
     send(dialog);
 
     const alert = await within(dialog).findByRole('alert');
-    expect(alert.textContent).toBe(en.feedback.tooMany.replace('{{n}}', '20'));
+    expect(alert.textContent).toBe(en.feedback.tooMany_other.replace('{{n}}', '20'));
     expect(field().value).toBe('One too many.');
     expect(within(dialog).getByRole('status').textContent).toBe('');
   });

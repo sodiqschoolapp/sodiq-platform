@@ -113,13 +113,19 @@ describe('a feedback report', () => {
       expect((await reportsOf(browser.account.id))[0]?.roles).toEqual([]);
     });
 
-    it('with the roles of the session, whatever the body claims', async () => {
+    it('with the account and the roles of the session, whatever the body claims', async () => {
       const browser = await kit.fullSession('Kamila', 'Yusupova');
+      const other = await kit.newAccount('Jasur', 'Yusupov');
 
-      const response = await send(browser.cookie, { ...REPORT, roles: ['super_admin'] });
+      const response = await send(browser.cookie, {
+        ...REPORT,
+        roles: ['super_admin'],
+        accountId: other.id,
+      });
 
       expect(response.status).toBe(204);
       expect((await reportsOf(browser.account.id))[0]?.roles).toEqual([]);
+      expect(await reportsOf(other.id)).toEqual([]);
     });
 
     it('with a page of 500 characters and a text of 2000', async () => {

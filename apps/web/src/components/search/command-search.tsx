@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 import { cn } from 'cn';
-import { ChevronRightIcon, SearchIcon } from 'lucide-react';
+import { ChevronRightIcon, SearchIcon, XIcon } from 'lucide-react';
 import {
   useEffect,
   useId,
@@ -14,6 +14,7 @@ import { searchKey, searchWords } from '@/components/list/list-state';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -21,13 +22,17 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 
-/** Whether a key press is the shortcut of the search: Ctrl+K, or Cmd+K on a Mac. */
+/**
+ * Whether a key press is the shortcut of the search: Ctrl+K, or Cmd+K on a Mac.
+ * The key is read by its position too (`code`): with a Cyrillic layout the same
+ * key gives the letter л.
+ */
 export function isSearchShortcut(event: KeyboardEvent): boolean {
   return (
     (event.ctrlKey || event.metaKey) &&
     !event.altKey &&
     !event.shiftKey &&
-    event.key.toLowerCase() === 'k'
+    (event.key.toLowerCase() === 'k' || event.code === 'KeyK')
   );
 }
 
@@ -137,22 +142,29 @@ export function CommandSearch() {
       <DialogContent className="top-[15%] translate-y-0 gap-3 sm:max-w-md">
         <DialogTitle className="sr-only">{t('search.label')}</DialogTitle>
         <DialogDescription className="sr-only">{t('search.placeholder')}</DialogDescription>
-        <Input
-          role="combobox"
-          aria-expanded="true"
-          aria-controls={listId}
-          aria-activedescendant={activePage === undefined ? undefined : optionId(activeIndex)}
-          aria-autocomplete="list"
-          aria-label={t('search.label')}
-          placeholder={t('search.placeholder')}
-          autoComplete="off"
-          value={typed}
-          onChange={(event) => {
-            setTyped(event.target.value);
-            setActive(0);
-          }}
-          onKeyDown={onKeyDown}
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            role="combobox"
+            aria-expanded="true"
+            aria-controls={listId}
+            aria-activedescendant={activePage === undefined ? undefined : optionId(activeIndex)}
+            aria-autocomplete="list"
+            aria-label={t('search.label')}
+            placeholder={t('search.placeholder')}
+            autoComplete="off"
+            value={typed}
+            onChange={(event) => {
+              setTyped(event.target.value);
+              setActive(0);
+            }}
+            onKeyDown={onKeyDown}
+          />
+          <DialogClose
+            render={<Button variant="ghost" size="icon-sm" aria-label={t('layout.dismiss')} />}
+          >
+            <XIcon aria-hidden />
+          </DialogClose>
+        </div>
         <ul id={listId} role="listbox" aria-label={t('search.pages')} className="grid gap-0.5">
           {matching.map((page, index) => (
             <li

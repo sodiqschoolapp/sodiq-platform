@@ -147,7 +147,8 @@ export const en = {
     message: 'Message',
     send: 'Send',
     sent: 'Thank you. Your report was sent.',
-    tooMany: 'You have sent {{n}} reports in the last 24 hours. Try again later.',
+    tooMany_one: 'You have sent {{n}} report in the last 24 hours. Try again later.',
+    tooMany_other: 'You have sent {{n}} reports in the last 24 hours. Try again later.',
   },
   list: {
     search: 'Search',
