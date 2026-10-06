@@ -21,6 +21,7 @@ const WITHOUT_ROLE = {
   trust: ['Zarina', 'Tursunova'],
   patterns: ['Malika', 'Sobirova'],
   forms: ['Sardor', 'Nazarov'],
+  shellTools: ['Nilufar', 'Qodirova'],
 } as const;
 
 type Credentials = { login: string; password: string };

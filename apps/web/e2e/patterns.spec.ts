@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, signIn } from './steps';
+import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
 
 const selected = (count: number): string => en.list.selected_other.replace('{{n}}', String(count));
 
@@ -19,7 +19,7 @@ test('the sample list is worked from the keyboard, and its state is in the addre
 }) => {
   const account = accountOf('patterns');
   await page.goto('/sign-in');
-  await page.getByRole('combobox').selectOption('en');
+  await languageChooser(page).selectOption('en');
   await signIn(page, en, account.login, account.password);
   await changeFirstPassword(page, en, account);
   await expect(heading(page, en.home.title)).toBeVisible();

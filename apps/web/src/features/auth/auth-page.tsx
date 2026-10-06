@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LanguageChooser } from '@/components/language-chooser';
+import { ThemeSwitch } from '@/components/theme-switch';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 
 interface AuthPageProps {
@@ -18,7 +19,10 @@ export function AuthPage({ title, text, children }: AuthPageProps) {
     <div className="flex min-h-svh flex-col">
       <header className="flex items-center justify-between gap-3 px-4 py-3">
         <span className="font-semibold">{t('app.name')}</span>
-        <LanguageChooser />
+        <div className="flex items-center gap-2">
+          <ThemeSwitch />
+          <LanguageChooser />
+        </div>
       </header>
       <main className="flex flex-1 items-start justify-center p-4 sm:pt-16">
         <Card className="w-full max-w-sm">

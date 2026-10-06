@@ -4,7 +4,7 @@ import { en } from '../src/i18n/locales/en';
 import { ru } from '../src/i18n/locales/ru';
 import { uz } from '../src/i18n/locales/uz';
 import { accountOf, NEW_PASSWORD } from './accounts';
-import { changeFirstPassword, heading, signIn, type PageTexts } from './steps';
+import { changeFirstPassword, heading, languageChooser, signIn, type PageTexts } from './steps';
 import { codeNow } from './totp';
 
 const TEXTS = { uz, ru, en };
@@ -28,7 +28,7 @@ for (const language of LANGUAGES) {
     await page.goto('/');
     await expect(page).toHaveURL(/\/sign-in$/);
 
-    await page.getByRole('combobox').selectOption(language);
+    await languageChooser(page).selectOption(language);
     await expect(heading(page, t.signIn.title)).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', language);
 
@@ -60,7 +60,7 @@ for (const language of LANGUAGES) {
 test('refuses an unknown login and a wrong password with the same text', async ({ page }) => {
   const account = accountOf('wrongPassword');
   await page.goto('/sign-in');
-  await page.getByRole('combobox').selectOption('en');
+  await languageChooser(page).selectOption('en');
 
   await signIn(page, en, 'n.nobody', 'a-wrong-password');
   await expect(page.getByRole('alert')).toHaveText(en.errors.sign_in_failed);
@@ -78,7 +78,7 @@ test('sets up the required second step, and signs in again with a recovery code'
 }) => {
   const account = accountOf('vicePrincipal');
   await page.goto('/sign-in');
-  await page.getByRole('combobox').selectOption('en');
+  await languageChooser(page).selectOption('en');
   await signIn(page, en, account.login, account.password);
   await changeFirstPassword(page, en, account);
 
@@ -128,7 +128,7 @@ test('keeps the session in a cookie scripts cannot read, and says when a device 
 }) => {
   const account = accountOf('trust');
   await page.goto('/sign-in');
-  await page.getByRole('combobox').selectOption('en');
+  await languageChooser(page).selectOption('en');
   const trust = page.getByRole('checkbox', { name: en.signIn.trust });
   await expect(trust).not.toBeChecked();
   await trust.check();

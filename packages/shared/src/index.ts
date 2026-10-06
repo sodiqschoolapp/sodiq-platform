@@ -35,6 +35,15 @@ export {
   type ErrorCode,
   type ErrorDetail,
 } from './errors.js';
+export {
+  FEEDBACK_PAGE_FORMAT,
+  FEEDBACK_PAGE_MAX_LENGTH,
+  FEEDBACK_REPORTS_PER_DAY,
+  FEEDBACK_TEXT_MAX_LENGTH,
+  FEEDBACK_WINDOW_MS,
+  feedbackReportSchema,
+  type FeedbackReport,
+} from './feedback.js';
 export { healthResponseSchema, type HealthResponse } from './health.js';
 export {
   ACTIONS,

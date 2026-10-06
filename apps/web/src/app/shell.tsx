@@ -6,6 +6,7 @@ import { ApiFailure, type FailureCode } from '@/api/failure';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 import { UnsentProvider } from '@/components/unsent/unsent-changes';
 import { forgetSession, refreshSession, SESSION_CHANGED_CODES } from '@/features/auth/session';
+import { ThemeContext, type ThemeStore } from '@/theme/theme';
 import { createAppRouter, type AppRouter } from './router';
 
 export interface Shell {
@@ -54,18 +55,22 @@ export function createShell(history?: RouterHistory): Shell {
 interface AppProps {
   i18n: I18n;
   shell: Shell;
+  /** The theme of the tab, applied before the first render (`startTheme`). */
+  theme: ThemeStore;
 }
 
-export function App({ i18n, shell }: AppProps) {
+export function App({ i18n, shell, theme }: AppProps) {
   return (
     <I18nextProvider i18n={i18n}>
-      <QueryClientProvider client={shell.queryClient}>
-        <ConfirmProvider>
-          <UnsentProvider>
-            <RouterProvider router={shell.router} />
-          </UnsentProvider>
-        </ConfirmProvider>
-      </QueryClientProvider>
+      <ThemeContext.Provider value={theme}>
+        <QueryClientProvider client={shell.queryClient}>
+          <ConfirmProvider>
+            <UnsentProvider>
+              <RouterProvider router={shell.router} />
+            </UnsentProvider>
+          </ConfirmProvider>
+        </QueryClientProvider>
+      </ThemeContext.Provider>
     </I18nextProvider>
   );
 }

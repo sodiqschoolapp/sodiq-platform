@@ -101,6 +101,16 @@ export interface Branches {
   name: string;
 }
 
+export interface FeedbackReports {
+  account_id: string;
+  created_at: Timestamp;
+  id: Generated<string>;
+  page: string;
+  request_id: string | null;
+  roles: string[];
+  text: string;
+}
+
 export interface KnownDevices {
   account_id: string;
   first_signed_in_at: Timestamp;
@@ -159,6 +169,7 @@ export interface DB {
   audit_log: AuditLog;
   audit_log_school: AuditLogSchool;
   branches: Branches;
+  feedback_reports: FeedbackReports;
   known_devices: KnownDevices;
   request_keys: RequestKeys;
   schema_migrations: SchemaMigrations;

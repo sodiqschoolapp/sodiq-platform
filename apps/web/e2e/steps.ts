@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import type { en } from '../src/i18n/locales/en';
+import { en } from '../src/i18n/locales/en';
 import type { ru } from '../src/i18n/locales/ru';
 import type { uz } from '../src/i18n/locales/uz';
 import { NEW_PASSWORD, type Credentials } from './accounts';
@@ -9,6 +9,10 @@ export type PageTexts = typeof uz | typeof ru | typeof en;
 
 export const heading = (page: Page, name: string) =>
   page.getByRole('heading', { name, exact: true });
+
+/** The language chooser of the page, named in the language the page is in now. */
+export const languageChooser = (page: Page, t: PageTexts = en) =>
+  page.getByRole('combobox', { name: t.language.label, exact: true });
 
 export async function signIn(
   page: Page,

@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { chromium, type FullConfig } from '@playwright/test';
+import { en } from '../src/i18n/locales/en';
 import { ACCOUNTS_VARIABLE } from './accounts';
 
 /** How long the first page may take on a cold start, for example in CI. */
@@ -19,11 +20,12 @@ async function openAppOnce(baseURL: string): Promise<void> {
     const page = await browser.newPage({ baseURL });
     // Nobody is signed in: every address leads to the sign-in page.
     await page.goto('/', { timeout: FIRST_PAGE_MS });
-    await page.getByRole('combobox').waitFor({ timeout: FIRST_PAGE_MS });
+    const language = page.getByRole('combobox', { name: en.language.label, exact: true });
+    await language.waitFor({ timeout: FIRST_PAGE_MS });
     // The reload after the libraries were prepared, if there is one, is over
     // when the page stands still again.
     await page.waitForLoadState('networkidle', { timeout: FIRST_PAGE_MS });
-    await page.getByRole('combobox').waitFor({ timeout: FIRST_PAGE_MS });
+    await language.waitFor({ timeout: FIRST_PAGE_MS });
   } finally {
     await browser.close();
   }

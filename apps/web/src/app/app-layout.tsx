@@ -4,6 +4,8 @@ import { CircleUserRoundIcon, XIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LanguageChooser } from '@/components/language-chooser';
+import { CommandSearch } from '@/components/search/command-search';
+import { ThemeSwitch } from '@/components/theme-switch';
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +21,7 @@ import { useDismissQuestionsOnLeave } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { UnsentBanner, UnsentGuard, useLeave } from '@/components/unsent/unsent-changes';
 import { sessionQuery } from '@/features/auth/session';
+import { FeedbackButton } from '@/features/feedback/feedback-button';
 import { rememberTrustAsked, trustWasAsked } from '@/features/auth/trust-asked';
 import { useSignOut } from '@/features/auth/use-sign-out';
 
@@ -62,9 +65,10 @@ function NotTrustedNote({ trusted }: { trusted: boolean }) {
 
 /**
  * The frame of every page after sign-in (docs/spec/12-ux-standards.md, One
- * pattern everywhere): the top bar and the left menu. The menu per role, the
- * role and branch switchers and the year and quarter in the top bar come in
- * task 0.8c and with the school setup.
+ * pattern everywhere): the top bar with the search, the feedback button, the
+ * theme and the language, and the left menu. The menu per role, the role and
+ * branch switchers and the year and quarter in the top bar come in task 0.8c
+ * and with the school setup.
  */
 export function AppLayout() {
   const { t } = useTranslation();
@@ -82,7 +86,10 @@ export function AppLayout() {
           {t('app.name')}
         </Link>
         <UnsentBanner />
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+          <CommandSearch />
+          <FeedbackButton />
+          <ThemeSwitch />
           <LanguageChooser />
           <DropdownMenu>
             <DropdownMenuTrigger

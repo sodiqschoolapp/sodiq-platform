@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, signIn } from './steps';
+import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
 
 // docs/build-plan.md, task 0.8b-2: a sample form uses only the shared pieces.
 // docs/spec/12-ux-standards.md, No lost work: forms check each field as it is
@@ -12,7 +12,7 @@ test('the sample form is filled from the keyboard, saved, and not left by accide
 }) => {
   const account = accountOf('forms');
   await page.goto('/sign-in');
-  await page.getByRole('combobox').selectOption('en');
+  await languageChooser(page).selectOption('en');
   await signIn(page, en, account.login, account.password);
   await changeFirstPassword(page, en, account);
   await expect(heading(page, en.home.title)).toBeVisible();

@@ -1,0 +1,176 @@
+import { fireEvent, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { en } from '@/i18n/locales/en';
+import { fakeApi, json, refusal, renderApp, sessionOf } from '@/testing/render-app';
+import { DARK_QUERY, THEME_STORAGE_KEY, ThemeStore, isDark } from './theme';
+
+/** A device that prefers light or dark, and can change its mind. */
+function fakeDevice(dark: boolean) {
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  const query = {
+    matches: dark,
+    media: DARK_QUERY,
+    addEventListener: (_type: 'change', listener: (event: MediaQueryListEvent) => void) => {
+      listeners.add(listener);
+    },
+    removeEventListener: (_type: 'change', listener: (event: MediaQueryListEvent) => void) => {
+      listeners.delete(listener);
+    },
+  };
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((media: string) => {
+      expect(media).toBe(DARK_QUERY);
+      return query as unknown as MediaQueryList;
+    }),
+  );
+  return {
+    set(nextDark: boolean): void {
+      query.matches = nextDark;
+      for (const listener of listeners) {
+        listener({ matches: nextDark } as MediaQueryListEvent);
+      }
+    },
+    listeners,
+  };
+}
+
+const isPageDark = (): boolean => document.documentElement.classList.contains('dark');
+
+const stores: ThemeStore[] = [];
+const newStore = (): ThemeStore => {
+  const store = new ThemeStore();
+  stores.push(store);
+  return store;
+};
+
+afterEach(() => {
+  for (const store of stores.splice(0)) {
+    store.stop();
+  }
+  document.documentElement.classList.remove('dark');
+  vi.restoreAllMocks();
+});
+
+// docs/spec/12-ux-standards.md, Look and feel: "Light and dark themes".
+// Decided by the owner (task 0.8b-3): light, dark or as the device; as the
+// device by default; kept in the browser.
+describe('the theme of the page', () => {
+  it('follows the device by default, also when the device changes its mind', () => {
+    const device = fakeDevice(true);
+
+    const store = newStore();
+
+    expect(store.snapshot()).toBe('device');
+    expect(isPageDark()).toBe(true);
+    device.set(false);
+    expect(isPageDark()).toBe(false);
+    device.set(true);
+    expect(isPageDark()).toBe(true);
+  });
+
+  it('is the one chosen before in this browser, applied at the start', () => {
+    fakeDevice(false);
+    window.localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+
+    const store = newStore();
+
+    expect(store.snapshot()).toBe('dark');
+    expect(isPageDark()).toBe(true);
+  });
+
+  it('follows the device when the stored value is not a theme', () => {
+    fakeDevice(true);
+    window.localStorage.setItem(THEME_STORAGE_KEY, 'blue');
+
+    expect(newStore().snapshot()).toBe('device');
+    expect(isPageDark()).toBe(true);
+  });
+
+  it('stays light with a light choice on a dark device, and stops following the device', () => {
+    const device = fakeDevice(true);
+    const store = newStore();
+
+    store.set('light');
+
+    expect(isPageDark()).toBe(false);
+    device.set(false);
+    device.set(true);
+    expect(isPageDark()).toBe(false);
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
+  });
+
+  it('works in a browser that cannot say what the device prefers', () => {
+    vi.stubGlobal('matchMedia', undefined);
+
+    const store = newStore();
+
+    expect(isPageDark()).toBe(false);
+    store.set('dark');
+    expect(isPageDark()).toBe(true);
+  });
+
+  it('keeps the choice for the visit when the browser refuses storage', () => {
+    fakeDevice(false);
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('Storage is refused.');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('Storage is refused.');
+    });
+
+    const store = newStore();
+    store.set('dark');
+
+    expect(store.snapshot()).toBe('dark');
+    expect(isPageDark()).toBe(true);
+  });
+
+  it.each([
+    ['device', false, false],
+    ['device', true, true],
+    ['light', true, false],
+    ['dark', false, true],
+  ] as const)('is %s with a device that prefers dark=%s: dark=%s', (theme, deviceDark, dark) => {
+    expect(isDark(theme, deviceDark)).toBe(dark);
+  });
+});
+
+describe('the theme switch', () => {
+  const chooser = () => screen.getByRole<HTMLSelectElement>('combobox', { name: en.theme.label });
+
+  it('offers the three choices, changes the page and stores the choice', async () => {
+    fakeDevice(false);
+    fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });
+    renderApp('/', 'en', newStore());
+    await screen.findByRole('heading', { name: en.home.title });
+
+    expect([...chooser().options].map((option) => option.textContent)).toEqual([
+      en.theme.device,
+      en.theme.light,
+      en.theme.dark,
+    ]);
+    expect(chooser().value).toBe('device');
+
+    fireEvent.change(chooser(), { target: { value: 'dark' } });
+    expect(isPageDark()).toBe(true);
+    expect(chooser().value).toBe('dark');
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
+
+    fireEvent.change(chooser(), { target: { value: 'light' } });
+    expect(isPageDark()).toBe(false);
+  });
+
+  // "These rules apply to every page" (12): before sign-in too.
+  it('is on the sign-in page as well, beside the language chooser', async () => {
+    fakeDevice(true);
+    fakeApi({ 'GET /api/auth/session': () => refusal('not_signed_in', 401) });
+    renderApp('/sign-in', 'en', newStore());
+    await screen.findByRole('heading', { name: en.signIn.title });
+
+    expect(isPageDark()).toBe(true);
+    expect(screen.getByRole('combobox', { name: en.language.label })).toBeDefined();
+    fireEvent.change(chooser(), { target: { value: 'light' } });
+    expect(isPageDark()).toBe(false);
+  });
+});
