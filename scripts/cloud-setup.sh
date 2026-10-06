@@ -9,73 +9,79 @@
 # the repository (install, database, migrations) is done at every session
 # start by scripts/cloud-session-start.sh.
 #
-# It never aborts: a step that fails says so and the session still starts,
-# so that the first session can report what the machine looks like
-# (docs/cloud-loop.md, The trial). Keep it under five minutes, or the result
-# is not cached (docs: cloud environments, setup scripts).
+# Known from the first runs: the machine has no GitHub credentials while this
+# script runs (no git clone here), and Docker's daemon needs a few seconds
+# after it is started. The script never aborts: a step that fails says so and
+# the session still starts, so that the first session can report what the
+# machine looks like (docs/cloud-loop.md, The trial). Keep it under five
+# minutes, or the result is not cached.
 set -uo pipefail
 
 step() { echo; echo "== $*"; }
 failed() { echo "!! $* failed"; }
 
 step "machine"
+echo "cwd=$(pwd)"
 echo "PATH=$PATH"
 echo "node on PATH: $(command -v node || echo none) $(node --version 2>/dev/null || true)"
 echo "pnpm on PATH: $(command -v pnpm || echo none) $(pnpm --version 2>/dev/null || true)"
 ls -d /opt/node* 2>/dev/null || true
 
-step "Node 24 from nodejs.org (needs nodejs.org in the environment's network list)"
-# The VM has Node 20, 21 and 22 under /opt. Node 24 goes to /opt/node24.
-install_node24() {
+step "Node 24"
+# The VM has Node 20, 21 and 22 under /opt. The npm package "node" carries the
+# official binary and comes from the npm registry, which the default network
+# list allows (this worked on the first run). nodejs.org is the fallback.
+install_node24_npm() { npm install -g --prefix /opt/node24 node@24 >/dev/null 2>&1; }
+install_node24_dist() {
   local version
   version=$(curl -fsSL https://nodejs.org/dist/index.json \
     | python3 -c 'import json,sys; print(next(v["version"] for v in json.load(sys.stdin) if v["version"].startswith("v24.")))') || return 1
-  echo "latest 24: $version"
   curl -fsSL "https://nodejs.org/dist/$version/node-$version-linux-x64.tar.xz" -o /tmp/node24.tar.xz || return 1
   rm -rf /opt/node24 "/opt/node-$version-linux-x64"
   tar -xJf /tmp/node24.tar.xz -C /opt || return 1
   ln -sfn "/opt/node-$version-linux-x64" /opt/node24
   rm -f /tmp/node24.tar.xz
 }
-install_node24_npm() {
-  # Fallback without nodejs.org: the npm package "node" carries the binary.
-  npm install -g --prefix /opt/node24 node@24
-}
-if install_node24; then
-  echo "installed from nodejs.org"
-elif install_node24_npm; then
+if install_node24_npm; then
   echo "installed from the npm registry"
+elif install_node24_dist; then
+  echo "installed from nodejs.org"
 else
   failed "Node 24 install"
 fi
 if [ -x /opt/node24/bin/node ]; then
   echo "/opt/node24/bin/node is $(/opt/node24/bin/node --version)"
   echo 'export PATH=/opt/node24/bin:$PATH' > /etc/profile.d/node24.sh
-  for bin in node npm npx corepack; do
-    [ -e "/opt/node24/bin/$bin" ] && ln -sfn "/opt/node24/bin/$bin" "/usr/local/bin/$bin"
-  done
+  ln -sfn /opt/node24/bin/node /usr/local/bin/node
   export PATH=/opt/node24/bin:$PATH
 else
   failed "no /opt/node24/bin/node"
 fi
 
-step "PostgreSQL 18 image (pulled now so it is in the cache)"
+step "Docker daemon"
 (service docker start || true) >/dev/null 2>&1
-docker pull postgres:18 >/dev/null 2>&1 &
-PULL=$!
-
-step "warm the pnpm store with the dependencies of main"
-# pnpm reads "packageManager" from package.json and switches to that version
-# by itself. The clone is thrown away; only the store is kept.
-rm -rf /opt/warm
-if git clone --depth 1 https://github.com/sodiqschoolapp/sodiq-platform /opt/warm >/dev/null 2>&1; then
-  (cd /opt/warm && pnpm install --frozen-lockfile >/dev/null 2>&1) || failed "warm-up install (the session start installs instead)"
-  rm -rf /opt/warm
+for _ in $(seq 1 30); do
+  if docker info >/dev/null 2>&1; then break; fi
+  sleep 1
+done
+if docker info >/dev/null 2>&1; then
+  echo "docker is running"
+  step "PostgreSQL 18 image (pulled now so it is in the cache)"
+  docker pull postgres:18 >/dev/null 2>&1 && docker image ls postgres:18 || failed "docker pull postgres:18"
 else
-  failed "clone for the warm-up (the session start installs instead)"
+  failed "docker daemon did not start (the session start tries again)"
 fi
 
-wait "$PULL" && docker image ls postgres:18 || failed "docker pull postgres:18"
+step "warm the pnpm store"
+# The repository is cloned before this script runs. If this is its directory,
+# install once so the pnpm store is in the cache; the session start installs
+# again, fast. pnpm reads "packageManager" from package.json and switches to
+# that version by itself.
+if [ -f pnpm-lock.yaml ]; then
+  pnpm install --frozen-lockfile >/dev/null 2>&1 && echo "store warmed" || failed "pnpm install (the session start installs instead)"
+else
+  echo "not in the repository directory; the session start installs"
+fi
 
 step "setup done"
 exit 0

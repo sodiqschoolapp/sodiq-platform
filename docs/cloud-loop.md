@@ -69,7 +69,7 @@ At claude.ai/code, open the environment selector and create an environment:
 | Field | Value |
 | --- | --- |
 | Name | `sodiq-platform` |
-| Network access | Custom: tick "Also include default list of common package managers" (npm, GitHub, Docker Hub) and add the domain `nodejs.org` (Node 24 is downloaded from there; the VM has only Node 20 to 22) |
+| Network access | Trusted (the default list: npm, GitHub, Docker Hub). Node 24 comes from the npm registry; Custom with the default list plus `nodejs.org` is the fallback if that ever fails |
 | Environment variables | `TURBO_TELEMETRY_DISABLED=1` |
 | Setup script | The whole of `scripts/cloud-setup.sh`, pasted. It never aborts: a failed step prints `!! … failed` and the session still starts, so the trial can report it |
 
@@ -91,7 +91,9 @@ Then run pnpm lint, pnpm typecheck and pnpm test and report the results.
 
 Expected: `node --version` is 24.x, pnpm 12.8.1, a container `sodiq-pg`, `1`, and three green runs. The session's own setup log (the box above the first answer) shows the setup script and the hook; a line starting with `!!` names a failed step.
 
-If `/opt/node24/bin/node` is 24 but `node --version` is not: the session's `PATH` puts `/opt/node22/bin` first. Add the variable `PATH=/opt/node24/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin` to the environment and start a new session. If `/opt/node24/bin/node` is missing: the download from `nodejs.org` failed; check that the domain is in the network list. If `docker ps` fails: replace the container by `apt install postgresql-18` from `apt.postgresql.org` in the setup script and add that domain to the network list.
+If `/opt/node24/bin/node` is 24 but `node --version` is not: the session's `PATH` puts `/opt/node22/bin` first. Add the variable `PATH=/opt/node24/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin` to the environment and start a new session. If `/opt/node24/bin/node` is missing: both Node installs failed; the setup log says which. If `docker ps` fails in the session as well: replace the container by `apt install postgresql-18` from `apt.postgresql.org` in the setup script (drop the cluster of the preinstalled 16 first, so 18 takes port 5432), add `apt.postgresql.org` and `www.postgresql.org` to a Custom network list, and start it in the hook with `service postgresql start`.
+
+Known from the first runs: the setup script has no GitHub credentials (nothing is cloned in it), Docker's daemon needs a few seconds after `service docker start`, and a setup script that aborts means no session at all.
 
 When all is green, send `/next-task` in the same session. It plans, opens the draft pull request and stops. The reviewer (step 4 once it exists; the owner's reviewer until then) posts `[review] …`; the owner sends "read the review on the pull request and proceed" from the phone or the browser. From here the task runs as on the laptop, and ends with the owner merging and hand-testing after `pnpm sync`.
 

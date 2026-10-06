@@ -40,6 +40,10 @@ fi
 
 step "PostgreSQL 18"
 (service docker start || true) >/dev/null 2>&1
+for _ in $(seq 1 30); do
+  if docker info >/dev/null 2>&1; then break; fi
+  sleep 1
+done
 if docker info >/dev/null 2>&1; then
   if ! docker ps --format '{{.Names}}' | grep -qx sodiq-pg; then
     docker rm -f sodiq-pg >/dev/null 2>&1 || true
@@ -57,7 +61,7 @@ if docker info >/dev/null 2>&1; then
   step "roles and database (db/setup/local.sql, idempotent)"
   docker exec -i sodiq-pg psql -U postgres -v ON_ERROR_STOP=1 < db/setup/local.sql >/dev/null || failed "local.sql"
 else
-  failed "docker is not running; no database for this session"
+  failed "docker daemon start; no database for this session"
 fi
 
 step "dependencies"
