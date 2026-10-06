@@ -17,9 +17,10 @@ export function AuthPage({ title, text, children }: AuthPageProps) {
 
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="flex items-center justify-between gap-3 px-4 py-3">
-        <span className="font-semibold">{t('app.name')}</span>
-        <div className="flex items-center gap-2">
+      {/* On a phone the two choosers wrap under the name instead of breaking it. */}
+      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <span className="shrink-0 font-semibold">{t('app.name')}</span>
+        <div className="ml-auto flex items-center gap-2">
           <ThemeSwitch />
           <LanguageChooser />
         </div>

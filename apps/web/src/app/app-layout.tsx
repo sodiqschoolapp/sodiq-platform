@@ -81,7 +81,8 @@ export function AppLayout() {
   return (
     <div className="flex min-h-svh flex-col">
       <UnsentGuard />
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b px-4">
+      {/* On a phone the tools do not fit beside the name: they wrap onto a second row. */}
+      <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-1">
         <Link to="/" className="shrink-0 font-semibold">
           {t('app.name')}
         </Link>
