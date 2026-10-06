@@ -43,6 +43,9 @@ test('the theme is kept, Ctrl+K and the search button open the pages, and a repo
   await expect(page).toHaveURL(/\/password$/);
   await expect(heading(page, en.password.titleOwn)).toBeVisible();
   await expect(search).toBeHidden();
+  // The password page stands outside the layout: back to a page with the top bar.
+  await page.goto('/');
+  await expect(heading(page, en.home.title)).toBeVisible();
 
   // On a phone there is no Ctrl+K: the button in the top bar opens the same search.
   await page.setViewportSize({ width: 390, height: 844 });
