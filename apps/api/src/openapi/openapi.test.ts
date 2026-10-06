@@ -49,6 +49,7 @@ describe('OpenAPI document', () => {
         '/api/auth/sign-out-everywhere',
         '/api/auth/trusted-devices',
         '/api/auth/trusted-devices/{id}',
+        '/api/feedback',
         '/api/health',
       ]);
       expect(document.paths['/api/health']?.get?.responses).toEqual({

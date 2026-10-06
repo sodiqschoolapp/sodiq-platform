@@ -96,7 +96,7 @@ How to read the task lines:
   - Build: the form pattern (a Save button on record forms, each field checked as it is typed, a warning before leaving with typed changes); the confirmation dialog for actions that cannot be undone, which names what will be affected; the unsent-changes banner (typed and not saved, or a save that failed; the journal queue of 8.3c joins it); a sample form for development. Undo waits for the first action that offers it. Split off from 0.8b by the owner.
   - Done when: a sample form uses only the shared pieces.
 
-- [ ] **0.8b-3 Web shell: shell tools**
+- [x] **0.8b-3 Web shell: shell tools**
   - Read: `12` (One pattern everywhere, Look and feel), `14` (Whole system), `edge/developer-rules`.
   - Build: Ctrl+K search (pages only for now; records are added as they are built), without a further library; the feedback button, inside the layout only, with its school-wide table and route in a module `feedback` (roles from the session, never from the body; the page is the path without the query; at most 20 reports a day per account; no audit entry; the owner reads the table until a screen exists); the theme switch (light, dark, as the device), kept in the browser; the review of the look (contrast to WCAG 2.1 AA only; brand colour and logo come as a small task when the owner provides them). Split off from 0.8b-2 by the owner.
   - Done when: a feedback report reaches the table with the page and the roles of the session, and the contrast test passes in both themes.

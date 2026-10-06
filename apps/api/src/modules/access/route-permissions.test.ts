@@ -37,8 +37,9 @@ import { createTestDatabase, type TestDatabase } from '../../testing/test-databa
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
-  // The own sign-in: open to every signed-in account, the Principal included
-  // (docs/decisions.md, task 0.7b). Each acts on the account of the session only.
+  // The own sign-in, and a feedback report about the app: open to every
+  // signed-in account, the Principal included (docs/decisions.md, tasks 0.7b and
+  // 0.8b-3). Each acts on the account of the session only.
   'GET /api/auth/session': 'any_signed_in',
   'GET /api/auth/sessions': 'any_signed_in',
   'POST /api/auth/password': 'any_signed_in',
@@ -51,6 +52,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/auth/second-step/turn-off': 'any_signed_in',
   'GET /api/auth/trusted-devices': 'any_signed_in',
   'DELETE /api/auth/trusted-devices/:id': 'any_signed_in',
+  'POST /api/feedback': 'any_signed_in',
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

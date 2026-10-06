@@ -9,7 +9,9 @@ const alertVariants = cva(
       variant: {
         default: 'bg-card text-card-foreground',
         destructive:
-          'bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current',
+          // The description at full strength: at 90% it was 3.46:1 on a card in the
+          // light theme, under the 4.5:1 of WCAG 2.1 AA (task 0.8b-3).
+          'bg-card text-destructive *:data-[slot=alert-description]:text-destructive *:[svg]:text-current',
       },
     },
     defaultVariants: {

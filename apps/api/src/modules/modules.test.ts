@@ -10,6 +10,7 @@ const MODULE_NAMES = [
   'audit',
   'auth',
   'classes',
+  'feedback',
   'journal',
   'notifications',
   'people',

@@ -8,6 +8,7 @@ import { AccessModule } from './modules/access/access.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { ClassesModule } from './modules/classes/classes.module.js';
+import { FeedbackModule } from './modules/feedback/feedback.module.js';
 import { JournalModule } from './modules/journal/journal.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { PeopleModule } from './modules/people/people.module.js';
@@ -17,7 +18,7 @@ import { SetupModule } from './modules/setup/setup.module.js';
 import { TimetableModule } from './modules/timetable/timetable.module.js';
 
 /**
- * What the API and the jobs worker share: the plumbing and the eleven product
+ * What the API and the jobs worker share: the plumbing and the twelve product
  * modules, which hold the job handlers beside the routes.
  */
 export const SHARED_MODULES = [
@@ -35,6 +36,7 @@ export const SHARED_MODULES = [
   JournalModule,
   PlansModule,
   ResultsModule,
+  FeedbackModule,
 ];
 
 @Module({

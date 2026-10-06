@@ -49,6 +49,8 @@
 }
 
 :root {
+  /* Native controls and scrollbars follow the theme (apps/web/src/theme). */
+  color-scheme: light;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -60,13 +62,17 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* 0.54 and not 0.556: 4.64:1 on --muted (task 0.8b-3, WCAG 2.1 AA). */
+  --muted-foreground: oklch(0.54 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
+  /* 0.53 and not 0.577: 5.01:1 on its 10% tint, 4.57:1 on the 20% tint of the hover. */
+  --destructive: oklch(0.53 0.245 27.325);
   --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* The border of a field is its only sign: 3.23:1 on the background (0.922 was 1.26:1). */
+  --input: oklch(0.65 0 0);
+  /* The focus border: 4.73:1 on the background (0.708 was 2.59:1). */
+  --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -80,10 +86,12 @@
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Like the ring: 4.53:1 on the sidebar (0.708 was 2.48:1); the menu of 0.8c inherits it. */
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -95,10 +103,12 @@
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  /* 0.74 and not 0.708: 4.65:1 as a placeholder on the fill of a field. */
+  --muted-foreground: oklch(0.74 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  /* Lighter and a little less saturated than 0.704 0.191: 4.96:1 on its 10% tint (button.tsx). */
+  --destructive: oklch(0.8 0.17 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);

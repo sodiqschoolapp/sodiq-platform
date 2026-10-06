@@ -16,6 +16,12 @@ export const en = {
   language: {
     label: 'Language',
   },
+  theme: {
+    label: 'Theme',
+    device: 'As the device',
+    light: 'Light',
+    dark: 'Dark',
+  },
   problems: {
     noAnswer: 'The server did not answer. Check the internet connection and try again.',
     unexpected:
@@ -125,6 +131,24 @@ export const en = {
     notTrusted:
       'This device is not trusted: a one-time password was in use at sign-in. To trust it, sign out and sign in again with "Trust this device" on.',
     dismiss: 'Close',
+  },
+  search: {
+    label: 'Search',
+    shortcut: 'Ctrl+K',
+    shortcutMac: '⌘K',
+    placeholder: 'Type the name of a page',
+    pages: 'Pages',
+    noMatch: 'No page matches. Try other words.',
+  },
+  feedback: {
+    button: 'Send feedback',
+    title: 'Send feedback',
+    text: 'Tell us what happened or what should work better. The page you are on and your role are attached to the report.',
+    message: 'Message',
+    send: 'Send',
+    sent: 'Thank you. Your report was sent.',
+    tooMany_one: 'You have sent {{n}} report in the last 24 hours. Try again later.',
+    tooMany_other: 'You have sent {{n}} reports in the last 24 hours. Try again later.',
   },
   list: {
     search: 'Search',

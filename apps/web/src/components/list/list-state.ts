@@ -124,7 +124,7 @@ export function searchKey(value: string, language: string): string {
 }
 
 /** Null when nothing is typed; otherwise the words a row must all contain. */
-function searchWords(q: string | undefined, language: string): string[] | null {
+export function searchWords(q: string | undefined, language: string): string[] | null {
   const words = searchKey(q ?? '', language)
     .split(/\s+/)
     .filter((word) => word !== '');

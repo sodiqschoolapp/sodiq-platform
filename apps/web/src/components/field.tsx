@@ -1,6 +1,7 @@
 import { useId, type ComponentProps, type ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface FieldTexts {
   label: string;
@@ -102,6 +103,17 @@ export function SelectField({ label, error, note, options, ...select }: SelectFi
           ))}
         </select>
       )}
+    </Labelled>
+  );
+}
+
+type TextAreaFieldProps = FieldTexts & Omit<ComponentProps<'textarea'>, 'id'>;
+
+/** A labelled field for several lines of text, with its message; as `Field` otherwise. */
+export function TextAreaField({ label, error, note, ...textarea }: TextAreaFieldProps) {
+  return (
+    <Labelled label={label} error={error} note={note}>
+      {(control) => <Textarea {...control} {...textarea} />}
     </Labelled>
   );
 }

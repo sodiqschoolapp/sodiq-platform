@@ -46,9 +46,10 @@ export function declarationsOf(handler: object): RouteAccess[] {
 
 /**
  * Declares a route that every signed-in account may call, whatever its roles,
- * the Principal included: the own sign-in, password, sessions and second step.
- * Such a route acts on the account of the session only and never on one named
- * in the request.
+ * the Principal included: the own sign-in, password, sessions and second step,
+ * and a feedback report about the own experience of the app (edge cases, "Who
+ * can act"; docs/spec-changes.md, 6 October 2026). Such a route acts on the
+ * account of the session only and never on one named in the request.
  */
 export const AnySignedIn = (): MethodDecorator => declare({ kind: 'any_signed_in' });
 

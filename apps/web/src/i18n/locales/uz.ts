@@ -13,6 +13,12 @@ export const uz: Texts<'one' | 'other'> = {
   language: {
     label: 'Til',
   },
+  theme: {
+    label: 'Koʻrinish',
+    device: 'Qurilma boʻyicha',
+    light: 'Yorugʻ',
+    dark: 'Qorongʻi',
+  },
   problems: {
     noAnswer: 'Server javob bermadi. Internet aloqasini tekshirib, qayta urinib koʻring.',
     unexpected:
@@ -129,6 +135,24 @@ export const uz: Texts<'one' | 'other'> = {
     notTrusted:
       'Bu qurilma ishonchli deb belgilanmadi: kirishda bir martalik parol ishlatilgan. Unga ishonish uchun tizimdan chiqing va «Bu qurilmaga ishonish»ni yoqib, qaytadan kiring.',
     dismiss: 'Yopish',
+  },
+  search: {
+    label: 'Qidiruv',
+    shortcut: 'Ctrl+K',
+    shortcutMac: '⌘K',
+    placeholder: 'Sahifa nomini yozing',
+    pages: 'Sahifalar',
+    noMatch: 'Mos sahifa topilmadi. Boshqa soʻz bilan urinib koʻring.',
+  },
+  feedback: {
+    button: 'Fikr bildirish',
+    title: 'Fikr bildirish',
+    text: 'Nima yuz berganini yoki nimani yaxshilash kerakligini yozing. Siz turgan sahifa va rolingiz xabarga qoʻshiladi.',
+    message: 'Xabar',
+    send: 'Yuborish',
+    sent: 'Rahmat. Xabaringiz yuborildi.',
+    tooMany_one: 'Soʻnggi 24 soatda {{n}} ta xabar yubordingiz. Keyinroq urinib koʻring.',
+    tooMany_other: 'Soʻnggi 24 soatda {{n}} ta xabar yubordingiz. Keyinroq urinib koʻring.',
   },
   list: {
     search: 'Qidirish',

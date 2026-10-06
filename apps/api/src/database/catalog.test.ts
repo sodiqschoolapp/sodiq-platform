@@ -30,6 +30,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'The Super Admin and the Senior Head Teacher have no branch, and the roles of an account are read on every request before a branch is known; a row holds ids, a role and moments.',
   sign_in_throttle:
     'Failed sign-ins are counted before any branch is known, also for logins that do not exist; a row holds hashes, a count and moments.',
+  feedback_reports:
+    'A report about the app belongs to an account, which has no branch; a row holds ids, the roles of the session, the path of a page, a text and a moment. The owner reads it until a screen exists (task 0.8b-3).',
 };
 
 /**

@@ -5,6 +5,7 @@ import { vi } from 'vitest';
 import { App, createShell, type Shell } from '@/app/shell';
 import { createI18n } from '@/i18n/i18n';
 import type { Language } from '@/i18n/languages';
+import { ThemeStore } from '@/theme/theme';
 
 /** Answers one route of the API; it is given the JSON body of the request, if any. */
 export type Handler = (body: unknown) => Response;
@@ -68,9 +69,16 @@ export function fakeApi(handlers: Record<string, Handler>): ApiCall[] {
   return calls;
 }
 
-/** The whole app at an address, in a language (English when left out). */
-export function renderApp(path = '/', language: Language = 'en'): Shell {
+/**
+ * The whole app at an address, in a language (English when left out). The
+ * theme is read from the browser as at a start, unless a store is given.
+ */
+export function renderApp(
+  path = '/',
+  language: Language = 'en',
+  theme: ThemeStore = new ThemeStore(),
+): Shell {
   const shell = createShell(createMemoryHistory({ initialEntries: [path] }));
-  render(<App i18n={createI18n(language)} shell={shell} />);
+  render(<App i18n={createI18n(language)} shell={shell} theme={theme} />);
   return shell;
 }
