@@ -45,6 +45,7 @@ The next sessions must know:
 - The theme: `useTheme()` and `ThemeSwitch`; `renderApp(path, language, new ThemeStore())` in a test, `fakeDevice()` of `theme.test.tsx` for the device's preference (jsdom has no `matchMedia`).
 - A one-shot dialog with a form: `useRecordForm` without `RecordForm`, as `feedback-button.tsx`; keep the draft in the parent and remount the form with a `key` after a send.
 - Browser tests in the cloud environment: Playwright 1.63 looks for the browser build 1243 and the environment has 1194. A directory with the 1243 names linked to the installed binaries, given as `PLAYWRIGHT_BROWSERS_PATH`, runs them: see the report of pull request #25. CI installs its own Chromium.
+- A web test may take 15 s (`testTimeout` in `apps/web/vite.config.ts`): the first test of a file pays the cold start of its worker, and on a CI runner the first test of the sample list ran to 5.26 s. The 2 workers stay.
 - The full run in the cloud environment: API tests 49 files, 1097 tests; web tests 15 files, 242 tests; shared 47; `pnpm test` about 1m20s with the two caches warm; browser tests 9, about 45 s.
 
 The next task is 0.8c.

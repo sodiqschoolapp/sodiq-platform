@@ -31,5 +31,11 @@ export default defineConfig({
     // the full run once a further file of page tests existed (task 0.8b-2).
     // `pnpm test` runs these beside the API tests, which take 4 processors.
     maxWorkers: 2,
+    // A page test draws the whole app in jsdom, and the first test of a file
+    // pays the cold start of its worker: the first test of the sample list
+    // (100 rows, 1.4 s here) ran to 5.26 s on a CI runner and failed at the
+    // default 5 s (task 0.8b-3). As the API's 30 s: the limit of a test, not
+    // what it asserts.
+    testTimeout: 15_000,
   },
 });
