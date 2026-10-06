@@ -87,7 +87,7 @@ export function AppLayout() {
           {t('app.name')}
         </Link>
         <UnsentBanner />
-        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1 sm:gap-2">
           <CommandSearch />
           <FeedbackButton />
           <ThemeSwitch />
@@ -97,7 +97,8 @@ export function AppLayout() {
               render={<Button variant="ghost" aria-label={t('layout.account')} />}
             >
               <CircleUserRoundIcon aria-hidden />
-              <span className="max-w-40 truncate">{session?.login}</span>
+              {/* On a phone the icon alone: the login would not fit in the row. */}
+              <span className="hidden max-w-40 truncate sm:inline">{session?.login}</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuGroup>
