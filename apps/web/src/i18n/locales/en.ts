@@ -228,7 +228,7 @@ export const en = {
     empty:
       'This page will show what you need to do today. Your menu and your tasks appear here as the sections of the platform are opened.',
     teaching:
-      "Today's lessons with their status, reminders, quick entry to each journal and the early-warning list for your journals. Head Teachers also see the requests waiting for them. This page fills as the sections of the platform are opened.",
+      "Today's lessons with their status, reminders, quick entry to each journal and the early-warning list for your journals. Head Teachers and Senior Head Teachers also see the requests waiting for them. This page fills as the sections of the platform are opened.",
     tutor:
       "Your class: today's timetable, who is absent now, attendance for the day and the week, and the early-warning list for the class. This page fills as the sections of the platform are opened.",
     attendance_overview:

@@ -101,7 +101,7 @@ How to read the task lines:
   - Build: Ctrl+K search (pages only for now; records are added as they are built), without a further library; the feedback button, inside the layout only, with its school-wide table and route in a module `feedback` (roles from the session, never from the body; the page is the path without the query; at most 20 reports a day per account; no audit entry; the owner reads the table until a screen exists); the theme switch (light, dark, as the device), kept in the browser; the review of the look (contrast to WCAG 2.1 AA only; brand colour and logo come as a small task when the owner provides them). Split off from 0.8b-2 by the owner.
   - Done when: a feedback report reaches the table with the page and the roles of the session, and the contrast test passes in both themes.
 
-- [ ] **0.8c Web shell: menus and home pages per role**
+- [x] **0.8c Web shell: menus and home pages per role**
   - Read: `02`, `08` (Home pages by role).
   - Build: navigation per role; role switcher and branch switcher; an empty home page for each role that later tasks fill.
   - Done when: a signed-in user of each of the 15 roles sees the right menu.

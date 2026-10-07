@@ -1,9 +1,21 @@
 import { HOME_KIND, MENU, ROLES, type Role } from '@sodiq/shared';
+import { MutationObserver } from '@tanstack/react-query';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { api } from '@/api/client';
+import { answerOf } from '@/api/failure';
 import { getBranchInUse } from '@/api/branch-in-use';
 import { en } from '@/i18n/locales/en';
-import { fakeApi, json, nothing, NORTH, renderApp, SOUTH, sessionOf } from '@/testing/render-app';
+import {
+  fakeApi,
+  json,
+  nothing,
+  NORTH,
+  refusal,
+  renderApp,
+  SOUTH,
+  sessionOf,
+} from '@/testing/render-app';
 import { BRANCH_STORAGE_KEY, ROLE_STORAGE_KEY } from './view-store';
 
 // Every page is built here, so that the menu shows the whole row of the table.
@@ -172,6 +184,30 @@ describe('sign-out', () => {
 
     fireEvent.click(screen.getByRole('button', { name: en.layout.account }));
     fireEvent.click(await screen.findByRole('menuitem', { name: en.layout.signOut }));
+
+    await heading(en.signIn.title);
+    expect(window.sessionStorage.getItem(ROLE_STORAGE_KEY)).toBeNull();
+    expect(window.sessionStorage.getItem(BRANCH_STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe('a session that ended', () => {
+  it('clears the role and the branch of the tab, so that the next person does not inherit them', async () => {
+    window.sessionStorage.setItem(ROLE_STORAGE_KEY, 'teacher');
+    window.sessionStorage.setItem(BRANCH_STORAGE_KEY, NORTH.id);
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionOf()),
+      'GET /api/auth/sessions': () => refusal('not_signed_in', 401),
+    });
+    const shell = renderApp('/');
+    await heading(en.home.title);
+
+    // Any call that the server refuses because the session ended.
+    await new MutationObserver(shell.queryClient, {
+      mutationFn: () => answerOf(api.GET('/api/auth/sessions')),
+    })
+      .mutate()
+      .catch(() => undefined);
 
     await heading(en.signIn.title);
     expect(window.sessionStorage.getItem(ROLE_STORAGE_KEY)).toBeNull();

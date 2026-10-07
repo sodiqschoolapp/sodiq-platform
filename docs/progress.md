@@ -2,6 +2,36 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 October 2026: task 0.8c Web shell: menus and home pages per role
+
+Plan approved by the owner on pull request #27 (two `[review] approved` comments: the answers to seven questions and the menu table).
+
+Built:
+
+- `packages/shared`: `menu.ts` (`MENU`: the approved menu per role, at most 10 items; `visibleMenu`; `HOME_KIND` from `08`), and `assignments` and `branches` in `sessionResponseSchema`.
+- API: `branchChoices` (`access/current-assignments.ts`), `ActiveSession.branches`, and `answerOf` listing assignments and branches, empty while a step is owed. OpenAPI and the generated web client regenerated. No new route.
+- Web (`apps/web/src/features/access/`): `resolveView` (pure), `ViewStore` (per tab, `sessionStorage`), `useView`, the left menu and the phone menu (shared dialog), `RoleSwitcher`, `BranchSwitcher`, the home page of each kind, `menu-pages.ts` (the built pages: Home only). The top bar and layout use them; `X-Branch-Id` goes with every call; `PAGE_INDEX` became `COMMON_PAGES` plus the menu pages; sign-out and an ended session clear the choice. Texts `roles.*`, `menu.*`, `switcher.*`, `home.<kind>` in uz, ru, en.
+- Tests: shared `menu.test.ts`; API `session-choices.test.ts` (11 tests: 401, none/one/several, order, ended and future, other accounts, school-wide roles, mixed accounts, owed password change, owed second step, set-up owed), the exact-answer tests of sign-in, reset and second step updated for the two new fields; web `view.test.ts`, `access.test.tsx` (15 roles with the whole table built, switchers, stale stored choice, sign-out, ended session, phone menu), the contrast pair of the menu links; browser test `e2e/access.spec.ts` with the seeded account `switchers` (Tutor and Teacher, two branches). Full run: lint, typecheck, `pnpm test` and the 10 browser tests pass here.
+- Reviewed by the spec reviewer and the permission reviewer (route: ready).
+
+Left out, with the task that brings it:
+
+- Menu items other than Home: each task adds its page to `BUILT_PAGES`; the table is complete. The Head Tutor's Timetable item awaits the owner's `/spec-change`.
+- Data on the home pages: each later task. Year and quarter in the top bar: school setup. The account page: 0.8d.
+
+Open, for the owner:
+
+- Uzbek and Russian wording of `roles.*`, `menu.*`, `switcher.*` and `home.*` was not reviewed by anybody (role names are my translations).
+- A stored role or branch that the account does not hold is ignored but not erased, so it counts again if the account gets it back within the tab. Display only; erase it if you prefer.
+
+The next sessions must know:
+
+- A new page of the menu: add it to `BUILT_PAGES` (`menu-pages.ts`) and the route; when the task adds the permission area with the same name as the item (`setup`, `people`, `classes`, `timetable`, `journal`, `results`, `plans`, `requests`), the menu follows the table. If the area has another name, change `visibleMenu` or the item name in that task.
+- Tests that need roles: `sessionOf({ assignments, branches })`, `NORTH` and `SOUTH` of `testing/render-app.tsx`; the default session holds Teacher in North.
+- Browser tests in the cloud environment: the symlink trick of the 0.8b-3 entry works with the chromium directory `chrome-linux64` and the headless shell `chrome-headless-shell-linux64` built from the 1194 files (`headless_shell` linked as `chrome-headless-shell`).
+
+The next task is 0.8d.
+
 ## 6 October 2026: task 0.8b-3 Web shell: shell tools
 
 Decided at the plan: the Principal may send a feedback report (the owner changed the spec on 6 October, pull request #26: edge cases, "Who can act", and `docs/spec-changes.md`); "at most 20 reports a day" is the last 24 hours; the feedback dialog has a Send button of its own and is not a record form.

@@ -232,7 +232,7 @@ export const uz: Texts<'one' | 'other'> = {
     empty:
       'Bu sahifada bugun bajarishingiz kerak boʻlgan ishlar koʻrsatiladi. Menyu va vazifalar platforma boʻlimlari ochilgani sari shu yerda paydo boʻladi.',
     teaching:
-      'Bugungi darslar va ularning holati, eslatmalar, har bir jurnalga tez kirish va jurnallaringiz boʻyicha ogohlantirish roʻyxati. Fan rahbarlari oʻzlarini kutayotgan soʻrovlarni ham koʻradi. Platforma boʻlimlari ochilgani sari sahifa toʻladi.',
+      'Bugungi darslar va ularning holati, eslatmalar, har bir jurnalga tez kirish va jurnallaringiz boʻyicha ogohlantirish roʻyxati. Fan rahbarlari va katta fan rahbarlari oʻzlarini kutayotgan soʻrovlarni ham koʻradi. Platforma boʻlimlari ochilgani sari sahifa toʻladi.',
     tutor:
       'Sinfingiz: bugungi dars jadvali, hozir kim yoʻq, kun va hafta davomati, sinf boʻyicha ogohlantirish roʻyxati. Platforma boʻlimlari ochilgani sari sahifa toʻladi.',
     attendance_overview:
