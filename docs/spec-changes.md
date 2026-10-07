@@ -2,6 +2,12 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 7 October 2026: the Head Tutor sees every class timetable; the student list made explicit
+
+- What changed: the Head Tutor sees the timetable of every class of the branch, read only (roles table of 02; "Views and outputs" of 06, where the line on who sees which timetable now names Head Tutors after Tutors). The Head Tutor and the Vice Principal for Spiritual and Moral Education see the student list of the branch, view only; for the Vice Principal without the average column, because that role sees attendance and no marks anywhere else. The personal-data rule in the edge cases already implied the list: the Basic fields of a student are for all staff of the branch and both roles are named readers of the Contact fields. Question 11 of the open questions records the addition.
+- Why: a Head Tutor is responsible for all Tutors, so for all classes, and Tutors already see the school timetable and their class's. Decided by the owner on 7 October 2026 during the plan review of task 0.8c (pull request 27). No code changes: the permission table has no timetable or people area yet; the tasks that build the timetable views and the student list apply these rows, and the student list of the Vice Principal hides the average column.
+- Files: `docs/spec/02-roles-and-access.md` (roles table, Head Tutor and Vice Principal for Spiritual and Moral Education rows), `docs/spec/06-timetable.md` (Views and outputs), `docs/spec/16-open-questions.md` (question 11). `docs/spec/edge-cases/people-roles-accounts.md` (Personal data and the audit log) stays as it is.
+
 ## 6 October 2026: the Principal may send a feedback report about the app
 
 - What changed: the list of changes to his own account that the Principal may make (edge cases, "Who can act": password, language, notification settings and photo, his sessions and sign-out, his second step and his trusted devices) gains one item: sending a feedback report about the app (Quality plan, Monitoring). The 4 October entry below closed that list before feedback reports existed; phone, email and name stay with the Super Admin and the Academic Vice Principal.
