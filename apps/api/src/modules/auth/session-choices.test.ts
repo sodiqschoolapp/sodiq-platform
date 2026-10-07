@@ -85,6 +85,38 @@ describe('GET /api/auth/session: roles and branches for the menu', () => {
     expect(answer.branches.map((branch) => branch.name)).toEqual(['East', 'North', 'South']);
   });
 
+  it('gives a Super Admin every branch', async () => {
+    const { account, cookie } = await kit.completeSession('Lola', 'Umarova');
+    await kit.giveRole(account.id, { role: 'super_admin' });
+
+    const answer = await sessionOf(cookie);
+
+    expect(answer.assignments).toEqual([{ role: 'super_admin', branchId: null }]);
+    expect(answer.branches.map((branch) => branch.name)).toEqual(['East', 'North', 'South']);
+  });
+
+  it('lists nothing while the set-up of a required second step is owed', async () => {
+    const { account, cookie } = await kit.fullSession('Mansur', 'Hakimov');
+    await kit.giveRole(account.id, { role: 'super_admin' });
+
+    expect(await sessionOf(cookie)).toMatchObject({
+      secondStep: 'set_up_required',
+      assignments: [],
+      branches: [],
+    });
+  });
+
+  it('gives a Principal of one branch only that branch, and a mixed account every branch', async () => {
+    const principal = await kit.fullSession('Nodira', 'Qosimova');
+    await kit.giveRole(principal.account.id, { role: 'principal', branchId: east });
+    const mixed = await kit.fullSession('Otabek', 'Mirzayev');
+    await kit.giveRole(mixed.account.id, { role: 'teacher', branchId: east });
+    await kit.giveRole(mixed.account.id, { role: 'senior_head_teacher' });
+
+    expect((await sessionOf(principal.cookie)).branches).toEqual([{ id: east, name: 'East' }]);
+    expect((await sessionOf(mixed.cookie)).branches).toHaveLength(3);
+  });
+
   it('leaves out an assignment that has ended and one that begins later', async () => {
     const { account, cookie } = await kit.fullSession('Gulnora', 'Saidova');
     const ended = await kit.giveRole(account.id, { role: 'head_tutor', branchId: south });
