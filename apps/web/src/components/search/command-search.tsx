@@ -9,7 +9,8 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_INDEX, type IndexedPage } from '@/app/page-index';
+import { COMMON_PAGES, type IndexedPage } from '@/app/page-index';
+import { useMenuPages } from '@/features/access/use-menu';
 import { searchKey, searchWords } from '@/components/list/list-state';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,7 +66,7 @@ export function matchingPages(
 /**
  * docs/spec/12-ux-standards.md, One pattern everywhere, Search: "Ctrl+K opens
  * a search across students, staff, classes, groups and pages"; Speed targets:
- * "Results while typing". This task: the pages of the app (`PAGE_INDEX`).
+ * "Results while typing". This task: the pages of the menu of the active role and the pages every role has.
  * Ctrl+K (Cmd+K on a Mac) and the button in the top bar open it: a tablet or
  * a phone has no Ctrl+K (Devices). Inside the layout only: a search needs a
  * signed-in person. The arrows move, Enter opens the page, Escape closes.
@@ -92,9 +93,10 @@ export function CommandSearch() {
     };
   }, []);
 
+  const menuPages = useMenuPages();
   const pages = useMemo<TitledPage[]>(
-    () => PAGE_INDEX.map((page) => ({ ...page, title: t(page.titleKey) })),
-    [t],
+    () => [...menuPages, ...COMMON_PAGES].map((page) => ({ ...page, title: t(page.titleKey) })),
+    [t, menuPages],
   );
   const matching = matchingPages(pages, typed, i18n.language);
   const activeIndex = Math.min(active, Math.max(0, matching.length - 1));

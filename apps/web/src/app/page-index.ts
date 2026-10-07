@@ -8,14 +8,14 @@ export interface IndexedPage {
 }
 
 /**
- * The pages the Ctrl+K search knows (docs/spec/12-ux-standards.md, One pattern
- * everywhere, Search: "Ctrl+K opens a search across students, staff, classes,
- * groups and pages"; task 0.8b-3: pages only). Task 0.8c filters this list by
- * the menu of the role and adds the pages of the menus; the records come with
- * the tasks that build them, each with the rights of the role.
+ * The pages the Ctrl+K search knows besides the menu of the active role
+ * (docs/spec/12-ux-standards.md, One pattern everywhere, Search: "Ctrl+K opens
+ * a search across students, staff, classes, groups and pages"): the pages
+ * every role has. The pages of the menu come from `useMenuPages`, so the search
+ * never lists a page the menu of the role does not (task 0.8c); the records
+ * come with the tasks that build them, each with the rights of the role.
  */
-export const PAGE_INDEX: readonly IndexedPage[] = [
-  { titleKey: 'home.title', to: '/' },
+export const COMMON_PAGES: readonly IndexedPage[] = [
   { titleKey: 'password.titleOwn', to: '/password' },
   // The sample of the shared patterns exists in development only (task 0.8b-1).
   ...(import.meta.env.DEV ? [{ titleKey: 'sample.title', to: '/dev/patterns' } as const] : []),

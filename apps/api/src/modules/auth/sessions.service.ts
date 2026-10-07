@@ -1,11 +1,12 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import type { Clock, SecondStepState } from '@sodiq/shared';
+import type { Clock, SecondStepState, SessionResponse } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import {
+  branchChoices,
   currentAssignments,
   rolesOf,
   type CurrentAssignment,
@@ -15,6 +16,7 @@ import { idleLimitMs } from './idle-limit.js';
 import { LOGIN_FORMAT } from './login.js';
 import { hashPassword, verifyPassword } from './password-hash.js';
 import { SecondStepRule } from './second-step-rule.js';
+import { answerOf, owesAStep } from './session-answer.js';
 import {
   endByTime,
   isTrusted,
@@ -405,6 +407,21 @@ export class Sessions {
         assignments,
       };
     });
+  }
+
+  /**
+   * The answer of a route that says who is signed in. The branches to choose
+   * from are read here, once per answer, and not with every request: they are
+   * for the branch switcher only.
+   */
+  async answerOf(session: ActiveSession): Promise<SessionResponse> {
+    if (owesAStep(session)) {
+      return answerOf(session, []);
+    }
+    const branches = await this.transactions.run([], (transaction) =>
+      branchChoices(transaction, session.assignments),
+    );
+    return answerOf(session, branches);
   }
 
   /** Ends this session; other sessions of the account stay. */

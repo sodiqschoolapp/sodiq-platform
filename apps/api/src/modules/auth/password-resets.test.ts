@@ -237,6 +237,8 @@ describe('a password reset by an administrator', () => {
           mustChangePassword: false,
           passwordResetBy: null,
           trustedUntil: null,
+          assignments: [],
+          branches: [],
         });
       }
     });
@@ -255,6 +257,8 @@ describe('a password reset by an administrator', () => {
         mustChangePassword: true,
         passwordResetBy: 'o.maxmudov',
         trustedUntil: null,
+        assignments: [],
+        branches: [],
       };
       expect(signedIn.body).toEqual(answer);
       const read = await kit.get('/api/auth/session', cookieOf(signedIn));
@@ -279,6 +283,8 @@ describe('a password reset by an administrator', () => {
         mustChangePassword: false,
         passwordResetBy: null,
         trustedUntil: null,
+        assignments: [],
+        branches: [],
       });
       expect(await accountRow(account.id)).toMatchObject({
         must_change_password: false,
@@ -297,6 +303,8 @@ describe('a password reset by an administrator', () => {
         mustChangePassword: true,
         passwordResetBy: null,
         trustedUntil: null,
+        assignments: [],
+        branches: [],
       });
     });
   });

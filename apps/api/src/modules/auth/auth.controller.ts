@@ -23,16 +23,6 @@ import {
 } from './session.guard.js';
 import { Sessions, type ActiveSession } from './sessions.service.js';
 
-export function answerOf(session: ActiveSession): SessionResponse {
-  return {
-    login: session.login,
-    secondStep: session.secondStep,
-    mustChangePassword: session.mustChangePassword,
-    passwordResetBy: session.passwordResetBy,
-    trustedUntil: session.trustedUntil?.toISOString() ?? null,
-  };
-}
-
 /**
  * docs/spec/02-roles-and-access.md, Rules: staff sign in with login and
  * password and must change the password at first sign-in.
@@ -60,7 +50,7 @@ export class AuthController {
     });
     cookie.set(token, session.trustedUntil);
     device.set(deviceToken);
-    return answerOf(session);
+    return this.sessions.answerOf(session);
   }
 
   @Get('session')
@@ -69,8 +59,8 @@ export class AuthController {
   @AllowedBeforePasswordChange()
   @AllowedBeforeSecondStepSetUp()
   @Returns(sessionResponseSchema)
-  read(@CurrentSession() session: ActiveSession): SessionResponse {
-    return answerOf(session);
+  read(@CurrentSession() session: ActiveSession): Promise<SessionResponse> {
+    return this.sessions.answerOf(session);
   }
 
   /** Edge cases, "Accounts and sign-in": the profile lists the sessions. Own sessions only. */

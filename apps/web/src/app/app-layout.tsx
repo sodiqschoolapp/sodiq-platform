@@ -1,8 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
 import { CircleUserRoundIcon, XIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { setBranchInUse } from '@/api/branch-in-use';
+import { PhoneMenu, SideMenu } from '@/features/access/app-menu';
+import { BranchSwitcher, RoleSwitcher } from '@/features/access/switchers';
+import { useView } from '@/features/access/use-view';
 import { LanguageChooser } from '@/components/language-chooser';
 import { CommandSearch } from '@/components/search/command-search';
 import { ThemeSwitch } from '@/components/theme-switch';
@@ -66,9 +70,9 @@ function NotTrustedNote({ trusted }: { trusted: boolean }) {
 /**
  * The frame of every page after sign-in (docs/spec/12-ux-standards.md, One
  * pattern everywhere): the top bar with the search, the feedback button, the
- * theme and the language, and the left menu. The menu per role, the role and
- * branch switchers and the year and quarter in the top bar come in task 0.8c
- * and with the school setup.
+ * theme and the language, the role and branch switchers (task 0.8c) and the
+ * left menu of the active role. The year and quarter in the top bar come with
+ * the school setup.
  */
 export function AppLayout() {
   const { t } = useTranslation();
@@ -76,18 +80,30 @@ export function AppLayout() {
   const { data: session } = useQuery(sessionQuery);
   const signOut = useSignOut();
   const { leave } = useLeave();
+  const { branchId } = useView();
   useDismissQuestionsOnLeave();
+
+  // Before any query of the page runs: every call names the branch of the switcher.
+  useLayoutEffect(() => {
+    setBranchInUse(branchId);
+    return () => {
+      setBranchInUse(null);
+    };
+  }, [branchId]);
 
   return (
     <div className="flex min-h-svh flex-col">
       <UnsentGuard />
       {/* On a phone the tools do not fit beside the name: they wrap onto a second row. */}
       <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-1">
+        <PhoneMenu />
         <Link to="/" className="shrink-0 font-semibold">
           {t('app.name')}
         </Link>
         <UnsentBanner />
         <div className="ml-auto flex flex-wrap items-center justify-end gap-1 sm:gap-2">
+          <RoleSwitcher />
+          <BranchSwitcher />
           <CommandSearch />
           <FeedbackButton />
           <ThemeSwitch />
@@ -129,7 +145,7 @@ export function AppLayout() {
         </div>
       </header>
       <div className="flex flex-1">
-        <nav aria-label={t('layout.menu')} className="hidden w-56 shrink-0 border-r p-2 md:block" />
+        <SideMenu />
         <main className="min-w-0 flex-1 p-6">
           <NotTrustedNote trusted={session?.trustedUntil != null} />
           <FailureAlert error={signOut.error} />

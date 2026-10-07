@@ -35,7 +35,8 @@ interface Pair {
  * destructive one as `bg-destructive/10 text-destructive` with the hover `/20`
  * in the light theme and, in the dark theme, the tint kept at `/10` and a
  * border `border-destructive/60` on hover; every variant's focus border is
- * the base `focus-visible:border-ring`. `alert.tsx` draws the destructive
+ * the base `focus-visible:border-ring`. `app-menu.tsx` draws a menu link hovered or current as `bg-muted` with the
+ * normal text. `alert.tsx` draws the destructive
  * alert's text in `text-destructive`; `input.tsx` and `textarea.tsx` fill a
  * field with `dark:bg-input/30` and write the placeholder in
  * `text-muted-foreground`.
@@ -105,6 +106,12 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
     },
     {
       name: 'ghost and outline buttons hovered: foreground on muted',
+      fg: token('foreground'),
+      bg: over(token('muted'), background),
+      min: TEXT,
+    },
+    {
+      name: 'menu links hovered and current: foreground on muted',
       fg: token('foreground'),
       bg: over(token('muted'), background),
       min: TEXT,

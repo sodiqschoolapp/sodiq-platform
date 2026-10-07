@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { branchIdSchema } from './branches.js';
+import { roleSchema } from './roles.js';
 
 /** Edge cases, "Accounts and sign-in": passwords have at least ten characters. */
 export const PASSWORD_MIN_LENGTH = 10;
@@ -56,6 +58,18 @@ export const sessionResponseSchema = z.object({
    * not used, and 7 days after its sign-in at the latest.
    */
   trustedUntil: z.iso.datetime().nullable(),
+  /**
+   * The assignments in force now, for the menu and the role switcher (display
+   * only: the server checks every request on all current assignments). Empty
+   * while a step of sign-in is owed. In the order of `ROLES`.
+   */
+  assignments: z.array(z.object({ role: roleSchema, branchId: branchIdSchema.nullable() })),
+  /**
+   * The branches the account may choose in the branch switcher, by name: every
+   * branch for a Super Admin or Senior Head Teacher, otherwise the branches of
+   * its assignments. Empty while a step of sign-in is owed.
+   */
+  branches: z.array(z.object({ id: branchIdSchema, name: z.string() })),
 });
 
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;

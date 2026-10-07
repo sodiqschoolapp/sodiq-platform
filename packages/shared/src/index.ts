@@ -46,6 +46,16 @@ export {
 } from './feedback.js';
 export { healthResponseSchema, type HealthResponse } from './health.js';
 export {
+  HOME_KIND,
+  HOME_KINDS,
+  MENU,
+  MENU_ITEMS,
+  MENU_MAX_ITEMS,
+  visibleMenu,
+  type HomeKind,
+  type MenuItem,
+} from './menu.js';
+export {
   ACTIONS,
   checkTable,
   freezeTable,

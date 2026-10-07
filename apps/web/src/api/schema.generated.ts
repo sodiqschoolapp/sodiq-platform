@@ -315,6 +315,17 @@ export interface operations {
                         passwordResetBy: string | null;
                         /** Format: date-time */
                         trustedUntil: string | null;
+                        assignments: {
+                            /** @enum {string} */
+                            role: "super_admin" | "principal" | "academic_vice_principal" | "spiritual_vice_principal" | "head_tutor" | "tutor" | "senior_head_teacher" | "head_teacher" | "teacher" | "student" | "parent" | "hr" | "nurse" | "psychologist" | "librarian";
+                            /** Format: uuid */
+                            branchId: string | null;
+                        }[];
+                        branches: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
                     };
                 };
             };
@@ -351,6 +362,17 @@ export interface operations {
                         passwordResetBy: string | null;
                         /** Format: date-time */
                         trustedUntil: string | null;
+                        assignments: {
+                            /** @enum {string} */
+                            role: "super_admin" | "principal" | "academic_vice_principal" | "spiritual_vice_principal" | "head_tutor" | "tutor" | "senior_head_teacher" | "head_teacher" | "teacher" | "student" | "parent" | "hr" | "nurse" | "psychologist" | "librarian";
+                            /** Format: uuid */
+                            branchId: string | null;
+                        }[];
+                        branches: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
                     };
                 };
             };
@@ -550,6 +572,17 @@ export interface operations {
                         passwordResetBy: string | null;
                         /** Format: date-time */
                         trustedUntil: string | null;
+                        assignments: {
+                            /** @enum {string} */
+                            role: "super_admin" | "principal" | "academic_vice_principal" | "spiritual_vice_principal" | "head_tutor" | "tutor" | "senior_head_teacher" | "head_teacher" | "teacher" | "student" | "parent" | "hr" | "nurse" | "psychologist" | "librarian";
+                            /** Format: uuid */
+                            branchId: string | null;
+                        }[];
+                        branches: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
                     };
                 };
             };

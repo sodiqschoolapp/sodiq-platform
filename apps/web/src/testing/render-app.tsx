@@ -31,7 +31,11 @@ export function refusal(code: ErrorCode, status: number, retryAfterSeconds?: num
   );
 }
 
-/** A session that owes no step; give the fields that differ. */
+/** A branch of the tests; invented. */
+export const NORTH = { id: '0198a000-0000-7000-8000-000000000001', name: 'North' };
+export const SOUTH = { id: '0198a000-0000-7000-8000-000000000002', name: 'South' };
+
+/** A session that owes no step and holds the Teacher role in one branch; give the fields that differ. */
 export function sessionOf(fields: Partial<SessionResponse> = {}): SessionResponse {
   return {
     login: 'm.ergasheva',
@@ -39,6 +43,8 @@ export function sessionOf(fields: Partial<SessionResponse> = {}): SessionRespons
     mustChangePassword: false,
     passwordResetBy: null,
     trustedUntil: null,
+    assignments: [{ role: 'teacher', branchId: NORTH.id }],
+    branches: [NORTH],
     ...fields,
   };
 }

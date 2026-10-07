@@ -168,6 +168,8 @@ describe('sign-in, sessions and the password change', () => {
         mustChangePassword: true,
         passwordResetBy: null,
         trustedUntil: null,
+        assignments: [],
+        branches: [],
       });
       expect(await sessionsOf(account.id)).toHaveLength(1);
     });
@@ -453,6 +455,8 @@ describe('sign-in, sessions and the password change', () => {
         mustChangePassword: true,
         passwordResetBy: null,
         trustedUntil: null,
+        assignments: [],
+        branches: [],
       });
     });
 
@@ -601,6 +605,8 @@ describe('sign-in, sessions and the password change', () => {
         mustChangePassword: false,
         passwordResetBy: null,
         trustedUntil: null,
+        assignments: [],
+        branches: [],
       });
     });
 
@@ -616,6 +622,8 @@ describe('sign-in, sessions and the password change', () => {
         mustChangePassword: false,
         passwordResetBy: null,
         trustedUntil: null,
+        assignments: [],
+        branches: [],
       });
     });
 

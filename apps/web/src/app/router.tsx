@@ -8,6 +8,7 @@ import {
   redirect,
   type RouterHistory,
 } from '@tanstack/react-router';
+import { HomePage } from '@/features/access/home-page';
 import { CodePage } from '@/features/auth/code-page';
 import { PasswordPage } from '@/features/auth/password-page';
 import { sessionQuery, STEP_PATH, stepOf, type Step } from '@/features/auth/session';
@@ -15,7 +16,7 @@ import { SetUpPage } from '@/features/auth/set-up-page';
 import { SampleListPage, sampleSearch } from '@/features/sample/sample-list-page';
 import { SignInPage } from '@/features/auth/sign-in-page';
 import { AppLayout } from './app-layout';
-import { ErrorPage, HomePage, NotFoundPage, PendingPage } from './pages';
+import { ErrorPage, NotFoundPage, PendingPage } from './pages';
 
 interface RouterContext {
   queryClient: QueryClient;
