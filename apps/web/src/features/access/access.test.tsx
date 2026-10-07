@@ -49,7 +49,8 @@ describe('the menu and the home page of each role', () => {
     const shown = side()
       .getAllByRole('link')
       .map((link) => link.textContent.replace(en.menu.current, ''));
-    expect(shown).toEqual([...MENU[role].map((item) => en.menu[item]), en.layout.changePassword]);
+    // The own account page is the entry every role has (task 0.8d).
+    expect(shown).toEqual([...MENU[role].map((item) => en.menu[item]), en.account.title]);
     expect(screen.getByText(en.home[HOME_KIND[role]])).toBeDefined();
     expect(screen.queryByLabelText(en.switcher.role)).toBeNull();
   });
@@ -264,7 +265,7 @@ describe('the menu on a phone', () => {
     const links = within(dialog).getAllByRole('link');
     expect(links.length).toBeGreaterThan(1);
     expect(within(dialog).getAllByText(en.menu.current).length).toBeGreaterThan(0);
-    fireEvent.click(within(dialog).getByRole('link', { name: en.layout.changePassword }));
+    fireEvent.click(within(dialog).getByRole('link', { name: en.account.title }));
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: en.menu.title })).toBeNull();
     });

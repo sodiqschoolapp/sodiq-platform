@@ -1,6 +1,12 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import type { Clock, SecondStepState, SessionResponse } from '@sodiq/shared';
+import {
+  languageSchema,
+  type Clock,
+  type Language,
+  type SecondStepState,
+  type SessionResponse,
+} from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
@@ -62,12 +68,19 @@ export interface ActiveSession {
    * sign-in. `null` while the session is not trusted.
    */
   trustedUntil: Date | null;
+  /** The language of the account (`12`, Language). */
+  language: Language;
   /**
    * The assignments of the account that are in force at this request (role and
    * branch). Read again on every request: a role that was given or ended
    * counts at the next one.
    */
   assignments: CurrentAssignment[];
+}
+
+/** The stored language. The check constraint of `accounts` allows no other value. */
+function languageOf(stored: string): Language {
+  return languageSchema.parse(stored);
 }
 
 export interface SignedIn {
@@ -161,6 +174,7 @@ export class Sessions {
               'password_expires_at',
               'password_reset_by',
               'locked_at',
+              'language',
             ])
             .where('login', '=', login)
             .executeTakeFirst();
@@ -271,6 +285,7 @@ export class Sessions {
           mustChangePassword: account.must_change_password,
           passwordResetBy: await this.loginOf(transaction, account.password_reset_by),
           trustedUntil: trusted ? latestEndOf(session) : null,
+          language: languageOf(account.language),
           assignments,
         },
       };
@@ -384,7 +399,7 @@ export class Sessions {
       }
       const account = await transaction
         .selectFrom('accounts')
-        .select(['login', 'must_change_password', 'password_reset_by', 'locked_at'])
+        .select(['login', 'must_change_password', 'password_reset_by', 'locked_at', 'language'])
         .where('id', '=', used.account_id)
         .executeTakeFirstOrThrow();
       if (account.locked_at !== null) {
@@ -404,6 +419,7 @@ export class Sessions {
         mustChangePassword: account.must_change_password,
         passwordResetBy: await this.loginOf(transaction, account.password_reset_by),
         trustedUntil: isTrusted(used) ? latestEndOf(used) : null,
+        language: languageOf(account.language),
         assignments,
       };
     });
@@ -536,27 +552,92 @@ export class Sessions {
     });
   }
 
-  /** "Sign out everywhere": ends every session of the account, this one included. */
-  async signOutEverywhere(session: ActiveSession, requestId?: string): Promise<void> {
-    await this.transactions.run([], async (transaction) => {
+  /**
+   * "Sign out everywhere" (edge cases, "Accounts and sign-in"): ends every
+   * other session of the account and keeps the asking one (decided by the
+   * owner, task 0.8d). The trust of the asking session ends with it, as at a
+   * password change ("trust ends at once on 'sign out everywhere'"): from now
+   * on it has the idle sign-out. Answers whether a trust that had begun ended,
+   * for the cookie.
+   */
+  async signOutEverywhere(
+    session: ActiveSession,
+    requestId?: string,
+  ): Promise<{ trustEnded: boolean }> {
+    return this.transactions.run([], async (transaction) => {
+      const now = this.clock.now();
       await this.writeEndsByTime(transaction, session.accountId);
+      // The session may have ended since the guard read it: an account lock
+      // or the removal of this device at the same moment. Then nothing is
+      // ended or recorded in its name. The open sessions of the account are
+      // locked by now, so this holds until the commit.
+      const own = await transaction
+        .selectFrom('sessions')
+        .select('id')
+        .where('id', '=', session.sessionId)
+        .where('ended_at', 'is', null)
+        .executeTakeFirst();
+      if (own === undefined) {
+        throw new ApiException('not_signed_in', 401);
+      }
       const ended = await transaction
         .updateTable('sessions')
-        .set({ ended_at: this.clock.now(), end_reason: 'sign_out_everywhere' })
+        .set({ ended_at: now, end_reason: 'sign_out_everywhere' })
         .where('account_id', '=', session.accountId)
+        .where('id', '<>', session.sessionId)
         .where('ended_at', 'is', null)
         .returning('id')
         .execute();
-      if (ended.length === 0) {
-        // Ended by another request in the meantime: nothing to do or to record.
-        return;
-      }
+      // Written at every call, also when no other session was open: the
+      // person asked for it, and the log records it (owner's decision 6).
       await this.audit.record(transaction, {
         branchId: null,
         actorId: session.accountId,
         action: 'auth.sign_out_everywhere',
         record: { type: 'account', id: session.accountId },
         details: { endedSessions: ended.length },
+        ...(requestId === undefined ? {} : { requestId }),
+      });
+      const trustEnded = await this.endTrust(
+        transaction,
+        session,
+        now,
+        'sign_out_everywhere',
+        requestId,
+      );
+      return { trustEnded };
+    });
+  }
+
+  /**
+   * `12`, Language: each person chooses a language and the choice is
+   * remembered, on the account (task 0.8d). The same language again changes
+   * nothing and leaves no entry. The row is locked, so two changes at the same
+   * moment record the right old value each.
+   */
+  async setLanguage(session: ActiveSession, language: Language, requestId?: string): Promise<void> {
+    await this.transactions.run([], async (transaction) => {
+      const account = await transaction
+        .selectFrom('accounts')
+        .select('language')
+        .where('id', '=', session.accountId)
+        .forUpdate()
+        .executeTakeFirstOrThrow();
+      if (account.language === language) {
+        return;
+      }
+      await transaction
+        .updateTable('accounts')
+        .set({ language })
+        .where('id', '=', session.accountId)
+        .execute();
+      await this.audit.record(transaction, {
+        branchId: null,
+        actorId: session.accountId,
+        action: 'account.language_changed',
+        record: { type: 'account', id: session.accountId },
+        oldValue: { language: account.language },
+        newValue: { language },
         ...(requestId === undefined ? {} : { requestId }),
       });
     });
@@ -655,29 +736,51 @@ export class Sessions {
         details: { endedSessions: ended.length },
         ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
       });
-      const untrusted = await transaction
-        .updateTable('sessions')
-        .set({ trust_ended_at: now })
-        .where('id', '=', session.sessionId)
-        .where('ended_at', 'is', null)
-        .where('trust_requested', '=', true)
-        .where('trust_ended_at', 'is', null)
-        .returning('trusted_from')
-        .executeTakeFirst();
-      // Only trust that had begun has an end to record.
-      const trustEnded = untrusted !== undefined && untrusted.trusted_from !== null;
-      if (trustEnded) {
-        await this.audit.record(transaction, {
-          branchId: null,
-          actorId: session.accountId,
-          action: 'auth.trust_ended',
-          record: { type: 'session', id: session.sessionId },
-          details: { reason: 'password_change' },
-          ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
-        });
-      }
+      const trustEnded = await this.endTrust(
+        transaction,
+        session,
+        now,
+        'password_change',
+        origin.requestId,
+      );
       return { trustEnded };
     });
+  }
+
+  /**
+   * Ends the trust of the asking session, which stays signed in: a password
+   * change and "sign out everywhere" do this. A session that asked for trust
+   * which had not begun yet never becomes trusted afterwards either. Answers
+   * whether a trust that had begun was ended; only that has an end to record.
+   */
+  private async endTrust(
+    transaction: Transaction,
+    session: ActiveSession,
+    now: Date,
+    reason: 'password_change' | 'sign_out_everywhere',
+    requestId?: string,
+  ): Promise<boolean> {
+    const untrusted = await transaction
+      .updateTable('sessions')
+      .set({ trust_ended_at: now })
+      .where('id', '=', session.sessionId)
+      .where('ended_at', 'is', null)
+      .where('trust_requested', '=', true)
+      .where('trust_ended_at', 'is', null)
+      .returning('trusted_from')
+      .executeTakeFirst();
+    const trustEnded = untrusted !== undefined && untrusted.trusted_from !== null;
+    if (trustEnded) {
+      await this.audit.record(transaction, {
+        branchId: null,
+        actorId: session.accountId,
+        action: 'auth.trust_ended',
+        record: { type: 'session', id: session.sessionId },
+        details: { reason },
+        ...(requestId === undefined ? {} : { requestId }),
+      });
+    }
+    return trustEnded;
   }
 
   /**

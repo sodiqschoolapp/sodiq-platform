@@ -17,7 +17,9 @@ export type AccountKey =
   | 'forms'
   | 'vicePrincipal'
   | 'shellTools'
-  | 'switchers';
+  | 'switchers'
+  | 'account'
+  | 'accountSecondStep';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

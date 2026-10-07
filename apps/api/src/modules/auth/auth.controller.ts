@@ -1,12 +1,14 @@
-import { Controller, Get, HttpCode, Post } from '@nestjs/common';
+import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
   changePasswordSchema,
   sessionListSchema,
   sessionResponseSchema,
+  setLanguageSchema,
   signInSchema,
   type ChangePassword,
   type SessionList,
   type SessionResponse,
+  type SetLanguage,
   type SignIn,
 } from '@sodiq/shared';
 import { DeviceCookie, UserAgent, type DeviceCookieJar } from '../../http/device-cookie.js';
@@ -120,7 +122,10 @@ export class AuthController {
     cookie.clear();
   }
 
-  /** "Sign out everywhere": every session of the account, this one included. */
+  /**
+   * "Sign out everywhere": every other session of the account; this one stays
+   * signed in and loses its trust (decided by the owner, task 0.8d).
+   */
   @Post('sign-out-everywhere')
   @AnySignedIn()
   @ReturnsNothing()
@@ -129,7 +134,26 @@ export class AuthController {
     @SessionCookie() cookie: SessionCookieJar,
     @RequestId() requestId: string,
   ): Promise<void> {
-    await this.sessions.signOutEverywhere(session, requestId);
-    cookie.clear();
+    const ended = await this.sessions.signOutEverywhere(session, requestId);
+    if (ended.trustEnded) {
+      // The device is trusted no more: its cookie ends with the browser again.
+      cookie.keep(null);
+    }
+  }
+
+  /**
+   * docs/spec/12-ux-standards.md, Language: the choice is remembered, on the
+   * account (task 0.8d). For a complete session only: before that the chooser
+   * changes the browser alone (decided by the owner).
+   */
+  @Put('language')
+  @AnySignedIn()
+  @ReturnsNothing()
+  async setLanguage(
+    @CurrentSession() session: ActiveSession,
+    @ValidBody(setLanguageSchema) body: SetLanguage,
+    @RequestId() requestId: string,
+  ): Promise<void> {
+    await this.sessions.setLanguage(session, body.language, requestId);
   }
 }

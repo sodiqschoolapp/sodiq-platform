@@ -12,9 +12,10 @@ if (!root) {
 
 // The theme first: the page is light or dark before anything is drawn.
 const theme = startTheme();
+const i18n = startI18n();
 
 createRoot(root).render(
   <StrictMode>
-    <App i18n={startI18n()} shell={createShell()} theme={theme} />
+    <App i18n={i18n} shell={createShell(i18n)} theme={theme} />
   </StrictMode>,
 );

@@ -8,6 +8,7 @@ export {
   secondStepSetUpSchema,
   secondStepStateSchema,
   sessionListSchema,
+  setLanguageSchema,
   sessionResponseSchema,
   signInSchema,
   trustedDeviceListSchema,
@@ -20,6 +21,7 @@ export {
   type SecondStepState,
   type SessionList,
   type SessionResponse,
+  type SetLanguage,
   type SignIn,
   type TrustedDeviceList,
   type TrustedDeviceParams,
@@ -45,6 +47,13 @@ export {
   type FeedbackReport,
 } from './feedback.js';
 export { healthResponseSchema, type HealthResponse } from './health.js';
+export {
+  DEFAULT_LANGUAGE,
+  isLanguage,
+  LANGUAGES,
+  languageSchema,
+  type Language,
+} from './language.js';
 export {
   HOME_KIND,
   HOME_KINDS,

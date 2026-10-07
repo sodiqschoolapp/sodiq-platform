@@ -58,7 +58,12 @@ describe('the search of pages', () => {
     await waitFor(() => {
       expect(document.activeElement).toBe(box());
     });
-    expect(optionNames()).toEqual([en.home.title, en.password.titleOwn, en.sample.title]);
+    expect(optionNames()).toEqual([
+      en.home.title,
+      en.account.title,
+      en.password.titleOwn,
+      en.sample.title,
+    ]);
     expect(screen.getByRole('listbox', { name: en.search.pages })).toBeDefined();
   });
 
@@ -132,7 +137,7 @@ describe('the search of pages', () => {
     await dialog();
 
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
-    const second = screen.getByRole('option', { name: en.password.titleOwn });
+    const second = screen.getByRole('option', { name: en.account.title });
     expect(second.getAttribute('aria-selected')).toBe('true');
     expect(box().getAttribute('aria-activedescendant')).toBe(second.id);
     // Not past the last page, not before the first.
@@ -144,16 +149,18 @@ describe('the search of pages', () => {
     fireEvent.keyDown(box(), { key: 'ArrowUp' });
     fireEvent.keyDown(box(), { key: 'ArrowUp' });
     fireEvent.keyDown(box(), { key: 'ArrowUp' });
+    fireEvent.keyDown(box(), { key: 'ArrowUp' });
     expect(screen.getByRole('option', { name: en.home.title }).getAttribute('aria-selected')).toBe(
       'true',
     );
+    fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
 
     fireEvent.keyDown(box(), { key: 'Enter' });
 
     await noDialog();
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/password');
+      expect(router.state.location.pathname).toBe('/account/password');
     });
     expect(await screen.findByRole('heading', { name: en.password.titleOwn })).toBeDefined();
   });
@@ -173,7 +180,7 @@ describe('the search of pages', () => {
     pressShortcut();
     await dialog();
     expect(box().value).toBe('');
-    expect(optionNames()).toHaveLength(3);
+    expect(optionNames()).toHaveLength(4);
   });
 
   // The side panel of a list closes on Escape unless a dialog took the key (0.8b-1).

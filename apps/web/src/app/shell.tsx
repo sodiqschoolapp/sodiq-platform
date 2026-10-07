@@ -13,6 +13,7 @@ import { ConfirmProvider } from '@/components/confirm-dialog';
 import { ViewContext } from '@/features/access/use-view';
 import { ViewStore } from '@/features/access/view-store';
 import { UnsentProvider } from '@/components/unsent/unsent-changes';
+import { followAccountLanguage } from '@/features/auth/account-language';
 import {
   forgetSession,
   refreshSession,
@@ -36,9 +37,10 @@ const sessionChanged = (code: FailureCode): boolean =>
 /**
  * The query client and the router of one tab, wired together: when any call
  * is refused because the session ended or owes a step again (rights are read
- * on every request), the tab goes to the page of that step.
+ * on every request), the tab goes to the page of that step. `i18n` is the
+ * language of the tab, which follows the account once signed in (task 0.8d).
  */
-export function createShell(history?: RouterHistory): Shell {
+export function createShell(i18n: I18n, history?: RouterHistory): Shell {
   const onError = (error: unknown): void => {
     if (!(error instanceof ApiFailure) || !sessionChanged(error.code)) {
       return;
@@ -69,7 +71,8 @@ export function createShell(history?: RouterHistory): Shell {
   const router = createAppRouter(queryClient, history);
   // The role and the branch of the tab belong to the person who chose them: they
   // go when the session is known to be over (an ended session read as `null`,
-  // sign-out) and when somebody signs in after that.
+  // sign-out) and when somebody signs in after that. The language of the tab
+  // follows the account from the first complete answer on.
   let signedOut = false;
   queryClient.getQueryCache().subscribe((event) => {
     if (event.type !== 'updated' || event.action.type !== 'success') {
@@ -79,6 +82,7 @@ export function createShell(history?: RouterHistory): Shell {
       return;
     }
     const session = event.query.state.data as Session | undefined;
+    followAccountLanguage(i18n, queryClient, session);
     if (session === null) {
       view.clear();
       signedOut = true;

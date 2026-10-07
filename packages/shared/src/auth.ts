@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { branchIdSchema } from './branches.js';
+import { languageSchema } from './language.js';
 import { roleSchema } from './roles.js';
 
 /** Edge cases, "Accounts and sign-in": passwords have at least ten characters. */
@@ -59,6 +60,13 @@ export const sessionResponseSchema = z.object({
    */
   trustedUntil: z.iso.datetime().nullable(),
   /**
+   * The language of the account (`12`, Language: the choice is remembered).
+   * Present in every answer, also while a step is owed: it is a fact of the
+   * account, not something shown. The web app applies it only once no step
+   * is owed (task 0.8d).
+   */
+  language: languageSchema,
+  /**
    * The assignments in force now, for the menu and the role switcher (display
    * only: the server checks every request on all current assignments). Empty
    * while a step of sign-in is owed. In the order of `ROLES`.
@@ -73,6 +81,11 @@ export const sessionResponseSchema = z.object({
 });
 
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
+
+/** The language chooser, when signed in: the language is stored on the account. */
+export const setLanguageSchema = z.object({ language: languageSchema });
+
+export type SetLanguage = z.infer<typeof setLanguageSchema>;
 
 /** The open sessions of the signed-in account, for the profile. */
 export const sessionListSchema = z.object({

@@ -45,6 +45,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/auth/password': 'any_signed_in',
   'POST /api/auth/sign-out': 'any_signed_in',
   'POST /api/auth/sign-out-everywhere': 'any_signed_in',
+  'PUT /api/auth/language': 'any_signed_in',
   'POST /api/auth/second-step': 'any_signed_in',
   'GET /api/auth/second-step': 'any_signed_in',
   'POST /api/auth/second-step/set-up': 'any_signed_in',

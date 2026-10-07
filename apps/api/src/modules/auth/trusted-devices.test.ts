@@ -381,6 +381,29 @@ describe('a trusted device', () => {
 
   // Found by the review: the guard reads the session before the change is
   // written. A session that ended in between changes nothing.
+  // The same hole for "sign out everywhere" (task 0.8d): the guard read the
+  // session, then this device was removed from another one.
+  it('signs out nowhere and records nothing from a session that ended after the guard read it', async () => {
+    clock.set(START);
+    const { login, id } = await account('Vohid', 'Karimov');
+    const cookie = await trust(login);
+    const other = await plain(login);
+    const read = await app.get(Sessions).resolve(cookie.slice(`${SESSION_COOKIE}=`.length));
+    if (read === undefined) {
+      throw new Error('The session was not found.');
+    }
+    const device = (await devicesOf(other)).find((one) => !one.current);
+    expect((await remove(device?.id ?? '', other)).status).toBe(204);
+
+    await expect(app.get(Sessions).signOutEverywhere(read)).rejects.toMatchObject({
+      code: 'not_signed_in',
+    });
+
+    expect((await kit.probe(other)).status).toBe(200);
+    expect(await auditOf('auth.sign_out_everywhere', id)).toEqual([]);
+    expect(await auditOf('auth.trust_ended', id)).toEqual([]);
+  });
+
   it('changes no password and ends no trust from a session that ended after the guard read it', async () => {
     clock.set(START);
     const { login, id } = await account('Gulbahor', 'Salimova');
@@ -423,20 +446,64 @@ describe('a trusted device', () => {
       expect(await devicesOf(other)).toHaveLength(1);
     });
 
-    it('on "sign out everywhere", for every trusted device of the account', async () => {
+    // Decided by the owner (task 0.8d): the asking session stays signed in;
+    // its trust ends all the same, as the spec says literally.
+    it('on "sign out everywhere": the other devices are signed out, this one stays and loses its trust', async () => {
       clock.set(START);
       const { login, id } = await account('Lola', 'Karimova');
       const first = await trust(login);
       const second = await trust(login);
+      clock.advance(DAY);
+      const untrusted = await plain(login);
 
-      expect((await kit.post('/api/auth/sign-out-everywhere', first)).status).toBe(204);
+      const response = await kit.post('/api/auth/sign-out-everywhere', first);
 
-      expect(errorCode(await kit.probe(first))).toBe('not_signed_in');
+      expect(response.status).toBe(204);
+      // The cookie is set again without an end: it goes with the browser from now on.
+      const line = sessionCookieLine(response);
+      expect(line?.split(';')[0]).toBe(first);
+      expect(line).not.toContain('Expires=');
       expect(errorCode(await kit.probe(second))).toBe('not_signed_in');
-      expect((await sessionsOf(id)).slice(-2).map((session) => session.end_reason)).toEqual([
+      expect(errorCode(await kit.probe(untrusted))).toBe('not_signed_in');
+      expect((await kit.probe(first)).status).toBe(200);
+      const [, kept, ...ended] = await sessionsOf(id);
+      expect(ended.map((session) => session.end_reason)).toEqual([
         'sign_out_everywhere',
         'sign_out_everywhere',
       ]);
+      expect(kept).toMatchObject({ ended_at: null, trust_ended_at: clock.now() });
+      expect((await readSession(first)).trustedUntil).toBeNull();
+      expect(await devicesOf(first)).toEqual([]);
+      expect(await auditOf('auth.trust_ended', id)).toEqual([
+        {
+          actor_id: id,
+          record_type: 'session',
+          record_id: kept?.id,
+          details: { reason: 'sign_out_everywhere' },
+        },
+      ]);
+
+      // From now on the idle sign-out holds for it.
+      clock.advance(30 * MINUTE - 1);
+      expect((await kit.probe(first)).status).toBe(200);
+      clock.advance(30 * MINUTE);
+      expect(errorCode(await kit.probe(first))).toBe('not_signed_in');
+      expect((await sessionsOf(id))[1]).toMatchObject({ end_reason: 'idle' });
+    });
+
+    it('on "sign out everywhere" from a device that is not trusted: no trust to end, no cookie', async () => {
+      clock.set(START);
+      const { login, id } = await account('Lobar', 'Karimova');
+      const trusted = await trust(login);
+      const asking = await plain(login);
+
+      const response = await kit.post('/api/auth/sign-out-everywhere', asking);
+
+      expect(response.status).toBe(204);
+      expect(setCookies(response)).toEqual([]);
+      expect(errorCode(await kit.probe(trusted))).toBe('not_signed_in');
+      expect((await kit.probe(asking)).status).toBe(200);
+      expect(await auditOf('auth.trust_ended', id)).toEqual([]);
     });
 
     // Answered by the owner: the session that changes the password stays

@@ -116,6 +116,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/language": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AuthController_setLanguage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/second-step": {
         parameters: {
             query?: never;
@@ -315,6 +331,8 @@ export interface operations {
                         passwordResetBy: string | null;
                         /** Format: date-time */
                         trustedUntil: string | null;
+                        /** @enum {string} */
+                        language: "uz" | "ru" | "en";
                         assignments: {
                             /** @enum {string} */
                             role: "super_admin" | "principal" | "academic_vice_principal" | "spiritual_vice_principal" | "head_tutor" | "tutor" | "senior_head_teacher" | "head_teacher" | "teacher" | "student" | "parent" | "hr" | "nurse" | "psychologist" | "librarian";
@@ -362,6 +380,8 @@ export interface operations {
                         passwordResetBy: string | null;
                         /** Format: date-time */
                         trustedUntil: string | null;
+                        /** @enum {string} */
+                        language: "uz" | "ru" | "en";
                         assignments: {
                             /** @enum {string} */
                             role: "super_admin" | "principal" | "academic_vice_principal" | "spiritual_vice_principal" | "head_tutor" | "tutor" | "senior_head_teacher" | "head_teacher" | "teacher" | "student" | "parent" | "hr" | "nurse" | "psychologist" | "librarian";
@@ -512,6 +532,39 @@ export interface operations {
             };
         };
     };
+    AuthController_setLanguage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    language: "uz" | "ru" | "en";
+                };
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     TwoStepController_overview: {
         parameters: {
             query?: never;
@@ -572,6 +625,8 @@ export interface operations {
                         passwordResetBy: string | null;
                         /** Format: date-time */
                         trustedUntil: string | null;
+                        /** @enum {string} */
+                        language: "uz" | "ru" | "en";
                         assignments: {
                             /** @enum {string} */
                             role: "super_admin" | "principal" | "academic_vice_principal" | "spiritual_vice_principal" | "head_tutor" | "tutor" | "senior_head_teacher" | "head_teacher" | "teacher" | "student" | "parent" | "hr" | "nurse" | "psychologist" | "librarian";

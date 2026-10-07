@@ -1,11 +1,12 @@
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, type ChangePassword } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { Field } from '@/components/field';
+import { PageHeader } from '@/components/page-header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { AuthPage } from './auth-page';
@@ -15,14 +16,34 @@ import { refreshSession, sessionQuery, STEP_PATH, stepOf } from './session';
 import { rememberTrustAsked } from './trust-asked';
 import { useSignOut } from './use-sign-out';
 
+/** The frame of the change by choice: inside the layout, under the account page (task 0.8d). */
+function OwnPasswordFrame({
+  title,
+  text,
+  children,
+}: {
+  title: string;
+  text: string;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="max-w-sm">
+      <PageHeader title={title} breadcrumbs={[{ label: t('account.title'), to: '/account' }]} />
+      <p className="mb-4 text-sm text-muted-foreground">{text}</p>
+      {children}
+    </div>
+  );
+}
+
 /**
  * docs/spec/02-roles-and-access.md, Rules: staff must change the password at
  * first sign-in. Edge cases, "Accounts and sign-in": staff change their own
  * password with the current one; passwords have at least ten characters; after
  * a reset the person sees "your password was reset by X".
  *
- * One page for both: forced, while a first or reset password is in use, and
- * by choice from the account menu.
+ * One page for both: forced, while a first or reset password is in use, at
+ * `/password` outside the layout; by choice at `/account/password` inside it.
  */
 export function PasswordPage() {
   const { t } = useTranslation();
@@ -90,13 +111,15 @@ export function PasswordPage() {
     }
   }
 
+  const Frame = forced ? AuthPage : OwnPasswordFrame;
+
   return (
-    <AuthPage
+    <Frame
       title={forced ? t('password.titleForced') : t('password.titleOwn')}
       text={forced ? t('password.textForced') : t('password.othersEnd')}
     >
       {session?.passwordResetBy != null && (
-        <Alert>
+        <Alert className="mb-4">
           <AlertDescription>
             {t('password.resetBy', { login: session.passwordResetBy })}
           </AlertDescription>
@@ -159,11 +182,11 @@ export function PasswordPage() {
             {t('layout.signOut')}
           </Button>
         ) : (
-          <Link to="/" className={buttonVariants({ variant: 'ghost' })}>
+          <Link to="/account" className={buttonVariants({ variant: 'ghost' })}>
             {t('password.back')}
           </Link>
         )}
       </form>
-    </AuthPage>
+    </Frame>
   );
 }

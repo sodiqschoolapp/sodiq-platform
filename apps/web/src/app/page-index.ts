@@ -16,7 +16,8 @@ export interface IndexedPage {
  * come with the tasks that build them, each with the rights of the role.
  */
 export const COMMON_PAGES: readonly IndexedPage[] = [
-  { titleKey: 'password.titleOwn', to: '/password' },
+  { titleKey: 'account.title', to: '/account' },
+  { titleKey: 'password.titleOwn', to: '/account/password' },
   // The sample of the shared patterns exists in development only (task 0.8b-1).
   ...(import.meta.env.DEV ? [{ titleKey: 'sample.title', to: '/dev/patterns' } as const] : []),
 ];

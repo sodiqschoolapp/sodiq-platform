@@ -27,6 +27,7 @@ export interface Accounts {
   created_at: Timestamp;
   created_by: string | null;
   id: Generated<string>;
+  language: Generated<string>;
   lock_reason: string | null;
   locked_at: Timestamp | null;
   locked_by: string | null;

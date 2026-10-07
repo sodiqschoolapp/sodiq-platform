@@ -157,13 +157,14 @@ describe('sessions over time', () => {
         ).sessions;
         expect(listed.map((session) => session.current)).toEqual([true]);
 
+        // The asking session stays (task 0.8d); the idle one is written down with its own end.
         expect((await kit.post('/api/auth/sign-out-everywhere', fresh)).status).toBe(204);
         expect(await sessionsOf(account.id)).toMatchObject([
           { ended_at: new Date('2026-10-05T09:15:00+05:00'), end_reason: 'idle' },
-          { ended_at: new Date('2026-10-05T09:20:00+05:00'), end_reason: 'sign_out_everywhere' },
+          { ended_at: null, end_reason: null },
         ]);
         expect(await auditOf('auth.sign_out_everywhere', account.id)).toMatchObject([
-          { details: { endedSessions: 1 } },
+          { details: { endedSessions: 0 } },
         ]);
       });
 
@@ -468,23 +469,28 @@ describe('sessions over time', () => {
     });
   });
 
+  // Decided by the owner (task 0.8d): the asking session stays signed in.
   describe('sign out everywhere', () => {
-    it('ends every session of the account, this one included, and clears the cookie', async () => {
+    it('ends every other session of the account, keeps this one and leaves its cookie alone', async () => {
       clock.set('2026-10-09T16:45:00+05:00');
       const { account, cookie: laptop } = await kit.fullSession('Qobil', 'Latipov');
       const phone = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
+      const classroom = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
 
       const response = await kit.post('/api/auth/sign-out-everywhere', laptop);
 
       expect(response.status).toBe(204);
-      const cleared = setCookies(response);
-      expect(cleared).toHaveLength(1);
-      expect(cleared[0]).toMatch(/^__Host-sodiq_session=;/);
-      expect(errorCode(await kit.probe(laptop))).toBe('not_signed_in');
+      expect(setCookies(response)).toEqual([]);
+      expect((await kit.probe(laptop)).status).toBe(200);
       expect(errorCode(await kit.probe(phone))).toBe('not_signed_in');
+      expect(errorCode(await kit.probe(classroom))).toBe('not_signed_in');
       expect(await sessionsOf(account.id)).toMatchObject([
+        { ended_at: null, end_reason: null },
         { ended_at: new Date('2026-10-09T16:45:00+05:00'), end_reason: 'sign_out_everywhere' },
         { ended_at: new Date('2026-10-09T16:45:00+05:00'), end_reason: 'sign_out_everywhere' },
+      ]);
+      expect(await auditOf('auth.sign_out_everywhere', account.id)).toEqual([
+        { record_type: 'account', details: { endedSessions: 2 } },
       ]);
     });
 
@@ -493,14 +499,17 @@ describe('sessions over time', () => {
       const { account, cookie } = await kit.fullSession('Rano', 'Latipova');
       const signedOut = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
       await kit.post('/api/auth/sign-out', signedOut);
+      const other = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
       const { cookie: colleague } = await kit.fullSession('Sardor', 'Latipov');
 
       await kit.post('/api/auth/sign-out-everywhere', cookie);
 
       expect((await kit.probe(colleague)).status).toBe(200);
+      expect(errorCode(await kit.probe(other))).toBe('not_signed_in');
       expect((await sessionsOf(account.id)).map((row) => row.end_reason)).toEqual([
-        'sign_out_everywhere',
+        null,
         'sign_out',
+        'sign_out_everywhere',
       ]);
     });
 
@@ -511,17 +520,20 @@ describe('sessions over time', () => {
       const { account } = await kit.fullSession('Yulduz', 'Latipova');
       clock.advance(40 * MINUTE);
       const fresh = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
+      const other = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
 
       await kit.post('/api/auth/sign-out-everywhere', fresh);
 
       expect(await sessionsOf(account.id)).toMatchObject([
         { ended_at: new Date('2026-10-09T16:30:00+05:00'), end_reason: 'idle' },
+        { ended_at: null, end_reason: null },
         { ended_at: new Date('2026-10-09T16:40:00+05:00'), end_reason: 'sign_out_everywhere' },
       ]);
       expect(await auditOf('auth.sign_out_everywhere', account.id)).toMatchObject([
         { details: { endedSessions: 1 } },
       ]);
       expect(await auditOf('auth.session_idle', account.id)).toHaveLength(1);
+      expect((await kit.probe(other)).status).toBe(401);
     });
 
     it('is the same for a password change', async () => {
@@ -538,14 +550,17 @@ describe('sessions over time', () => {
       expect(await auditOf('auth.session_idle', account.id)).toHaveLength(1);
     });
 
-    it('lets the person sign in again', async () => {
+    it('lets the person sign in again, and the asking session goes on', async () => {
       const { account, cookie } = await kit.fullSession('Temur', 'Latipov');
       await kit.post('/api/auth/sign-out-everywhere', cookie);
 
       expect((await kit.signIn(account.login, NEW_PASSWORD)).status).toBe(200);
+      expect((await kit.probe(cookie)).status).toBe(200);
     });
 
-    it('is written to the audit log once, with the number of sessions it ended', async () => {
+    // Owner's decision 6: the log records "sign out everywhere", also when
+    // nothing else was open, each time the person asks for it.
+    it('is written to the audit log at every call, with the number of other sessions it ended', async () => {
       const { account, cookie } = await kit.fullSession('Umida', 'Latipova');
       await kit.signIn(account.login, NEW_PASSWORD);
       await kit.signIn(account.login, NEW_PASSWORD);
@@ -554,7 +569,13 @@ describe('sessions over time', () => {
       await kit.post('/api/auth/sign-out-everywhere', cookie);
 
       expect(await auditOf('auth.sign_out_everywhere', account.id)).toEqual([
-        { record_type: 'account', details: { endedSessions: 3 } },
+        { record_type: 'account', details: { endedSessions: 2 } },
+        { record_type: 'account', details: { endedSessions: 0 } },
+      ]);
+      expect((await sessionsOf(account.id)).map((row) => row.end_reason)).toEqual([
+        null,
+        'sign_out_everywhere',
+        'sign_out_everywhere',
       ]);
     });
 

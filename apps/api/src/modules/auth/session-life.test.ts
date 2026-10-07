@@ -179,12 +179,12 @@ describe('the longest life of a session', () => {
 
     expect((await kit.post('/api/auth/sign-out-everywhere', fresh)).status).toBe(204);
     expect((await auditOf('auth.sign_out_everywhere', account.id)).map((e) => e.details)).toEqual([
-      { endedSessions: 1 },
+      { endedSessions: 0 },
     ]);
     expect((await sessionsOf(account.id)).map((session) => session.end_reason)).toEqual([
       'idle',
       'expired',
-      'sign_out_everywhere',
+      null,
     ]);
     expect((await sessionsOf(account.id))[1]).toMatchObject({
       ended_at: new Date(START_PLUS_7_DAYS),

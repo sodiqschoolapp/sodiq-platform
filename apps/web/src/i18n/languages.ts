@@ -1,10 +1,11 @@
-/** docs/spec/12-ux-standards.md, Language: Uzbek, Russian and English are complete. */
-export const LANGUAGES = ['uz', 'ru', 'en'] as const;
+import { DEFAULT_LANGUAGE, isLanguage, LANGUAGES, type Language } from '@sodiq/shared';
 
-export type Language = (typeof LANGUAGES)[number];
-
-/** A first visit with a browser in another language opens in Uzbek (decided by the owner). */
-export const DEFAULT_LANGUAGE: Language = 'uz';
+/**
+ * docs/spec/12-ux-standards.md, Language: Uzbek, Russian and English are
+ * complete. The list, the default and the type are shared with the API, which
+ * stores the language on the account (task 0.8d).
+ */
+export { DEFAULT_LANGUAGE, isLanguage, LANGUAGES, type Language };
 
 /** Each language under its own name, the same whatever language is in use. */
 export const LANGUAGE_NAMES: Record<Language, string> = {
@@ -13,13 +14,10 @@ export const LANGUAGE_NAMES: Record<Language, string> = {
   en: 'English',
 };
 
-export function isLanguage(value: unknown): value is Language {
-  return LANGUAGES.some((language) => language === value);
-}
-
 /**
  * The language of a visit: the one this browser chose before, else the first
- * language of the browser that is one of the three, else Uzbek.
+ * language of the browser that is one of the three, else Uzbek (decided by the
+ * owner). Once signed in, the language of the account applies (task 0.8d).
  */
 export function preferredLanguage(
   stored: string | null,
