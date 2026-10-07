@@ -29,11 +29,12 @@ export async function saveAccountLanguage(
  *   before any sign-in keeps it;
  * - a session that owes a step: nothing; the chooser changes the browser alone;
  * - a complete session: a language chosen in this tab before sign-in was
- *   complete is saved to the account, once; otherwise the account's language
- *   is applied to the tab.
+ *   complete is saved to the account, and the mark goes once the save has
+ *   succeeded (at once when it is the account's language already); otherwise
+ *   the account's language is applied to the tab.
  *
- * A save that fails is not shown: the tab keeps the chosen language, and the
- * next answer of the server puts the account's language back.
+ * A save that fails is not shown: the tab keeps the chosen language and its
+ * mark, and the next complete answer sends it again.
  */
 export function followAccountLanguage(
   i18n: I18n,
@@ -55,10 +56,15 @@ export function followAccountLanguage(
   }
   const chosen = languageChosenBeforeSignIn();
   if (chosen !== null) {
-    rememberLanguageChosen(null);
-    if (chosen !== session.language) {
-      void saveAccountLanguage(queryClient, chosen).catch(() => undefined);
+    if (chosen === session.language) {
+      rememberLanguageChosen(null);
+      return;
     }
+    void saveAccountLanguage(queryClient, chosen)
+      .then(() => {
+        rememberLanguageChosen(null);
+      })
+      .catch(() => undefined);
     return;
   }
   if (session.language !== languageOf(i18n)) {

@@ -325,7 +325,7 @@ describe('accounts and sessions in the database', () => {
       });
     });
 
-    it('refuse an empty language', async () => {
+    it('refuse a missing language', async () => {
       await expect(asApp('update accounts set language = null')).rejects.toMatchObject({
         code: NOT_NULL_VIOLATION,
       });

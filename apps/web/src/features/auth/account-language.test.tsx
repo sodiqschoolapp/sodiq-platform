@@ -142,6 +142,51 @@ describe('the language of the account', () => {
     expect(window.sessionStorage.getItem(MARK)).toBeNull();
   });
 
+  // Asked for by the owner's reviewer: a save that fails must not lose the choice.
+  it('keeps the choice when the save fails, and sends it again with the next complete answer', async () => {
+    let saves = 0;
+    const calls = fakeApi({
+      'GET /api/auth/session': signedOut,
+      'POST /api/auth/sign-in': () => json(sessionOf({ language: 'ru' })),
+      'PUT /api/auth/language': () => {
+        saves += 1;
+        return saves === 1 ? refusal('internal_error', 500) : nothing();
+      },
+    });
+    const { queryClient } = renderApp('/sign-in');
+    await heading(en.signIn.title);
+    chooseLanguage(en.language.label, 'uz');
+    await heading(uz.signIn.title);
+
+    type(uz.signIn.login, 'a.karimov');
+    type(uz.signIn.password, 'the-password-1');
+    press(uz.signIn.submit);
+
+    expect(await heading(uz.home.title)).toBeDefined();
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === 'PUT /api/auth/language')).toHaveLength(1);
+    });
+    // The failure is not shown and the mark stays; the tab is still in the chosen language.
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(window.sessionStorage.getItem(MARK)).toBe('uz');
+
+    // The next answer about the session, as at a reload: sent again, and the mark goes.
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionOf({ language: 'ru' })),
+      'PUT /api/auth/language': () => {
+        saves += 1;
+        return nothing();
+      },
+    });
+    await queryClient.refetchQueries({ queryKey: ['session'] });
+
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem(MARK)).toBeNull();
+    });
+    expect(saves).toBe(2);
+    expect(screen.getByRole('heading', { name: uz.home.title })).toBeDefined();
+  });
+
   it('is not saved again when the choice before sign-in is the language of the account', async () => {
     const calls = fakeApi({
       'GET /api/auth/session': signedOut,
