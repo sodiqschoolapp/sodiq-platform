@@ -240,7 +240,7 @@ export const uz: Texts<'one' | 'other'> = {
     academic_vice_principal:
       'Bugungi darslar va ularning holati, kerakli almashtirishlar, hozir boʻsh xonalar taxtasi, jadvaldagi toʻqnashuvlar, chorak jarayoni va yopish roʻyxati, filial boʻyicha ogohlantirish roʻyxati. Platforma boʻlimlari ochilgani sari sahifa toʻladi.',
     branch_summary:
-      'Filial xulosasi: oʻquvchilar, xodimlar, bugungi davomat va sinflar boʻyicha natijalar. Platforma boʻlimlari ochilgani sari sahifa toʻladi.',
+      'Filial xulosasi: oʻquvchilar, xodimlar, bugungi davomat va sinf raqamlari boʻyicha natijalar. Platforma boʻlimlari ochilgani sari sahifa toʻladi.',
     later_release:
       'Platformaning sizga tegishli qismi keyingi versiyada qoʻshiladi. Hozir sizdan hech narsa talab qilinmaydi.',
   },

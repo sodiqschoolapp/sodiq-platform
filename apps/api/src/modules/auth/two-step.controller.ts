@@ -15,13 +15,13 @@ import { RequestId } from '../../http/request-id.js';
 import { Returns, ReturnsNothing, ValidBody } from '../../http/schemas.js';
 import { SessionCookie, type SessionCookieJar } from '../../http/session-cookie.js';
 import { AnySignedIn } from '../access/access.decorators.js';
-import { answerOf } from './auth.controller.js';
 import {
   AllowedBeforeSecondStep,
   AllowedBeforeSecondStepSetUp,
   CurrentSession,
 } from './session.guard.js';
 import type { ActiveSession } from './sessions.service.js';
+import { Sessions } from './sessions.service.js';
 import { TwoStep } from './two-step.service.js';
 
 /**
@@ -32,7 +32,10 @@ import { TwoStep } from './two-step.service.js';
  */
 @Controller('auth/second-step')
 export class TwoStepController {
-  constructor(private readonly twoStep: TwoStep) {}
+  constructor(
+    private readonly twoStep: TwoStep,
+    private readonly sessions: Sessions,
+  ) {}
 
   /** The second step of a sign-in: a code from the app, or a recovery code. */
   @Post()
@@ -51,7 +54,7 @@ export class TwoStepController {
       // The trust of the device begins with the code: the browser keeps the cookie for its 7 days.
       cookie.keep(trustedUntil);
     }
-    return answerOf({ ...session, secondStep: 'passed', trustedUntil });
+    return this.sessions.answerOf({ ...session, secondStep: 'passed', trustedUntil });
   }
 
   @Get()

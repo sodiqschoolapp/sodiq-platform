@@ -215,6 +215,43 @@ describe('a session that ended', () => {
   });
 });
 
+describe('a session found to be over', () => {
+  it('clears a role and a branch left in the tab when the session is read as ended', async () => {
+    window.sessionStorage.setItem(ROLE_STORAGE_KEY, 'teacher');
+    window.sessionStorage.setItem(BRANCH_STORAGE_KEY, NORTH.id);
+    fakeApi({ 'GET /api/auth/session': () => refusal('not_signed_in', 401) });
+
+    renderApp('/');
+
+    await heading(en.signIn.title);
+    expect(window.sessionStorage.getItem(ROLE_STORAGE_KEY)).toBeNull();
+    expect(window.sessionStorage.getItem(BRANCH_STORAGE_KEY)).toBeNull();
+  });
+
+  it('does not keep a choice made before the next person signs in', async () => {
+    let signedIn = false;
+    fakeApi({
+      'GET /api/auth/session': () => (signedIn ? json(sessionOf()) : refusal('not_signed_in', 401)),
+      'POST /api/auth/sign-in': () => {
+        signedIn = true;
+        return json(sessionOf());
+      },
+    });
+    const shell = renderApp('/sign-in');
+    await heading(en.signIn.title);
+    shell.view.chooseRole('teacher');
+
+    fireEvent.change(screen.getByLabelText(en.signIn.login), { target: { value: 'a.person' } });
+    fireEvent.change(screen.getByLabelText(en.signIn.password), {
+      target: { value: 'a-password-of-ten' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.signIn.submit }));
+
+    await heading(en.home.title);
+    expect(window.sessionStorage.getItem(ROLE_STORAGE_KEY)).toBeNull();
+  });
+});
+
 describe('the menu on a phone', () => {
   it('opens from a button, names the current page and closes after a choice', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });

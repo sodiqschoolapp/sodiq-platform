@@ -1,4 +1,10 @@
-import { SCHOOL_WIDE_ROLES, roleSchema, type Role, type SessionResponse } from '@sodiq/shared';
+import {
+  ROLES,
+  SCHOOL_WIDE_ROLES,
+  roleSchema,
+  type Role,
+  type SessionResponse,
+} from '@sodiq/shared';
 
 /** The role and the branch on display in one tab (`edge/people-roles-accounts`: kept per tab). */
 export interface Chosen {
@@ -27,12 +33,8 @@ export function resolveView(
   chosen: Chosen,
 ): View {
   const assignments = session?.assignments ?? [];
-  const roles: Role[] = [];
-  for (const { role } of assignments) {
-    if (!roles.includes(role)) {
-      roles.push(role);
-    }
-  }
+  // The order of the table of `02` holds here on its own, whatever order came in.
+  const roles = ROLES.filter((held) => assignments.some(({ role }) => role === held));
   const role =
     chosen.role !== null && roles.includes(chosen.role) ? chosen.role : (roles[0] ?? null);
   const all = session?.branches ?? [];

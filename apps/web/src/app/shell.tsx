@@ -1,4 +1,10 @@
-import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  hashKey,
+  MutationCache,
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query';
 import { RouterProvider, type RouterHistory } from '@tanstack/react-router';
 import type { i18n as I18n } from 'i18next';
 import { I18nextProvider } from 'react-i18next';
@@ -7,7 +13,13 @@ import { ConfirmProvider } from '@/components/confirm-dialog';
 import { ViewContext } from '@/features/access/use-view';
 import { ViewStore } from '@/features/access/view-store';
 import { UnsentProvider } from '@/components/unsent/unsent-changes';
-import { forgetSession, refreshSession, SESSION_CHANGED_CODES } from '@/features/auth/session';
+import {
+  forgetSession,
+  refreshSession,
+  SESSION_CHANGED_CODES,
+  SESSION_KEY,
+  type Session,
+} from '@/features/auth/session';
 import { ThemeContext, type ThemeStore } from '@/theme/theme';
 import { createAppRouter, type AppRouter } from './router';
 
@@ -55,6 +67,26 @@ export function createShell(history?: RouterHistory): Shell {
     },
   });
   const router = createAppRouter(queryClient, history);
+  // The role and the branch of the tab belong to the person who chose them: they
+  // go when the session is known to be over (an ended session read as `null`,
+  // sign-out) and when somebody signs in after that.
+  let signedOut = false;
+  queryClient.getQueryCache().subscribe((event) => {
+    if (event.type !== 'updated' || event.action.type !== 'success') {
+      return;
+    }
+    if (event.query.queryHash !== hashKey(SESSION_KEY)) {
+      return;
+    }
+    const session = event.query.state.data as Session | undefined;
+    if (session === null) {
+      view.clear();
+      signedOut = true;
+    } else if (signedOut) {
+      view.clear();
+      signedOut = false;
+    }
+  });
   return { queryClient, router, view };
 }
 

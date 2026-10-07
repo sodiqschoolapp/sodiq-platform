@@ -35,6 +35,22 @@ describe('the role and branch on display', () => {
     expect(view.branchId).toBe(SOUTH.id);
   });
 
+  it('lists the roles in the order of the table whatever order they come in', () => {
+    const view = resolveView(
+      {
+        assignments: [
+          { role: 'teacher', branchId: NORTH.id },
+          { role: 'tutor', branchId: NORTH.id },
+        ],
+        branches: [NORTH],
+      },
+      NOBODY,
+    );
+
+    expect(view.roles).toEqual(['tutor', 'teacher']);
+    expect(view.role).toBe('tutor');
+  });
+
   it('lists a role held in two branches once, with both branches', () => {
     const view = resolveView(
       {
