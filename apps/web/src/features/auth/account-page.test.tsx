@@ -263,6 +263,27 @@ describe('the account page', () => {
     );
   });
 
+  it('shows the failure of the devices and of the second step, and asks again on "Try again"', async () => {
+    let up = false;
+    openAccount({
+      'GET /api/auth/trusted-devices': () =>
+        up ? json({ devices: [] }) : refusal('internal_error', 500),
+      'GET /api/auth/second-step': () => (up ? json(ON) : refusal('internal_error', 500)),
+    });
+    await heading(en.account.title);
+    const devices = section(en.account.devicesTitle);
+    const step = section(en.account.secondStepTitle);
+    expect((await devices.findByRole('alert')).textContent).toBe(en.errors.internal_error);
+    expect((await step.findByRole('alert')).textContent).toBe(en.errors.internal_error);
+
+    up = true;
+    fireEvent.click(devices.getByRole('button', { name: en.problems.retry }));
+    fireEvent.click(step.getByRole('button', { name: en.problems.retry }));
+
+    expect(await devices.findByText(en.account.devicesEmpty)).toBeDefined();
+    expect(await step.findByText(en.account.secondStepOn)).toBeDefined();
+  });
+
   it('says that no device is trusted', async () => {
     openAccount({ 'GET /api/auth/trusted-devices': () => json({ devices: [] }) });
     await heading(en.account.title);
@@ -337,6 +358,36 @@ describe('the second step on the account page', () => {
         .filter((call) => call.route === 'POST /api/auth/second-step/turn-off')
         .map((call) => call.body),
     ).toEqual([{ code: '000000' }, { code: '123456' }]);
+  });
+
+  // Edge cases, "Accounts and sign-in": after five failures each further attempt is delayed.
+  it('keeps the "Turn off" button off while the wait after too many attempts lasts', async () => {
+    openAccount({
+      'GET /api/auth/second-step': () => json(ON),
+      'POST /api/auth/second-step/turn-off': () => refusal('too_many_attempts', 429, 1),
+    });
+    await heading(en.account.title);
+    const step = section(en.account.secondStepTitle);
+    await step.findByText(en.account.secondStepOn);
+    fireEvent.click(step.getByRole('button', { name: en.account.turnOff }));
+    type(en.setUp.code, '000000');
+
+    fireEvent.click(step.getByRole('button', { name: en.account.turnOff }));
+
+    expect((await step.findByRole('alert')).textContent).toBe(
+      'Too many failed attempts. Try again in 1 second.',
+    );
+    expect(step.getByRole<HTMLButtonElement>('button', { name: en.account.turnOff }).disabled).toBe(
+      true,
+    );
+    await waitFor(
+      () => {
+        expect(
+          step.getByRole<HTMLButtonElement>('button', { name: en.account.turnOff }).disabled,
+        ).toBe(false);
+      },
+      { timeout: 3000 },
+    );
   });
 
   it('cannot be turned off where the role requires it: the state and the reason, no button', async () => {

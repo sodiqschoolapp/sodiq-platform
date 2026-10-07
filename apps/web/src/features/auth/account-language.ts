@@ -24,7 +24,9 @@ export async function saveAccountLanguage(
  * the browser's choice is for the pages before sign-in only. Called with every
  * answer about the session that the tab receives:
  *
- * - no session: the mark of a choice before sign-in goes, as the view does;
+ * - no session where there was one (sign-out, an ended session): the mark of a
+ *   choice before sign-in goes, as the view does; a reload of the sign-in page
+ *   before any sign-in keeps it;
  * - a session that owes a step: nothing; the chooser changes the browser alone;
  * - a complete session: a language chosen in this tab before sign-in was
  *   complete is saved to the account, once; otherwise the account's language
@@ -37,12 +39,15 @@ export function followAccountLanguage(
   i18n: I18n,
   queryClient: QueryClient,
   session: Session | undefined,
+  previous: Session | undefined,
 ): void {
   if (session === undefined) {
     return;
   }
   if (session === null) {
-    rememberLanguageChosen(null);
+    if (previous != null) {
+      rememberLanguageChosen(null);
+    }
     return;
   }
   if (stepOf(session) !== 'none') {

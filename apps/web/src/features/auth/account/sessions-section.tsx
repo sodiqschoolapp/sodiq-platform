@@ -60,7 +60,9 @@ export function SessionsSection() {
   });
 
   const ask = async () => {
-    const rows = sessions.data?.sessions ?? [];
+    // The list may be stale: the question names what is there now.
+    const fresh = await sessions.refetch();
+    const rows = fresh.data?.sessions ?? sessions.data?.sessions ?? [];
     const others = rows.filter((row) => !row.current).length;
     const trusted = session?.trustedUntil != null;
     const text = [

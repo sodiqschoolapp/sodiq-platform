@@ -74,6 +74,7 @@ export function createShell(i18n: I18n, history?: RouterHistory): Shell {
   // sign-out) and when somebody signs in after that. The language of the tab
   // follows the account from the first complete answer on.
   let signedOut = false;
+  let previous: Session | undefined;
   queryClient.getQueryCache().subscribe((event) => {
     if (event.type !== 'updated' || event.action.type !== 'success') {
       return;
@@ -82,7 +83,8 @@ export function createShell(i18n: I18n, history?: RouterHistory): Shell {
       return;
     }
     const session = event.query.state.data as Session | undefined;
-    followAccountLanguage(i18n, queryClient, session);
+    followAccountLanguage(i18n, queryClient, session, previous);
+    previous = session;
     if (session === null) {
       view.clear();
       signedOut = true;

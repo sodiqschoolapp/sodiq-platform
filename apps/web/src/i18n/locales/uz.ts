@@ -283,7 +283,7 @@ export const uz: Texts<'one' | 'other'> = {
   account: {
     title: 'Hisob',
     languageTitle: 'Til',
-    languageText: 'Platforma tili siz uchun, kirgan har bir qurilmada.',
+    languageText: 'Siz uchun platforma tili, kirgan har bir qurilmangizda.',
     passwordTitle: 'Parol',
     passwordText:
       'Parolingizni joriy parol bilan oʻzgartiring. Boshqa seanslaringiz yopiladi va bu qurilma endi ishonchli boʻlmaydi.',
@@ -310,7 +310,7 @@ export const uz: Texts<'one' | 'other'> = {
     devicesText:
       '7 kun davomida parol soʻramay kirgan holda qoladigan brauzerlar. Birini olib tashlasangiz, u darhol chiqariladi.',
     devicesEmpty:
-      'Ishonchli qurilma yoʻq. Qoʻshish uchun kirishda "Bu qurilmaga ishonish" ni yoqing.',
+      'Ishonchli qurilma yoʻq. Qoʻshish uchun kirishda «Bu qurilmaga ishonish»ni yoqing.',
     trustedUntil: 'Ishonch muddati',
     remove: 'Olib tashlash',
     removeNamed: '{{name}} qurilmasini olib tashlash',

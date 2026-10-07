@@ -161,6 +161,27 @@ describe('the language of the account', () => {
     expect(window.sessionStorage.getItem(MARK)).toBeNull();
   });
 
+  it('keeps a choice before sign-in through a reload of the sign-in page', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': signedOut,
+      'POST /api/auth/sign-in': () => json(sessionOf({ language: 'ru' })),
+      'PUT /api/auth/language': nothing,
+    });
+    window.sessionStorage.setItem(MARK, 'uz');
+
+    renderApp('/sign-in', 'uz');
+    await heading(uz.signIn.title);
+
+    expect(window.sessionStorage.getItem(MARK)).toBe('uz');
+    type(uz.signIn.login, 'a.karimov');
+    type(uz.signIn.password, 'the-password-1');
+    press(uz.signIn.submit);
+    expect(await heading(uz.home.title)).toBeDefined();
+    await waitFor(() => {
+      expect(calls.map((call) => call.route)).toContain('PUT /api/auth/language');
+    });
+  });
+
   // On a shared computer the next person gets their own account's language.
   it('forgets a choice before sign-in at sign-out, and the next sign-in applies the account', async () => {
     let session: unknown = sessionOf({ language: 'en' });

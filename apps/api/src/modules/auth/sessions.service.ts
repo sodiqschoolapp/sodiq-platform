@@ -613,16 +613,27 @@ export class Sessions {
    * `12`, Language: each person chooses a language and the choice is
    * remembered, on the account (task 0.8d). The same language again changes
    * nothing and leaves no entry. The row is locked, so two changes at the same
-   * moment record the right old value each.
+   * moment record the right old value each; a lock of the account or an end
+   * of the session since the guard read it (the same hole as at the password
+   * change, 0.6d) is answered as not signed in, and nothing is written.
    */
   async setLanguage(session: ActiveSession, language: Language, requestId?: string): Promise<void> {
     await this.transactions.run([], async (transaction) => {
       const account = await transaction
         .selectFrom('accounts')
-        .select('language')
+        .select(['language', 'locked_at'])
         .where('id', '=', session.accountId)
         .forUpdate()
         .executeTakeFirstOrThrow();
+      const own = await transaction
+        .selectFrom('sessions')
+        .select('id')
+        .where('id', '=', session.sessionId)
+        .where('ended_at', 'is', null)
+        .executeTakeFirst();
+      if (account.locked_at !== null || own === undefined) {
+        throw new ApiException('not_signed_in', 401);
+      }
       if (account.language === language) {
         return;
       }

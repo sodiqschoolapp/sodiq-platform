@@ -32,7 +32,7 @@ const textChild = ':matches(JSXElement, JSXFragment) > JSXExpressionContainer';
  * that takes a text under another name adds the name here.
  */
 const textAttribute =
-  'JSXAttribute[name.name=/^(aria-label|aria-description|aria-roledescription|aria-valuetext|placeholder|title|alt|label|note|text|caption)$/]';
+  'JSXAttribute[name.name=/^(aria-label|aria-description|aria-roledescription|aria-valuetext|placeholder|title|alt|label|note|text|caption|intro)$/]';
 
 /** A text chosen or joined inside braces: `on ? 'A' : 'B'`, `on && 'A'`, `name + ' text'`. */
 const chosen = ':matches(ConditionalExpression, LogicalExpression, BinaryExpression)';

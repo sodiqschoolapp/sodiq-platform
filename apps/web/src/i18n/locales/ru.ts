@@ -298,7 +298,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     sessionsTitle: 'Сеансы',
     sessionsText: 'Где сейчас выполнен вход в вашу учётную запись.',
     device: 'Устройство',
-    started: 'Вход',
+    started: 'Время входа',
     lastUsed: 'Последняя активность',
     marks: 'Отметки',
     unknownDevice: 'Неизвестное устройство',

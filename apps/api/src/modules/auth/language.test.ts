@@ -15,6 +15,10 @@ import {
   type SignInKit,
 } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { Transactions } from '../../database/transactions.js';
+import { SESSION_COOKIE } from '../../http/session-cookie.js';
+import { AccountLocks } from './account-locks.service.js';
+import { Sessions } from './sessions.service.js';
 
 // docs/spec/12-ux-standards.md, Language: each person chooses a language; the
 // choice is remembered. Task 0.8d: it is stored on the account and taken from
@@ -196,6 +200,47 @@ describe('the language of an account', () => {
       expect(errorCode(response)).toBe('second_step_set_up_required');
       expect(await storedLanguage(account.id)).toBe('uz');
     });
+  });
+
+  // The same hole as at the password change (0.6d): the guard read the session,
+  // then the account was locked or the session ended.
+  it('is not changed from a session whose account was locked after the guard read it', async () => {
+    const administrator = await kit.newAccount('Kamol', 'Yoldoshev');
+    const { account, cookie } = await kit.fullSession('Laylo', 'Yoldosheva');
+    const read = await app.get(Sessions).resolve(cookie.slice(`${SESSION_COOKIE}=`.length));
+    if (read === undefined) {
+      throw new Error('The session was not found.');
+    }
+    await app.get(Transactions).run([], (transaction) =>
+      app.get(AccountLocks).lock(transaction, {
+        accountId: account.id,
+        lockedBy: administrator.id,
+        reason: 'Dismissed today.',
+      }),
+    );
+
+    await expect(app.get(Sessions).setLanguage(read, 'ru')).rejects.toMatchObject({
+      code: 'not_signed_in',
+    });
+
+    expect(await storedLanguage(account.id)).toBe('uz');
+    expect(await auditOf(account.id)).toEqual([]);
+  });
+
+  it('is not changed from a session that ended after the guard read it', async () => {
+    const { account, cookie } = await kit.fullSession('Madina', 'Yoldosheva');
+    const read = await app.get(Sessions).resolve(cookie.slice(`${SESSION_COOKIE}=`.length));
+    if (read === undefined) {
+      throw new Error('The session was not found.');
+    }
+    expect((await kit.post('/api/auth/sign-out', cookie)).status).toBe(204);
+
+    await expect(app.get(Sessions).setLanguage(read, 'ru')).rejects.toMatchObject({
+      code: 'not_signed_in',
+    });
+
+    expect(await storedLanguage(account.id)).toBe('uz');
+    expect(await auditOf(account.id)).toEqual([]);
   });
 
   it('is changed by nobody without a session', async () => {
