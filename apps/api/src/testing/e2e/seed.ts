@@ -60,6 +60,20 @@ try {
   );
   seeded.vicePrincipal = { login: vicePrincipal.login, password: vicePrincipal.firstPassword };
 
+  // A Tutor in one branch and a Teacher in two: the role and branch switchers.
+  const second = await insertBranch(migrator, 'Second browser test branch');
+  const switchers = await create('Jamshid', 'Ismoilov');
+  for (const held of [
+    { role: 'tutor', branchId },
+    { role: 'teacher', branchId },
+    { role: 'teacher', branchId: second },
+  ] as const) {
+    await transactions.run([held.branchId], (transaction) =>
+      assignments.give(transaction, { accountId: switchers.id, ...held, givenBy: null }),
+    );
+  }
+  seeded.switchers = { login: switchers.login, password: switchers.firstPassword };
+
   console.log(JSON.stringify(seeded));
 } finally {
   await app.close();

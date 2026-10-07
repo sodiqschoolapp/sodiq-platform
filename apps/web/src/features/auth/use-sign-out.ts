@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import { useViewStore } from '@/features/access/use-view';
 import { api } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { forgetSession, STEP_PATH } from './session';
@@ -9,12 +10,14 @@ import { rememberTrustAsked } from './trust-asked';
 export function useSignOut() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const view = useViewStore();
 
   return useMutation({
     mutationFn: () => answerOf(api.POST('/api/auth/sign-out')),
     onSuccess: () => {
       rememberTrustAsked(false);
       forgetSession(queryClient);
+      view.clear();
       void navigate({ to: STEP_PATH.sign_in });
     },
   });

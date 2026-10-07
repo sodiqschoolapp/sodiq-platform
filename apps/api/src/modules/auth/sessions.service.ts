@@ -6,8 +6,10 @@ import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import {
+  branchChoices,
   currentAssignments,
   rolesOf,
+  type BranchChoice,
   type CurrentAssignment,
 } from '../access/current-assignments.js';
 import { Audit } from '../audit/audit.service.js';
@@ -66,6 +68,8 @@ export interface ActiveSession {
    * counts at the next one.
    */
   assignments: CurrentAssignment[];
+  /** The branches the account may choose in the branch switcher (display only). */
+  branches: BranchChoice[];
 }
 
 export interface SignedIn {
@@ -270,6 +274,7 @@ export class Sessions {
           passwordResetBy: await this.loginOf(transaction, account.password_reset_by),
           trustedUntil: trusted ? latestEndOf(session) : null,
           assignments,
+          branches: await branchChoices(transaction, assignments),
         },
       };
     });
@@ -403,6 +408,7 @@ export class Sessions {
         passwordResetBy: await this.loginOf(transaction, account.password_reset_by),
         trustedUntil: isTrusted(used) ? latestEndOf(used) : null,
         assignments,
+        branches: await branchChoices(transaction, assignments),
       };
     });
   }

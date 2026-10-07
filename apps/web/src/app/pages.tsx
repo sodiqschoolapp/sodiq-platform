@@ -3,20 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { ErrorState } from '@/components/states';
 import { buttonVariants } from '@/components/ui/button';
 
-/**
- * The home page of every role until task 0.8c gives each role its own
- * (docs/spec/12-ux-standards.md: an empty page says what the page is for).
- */
-export function HomePage() {
-  const { t } = useTranslation();
-  return (
-    <section className="max-w-prose">
-      <h1 className="text-xl font-semibold">{t('home.title')}</h1>
-      <p className="mt-2 text-muted-foreground">{t('home.empty')}</p>
-    </section>
-  );
-}
-
 /** Shown while a page waits for its data: the outline at once, then the page. */
 export function PendingPage() {
   const { t } = useTranslation();

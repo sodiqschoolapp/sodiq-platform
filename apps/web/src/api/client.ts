@@ -1,4 +1,6 @@
+import { BRANCH_HEADER } from '@sodiq/shared';
 import createClient from 'openapi-fetch';
+import { getBranchInUse } from './branch-in-use';
 import type { paths } from './schema.generated';
 
 /**
@@ -11,4 +13,16 @@ export const api = createClient<paths>({
   baseUrl: window.location.origin,
   // Looked up on each call, not once at start.
   fetch: (request) => globalThis.fetch(request),
+});
+
+// The branch of the branch switcher goes with every call; a route that is not
+// bound to a branch ignores it.
+api.use({
+  onRequest({ request }) {
+    const branchId = getBranchInUse();
+    if (branchId !== null) {
+      request.headers.set(BRANCH_HEADER, branchId);
+    }
+    return request;
+  },
 });

@@ -89,7 +89,7 @@ describe('the app layout', () => {
     expect(screen.getByRole('navigation', { name: en.layout.menu })).toBeDefined();
     expect(screen.getByLabelText(en.language.label)).toBeDefined();
     // docs/spec/12-ux-standards.md, Look and feel: an empty page says what it is for.
-    expect(screen.getByText(en.home.empty)).toBeDefined();
+    expect(screen.getByText(en.home.teaching)).toBeDefined();
   });
 });
 

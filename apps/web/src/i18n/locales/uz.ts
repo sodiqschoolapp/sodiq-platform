@@ -231,5 +231,53 @@ export const uz: Texts<'one' | 'other'> = {
     title: 'Bosh sahifa',
     empty:
       'Bu sahifada bugun bajarishingiz kerak boʻlgan ishlar koʻrsatiladi. Menyu va vazifalar platforma boʻlimlari ochilgani sari shu yerda paydo boʻladi.',
+    teaching:
+      'Bugungi darslar va ularning holati, eslatmalar, har bir jurnalga tez kirish va jurnallaringiz boʻyicha ogohlantirish roʻyxati. Fan rahbarlari oʻzlarini kutayotgan soʻrovlarni ham koʻradi. Platforma boʻlimlari ochilgani sari sahifa toʻladi.',
+    tutor:
+      'Sinfingiz: bugungi dars jadvali, hozir kim yoʻq, kun va hafta davomati, sinf boʻyicha ogohlantirish roʻyxati. Platforma boʻlimlari ochilgani sari sahifa toʻladi.',
+    attendance_overview:
+      'Bugun barcha sinflar davomati va belgilangan foizdan past sinflar. Platforma boʻlimlari ochilgani sari sahifa toʻladi.',
+    academic_vice_principal:
+      'Bugungi darslar va ularning holati, kerakli almashtirishlar, hozir boʻsh xonalar taxtasi, jadvaldagi toʻqnashuvlar, chorak jarayoni va yopish roʻyxati, filial boʻyicha ogohlantirish roʻyxati. Platforma boʻlimlari ochilgani sari sahifa toʻladi.',
+    branch_summary:
+      'Filial xulosasi: oʻquvchilar, xodimlar, bugungi davomat va sinflar boʻyicha natijalar. Platforma boʻlimlari ochilgani sari sahifa toʻladi.',
+    later_release:
+      'Platformaning sizga tegishli qismi keyingi versiyada qoʻshiladi. Hozir sizdan hech narsa talab qilinmaydi.',
+  },
+  roles: {
+    super_admin: 'Super administrator',
+    principal: 'Direktor',
+    academic_vice_principal: 'Oʻquv ishlari boʻyicha direktor oʻrinbosari',
+    spiritual_vice_principal: 'Maʼnaviy-axloqiy tarbiya boʻyicha direktor oʻrinbosari',
+    head_tutor: 'Bosh tyutor',
+    tutor: 'Tyutor',
+    senior_head_teacher: 'Katta fan rahbari',
+    head_teacher: 'Fan rahbari',
+    teacher: 'Oʻqituvchi',
+    student: 'Oʻquvchi',
+    parent: 'Ota-ona',
+    hr: 'Kadrlar boʻlimi',
+    nurse: 'Hamshira',
+    psychologist: 'Psixolog',
+    librarian: 'Kutubxonachi',
+  },
+  menu: {
+    open: 'Menyu',
+    title: 'Menyu',
+    close: 'Yopish',
+    current: 'joriy sahifa',
+    home: 'Bosh sahifa',
+    setup: 'Maktab sozlamalari',
+    people: 'Odamlar',
+    classes: 'Sinflar va fanlar',
+    timetable: 'Dars jadvali',
+    journal: 'Jurnal',
+    results: 'Natijalar',
+    plans: 'Dars rejalari',
+    requests: 'Soʻrovlar',
+  },
+  switcher: {
+    role: 'Rol',
+    branch: 'Filial',
   },
 };

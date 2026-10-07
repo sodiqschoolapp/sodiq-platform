@@ -1,0 +1,199 @@
+import { HOME_KIND, MENU, ROLES, type Role } from '@sodiq/shared';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { getBranchInUse } from '@/api/branch-in-use';
+import { en } from '@/i18n/locales/en';
+import { fakeApi, json, nothing, NORTH, renderApp, SOUTH, sessionOf } from '@/testing/render-app';
+import { BRANCH_STORAGE_KEY, ROLE_STORAGE_KEY } from './view-store';
+
+// Every page is built here, so that the menu shows the whole row of the table.
+vi.mock('./menu-pages', async () => {
+  const { MENU_ITEMS } = await import('@sodiq/shared');
+  const pages = Object.fromEntries(
+    MENU_ITEMS.map((item) => [item, { titleKey: `menu.${item}`, to: '/' }]),
+  );
+  return { BUILT_PAGES: pages, BUILT_ITEMS: new Set(MENU_ITEMS) };
+});
+
+const heading = (name: string) => screen.findByRole('heading', { name });
+const side = () => within(screen.getByRole('navigation', { name: en.layout.menu }));
+
+const held = (role: Role) => ({
+  role,
+  branchId: role === 'super_admin' || role === 'senior_head_teacher' ? null : NORTH.id,
+});
+
+// docs/spec/02-roles-and-access.md: "a left menu that shows only what the role
+// can use"; docs/spec/08: home pages by role. All 15 roles.
+describe('the menu and the home page of each role', () => {
+  it.each(ROLES)('shows the row of the table and the first screen of %s', async (role) => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionOf({ assignments: [held(role)] })),
+    });
+
+    renderApp('/');
+
+    await heading(en.home.title);
+    const shown = side()
+      .getAllByRole('link')
+      .map((link) => link.textContent.replace(en.menu.current, ''));
+    expect(shown).toEqual([...MENU[role].map((item) => en.menu[item]), en.layout.changePassword]);
+    expect(screen.getByText(en.home[HOME_KIND[role]])).toBeDefined();
+    expect(screen.queryByLabelText(en.switcher.role)).toBeNull();
+  });
+});
+
+describe('the role switcher', () => {
+  const twoRoles = () =>
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(
+          sessionOf({
+            assignments: [held('tutor'), held('teacher')],
+          }),
+        ),
+    });
+
+  it('starts with the first role of the table and changes menu and home without a call', async () => {
+    const calls = twoRoles();
+    renderApp('/');
+    await heading(en.home.title);
+    expect(screen.getByText(en.home.tutor)).toBeDefined();
+    const before = calls.length;
+
+    fireEvent.change(screen.getByLabelText(en.switcher.role), { target: { value: 'teacher' } });
+
+    expect(await screen.findByText(en.home.teaching)).toBeDefined();
+    expect(side().queryByText(en.menu.plans)).not.toBeNull();
+    expect(side().queryByText(en.menu.people)).toBeNull();
+    expect(calls).toHaveLength(before);
+    expect(window.sessionStorage.getItem(ROLE_STORAGE_KEY)).toBe('teacher');
+  });
+
+  it('is not shown for one role', async () => {
+    fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });
+    renderApp('/');
+    await heading(en.home.title);
+
+    expect(screen.queryByLabelText(en.switcher.role)).toBeNull();
+  });
+
+  it('falls back to the default when the stored role is not held', async () => {
+    window.sessionStorage.setItem(ROLE_STORAGE_KEY, 'principal');
+    window.sessionStorage.setItem(BRANCH_STORAGE_KEY, SOUTH.id);
+    twoRoles();
+
+    renderApp('/');
+
+    expect(await screen.findByText(en.home.tutor)).toBeDefined();
+  });
+
+  it('keeps the choice of the tab across a change of page', async () => {
+    twoRoles();
+    window.sessionStorage.setItem(ROLE_STORAGE_KEY, 'teacher');
+
+    renderApp('/');
+
+    expect(await screen.findByText(en.home.teaching)).toBeDefined();
+  });
+});
+
+describe('the branch switcher', () => {
+  it('is shown with several branches and puts the branch in the header of every call', async () => {
+    const seen: (string | null)[] = [];
+    fakeApi({
+      'GET /api/auth/session': () => {
+        seen.push(getBranchInUse());
+        return json(
+          sessionOf({
+            assignments: [
+              { role: 'teacher', branchId: NORTH.id },
+              { role: 'teacher', branchId: SOUTH.id },
+            ],
+            branches: [NORTH, SOUTH],
+          }),
+        );
+      },
+    });
+    renderApp('/');
+    await heading(en.home.title);
+    const chooser = screen.getByLabelText(en.switcher.branch);
+    expect((chooser as HTMLSelectElement).value).toBe(NORTH.id);
+
+    fireEvent.change(chooser, { target: { value: SOUTH.id } });
+
+    await waitFor(() => {
+      expect(getBranchInUse()).toBe(SOUTH.id);
+    });
+    expect(window.sessionStorage.getItem(BRANCH_STORAGE_KEY)).toBe(SOUTH.id);
+  });
+
+  it('is not shown with one branch', async () => {
+    fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });
+    renderApp('/');
+    await heading(en.home.title);
+
+    expect(screen.queryByLabelText(en.switcher.branch)).toBeNull();
+  });
+
+  it('gives a Super Admin every branch', async () => {
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(
+          sessionOf({
+            assignments: [{ role: 'super_admin', branchId: null }],
+            branches: [NORTH, SOUTH],
+          }),
+        ),
+    });
+    renderApp('/');
+    await heading(en.home.title);
+
+    const chooser = screen.getByLabelText(en.switcher.branch);
+
+    expect(
+      within(chooser)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['North', 'South']);
+  });
+});
+
+describe('sign-out', () => {
+  it('clears the role and the branch of the tab', async () => {
+    window.sessionStorage.setItem(ROLE_STORAGE_KEY, 'teacher');
+    window.sessionStorage.setItem(BRANCH_STORAGE_KEY, NORTH.id);
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionOf()),
+      'POST /api/auth/sign-out': nothing,
+    });
+    renderApp('/');
+    await heading(en.home.title);
+
+    fireEvent.click(screen.getByRole('button', { name: en.layout.account }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: en.layout.signOut }));
+
+    await heading(en.signIn.title);
+    expect(window.sessionStorage.getItem(ROLE_STORAGE_KEY)).toBeNull();
+    expect(window.sessionStorage.getItem(BRANCH_STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe('the menu on a phone', () => {
+  it('opens from a button, names the current page and closes after a choice', async () => {
+    fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });
+    renderApp('/');
+    await heading(en.home.title);
+
+    fireEvent.click(screen.getByRole('button', { name: en.menu.open }));
+
+    const dialog = await screen.findByRole('dialog', { name: en.menu.title });
+    const links = within(dialog).getAllByRole('link');
+    expect(links.length).toBeGreaterThan(1);
+    expect(within(dialog).getAllByText(en.menu.current).length).toBeGreaterThan(0);
+    fireEvent.click(within(dialog).getByRole('link', { name: en.layout.changePassword }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: en.menu.title })).toBeNull();
+    });
+  });
+});

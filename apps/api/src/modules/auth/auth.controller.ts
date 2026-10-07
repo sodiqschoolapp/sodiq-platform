@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, Post } from '@nestjs/common';
 import {
   changePasswordSchema,
+  ROLES,
   sessionListSchema,
   sessionResponseSchema,
   signInSchema,
@@ -24,12 +25,26 @@ import {
 import { Sessions, type ActiveSession } from './sessions.service.js';
 
 export function answerOf(session: ActiveSession): SessionResponse {
+  // Nothing is shown before the step that is owed (docs/decisions.md, task 0.8c).
+  const owed =
+    session.secondStep === 'pending' ||
+    session.secondStep === 'set_up_required' ||
+    session.mustChangePassword;
   return {
     login: session.login,
     secondStep: session.secondStep,
     mustChangePassword: session.mustChangePassword,
     passwordResetBy: session.passwordResetBy,
     trustedUntil: session.trustedUntil?.toISOString() ?? null,
+    assignments: owed
+      ? []
+      : ROLES.flatMap((role) =>
+          session.assignments
+            .filter((assignment) => assignment.role === role)
+            .sort((a, b) => (a.branchId ?? '').localeCompare(b.branchId ?? ''))
+            .map(({ branchId }) => ({ role, branchId })),
+        ),
+    branches: owed ? [] : session.branches,
   };
 }
 

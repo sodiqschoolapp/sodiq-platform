@@ -227,5 +227,53 @@ export const en = {
     title: 'Home',
     empty:
       'This page will show what you need to do today. Your menu and your tasks appear here as the sections of the platform are opened.',
+    teaching:
+      "Today's lessons with their status, reminders, quick entry to each journal and the early-warning list for your journals. Head Teachers also see the requests waiting for them. This page fills as the sections of the platform are opened.",
+    tutor:
+      "Your class: today's timetable, who is absent now, attendance for the day and the week, and the early-warning list for the class. This page fills as the sections of the platform are opened.",
+    attendance_overview:
+      'Attendance of all classes today and the classes below a set percent. This page fills as the sections of the platform are opened.',
+    academic_vice_principal:
+      'Lessons today and their status, substitutions needed, the free-now board, timetable conflicts, quarter progress with the closing checklist, and the early-warning list for the branch. This page fills as the sections of the platform are opened.',
+    branch_summary:
+      'The summary of the branch: students, staff, attendance today and results by grade. This page fills as the sections of the platform are opened.',
+    later_release:
+      'Your part of the platform comes in a later release. Nothing is needed from you now.',
+  },
+  roles: {
+    super_admin: 'Super Admin',
+    principal: 'Principal',
+    academic_vice_principal: 'Academic Vice Principal',
+    spiritual_vice_principal: 'Vice Principal for Spiritual and Moral Education',
+    head_tutor: 'Head Tutor',
+    tutor: 'Tutor',
+    senior_head_teacher: 'Senior Head Teacher',
+    head_teacher: 'Head Teacher',
+    teacher: 'Teacher',
+    student: 'Student',
+    parent: 'Parent',
+    hr: 'HR',
+    nurse: 'Nurse',
+    psychologist: 'Psychologist',
+    librarian: 'Librarian',
+  },
+  menu: {
+    open: 'Menu',
+    title: 'Menu',
+    close: 'Close',
+    current: 'current page',
+    home: 'Home',
+    setup: 'School setup',
+    people: 'People',
+    classes: 'Classes and subjects',
+    timetable: 'Timetable',
+    journal: 'Journal',
+    results: 'Results',
+    plans: 'Lesson plans',
+    requests: 'Requests',
+  },
+  switcher: {
+    role: 'Role',
+    branch: 'Branch',
   },
 };
