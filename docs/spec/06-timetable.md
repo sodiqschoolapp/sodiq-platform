@@ -164,7 +164,7 @@ The rule behind every row: the past is never rewritten, and a journal belongs to
 
 - Teacher home page: today's lessons as a list (period, time, class or group, subject, room, button to open the journal) and the week as a table.
 - Views by class, by teacher, by room and the whole school; by day and by week.
-- Tutors see their class; Head Tutors every class of the branch; Head Teachers and Senior Head Teachers the teachers of their subjects; Principal and Vice Principals the whole branch; students and parents their own week in Release 2.
+- Tutors see the school timetable and their class; Head Tutors the school timetable and every class of the branch; Head Teachers and Senior Head Teachers the teachers of their subjects; Principal and Vice Principals the whole branch; students and parents their own week in Release 2.
 - Print, PDF and Excel for one class, one teacher, one room or the whole school.
 - Load report: lessons per week for each teacher against contract, lessons per subject for each class against the load, room use in percent, free periods.
 - When a published timetable changes, the affected teachers are notified at once; students and parents from Release 2.
