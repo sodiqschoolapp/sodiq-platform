@@ -14,7 +14,7 @@
 | A person works in two branches. | One person, one account. A branch switcher sits beside the role switcher, and every request is checked against one branch. A teacher's home page shows the lessons of all their branches together, so teaching needs no switching. |
 | A teacher moves to another department, or a subject is moved, mid-year. | Both changes carry a start date and are made by the Super Admin. They are refused while a teaching load would have a teacher outside the subject's department; those loads are listed for reassignment first. Open requests move to the new Head Teacher. |
 | A request waits for a Head Teacher who has been replaced. | Tasks that need action are addressed to the post, not the person, and shown to whoever holds it now. With no holder they go to the Academic Vice Principal, then to the Super Admin. |
-| The Principal is "view only": can he export or add a note? | The server refuses every change by the Principal except those to his own account: password, language, notification settings and photo, his sessions and sign-out, his second step and his trusted devices, and sending a feedback report about the app (Quality plan, Monitoring). Exports are allowed, without identity documents, and are logged. |
+| The Principal is "view only": can he export or add a note? | The server refuses every change by the Principal except those to his own account: password, language, notification settings and photo, his sessions and sign-out, his second step and his trusted devices, sending a feedback report about the app (Quality plan, Monitoring), and reading his own notifications and marking them as read. Exports are allowed, without identity documents, and are logged. |
 
 ## Staff over time
 
