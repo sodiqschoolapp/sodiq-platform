@@ -120,6 +120,8 @@ export function startReporting(config: ReportingConfig, options: ReportingOption
       : [],
     tracesSampleRate: 0,
     maxBreadcrumbs: 0,
+    // The uncaught-exception handler closes with this limit before it exits.
+    shutdownTimeout: STOP_LIMIT_MS,
     beforeSend: reportedEvent,
     beforeBreadcrumb: () => null,
   });

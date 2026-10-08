@@ -26,11 +26,14 @@ While a deploy runs, a newer merge waits; GitHub keeps one waiting run, so a thi
 
 `14`, Releases: back to the previous version in minutes. Two ways:
 
-- Run the deploy command with the previous commit from the laptop, with the key in the shell only for that command:
+- Run the deploy command with the previous commit from the laptop. Read the key into the shell without echo and without a trace in the shell's history, then run the command:
   ```bash
-  RENDER_API_KEY=... node apps/api/dist/deploy/cli.js deploy --commit <previous sha> <api service id> <worker service id>
+  read -s RENDER_API_KEY && export RENDER_API_KEY
   ```
-  then `node apps/api/dist/deploy/cli.js smoke https://app-test.sodiqschool.uz`.
+  ```bash
+  node apps/api/dist/deploy/cli.js deploy --commit <previous sha> <api service id> <worker service id>
+  ```
+  then `node apps/api/dist/deploy/cli.js smoke https://app-test.sodiqschool.uz`, and close that terminal.
 - Or in Render's dashboard: the service, Deploys, the previous deploy, Rollback. Do it for the API and the worker.
 
 The old code then runs on the new schema; that is safe by the first rule above. The next merge deploys forward again.
@@ -57,7 +60,7 @@ Do one step at a time and check it before the next. Every value in angle bracket
    ```bash
    psql "<that connection string>" -f db/setup/server.sql
    ```
-   It asks two passwords (make them long and random, for example `openssl rand -base64 32` twice) and creates the roles `sodiq_migrator` and `sodiq_app` **with SQL** and the database `sodiq`. Never create these roles in Neon's console: a console role is a member of `neon_superuser`, which bypasses the row filters, and the API refuses every transaction of such a user. Keep both passwords in your password manager; they are typed twice more below and nowhere else.
+   It asks two passwords (make them long and random, for example `openssl rand -base64 32` twice) and creates the roles `sodiq_migrator` and `sodiq_app` **with SQL** and the database `sodiq`. `psql` shows what you type at a prompt: clear the terminal afterwards (`clear`, or close it). Never create these roles in Neon's console: a console role is a member of `neon_superuser`, which bypasses the row filters, and the API refuses every transaction of such a user. Keep both passwords in your password manager; they are typed twice more below and nowhere else.
 4. Build the two addresses from the console's host (the direct host, without `-pooler`):
    - migrations: `postgres://sodiq_migrator:<password>@<host>/sodiq?sslmode=verify-full`
    - application: `postgres://sodiq_app:<password>@<host>/sodiq?sslmode=verify-full`
@@ -79,10 +82,10 @@ Do one step at a time and check it before the next. Every value in angle bracket
    - `SECOND_STEP_KEY`: `openssl rand -base64 32` once, the **same** on both services. Keep it in the password manager with the database passwords: without it no stored second step can ever be read again (0.6c), so it belongs with the backups;
    - `SENTRY_DSN`: the DSN of `sodiq-test`, on both;
    - `VITE_SENTRY_DSN` (API service only): the DSN of `sodiq-test-web`.
-3. Apply. Render builds both services once from `main`. **Expect this first build to be the one that is not yet right** if Render's build image differs from what the Blueprint assumes (it installs the pinned pnpm with `npm install -g pnpm@…` before `pnpm install`; Node comes from `.node-version`). Read the build log; a fix is a small pull request on `render.yaml`.
+3. Apply. Render builds both services once from `main` and tries to start them. **This first start fails, and that is expected**: the database has no tables yet (the migrations run in step 7), and the API and the worker refuse to start without the job queue's schema. Render shows the deploy as failed; nothing is wrong. What must succeed here is the **build** (the log's first part): it installs the pinned pnpm with `npm install -g pnpm@…` before `pnpm install`, and Node comes from `.node-version`. If the build itself fails, read its log; a fix is a small pull request on `render.yaml`.
 4. On the API service, note the **service id** (`srv-…` in the dashboard's address) and do the same for the worker. Also create an **API key** (Account Settings, API Keys). These go to GitHub in step 5.
 5. The custom domain: the Blueprint declares `app-test.sodiqschool.uz` on the API service. Render shows the record to add; at the registrar (Eskiz) add **one** DNS record, a CNAME `app-test` pointing at the API service's `onrender.com` host. Nothing existing in the zone is touched (`test.` and `api.` belong to other projects). Render issues the certificate when the record resolves (minutes to an hour).
-6. The services start, answer `GET /api/health`, and the API serves the web app: open `https://app-test.sodiqschool.uz` and expect the sign-in page. There is no account yet.
+6. The certificate does not depend on the services running; the page answers after step 7.
 
 ### 4. Cloudflare R2: the bucket
 
@@ -107,7 +110,7 @@ At resend.com create the account in the **EU** region. No domain, no key yet: th
 
 ### 7. The first deploy and the first account
 
-1. Merge the next pull request (or re-run the `CI` workflow of the last commit on `main` from the Actions tab: "Re-run all jobs"). The job `deploy-test` applies the migrations, deploys and runs the smoke test. Green means the task's "done when" is met.
+1. Merge the next pull request (or re-run the `CI` workflow of the last commit on `main` from the Actions tab: "Re-run all jobs"). The job `deploy-test` applies the migrations, deploys and runs the smoke test. Green means the task's "done when" is met. Open `https://app-test.sodiqschool.uz` and expect the sign-in page; there is no account yet.
 2. The first Super Admin: open the API service on Render, **Shell**, and run
    ```bash
    node apps/api/dist/modules/auth/cli.js first-account --first-name <name> --last-name <name>

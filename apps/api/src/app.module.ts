@@ -24,7 +24,6 @@ import { ReportingModule } from './reporting/reporting.module.js';
  */
 export const SHARED_MODULES = [
   ConfigModule,
-  ReportingModule,
   ClockModule,
   DatabaseModule,
   AuthModule,
@@ -39,6 +38,9 @@ export const SHARED_MODULES = [
   PlansModule,
   ResultsModule,
   FeedbackModule,
+  // Last: its shutdown hook runs after the others at the same distance, so the
+  // reports of a stop leave after the connections closed.
+  ReportingModule,
 ];
 
 @Module({

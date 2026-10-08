@@ -54,7 +54,12 @@ export function ownOriginOf(request: IncomingMessage, trustProxy: boolean): stri
   return `${protocol}://${request.headers.host ?? ''}`;
 }
 
-/** A proxy may append its value to one it received: the first is the client's hop. */
+/**
+ * Render sets `X-Forwarded-Proto` itself, so there is one value. Were a proxy
+ * to append its value to one it received, the first would be the client's
+ * claim: the same reading as Express's `request.protocol`, and a wrong claim
+ * only makes the origin check fail.
+ */
 function firstValue(header: string | string[] | undefined): string | undefined {
   const text = Array.isArray(header) ? header[0] : header;
   const first = text?.split(',')[0]?.trim();

@@ -356,4 +356,46 @@ describe('a network that never answers', () => {
 
     expect(performance.now() - started).toBeLessThan(STOP_LIMIT_MS + 1000);
   });
+
+  // Owner's correction f: an uncaught exception is reported and the process
+  // exits, as Node does without a handler; a network that never answers
+  // delays the exit by the limit at most. The handler is taken from the
+  // process and called directly, with the exit stubbed, so the test process
+  // itself goes on.
+  it('exits the process after an uncaught exception, within the limit', async () => {
+    const before = new Set(process.listeners('uncaughtException'));
+    const rejectionsBefore = new Set(process.listeners('unhandledRejection'));
+    startReporting(
+      { dsn: DSN, environment: 'test', release: undefined },
+      { transport: hangingTransport(), processHandlers: true },
+    );
+    const handlers = process.listeners('uncaughtException').filter((h) => !before.has(h));
+    const rejectionHandlers = process
+      .listeners('unhandledRejection')
+      .filter((h) => !rejectionsBefore.has(h));
+    const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(handlers).toHaveLength(1);
+      expect(rejectionHandlers).toHaveLength(1);
+      const started = performance.now();
+
+      handlers[0]?.(new Error('invented, uncaught'), 'uncaughtException');
+      for (let attempt = 0; attempt < 100 && exit.mock.calls.length === 0; attempt += 1) {
+        await delay(50);
+      }
+
+      expect(exit).toHaveBeenCalledWith(1);
+      expect(performance.now() - started).toBeLessThan(STOP_LIMIT_MS + 1000);
+    } finally {
+      for (const handler of handlers) {
+        process.removeListener('uncaughtException', handler);
+      }
+      for (const handler of rejectionHandlers) {
+        process.removeListener('unhandledRejection', handler);
+      }
+      exit.mockRestore();
+      consoleError.mockRestore();
+    }
+  });
 });
