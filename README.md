@@ -81,6 +81,10 @@ Both jobs create the database users with `db/setup/local.sql` and use the values
 
 To do once, by the owner, after the workflow's first run on `main`: protect `main` in GitHub (Settings, Branches) and require the status checks `checks` and `e2e`. From then on a pull request can be merged only when both are green.
 
+## Test environment and deploy
+
+A merge to `main` reaches the test environment at `https://app-test.sodiqschool.uz` by itself: after `checks` and `e2e`, the job `deploy-test` applies the migrations to the test database on Neon, asks Render to deploy the API and the jobs worker at that commit, waits until both are live, and runs a smoke test through the real name. The API serves the web app's built files on its own origin (`WEB_FILES`), so web app, API and the live connection share one address. `docs/deploy.md` has the owner's one-time setup (Neon, Render, Sentry, Cloudflare R2, Resend, the GitHub environment `test`), how to take a release back, and what to read when a run fails. `render.yaml` declares the services; `db/setup/server.sql` creates the two database users of a server.
+
 ## Layout
 
 ```

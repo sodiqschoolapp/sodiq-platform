@@ -7,10 +7,26 @@
       "env": ["DATABASE_URL", "DATABASE_MIGRATION_URL"]
     },
     "dev": {
-      "env": ["DATABASE_URL", "HOST", "PORT", "SECOND_STEP_KEY"]
+      "env": [
+        "DATABASE_URL",
+        "HOST",
+        "PORT",
+        "SECOND_STEP_KEY",
+        "TRUST_PROXY",
+        "WEB_FILES",
+        "SENTRY_DSN",
+        "SENTRY_ENVIRONMENT",
+        "RENDER_GIT_COMMIT"
+      ]
     },
     "dev:worker": {
-      "env": ["DATABASE_URL", "SECOND_STEP_KEY"]
+      "env": [
+        "DATABASE_URL",
+        "SECOND_STEP_KEY",
+        "SENTRY_DSN",
+        "SENTRY_ENVIRONMENT",
+        "RENDER_GIT_COMMIT"
+      ]
     }
   }
 }

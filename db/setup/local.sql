@@ -2,8 +2,9 @@
 --
 -- The passwords below are public: they are in this repository. They are for a
 -- PostgreSQL that only listens on your own machine or inside a CI job.
--- The users and passwords of the test and production databases are created in
--- task 0.10, in the provider's dashboard, and are never written to a file here.
+-- The users of a server database are created with SQL too (db/setup/server.sql,
+-- never in the provider's console: a console role bypasses the row filters);
+-- their passwords are never written to a file here.
 --
 -- Run once per machine, as the PostgreSQL superuser:
 --

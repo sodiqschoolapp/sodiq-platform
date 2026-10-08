@@ -116,7 +116,7 @@ How to read the task lines:
   - Build: a notification record per person; the list and unread count in the top bar; delivery through a job; live arrival over Socket.IO; a helper that later tasks call for timetable changes, substitutions, locks, requests and plan windows. No SMS, no parents, no students.
   - Done when: a test event reaches the right person and nobody else.
 
-- [ ] **0.10 Test environment and deploy pipeline**
+- [x] **0.10 Test environment and deploy pipeline**
   - Read: `13` (Hosting and data, Running cost), `edge/system-behaviour`.
   - Build: Render services for API and worker; static site for the web app; Neon database; Cloudflare R2 bucket; Sentry; Resend for the mail service; deploy from `main` by GitHub Actions; migrations run before the new version starts; a smoke test after deploy. The owner creates the accounts and enters the secrets in each provider's dashboard. Never ask for secrets in chat and never write them to a file in the repository.
   - Done when: a merged pull request reaches the test environment without manual steps and the smoke test passes.

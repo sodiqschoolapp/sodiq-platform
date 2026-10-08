@@ -5,6 +5,8 @@ import type { Clock, PermissionTable } from '@sodiq/shared';
 import { AppModule } from '../app.module.js';
 import { initApp } from '../app.setup.js';
 import { CLOCK } from '../clock/clock.module.js';
+import { CONFIG } from '../config/config.module.js';
+import { loadConfig, type AppConfig } from '../config/config.js';
 import { databaseUrl, loadLocalEnvFile } from '../database/config.js';
 import { createDatabase, type Database } from '../database/database.js';
 import { DATABASE } from '../database/database.module.js';
@@ -30,6 +32,8 @@ export interface TestAppOptions {
   jobsPollingIntervalSeconds?: number;
   /** Usually a `FixedClock`. Without it the application reads the system clock. */
   clock?: Clock;
+  /** Settings of a server (`trustProxy`, `webFiles`) over those of the environment. */
+  config?: Partial<AppConfig>;
   /** Controllers that exist only in tests, for example `SampleController`. */
   controllers?: Type[];
   /**
@@ -71,6 +75,9 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
     .useValue(jobQueue);
   if (options.clock !== undefined) {
     builder.overrideProvider(CLOCK).useValue(options.clock);
+  }
+  if (options.config !== undefined) {
+    builder.overrideProvider(CONFIG).useValue({ ...loadConfig(process.env), ...options.config });
   }
   if (options.permissionTable !== undefined) {
     builder.overrideProvider(PERMISSION_TABLE).useValue(options.permissionTable);

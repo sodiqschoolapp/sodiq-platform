@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 // src/database and dist/database are both four levels below the repository root.
-const repositoryRoot = path.resolve(import.meta.dirname, '../../../..');
+export const repositoryRoot = path.resolve(import.meta.dirname, '../../../..');
 
 export const migrationsDirectory = path.join(repositoryRoot, 'db/migrations');
 

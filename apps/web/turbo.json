@@ -2,6 +2,9 @@
   "$schema": "https://turborepo.com/schema.json",
   "extends": ["//"],
   "tasks": {
+    "build": {
+      "env": ["VITE_SENTRY_DSN", "VITE_SENTRY_ENVIRONMENT", "RENDER_GIT_COMMIT"]
+    },
     "test": {
       "inputs": ["$TURBO_DEFAULT$", "../api/openapi.generated.json"]
     }

@@ -26,6 +26,59 @@ describe('loadConfig', () => {
       port: 8080,
       databaseUrl: DATABASE_URL,
       secondStepKey: SECOND_STEP_KEY,
+      trustProxy: false,
+      webFiles: undefined,
+      reporting: { dsn: undefined, environment: 'development', release: undefined },
+    });
+  });
+
+  // Task 0.10: what a server sets and a laptop does not.
+  describe('the variables of a server', () => {
+    it('trusts the first hop only when told to', () => {
+      expect(loadConfig(VALID).trustProxy).toBe(false);
+      expect(loadConfig({ ...VALID, TRUST_PROXY: '0' }).trustProxy).toBe(false);
+      expect(loadConfig({ ...VALID, TRUST_PROXY: '' }).trustProxy).toBe(false);
+      expect(loadConfig({ ...VALID, TRUST_PROXY: '1' }).trustProxy).toBe(true);
+    });
+
+    it.each(['true', '2', 'yes'])('refuses TRUST_PROXY "%s" and names the variable', (value) => {
+      expect(problemOf({ ...VALID, TRUST_PROXY: value })).toContain('TRUST_PROXY must');
+    });
+
+    it('serves the web files only when a directory is given', () => {
+      expect(loadConfig(VALID).webFiles).toBeUndefined();
+      expect(loadConfig({ ...VALID, WEB_FILES: '' }).webFiles).toBeUndefined();
+      expect(loadConfig({ ...VALID, WEB_FILES: 'apps/web/dist' }).webFiles).toBe('apps/web/dist');
+    });
+
+    it('reports errors only with an address, in the named environment and release', () => {
+      expect(loadConfig(VALID).reporting).toEqual({
+        dsn: undefined,
+        environment: 'development',
+        release: undefined,
+      });
+      expect(
+        loadConfig({
+          ...VALID,
+          SENTRY_DSN: 'https://public-key@o0.ingest.example/1',
+          SENTRY_ENVIRONMENT: 'test',
+          RENDER_GIT_COMMIT: 'abc123',
+        }).reporting,
+      ).toEqual({
+        dsn: 'https://public-key@o0.ingest.example/1',
+        environment: 'test',
+        release: 'abc123',
+      });
+    });
+
+    it.each([
+      ['an address of another kind', 'postgres://x'],
+      ['a text that is no address', 'not-an-address'],
+    ])('refuses %s as SENTRY_DSN and names the variable only', (_name, dsn) => {
+      const problem = problemOf({ ...VALID, SENTRY_DSN: dsn });
+
+      expect(problem).toContain('SENTRY_DSN must');
+      expect(problem).not.toContain(dsn);
     });
   });
 

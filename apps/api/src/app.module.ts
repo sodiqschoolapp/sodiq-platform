@@ -16,6 +16,7 @@ import { PlansModule } from './modules/plans/plans.module.js';
 import { ResultsModule } from './modules/results/results.module.js';
 import { SetupModule } from './modules/setup/setup.module.js';
 import { TimetableModule } from './modules/timetable/timetable.module.js';
+import { ReportingModule } from './reporting/reporting.module.js';
 
 /**
  * What the API and the jobs worker share: the plumbing and the twelve product
@@ -37,6 +38,9 @@ export const SHARED_MODULES = [
   PlansModule,
   ResultsModule,
   FeedbackModule,
+  // Last: its shutdown hook runs after the others at the same distance, so the
+  // reports of a stop leave after the connections closed.
+  ReportingModule,
 ];
 
 @Module({

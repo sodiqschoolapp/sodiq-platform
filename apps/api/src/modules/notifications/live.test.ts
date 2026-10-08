@@ -302,6 +302,16 @@ describe('the live connection', () => {
       );
       await connected(tab(cookie, { Origin: url }));
     });
+
+    // Task 0.10: without TRUST_PROXY nobody can claim HTTPS (proxy.test.ts has the trusted case).
+    it('ignores a forged X-Forwarded-Proto while no proxy is trusted', async () => {
+      const { cookie } = await kit.fullSession('Kamola', 'Yusupova');
+      const https = url.replace('http://', 'https://');
+
+      expect(await refused(tab(cookie, { Origin: https, 'X-Forwarded-Proto': 'https' }))).toBe(
+        'cross_site_request',
+      );
+    });
   });
 
   describe('tells the tabs of the person', () => {

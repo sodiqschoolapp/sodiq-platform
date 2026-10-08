@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { RequestKeys } from '../database/request-keys.js';
 import { Transactions, type Transaction } from '../database/transactions.js';
+import { reportFault } from '../reporting/reporting.js';
 import type { JsonValue } from '../database/types.generated.js';
 import { envelopeSchema, type JobDefinition } from './job-definition.js';
 import { JobQueue } from './job-queue.js';
@@ -136,6 +137,7 @@ export class JobRunner {
             } catch (error) {
               const failure = new JobFailure(error);
               this.logger.error(`${name} ${job.id}: ${failure.name}: ${failure.message}`);
+              reportFault(failure, { job: name });
               // pg-boss tries the job again, up to the limit of its definition.
               throw failure;
             }

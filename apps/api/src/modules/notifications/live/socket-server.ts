@@ -1,8 +1,11 @@
-import type { Server as HttpServer, IncomingMessage } from 'node:http';
-import { Injectable, Logger, type BeforeApplicationShutdown } from '@nestjs/common';
+import type { Server as HttpServer } from 'node:http';
+import { Inject, Injectable, Logger, type BeforeApplicationShutdown } from '@nestjs/common';
 import { NOTIFICATION_MESSAGES, NOTIFICATION_SOCKET_PATH } from '@sodiq/shared';
 import { Server, type Socket } from 'socket.io';
-import { fromOwnSite } from '../../../http/same-site.js';
+import { CONFIG } from '../../../config/config.module.js';
+import type { AppConfig } from '../../../config/config.js';
+import { fromOwnSite, ownOriginOf } from '../../../http/same-site.js';
+import { reportFault } from '../../../reporting/reporting.js';
 import { readSessionToken } from '../../../http/session-cookie.js';
 import { Sessions, type OwedStep } from '../../auth/sessions.service.js';
 import { Notifications } from '../notifications.service.js';
@@ -24,17 +27,6 @@ type RefusalCode = 'cross_site_request' | 'not_signed_in' | 'internal_error' | O
 const roomOf = (accountId: string): string => `account:${accountId.toLowerCase()}`;
 
 /**
- * The protocol and host the request was made to, as `same-site.ts` reads them
- * for a request of Express: the request itself, without any proxy's say. The
- * two agree while the API sets no `trust proxy`; a task that sets it for a
- * load balancer that ends TLS changes both, or they drift apart here.
- */
-function ownOriginOf(request: IncomingMessage): string {
-  const encrypted = (request.socket as { encrypted?: boolean }).encrypted === true;
-  return `${encrypted ? 'https' : 'http'}://${request.headers.host ?? ''}`;
-}
-
-/**
  * Live arrival over Socket.IO (docs/spec/13-technology.md). The server is
  * attached to the HTTP server of the API by hand (no NestJS gateway), under
  * the API prefix, WebSocket only (`13`, Hosting: two application servers
@@ -54,6 +46,7 @@ export class LiveSockets implements BeforeApplicationShutdown {
   private io: Server | undefined;
 
   constructor(
+    @Inject(CONFIG) private readonly config: AppConfig,
     private readonly sessions: Sessions,
     private readonly notifications: Notifications,
   ) {}
@@ -81,6 +74,7 @@ export class LiveSockets implements BeforeApplicationShutdown {
           // so the tab tries again after a while; the process and the other
           // connections go on. Found by the permission review.
           this.logger.error(`A handshake could not be checked: ${nameOf(error)}`);
+          reportFault(error, { part: 'live' });
           next(new Error('internal_error'));
         },
       );
@@ -101,7 +95,7 @@ export class LiveSockets implements BeforeApplicationShutdown {
 
   private async admit(socket: Socket): Promise<RefusalCode | undefined> {
     const request = socket.request;
-    if (!fromOwnSite(request.headers, ownOriginOf(request))) {
+    if (!fromOwnSite(request.headers, ownOriginOf(request, this.config.trustProxy))) {
       return 'cross_site_request';
     }
     const token = readSessionToken(request);
@@ -133,6 +127,7 @@ export class LiveSockets implements BeforeApplicationShutdown {
       socket.emit(NOTIFICATION_MESSAGES.state, state);
     } catch (error) {
       this.logger.error(`The state for a connection could not be read: ${nameOf(error)}`);
+      reportFault(error, { part: 'live' });
       socket.disconnect(true);
     }
   }

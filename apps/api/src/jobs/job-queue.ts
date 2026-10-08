@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, type BeforeApplicationShutdown } from '@nestjs/common';
 import { PgBoss } from 'pg-boss';
+import { reportFault } from '../reporting/reporting.js';
 import type { JobDefinition } from './job-definition.js';
 import { JOB_DEFINITIONS_LIST, JOB_QUEUE_OPTIONS } from './jobs.tokens.js';
 
@@ -79,6 +80,7 @@ export class JobQueue implements BeforeApplicationShutdown {
       if (this.options.onError === undefined) {
         // Name and message only, as for a fault of a request (docs/decisions.md).
         this.logger.error(faultLine(error));
+        reportFault(error, { part: 'jobs' });
       } else {
         this.options.onError(error);
       }

@@ -1,0 +1,66 @@
+# The test environment on Render (docs/spec/13-technology.md, Hosting and
+# Running cost; task 0.10). The owner creates it once from this file
+# (Dashboard, Blueprints, New Blueprint Instance) and enters the three values
+# marked `sync: false` when asked; they are never written here.
+#
+# Deploys are started by the deploy job of .github/workflows/ci.yml after the
+# migrations, never by a push (autoDeployTrigger: off). docs/deploy.md
+# describes the whole setup and what to do when a deploy fails.
+#
+# pnpm: Render installs the dependencies with the pnpm it has; the build
+# installs the pinned version first (the same as `packageManager` in
+# package.json; render-blueprint.test.ts keeps the two equal). Node comes from
+# .node-version.
+services:
+  - type: web
+    name: sodiq-test-api
+    runtime: node
+    region: frankfurt
+    plan: 0.5c-512mb
+    numInstances: 2
+    buildCommand: npm install -g pnpm@12.8.1 && pnpm install --frozen-lockfile && pnpm turbo run build --filter=@sodiq/api --filter=@sodiq/web
+    startCommand: node --enable-source-maps apps/api/dist/main.js
+    healthCheckPath: /api/health
+    autoDeployTrigger: off
+    maxShutdownDelaySeconds: 30
+    domains:
+      - app-test.sodiqschool.uz
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: '1'
+      - key: WEB_FILES
+        value: apps/web/dist
+      - key: SENTRY_ENVIRONMENT
+        value: test
+      - key: VITE_SENTRY_ENVIRONMENT
+        value: test
+      # Entered in the dashboard at creation, the same values as the worker's.
+      - key: DATABASE_URL
+        sync: false
+      - key: SECOND_STEP_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: VITE_SENTRY_DSN
+        sync: false
+
+  - type: worker
+    name: sodiq-test-worker
+    runtime: node
+    region: frankfurt
+    plan: 0.5c-512mb
+    buildCommand: npm install -g pnpm@12.8.1 && pnpm install --frozen-lockfile && pnpm turbo run build --filter=@sodiq/api
+    startCommand: node --enable-source-maps apps/api/dist/worker.js
+    autoDeployTrigger: off
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: SENTRY_ENVIRONMENT
+        value: test
+      - key: DATABASE_URL
+        sync: false
+      - key: SECOND_STEP_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
