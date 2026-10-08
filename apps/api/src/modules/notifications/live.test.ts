@@ -317,7 +317,10 @@ describe('the live connection', () => {
         next<{ items: Notification[] }>(myTab, NOTIFICATION_MESSAGES.new),
         next<{ items: Notification[] }>(myOtherTab, NOTIFICATION_MESSAGES.new),
       ];
-      const nothing = silence(theirTab, NOTIFICATION_MESSAGES.new);
+      // Recorded from before the send until after the push reached the own
+      // tabs: a window that ends before the push would prove nothing.
+      const theirs: unknown[] = [];
+      theirTab.on(NOTIFICATION_MESSAGES.new, (payload: unknown) => theirs.push(payload));
 
       const [id] = await send([mine.account.id], 'Only for one person.');
 
@@ -325,7 +328,9 @@ describe('the live connection', () => {
       const expected = (await list(mine.cookie)).items.find((item) => item.id === id);
       expect(first).toEqual({ items: [expected] });
       expect(second).toEqual({ items: [expected] });
-      await nothing;
+      // The push went out to the room of the person; a moment more for one to the other.
+      await new Promise((resolve) => setTimeout(resolve, SILENCE_MS));
+      expect(theirs).toEqual([]);
     });
 
     it('of a read mark made in another tab, and of "read all"', async () => {

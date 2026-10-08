@@ -40,6 +40,7 @@ The next sessions must know:
 - In the web tests `renderApp(path, language, theme, live)` takes a `LiveConnector`; without one no connection is opened. The bell is hidden from role queries while a dialog is open (`hidden: true`).
 - The web app does not import zod: a schema of `packages/shared` is used through its `safeParse` (`MessageSchema` in `live.ts`).
 - `pnpm test:e2e` builds `dist-e2e` with `notify.js`; the browser-test API runs the worker too, so a browser test may send a notification with the command.
+- For 0.10: the listener's `LISTEN` needs a direct connection to the database; a pooler in transaction mode (Neon's `-pooler` host) does not carry it, so the listener gets the direct address (`LiveListener.start(connectionString)`) or a `DATABASE_URL` of its own. And `ownOriginOf` in `socket-server.ts` reads `socket.encrypted`, as the Express middleware reads `request.protocol`: behind a load balancer that ends TLS, a browser's `Origin: https://…` matches neither until `trust proxy` is set, so 0.10 sets it for both at once.
 
 The next task is 0.10.
 
