@@ -8,7 +8,7 @@ import {
   type Notification,
 } from '@sodiq/shared';
 import { io as connect, type Socket } from 'socket.io-client';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { JobRunner } from '../../jobs/job-runner.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
@@ -23,6 +23,7 @@ import {
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { AccountLocks } from '../auth/account-locks.service.js';
 import { IDLE_LIMIT_MS } from '../auth/idle-limit.js';
+import { Sessions } from '../auth/sessions.service.js';
 import { LiveListener } from './live/listener.js';
 import { LiveSockets } from './live/socket-server.js';
 import { Notifications } from './notifications.service.js';
@@ -244,6 +245,30 @@ describe('the live connection', () => {
       expect(await refused(tab(cookie))).toBe('not_signed_in');
     });
 
+    it('refuses a session of a locked account also while the session row is still open', async () => {
+      clock.set(START);
+      const { account, cookie } = await kit.fullSession('Gulbahor', 'Yusupova');
+      const { account: admin } = await kit.fullSession('Hakim', 'Yusupov');
+      // A lock ends the sessions; the check of the account itself is the one looked at here.
+      await database.migrator
+        .updateTable('accounts')
+        .set({ locked_at: clock.now(), locked_by: admin.id, lock_reason: 'A test lock.' })
+        .where('id', '=', account.id)
+        .execute();
+
+      expect(await refused(tab(cookie))).toBe('not_signed_in');
+    });
+
+    it('refuses a handshake whose check failed, and goes on', async () => {
+      const { cookie } = await kit.fullSession('Husan', 'Yusupov');
+      const peek = vi.spyOn(app.get(Sessions), 'peek').mockRejectedValueOnce(new Error('away'));
+
+      expect(await refused(tab(cookie))).toBe('not_signed_in');
+
+      peek.mockRestore();
+      await connected(tab(cookie));
+    });
+
     it('refuses a session that still owes a step of its sign-in, naming the step', async () => {
       const first = await kit.firstSession('Hamid', 'Yusupov');
       expect(await refused(tab(first.cookie))).toBe('password_change_required');
@@ -356,6 +381,23 @@ describe('the live connection', () => {
       expect(await closed).toBe('io server disconnect');
       await nothing;
       expect(await app.get(LiveSockets).connectionsOf(account.id)).toBe(0);
+    });
+
+    it('nothing once the session owes a step again: told with the step, and closed', async () => {
+      clock.set(START);
+      const { account, cookie } = await kit.fullSession('Shahlo', 'Yusupova');
+      const socket = tab(cookie);
+      await connected(socket);
+      // The Academic Vice Principal must set up the second step: the open session owes it now.
+      await kit.giveRole(account.id, { role: 'academic_vice_principal', branchId: north });
+      const ended = next<unknown>(socket, NOTIFICATION_MESSAGES.ended);
+      const nothing = silence(socket, NOTIFICATION_MESSAGES.new);
+
+      await send([account.id], 'After the role was given.');
+
+      expect(await ended).toEqual({ code: 'second_step_set_up_required' });
+      await nothing;
+      expect(socket.connected).toBe(false);
     });
 
     it('and acts on nothing a tab sends', async () => {

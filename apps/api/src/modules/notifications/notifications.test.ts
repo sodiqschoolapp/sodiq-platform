@@ -464,13 +464,23 @@ describe('notifications', () => {
       }
     });
 
+    /** Each of the three routes with the cookie of a session that owes a step. */
+    async function refusedOnEveryRoute(cookie: string, code: string): Promise<void> {
+      for (const call of [
+        () => kit.get('/api/notifications', cookie),
+        () => kit.post(`/api/notifications/${randomUUID()}/read`, cookie),
+        () => kit.post('/api/notifications/read-all', cookie),
+      ]) {
+        const response = await call();
+        expect(response.status).toBe(403);
+        expect(errorCode(response)).toBe(code);
+      }
+    }
+
     it('refuse a session with a first password', async () => {
       const { cookie } = await kit.firstSession('Timur', 'Qodirov');
 
-      const response = await kit.get('/api/notifications', cookie);
-
-      expect(response.status).toBe(403);
-      expect(errorCode(response)).toBe('password_change_required');
+      await refusedOnEveryRoute(cookie, 'password_change_required');
     });
 
     it('refuse a session before the code of the second step', async () => {
@@ -478,20 +488,14 @@ describe('notifications', () => {
       await kit.setUpSecondStep(cookie);
       const pending = cookieOf(await kit.signIn(account.login, NEW_PASSWORD)) ?? '';
 
-      const response = await kit.post('/api/notifications/read-all', pending);
-
-      expect(response.status).toBe(403);
-      expect(errorCode(response)).toBe('second_step_required');
+      await refusedOnEveryRoute(pending, 'second_step_required');
     });
 
     it('refuse a session before the set-up of a required second step', async () => {
       const { account, cookie } = await kit.fullSession('Vohid', 'Qodirov');
       await kit.giveRole(account.id, { role: 'academic_vice_principal', branchId: north });
 
-      const response = await kit.get('/api/notifications', cookie);
-
-      expect(response.status).toBe(403);
-      expect(errorCode(response)).toBe('second_step_set_up_required');
+      await refusedOnEveryRoute(cookie, 'second_step_set_up_required');
     });
   });
 

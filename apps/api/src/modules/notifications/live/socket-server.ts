@@ -21,7 +21,9 @@ const roomOf = (accountId: string): string => `account:${accountId.toLowerCase()
 
 /**
  * The protocol and host the request was made to, as `same-site.ts` reads them
- * for a request of Express: the request itself, without any proxy's say.
+ * for a request of Express: the request itself, without any proxy's say. The
+ * two agree while the API sets no `trust proxy`; a task that sets it for a
+ * load balancer that ends TLS changes both, or they drift apart here.
  */
 function ownOriginOf(request: IncomingMessage): string {
   const encrypted = (request.socket as { encrypted?: boolean }).encrypted === true;
@@ -65,9 +67,18 @@ export class LiveSockets implements BeforeApplicationShutdown {
       maxHttpBufferSize: 1024,
     });
     io.use((socket, next) => {
-      void this.admit(socket).then((refusal) => {
-        next(refusal === undefined ? undefined : new Error(refusal));
-      });
+      this.admit(socket).then(
+        (refusal) => {
+          next(refusal === undefined ? undefined : new Error(refusal));
+        },
+        (error: unknown) => {
+          // A fault while the session is read (the database away for a moment):
+          // this handshake is refused and the tab tries again later; the process
+          // and the other connections go on. Found by the permission review.
+          this.logger.error(`A handshake could not be checked: ${nameOf(error)}`);
+          next(new Error('not_signed_in'));
+        },
+      );
     });
     io.on('connection', (socket) => {
       void this.welcome(socket);
