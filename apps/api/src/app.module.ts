@@ -16,6 +16,7 @@ import { PlansModule } from './modules/plans/plans.module.js';
 import { ResultsModule } from './modules/results/results.module.js';
 import { SetupModule } from './modules/setup/setup.module.js';
 import { TimetableModule } from './modules/timetable/timetable.module.js';
+import { ReportingModule } from './reporting/reporting.module.js';
 
 /**
  * What the API and the jobs worker share: the plumbing and the twelve product
@@ -23,6 +24,7 @@ import { TimetableModule } from './modules/timetable/timetable.module.js';
  */
 export const SHARED_MODULES = [
   ConfigModule,
+  ReportingModule,
   ClockModule,
   DatabaseModule,
   AuthModule,

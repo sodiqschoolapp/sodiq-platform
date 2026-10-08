@@ -1,4 +1,6 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { CONFIG } from './config/config.module.js';
+import type { AppConfig } from './config/config.js';
 import {
   ApiExceptionFilter,
   errorFallback,
@@ -9,6 +11,7 @@ import { noStoreMiddleware } from './http/no-store.js';
 import { requestIdMiddleware } from './http/request-id.js';
 import { sameSiteMiddleware } from './http/same-site.js';
 import { ResponseSchemaInterceptor } from './http/response-schema.interceptor.js';
+import { webFilesMiddleware } from './http/web-files.js';
 
 /** Every route sits under this prefix, so the browser reaches web app and API on one origin. */
 export const API_PREFIX = 'api';
@@ -19,14 +22,23 @@ export const API_PREFIX = 'api';
  * gets permission to read an answer.
  */
 export function configureApp(app: NestExpressApplication): void {
+  const config = app.get<AppConfig>(CONFIG);
   app.setGlobalPrefix(API_PREFIX);
   // Answers do not name the framework that produced them.
   app.disable('x-powered-by');
+  // Behind Render's load balancer (task 0.10) Express reads the first hop's
+  // forwarded headers too; our own reading of the origin is `ownOriginOf`.
+  app.set('trust proxy', config.trustProxy ? 1 : false);
+  // On a server the web app's files are served first, outside the API prefix,
+  // with their own caching headers; nothing below sees those requests.
+  if (config.webFiles !== undefined) {
+    app.use(webFilesMiddleware(config.webFiles, API_PREFIX));
+  }
   // Before the body parser, so that its refusals carry a request id too.
   app.use(requestIdMiddleware);
   app.use(noStoreMiddleware);
   // Before the body parser too: a request from another site is not even read.
-  app.use(sameSiteMiddleware);
+  app.use(sameSiteMiddleware(config.trustProxy));
   // Nor is a body that is not JSON.
   app.use(jsonOnlyMiddleware);
   app.useGlobalFilters(new ApiExceptionFilter());

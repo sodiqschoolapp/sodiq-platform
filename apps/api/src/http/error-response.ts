@@ -1,6 +1,7 @@
 import { HttpException, Logger } from '@nestjs/common';
 import type { ApiError, ErrorCode } from '@sodiq/shared';
 import type { Response } from 'express';
+import { reportFault } from '../reporting/reporting.js';
 import { ApiException } from './api-exception.js';
 import { requestIdOf } from './request-id.js';
 import { ValidationFailedException } from './validation.js';
@@ -89,6 +90,8 @@ export function sendError(response: Response, error: unknown): void {
       `Request ${requestId} failed`,
       error instanceof Error ? error.stack : `Thrown value of type ${typeof error}`,
     );
+    // The same to the error reports (task 0.10): name, message, stack and the request id.
+    reportFault(error, { requestId });
   }
   if (response.headersSent) {
     // The answer has started; all that is left is to end it.

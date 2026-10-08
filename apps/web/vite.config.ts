@@ -5,6 +5,10 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // The release of the error reports: the commit Render builds (task 0.10).
+  define: {
+    'import.meta.env.VITE_RELEASE': JSON.stringify(process.env.RENDER_GIT_COMMIT ?? ''),
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

@@ -105,3 +105,52 @@ jobs:
           path: apps/web/test-results
           retention-days: 7
           if-no-files-found: ignore
+
+  # Task 0.10: a merge to main reaches the test environment without manual
+  # steps (docs/deploy.md). Only after both jobs above passed on main; e2e must
+  # keep running on every push to main, or a skipped e2e would skip this job.
+  # The migrations run first, then Render deploys the API and the worker at
+  # this commit, then the smoke test runs against the real address.
+  deploy-test:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [checks, e2e]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    environment:
+      name: test
+      url: ${{ vars.TEST_URL }}
+    # Never two deploys at once. GitHub keeps one waiting run per group: while
+    # a deploy runs, a newer merge replaces an older waiting one, so the next
+    # deploy takes the newest commit of main with every migration up to it.
+    concurrency:
+      group: deploy-test
+      cancel-in-progress: false
+    env:
+      # The workflow's env above holds the local CI values. This job talks to
+      # the test database only: the migration address comes from the
+      # environment's secret (the one place the migrator's password exists),
+      # and the two local values are emptied so nothing can reach for them.
+      DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+      DATABASE_URL: ''
+      SECOND_STEP_KEY: ''
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply the migrations to the test database
+        # Before the new version starts. The runner holds a session lock, so
+        # the address is Neon's direct one; it finds db/migrations in this checkout.
+        run: pnpm db:migrate
+      - name: Deploy the API and the worker at this commit
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: >-
+          node apps/api/dist/deploy/cli.js deploy --commit ${{ github.sha }}
+          ${{ vars.RENDER_API_SERVICE_ID }} ${{ vars.RENDER_WORKER_SERVICE_ID }}
+      - name: Smoke test
+        run: node apps/api/dist/deploy/cli.js smoke ${{ vars.TEST_URL }}
