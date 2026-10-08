@@ -259,11 +259,11 @@ describe('the live connection', () => {
       expect(await refused(tab(cookie))).toBe('not_signed_in');
     });
 
-    it('refuses a handshake whose check failed, and goes on', async () => {
+    it('refuses a handshake whose check failed, with a code that is not about the session, and goes on', async () => {
       const { cookie } = await kit.fullSession('Husan', 'Yusupov');
       const peek = vi.spyOn(app.get(Sessions), 'peek').mockRejectedValueOnce(new Error('away'));
 
-      expect(await refused(tab(cookie))).toBe('not_signed_in');
+      expect(await refused(tab(cookie))).toBe('internal_error');
 
       peek.mockRestore();
       await connected(tab(cookie));

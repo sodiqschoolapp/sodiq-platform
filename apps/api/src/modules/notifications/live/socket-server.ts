@@ -13,8 +13,12 @@ interface ConnectionData {
   accountId: string;
 }
 
-/** Why a handshake is refused, or a connection closed: a code of the API's error shape. */
-type RefusalCode = 'cross_site_request' | 'not_signed_in' | OwedStep;
+/**
+ * Why a handshake is refused, or a connection closed: a code of the API's
+ * error shape. `internal_error` (a failed check) is the one that is not about
+ * the session or the site: the tab tries again after a while.
+ */
+type RefusalCode = 'cross_site_request' | 'not_signed_in' | 'internal_error' | OwedStep;
 
 /** The room of every connection of one account. */
 const roomOf = (accountId: string): string => `account:${accountId.toLowerCase()}`;
@@ -73,10 +77,11 @@ export class LiveSockets implements BeforeApplicationShutdown {
         },
         (error: unknown) => {
           // A fault while the session is read (the database away for a moment):
-          // this handshake is refused and the tab tries again later; the process
-          // and the other connections go on. Found by the permission review.
+          // this handshake is refused with a code that is not about the session,
+          // so the tab tries again after a while; the process and the other
+          // connections go on. Found by the permission review.
           this.logger.error(`A handshake could not be checked: ${nameOf(error)}`);
-          next(new Error('not_signed_in'));
+          next(new Error('internal_error'));
         },
       );
     });

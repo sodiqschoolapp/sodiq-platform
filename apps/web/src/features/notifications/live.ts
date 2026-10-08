@@ -54,24 +54,52 @@ function reading<T>(schema: MessageSchema<T>, handle: (payload: T) => void) {
   };
 }
 
+/** The first wait before the tab opens the connection again after the server turned it away. */
+export const RETRY_MS = 5_000;
+
+/** The waits double up to this. */
+export const RETRY_MAX_MS = 60_000;
+
 /**
  * Live arrival over Socket.IO (docs/spec/13-technology.md), on the same origin
  * as the API, WebSocket only. The session cookie goes with the handshake. A
- * network failure is tried again by the client with its own backoff; a
+ * network failure is tried again by the client with its own backoff. A
  * refusal about the session or the site stops it (`.claude/rules/web.md`:
- * nothing polls the API).
+ * nothing polls the API). After any other refusal (a fault on the server
+ * while the session was read), or a close by the server that was not about
+ * the session, socket.io-client does not try again by itself: the tab opens
+ * the connection again after a wait that doubles, so a server that was away
+ * for a moment does not leave the tab without live arrival until a reload.
  */
 export const connectWithSocketIo: LiveConnector = (handlers) => {
   const socket = io({ path: NOTIFICATION_SOCKET_PATH, transports: ['websocket'] });
   let ended = false;
+  let retryMs = RETRY_MS;
+  let retry: ReturnType<typeof setTimeout> | undefined;
   const end = (code: string): void => {
     if (ended) {
       return;
     }
     ended = true;
+    clearTimeout(retry);
     socket.disconnect();
     handlers.onEnded(code);
   };
+  const tryAgainLater = (): void => {
+    if (ended || retry !== undefined) {
+      return;
+    }
+    retry = setTimeout(() => {
+      retry = undefined;
+      if (!ended) {
+        socket.connect();
+      }
+    }, retryMs);
+    retryMs = Math.min(retryMs * 2, RETRY_MAX_MS);
+  };
+  socket.on('connect', () => {
+    retryMs = RETRY_MS;
+  });
   socket.on(
     NOTIFICATION_MESSAGES.state,
     reading(notificationStateMessageSchema, (state) => {
@@ -105,11 +133,21 @@ export const connectWithSocketIo: LiveConnector = (handlers) => {
   socket.on('connect_error', (error: Error) => {
     if (STOP_CODES.has(error.message)) {
       end(error.message);
+    } else if (!socket.active) {
+      // Turned away by the server for another reason: the client would not try again.
+      tryAgainLater();
+    }
+  });
+  socket.on('disconnect', (reason: string) => {
+    // Closed by the server without `session.ended` before it (its welcome failed).
+    if (reason === 'io server disconnect') {
+      tryAgainLater();
     }
   });
   return {
     close: () => {
       ended = true;
+      clearTimeout(retry);
       socket.disconnect();
     },
   };

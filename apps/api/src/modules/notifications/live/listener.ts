@@ -5,7 +5,7 @@ import { Client } from 'pg';
 import { CONFIG } from '../../../config/config.module.js';
 import type { AppConfig } from '../../../config/config.js';
 import { Transactions } from '../../../database/transactions.js';
-import { readItems } from '../notifications.service.js';
+import { readItems, type OwnedItem } from '../notifications.service.js';
 import { LIVE_CHANNEL, livePayloadSchema } from './live-payload.js';
 import { LiveSockets, nameOf } from './socket-server.js';
 
@@ -91,10 +91,10 @@ export class LiveListener implements BeforeApplicationShutdown {
     try {
       switch (heard.kind) {
         case 'new': {
-          const items = await this.transactions.run([], (transaction) =>
+          const owned = await this.transactions.run([], (transaction) =>
             readItems(transaction, heard.ids),
           );
-          await this.pushNew(items);
+          await this.pushNew(owned);
           break;
         }
         case 'read':
@@ -114,29 +114,14 @@ export class LiveListener implements BeforeApplicationShutdown {
     }
   }
 
-  private async pushNew(items: Notification[]): Promise<void> {
+  /** Each account gets its own items, and only those. */
+  private async pushNew(owned: OwnedItem[]): Promise<void> {
     const byAccount = new Map<string, Notification[]>();
-    const rows = await this.transactions.run([], (transaction) =>
-      transaction
-        .selectFrom('notifications')
-        .select(['id', 'account_id'])
-        .where(
-          'id',
-          'in',
-          items.map((item) => item.id),
-        )
-        .execute(),
-    );
-    const accountOf = new Map(rows.map((row) => [row.id, row.account_id]));
-    for (const item of items) {
-      const accountId = accountOf.get(item.id);
-      if (accountId === undefined) {
-        continue;
-      }
+    for (const { accountId, item } of owned) {
       byAccount.set(accountId, [...(byAccount.get(accountId) ?? []), item]);
     }
-    for (const [accountId, own] of byAccount) {
-      await this.sockets.tell(accountId, NOTIFICATION_MESSAGES.new, { items: own });
+    for (const [accountId, items] of byAccount) {
+      await this.sockets.tell(accountId, NOTIFICATION_MESSAGES.new, { items });
     }
   }
 

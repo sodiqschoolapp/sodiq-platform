@@ -35,8 +35,10 @@ export function useNotificationText(): (item: Notification) => string {
     if (!i18n.exists(key)) {
       return t('notifications.kinds.unknown');
     }
-    // The key exists; the type of `t` cannot know a key built from data.
-    return t(key as 'notifications.kinds.unknown', { ...item.data });
+    // The key exists; the type of `t` cannot know a key built from data. The
+    // data fills the {{names}} only (`replace`): a field called `count` or
+    // `context` must not change the lookup.
+    return t(key as 'notifications.kinds.unknown', { replace: item.data });
   };
 }
 

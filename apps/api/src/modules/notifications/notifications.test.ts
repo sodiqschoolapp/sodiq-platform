@@ -138,6 +138,7 @@ describe('notifications', () => {
       const { account: one } = await kit.fullSession('Aziza', 'Qodirova');
       const { account: two } = await kit.fullSession('Bahrom', 'Qodirov');
       const before = (await storedJobs(database.migrator)).length;
+      const auditBefore = await auditRows();
 
       const ids = await send([one.id, two.id, one.id], { branchId: north });
 
@@ -163,7 +164,7 @@ describe('notifications', () => {
           data: { branchIds: [], data: { notificationIds: ids } },
         },
       ]);
-      expect(await auditRows()).toBe(await auditRows());
+      expect(await auditRows()).toBe(auditBefore);
     });
 
     it('and nothing stays when the transaction rolls back', async () => {

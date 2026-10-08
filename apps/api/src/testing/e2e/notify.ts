@@ -1,9 +1,9 @@
 import { NestFactory } from '@nestjs/core';
+import { AppModule } from '../../app.module.js';
 import { DATABASE } from '../../database/database.module.js';
 import type { Database } from '../../database/database.js';
 import { Transactions } from '../../database/transactions.js';
 import { Notifications } from '../../modules/notifications/notifications.service.js';
-import { WorkerModule } from '../../worker.module.js';
 import { e2eDatabaseUrls } from './database.js';
 
 // Run by a browser test while the API of the tests is up: sends a sample
@@ -20,8 +20,9 @@ if (login === undefined || text === undefined || text === '') {
 
 process.env.DATABASE_URL = e2eDatabaseUrls().appUrl;
 
-// The worker's modules: no HTTP, and the job queue of the application user.
-const app = await NestFactory.createApplicationContext(WorkerModule, { logger: ['error'] });
+// The modules of the API as a context: no HTTP, and a job queue that only
+// sends (the worker's would start pg-boss's upkeep for one call).
+const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error'] });
 try {
   const database = app.get<Database>(DATABASE);
   const account = await database

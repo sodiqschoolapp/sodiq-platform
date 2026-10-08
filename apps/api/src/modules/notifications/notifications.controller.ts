@@ -16,8 +16,9 @@ import { Notifications } from './notifications.service.js';
  * (docs/spec/10-portal-notifications-release-2.md, last paragraph). Every
  * route acts on the account of the session only: the id in the path is looked
  * for among its own notifications, and another account's is not found. Open
- * to every signed-in account, the Principal included (the owner's spec change
- * of 8 October 2026: reading and marking his own notifications).
+ * to every signed-in account, the Principal included: the owner's spec change
+ * adds reading and marking his own notifications to his own-account changes
+ * (edge cases, "Who can act"; answer 10 of the plan of task 0.9).
  */
 @Controller('notifications')
 export class NotificationsController {

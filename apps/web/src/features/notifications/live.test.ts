@@ -2,7 +2,14 @@ import { NOTIFICATION_MESSAGES, NOTIFICATION_SOCKET_PATH, type Notification } fr
 import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { sessionOf } from '@/testing/render-app';
-import { connectWithSocketIo, liveFollower, type LiveConnector, type LiveHandlers } from './live';
+import {
+  connectWithSocketIo,
+  liveFollower,
+  RETRY_MAX_MS,
+  RETRY_MS,
+  type LiveConnector,
+  type LiveHandlers,
+} from './live';
 import { NOTIFICATIONS_KEY } from './notifications-api';
 
 /** What `io` of socket.io-client gives: the handlers it was given, and what was done to it. */
@@ -14,6 +21,9 @@ const fakeSocket = vi.hoisted(() => {
       return socket;
     }),
     disconnect: vi.fn(),
+    connect: vi.fn(),
+    /** Whether socket.io-client will try again by itself: not after a refused handshake. */
+    active: true,
   };
   return {
     socket,
@@ -26,6 +36,8 @@ const fakeSocket = vi.hoisted(() => {
       listeners.clear();
       socket.on.mockClear();
       socket.disconnect.mockClear();
+      socket.connect.mockClear();
+      socket.active = true;
     },
   };
 });
@@ -138,14 +150,71 @@ describe('the Socket.IO connection', () => {
     expect(handlers.calls.onEnded).toEqual([[code]]);
   });
 
-  it('keeps trying after a network failure', async () => {
+  it('leaves a network failure to the client, which tries again by itself', async () => {
     const { handlers } = await connect();
 
     fakeSocket.raise('connect_error', new Error('websocket error'));
     fakeSocket.raise('connect_error', new Error('timeout'));
 
     expect(fakeSocket.socket.disconnect).not.toHaveBeenCalled();
+    expect(fakeSocket.socket.connect).not.toHaveBeenCalled();
     expect(handlers.calls.onEnded).toEqual([]);
+  });
+
+  it('opens the connection again after a wait that doubles when the server turned it away for another reason', async () => {
+    vi.useFakeTimers();
+    try {
+      const { handlers } = await connect();
+      fakeSocket.socket.active = false;
+
+      fakeSocket.raise('connect_error', new Error('internal_error'));
+      fakeSocket.raise('connect_error', new Error('internal_error'));
+      expect(fakeSocket.socket.connect).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(RETRY_MS - 1);
+      expect(fakeSocket.socket.connect).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(fakeSocket.socket.connect).toHaveBeenCalledTimes(1);
+
+      fakeSocket.raise('connect_error', new Error('internal_error'));
+      vi.advanceTimersByTime(RETRY_MS);
+      expect(fakeSocket.socket.connect).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(RETRY_MS);
+      expect(fakeSocket.socket.connect).toHaveBeenCalledTimes(2);
+
+      // A connection that came through starts the waits over.
+      fakeSocket.raise('connect', undefined);
+      fakeSocket.raise('disconnect', 'io server disconnect');
+      vi.advanceTimersByTime(RETRY_MS);
+      expect(fakeSocket.socket.connect).toHaveBeenCalledTimes(3);
+
+      expect(fakeSocket.socket.disconnect).not.toHaveBeenCalled();
+      expect(handlers.calls.onEnded).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not open the connection again once closed or ended', async () => {
+    vi.useFakeTimers();
+    try {
+      const { connection } = await connect();
+      fakeSocket.socket.active = false;
+
+      fakeSocket.raise('connect_error', new Error('internal_error'));
+      connection.close();
+      vi.advanceTimersByTime(RETRY_MAX_MS);
+      expect(fakeSocket.socket.connect).not.toHaveBeenCalled();
+
+      fakeSocket.reset();
+      await connect();
+      fakeSocket.socket.active = false;
+      fakeSocket.raise('connect_error', new Error('internal_error'));
+      fakeSocket.raise('connect_error', new Error('not_signed_in'));
+      vi.advanceTimersByTime(RETRY_MAX_MS);
+      expect(fakeSocket.socket.connect).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('closes when told', async () => {

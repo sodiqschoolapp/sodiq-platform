@@ -26,6 +26,9 @@ async function firstSignIn(page: Page, account: Credentials): Promise<void> {
   await expect(heading(page, en.home.title)).toBeVisible();
 }
 
+/** How long a notification may take to arrive live on a loaded machine. */
+const LIVE_MS = 20_000;
+
 const bell = (page: Page, unread?: number) =>
   page.getByRole('button', {
     name:
@@ -41,15 +44,19 @@ const bell = (page: Page, unread?: number) =>
 test('shows the unread count, receives a notification live and marks all as read', async ({
   page,
 }) => {
+  // Three runs of the command (a NestJS context each) and the worker's polling
+  // (2 s) between them: more than the usual half minute when the other tests load the machine.
+  test.setTimeout(120_000);
   const account = accountOf('notifications');
   notify(account.login, 'Sent before the sign-in.');
 
   await firstSignIn(page, account);
   await expect(bell(page, 1)).toBeVisible();
 
-  // The live arrival: no reload, no click.
+  // The live arrival: no reload, no click. Through the job (polled every 2 s),
+  // the channel and the WebSocket of the Vite proxy.
   notify(account.login, 'Sent while the page is open.');
-  await expect(bell(page, 2)).toBeVisible();
+  await expect(bell(page, 2)).toBeVisible({ timeout: LIVE_MS });
 
   await bell(page, 2).click();
   const dialog = page.getByRole('dialog', { name: en.notifications.title });
@@ -68,7 +75,7 @@ test('shows the unread count, receives a notification live and marks all as read
 
   // A third one, read in the dialog itself by a click: the count moves with it.
   notify(account.login, 'A third one.');
-  await expect(bell(page, 1)).toBeVisible();
+  await expect(bell(page, 1)).toBeVisible({ timeout: LIVE_MS });
   await bell(page, 1).click();
   await dialog.getByRole('listitem').nth(0).getByRole('button').click();
   await expect(dialog.getByText(en.notifications.unread)).toHaveCount(0);

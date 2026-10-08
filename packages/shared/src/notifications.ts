@@ -20,7 +20,9 @@ export const NOTIFICATION_KIND_MAX_LENGTH = 100;
  * The kinds of notification and the data each one carries. A later task adds
  * its kind here with the schema of its data, and the text of the kind in the
  * three locale files of the web app under `notifications.kinds.<kind>`; a test
- * of the web app fails for a kind without its texts.
+ * of the web app fails for a kind without its texts. The fields of the data
+ * are the `{{names}}` of the text and nothing else; a plural form is not
+ * chosen by them (the web passes the data as `replace`, not as options).
  *
  * `sample.message` exists for the tests and the browser tests of task 0.9; no
  * route of the application sends one.

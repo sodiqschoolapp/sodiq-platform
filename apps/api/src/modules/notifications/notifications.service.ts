@@ -56,6 +56,12 @@ export function toItem(row: NotificationRow): Notification {
   };
 }
 
+/** A notification as the answer carries it, and whose it is. */
+export interface OwnedItem {
+  accountId: string;
+  item: Notification;
+}
+
 /**
  * The rows of these ids, with their branch names, in the order of the ids.
  * `branches` has no row filter: a name is not a branch's data.
@@ -63,7 +69,7 @@ export function toItem(row: NotificationRow): Notification {
 export async function readItems(
   transaction: Transaction,
   ids: readonly string[],
-): Promise<Notification[]> {
+): Promise<OwnedItem[]> {
   if (ids.length === 0) {
     return [];
   }
@@ -72,6 +78,7 @@ export async function readItems(
     .leftJoin('branches', 'branches.id', 'notifications.branch_id')
     .select([
       'notifications.id',
+      'notifications.account_id',
       'notifications.kind',
       'notifications.data',
       'notifications.branch_id',
@@ -81,10 +88,15 @@ export async function readItems(
     ])
     .where('notifications.id', 'in', [...ids])
     .execute();
-  const byId = new Map(rows.map((row) => [row.id, toItem(row)]));
+  const byId = new Map(
+    rows.map((row): [string, OwnedItem] => [
+      row.id,
+      { accountId: row.account_id, item: toItem(row) },
+    ]),
+  );
   return ids.flatMap((id) => {
-    const item = byId.get(id);
-    return item === undefined ? [] : [item];
+    const owned = byId.get(id);
+    return owned === undefined ? [] : [owned];
   });
 }
 
