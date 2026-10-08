@@ -1,11 +1,15 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
-import type { Server } from 'node:http';
+import http, { type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { INestApplication } from '@nestjs/common';
+import { setTimeout as delay } from 'node:timers/promises';
+import { Logger, type INestApplication } from '@nestjs/common';
+import type { ErrorEvent, NodeOptions } from '@sentry/node';
 import { apiErrorSchema } from '@sodiq/shared';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { startReporting, stopReporting } from '../reporting/reporting.js';
 import { createTestApp } from '../testing/create-test-app.js';
 
 const INDEX = '<!doctype html><html><body><div id="root"></div></body></html>';
@@ -154,6 +158,81 @@ describe('a wrong WEB_FILES', () => {
       ).rejects.toThrow(/WEB_FILES must be a directory/);
     } finally {
       await rm(empty, { recursive: true, force: true });
+    }
+  });
+});
+
+// From the owner's review: a tab that closes or moves on while a file is
+// being sent is not a fault of the server; nothing is logged or reported.
+describe('a download the browser abandons', () => {
+  let directory: string;
+  let app: INestApplication;
+  let port: number;
+  const events: ErrorEvent[] = [];
+  const transport: NodeOptions['transport'] = () => ({
+    send: (envelope) => {
+      for (const [header, payload] of envelope[1] as [{ type: string }, unknown][]) {
+        if (header.type === 'event') {
+          events.push(payload as ErrorEvent);
+        }
+      }
+      return Promise.resolve({});
+    },
+    flush: () => Promise.resolve(true),
+  });
+
+  beforeAll(async () => {
+    directory = await mkdtemp(path.join(tmpdir(), 'sodiq-web-files-large-'));
+    await writeFile(path.join(directory, 'index.html'), INDEX);
+    await mkdir(path.join(directory, 'assets'));
+    // Far more than the socket's buffers hold: the send is still under way when the client goes.
+    await writeFile(
+      path.join(directory, 'assets', 'big-0123abcd.js'),
+      Buffer.alloc(32 * 1024 * 1024, 0x20),
+    );
+    startReporting(
+      {
+        dsn: 'https://0123456789abcdef@o0.ingest.sentry.example/1',
+        environment: 'test',
+        release: undefined,
+      },
+      { transport, processHandlers: false },
+    );
+    app = await createTestApp({ config: { webFiles: directory } });
+    await app.listen(0, '127.0.0.1');
+    port = ((app.getHttpServer() as Server).address() as AddressInfo).port;
+  });
+
+  afterAll(async () => {
+    await app.close();
+    await stopReporting();
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  it('is neither logged nor reported', async () => {
+    const logged = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const call = http.get(
+          { host: '127.0.0.1', port, path: '/assets/big-0123abcd.js' },
+          (response) => {
+            expect(response.statusCode).toBe(200);
+            // Read nothing: the server's buffers fill, then the client is gone.
+            response.destroy();
+            resolve();
+          },
+        );
+        call.on('error', reject);
+      });
+      await delay(500);
+
+      expect(logged).not.toHaveBeenCalled();
+      expect(events).toEqual([]);
+      // The server still answers afterwards.
+      const health = await request(app.getHttpServer() as Server).get('/api/health');
+      expect(health.status).toBe(200);
+    } finally {
+      logged.mockRestore();
     }
   });
 });

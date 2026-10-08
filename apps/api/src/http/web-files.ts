@@ -153,5 +153,20 @@ async function send(
     return;
   }
   // `pipeline`: an aborted download closes the file as well as the answer.
-  await pipeline(createReadStream(file), response);
+  try {
+    await pipeline(createReadStream(file), response);
+  } catch (error) {
+    // A tab that closed or moved on while the file was being sent: nothing is
+    // wrong with the server, so no log line and no report. Any other failure
+    // of the stream goes on to the error answer.
+    if (clientWentAway(error, response)) {
+      return;
+    }
+    throw error;
+  }
+}
+
+function clientWentAway(error: unknown, response: Response): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === 'ERR_STREAM_PREMATURE_CLOSE' || response.destroyed;
 }
