@@ -1,6 +1,8 @@
+import path from 'node:path';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { CONFIG } from './config/config.module.js';
 import type { AppConfig } from './config/config.js';
+import { repositoryRoot } from './database/config.js';
 import {
   ApiExceptionFilter,
   errorFallback,
@@ -30,9 +32,11 @@ export function configureApp(app: NestExpressApplication): void {
   // forwarded headers too; our own reading of the origin is `ownOriginOf`.
   app.set('trust proxy', config.trustProxy ? 1 : false);
   // On a server the web app's files are served first, outside the API prefix,
-  // with their own caching headers; nothing below sees those requests.
+  // with their own caching headers; nothing below sees those requests. A
+  // relative directory counts from the repository root, whatever the working
+  // directory (Render starts at the root, `pnpm dev` inside apps/api).
   if (config.webFiles !== undefined) {
-    app.use(webFilesMiddleware(config.webFiles, API_PREFIX));
+    app.use(webFilesMiddleware(path.resolve(repositoryRoot, config.webFiles), API_PREFIX));
   }
   // Before the body parser, so that its refusals carry a request id too.
   app.use(requestIdMiddleware);
