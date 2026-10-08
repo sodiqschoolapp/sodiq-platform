@@ -24,6 +24,7 @@ const WITHOUT_ROLE = {
   shellTools: ['Nilufar', 'Qodirova'],
   account: ['Gulnoza', 'Mirzayeva'],
   accountSecondStep: ['Otabek', 'Rashidov'],
+  notifications: ['Sabina', 'Toshmatova'],
 } as const;
 
 type Credentials = { login: string; password: string };

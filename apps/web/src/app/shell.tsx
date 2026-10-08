@@ -21,6 +21,11 @@ import {
   SESSION_KEY,
   type Session,
 } from '@/features/auth/session';
+import {
+  connectWithSocketIo,
+  liveFollower,
+  type LiveConnector,
+} from '@/features/notifications/live';
 import { ThemeContext, type ThemeStore } from '@/theme/theme';
 import { createAppRouter, type AppRouter } from './router';
 
@@ -39,8 +44,14 @@ const sessionChanged = (code: FailureCode): boolean =>
  * is refused because the session ended or owes a step again (rights are read
  * on every request), the tab goes to the page of that step. `i18n` is the
  * language of the tab, which follows the account once signed in (task 0.8d).
+ * `connectLive` opens the live connection of the notifications (task 0.9);
+ * the tests give a fake.
  */
-export function createShell(i18n: I18n, history?: RouterHistory): Shell {
+export function createShell(
+  i18n: I18n,
+  history?: RouterHistory,
+  connectLive: LiveConnector = connectWithSocketIo,
+): Shell {
   const onError = (error: unknown): void => {
     if (!(error instanceof ApiFailure) || !sessionChanged(error.code)) {
       return;
@@ -69,6 +80,14 @@ export function createShell(i18n: I18n, history?: RouterHistory): Shell {
     },
   });
   const router = createAppRouter(queryClient, history);
+  // The live connection is open while the session is complete. When the server
+  // ends it, the API is asked what the session is now, and the pages' guards
+  // send the tab to the step it owes, as after a refused call.
+  const live = liveFollower(queryClient, connectLive, () => {
+    void refreshSession(queryClient)
+      .catch(() => undefined)
+      .then(() => router.invalidate());
+  });
   // The role and the branch of the tab belong to the person who chose them: they
   // go when the session is known to be over (an ended session read as `null`,
   // sign-out) and when somebody signs in after that. The language of the tab
@@ -84,6 +103,7 @@ export function createShell(i18n: I18n, history?: RouterHistory): Shell {
     }
     const session = event.query.state.data as Session | undefined;
     followAccountLanguage(i18n, queryClient, session, previous);
+    live.follow(session);
     previous = session;
     if (session === null) {
       view.clear();

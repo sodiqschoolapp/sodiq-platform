@@ -5,6 +5,7 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DATABASE } from './database/database.module.js';
 import { Transactions } from './database/transactions.js';
+import { JOB_DEFINITIONS } from './jobs/job-list.js';
 import type { JobQueueOptions } from './jobs/job-queue.js';
 import { JobRunner } from './jobs/job-runner.js';
 import { Jobs } from './jobs/jobs.service.js';
@@ -35,8 +36,9 @@ describe('the worker entry point', () => {
       .useValue(database.app)
       .overrideProvider(JOB_QUEUE_OPTIONS)
       .useValue(options)
+      // The sample job beside the real ones: the modules name their handlers at start.
       .overrideProvider(JOB_DEFINITIONS_LIST)
-      .useValue([sampleJob])
+      .useValue([...JOB_DEFINITIONS, sampleJob])
       .compile();
     worker = await moduleRef.init();
     worker.get(JobRunner).handle(sampleJob, async (transaction, data) => {

@@ -54,6 +54,7 @@ describe('the routes that work without sign-in', () => {
       'GET /api/auth/sessions',
       'GET /api/auth/trusted-devices',
       'GET /api/health',
+      'GET /api/notifications',
       'POST /api/auth/password',
       'POST /api/auth/second-step',
       'POST /api/auth/second-step/confirm',
@@ -63,6 +64,8 @@ describe('the routes that work without sign-in', () => {
       'POST /api/auth/sign-out',
       'POST /api/auth/sign-out-everywhere',
       'POST /api/feedback',
+      'POST /api/notifications/:id/read',
+      'POST /api/notifications/read-all',
       'PUT /api/auth/language',
     ]);
   });

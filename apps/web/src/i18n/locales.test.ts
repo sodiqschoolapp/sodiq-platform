@@ -1,4 +1,4 @@
-import { ERROR_CODES } from '@sodiq/shared';
+import { ERROR_CODES, NOTIFICATION_KIND_NAMES } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import { translationProblems, type TextTree } from './check';
 import { createI18n, RESOURCES } from './i18n';
@@ -23,6 +23,15 @@ describe('the texts of the three languages', () => {
     for (const code of ERROR_CODES) {
       expect(i18n.exists(`errors.${code}`), code).toBe(true);
     }
+  });
+
+  // Task 0.9: the text of a notification is made in the browser from its kind.
+  it.each(LANGUAGES)('%s has a text for every kind of notification', (language) => {
+    const i18n = createI18n(language);
+    for (const kind of NOTIFICATION_KIND_NAMES) {
+      expect(i18n.exists(`notifications.kinds.${kind}`), kind).toBe(true);
+    }
+    expect(i18n.exists('notifications.kinds.unknown')).toBe(true);
   });
 
   it('counts in Russian with all four forms', () => {

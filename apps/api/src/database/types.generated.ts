@@ -118,6 +118,16 @@ export interface KnownDevices {
   token_hash: string;
 }
 
+export interface Notifications {
+  account_id: string;
+  branch_id: string | null;
+  created_at: Timestamp;
+  data: Json;
+  id: Generated<string>;
+  kind: string;
+  read_at: Timestamp | null;
+}
+
 export interface RequestKeys {
   account_id: string | null;
   created_at: Timestamp;
@@ -172,6 +182,7 @@ export interface DB {
   branches: Branches;
   feedback_reports: FeedbackReports;
   known_devices: KnownDevices;
+  notifications: Notifications;
   request_keys: RequestKeys;
   schema_migrations: SchemaMigrations;
   second_step_recovery_codes: SecondStepRecoveryCodes;

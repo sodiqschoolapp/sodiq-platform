@@ -78,6 +78,37 @@ export interface ActiveSession {
   assignments: CurrentAssignment[];
 }
 
+/** A refusal of the guard for a session that still owes a step of its sign-in. */
+export type OwedStep =
+  'second_step_required' | 'password_change_required' | 'second_step_set_up_required';
+
+/**
+ * What a session owes, in the order of `SessionGuard`: the second step comes
+ * before the forced password change, and the set-up after it.
+ */
+export function owedStepOf(
+  secondStep: SecondStepState,
+  mustChangePassword: boolean,
+): OwedStep | null {
+  if (secondStep === 'pending') {
+    return 'second_step_required';
+  }
+  if (mustChangePassword) {
+    return 'password_change_required';
+  }
+  if (secondStep === 'set_up_required') {
+    return 'second_step_set_up_required';
+  }
+  return null;
+}
+
+/** A session as `peek` reads it: in force now, and whether it still owes a step. */
+export interface PeekedSession {
+  sessionId: string;
+  accountId: string;
+  owedStep: OwedStep | null;
+}
+
 /** The stored language. The check constraint of `accounts` allows no other value. */
 function languageOf(stored: string): Language {
   return languageSchema.parse(stored);
@@ -422,6 +453,69 @@ export class Sessions {
         language: languageOf(account.language),
         assignments,
       };
+    });
+  }
+
+  /**
+   * The sessions as they stand now, without counting this as use: nothing is
+   * written, `last_used_at` stays, and a session that is over is left for the
+   * next request to end. For the live connection of task 0.9: a connection or
+   * a reconnection of a tab is not use of the session, so an idle session
+   * still ends on time (`13`, Security).
+   *
+   * A session is given back only when `resolve` would give it: open, not over
+   * by time, its account not locked. `owedStep` says what the session still
+   * owes of its sign-in, as the guard refuses it, or `null` for a complete one.
+   */
+  async peek(by: { token: string } | { sessionIds: readonly string[] }): Promise<PeekedSession[]> {
+    const now = this.clock.now();
+    return this.transactions.run([], async (transaction) => {
+      let query = transaction
+        .selectFrom('sessions')
+        .innerJoin('accounts', 'accounts.id', 'sessions.account_id')
+        .select([
+          'sessions.id',
+          'sessions.account_id',
+          'sessions.second_step_passed_at',
+          'sessions.created_at',
+          'sessions.last_used_at',
+          'sessions.trusted_from',
+          'sessions.trust_ended_at',
+          'accounts.must_change_password',
+          'accounts.locked_at',
+        ])
+        .where('sessions.ended_at', 'is', null);
+      if ('token' in by) {
+        query = query.where('sessions.token_hash', '=', tokenHash(by.token));
+      } else {
+        if (by.sessionIds.length === 0) {
+          return [];
+        }
+        query = query.where('sessions.id', 'in', [...by.sessionIds]);
+      }
+      const peeked: PeekedSession[] = [];
+      for (const row of await query.execute()) {
+        if (row.locked_at !== null) {
+          continue;
+        }
+        const assignments = await currentAssignments(transaction, row.account_id, now);
+        const roles = rolesOf(assignments);
+        if (endByTime(row, now, idleLimitMs(roles)) !== undefined) {
+          continue;
+        }
+        const secondStep = await this.secondSteps.stateOf(
+          transaction,
+          row.account_id,
+          row.second_step_passed_at,
+          roles,
+        );
+        peeked.push({
+          sessionId: row.id,
+          accountId: row.account_id,
+          owedStep: owedStepOf(secondStep, row.must_change_password),
+        });
+      }
+      return peeked;
     });
   }
 

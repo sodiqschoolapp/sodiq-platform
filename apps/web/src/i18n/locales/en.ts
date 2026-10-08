@@ -327,4 +327,22 @@ export const en = {
     setUpIntro:
       'A code from an authenticator app on your phone, for example Google Authenticator, is asked for at every sign-in. Install the app, then start.',
   },
+  notifications: {
+    button: 'Notifications',
+    buttonUnread_one: 'Notifications, {{n}} unread',
+    buttonUnread_other: 'Notifications, {{n}} unread',
+    title: 'Notifications',
+    text: 'Changes to your timetable, substitutions, locks and plan windows arrive here.',
+    empty: 'No notifications yet. What concerns you arrives here as it happens.',
+    unread: 'Unread',
+    markAllRead: 'Mark all as read',
+    close: 'Close',
+    // The text of each kind of NOTIFICATION_KINDS (packages/shared), filled with its data.
+    kinds: {
+      unknown: 'A notification this version of the app cannot show yet. Reload the page.',
+      sample: {
+        message: 'Sample: {{text}}',
+      },
+    },
+  },
 };

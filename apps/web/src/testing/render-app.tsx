@@ -3,6 +3,7 @@ import { createMemoryHistory } from '@tanstack/react-router';
 import { render } from '@testing-library/react';
 import { vi } from 'vitest';
 import { App, createShell, type Shell } from '@/app/shell';
+import type { LiveConnector } from '@/features/notifications/live';
 import { createI18n } from '@/i18n/i18n';
 import type { Language } from '@/i18n/languages';
 import { ThemeStore } from '@/theme/theme';
@@ -84,18 +85,23 @@ export function fakeApi(handlers: Record<string, Handler>): ApiCall[] {
   return calls;
 }
 
+/** A live connection that never opens: the tests of other pages need none. */
+export const noLive: LiveConnector = () => ({ close: () => undefined });
+
 /**
  * The whole app at an address, in a language (English when left out). The
- * theme is read from the browser as at a start, unless a store is given.
+ * theme is read from the browser as at a start, unless a store is given; the
+ * live connection of the notifications is a fake, or none.
  */
 export function renderApp(
   path = '/',
   language: Language = 'en',
   theme: ThemeStore = new ThemeStore(),
+  live: LiveConnector = noLive,
 ): Shell {
   renderedLanguage = language;
   const i18n = createI18n(language);
-  const shell = createShell(i18n, createMemoryHistory({ initialEntries: [path] }));
+  const shell = createShell(i18n, createMemoryHistory({ initialEntries: [path] }), live);
   render(<App i18n={i18n} shell={shell} theme={theme} />);
   return shell;
 }
