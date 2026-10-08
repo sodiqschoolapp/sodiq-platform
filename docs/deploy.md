@@ -55,12 +55,12 @@ Do one step at a time and check it before the next. Every value in angle bracket
 ### 1. Neon: the test database
 
 1. At console.neon.tech create a project `sodiq-test`, region **Frankfurt** (eu-central-1), PostgreSQL **18**, on the **Launch** plan (decided by the owner: the Free plan suspends a project after 100 CU-hours a month, and the API's listener and pg-boss keep the compute awake, about 180 CU-hours; Launch has no monthly minimum). Scale to zero may stay on.
-2. Copy the connection string the console shows for the project's own role (the one it created, something like `neondb_owner`), **direct connection, not pooled**.
+2. Copy the connection string the console shows for the project's own role (the one it created, something like `neondb_owner`), **direct connection, not pooled**, and take its password out of it: the address you use is `postgresql://<role>@<host>/neondb?sslmode=verify-full`, so that `psql` asks for the password instead of the shell's history keeping it.
 3. On the laptop, with `psql` installed, run:
    ```bash
-   psql "<that connection string>" -f db/setup/server.sql
+   psql "postgresql://<role>@<host>/neondb?sslmode=verify-full" -f db/setup/server.sql
    ```
-   It asks two passwords (make them long and random, for example `openssl rand -base64 32` twice) and creates the roles `sodiq_migrator` and `sodiq_app` **with SQL** and the database `sodiq`. `psql` shows what you type at a prompt: clear the terminal afterwards (`clear`, or close it). Never create these roles in Neon's console: a console role is a member of `neon_superuser`, which bypasses the row filters, and the API refuses every transaction of such a user. Keep both passwords in your password manager; they are typed twice more below and nowhere else.
+   It asks the console role's password, then creates the roles `sodiq_migrator` and `sodiq_app` **with SQL** and asks a password for each, twice, without showing it (psql's `\password`: only the hashed form reaches Neon). Make them long and random, for example `openssl rand -base64 32` twice, and keep both in your password manager; they are typed twice more below and nowhere else. Never create these roles in Neon's console: a console role is a member of `neon_superuser`, which bypasses the row filters, and the API refuses every transaction of such a user.
 4. Build the two addresses from the console's host (the direct host, without `-pooler`):
    - migrations: `postgres://sodiq_migrator:<password>@<host>/sodiq?sslmode=verify-full`
    - application: `postgres://sodiq_app:<password>@<host>/sodiq?sslmode=verify-full`
@@ -83,9 +83,10 @@ Do one step at a time and check it before the next. Every value in angle bracket
    - `SENTRY_DSN`: the DSN of `sodiq-test`, on both;
    - `VITE_SENTRY_DSN` (API service only): the DSN of `sodiq-test-web`.
 3. Apply. Render builds both services once from `main` and tries to start them. **This first start fails, and that is expected**: the database has no tables yet (the migrations run in step 7), and the API and the worker refuse to start without the job queue's schema. Render shows the deploy as failed; nothing is wrong. What must succeed here is the **build** (the log's first part): it installs the pinned pnpm with `npm install -g pnpm@…` before `pnpm install`, and Node comes from `.node-version`. If the build itself fails, read its log; a fix is a small pull request on `render.yaml`.
-4. On the API service, note the **service id** (`srv-…` in the dashboard's address) and do the same for the worker. Also create an **API key** (Account Settings, API Keys). These go to GitHub in step 5.
-5. The custom domain: the Blueprint declares `app-test.sodiqschool.uz` on the API service. Render shows the record to add; at the registrar (Eskiz) add **one** DNS record, a CNAME `app-test` pointing at the API service's `onrender.com` host. Nothing existing in the zone is touched (`test.` and `api.` belong to other projects). Render issues the certificate when the record resolves (minutes to an hour).
-6. The certificate does not depend on the services running; the page answers after step 7.
+4. On the Blueprint's page turn **Auto-Sync off**. With it on, a later change of `render.yaml` on `main` would make Render change or start a service before `deploy-test` has run that commit's migrations. From now on a change of `render.yaml` is applied by hand (the Blueprint's page, Manual Sync) when its pull request is deployed.
+5. On the API service, note the **service id** (`srv-…` in the dashboard's address) and do the same for the worker. Also create an **API key** (Account Settings, API Keys). These go to GitHub in section 5 of this guide.
+6. The custom domain: the Blueprint declares `app-test.sodiqschool.uz` on the API service. Render shows the record to add; at the registrar (Eskiz) add **one** DNS record, a CNAME `app-test` pointing at the API service's `onrender.com` host. Nothing existing in the zone is touched (`test.` and `api.` belong to other projects). Render issues the certificate when the record resolves (minutes to an hour).
+7. The certificate does not depend on the services running; the page answers after section 7 of this guide.
 
 ### 4. Cloudflare R2: the bucket
 
@@ -99,7 +100,7 @@ Repository Settings, Environments, **New environment** named exactly `test`. No 
 | Kind | Name | Value |
 | --- | --- | --- |
 | Secret | `DATABASE_MIGRATION_URL` | the migrations address of step 1.4 (the only place `sodiq_migrator`'s password exists outside the password manager) |
-| Secret | `RENDER_API_KEY` | the API key of step 3.4 |
+| Secret | `RENDER_API_KEY` | the API key of step 3.5 |
 | Variable | `RENDER_API_SERVICE_ID` | the API service's `srv-…` id |
 | Variable | `RENDER_WORKER_SERVICE_ID` | the worker's `srv-…` id |
 | Variable | `TEST_URL` | `https://app-test.sodiqschool.uz` |

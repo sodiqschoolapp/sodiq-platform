@@ -90,6 +90,32 @@ describe('the web app served by the API', () => {
     }
   });
 
+  it('decides "immutable" from the file, not from the path as typed', async () => {
+    const response = await request(server).get('/assets/..%2Findex.html');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toBe(INDEX);
+    expect(response.headers['cache-control']).toBe('no-cache');
+  });
+
+  it('gives index.html for a directory path', async () => {
+    for (const directory of ['/assets', '/assets/']) {
+      const response = await request(server).get(directory);
+
+      expect(response.status).toBe(200);
+      expect(response.text).toBe(INDEX);
+      expect(response.headers['cache-control']).toBe('no-cache');
+    }
+  });
+
+  it('leaves the API alone whatever the case of the prefix, as Express routes', async () => {
+    const response = await request(server).get('/API/health');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: 'ok' });
+    expect(response.headers['cache-control']).toBe('no-store');
+  });
+
   it('leaves the API alone: its answers keep no-store and its unknown paths are 404', async () => {
     const health = await request(server).get('/api/health');
     expect(health.status).toBe(200);
@@ -111,6 +137,24 @@ describe('the web app served by the API', () => {
     expect(response.status).toBe(404);
     expect(apiErrorSchema.parse(response.body).error.code).toBe('not_found');
     expect(response.headers['cache-control']).toBe('no-store');
+  });
+});
+
+// From the owner's review: startup is the only gate before a new version takes
+// traffic; a wrong directory must not pass the health check and answer 500 pages.
+describe('a wrong WEB_FILES', () => {
+  it('stops the start when the directory has no index.html, naming the variable', async () => {
+    const empty = await mkdtemp(path.join(tmpdir(), 'sodiq-web-files-empty-'));
+    try {
+      await expect(createTestApp({ config: { webFiles: empty } })).rejects.toThrow(
+        /WEB_FILES must be a directory/,
+      );
+      await expect(
+        createTestApp({ config: { webFiles: path.join(empty, 'missing') } }),
+      ).rejects.toThrow(/WEB_FILES must be a directory/);
+    } finally {
+      await rm(empty, { recursive: true, force: true });
+    }
   });
 });
 

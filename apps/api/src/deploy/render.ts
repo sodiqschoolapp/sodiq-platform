@@ -73,7 +73,9 @@ async function startDeploy(options: DeployOptions, serviceId: string): Promise<D
 async function waitForDeploy(options: DeployOptions, deploy: DeployResult): Promise<DeployResult> {
   const sleep = options.sleep ?? defaultSleep;
   let current = deploy;
-  for (let poll = 0; poll < MAX_POLLS; poll += 1) {
+  // The status of the creation and of each of the MAX_POLLS looks is judged,
+  // the last one included.
+  for (let poll = 0; ; poll += 1) {
     if (current.status === LIVE_STATUS) {
       options.log?.(`${current.serviceId}: deploy ${current.deployId} is live`);
       return current;
@@ -81,6 +83,13 @@ async function waitForDeploy(options: DeployOptions, deploy: DeployResult): Prom
     if (FAILED_STATUSES.has(current.status)) {
       throw new DeployError(
         `${current.serviceId}: deploy ${current.deployId} ended as ${current.status}.`,
+      );
+    }
+    if (poll >= MAX_POLLS) {
+      throw new DeployError(
+        `${current.serviceId}: deploy ${current.deployId} is still ${current.status} after ${String(
+          (MAX_POLLS * POLL_MS) / 60_000,
+        )} minutes.`,
       );
     }
     await sleep(POLL_MS);
@@ -94,11 +103,6 @@ async function waitForDeploy(options: DeployOptions, deploy: DeployResult): Prom
     }
     current = { ...current, status: answer.status };
   }
-  throw new DeployError(
-    `${current.serviceId}: deploy ${current.deployId} is still ${current.status} after ${String(
-      (MAX_POLLS * POLL_MS) / 60_000,
-    )} minutes.`,
-  );
 }
 
 async function call(

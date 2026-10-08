@@ -1,8 +1,12 @@
 -- The two users of a server database (test, production), run once per
--- database by the owner (docs/deploy.md). It asks the passwords when it runs;
--- nothing is written to a file and nothing is on the command line:
+-- database by the owner (docs/deploy.md). The passwords are asked by psql's
+-- own \password: twice, without echo, and only the hashed form (the SCRAM
+-- verifier) leaves the laptop; nothing is written to a file, nothing is on
+-- the command line, nothing is in a statement a server could log.
 --
---   psql "<the address of the Neon project's own role>" -f db/setup/server.sql
+--   psql "postgresql://<the project's own role>@<host>/neondb?sslmode=verify-full" -f db/setup/server.sql
+--
+-- (without the role's password in the address: psql asks for it).
 --
 -- With SQL, never in Neon's console: a role made in the console is a member of
 -- neon_superuser and bypasses the row filters, which the API refuses
@@ -11,16 +15,17 @@
 
 \set ON_ERROR_STOP on
 
-\prompt 'Password for sodiq_migrator (long and random): ' migrator_password
-\prompt 'Password for sodiq_app (long and random): ' app_password
-
 -- Owns the database and every table; runs the migrations from the deploy job
 -- only. No createdb: no test database is ever built on a server.
-create role sodiq_migrator login password :'migrator_password';
+create role sodiq_migrator login;
+\echo 'Choose a long random password for sodiq_migrator (for example: openssl rand -base64 32):'
+\password sodiq_migrator
 
 -- The API and the jobs worker. Owns nothing; each migration grants it its
 -- rights table by table. It may create temporary tables, as any role may.
-create role sodiq_app login password :'app_password';
+create role sodiq_app login;
+\echo 'Choose a long random password for sodiq_app:'
+\password sodiq_app
 
 -- The creator must be a member of the owner to hand over the database.
 grant sodiq_migrator to current_user;

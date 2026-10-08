@@ -112,11 +112,15 @@ export function reportFault(error: unknown): void {
  * error state). React 19 calls them with the error and where it happened.
  */
 export function rootOptions(report: (error: unknown) => void = reportFault) {
+  // As React's own defaults: the fault is printed too, so a laptop without a
+  // DSN still shows it in the console.
   return {
     onUncaughtError: (error: unknown) => {
+      console.error(error);
       report(error);
     },
     onCaughtError: (error: unknown) => {
+      console.error(error);
       report(error);
     },
   };

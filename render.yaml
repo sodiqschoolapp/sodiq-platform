@@ -9,7 +9,7 @@
 #
 # pnpm: Render installs the dependencies with the pnpm it has; the build
 # installs the pinned version first (the same as `packageManager` in
-# package.json; render.test.ts keeps the two equal). Node comes from
+# package.json; render-blueprint.test.ts keeps the two equal). Node comes from
 # .node-version.
 services:
   - type: web

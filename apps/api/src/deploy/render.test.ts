@@ -131,6 +131,24 @@ describe('a deploy on Render', () => {
     },
   );
 
+  it('sees a deploy that turns live exactly at the last look', async () => {
+    const render = fakeRender({
+      api: [...Array<string>(MAX_POLLS).fill('build_in_progress'), 'live'],
+    });
+    sleeps.splice(0);
+
+    const results = await deployServices({
+      apiKey: API_KEY,
+      serviceIds: ['api'],
+      commitId: COMMIT,
+      fetch: render.fetcher,
+      sleep,
+    });
+
+    expect(results).toEqual([{ serviceId: 'api', deployId: 'dep-api', status: 'live' }]);
+    expect(sleeps).toHaveLength(MAX_POLLS);
+  });
+
   it('gives up after the last look at a deploy that is still in progress', async () => {
     const render = fakeRender({ api: ['build_in_progress'] });
     sleeps.splice(0);

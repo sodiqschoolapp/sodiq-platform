@@ -146,11 +146,15 @@ jobs:
         # Before the new version starts. The runner holds a session lock, so
         # the address is Neon's direct one; it finds db/migrations in this checkout.
         run: pnpm db:migrate
+      # Values go through env, never into the command text.
       - name: Deploy the API and the worker at this commit
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: >-
-          node apps/api/dist/deploy/cli.js deploy --commit ${{ github.sha }}
-          ${{ vars.RENDER_API_SERVICE_ID }} ${{ vars.RENDER_WORKER_SERVICE_ID }}
+          COMMIT: ${{ github.sha }}
+          API_SERVICE: ${{ vars.RENDER_API_SERVICE_ID }}
+          WORKER_SERVICE: ${{ vars.RENDER_WORKER_SERVICE_ID }}
+        run: node apps/api/dist/deploy/cli.js deploy --commit "$COMMIT" "$API_SERVICE" "$WORKER_SERVICE"
       - name: Smoke test
-        run: node apps/api/dist/deploy/cli.js smoke ${{ vars.TEST_URL }}
+        env:
+          TEST_URL: ${{ vars.TEST_URL }}
+        run: node apps/api/dist/deploy/cli.js smoke "$TEST_URL"

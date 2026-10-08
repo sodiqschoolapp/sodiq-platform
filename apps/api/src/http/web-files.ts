@@ -1,7 +1,9 @@
-import { createReadStream } from 'node:fs';
+import { createReadStream, statSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import type { NextFunction, Request, Response } from 'express';
+import { ConfigError } from '../config/config.js';
 
 /** The types of the files Vite writes; anything else is served as bytes. */
 const CONTENT_TYPES: Record<string, string> = {
@@ -20,10 +22,25 @@ const CONTENT_TYPES: Record<string, string> = {
 };
 
 /** Vite names every file here with a hash of its content: it never changes. */
-const IMMUTABLE_PREFIX = '/assets/';
+const IMMUTABLE_DIRECTORY = 'assets';
 const IMMUTABLE = 'public, max-age=31536000, immutable';
 /** `index.html` and the few plain files: the browser asks again every time. */
 const REVALIDATE = 'no-cache';
+
+/**
+ * Checks at start that the directory holds a built web app. Startup is the
+ * only gate before a new version takes traffic (Render's health check passes
+ * without the files), so a wrong or missing directory stops the API here.
+ */
+export function checkWebFiles(directory: string): string {
+  const root = path.resolve(directory);
+  if (!isFileNow(path.join(root, 'index.html'))) {
+    throw new ConfigError(
+      "The configuration is not valid: WEB_FILES must be a directory with the web app's built files (its index.html was not found).",
+    );
+  }
+  return root;
+}
 
 /**
  * Serves the web app's built files on the API's own origin (task 0.10; decided
@@ -38,8 +55,9 @@ const REVALIDATE = 'no-cache';
  * open (`edge/system-behaviour`: a tab opened before a release).
  */
 export function webFilesMiddleware(directory: string, apiPrefix: string) {
-  const root = path.resolve(directory);
+  const root = checkWebFiles(directory);
   const index = path.join(root, 'index.html');
+  const immutableRoot = path.join(root, IMMUTABLE_DIRECTORY) + path.sep;
   return (request: Request, response: Response, next: NextFunction): void => {
     if (
       isApiPath(request.path, apiPrefix) ||
@@ -48,28 +66,36 @@ export function webFilesMiddleware(directory: string, apiPrefix: string) {
       next();
       return;
     }
-    void serve(request, response, next, root, index);
+    void serve(request, response, next, { root, index, immutableRoot });
   };
 }
 
+interface Layout {
+  root: string;
+  index: string;
+  immutableRoot: string;
+}
+
+/** As Express routes: `/API/health` is the API too. */
 function isApiPath(requestPath: string, apiPrefix: string): boolean {
-  return requestPath === `/${apiPrefix}` || requestPath.startsWith(`/${apiPrefix}/`);
+  const lower = requestPath.toLowerCase();
+  return lower === `/${apiPrefix}` || lower.startsWith(`/${apiPrefix}/`);
 }
 
 async function serve(
   request: Request,
   response: Response,
   next: NextFunction,
-  root: string,
-  index: string,
+  layout: Layout,
 ): Promise<void> {
   try {
-    const file = fileOf(root, request.path);
-    const immutable = file !== undefined && request.path.startsWith(IMMUTABLE_PREFIX);
+    const file = fileOf(layout.root, request.path);
     if (file !== undefined && (await isFile(file))) {
+      // Decided from the file itself, not from the path as it was typed.
+      const immutable = file.startsWith(layout.immutableRoot);
       await send(request, response, file, immutable ? IMMUTABLE : REVALIDATE);
     } else {
-      await send(request, response, index, REVALIDATE);
+      await send(request, response, layout.index, REVALIDATE);
     }
   } catch (error) {
     next(error);
@@ -89,6 +115,14 @@ function fileOf(root: string, requestPath: string): string | undefined {
   }
   const file = path.resolve(root, `.${decoded}`);
   return file === root || file.startsWith(root + path.sep) ? file : undefined;
+}
+
+function isFileNow(file: string): boolean {
+  try {
+    return statSync(file).isFile();
+  } catch {
+    return false;
+  }
 }
 
 async function isFile(file: string): Promise<boolean> {
@@ -118,10 +152,6 @@ async function send(
     response.end();
     return;
   }
-  await new Promise<void>((resolve, reject) => {
-    const stream = createReadStream(file);
-    stream.on('error', reject);
-    stream.on('end', resolve);
-    stream.pipe(response);
-  });
+  // `pipeline`: an aborted download closes the file as well as the answer.
+  await pipeline(createReadStream(file), response);
 }

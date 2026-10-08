@@ -20,13 +20,17 @@ describe('the Render Blueprint', () => {
     }
   });
 
-  it('holds no value of a secret: the three are entered in the dashboard', () => {
-    for (const secret of ['DATABASE_URL', 'SECOND_STEP_KEY', 'SENTRY_DSN']) {
-      const lines = blueprint.split('\n').filter((line) => line.includes(`key: ${secret}`));
-      expect(lines.length).toBeGreaterThan(0);
-      for (const line of lines) {
-        const next = blueprint.split('\n')[blueprint.split('\n').indexOf(line) + 1] ?? '';
-        expect(next.trim()).toBe('sync: false');
+  it('holds no value of a secret: each is entered in the dashboard, on every service', () => {
+    const lines = blueprint.split('\n');
+    for (const secret of ['DATABASE_URL', 'SECOND_STEP_KEY', 'SENTRY_DSN', 'VITE_SENTRY_DSN']) {
+      const at = lines.flatMap((line, index) =>
+        line.trim() === `- key: ${secret}` ? [index] : [],
+      );
+      expect(at.length, secret).toBeGreaterThanOrEqual(secret === 'VITE_SENTRY_DSN' ? 1 : 2);
+      for (const index of at) {
+        expect(lines[index + 1]?.trim(), `${secret} at line ${String(index + 1)}`).toBe(
+          'sync: false',
+        );
       }
     }
     expect(blueprint).not.toMatch(/postgres:\/\//);

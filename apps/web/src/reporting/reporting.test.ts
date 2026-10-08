@@ -103,8 +103,9 @@ describe('what a report of the web app holds', () => {
 });
 
 describe("React's root", () => {
-  it('reports a fault it caught and one nobody caught', () => {
+  it('reports a fault it caught and one nobody caught, and prints both', () => {
     const report = vi.fn();
+    const printed = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const options = rootOptions(report);
     const uncaught = new Error('while drawing');
     const caught = new Error('in a boundary');
@@ -113,5 +114,7 @@ describe("React's root", () => {
     options.onCaughtError(caught);
 
     expect(report.mock.calls).toEqual([[uncaught], [caught]]);
+    expect(printed.mock.calls).toEqual([[uncaught], [caught]]);
+    printed.mockRestore();
   });
 });
