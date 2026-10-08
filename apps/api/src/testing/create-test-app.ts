@@ -11,6 +11,7 @@ import { DATABASE } from '../database/database.module.js';
 import type { JobQueueOptions } from '../jobs/job-queue.js';
 import { JOB_QUEUE_OPTIONS } from '../jobs/jobs.tokens.js';
 import { PERMISSION_TABLE } from '../modules/access/permission-table.token.js';
+import { LiveSockets } from '../modules/notifications/live/socket-server.js';
 import type { StopBeforeHandler } from './route-harness.js';
 import { withDatabaseName } from './test-database.js';
 
@@ -25,6 +26,8 @@ export interface TestAppOptions {
    * job. Without it the first job fails instead of reaching `sodiq_dev`.
    */
   jobsDatabaseUrl?: string;
+  /** For a test that runs the jobs in its process (`JobRunner.start`): how often it looks for them. */
+  jobsPollingIntervalSeconds?: number;
   /** Usually a `FixedClock`. Without it the application reads the system clock. */
   clock?: Clock;
   /** Controllers that exist only in tests, for example `SampleController`. */
@@ -54,6 +57,9 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
     connectionString:
       options.jobsDatabaseUrl ?? withDatabaseName(databaseUrl('DATABASE_URL'), NO_DATABASE),
     worker: false,
+    ...(options.jobsPollingIntervalSeconds === undefined
+      ? {}
+      : { pollingIntervalSeconds: options.jobsPollingIntervalSeconds }),
   };
   const builder = Test.createTestingModule({
     imports: [AppModule],
@@ -76,5 +82,8 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
     app.useGlobalInterceptors(options.handlerStop);
   }
   await initApp(app);
+  // As main.ts: the live connection is on the server of every test app; a test
+  // that needs pushes also starts `LiveListener` with the address of its database.
+  app.get(LiveSockets).attach(app.getHttpServer());
   return app;
 }

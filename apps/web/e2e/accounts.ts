@@ -19,7 +19,8 @@ export type AccountKey =
   | 'shellTools'
   | 'switchers'
   | 'account'
-  | 'accountSecondStep';
+  | 'accountSecondStep'
+  | 'notifications';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

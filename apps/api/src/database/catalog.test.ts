@@ -32,6 +32,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'Failed sign-ins are counted before any branch is known, also for logins that do not exist; a row holds hashes, a count and moments.',
   feedback_reports:
     'A report about the app belongs to an account, which has no branch; a row holds ids, the roles of the session, the path of a page, a text and a moment. The owner reads it until a screen exists (task 0.8b-3).',
+  notifications:
+    'A notification belongs to an account, which has no branch, and names the branch of its event as a label; a row holds ids, a kind, the data of its text and moments. Every route reads the rows of the account of the session only (task 0.9, decided by the owner).',
 };
 
 /**
@@ -44,6 +46,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
 const SCHOOL_WIDE_WITH_BRANCH: Record<string, string> = {
   assignments:
     'An assignment names the branch of a role; the rows of the Super Admin and the Senior Head Teacher have none, and the roles of an account are read before a branch is known. Who may act in which branch is decided by the permission guard (task 0.7b).',
+  notifications:
+    'A notification belongs to an account and names the branch of its event as a label; a person reads their notifications from every branch at once, before any branch is chosen, and an event of the whole school has none. Every route reads the rows of the account of the session only (task 0.9, decided by the owner).',
 };
 
 /**
@@ -581,8 +585,9 @@ describe('the catalog checks', () => {
         ...Object.fromEntries(names.map((name) => [name, 'Named for this test.'])),
       });
 
-      it('hold exactly the assignments', () => {
-        expect(Object.keys(SCHOOL_WIDE_WITH_BRANCH)).toEqual(['assignments']);
+      // Each name is a decision of the owner: assignments (0.7b), notifications (0.9).
+      it('hold exactly the assignments and the notifications', () => {
+        expect(Object.keys(SCHOOL_WIDE_WITH_BRANCH)).toEqual(['assignments', 'notifications']);
       });
 
       it('accept a named table whose branch_id may be empty and points at a branch', async () => {

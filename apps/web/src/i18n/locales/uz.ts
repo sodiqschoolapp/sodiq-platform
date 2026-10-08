@@ -332,4 +332,22 @@ export const uz: Texts<'one' | 'other'> = {
     setUpIntro:
       'Har kirishda telefoningizdagi autentifikator ilovasidan, masalan Google Authenticator dan, kod soʻraladi. Ilovani oʻrnating, soʻng boshlang.',
   },
+  notifications: {
+    button: 'Bildirishnomalar',
+    buttonUnread_one: 'Bildirishnomalar, {{n}} ta oʻqilmagan',
+    buttonUnread_other: 'Bildirishnomalar, {{n}} ta oʻqilmagan',
+    title: 'Bildirishnomalar',
+    text: 'Dars jadvalingizdagi oʻzgarishlar, oʻrinbosarliklar, qulflar va reja oynalari haqidagi xabarlar shu yerga keladi.',
+    empty: 'Hozircha bildirishnoma yoʻq. Sizga tegishli xabarlar shu yerda paydo boʻladi.',
+    unread: 'Oʻqilmagan',
+    markAllRead: 'Hammasini oʻqilgan deb belgilash',
+    close: 'Yopish',
+    kinds: {
+      unknown:
+        'Ilovaning bu versiyasi hali koʻrsata olmaydigan bildirishnoma. Sahifani qayta yuklang.',
+      sample: {
+        message: 'Namuna: {{text}}',
+      },
+    },
+  },
 };

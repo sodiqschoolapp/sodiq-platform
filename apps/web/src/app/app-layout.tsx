@@ -26,6 +26,7 @@ import { FailureAlert } from '@/components/failure-alert';
 import { UnsentBanner, UnsentGuard, useLeave } from '@/components/unsent/unsent-changes';
 import { sessionQuery } from '@/features/auth/session';
 import { FeedbackButton } from '@/features/feedback/feedback-button';
+import { NotificationsButton } from '@/features/notifications/notifications-button';
 import { rememberTrustAsked, trustWasAsked } from '@/features/auth/trust-asked';
 import { useAccountLanguage } from '@/features/auth/use-account-language';
 import { useSignOut } from '@/features/auth/use-sign-out';
@@ -73,10 +74,10 @@ function NotTrustedNote({ trusted }: { trusted: boolean }) {
 
 /**
  * The frame of every page after sign-in (docs/spec/12-ux-standards.md, One
- * pattern everywhere): the top bar with the search, the feedback button, the
- * theme and the language, the role and branch switchers (task 0.8c) and the
- * left menu of the active role. The year and quarter in the top bar come with
- * the school setup.
+ * pattern everywhere): the top bar with the search, the notifications (task
+ * 0.9), the feedback button, the theme and the language, the role and branch
+ * switchers (task 0.8c) and the left menu of the active role. The year and
+ * quarter in the top bar come with the school setup.
  */
 export function AppLayout() {
   const { t } = useTranslation();
@@ -110,6 +111,7 @@ export function AppLayout() {
           <RoleSwitcher />
           <BranchSwitcher />
           <CommandSearch />
+          <NotificationsButton />
           <FeedbackButton />
           <ThemeSwitch />
           <LanguageChooser onChange={accountLanguage.mutate} />

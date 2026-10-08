@@ -54,6 +54,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/auth/trusted-devices': 'any_signed_in',
   'DELETE /api/auth/trusted-devices/:id': 'any_signed_in',
   'POST /api/feedback': 'any_signed_in',
+  // The own notifications (task 0.9; the owner's spec change of 8 October 2026
+  // names reading and marking them among the Principal's own-account changes).
+  'GET /api/notifications': 'any_signed_in',
+  'POST /api/notifications/:id/read': 'any_signed_in',
+  'POST /api/notifications/read-all': 'any_signed_in',
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

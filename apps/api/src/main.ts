@@ -7,14 +7,20 @@ import type { AppConfig } from './config/config.js';
 import { loadLocalEnvFile } from './database/config.js';
 import { JobQueue } from './jobs/job-queue.js';
 import { SecondStepKeyCheck } from './modules/auth/second-step-key-check.js';
+import { LiveListener } from './modules/notifications/live/listener.js';
+import { LiveSockets } from './modules/notifications/live/socket-server.js';
 
 // Entry point of the API. The jobs worker has its own: src/worker.ts.
 loadLocalEnvFile();
 const app = await NestFactory.create<NestExpressApplication>(AppModule);
 await initApp(app);
+// The live connection of the tabs, on the same server, before it listens (task 0.9).
+app.get(LiveSockets).attach(app.getHttpServer());
 // Now, not with the first job: a missing or older job schema stops the start.
 await app.get(JobQueue).ready();
 // A key that does not open the stored second steps stops the start too.
 await app.get(SecondStepKeyCheck).run();
+// What the worker and the routes push to the tabs comes over the database.
+await app.get(LiveListener).start();
 const config = app.get<AppConfig>(CONFIG);
 await app.listen(config.port, config.host);

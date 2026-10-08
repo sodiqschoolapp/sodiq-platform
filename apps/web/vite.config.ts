@@ -17,7 +17,8 @@ export default defineConfig({
     // The address is the default HOST of the API (apps/api/src/config/config.ts);
     // the browser tests name the API of their own (playwright.config.ts).
     proxy: {
-      '/api': process.env.API_PROXY_TARGET ?? 'http://127.0.0.1:3000',
+      // `ws`: the live connection of the notifications (task 0.9) is under /api too.
+      '/api': { target: process.env.API_PROXY_TARGET ?? 'http://127.0.0.1:3000', ws: true },
     },
   },
   test: {

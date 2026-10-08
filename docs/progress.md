@@ -2,6 +2,43 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 8 October 2026: task 0.9 Notifications to staff in the app
+
+Plan approved by the owner on pull request #32 (`[review] approved`, with the answers to the ten questions; the owner's spec change of 8 October names reading and marking his own notifications among the Principal's own-account changes). The decisions are in `docs/decisions.md`, 8 October 2026.
+
+Built:
+
+- `packages/shared/src/notifications.ts`: `NOTIFICATION_KINDS` (the registry of kinds with the schema of their data; `sample.message` only), the kind format, `notificationSchema`, `notificationListSchema`, `notificationParamsSchema`, `NOTIFICATION_LIST_LIMIT` (50), the socket path `/api/socket`, the names of the messages (`notification.state`, `.new`, `.read`, `.read_all`, `session.ended`) and their schemas.
+- `db/migrations/0013_notifications.sql`: `notifications` (school-wide with a `branch_id` label, in both lists of `catalog.test.ts`), with the kind format check, `read_at >= created_at`, the three indexes, `select, insert` and `update (read_at)`. Types regenerated.
+- API (`modules/notifications/`): `Notifications.send` (the helper later tasks call), `list`, `markRead`, `markAllRead`; the job `notifications.deliver` (`deliver.job.ts`, the first entry of `JOB_DEFINITIONS`; its handler issues NOTIFY in chunks of 100 ids); `live/live-payload.ts` (the channel `sodiq_notifications`, the payload schema, `notifyLive`); `live/socket-server.ts` (`LiveSockets`: the Socket.IO server, the handshake, the state at connection, `tell` with the session check before every push); `live/listener.ts` (`LiveListener`: the `pg` client that listens and pushes); the three routes `GET /api/notifications`, `POST /api/notifications/:id/read`, `POST /api/notifications/read-all` (`@AnySignedIn()`). `Sessions.peek` (by token or by session ids; refuses what `resolve` refuses, writes nothing) and `owedStepOf`; `fromOwnSite` of `same-site.ts` shared with the handshake; `readSessionToken` takes any request with a `Cookie` header. `main.ts` attaches the sockets and starts the listener; `createTestApp` attaches the sockets and takes `jobsPollingIntervalSeconds`. Dependencies: `socket.io` (API), `socket.io-client` (web; devDependency of the API). OpenAPI and the web client regenerated.
+- Web (`features/notifications/`): `notifications-api.ts` (the query and the cache changes), `live.ts` (`connectWithSocketIo`, `liveFollower`, kept by `createShell`, which takes a `LiveConnector`), `notifications-button.tsx` (the bell with the badge and the dialog); the Vite proxy forwards WebSockets. Texts `notifications.*` with `kinds.unknown` and `kinds.sample.message` in uz, ru, en.
+- Browser tests: the API of the tests also runs the worker (`testing/e2e/server.ts`), the command `testing/e2e/notify.ts`, the seeded account `notifications`, `e2e/notifications.spec.ts` (a notification sent before sign-in, one arriving live, "Mark all as read", one marked by a click).
+- Tests: shared `notifications.test.ts`; API `notifications.database.test.ts` (checks, keys, rights), `notifications.test.ts` (the helper, the rollback, the refusals, the chunked NOTIFY with 250 accounts, the second delivery, the list with the branch name and the limit, the read marks, 401 and the owed steps, no audit entry), `live.test.ts` (the state, no use of the session, the refusals of the handshake, the push to the right person and nobody else, the read marks across tabs, the state at a reconnection, the ended session told and closed, no action on a client message); `route-permissions`, `public-routes`, `catalog`, `openapi`, `worker.test.ts` (the job list beside the sample job) updated. Web `notifications.test.tsx` (15), `live.test.ts` (13), `locales.test.ts` (a text for every kind). Full run here: lint, typecheck, API 54 files, web 21 files.
+
+Left out, with the task that brings it:
+
+- Notification settings: the first task that adds a kind that may be turned off (a section of the account page of 0.8d and the rule which kinds are required); Release 2 adds the channels (owner's answer 6).
+- The real kinds (timetable change, substitution, lock, unlock request, plan window, mark correction, forced delete): each with the task that raises the event, which adds the kind, its data schema and its three texts, and computes the recipients.
+- A link from a notification to its record: with the first kind that has a page to open.
+- A page `/notifications` with paging: a small follow-up when the owner asks (answer 9). Retention: nothing is removed (answer 8).
+- SMS, Telegram, night hours, parents and students, announcements: Release 2.
+- Long polling as a second transport: the owner may ask for it with sticky sessions in 0.10.
+
+Open, for the owner:
+
+- The Uzbek and Russian wording of `notifications.*` was not reviewed by anybody.
+- Whether the school's browsers send `Sec-Fetch-Site` on a WebSocket upgrade was not checked in a real browser; without it the handshake falls back to the `Origin` rule, which browsers always send on a WebSocket upgrade, so both paths admit the own site.
+
+The next sessions must know:
+
+- To notify: `notifications.send(transaction, { kind, data, branchId, accountIds })` in the transaction of the change (`.claude/rules/api.md`). A new kind: `NOTIFICATION_KINDS` plus `notifications.kinds.<kind>` in the three locale files (the key path follows the dots of the kind); `locales.test.ts` fails otherwise.
+- `createTestApp` attaches the sockets; a test of pushes starts `app.get(JobRunner).start()` (with `jobsPollingIntervalSeconds`) and `app.get(LiveListener).start(database.appUrl)`, as `live.test.ts`. A test that overrides `JOB_DEFINITIONS_LIST` must keep `JOB_DEFINITIONS` in the list: `NotificationsModule` names its handler at start.
+- In the web tests `renderApp(path, language, theme, live)` takes a `LiveConnector`; without one no connection is opened. The bell is hidden from role queries while a dialog is open (`hidden: true`).
+- The web app does not import zod: a schema of `packages/shared` is used through its `safeParse` (`MessageSchema` in `live.ts`).
+- `pnpm test:e2e` builds `dist-e2e` with `notify.js`; the browser-test API runs the worker too, so a browser test may send a notification with the command.
+
+The next task is 0.10.
+
 ## 7 October 2026: task 0.8d Own account page
 
 Plan approved by the owner on pull request #30 (`[review] approved`, with the answer to the plan's question: a language chosen in the tab before sign-in was complete is saved to the account at the first complete answer).

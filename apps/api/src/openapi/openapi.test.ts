@@ -52,6 +52,9 @@ describe('OpenAPI document', () => {
         '/api/auth/trusted-devices/{id}',
         '/api/feedback',
         '/api/health',
+        '/api/notifications',
+        '/api/notifications/read-all',
+        '/api/notifications/{id}/read',
       ]);
       expect(document.paths['/api/health']?.get?.responses).toEqual({
         '200': {

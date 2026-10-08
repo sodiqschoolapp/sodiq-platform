@@ -26,12 +26,17 @@ const TOKEN = /^[A-Za-z0-9_-]{43,200}$/;
  * nothing here throws: whatever a caller puts into `Cookie`, the worst outcome
  * is "no session".
  */
-export function readSessionToken(request: Request): string | undefined {
+export function readSessionToken(request: WithCookieHeader): string | undefined {
   return readTokenCookie(request, SESSION_COOKIE);
 }
 
+/** A request of Express, or the plain request of a WebSocket handshake: only its `Cookie` header is read. */
+export interface WithCookieHeader {
+  headers: { cookie?: string | undefined };
+}
+
 /** The same for any cookie of ours that holds a token (the device cookie). */
-export function readTokenCookie(request: Request, name: string): string | undefined {
+export function readTokenCookie(request: WithCookieHeader, name: string): string | undefined {
   const header = request.headers.cookie;
   if (typeof header !== 'string') {
     return undefined;
