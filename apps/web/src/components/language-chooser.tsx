@@ -1,13 +1,23 @@
 import { LanguagesIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { languageOf } from '@/i18n/i18n';
-import { isLanguage, LANGUAGE_NAMES, LANGUAGES } from '@/i18n/languages';
+import { isLanguage, LANGUAGE_NAMES, LANGUAGES, type Language } from '@/i18n/languages';
+
+interface LanguageChooserProps {
+  /**
+   * What a choice does besides changing the language of the tab: on the pages
+   * before sign-in it is marked for the account (task 0.8d); in the layout it
+   * is stored on the account at once. Without it the choice changes the tab
+   * alone, which the browser remembers.
+   */
+  onChange?: (language: Language) => void;
+}
 
 /**
  * docs/spec/12-ux-standards.md, Language: each person chooses a language and
  * the choice is remembered. On every page, before and after sign-in.
  */
-export function LanguageChooser() {
+export function LanguageChooser({ onChange }: LanguageChooserProps) {
   const { t, i18n } = useTranslation();
 
   return (
@@ -19,7 +29,11 @@ export function LanguageChooser() {
         value={languageOf(i18n)}
         onChange={(event) => {
           if (isLanguage(event.target.value)) {
-            void i18n.changeLanguage(event.target.value);
+            if (onChange === undefined) {
+              void i18n.changeLanguage(event.target.value);
+            } else {
+              onChange(event.target.value);
+            }
           }
         }}
       >

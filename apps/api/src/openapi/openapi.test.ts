@@ -37,6 +37,7 @@ describe('OpenAPI document', () => {
       const document = buildOpenApiDocument(app);
 
       expect(Object.keys(document.paths).sort()).toEqual([
+        '/api/auth/language',
         '/api/auth/password',
         '/api/auth/second-step',
         '/api/auth/second-step/confirm',

@@ -22,6 +22,8 @@ const WITHOUT_ROLE = {
   patterns: ['Malika', 'Sobirova'],
   forms: ['Sardor', 'Nazarov'],
   shellTools: ['Nilufar', 'Qodirova'],
+  account: ['Gulnoza', 'Mirzayeva'],
+  accountSecondStep: ['Otabek', 'Rashidov'],
 } as const;
 
 type Credentials = { login: string; password: string };

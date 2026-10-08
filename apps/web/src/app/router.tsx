@@ -9,6 +9,7 @@ import {
   type RouterHistory,
 } from '@tanstack/react-router';
 import { HomePage } from '@/features/access/home-page';
+import { AccountPage } from '@/features/auth/account-page';
 import { CodePage } from '@/features/auth/code-page';
 import { PasswordPage } from '@/features/auth/password-page';
 import { sessionQuery, STEP_PATH, stepOf, type Step } from '@/features/auth/session';
@@ -62,8 +63,20 @@ const codeRoute = createRoute({
 const passwordRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/password',
-  // Forced while a first or reset password is in use, and by choice afterwards.
-  beforeLoad: only('password', 'none'),
+  // The forced change, while a first or reset password is in use. By choice the
+  // page is inside the layout (task 0.8d); a bookmark of this address still
+  // lands there.
+  beforeLoad: async ({ context }): Promise<void> => {
+    const step = stepOf(await context.queryClient.fetchQuery(sessionQuery));
+    if (step === 'none') {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- the router's way to redirect
+      throw redirect({ to: '/account/password' });
+    }
+    if (step !== 'password') {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- the router's way to redirect
+      throw redirect({ to: STEP_PATH[step] });
+    }
+  },
   component: PasswordPage,
 });
 
@@ -86,6 +99,20 @@ const homeRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/',
   component: HomePage,
+});
+
+/** The own account (task 0.8d): sessions, trusted devices, the second step, the language. */
+const accountRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/account',
+  component: AccountPage,
+});
+
+/** The password change by choice, inside the layout; the forced one is `/password`. */
+const ownPasswordRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/account/password',
+  component: PasswordPage,
 });
 
 /**
@@ -111,7 +138,7 @@ const routeTree = rootRoute.addChildren([
   codeRoute,
   passwordRoute,
   setUpRoute,
-  appRoute.addChildren([homeRoute, patternsRoute]),
+  appRoute.addChildren([homeRoute, accountRoute, ownPasswordRoute, patternsRoute]),
 ]);
 
 /** `history` is given by tests; the browser's own is used otherwise. */

@@ -63,6 +63,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/auth/sign-out',
       'POST /api/auth/sign-out-everywhere',
       'POST /api/feedback',
+      'PUT /api/auth/language',
     ]);
   });
 });

@@ -160,7 +160,7 @@ test('keeps the session in a cookie scripts cannot read, and says when a device 
 
   await page.getByLabel(en.password.current, { exact: true }).fill(NEW_PASSWORD);
   await page.getByRole('button', { name: en.password.submit, exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText(en.password.changed);
+  await expect(page.getByText(en.password.changed)).toBeVisible();
 
   await page.getByRole('link', { name: en.password.back }).click();
   await signOut(page, en);

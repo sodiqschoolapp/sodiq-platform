@@ -27,6 +27,7 @@ import { UnsentBanner, UnsentGuard, useLeave } from '@/components/unsent/unsent-
 import { sessionQuery } from '@/features/auth/session';
 import { FeedbackButton } from '@/features/feedback/feedback-button';
 import { rememberTrustAsked, trustWasAsked } from '@/features/auth/trust-asked';
+import { useAccountLanguage } from '@/features/auth/use-account-language';
 import { useSignOut } from '@/features/auth/use-sign-out';
 
 /**
@@ -35,16 +36,19 @@ import { useSignOut } from '@/features/auth/use-sign-out';
  */
 function NotTrustedNote({ trusted }: { trusted: boolean }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(() => trustWasAsked());
+  const [dismissed, setDismissed] = useState(false);
 
-  // The device is trusted: the switch did what it was asked, nothing to say later.
+  // The device is trusted: the switch did what it was asked, nothing to say
+  // later, also when the trust ends while the layout stays (a password change
+  // by choice or "sign out everywhere", task 0.8d): the mark is read again at
+  // each render and is gone by then.
   useEffect(() => {
     if (trusted) {
       rememberTrustAsked(false);
     }
   }, [trusted]);
 
-  if (!open || trusted) {
+  if (dismissed || trusted || !trustWasAsked()) {
     return null;
   }
   return (
@@ -57,7 +61,7 @@ function NotTrustedNote({ trusted }: { trusted: boolean }) {
           aria-label={t('layout.dismiss')}
           onClick={() => {
             rememberTrustAsked(false);
-            setOpen(false);
+            setDismissed(true);
           }}
         >
           <XIcon aria-hidden />
@@ -79,6 +83,7 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { data: session } = useQuery(sessionQuery);
   const signOut = useSignOut();
+  const accountLanguage = useAccountLanguage();
   const { leave } = useLeave();
   const { branchId } = useView();
   useDismissQuestionsOnLeave();
@@ -107,7 +112,7 @@ export function AppLayout() {
           <CommandSearch />
           <FeedbackButton />
           <ThemeSwitch />
-          <LanguageChooser />
+          <LanguageChooser onChange={accountLanguage.mutate} />
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button variant="ghost" aria-label={t('layout.account')} />}
@@ -121,7 +126,14 @@ export function AppLayout() {
                 <DropdownMenuLabel>{t('layout.account')}</DropdownMenuLabel>
                 <DropdownMenuItem
                   onClick={() => {
-                    void navigate({ to: '/password' });
+                    void navigate({ to: '/account' });
+                  }}
+                >
+                  {t('account.title')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    void navigate({ to: '/account/password' });
                   }}
                 >
                   {t('layout.changePassword')}
@@ -148,7 +160,7 @@ export function AppLayout() {
         <SideMenu />
         <main className="min-w-0 flex-1 p-6">
           <NotTrustedNote trusted={session?.trustedUntil != null} />
-          <FailureAlert error={signOut.error} />
+          <FailureAlert error={signOut.error ?? accountLanguage.error} />
           <Outlet />
         </main>
       </div>

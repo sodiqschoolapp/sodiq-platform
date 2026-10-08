@@ -330,21 +330,30 @@ describe('the password page', () => {
   );
 
   // Edge cases: staff change their own password with the current one.
-  it('changes the password by choice, says so and stays', async () => {
+  // Decided by the owner (task 0.8d): by choice the page is inside the layout,
+  // under the account page; the old address still leads there.
+  it('changes the password by choice, says so and stays, inside the layout', async () => {
     fakeApi({
       'GET /api/auth/session': () => json(sessionOf()),
       'POST /api/auth/password': nothing,
     });
-    renderApp('/password');
+    const { router } = renderApp('/password');
     await heading(en.password.titleOwn);
+    expect(router.state.location.pathname).toBe('/account/password');
     expect(screen.getByText(en.password.othersEnd)).toBeDefined();
+    expect(screen.getByRole('navigation', { name: en.layout.menu })).toBeDefined();
+    expect(
+      within(screen.getByRole('navigation', { name: en.layout.breadcrumbs })).getByRole('link', {
+        name: en.account.title,
+      }),
+    ).toBeDefined();
 
     type(en.password.current, 'the-old-password');
     type(en.password.new, 'a-new-password-73');
     type(en.password.repeat, 'a-new-password-73');
     press(en.password.submit);
 
-    expect((await screen.findByRole('status')).textContent).toBe(en.password.changed);
+    expect((await screen.findByText(en.password.changed)).getAttribute('role')).toBe('status');
     expect(screen.getByLabelText<HTMLInputElement>(en.password.new).value).toBe('');
     expect(screen.getByRole('link', { name: en.password.back })).toBeDefined();
   });
@@ -666,10 +675,10 @@ describe('a password change on a trusted device', () => {
     type(en.password.new, 'a-new-password-73');
     type(en.password.repeat, 'a-new-password-73');
     press(en.password.submit);
-    await screen.findByRole('status');
+    await screen.findByText(en.password.changed);
     fireEvent.click(screen.getByRole('link', { name: en.password.back }));
 
-    await heading(en.home.title);
+    await heading(en.account.title);
     expect(screen.queryByText(en.layout.notTrusted)).toBeNull();
   });
 });

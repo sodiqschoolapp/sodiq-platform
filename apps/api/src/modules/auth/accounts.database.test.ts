@@ -1,3 +1,4 @@
+import { LANGUAGES } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
@@ -292,6 +293,71 @@ describe('accounts and sessions in the database', () => {
       await insert();
       await expect(insert()).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
       await asApp('delete from sign_in_throttle');
+    });
+  });
+
+  // docs/spec/12-ux-standards.md, Language: the choice is remembered, on the
+  // account (db/migrations/0012, task 0.8d). A new account is in Uzbek.
+  describe('keep the language of an account', () => {
+    it('as Uzbek when none is given', async () => {
+      const found = await sql<{ language: string }>`
+        select language from accounts where id = ${accountId}
+      `.execute(database.migrator);
+
+      expect(found.rows).toEqual([{ language: 'uz' }]);
+    });
+
+    it('with the same three languages as the code', async () => {
+      const found = await sql<{ definition: string }>`
+        select pg_get_constraintdef(oid) as definition from pg_constraint
+        where conrelid = 'public.accounts'::regclass and conname = 'accounts_language_check'
+      `.execute(database.migrator);
+      const names = [...(found.rows[0]?.definition ?? '').matchAll(/'([a-z]+)'/g)].map(
+        (match) => match[1],
+      );
+
+      expect(names.sort()).toEqual([...LANGUAGES].sort());
+    });
+
+    it.each(['de', 'UZ', 'uz-Latn', ''])('refuse the language "%s"', async (language) => {
+      await expect(asApp(`update accounts set language = '${language}'`)).rejects.toMatchObject({
+        code: CHECK_VIOLATION,
+      });
+    });
+
+    it('refuse a missing language', async () => {
+      await expect(asApp('update accounts set language = null')).rejects.toMatchObject({
+        code: NOT_NULL_VIOLATION,
+      });
+    });
+
+    it('let the application user change it', async () => {
+      await asApp(`update accounts set language = 'ru' where id = '${accountId}'`);
+      await asApp(`update accounts set language = 'uz' where id = '${accountId}'`);
+    });
+
+    // The migration adds `language` to the columns the application user may
+    // change and nothing else; the login still cannot be changed.
+    it('is the one column the migration lets the application user change', async () => {
+      const found = await sql<{ column_name: string }>`
+        select column_name from information_schema.column_privileges
+        where grantee = 'sodiq_app' and table_schema = 'public' and table_name = 'accounts'
+          and privilege_type = 'UPDATE'
+        order by column_name
+      `.execute(database.migrator);
+
+      expect(found.rows.map((row) => row.column_name)).toEqual([
+        'language',
+        'lock_reason',
+        'locked_at',
+        'locked_by',
+        'must_change_password',
+        'password_changed_at',
+        'password_expires_at',
+        'password_hash',
+        'password_reset_at',
+        'password_reset_by',
+      ]);
     });
   });
 });

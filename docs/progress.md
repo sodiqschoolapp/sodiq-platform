@@ -2,6 +2,41 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 October 2026: task 0.8d Own account page
+
+Plan approved by the owner on pull request #30 (`[review] approved`, with the answer to the plan's question: a language chosen in the tab before sign-in was complete is saved to the account at the first complete answer).
+
+Built:
+
+- `packages/shared`: `language.ts` (`LANGUAGES`, `Language`, `DEFAULT_LANGUAGE`, `languageSchema`, `isLanguage`, moved from the web, which re-exports them); `sessionResponseSchema.language`; `setLanguageSchema`.
+- `db/migrations/0012_account_language.sql`: `accounts.language` (`not null default 'uz'`, `accounts_language_check`), `grant update (language)`. Types regenerated.
+- API (`auth`): `PUT /api/auth/language` (`@AnySignedIn()`, refused while a step is owed; `Sessions.setLanguage` writes the change and `account.language_changed` under a lock of the account row, nothing for the same language); `ActiveSession.language` and `language` in every session answer; `Accounts.create` writes `uz`. `POST /api/auth/sign-out-everywhere` keeps the asking session, ends its trust (`auth.trust_ended`, reason `sign_out_everywhere`, cookie without `Expires`), checks after the lock that its own session is still open, and writes its entry at every call. `Sessions.endTrust` is shared with the password change. OpenAPI and the web client regenerated.
+- Web: the account's language follows the session answers (`features/auth/account-language.ts`, called from `createShell(i18n, history?)`); the mark of a choice before sign-in (`language-mark.ts`, `sodiq.languageChosen` per tab); `LanguageChooser` takes `onChange`; the layout's chooser and the account page's field save to the account (`useAccountLanguage`). Routes `/account` and `/account/password` inside the layout; `/password` is the forced change and redirects a complete session. `PasswordPage` has two frames. The menu entry every role has is "Account"; the top-bar account menu has Account, Change password, Sign out; `COMMON_PAGES` has both pages. The account page (`features/auth/account-page.tsx`, `account/*`): language, password link, the sessions table with "Sign out everywhere" (asks, naming the count of other sessions and the end of this device's trust), the trusted devices with Remove (asks; the current device leads to the sign-in page), the second step (on through the stages of `SecondStepSetUp`, taken out of `SetUpPage`; off with a code; required: no button). The trust note closes for good once the device is trusted. Texts `account.*` in uz, ru, en.
+- Tests: API `language.test.ts` (default, stored and said at sign-in and before the code, audit entry, no entry for the same language, validation, the three owed steps refused, 401, a lock or an end of the session after the guard), `accounts.database.test.ts` (default, the list equals `LANGUAGES`, refusals, the updatable columns), the "sign out everywhere" tests of `idle-sessions`, `trusted-devices` and `session-life` changed to the new rule (the asking session stays, its trust ends, the idle limit afterwards, the race after the guard, the entry at every call), `route-permissions` and the OpenAPI snapshot. Web `account-page.test.tsx` (19), `account-language.test.tsx` (10), the menu, search, shell and password tests updated. Browser `e2e/account.spec.ts` with the accounts `account` (three browsers: trust, the language across browsers, a device removed, sign out everywhere) and `accountSecondStep` (on and off from the page); `shell-tools.spec.ts` follows the search to `/account/password`.
+
+Reviewed by the spec reviewer and the permission reviewer (the route: ready). Fixed from the reviews: `setLanguage` checks after its lock that the account is not locked and the session still open (as the password change does), with two tests; the mark of a choice before sign-in survives a reload of the sign-in page and goes only when a session ends; `intro` of `SecondStepSetUp` is a text property the lint rule sees; the question of "sign out everywhere" counts from a fresh list; the tests of the wait on "Turn off" and of the error states of the devices and the second step; Uzbek quotation marks and two wordings.
+
+Left out, with the task that brings it:
+
+- Notification settings (0.9), photo, phone, email and name (2.x), the own sign-in history on the page (2.6), the theme on the account (owner: stays in the browser), a sign-out button per session (owner).
+- A readable device name from the `User-Agent` text (a parsing library; ask the owner if wanted).
+
+Open, for the owner:
+
+- The Uzbek and Russian wording of `account.*` was not reviewed by anybody.
+- Whether `Intl.DateTimeFormat('uz')` shows Latin script in the school's browsers (ICU's default for `uz` is Latin; the tests do not pin it).
+
+The next sessions must know:
+
+- `createShell(i18n, history?)`: the language of the tab is passed in; `renderApp(path, language)` of the tests builds both, and `sessionOf()` answers the language of the last `renderApp`. A test of the language switch gives `language` to `sessionOf` itself.
+- A session answer with a language other than the tab's switches the tab only once no step is owed; a tab that used the chooser before sign-in saves that language to the account at the first complete answer (`language-mark.ts`). `PUT /api/auth/language` is refused while a step is owed.
+- "Sign out everywhere" keeps the asking session: a test that needs every session of an account gone must also sign the asking one out.
+- The pages of the account are in `features/auth/account/`; a new section is an `AccountSection` with its own heading. The set-up stages are `SecondStepSetUp` with a `stage` render prop for the frame.
+- The password change by choice is at `/account/password`; `/password` redirects a complete session there. `STEP_PATH.password` is still `/password`.
+- Seeded browser-test accounts: `account` and `accountSecondStep` (`apps/api/src/testing/e2e/seed.ts`, `apps/web/e2e/accounts.ts`).
+
+The next task is 0.9.
+
 ## 7 October 2026: task 0.8c Web shell: menus and home pages per role
 
 Plan approved by the owner on pull request #27 (two `[review] approved` comments: the answers to seven questions and the menu table).

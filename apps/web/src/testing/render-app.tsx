@@ -35,6 +35,14 @@ export function refusal(code: ErrorCode, status: number, retryAfterSeconds?: num
 export const NORTH = { id: '0198a000-0000-7000-8000-000000000001', name: 'North' };
 export const SOUTH = { id: '0198a000-0000-7000-8000-000000000002', name: 'South' };
 
+/**
+ * The language of the last `renderApp`: the account of `sessionOf` is in it,
+ * so that the app does not switch language at the first answer (task 0.8d: the
+ * account's language applies to a complete session). A test of that switch
+ * gives `language` itself.
+ */
+let renderedLanguage: Language = 'en';
+
 /** A session that owes no step and holds the Teacher role in one branch; give the fields that differ. */
 export function sessionOf(fields: Partial<SessionResponse> = {}): SessionResponse {
   return {
@@ -43,6 +51,7 @@ export function sessionOf(fields: Partial<SessionResponse> = {}): SessionRespons
     mustChangePassword: false,
     passwordResetBy: null,
     trustedUntil: null,
+    language: renderedLanguage,
     assignments: [{ role: 'teacher', branchId: NORTH.id }],
     branches: [NORTH],
     ...fields,
@@ -84,7 +93,9 @@ export function renderApp(
   language: Language = 'en',
   theme: ThemeStore = new ThemeStore(),
 ): Shell {
-  const shell = createShell(createMemoryHistory({ initialEntries: [path] }));
-  render(<App i18n={createI18n(language)} shell={shell} theme={theme} />);
+  renderedLanguage = language;
+  const i18n = createI18n(language);
+  const shell = createShell(i18n, createMemoryHistory({ initialEntries: [path] }));
+  render(<App i18n={i18n} shell={shell} theme={theme} />);
   return shell;
 }

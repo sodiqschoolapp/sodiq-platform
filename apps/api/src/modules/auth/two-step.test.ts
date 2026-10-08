@@ -142,6 +142,7 @@ describe('the second step of sign-in', () => {
         secondStep: 'set_up_required',
         mustChangePassword: true,
         passwordResetBy: null,
+        language: 'uz',
         trustedUntil: null,
         assignments: [],
         branches: [],
@@ -341,6 +342,7 @@ describe('the second step of sign-in', () => {
         secondStep: 'pending',
         mustChangePassword: false,
         passwordResetBy: null,
+        language: 'uz',
         trustedUntil: null,
         assignments: [],
         branches: [],
@@ -377,6 +379,7 @@ describe('the second step of sign-in', () => {
         secondStep: 'passed',
         mustChangePassword: false,
         passwordResetBy: null,
+        language: 'uz',
         trustedUntil: null,
         // The account holds the role the kit gives new accounts: shown once the step is passed.
         assignments: [{ role: 'academic_vice_principal', branchId: expect.any(String) as string }],

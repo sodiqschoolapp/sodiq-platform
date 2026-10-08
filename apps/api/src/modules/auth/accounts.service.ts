@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import type { Clock } from '@sodiq/shared';
+import { DEFAULT_LANGUAGE, type Clock } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import type { Transaction } from '../../database/transactions.js';
@@ -81,6 +81,8 @@ export class Accounts {
           password_expires_at: new Date(now.getTime() + FIRST_PASSWORD_VALID_MS),
           created_at: now,
           created_by: account.createdBy,
+          // A new account is in Uzbek (decided by the owner, task 0.8d).
+          language: DEFAULT_LANGUAGE,
         })
         .onConflict((conflict) => conflict.column('login').doNothing())
         .returning('id')

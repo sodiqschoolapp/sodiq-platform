@@ -36,14 +36,13 @@ test('the theme is kept, Ctrl+K and the search button open the pages, and a repo
   const search = page.getByRole('dialog', { name: en.search.label });
   await expect(search).toBeVisible();
   await expect(search.getByRole('combobox', { name: en.search.label })).toBeFocused();
-  await expect(search.getByRole('option')).toHaveCount(3);
+  await expect(search.getByRole('option')).toHaveCount(4);
   await page.keyboard.type('pass');
   await expect(search.getByRole('option')).toHaveCount(1);
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/\/password$/);
+  await expect(page).toHaveURL(/\/account\/password$/);
   await expect(heading(page, en.password.titleOwn)).toBeVisible();
   await expect(search).toBeHidden();
-  // The password page stands outside the layout: back to a page with the top bar.
   await page.goto('/');
   await expect(heading(page, en.home.title)).toBeVisible();
 

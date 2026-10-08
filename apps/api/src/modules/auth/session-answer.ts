@@ -21,6 +21,7 @@ export function answerOf(session: ActiveSession, branches: BranchChoice[]): Sess
     mustChangePassword: session.mustChangePassword,
     passwordResetBy: session.passwordResetBy,
     trustedUntil: session.trustedUntil?.toISOString() ?? null,
+    language: session.language,
     assignments: owed
       ? []
       : ROLES.flatMap((role) =>

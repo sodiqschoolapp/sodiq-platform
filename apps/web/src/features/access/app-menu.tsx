@@ -21,7 +21,8 @@ import { useMenuPages } from './use-menu';
 function MenuLinks({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation();
   const pages = useMenuPages();
-  const entries = [...pages, { titleKey: 'layout.changePassword', to: '/password' } as const];
+  // The own account page (task 0.8d) is the entry every role has, after the pages of the role.
+  const entries = [...pages, { titleKey: 'account.title', to: '/account' } as const];
 
   return (
     <ul className="grid gap-1">
