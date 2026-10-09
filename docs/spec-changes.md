@@ -2,6 +2,12 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 9 October 2026: the web app is served by the API service, and the cost of the test environment
+
+- What changed: the technology file no longer says that the web app is static files on Render's CDN. The built files are served by the server on the same address as the API, so that the cookie session, the cross-site check and the live connection share one origin, and there is no separate web server or CDN. The running cost table gains a jobs worker in the test environment (two instances plus one worker, $21 instead of $14), the web app row becomes "served by the server, no service of its own", a row for the Neon test database is added (Launch plan, 0.25 CU, awake all month, about $19), and the total becomes about $231 to $316 a month.
+- Why: task 0.10 (pull request 35, merged) set up the test environment and found that a Render static site cannot carry the WebSocket of the live notifications from task 0.9, so the API serves the web app. Decided by the owner in answers 1 to 3 of the plan review: the web app is served by the API on one address; the test environment has its own jobs worker; the test database is on the Neon Launch plan, because the Free plan suspends the compute after 100 CU-hours a month and the test API keeps it awake all month.
+- Files: `docs/spec/13-technology.md` (Technology table, "Web app" row; Hosting and data, first bullet; Running cost table).
+
 ## 8 October 2026: the Principal reads his own notifications and marks them as read
 
 - What changed: the list of changes to his own account that the Principal may make (edge cases, "Who can act": password, language, notification settings and photo, his sessions and sign-out, his second step and his trusted devices, sending a feedback report about the app) gains one item: reading his own notifications and marking them as read. The list stays closed: phone, email and name stay with the Super Admin and the Academic Vice Principal.

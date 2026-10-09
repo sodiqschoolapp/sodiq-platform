@@ -8,7 +8,7 @@ The choice is made for correctness first, then speed, then simplicity for one de
 | Layer | Choice | Why |
 | --- | --- | --- |
 | Language | TypeScript everywhere, strict mode | One set of types for browser and server; a class of bugs is caught before the code runs. |
-| Web app | React single-page app: Vite, TanStack Router, TanStack Query | The whole app is behind sign-in, so server rendering adds nothing. The app is static files on a CDN: fast to load, simple to host, and with no web server of its own to keep patched. The mobile apps can reuse logic later. |
+| Web app | React single-page app: Vite, TanStack Router, TanStack Query | The whole app is behind sign-in, so server rendering adds nothing. The built files are served by the server on the same address as the API, so that the cookie session, the cross-site check and the live connection share one origin; there is no separate web server or CDN to keep. The mobile apps can reuse logic later. |
 | Design system | Tailwind CSS with shadcn/ui components | Accessible building blocks, one consistent look, fast to build. |
 | Journal grid | AG Grid Community (free) | Built for large editable tables: fixed columns, column groups, keyboard entry, undo, smooth scrolling over hundreds of columns. Selecting a range of cells, copying and pasting ranges and the fill handle need one Enterprise licence ($999, paid once). It is bought only if teachers ask for those. |
 | Timetable board | Custom board with Pragmatic drag and drop | Drag and drop with live conflict marking, fitted to our rules. It stays smooth with more than a thousand drop cells on one board. |
@@ -45,7 +45,7 @@ All result calculations live in one module with no other dependencies. The journ
 
 ## Hosting and data
 
-- [ ] Hosting is outside Uzbekistan, in Frankfurt (decided by the school). The server, the jobs worker and the solver run on Render; the web app is served as static files from Render's CDN; the database is on Neon; files are on Cloudflare R2. From Tashkent, Frankfurt answers in about 85 ms.
+- [ ] Hosting is outside Uzbekistan, in Frankfurt (decided by the school). The server, the jobs worker and the solver run on Render; the web app's built files are served by the server on the same address (decided in task 0.10: Render's static sites cannot carry the WebSocket of the live notifications); the database is on Neon; files are on Cloudflare R2. From Tashkent, Frankfurt answers in about 85 ms.
 
 * [ ] Three environments: development, test (a copy of real structure with invented data) and production.
 
@@ -62,18 +62,19 @@ Prices for Release 1, read on each provider's own pricing page on 3 October 2026
 | Render workspace | Pro | $25 flat | $25 |
 | Render server | 2 instances of 1 CPU, 2 GB | $25 each | $50 |
 | Render jobs worker | 1 CPU, 2 GB | $25 | $25 |
-| Render test environment | 2 instances of 0.5 CPU, 512 MB | $7 each | $14 |
+| Render test environment | 2 instances of 0.5 CPU, 512 MB, and 1 jobs worker of the same size | $7 each | $21 |
 | Render solver | 4 CPU, 8 GB, only while generating | $0.00405 a minute | under $5 |
-| Render web app | Static site | Free | $0 |
+| Render web app | Served by the server, no service of its own | — | $0 |
 | Neon database | Scale plan, 0.5 to 2 CU, always on | $0.222 per CU-hour | $81 to $162 |
 | Neon storage and restore history | About 10 GB each | $0.35 and $0.20 per GB | about $6 |
+| Neon test database | Launch plan, 0.25 CU, awake all month (the test API keeps it awake) | $0.106 per CU-hour | about $19 |
 | Cloudflare R2 | First 10 GB free | $0.015 per GB after that | $0 |
 | Sentry | Developer | Free | $0 |
 | Grafana Cloud | Free | Free | $0 |
 | UptimeRobot | Free | Free | $0 |
 | Resend | Free, 3,000 emails a month | Free | $0 |
 | GitHub | Team, 1 user | $4 per user | $4 |
-| **Total** |  |  | **about $205 to $290** |
+| **Total** |  |  | **about $231 to $316** |
 
 Servers of 2 CPU and 4 GB cost $85 each instead of $25, which adds $120 a month. Later or optional: Sentry Team at $29 a month ($26 if paid yearly), Resend Pro at $20 a month for 50,000 emails, Telegram Gateway at $0.01 per delivered sign-in code, and AG Grid Enterprise at $999 once per developer.
 
