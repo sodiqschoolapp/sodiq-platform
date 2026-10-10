@@ -44,6 +44,11 @@ The next sessions must know:
 
 The next task is 1.2.
 
+## 10 October 2026: task 0.10, follow-up from the first run of `docs/deploy.md`
+
+- `db/setup/server.sql` asks the passwords with `\prompt` and `create role … password` again: Neon refuses psql's `\password` ("Neon only supports being given plaintext passwords"); the header and step 1.3 of `docs/deploy.md` say so, that the typed password shows (close the terminal), and that it is letters and digits only because it goes into an address.
+- `render.yaml` runs the pinned pnpm through `npx -y pnpm@<version>` in every command of both builds: Render's build machine has a read-only global npm folder, so `npm install -g` fails with EROFS; `render-blueprint.test.ts` keeps the version equal to `packageManager` in the npx form, and step 3.3 of `docs/deploy.md` describes it.
+
 ## 9 October 2026: task 0.10 Test environment and deploy pipeline
 
 Plan approved by the owner on pull request #35 (`[review] approved`, with the answers to the six questions and six corrections). The decisions are in `docs/decisions.md`, 9 October 2026. Answer 1 is a spec change: the API serves the web app's built files on its own origin (no Render static site, which cannot carry the WebSocket of 0.9); the owner corrects `13` (Web app row, Hosting bullet, the cost table) with `/spec-change` after this merge. Nothing under `docs/spec/` was touched here.
