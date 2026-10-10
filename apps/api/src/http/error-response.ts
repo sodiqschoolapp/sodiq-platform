@@ -33,6 +33,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   own_request: 'Nobody decides their own request.',
   cross_site_request: 'The request came from another site.',
   request_key_reused: 'The request key was already used for another request.',
+  already_exists: 'A record of this name already exists here.',
+  archive_refused: 'It cannot be archived while a room on it is in use or under repair.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };

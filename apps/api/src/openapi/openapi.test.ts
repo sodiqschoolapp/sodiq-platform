@@ -55,6 +55,18 @@ describe('OpenAPI document', () => {
         '/api/notifications',
         '/api/notifications/read-all',
         '/api/notifications/{id}/read',
+        '/api/setup/branch',
+        '/api/setup/branches',
+        '/api/setup/buildings',
+        '/api/setup/buildings/{id}',
+        '/api/setup/buildings/{id}/archive',
+        '/api/setup/buildings/{id}/floors',
+        '/api/setup/buildings/{id}/restore',
+        '/api/setup/floors/{id}',
+        '/api/setup/floors/{id}/archive',
+        '/api/setup/floors/{id}/restore',
+        '/api/setup/rooms',
+        '/api/setup/rooms/{id}',
       ]);
       expect(document.paths['/api/health']?.get?.responses).toEqual({
         '200': {

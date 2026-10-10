@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { ROLES } from '@sodiq/shared';
+import { ROLES, type Role } from '@sodiq/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
@@ -34,6 +34,9 @@ import { createTestDatabase, type TestDatabase } from '../../testing/test-databa
  * the roles may do is decided in `PERMISSIONS` (`packages/shared`); this list
  * is the second, independent statement of it.
  */
+/** The roles that read the branch record, the buildings, the floors and the rooms of a branch. */
+const SETUP_VIEWERS: readonly Role[] = ['super_admin', 'principal', 'academic_vice_principal'];
+
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
@@ -59,6 +62,25 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/notifications': 'any_signed_in',
   'POST /api/notifications/:id/read': 'any_signed_in',
   'POST /api/notifications/read-all': 'any_signed_in',
+  // School setup (task 1.1; docs/spec/02-roles-and-access.md, Super Admin:
+  // "Only this role creates branches, buildings, floors and rooms"; Principal:
+  // "Changes nothing"; the Academic Vice Principal's view approved by the
+  // owner, pull request #37, answer 5). Creating a branch names no branch.
+  'POST /api/setup/branches': { branch: 'none', roles: ['super_admin'] },
+  'GET /api/setup/branch': { branch: 'request', roles: SETUP_VIEWERS },
+  'PUT /api/setup/branch': { branch: 'request', roles: ['super_admin'] },
+  'GET /api/setup/buildings': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/setup/buildings': { branch: 'request', roles: ['super_admin'] },
+  'PUT /api/setup/buildings/:id': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/setup/buildings/:id/archive': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/setup/buildings/:id/restore': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/setup/buildings/:id/floors': { branch: 'request', roles: ['super_admin'] },
+  'PUT /api/setup/floors/:id': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/setup/floors/:id/archive': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/setup/floors/:id/restore': { branch: 'request', roles: ['super_admin'] },
+  'GET /api/setup/rooms': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/setup/rooms': { branch: 'request', roles: ['super_admin'] },
+  'PUT /api/setup/rooms/:id': { branch: 'request', roles: ['super_admin'] },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

@@ -55,6 +55,10 @@ export const ERROR_CODES = [
   'cross_site_request',
   /** The request key was already used for another action, other input or other branches, or by another account. */
   'request_key_reused',
+  /** A record of this name already exists where it would be created or restored (task 1.1). */
+  'already_exists',
+  /** A building or a floor cannot be archived while a room on it is in use or under repair (task 1.1). */
+  'archive_refused',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
