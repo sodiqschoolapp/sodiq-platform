@@ -58,6 +58,7 @@ describe('buildings and floors', () => {
   let south: string;
   let admin: string;
   let principal: string;
+  let vicePrincipal: string;
   const clock = new FixedClock(START);
 
   beforeAll(async () => {
@@ -72,6 +73,12 @@ describe('buildings and floors', () => {
     const principalBrowser = await kit.fullSession('Bobur', 'Aliyev');
     await kit.giveRole(principalBrowser.account.id, { role: 'principal', branchId: north });
     principal = principalBrowser.cookie;
+    const viceBrowser = await kit.completeSession('Dilnoza', 'Saidova');
+    await kit.giveRole(viceBrowser.account.id, {
+      role: 'academic_vice_principal',
+      branchId: north,
+    });
+    vicePrincipal = viceBrowser.cookie;
   });
 
   afterAll(async () => {
@@ -183,6 +190,7 @@ describe('buildings and floors', () => {
       const written = await entries('building.edit', id);
       expect(written).toHaveLength(1);
       expect(written[0]).toMatchObject({
+        assignment_id: expect.any(String) as string,
         old_value: { name: 'Annex' },
         new_value: { name: 'Annex B' },
       });
@@ -264,7 +272,9 @@ describe('buildings and floors', () => {
 
       expect(renamed.status).toBe(200);
       expect(renamed.body).toMatchObject({ id: floorId, name: '1' });
-      expect(await entries('floor.edit', floorId)).toHaveLength(1);
+      const written = await entries('floor.edit', floorId);
+      expect(written).toHaveLength(1);
+      expect(written[0]).toMatchObject({ assignment_id: expect.any(String) as string });
       expect((await put(`/api/setup/floors/${floorId}`, { name: '2' }, admin, south)).status).toBe(
         404,
       );
@@ -314,12 +324,14 @@ describe('buildings and floors', () => {
       const archives = await entries('floor.archive', floorId);
       expect(archives).toHaveLength(1);
       expect(archives[0]).toMatchObject({
+        assignment_id: expect.any(String) as string,
         old_value: { archivedAt: null },
         new_value: { archivedAt: new Date(START).toISOString() },
       });
       const restores = await entries('floor.restore', floorId);
       expect(restores).toHaveLength(1);
       expect(restores[0]).toMatchObject({
+        assignment_id: expect.any(String) as string,
         old_value: { archivedAt: new Date(START).toISOString() },
         new_value: { archivedAt: null },
       });
@@ -333,7 +345,48 @@ describe('buildings and floors', () => {
       expect((await post(`/api/setup/buildings/${id}/floors`, { name: '2' })).status).toBe(404);
       const response = await post(`/api/setup/floors/${floorId}/restore`);
       expect(response.status).toBe(409);
-      expect(errorCode(response)).toBe('request_refused');
+      expect(errorCode(response)).toBe('archived_record');
+    });
+
+    // Spec review (should-fix 2): the unique indexes cover active names only,
+    // so an archived record keeps its name until it is restored.
+    it('is not renamed while archived, nor is its building; nothing is written', async () => {
+      const id = await building('Frozen');
+      const floorId = await floor(id, '1');
+      expect((await post(`/api/setup/floors/${floorId}/archive`)).status).toBe(200);
+
+      const floorRenamed = await put(`/api/setup/floors/${floorId}`, { name: '2' });
+      expect(floorRenamed.status).toBe(409);
+      expect(errorCode(floorRenamed)).toBe('archived_record');
+
+      expect((await post(`/api/setup/buildings/${id}/archive`)).status).toBe(200);
+      const buildingRenamed = await put(`/api/setup/buildings/${id}`, { name: 'Thawed' });
+      expect(buildingRenamed.status).toBe(409);
+      expect(errorCode(buildingRenamed)).toBe('archived_record');
+      expect(await entries('floor.edit', floorId)).toHaveLength(0);
+      expect(await entries('building.edit', id)).toHaveLength(0);
+    });
+
+    // Permission review: the records of another branch, on every route that names one.
+    it('of another branch is not found by the restore, the archive and the floors of its building', async () => {
+      const id = await building('Far');
+      const floorId = await floor(id, '1');
+      const southBuilding = await database.migrator
+        .insertInto('buildings')
+        .values({ branch_id: south, name: 'Far south' })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+
+      expect((await post(`/api/setup/buildings/${id}/restore`, {}, admin, south)).status).toBe(404);
+      expect((await post(`/api/setup/floors/${floorId}/archive`, {}, admin, south)).status).toBe(
+        404,
+      );
+      expect((await post(`/api/setup/floors/${floorId}/restore`, {}, admin, south)).status).toBe(
+        404,
+      );
+      expect(
+        (await post(`/api/setup/buildings/${southBuilding.id}/floors`, { name: '1' })).status,
+      ).toBe(404);
     });
 
     it('cannot be restored while an active floor of its name exists in the building', async () => {
@@ -386,6 +439,7 @@ describe('buildings and floors', () => {
       const archives = await entries('building.archive', id);
       expect(archives).toHaveLength(1);
       expect(archives[0]).toMatchObject({
+        assignment_id: expect.any(String) as string,
         old_value: { archivedAt: null },
         new_value: { archivedAt: new Date(LATER).toISOString() },
         details: { floorIds: [ground, first] },
@@ -414,6 +468,7 @@ describe('buildings and floors', () => {
       const restores = await entries('building.restore', id);
       expect(restores).toHaveLength(1);
       expect(restores[0]).toMatchObject({
+        assignment_id: expect.any(String) as string,
         old_value: { archivedAt: new Date(LATER).toISOString() },
         new_value: { archivedAt: null },
         details: { floorIds: [ground, first] },
@@ -423,8 +478,28 @@ describe('buildings and floors', () => {
       expect(await entries('building.restore', id)).toHaveLength(1);
     });
 
-    it('is refused for the Principal', async () => {
+    it('is refused for the Principal and the Academic Vice Principal on every writing route, and in another branch', async () => {
       const id = await building('Guarded');
+      const floorId = await floor(id, '1');
+      const writes = [
+        () => post('/api/setup/buildings', { name: 'P' }, vicePrincipal),
+        () => put(`/api/setup/buildings/${id}`, { name: 'P' }, vicePrincipal),
+        () => post(`/api/setup/buildings/${id}/floors`, { name: '2' }, vicePrincipal),
+        () => put(`/api/setup/floors/${floorId}`, { name: '2' }, vicePrincipal),
+        () => post(`/api/setup/floors/${floorId}/archive`, {}, vicePrincipal),
+        () => post(`/api/setup/floors/${floorId}/restore`, {}, vicePrincipal),
+        () => post(`/api/setup/buildings/${id}/archive`, {}, vicePrincipal),
+        () => post(`/api/setup/buildings/${id}/restore`, {}, vicePrincipal),
+        () => put(`/api/setup/buildings/${id}`, { name: 'P' }, principal),
+        () => put(`/api/setup/floors/${floorId}`, { name: '2' }, principal),
+        () => post(`/api/setup/floors/${floorId}/archive`, {}, principal),
+        () => get('/api/setup/buildings', vicePrincipal, south),
+      ];
+      for (const write of writes) {
+        const response = await write();
+        expect(response.status).toBe(403);
+        expect(errorCode(response)).toBe('permission_denied');
+      }
 
       expect(errorCode(await post(`/api/setup/buildings/${id}/archive`, {}, principal))).toBe(
         'permission_denied',

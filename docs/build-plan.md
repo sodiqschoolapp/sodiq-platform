@@ -123,7 +123,7 @@ How to read the task lines:
 
 ## Phase 1. School setup
 
-- [ ] **1.1 Branches, buildings, floors and rooms**
+- [x] **1.1 Branches, buildings, floors and rooms**
   - Read: `03`, `edge/timetable` (Structure).
   - Build: full branch record on top of the table from 0.4; buildings and floors; rooms with type, capacity, status and the "shared" switch; the room list.
   - Done when: the Super Admin can create and edit them and other roles are refused.

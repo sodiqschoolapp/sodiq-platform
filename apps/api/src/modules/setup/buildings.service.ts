@@ -164,12 +164,16 @@ export class Buildings {
       this.transactions.run(access.branchIds, async (transaction) => {
         const row = await transaction
           .selectFrom('buildings')
-          .select(['name'])
+          .select(['name', 'archived_at'])
           .where('id', '=', id)
           .forUpdate()
           .executeTakeFirst();
         if (row === undefined) {
           throw notFound();
+        }
+        if (row.archived_at !== null) {
+          // The unique index covers active names only: an archived record keeps its name.
+          throw new ApiException('archived_record', 409);
         }
         if (row.name !== record.name) {
           await transaction
@@ -346,12 +350,15 @@ export class Buildings {
       this.transactions.run(access.branchIds, async (transaction) => {
         const row = await transaction
           .selectFrom('floors')
-          .select(['name'])
+          .select(['name', 'archived_at'])
           .where('id', '=', id)
           .forUpdate()
           .executeTakeFirst();
         if (row === undefined) {
           throw notFound();
+        }
+        if (row.archived_at !== null) {
+          throw new ApiException('archived_record', 409);
         }
         if (row.name !== record.name) {
           await transaction
@@ -411,7 +418,7 @@ export class Buildings {
   }
 
   /**
-   * Brings back an archived floor. Refused (`request_refused`) while its
+   * Brings back an archived floor. Refused (`archived_record`) while its
    * building is archived: the building is restored first, which brings the
    * floors archived with it. `already_exists` while an active floor of that
    * name is in the building.
@@ -431,7 +438,7 @@ export class Buildings {
         }
         if (row.archived_at !== null) {
           if (row.building_archived_at !== null) {
-            throw new ApiException('request_refused', 409);
+            throw new ApiException('archived_record', 409);
           }
           await transaction
             .updateTable('floors')

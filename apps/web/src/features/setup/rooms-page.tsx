@@ -19,6 +19,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
+import { isNamedRefusal } from './building-panel';
 import { RoomForm } from './room-form';
 import { activeFloorsOf, buildingsQuery, roomsQuery, SETUP_KEY } from './setup-api';
 
@@ -50,7 +51,7 @@ export function RoomsPage() {
   const queryClient = useQueryClient();
   const leave = useLeave();
   const [adding, setAdding] = useState(false);
-  const [changed, setChanged] = useState<number | null>(null);
+  const [changed, setChanged] = useState<{ done: number; refused: string[] } | null>(null);
   const canEdit = role !== null && permits(PERMISSIONS, role, 'rooms', 'edit');
   const canCreate = role !== null && permits(PERMISSIONS, role, 'rooms', 'create');
   const rooms = useQuery(roomsQuery(branchId));
@@ -87,20 +88,30 @@ export function RoomsPage() {
     },
   });
 
-  /** One call per room that is not in that status yet, in order. */
+  /**
+   * One call per room that is not in that status yet, in order. A room on an
+   * archived floor cannot be put in use: it is named, and the others go on.
+   */
   const setStatus = useMutation({
     mutationFn: async ({ rows, status }: { rows: Room[]; status: RoomStatus }) => {
-      let done = 0;
+      const result = { done: 0, refused: [] as string[] };
       for (const row of rows.filter((room) => room.status !== status)) {
-        await answerOf(
-          api.PUT('/api/setup/rooms/{id}', {
-            params: { header: branchHeader(), path: { id: row.id } },
-            body: recordOf(row, status),
-          }),
-        );
-        done += 1;
+        try {
+          await answerOf(
+            api.PUT('/api/setup/rooms/{id}', {
+              params: { header: branchHeader(), path: { id: row.id } },
+              body: recordOf(row, status),
+            }),
+          );
+          result.done += 1;
+        } catch (error) {
+          if (!isNamedRefusal(error)) {
+            throw error;
+          }
+          result.refused.push(row.name);
+        }
       }
-      return done;
+      return result;
     },
     onSuccess: setChanged,
     onSettled: refresh,
@@ -299,7 +310,10 @@ export function RoomsPage() {
       )}
       {changed !== null && (
         <p role="status" className="mb-3 text-sm">
-          {t('setup.rooms.statusChanged', { count: changed, n: number.format(changed) })}
+          {t('setup.rooms.statusChanged', { count: changed.done, n: number.format(changed.done) })}
+          {changed.refused.length > 0 && (
+            <> {t('setup.rooms.refusedNames', { names: changed.refused.join(', ') })}</>
+          )}
         </p>
       )}
       <ListPage

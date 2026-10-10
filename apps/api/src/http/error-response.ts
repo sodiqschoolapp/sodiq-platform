@@ -35,6 +35,9 @@ const MESSAGE: Record<ErrorCode, string> = {
   request_key_reused: 'The request key was already used for another request.',
   already_exists: 'A record of this name already exists here.',
   archive_refused: 'It cannot be archived while a room on it is in use or under repair.',
+  floor_archived:
+    'The floor is archived: a room goes on an active floor, and only a closed room stays on an archived one.',
+  archived_record: 'The record, or the building it is in, is archived. Restore it first.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };

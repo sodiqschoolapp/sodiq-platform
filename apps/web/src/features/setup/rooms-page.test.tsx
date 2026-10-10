@@ -283,6 +283,28 @@ describe('the room list', () => {
     });
   });
 
+  it('names the rooms whose floor is archived when the status of several is changed, and changes the others', async () => {
+    const { calls } = await openList(superAdmin(), ROOMS, [MAIN, ANNEX], {
+      [`PUT /api/setup/rooms/${uid(101)}`]: () => refusal('floor_archived', 409),
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(3);
+    });
+
+    fireEvent.click(screen.getByLabelText(en.list.selectRow.replace('{{name}}', '101')));
+    fireEvent.click(screen.getByLabelText(en.list.selectRow.replace('{{name}}', '102')));
+    fireEvent.click(screen.getByRole('button', { name: en.setup.rooms.setStatus.closed }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.setup.rooms.setStatus.closed }));
+
+    const expected = `${en.setup.rooms.statusChanged_one.replace('{{n}}', '1')} ${en.setup.rooms.refusedNames.replace('{{names}}', '101')}`;
+    await waitFor(() => {
+      const statuses = within(screen.getByRole('main')).getAllByRole('status');
+      expect(statuses.map((status) => status.textContent)).toContain(expected);
+    });
+    expect(calls.filter((call) => call.route.startsWith('PUT /api/setup/rooms/'))).toHaveLength(2);
+  });
+
   it('shows the Principal the rooms read only: no adding, no checkboxes, the record as a list', async () => {
     await openList(principal());
     await waitFor(() => {

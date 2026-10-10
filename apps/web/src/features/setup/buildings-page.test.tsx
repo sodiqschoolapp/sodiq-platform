@@ -257,6 +257,18 @@ describe('the buildings page', () => {
     expect(within(panel).getAllByRole('row')).toHaveLength(4);
   });
 
+  it('shows an archived building without its rename form, with a way to restore it', async () => {
+    await openList();
+
+    fireEvent.click(rowButton('Annex'));
+
+    const panel = await screen.findByRole('complementary', { name: 'Annex' });
+    expect(within(panel).queryByRole('form', { name: 'Annex' })).toBeNull();
+    expect(
+      within(panel).getByRole('button', { name: en.setup.buildings.restoreBuilding }),
+    ).toBeDefined();
+  });
+
   it('says what the page is for when there is no building, and offers the first action', async () => {
     await openList(superAdmin(), []);
 

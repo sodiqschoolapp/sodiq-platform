@@ -201,7 +201,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
 
   return (
     <div className="grid gap-6">
-      {canEdit ? (
+      {canEdit && building.archivedAt === null ? (
         <BuildingForm
           key={building.id}
           building={building}
@@ -352,6 +352,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
   );
 }
 
-/** Whether a refusal is the one for a room still in use: shown as its own text by the lists. */
-export const isArchiveRefusal = (error: unknown): boolean =>
-  error instanceof ApiFailure && error.code === 'archive_refused';
+/** Whether a refusal is one the lists name beside the rows that went through, instead of stopping. */
+export const isNamedRefusal = (error: unknown): boolean =>
+  error instanceof ApiFailure &&
+  (error.code === 'archive_refused' || error.code === 'floor_archived');

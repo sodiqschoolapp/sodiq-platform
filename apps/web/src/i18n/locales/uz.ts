@@ -71,6 +71,9 @@ export const uz: Texts<'one' | 'other'> = {
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
     archive_refused:
       'Undagi xona foydalanishda yoki taʼmirda ekan, arxivlab boʻlmaydi. Avval xonalarni yoping.',
+    floor_archived:
+      'Qavat arxivlangan. Xonani faol qavatga koʻchiring yoki avval qavatni tiklang; arxivlangan qavatdagi xona faqat yopiq qolishi mumkin.',
+    archived_record: 'U yoki u joylashgan bino arxivlangan. Avval tiklang, keyin oʻzgartiring.',
     internal_error:
       'Serverda xatolik yuz berdi. Birozdan keyin qayta urinib koʻring. Takrorlansa, administratorga xabar bering.',
   },
@@ -350,6 +353,7 @@ export const uz: Texts<'one' | 'other'> = {
       setStatusTitle_one: '{{n}} ta xonaning holati oʻzgartirilsinmi?',
       setStatusTitle_other: '{{n}} ta xonaning holati oʻzgartirilsinmi?',
       setStatusText: 'Har bir tanlangan xona «{{status}}» holatini oladi.',
+      refusedNames: 'Oʻzgartirilmadi, chunki qavati arxivlangan: {{names}}.',
       statusChanged_one: '{{n}} ta xonaning holati oʻzgartirildi.',
       statusChanged_other: '{{n}} ta xonaning holati oʻzgartirildi.',
     },

@@ -59,6 +59,10 @@ export const ERROR_CODES = [
   'already_exists',
   /** A building or a floor cannot be archived while a room on it is in use or under repair (task 1.1). */
   'archive_refused',
+  /** The floor of the room is archived: a room is put on an active floor, and only a closed room stays on an archived one (task 1.1). */
+  'floor_archived',
+  /** The record, or the building it is in, is archived: nothing changes until it is restored (task 1.1). */
+  'archived_record',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

@@ -68,6 +68,9 @@ export const en = {
     already_exists: 'A record of this name already exists here. Choose another name.',
     archive_refused:
       'It cannot be archived while a room in it is in use or under repair. Close the rooms first.',
+    floor_archived:
+      'The floor is archived. Move the room to an active floor, or restore the floor first; a room on an archived floor can only stay closed.',
+    archived_record: 'It is archived, or the building it is in is. Restore first, then change it.',
     internal_error:
       'Something went wrong on the server. Try again in a moment. If it happens again, tell an administrator.',
   } satisfies Record<ErrorCode, string>,
@@ -347,6 +350,7 @@ export const en = {
       setStatusTitle_one: 'Change the status of {{n}} room?',
       setStatusTitle_other: 'Change the status of {{n}} rooms?',
       setStatusText: 'Each selected room gets the status "{{status}}".',
+      refusedNames: 'Not changed, because their floor is archived: {{names}}.',
       statusChanged_one: 'The status of {{n}} room was changed.',
       statusChanged_other: 'The status of {{n}} rooms was changed.',
     },

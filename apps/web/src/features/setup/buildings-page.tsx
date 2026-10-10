@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
-import { BuildingForm, BuildingPanel, isArchiveRefusal } from './building-panel';
+import { BuildingForm, BuildingPanel, isNamedRefusal } from './building-panel';
 import { buildingsQuery, SETUP_KEY } from './setup-api';
 
 /** What a bulk archive or restore did: how many went through, and which were refused by name. */
@@ -71,7 +71,7 @@ export function BuildingsPage() {
           );
           result.done += 1;
         } catch (error) {
-          if (!isArchiveRefusal(error)) {
+          if (!isNamedRefusal(error)) {
             throw error;
           }
           result.refused.push(row.name);

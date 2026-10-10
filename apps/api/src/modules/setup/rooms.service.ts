@@ -7,6 +7,7 @@ import {
   type RoomRecord,
 } from '@sodiq/shared';
 import { Transactions, type Transaction } from '../../database/transactions.js';
+import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { changesOf, notFound, refusingDuplicates } from './setup-refusals.js';
@@ -96,16 +97,33 @@ export class Rooms {
     return toRoom(row);
   }
 
-  /** The floor must be an active floor of the branch of the request. */
-  private async requireActiveFloor(transaction: Transaction, floorId: string): Promise<void> {
+  /**
+   * The floor of the room, held with a share lock until the transaction ends:
+   * an archive of the floor (which takes the row for update) waits for the
+   * room to be saved and then counts it, and a room cannot be put on a floor
+   * that is being archived (found by the spec review). A floor of another
+   * branch, or an unknown one, is not found.
+   */
+  private async lockFloor(
+    transaction: Transaction,
+    floorId: string,
+  ): Promise<{ archived: boolean }> {
     const floor = await transaction
       .selectFrom('floors')
-      .select('id')
+      .select(['id', 'archived_at'])
       .where('id', '=', floorId)
-      .where('archived_at', 'is', null)
+      .forShare()
       .executeTakeFirst();
     if (floor === undefined) {
       throw notFound();
+    }
+    return { archived: floor.archived_at !== null };
+  }
+
+  /** A room is put on an active floor; an archived one is refused with `floor_archived`. */
+  private async requireActiveFloor(transaction: Transaction, floorId: string): Promise<void> {
+    if ((await this.lockFloor(transaction, floorId)).archived) {
+      throw new ApiException('floor_archived', 409);
     }
   }
 
@@ -171,7 +189,16 @@ export class Rooms {
         if (changes === null) {
           return before;
         }
-        await this.requireActiveFloor(transaction, record.floorId);
+        if (record.floorId !== before.floorId) {
+          await this.requireActiveFloor(transaction, record.floorId);
+        } else if ((await this.lockFloor(transaction, record.floorId)).archived) {
+          // The rooms of an archived floor are closed and stay so until the
+          // floor is restored or the room is moved; a closed room may still
+          // be renamed or described.
+          if (record.status !== 'closed') {
+            throw new ApiException('floor_archived', 409);
+          }
+        }
         await transaction
           .updateTable('rooms')
           .set({
