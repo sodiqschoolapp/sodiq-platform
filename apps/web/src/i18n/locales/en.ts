@@ -334,7 +334,7 @@ export const en = {
       archiveTitle_one: 'Archive {{n}} division?',
       archiveTitle_other: 'Archive {{n}} divisions?',
       archiveText:
-        'Its departments are archived with it. It stays in the list as archived and can be restored. Academic cannot be archived.',
+        'Its departments are archived with it. It stays in the list as archived and can be restored.',
       restoreTitle_one: 'Restore {{n}} division?',
       restoreTitle_other: 'Restore {{n}} divisions?',
       restoreText: 'The division comes back with the departments that were archived with it.',

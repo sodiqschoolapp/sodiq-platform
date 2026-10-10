@@ -81,6 +81,8 @@ describe('divisions and departments', () => {
   let principal: string;
   let vicePrincipal: string;
   let teacher: string;
+  /** The Super Admin's assignment: the one every audit entry must name. */
+  let adminAssignment: string;
   let academic: Division;
   const clock = new FixedClock(START);
 
@@ -90,7 +92,7 @@ describe('divisions and departments', () => {
     app = await createTestApp({ database: database.app, clock });
     kit = signInKit(app);
     const adminBrowser = await kit.completeSession('Aziza', 'Karimova');
-    await kit.giveRole(adminBrowser.account.id, { role: 'super_admin' });
+    adminAssignment = (await kit.giveRole(adminBrowser.account.id, { role: 'super_admin' })).id;
     admin = adminBrowser.cookie;
     const principalBrowser = await kit.fullSession('Bobur', 'Aliyev');
     await kit.giveRole(principalBrowser.account.id, { role: 'principal', branchId: north });
@@ -210,7 +212,7 @@ describe('divisions and departments', () => {
       expect(written).toHaveLength(1);
       expect(written[0]).toMatchObject({
         record_type: 'division',
-        assignment_id: expect.any(String) as string,
+        assignment_id: adminAssignment,
         new_value: { names: { uz: 'Sport', ru: 'Спорт', en: 'Sports' } },
         request_id: response.headers['x-request-id'],
       });
@@ -230,6 +232,10 @@ describe('divisions and departments', () => {
       expect(errorCode(russian)).toBe('already_exists');
       expect(detailPaths(russian)).toEqual(['names.ru']);
       expect((await entries('division.create')).length).toBe(before);
+      const listed = divisionListSchema.parse((await list()).body).divisions;
+      expect(listed.some((one) => one.names.en === 'Money' || one.names.en === 'finance')).toBe(
+        false,
+      );
     });
 
     it('is renamed, with the old and the new names in the audit entry; the same names write nothing; a taken name is refused', async () => {
@@ -253,7 +259,7 @@ describe('divisions and departments', () => {
       const written = await entries('division.edit', id);
       expect(written).toHaveLength(1);
       expect(written[0]).toMatchObject({
-        assignment_id: expect.any(String) as string,
+        assignment_id: adminAssignment,
         old_value: { names: names('Catering unit') },
         new_value: { names: { ...names('Catering unit'), en: 'Catering division' } },
       });
@@ -307,7 +313,7 @@ describe('divisions and departments', () => {
       const archives = await entries('division.archive', id);
       expect(archives).toHaveLength(1);
       expect(archives[0]).toMatchObject({
-        assignment_id: expect.any(String) as string,
+        assignment_id: adminAssignment,
         old_value: { archivedAt: null },
         new_value: { archivedAt: new Date(LATER).toISOString() },
         details: { departmentIds: [first, second] },
@@ -340,7 +346,7 @@ describe('divisions and departments', () => {
       const restores = await entries('division.restore', id);
       expect(restores).toHaveLength(1);
       expect(restores[0]).toMatchObject({
-        assignment_id: expect.any(String) as string,
+        assignment_id: adminAssignment,
         old_value: { archivedAt: new Date(LATER).toISOString() },
         new_value: { archivedAt: null },
         details: { departmentIds: [first, second] },
@@ -380,7 +386,7 @@ describe('divisions and departments', () => {
       expect(written).toHaveLength(1);
       expect(written[0]).toMatchObject({
         record_type: 'department',
-        assignment_id: expect.any(String) as string,
+        assignment_id: adminAssignment,
         new_value: { names: { uz: 'Mehmonxona', ru: 'Гостиница', en: 'Hotel' }, divisionId: id },
         request_id: response.headers['x-request-id'],
       });
@@ -420,7 +426,7 @@ describe('divisions and departments', () => {
       const written = await entries('department.edit', departmentId);
       expect(written).toHaveLength(1);
       expect(written[0]).toMatchObject({
-        assignment_id: expect.any(String) as string,
+        assignment_id: adminAssignment,
         old_value: { names: names('One') },
         new_value: { names: names('1') },
       });
@@ -444,14 +450,14 @@ describe('divisions and departments', () => {
       const archives = await entries('department.archive', departmentId);
       expect(archives).toHaveLength(1);
       expect(archives[0]).toMatchObject({
-        assignment_id: expect.any(String) as string,
+        assignment_id: adminAssignment,
         old_value: { archivedAt: null },
         new_value: { archivedAt: new Date(START).toISOString() },
       });
       const restores = await entries('department.restore', departmentId);
       expect(restores).toHaveLength(1);
       expect(restores[0]).toMatchObject({
-        assignment_id: expect.any(String) as string,
+        assignment_id: adminAssignment,
         old_value: { archivedAt: new Date(START).toISOString() },
         new_value: { archivedAt: null },
       });
@@ -504,6 +510,10 @@ describe('divisions and departments', () => {
   it('refuses the Principal, the Academic Vice Principal and a Teacher on every writing route', async () => {
     const id = await division('Guarded');
     const departmentId = await department(id, 'Watched');
+    const rowsBefore = await database.migrator
+      .selectFrom('audit_log_school')
+      .select((builder) => builder.fn.countAll<string>().as('n'))
+      .executeTakeFirstOrThrow();
     for (const cookie of [principal, vicePrincipal, teacher]) {
       const writes = [
         () => post('/api/setup/divisions', { names: names('P') }, cookie),
@@ -521,8 +531,11 @@ describe('divisions and departments', () => {
         expect(errorCode(response)).toBe('permission_denied');
       }
     }
-    expect(await entries('division.edit', id)).toHaveLength(0);
-    expect(await entries('department.edit', departmentId)).toHaveLength(0);
+    const rowsAfter = await database.migrator
+      .selectFrom('audit_log_school')
+      .select((builder) => builder.fn.countAll<string>().as('n'))
+      .executeTakeFirstOrThrow();
+    expect(rowsAfter.n).toBe(rowsBefore.n);
   });
 
   it('refuses a body that fails the schema, naming the field, and writes nothing', async () => {

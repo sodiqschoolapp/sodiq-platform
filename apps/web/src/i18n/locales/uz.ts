@@ -337,7 +337,7 @@ export const uz: Texts<'one' | 'other'> = {
       archiveTitle_one: '{{n}} ta boʻlim arxivlansinmi?',
       archiveTitle_other: '{{n}} ta boʻlim arxivlansinmi?',
       archiveText:
-        'Kafedralari u bilan birga arxivlanadi. Roʻyxatda arxivlangan sifatida qoladi va tiklash mumkin. Oʻquv boʻlimini arxivlash mumkin emas.',
+        'Kafedralari u bilan birga arxivlanadi. Roʻyxatda arxivlangan sifatida qoladi va tiklash mumkin.',
       restoreTitle_one: '{{n}} ta boʻlim tiklansinmi?',
       restoreTitle_other: '{{n}} ta boʻlim tiklansinmi?',
       restoreText: 'Boʻlim u bilan birga arxivlangan kafedralari bilan qaytadi.',

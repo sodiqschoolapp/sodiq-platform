@@ -222,21 +222,23 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
           }}
         />
       ) : (
-        <dl className="grid gap-2 text-sm">
-          {NAME_FIELDS.map((field) => (
-            <div key={field} className="grid gap-0.5">
-              <dt className="text-muted-foreground">
-                {t(
-                  field === 'uz'
-                    ? 'setup.divisions.nameUz'
-                    : field === 'ru'
-                      ? 'setup.divisions.nameRu'
-                      : 'setup.divisions.nameEn',
-                )}
-              </dt>
-              <dd>{division.names[field]}</dd>
-            </div>
-          ))}
+        <div className="grid gap-2 text-sm">
+          <dl className="grid gap-2">
+            {NAME_FIELDS.map((field) => (
+              <div key={field} className="grid gap-0.5">
+                <dt className="text-muted-foreground">
+                  {t(
+                    field === 'uz'
+                      ? 'setup.divisions.nameUz'
+                      : field === 'ru'
+                        ? 'setup.divisions.nameRu'
+                        : 'setup.divisions.nameEn',
+                  )}
+                </dt>
+                <dd>{division.names[field]}</dd>
+              </div>
+            ))}
+          </dl>
           {division.builtIn ? (
             <p className="text-muted-foreground">{t('setup.divisions.builtIn')}</p>
           ) : (
@@ -244,7 +246,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
               {t('setup.divisions.status')}: {status(division.archivedAt)}
             </p>
           )}
-        </dl>
+        </div>
       )}
       {canEdit && !division.builtIn && (
         <div className="flex flex-wrap items-center gap-3">
