@@ -11,12 +11,19 @@ const rootPackage = JSON.parse(readFileSync(path.join(root, 'package.json'), 'ut
 // docs/build-plan.md, task 0.10. The Blueprint is text that Render reads; these
 // checks keep it in step with the repository without a YAML library.
 describe('the Render Blueprint', () => {
-  it('installs the pnpm of packageManager in every build', () => {
+  it('runs the pnpm of packageManager through npx, in every command of every build', () => {
     const builds = blueprint.match(/buildCommand: .*/g) ?? [];
 
     expect(builds.length).toBeGreaterThan(0);
     for (const build of builds) {
-      expect(build).toContain(`npm install -g ${rootPackage.packageManager} &&`);
+      // Render's global npm folder is read-only (no `npm install -g`), so each
+      // command of the build names the version itself.
+      const commands = build.replace('buildCommand: ', '').split(' && ');
+      expect(commands.length).toBeGreaterThan(1);
+      for (const command of commands) {
+        expect(command.startsWith(`npx -y ${rootPackage.packageManager} `), command).toBe(true);
+      }
+      expect(build).not.toContain('npm install -g');
     }
   });
 

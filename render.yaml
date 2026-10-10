@@ -7,10 +7,11 @@
 # migrations, never by a push (autoDeployTrigger: off). docs/deploy.md
 # describes the whole setup and what to do when a deploy fails.
 #
-# pnpm: Render installs the dependencies with the pnpm it has; the build
-# installs the pinned version first (the same as `packageManager` in
-# package.json; render-blueprint.test.ts keeps the two equal). Node comes from
-# .node-version.
+# pnpm: Render's build machine has a read-only global npm folder, so the
+# pinned version cannot be installed with `npm install -g` (EROFS). Every
+# command of a build runs it through npx instead (`npx -y pnpm@<version>`,
+# the same version as `packageManager` in package.json;
+# render-blueprint.test.ts keeps them equal). Node comes from .node-version.
 services:
   - type: web
     name: sodiq-test-api
@@ -18,7 +19,7 @@ services:
     region: frankfurt
     plan: 0.5c-512mb
     numInstances: 2
-    buildCommand: npm install -g pnpm@12.8.1 && pnpm install --frozen-lockfile && pnpm turbo run build --filter=@sodiq/api --filter=@sodiq/web
+    buildCommand: npx -y pnpm@12.8.1 install --frozen-lockfile && npx -y pnpm@12.8.1 turbo run build --filter=@sodiq/api --filter=@sodiq/web
     startCommand: node --enable-source-maps apps/api/dist/main.js
     healthCheckPath: /api/health
     autoDeployTrigger: off
@@ -51,7 +52,7 @@ services:
     runtime: node
     region: frankfurt
     plan: 0.5c-512mb
-    buildCommand: npm install -g pnpm@12.8.1 && pnpm install --frozen-lockfile && pnpm turbo run build --filter=@sodiq/api
+    buildCommand: npx -y pnpm@12.8.1 install --frozen-lockfile && npx -y pnpm@12.8.1 turbo run build --filter=@sodiq/api
     startCommand: node --enable-source-maps apps/api/dist/worker.js
     autoDeployTrigger: off
     maxShutdownDelaySeconds: 30
