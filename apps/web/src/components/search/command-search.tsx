@@ -9,7 +9,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { COMMON_PAGES, type IndexedPage } from '@/app/page-index';
+import { indexedPages, type IndexedPage } from '@/app/page-index';
 import { useMenuPages } from '@/features/access/use-menu';
 import { searchKey, searchWords } from '@/components/list/list-state';
 import { Button } from '@/components/ui/button';
@@ -95,7 +95,7 @@ export function CommandSearch() {
 
   const menuPages = useMenuPages();
   const pages = useMemo<TitledPage[]>(
-    () => [...menuPages, ...COMMON_PAGES].map((page) => ({ ...page, title: t(page.titleKey) })),
+    () => indexedPages(menuPages).map((page) => ({ ...page, title: t(page.titleKey) })),
     [t, menuPages],
   );
   const matching = matchingPages(pages, typed, i18n.language);

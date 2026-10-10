@@ -1,5 +1,6 @@
 import { All, Controller, Get, Post } from '@nestjs/common';
 import {
+  PERMISSIONS,
   ROLES,
   type Action,
   type PermissionRows,
@@ -20,9 +21,12 @@ export function permissionRows(named: Partial<Record<Role, readonly Action[]>>):
 
 /**
  * A table for tests, with the two kinds of area: `sample` belongs to a branch,
- * `school` is school-wide work. It keeps the fixed rules of `checkTable`.
+ * `school` is school-wide work. It keeps the fixed rules of `checkTable`. The
+ * areas of the application are in it too, so that its routes answer as in the
+ * application while the sample routes are tested beside them.
  */
 export const SAMPLE_PERMISSIONS: PermissionTable = {
+  ...PERMISSIONS,
   sample: permissionRows({
     super_admin: ['view', 'create', 'edit', 'archive', 'export'],
     principal: ['view', 'export'],

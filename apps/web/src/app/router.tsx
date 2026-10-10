@@ -15,6 +15,11 @@ import { PasswordPage } from '@/features/auth/password-page';
 import { sessionQuery, STEP_PATH, stepOf, type Step } from '@/features/auth/session';
 import { SetUpPage } from '@/features/auth/set-up-page';
 import { SampleListPage, sampleSearch } from '@/features/sample/sample-list-page';
+import { BranchPage } from '@/features/setup/branch-page';
+import { BuildingsPage } from '@/features/setup/buildings-page';
+import { RoomsPage } from '@/features/setup/rooms-page';
+import { SetupPage } from '@/features/setup/setup-page';
+import { listSearch } from '@/components/list/list-state';
 import { SignInPage } from '@/features/auth/sign-in-page';
 import { AppLayout } from './app-layout';
 import { ErrorPage, NotFoundPage, PendingPage } from './pages';
@@ -115,6 +120,33 @@ const ownPasswordRoute = createRoute({
   component: PasswordPage,
 });
 
+/** School setup (task 1.1): the branch record, buildings and floors, rooms. */
+const setupRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup',
+  component: SetupPage,
+});
+
+const branchRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/branch',
+  component: BranchPage,
+});
+
+const buildingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/buildings',
+  validateSearch: listSearch,
+  component: BuildingsPage,
+});
+
+const roomsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/rooms',
+  validateSearch: listSearch,
+  component: RoomsPage,
+});
+
 /**
  * The sample list of task 0.8b-1, built only from the shared pieces. It opens
  * in development and in the tests; in the built app the address does not
@@ -138,7 +170,16 @@ const routeTree = rootRoute.addChildren([
   codeRoute,
   passwordRoute,
   setUpRoute,
-  appRoute.addChildren([homeRoute, accountRoute, ownPasswordRoute, patternsRoute]),
+  appRoute.addChildren([
+    homeRoute,
+    accountRoute,
+    ownPasswordRoute,
+    setupRoute,
+    branchRoute,
+    buildingsRoute,
+    roomsRoute,
+    patternsRoute,
+  ]),
 ]);
 
 /** `history` is given by tests; the browser's own is used otherwise. */

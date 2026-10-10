@@ -15,6 +15,15 @@ export const api = createClient<paths>({
   fetch: (request) => globalThis.fetch(request),
 });
 
+/**
+ * The header parameter of a route bound to a branch, as the generated client
+ * types it: the branch of the switcher. The middleware below sets the same
+ * header on every call; naming it here keeps the call typed.
+ */
+export const branchHeader = (): { [BRANCH_HEADER]: string } => ({
+  [BRANCH_HEADER]: getBranchInUse() ?? '',
+});
+
 // The branch of the branch switcher goes with every call; a route that is not
 // bound to a branch ignores it.
 api.use({

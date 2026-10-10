@@ -85,6 +85,27 @@ describe('a frozen permission table', () => {
     expect(permits(frozen, 'teacher', 'journal', 'edit')).toBe(false);
   });
 
+  // Task 1.1: the first two areas (docs/spec/02-roles-and-access.md, Super
+  // Admin: "Only this role creates branches, buildings, floors and rooms";
+  // Principal: "Changes nothing"; the Academic Vice Principal's view was
+  // approved by the owner, pull request #37, answer 5).
+  it('gives the Super Admin alone the changes of branches, buildings, floors and rooms', () => {
+    expect(Object.keys(PERMISSIONS).sort()).toEqual(['branches', 'rooms']);
+    expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);
+    expect(PERMISSIONS.rooms.super_admin).toEqual(['view', 'create', 'edit', 'archive']);
+    for (const area of ['branches', 'rooms'] as const) {
+      expect(PERMISSIONS[area].principal).toEqual(['view']);
+      expect(PERMISSIONS[area].academic_vice_principal).toEqual(['view']);
+      for (const role of ROLES) {
+        if (!['super_admin', 'principal', 'academic_vice_principal'].includes(role)) {
+          expect(PERMISSIONS[area][role], `${area}: ${role}`).toEqual([]);
+        }
+        expect(permits(PERMISSIONS, role, area, 'create')).toBe(role === 'super_admin');
+        expect(permits(PERMISSIONS, role, area, 'export')).toBe(false);
+      }
+    }
+  });
+
   it('is what the application reads', () => {
     expect(Object.isFrozen(PERMISSIONS)).toBe(true);
     for (const areaRows of Object.values<PermissionRows>(PERMISSIONS)) {

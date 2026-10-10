@@ -28,13 +28,40 @@ export function freezeTable<Table extends PermissionTable>(table: Table): Table 
   return Object.freeze(table);
 }
 
+/** A row for each of the 15 roles: nothing, unless named. */
+function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
+  return Object.fromEntries(ROLES.map((role) => [role, named[role] ?? []])) as PermissionRows;
+}
+
 /**
- * The table of the application, fixed in code for the 15 roles. It has no area
- * yet: each task adds the rows of its area with its first route, and writes
- * out an empty list for a role that may do nothing there. The server guard
- * reads it for every request; the menus read the same table.
+ * The table of the application, fixed in code for the 15 roles. Each task adds
+ * the rows of its area with its first route, and writes out an empty list for
+ * a role that may do nothing there. The server guard reads it for every
+ * request; the menus read the same table.
+ *
+ * - `branches` (`03`, Branch; task 1.1): the Super Admin creates and edits a
+ *   branch ("Only this role creates branches", `02`). The Principal views
+ *   everything in the branch and changes nothing (`02`). The Academic Vice
+ *   Principal reads the record: the working weekdays are an input of the
+ *   timetable (`06`, Building a timetable, step 1; approved knowingly by the
+ *   owner, pull request #37, answer 5).
+ * - `rooms` (`03`, Building, floor, room; task 1.1): the same three roles; the
+ *   Super Admin alone creates, edits and archives buildings, floors and rooms,
+ *   and the rooms are an input of the timetable (`06`, step 4). No `export`
+ *   until the export route of the lists exists (task 2.2).
  */
-export const PERMISSIONS = freezeTable({} as const satisfies PermissionTable);
+export const PERMISSIONS = freezeTable({
+  branches: rows({
+    super_admin: ['view', 'create', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+  }),
+  rooms: rows({
+    super_admin: ['view', 'create', 'edit', 'archive'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+  }),
+} as const satisfies PermissionTable);
 
 export type Area = keyof typeof PERMISSIONS;
 

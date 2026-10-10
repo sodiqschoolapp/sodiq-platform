@@ -97,6 +97,19 @@ export interface AuditLogSchool {
 }
 
 export interface Branches {
+  address: string | null;
+  created_at: Generated<Timestamp>;
+  email: string | null;
+  id: Generated<string>;
+  name: string;
+  phone: string | null;
+  time_zone: Generated<string>;
+  working_weekdays: Generated<number[]>;
+}
+
+export interface Buildings {
+  archived_at: Timestamp | null;
+  branch_id: string;
   created_at: Generated<Timestamp>;
   id: Generated<string>;
   name: string;
@@ -110,6 +123,15 @@ export interface FeedbackReports {
   request_id: string | null;
   roles: string[];
   text: string;
+}
+
+export interface Floors {
+  archived_at: Timestamp | null;
+  branch_id: string;
+  building_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  name: string;
 }
 
 export interface KnownDevices {
@@ -135,6 +157,19 @@ export interface RequestKeys {
   request_hash: string;
   result: Json | null;
   scope: string;
+}
+
+export interface Rooms {
+  branch_id: string;
+  capacity: number;
+  created_at: Generated<Timestamp>;
+  floor_id: string;
+  id: Generated<string>;
+  max_simultaneous_lessons: number | null;
+  name: string;
+  shared: Generated<boolean>;
+  status: string;
+  type: string;
 }
 
 export interface SchemaMigrations {
@@ -180,10 +215,13 @@ export interface DB {
   audit_log: AuditLog;
   audit_log_school: AuditLogSchool;
   branches: Branches;
+  buildings: Buildings;
   feedback_reports: FeedbackReports;
+  floors: Floors;
   known_devices: KnownDevices;
   notifications: Notifications;
   request_keys: RequestKeys;
+  rooms: Rooms;
   schema_migrations: SchemaMigrations;
   second_step_recovery_codes: SecondStepRecoveryCodes;
   sessions: Sessions;
