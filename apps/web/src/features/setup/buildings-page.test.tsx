@@ -246,9 +246,11 @@ describe('the buildings page', () => {
     });
     const archived = [old(5, 'Old A'), old(6, 'Old B'), old(7, 'Old C')];
     const { calls } = await openList(superAdmin(), [MAIN, ...archived], {
-      [`POST /api/setup/buildings/${uid(5)}/restore`]: () => json({ ...archived[0], archivedAt: null }),
+      [`POST /api/setup/buildings/${uid(5)}/restore`]: () =>
+        json({ ...archived[0], archivedAt: null }),
       [`POST /api/setup/buildings/${uid(6)}/restore`]: () => refusal('already_exists', 409),
-      [`POST /api/setup/buildings/${uid(7)}/restore`]: () => json({ ...archived[2], archivedAt: null }),
+      [`POST /api/setup/buildings/${uid(7)}/restore`]: () =>
+        json({ ...archived[2], archivedAt: null }),
     });
 
     for (const name of ['Old A', 'Old B', 'Old C']) {
@@ -262,7 +264,9 @@ describe('the buildings page', () => {
       const statuses = within(screen.getByRole('main')).getAllByRole('status');
       expect(statuses.map((status) => status.textContent)).toContain(expected);
     });
-    expect(calls.filter((call) => call.route.endsWith('/restore')).map((call) => call.route)).toEqual([
+    expect(
+      calls.filter((call) => call.route.endsWith('/restore')).map((call) => call.route),
+    ).toEqual([
       `POST /api/setup/buildings/${uid(5)}/restore`,
       `POST /api/setup/buildings/${uid(6)}/restore`,
       `POST /api/setup/buildings/${uid(7)}/restore`,
