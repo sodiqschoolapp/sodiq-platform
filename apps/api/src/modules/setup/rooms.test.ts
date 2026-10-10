@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import { apiErrorSchema, BRANCH_HEADER, roomListSchema } from '@sodiq/shared';
+import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
@@ -299,35 +300,28 @@ describe('rooms', () => {
 
     // A room on an archived floor is closed and stays so until the floor is
     // restored or the room is moved; it may still be renamed (spec review).
-    it('keeps a closed room on an archived floor closed: a rename in place is saved, any other status is refused with floor_archived', async () => {
+    // Decided by the owner at the code review: a room on an archived floor can
+    // only be moved; it is closed already (the floor could not be archived
+    // otherwise) and stays as it is until it is moved or the floor is restored.
+    it('refuses every edit of a room on an archived floor with floor_archived, unless the room is moved to an active floor', async () => {
       const cellar = bodyId(
         await post(`/api/setup/buildings/${mainBuilding}/floors`, { name: 'Cellar' }),
       );
       const id = await createRoom(roomOf('C-1', cellar, { status: 'closed' }));
       expect((await post(`/api/setup/floors/${cellar}/archive`)).status).toBe(200);
 
-      const renamed = await put(
-        `/api/setup/rooms/${id}`,
-        roomOf('C-1a', cellar, { status: 'closed' }),
-      );
-      expect(renamed.status).toBe(200);
-      expect(await entries('room.edit', id)).toHaveLength(1);
-      expect((await entries('room.edit', id))[0]).toMatchObject({
-        assignment_id: expect.any(String) as string,
-        old_value: { name: 'C-1' },
-        new_value: { name: 'C-1a' },
-      });
+      for (const fields of [{ status: 'closed' }, { status: 'in_use' }, { capacity: 30 }]) {
+        const response = await put(`/api/setup/rooms/${id}`, roomOf('C-1a', cellar, fields));
+        expect(response.status).toBe(409);
+        expect(errorCode(response)).toBe('floor_archived');
+      }
+      expect(await entries('room.edit', id)).toHaveLength(0);
 
-      const opened = await put(
-        `/api/setup/rooms/${id}`,
-        roomOf('C-1a', cellar, { status: 'in_use' }),
-      );
-      expect(opened.status).toBe(409);
-      expect(errorCode(opened)).toBe('floor_archived');
+      // Moved to an active floor, it is saved and can be in use again.
+      const moved = await put(`/api/setup/rooms/${id}`, roomOf('C-1a', first));
+      expect(moved.status).toBe(200);
+      expect(moved.body).toMatchObject({ floorId: first, name: 'C-1a', status: 'in_use' });
       expect(await entries('room.edit', id)).toHaveLength(1);
-
-      // Moved to an active floor, it can be in use again.
-      expect((await put(`/api/setup/rooms/${id}`, roomOf('C-1a', first))).status).toBe(200);
     });
 
     it('and not found for a room of another branch', async () => {
@@ -353,7 +347,10 @@ describe('rooms', () => {
   // Spec review of the branch (must-fix 1): under read committed two unlocked
   // reads could interleave and leave a room in use on an archived floor. The
   // floor is read with a share lock when a room is saved, and taken for update
-  // when it is archived, so the two wait for each other.
+  // when it is archived, so the two wait for each other. A test takes the lock
+  // first, sends the other call, sees it wait in pg_stat_activity (a third
+  // connection of the same user), lets the lock go and reads the answer: no
+  // step is decided by a race.
   describe('wait for each other with the archive of their floor', () => {
     /** A promise that is settled from outside. */
     function gate(): { opened: Promise<void>; open: () => void } {
@@ -364,20 +361,46 @@ describe('rooms', () => {
       return { opened, open };
     }
 
-    const settled = async (promise: Promise<unknown>): Promise<boolean> => {
-      const marker = Symbol('pending');
-      const first = await Promise.race([
-        promise.then(() => 'done'),
-        new Promise((resolve) => setTimeout(() => resolve(marker), 400)),
-      ]);
-      return first !== marker;
-    };
+    interface Backend {
+      usename: string | null;
+      state: string | null;
+      wait_event_type: string | null;
+    }
+
+    /** The other connections of this database, as the application user sees its own. */
+    const backends = async (): Promise<Backend[]> =>
+      (
+        await sql<Backend>`
+          select usename, state, wait_event_type from pg_stat_activity
+          where datname = current_database() and pid <> pg_backend_pid()
+        `.execute(database.app)
+      ).rows;
+
+    /** Until a call of the application waits for a lock; names the backends when none does in time. */
+    async function waitForWaiterOnFloors(): Promise<void> {
+      for (let tries = 0; tries < 100; tries += 1) {
+        const seen = await backends();
+        if (seen.some((backend) => backend.wait_event_type === 'Lock')) {
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      throw new Error(`No call waited for the floor. Seen: ${JSON.stringify(await backends())}`);
+    }
+
+    const roomNamed = (name: string) =>
+      database.migrator
+        .selectFrom('rooms')
+        .select('id')
+        .where('name', '=', name)
+        .executeTakeFirst();
 
     it('a room is not created on a floor while its archive holds the floor, and is refused once the floor is archived', async () => {
       const floorId = bodyId(
         await post(`/api/setup/buildings/${mainBuilding}/floors`, { name: 'Locked A' }),
       );
-      const { opened, open } = gate();
+      const held = gate();
+      const release = gate();
       // As archiveFloor does: the floor row taken for update, then the archive, then the commit.
       const archive = app.get(Transactions).run([north], async (transaction) => {
         await transaction
@@ -386,29 +409,39 @@ describe('rooms', () => {
           .where('id', '=', floorId)
           .forUpdate()
           .execute();
-        await opened;
+        held.open();
+        await release.opened;
         await transaction
           .updateTable('floors')
           .set({ archived_at: clock.now() })
           .where('id', '=', floorId)
           .execute();
       });
+      await held.opened;
 
-      const creation = post('/api/setup/rooms', roomOf('L-1', floorId));
-      expect(await settled(creation)).toBe(false);
+      try {
+        const creation = post('/api/setup/rooms', roomOf('L-1', floorId)).then((sent) => sent);
+        await waitForWaiterOnFloors();
+        expect(await roomNamed('L-1')).toBeUndefined();
 
-      open();
-      await archive;
-      const response = await creation;
-      expect(response.status).toBe(409);
-      expect(errorCode(response)).toBe('floor_archived');
+        release.open();
+        await archive;
+        const response = await creation;
+        expect(response.status).toBe(409);
+        expect(errorCode(response)).toBe('floor_archived');
+        expect(await roomNamed('L-1')).toBeUndefined();
+      } finally {
+        release.open();
+        await archive.catch(() => undefined);
+      }
     });
 
     it('a floor is not archived while a room is being saved on it, and is refused once the room is in use', async () => {
       const floorId = bodyId(
         await post(`/api/setup/buildings/${mainBuilding}/floors`, { name: 'Locked B' }),
       );
-      const { opened, open } = gate();
+      const held = gate();
+      const release = gate();
       // As Rooms.create does: the floor row shared, the room written, then the commit.
       const saving = app.get(Transactions).run([north], async (transaction) => {
         await transaction
@@ -428,17 +461,31 @@ describe('rooms', () => {
             status: 'in_use',
           })
           .execute();
-        await opened;
+        held.open();
+        await release.opened;
       });
+      await held.opened;
 
-      const archive = post(`/api/setup/floors/${floorId}/archive`);
-      expect(await settled(archive)).toBe(false);
+      try {
+        const archive = post(`/api/setup/floors/${floorId}/archive`).then((sent) => sent);
+        await waitForWaiterOnFloors();
+        const floorWhileWaiting = await database.migrator
+          .selectFrom('floors')
+          .select('archived_at')
+          .where('id', '=', floorId)
+          .executeTakeFirstOrThrow();
+        expect(floorWhileWaiting.archived_at).toBeNull();
 
-      open();
-      await saving;
-      const response = await archive;
-      expect(response.status).toBe(409);
-      expect(errorCode(response)).toBe('archive_refused');
+        release.open();
+        await saving;
+        const response = await archive;
+        expect(response.status).toBe(409);
+        expect(errorCode(response)).toBe('archive_refused');
+        expect(await roomNamed('L-2')).toBeDefined();
+      } finally {
+        release.open();
+        await saving.catch(() => undefined);
+      }
     });
   });
 });

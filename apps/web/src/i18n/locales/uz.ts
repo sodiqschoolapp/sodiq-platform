@@ -72,7 +72,7 @@ export const uz: Texts<'one' | 'other'> = {
     archive_refused:
       'Undagi xona foydalanishda yoki taʼmirda ekan, arxivlab boʻlmaydi. Avval xonalarni yoping.',
     floor_archived:
-      'Qavat arxivlangan. Xonani faol qavatga koʻchiring yoki avval qavatni tiklang; arxivlangan qavatdagi xona faqat yopiq qolishi mumkin.',
+      'Qavat arxivlangan. Arxivlangan qavatdagi xonani faqat koʻchirish mumkin: faol qavatni tanlang yoki avval qavatni tiklang.',
     archived_record: 'U yoki u joylashgan bino arxivlangan. Avval tiklang, keyin oʻzgartiring.',
     internal_error:
       'Serverda xatolik yuz berdi. Birozdan keyin qayta urinib koʻring. Takrorlansa, administratorga xabar bering.',
@@ -288,6 +288,7 @@ export const uz: Texts<'one' | 'other'> = {
       restored_one: '{{n}} ta bino tiklandi.',
       restored_other: '{{n}} ta bino tiklandi.',
       refusedNames: 'Arxivlanmadi, chunki ulardagi xona foydalanishda yoki taʼmirda: {{names}}.',
+      takenNames: 'Tiklanmadi, chunki hozir shu nomli faol bino bor: {{names}}.',
       floorsTitle: 'Qavatlar',
       floor: 'Qavat',
       floorName: 'Nomi yoki raqami',
@@ -340,6 +341,8 @@ export const uz: Texts<'one' | 'other'> = {
       newTitle: 'Yangi xona',
       cancel: 'Bekor qilish',
       needFloor: 'Avval qavati bor bino qoʻshing: xonalar qavatma-qavat qoʻshiladi.',
+      onArchivedFloor:
+        'Bu xona {{building}} binosining {{floor}} qavatida, u arxivlangan. Uni faqat koʻchirish mumkin: saqlash uchun faol qavatni tanlang.',
       chooseBuilding: 'Binoni tanlang',
       chooseFloor: 'Qavatni tanlang',
       empty: 'Bu yerda filial xonalari roʻyxati chiqadi. Hozircha xona yoʻq.',

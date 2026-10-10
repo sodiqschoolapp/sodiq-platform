@@ -4,21 +4,37 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
-import { answerOf } from '@/api/failure';
+import { ApiFailure, answerOf } from '@/api/failure';
 import { ListPage, type BulkAction } from '@/components/list/list-page';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
-import { BuildingForm, BuildingPanel, isNamedRefusal } from './building-panel';
+import { BuildingForm, BuildingPanel } from './building-panel';
 import { buildingsQuery, SETUP_KEY } from './setup-api';
 
-/** What a bulk archive or restore did: how many went through, and which were refused by name. */
+/**
+ * What a bulk archive or restore did: how many went through, which were
+ * refused for a room in use (archive), and which for a name that an active
+ * building has now (restore), by name.
+ */
 interface Outcome {
   restore: boolean;
   done: number;
   refused: string[];
+  taken: string[];
+}
+
+/** The refusals a bulk action names instead of stopping at: the others go on. */
+function refusalOf(error: unknown, restore: boolean): 'refused' | 'taken' | null {
+  if (!(error instanceof ApiFailure)) {
+    return null;
+  }
+  if (error.code === 'archive_refused') {
+    return 'refused';
+  }
+  return restore && error.code === 'already_exists' ? 'taken' : null;
 }
 
 /**
@@ -58,7 +74,7 @@ export function BuildingsPage() {
   /** One call per building, in order; a refusal of one does not stop the others. */
   const archiveMany = useMutation({
     mutationFn: async ({ rows, restore }: { rows: Building[]; restore: boolean }) => {
-      const result: Outcome = { restore, done: 0, refused: [] };
+      const result: Outcome = { restore, done: 0, refused: [], taken: [] };
       for (const row of rows) {
         try {
           await answerOf(
@@ -71,10 +87,11 @@ export function BuildingsPage() {
           );
           result.done += 1;
         } catch (error) {
-          if (!isNamedRefusal(error)) {
+          const kind = refusalOf(error, restore);
+          if (kind === null) {
             throw error;
           }
-          result.refused.push(row.name);
+          result[kind].push(row.name);
         }
       }
       return result;
@@ -218,6 +235,9 @@ export function BuildingsPage() {
           })}
           {outcome.refused.length > 0 && (
             <> {t('setup.buildings.refusedNames', { names: outcome.refused.join(', ') })}</>
+          )}
+          {outcome.taken.length > 0 && (
+            <> {t('setup.buildings.takenNames', { names: outcome.taken.join(', ') })}</>
           )}
         </p>
       )}

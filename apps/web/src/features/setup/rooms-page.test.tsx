@@ -283,6 +283,30 @@ describe('the room list', () => {
     });
   });
 
+  // Decided by the owner: a room on an archived floor can only be moved.
+  it('says where a room on an archived floor is, and asks for an active floor before it can be saved', async () => {
+    const attic = room(4, { name: 'A-1', floorId: uid(13), floorName: 'Attic', status: 'closed' });
+    await openList(superAdmin(), [...ROOMS, attic]);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(4);
+    });
+
+    fireEvent.click(rowButton('A-1'));
+    const panel = await screen.findByRole('complementary', { name: 'A-1' });
+    const form = within(panel).getByRole('form', { name: 'A-1' });
+    expect(
+      within(form).getByText(
+        en.setup.rooms.onArchivedFloor
+          .replace('{{floor}}', 'Attic')
+          .replace('{{building}}', 'Main'),
+      ),
+    ).toBeDefined();
+    expect(field(form, en.setup.rooms.building).value).toBe('');
+    expect(field(form, en.setup.rooms.floor).value).toBe('');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(field(form, en.setup.rooms.floor).getAttribute('aria-invalid')).toBe('true');
+  });
+
   it('names the rooms whose floor is archived when the status of several is changed, and changes the others', async () => {
     const { calls } = await openList(superAdmin(), ROOMS, [MAIN, ANNEX], {
       [`PUT /api/setup/rooms/${uid(101)}`]: () => refusal('floor_archived', 409),

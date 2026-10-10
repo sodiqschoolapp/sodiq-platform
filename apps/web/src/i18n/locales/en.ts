@@ -69,7 +69,7 @@ export const en = {
     archive_refused:
       'It cannot be archived while a room in it is in use or under repair. Close the rooms first.',
     floor_archived:
-      'The floor is archived. Move the room to an active floor, or restore the floor first; a room on an archived floor can only stay closed.',
+      'The floor is archived. A room on an archived floor can only be moved: choose an active floor, or restore the floor first.',
     archived_record: 'It is archived, or the building it is in is. Restore first, then change it.',
     internal_error:
       'Something went wrong on the server. Try again in a moment. If it happens again, tell an administrator.',
@@ -285,6 +285,7 @@ export const en = {
       restored_one: '{{n}} building restored.',
       restored_other: '{{n}} buildings restored.',
       refusedNames: 'Not archived, because a room in them is in use or under repair: {{names}}.',
+      takenNames: 'Not restored, because an active building of that name exists now: {{names}}.',
       floorsTitle: 'Floors',
       floor: 'Floor',
       floorName: 'Name or number',
@@ -337,6 +338,8 @@ export const en = {
       newTitle: 'New room',
       cancel: 'Cancel',
       needFloor: 'Add a building with a floor first: rooms are added floor by floor.',
+      onArchivedFloor:
+        'This room is on floor {{floor}} of {{building}}, which is archived. It can only be moved: choose an active floor to save it.',
       chooseBuilding: 'Choose a building',
       chooseFloor: 'Choose a floor',
       empty: 'The rooms of the branch are listed here. There is none yet.',

@@ -40,7 +40,11 @@ const type = (input: HTMLElement, value: string): void => {
   fireEvent.change(input, { target: { value } });
 };
 
-async function openList(session = superAdmin(), buildings = [MAIN, ANNEX]) {
+async function openList(
+  session = superAdmin(),
+  buildings = [MAIN, ANNEX],
+  extra: Record<string, () => Response> = {},
+) {
   let list = buildings;
   const calls = fakeApi({
     'GET /api/auth/session': () => json(session),
@@ -67,6 +71,7 @@ async function openList(session = superAdmin(), buildings = [MAIN, ANNEX]) {
       json({ id: uid(13), name: 'Attic', archivedAt: null, roomCount: 0 }),
     [`PUT /api/setup/floors/${uid(11)}`]: (body) =>
       json({ id: uid(11), ...(body as { name: string }), archivedAt: null, roomCount: 2 }),
+    ...extra,
   });
   const shell = renderApp(PATH);
   await screen.findByRole('heading', { name: en.setup.buildings.title });
@@ -229,6 +234,39 @@ describe('the buildings page', () => {
     expect(
       calls.some((call) => call.route === `POST /api/setup/buildings/${MAIN.id}/archive`),
     ).toBe(true);
+  });
+
+  // Code review: a refused restore names the building and the others go on.
+  it('restores several buildings at once, naming the one whose name an active building has now, and goes on with the rest', async () => {
+    const old = (n: number, name: string): Building => ({
+      id: uid(n),
+      name,
+      archivedAt: ARCHIVED_AT,
+      floors: [],
+    });
+    const archived = [old(5, 'Old A'), old(6, 'Old B'), old(7, 'Old C')];
+    const { calls } = await openList(superAdmin(), [MAIN, ...archived], {
+      [`POST /api/setup/buildings/${uid(5)}/restore`]: () => json({ ...archived[0], archivedAt: null }),
+      [`POST /api/setup/buildings/${uid(6)}/restore`]: () => refusal('already_exists', 409),
+      [`POST /api/setup/buildings/${uid(7)}/restore`]: () => json({ ...archived[2], archivedAt: null }),
+    });
+
+    for (const name of ['Old A', 'Old B', 'Old C']) {
+      fireEvent.click(screen.getByLabelText(en.list.selectRow.replace('{{name}}', name)));
+    }
+    fireEvent.click(screen.getByRole('button', { name: en.setup.buildings.restore }));
+    await goOn(en.setup.buildings.restore);
+
+    const expected = `${en.setup.buildings.restored_other.replace('{{n}}', '2')} ${en.setup.buildings.takenNames.replace('{{names}}', 'Old B')}`;
+    await waitFor(() => {
+      const statuses = within(screen.getByRole('main')).getAllByRole('status');
+      expect(statuses.map((status) => status.textContent)).toContain(expected);
+    });
+    expect(calls.filter((call) => call.route.endsWith('/restore')).map((call) => call.route)).toEqual([
+      `POST /api/setup/buildings/${uid(5)}/restore`,
+      `POST /api/setup/buildings/${uid(6)}/restore`,
+      `POST /api/setup/buildings/${uid(7)}/restore`,
+    ]);
   });
 
   it('filters by status', async () => {

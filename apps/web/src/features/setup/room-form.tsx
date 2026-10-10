@@ -30,7 +30,8 @@ interface RoomFormProps {
  * type, capacity, status"; `edge/timetable`, Structure: the "shared" switch
  * and the number of lessons at once, asked only when the switch is on). The
  * floor is chosen in two steps, building then floor; only active floors are
- * offered, so a room on an archived floor is moved when it is next saved.
+ * offered, and a room on an archived floor can only be moved (decided by the
+ * owner): the form says where it is and asks for an active floor.
  */
 export function RoomForm({ room, floors, label, onSave }: RoomFormProps) {
   const { t, i18n } = useTranslation();
@@ -72,6 +73,14 @@ export function RoomForm({ room, floors, label, onSave }: RoomFormProps) {
 
   return (
     <RecordForm form={form} label={label}>
+      {room !== null && !onOffered && (
+        <p role="status" className="rounded-lg border border-dashed p-3 text-sm">
+          {t('setup.rooms.onArchivedFloor', {
+            building: room.buildingName,
+            floor: room.floorName,
+          })}
+        </p>
+      )}
       <Field label={t('setup.rooms.name')} autoComplete="off" {...form.bind('name')} />
       <SelectField
         label={t('setup.rooms.building')}

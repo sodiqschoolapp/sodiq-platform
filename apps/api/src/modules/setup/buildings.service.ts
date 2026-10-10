@@ -307,7 +307,7 @@ export class Buildings {
     );
   }
 
-  /** A floor of an active building; an archived building is not found for it. */
+  /** A floor of an active building; an archived one is refused with `archived_record`. */
   createFloor(
     access: Access,
     buildingId: string,
@@ -318,13 +318,15 @@ export class Buildings {
       this.transactions.run(access.branchIds, async (transaction) => {
         const building = await transaction
           .selectFrom('buildings')
-          .select(['id'])
+          .select(['id', 'archived_at'])
           .where('id', '=', buildingId)
-          .where('archived_at', 'is', null)
           .forUpdate()
           .executeTakeFirst();
         if (building === undefined) {
           throw notFound();
+        }
+        if (building.archived_at !== null) {
+          throw new ApiException('archived_record', 409);
         }
         const row = await transaction
           .insertInto('floors')

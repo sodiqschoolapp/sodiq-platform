@@ -342,7 +342,9 @@ describe('buildings and floors', () => {
       const floorId = await floor(id, '1');
       expect((await post(`/api/setup/buildings/${id}/archive`)).status).toBe(200);
 
-      expect((await post(`/api/setup/buildings/${id}/floors`, { name: '2' })).status).toBe(404);
+      const added = await post(`/api/setup/buildings/${id}/floors`, { name: '2' });
+      expect(added.status).toBe(409);
+      expect(errorCode(added)).toBe('archived_record');
       const response = await post(`/api/setup/floors/${floorId}/restore`);
       expect(response.status).toBe(409);
       expect(errorCode(response)).toBe('archived_record');

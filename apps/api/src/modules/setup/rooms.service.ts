@@ -79,8 +79,9 @@ function roomsIn(transaction: Transaction) {
  * number, floor, type, capacity, status"; docs/spec/edge-cases/timetable.md,
  * Structure: the "shared" switch and the number of lessons at once; owner:
  * Super Admin). A room is saved on an active floor of the branch: an archived
- * floor, or a floor of another branch, is not found. Rooms are never
- * archived: `closed` is their end state (decided by the owner).
+ * floor is refused with `floor_archived` (a room on one can only be moved),
+ * and a floor of another branch is not found. Rooms are never archived:
+ * `closed` is their end state (decided by the owner).
  */
 @Injectable()
 export class Rooms {
@@ -189,16 +190,10 @@ export class Rooms {
         if (changes === null) {
           return before;
         }
-        if (record.floorId !== before.floorId) {
-          await this.requireActiveFloor(transaction, record.floorId);
-        } else if ((await this.lockFloor(transaction, record.floorId)).archived) {
-          // The rooms of an archived floor are closed and stay so until the
-          // floor is restored or the room is moved; a closed room may still
-          // be renamed or described.
-          if (record.status !== 'closed') {
-            throw new ApiException('floor_archived', 409);
-          }
-        }
+        // A room on an archived floor can only be moved to an active floor
+        // (decided by the owner at the code review): its rooms are closed and
+        // stay as they are until the floor is restored or the room is moved.
+        await this.requireActiveFloor(transaction, record.floorId);
         await transaction
           .updateTable('rooms')
           .set({
