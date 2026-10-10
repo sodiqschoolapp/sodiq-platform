@@ -1,11 +1,14 @@
 import {
   branchSchema,
+  divisionListSchema,
+  isLanguage,
   buildingListSchema,
   roomListSchema,
   type Building,
+  type Names,
   type Weekday,
 } from '@sodiq/shared';
-import { queryOptions } from '@tanstack/react-query';
+import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 
@@ -80,4 +83,32 @@ export function weekdayName(language: string, day: Weekday): string {
     new Date(Date.UTC(2024, 0, day)),
   );
   return name.charAt(0).toLocaleUpperCase(language) + name.slice(1);
+}
+
+/**
+ * The divisions with their departments (task 1.2). One list for the whole
+ * school (`03`, Divisions): the key carries the branch of the switcher like
+ * every setup query, because the call does, but a change is a change for every
+ * branch, so writes invalidate `divisionsKey()` without a branch.
+ */
+export const divisionsKey = (branchId?: string | null) =>
+  branchId === undefined ? [...SETUP_KEY, 'divisions'] : [...SETUP_KEY, 'divisions', branchId];
+
+export const divisionsQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: divisionsKey(branchId),
+    queryFn: async () =>
+      divisionListSchema.parse(
+        await answerOf(api.GET('/api/setup/divisions', { params: { header: branchHeader() } })),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Marks the division lists of every branch stale: the list is the same in each. */
+export const invalidateDivisions = (queryClient: QueryClient): Promise<void> =>
+  queryClient.invalidateQueries({ queryKey: divisionsKey() });
+
+/** A name in the chosen language (`12`, Language), English when the language is not one of the three. */
+export function nameOf(names: Names, language: string): string {
+  return isLanguage(language) ? names[language] : names.en;
 }

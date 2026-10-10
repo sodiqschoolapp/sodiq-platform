@@ -76,6 +76,18 @@ try {
   );
   seeded.superAdmin = { login: superAdmin.login, password: superAdmin.firstPassword };
 
+  // The Super Admin of the divisions test (task 1.2): the same, one account per test.
+  const divisions = await create('Gulnora', 'Yusupova');
+  await transactions.run([], (transaction) =>
+    assignments.give(transaction, {
+      accountId: divisions.id,
+      role: 'super_admin',
+      branchId: null,
+      givenBy: null,
+    }),
+  );
+  seeded.divisions = { login: divisions.login, password: divisions.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');

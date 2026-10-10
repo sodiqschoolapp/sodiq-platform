@@ -468,6 +468,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/setup/divisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DivisionsController_list"];
+        put?: never;
+        post: operations["DivisionsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/divisions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["DivisionsController_rename"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/divisions/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DivisionsController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/divisions/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DivisionsController_restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/divisions/{id}/departments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DivisionsController_createDepartment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/departments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["DivisionsController_renameDepartment"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/departments/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DivisionsController_archiveDepartment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/departments/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DivisionsController_restoreDepartment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/feedback": {
         parameters: {
             query?: never;
@@ -491,7 +619,7 @@ export interface components {
         ApiError: {
             error: {
                 /** @enum {string} */
-                code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                 message: string;
                 requestId: string;
                 details?: {
@@ -1203,7 +1331,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1262,7 +1390,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1331,7 +1459,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1397,7 +1525,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1467,7 +1595,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1539,7 +1667,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1605,7 +1733,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1671,7 +1799,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1736,7 +1864,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1801,7 +1929,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1860,7 +1988,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1919,7 +2047,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1988,7 +2116,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2070,7 +2198,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2154,7 +2282,647 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    DivisionsController_list: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        divisions: {
+                            /** Format: uuid */
+                            id: string;
+                            names: {
+                                uz: string;
+                                ru: string;
+                                en: string;
+                            };
+                            builtIn: boolean;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                            departments: {
+                                /** Format: uuid */
+                                id: string;
+                                names: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                };
+                                /** Format: date-time */
+                                archivedAt: string | null;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    DivisionsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    names: {
+                        uz: string;
+                        ru: string;
+                        en: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        names: {
+                            uz: string;
+                            ru: string;
+                            en: string;
+                        };
+                        builtIn: boolean;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                        departments: {
+                            /** Format: uuid */
+                            id: string;
+                            names: {
+                                uz: string;
+                                ru: string;
+                                en: string;
+                            };
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    DivisionsController_rename: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    names: {
+                        uz: string;
+                        ru: string;
+                        en: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        names: {
+                            uz: string;
+                            ru: string;
+                            en: string;
+                        };
+                        builtIn: boolean;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                        departments: {
+                            /** Format: uuid */
+                            id: string;
+                            names: {
+                                uz: string;
+                                ru: string;
+                                en: string;
+                            };
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    DivisionsController_archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        names: {
+                            uz: string;
+                            ru: string;
+                            en: string;
+                        };
+                        builtIn: boolean;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                        departments: {
+                            /** Format: uuid */
+                            id: string;
+                            names: {
+                                uz: string;
+                                ru: string;
+                                en: string;
+                            };
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    DivisionsController_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        names: {
+                            uz: string;
+                            ru: string;
+                            en: string;
+                        };
+                        builtIn: boolean;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                        departments: {
+                            /** Format: uuid */
+                            id: string;
+                            names: {
+                                uz: string;
+                                ru: string;
+                                en: string;
+                            };
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    DivisionsController_createDepartment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    names: {
+                        uz: string;
+                        ru: string;
+                        en: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        names: {
+                            uz: string;
+                            ru: string;
+                            en: string;
+                        };
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    DivisionsController_renameDepartment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    names: {
+                        uz: string;
+                        ru: string;
+                        en: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        names: {
+                            uz: string;
+                            ru: string;
+                            en: string;
+                        };
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    DivisionsController_archiveDepartment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        names: {
+                            uz: string;
+                            ru: string;
+                            en: string;
+                        };
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    DivisionsController_restoreDepartment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        names: {
+                            uz: string;
+                            ru: string;
+                            en: string;
+                        };
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {

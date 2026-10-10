@@ -128,7 +128,7 @@ How to read the task lines:
   - Build: full branch record on top of the table from 0.4; buildings and floors; rooms with type, capacity, status and the "shared" switch; the room list.
   - Done when: the Super Admin can create and edit them and other roles are refused.
 
-- [ ] **1.2 Divisions and departments**
+- [x] **1.2 Divisions and departments**
   - Read: `03` (Divisions).
   - Build: the eight divisions as data with Academic built in; departments; names in three languages; archive rules.
   - Done when: Academic cannot be renamed or archived and a division with active staff cannot be archived.
@@ -162,7 +162,7 @@ How to read the task lines:
 
 - [ ] **2.2 Staff records**
   - Read: `04` (Teacher and staff record), `03` (Divisions), `02` (roles table), `06` (Rules), `edge/people-roles-accounts` (Who can act, Staff over time), `edge/timetable` (After publishing).
-  - Build: staff record with main and further branches, main and further divisions, department, subjects with grades, languages of instruction, availability per branch, and status with dates; the staff list with the columns in the spec, filters and Excel export; vacancies (a staff record for a teacher not yet hired; no account, no roles).
+  - Build: staff record with main and further branches, main and further divisions, department, subjects with grades, languages of instruction, availability per branch, and status with dates; the staff list with the columns in the spec, filters and Excel export; vacancies (a staff record for a teacher not yet hired; no account, no roles). From 1.2 (decided by the owner, pull request #40, answer 1): `POST /api/setup/divisions/:id/archive` answers 409 `archive_refused` while an active staff member has the division as main or further division, with its test in `apps/api/src/modules/setup/divisions.test.ts`; this is the second half of 1.2's "done when".
   - Done when: availability in two branches cannot overlap and status changes keep history.
 
 - [ ] **2.3 Accounts and role assignment screens**

@@ -17,6 +17,7 @@ export type AccountKey =
   | 'forms'
   | 'vicePrincipal'
   | 'superAdmin'
+  | 'divisions'
   | 'shellTools'
   | 'switchers'
   | 'account'

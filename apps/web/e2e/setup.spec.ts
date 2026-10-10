@@ -1,12 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
-import { accountOf } from './accounts';
+import { accountOf, type AccountKey } from './accounts';
 import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
 import { codeNow } from './totp';
 
 /** The first sign-in of the seeded Super Admin: the forced password change and the required second step. */
-async function signInAsSuperAdmin(page: Page): Promise<void> {
-  const account = accountOf('superAdmin');
+async function signInAsSuperAdmin(
+  page: Page,
+  accountKey: AccountKey = 'superAdmin',
+): Promise<void> {
+  const account = accountOf(accountKey);
   await page.goto('/sign-in');
   await languageChooser(page).selectOption('en');
   await signIn(page, en, account.login, account.password);
@@ -117,5 +120,67 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
   await confirmWith(page, en.setup.buildings.archive);
   await expect(panel.getByRole('row').filter({ hasText: 'Ground' })).toContainText(
     en.setup.buildings.archived,
+  );
+});
+
+// docs/build-plan.md, task 1.2, done when: "Academic cannot be renamed or
+// archived". docs/spec/03-school-setup.md, Divisions: "Academic is built in";
+// "Other divisions are data. The Super Admin adds, renames and archives them";
+// departments archived with their division (decided by the owner, pull
+// request #40, answer 4).
+test('the Super Admin sees Academic as built in, adds a division with a department, renames the department and archives the division with it', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signInAsSuperAdmin(page, 'divisions');
+
+  await openSetupPage(page, en.setup.divisionsLink, en.setup.divisions.title);
+  await expect(page.getByRole('row').filter({ hasText: 'Academic' })).toBeVisible();
+
+  // Academic: shown, not edited; no archive.
+  await page.getByRole('button', { name: 'Academic', exact: true }).click();
+  const academic = page.getByRole('complementary', { name: 'Academic' });
+  await expect(academic.getByText(en.setup.divisions.builtIn)).toBeVisible();
+  await expect(academic.getByRole('form', { name: 'Academic' })).toHaveCount(0);
+  await expect(
+    academic.getByRole('button', { name: en.setup.divisions.archiveDivision, exact: true }),
+  ).toHaveCount(0);
+  await expect(academic.getByRole('row').filter({ hasText: 'Tutors' })).toBeVisible();
+
+  // A new division with a department.
+  await page.getByRole('button', { name: en.setup.divisions.add, exact: true }).first().click();
+  const newDivision = page.getByRole('form', { name: en.setup.divisions.newTitle });
+  await newDivision.getByLabel(en.setup.divisions.nameUz, { exact: true }).fill('Sport');
+  await newDivision.getByLabel(en.setup.divisions.nameRu, { exact: true }).fill('Спорт');
+  await newDivision.getByLabel(en.setup.divisions.nameEn, { exact: true }).fill('Sports');
+  await newDivision.getByRole('button', { name: en.form.save, exact: true }).click();
+  await page.getByRole('button', { name: 'Sports', exact: true }).click();
+  const panel = page.getByRole('complementary', { name: 'Sports' });
+  const newDepartment = panel.getByRole('form', { name: en.setup.divisions.newDepartment });
+  await newDepartment.getByLabel(en.setup.divisions.nameUz, { exact: true }).fill('Suzish');
+  await newDepartment.getByLabel(en.setup.divisions.nameRu, { exact: true }).fill('Плавание');
+  await newDepartment.getByLabel(en.setup.divisions.nameEn, { exact: true }).fill('Swimming');
+  await newDepartment.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(panel.getByRole('row').filter({ hasText: 'Swimming' })).toBeVisible();
+
+  // The department renamed.
+  await panel
+    .getByRole('button', { name: en.setup.divisions.renameNamed.replace('{{name}}', 'Swimming') })
+    .click();
+  const rename = panel.getByRole('form', { name: 'Swimming' });
+  await rename.getByLabel(en.setup.divisions.nameEn, { exact: true }).fill('Pool');
+  await rename.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(panel.getByRole('row').filter({ hasText: 'Pool' })).toBeVisible();
+
+  // The division archived takes its department with it.
+  await panel
+    .getByRole('button', { name: en.setup.divisions.archiveDivision, exact: true })
+    .click();
+  await confirmWith(page, en.setup.divisions.archive);
+  await expect(panel.getByRole('row').filter({ hasText: 'Pool' })).toContainText(
+    en.setup.divisions.archived,
+  );
+  await expect(page.getByRole('row').filter({ hasText: 'Sports' })).toContainText(
+    en.setup.divisions.archived,
   );
 });

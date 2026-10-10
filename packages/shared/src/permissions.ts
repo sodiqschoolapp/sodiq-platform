@@ -49,6 +49,12 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   Super Admin alone creates, edits and archives buildings, floors and rooms,
  *   and the rooms are an input of the timetable (`06`, step 4). No `export`
  *   until the export route of the lists exists (task 2.2).
+ * - `divisions` (`03`, Division and Department; task 1.2): the Super Admin
+ *   alone adds, renames and archives divisions and their departments ("Only
+ *   this role creates ... divisions", `02`). The Principal views everything;
+ *   the Academic Vice Principal reads the list because the department is a
+ *   column of the teacher list (`04`) and a filter of the timetable board
+ *   (`06`); approved by the owner, pull request #40, answer 5.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -57,6 +63,11 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['view'],
   }),
   rooms: rows({
+    super_admin: ['view', 'create', 'edit', 'archive'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+  }),
+  divisions: rows({
     super_admin: ['view', 'create', 'edit', 'archive'],
     principal: ['view'],
     academic_vice_principal: ['view'],

@@ -1,4 +1,4 @@
-import { apiErrorSchema, type ErrorCode } from '@sodiq/shared';
+import { apiErrorSchema, type ErrorCode, type ErrorDetail } from '@sodiq/shared';
 
 /**
  * Why a call of the API did not give its answer: the code of the one error
@@ -17,6 +17,8 @@ export class ApiFailure extends Error {
     readonly code: FailureCode,
     /** `Retry-After` of the answer: how long to wait before the next attempt. */
     readonly retryAfterSeconds?: number,
+    /** The fields the refusal is about, when it names them (a taken name among several). */
+    readonly details?: readonly ErrorDetail[],
   ) {
     super(`The API call failed: ${code}.`);
   }
@@ -54,5 +56,9 @@ export async function answerOf<T>(call: Promise<ClientResult<T>>): Promise<T> {
   if (!parsed.success) {
     throw new ApiFailure('no_answer');
   }
-  throw new ApiFailure(parsed.data.error.code, retryAfterOf(result.response));
+  throw new ApiFailure(
+    parsed.data.error.code,
+    retryAfterOf(result.response),
+    parsed.data.error.details,
+  );
 }

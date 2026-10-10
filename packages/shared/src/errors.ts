@@ -63,6 +63,8 @@ export const ERROR_CODES = [
   'floor_archived',
   /** The record, or the building it is in, is archived: nothing changes until it is restored (task 1.1). */
   'archived_record',
+  /** Academic is built in: it is neither renamed nor archived (`03`, Divisions; task 1.2). */
+  'built_in',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

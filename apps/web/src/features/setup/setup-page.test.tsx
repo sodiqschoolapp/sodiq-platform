@@ -39,7 +39,7 @@ describe('the School setup entry', () => {
     },
   );
 
-  it('lists the branch, the buildings and the rooms for the Super Admin, each a link', async () => {
+  it('lists the branch, the buildings, the rooms and the divisions for the Super Admin, each a link', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionAs('super_admin')) });
     renderApp('/setup');
     await screen.findByRole('heading', { name: en.setup.title });
@@ -52,6 +52,9 @@ describe('the School setup entry', () => {
     );
     expect(screen.getByRole('link', { name: en.setup.roomsLink }).getAttribute('href')).toBe(
       '/setup/rooms',
+    );
+    expect(screen.getByRole('link', { name: en.setup.divisionsLink }).getAttribute('href')).toBe(
+      '/setup/divisions',
     );
     const crumbs = screen.getByRole('navigation', { name: en.layout.breadcrumbs });
     expect(within(crumbs).getByRole('link', { name: en.home.title })).toBeDefined();
