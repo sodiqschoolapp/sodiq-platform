@@ -1426,6 +1426,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -1640,6 +1642,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -1942,6 +1946,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2141,6 +2147,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2346,6 +2354,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2563,6 +2573,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2760,6 +2772,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2957,6 +2971,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3145,6 +3161,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3333,6 +3351,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3501,6 +3521,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3669,6 +3691,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3883,6 +3907,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4146,6 +4172,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4421,6 +4449,8 @@
                             "request_key_reused",
                             "already_exists",
                             "archive_refused",
+                            "floor_archived",
+                            "archived_record",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4582,6 +4612,8 @@
                   "request_key_reused",
                   "already_exists",
                   "archive_refused",
+                  "floor_archived",
+                  "archived_record",
                   "request_refused",
                   "internal_error"
                 ]

@@ -65,7 +65,8 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
 
   // A building with a floor.
   await openSetupPage(page, en.setup.buildingsLink, en.setup.buildings.title);
-  await page.getByRole('button', { name: en.setup.buildings.add, exact: true }).click();
+  // In the header and, while the list is empty, as the first action of the page.
+  await page.getByRole('button', { name: en.setup.buildings.add, exact: true }).first().click();
   const newBuilding = page.getByRole('form', { name: en.setup.buildings.newTitle });
   await newBuilding.getByLabel(en.setup.buildings.name, { exact: true }).fill('Main building');
   await newBuilding.getByRole('button', { name: en.form.save, exact: true }).click();
@@ -78,7 +79,7 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
 
   // A room on that floor, in the room list.
   await openSetupPage(page, en.setup.roomsLink, en.setup.rooms.title);
-  await page.getByRole('button', { name: en.setup.rooms.add, exact: true }).click();
+  await page.getByRole('button', { name: en.setup.rooms.add, exact: true }).first().click();
   const newRoom = page.getByRole('form', { name: en.setup.rooms.newTitle });
   await newRoom.getByLabel(en.setup.rooms.name, { exact: true }).fill('101');
   await newRoom
