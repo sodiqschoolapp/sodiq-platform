@@ -344,4 +344,240 @@ describe('school setup in the database', () => {
       expect(row.time_zone).toBe('Asia/Tashkent');
     });
   });
+
+  // docs/spec/03-school-setup.md, Divisions (task 1.2; db/migrations/0015):
+  // "The school has eight (decided)"; "One list for the whole school";
+  // "Academic is built in. It cannot be renamed or archived"; "Each division
+  // and department has a name in three languages."
+  describe('keep the divisions and departments of the spec', () => {
+    const RESTRICT_VIOLATION = '23001';
+
+    const schoolWide = <T>(work: (transaction: Transaction) => Promise<T>) =>
+      transactions.run([], work);
+
+    /** As the application: it may write the names and the position only. */
+    const insertDivision = (names: { uz: string; ru: string; en: string }, position: number) =>
+      schoolWide((transaction) =>
+        transaction
+          .insertInto('divisions')
+          .values({ name_uz: names.uz, name_ru: names.ru, name_en: names.en, position })
+          .returning('id')
+          .executeTakeFirstOrThrow(),
+      ).then((row) => row.id);
+
+    /** An archived division, written by the migrator: the application archives through an update. */
+    const insertArchivedDivision = (
+      names: { uz: string; ru: string; en: string },
+      position: number,
+    ) =>
+      database.migrator
+        .insertInto('divisions')
+        .values({
+          name_uz: names.uz,
+          name_ru: names.ru,
+          name_en: names.en,
+          position,
+          archived_at: MOMENT,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow()
+        .then((row) => row.id);
+
+    const insertDepartment = (
+      division: string,
+      names: { uz: string; ru: string; en: string },
+      position: number,
+    ) =>
+      schoolWide((transaction) =>
+        transaction
+          .insertInto('departments')
+          .values({
+            division_id: division,
+            name_uz: names.uz,
+            name_ru: names.ru,
+            name_en: names.en,
+            position,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow(),
+      ).then((row) => row.id);
+
+    const academicId = () =>
+      database.migrator
+        .selectFrom('divisions')
+        .select('id')
+        .where('built_in', '=', true)
+        .executeTakeFirstOrThrow()
+        .then((row) => row.id);
+
+    it('seeded: the eight divisions in the order of the table of 03, Academic built in, and their fourteen departments in order', async () => {
+      const divisions = await database.migrator
+        .selectFrom('divisions')
+        .select(['id', 'name_en', 'name_uz', 'built_in', 'position', 'archived_at'])
+        .orderBy('position')
+        .execute();
+      const departments = await database.migrator
+        .selectFrom('departments')
+        .select(['division_id', 'name_en', 'position'])
+        .orderBy('position')
+        .execute();
+
+      expect(divisions.map((row) => row.name_en)).toEqual([
+        'Academic',
+        'Management',
+        'Student Services',
+        'Admissions and Marketing',
+        'Finance',
+        'HR',
+        'IT',
+        'Operations',
+      ]);
+      expect(divisions.map((row) => row.position)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+      expect(divisions.map((row) => row.built_in)).toEqual([
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ]);
+      expect(divisions.every((row) => row.archived_at === null)).toBe(true);
+      // The Uzbek names of `03`, with U+02BB as the locale files write oʻ.
+      expect(divisions[0]?.name_uz).toBe('Oʻquv boʻlimi');
+      expect(divisions[7]?.name_uz).toBe('Xoʻjalik boʻlimi');
+      const byDivision = (en: string) =>
+        departments
+          .filter((row) => row.division_id === divisions.find((one) => one.name_en === en)?.id)
+          .map((row) => row.name_en);
+      expect(departments).toHaveLength(14);
+      expect(byDivision('Academic')).toEqual([
+        'STEAM',
+        'Foreign languages',
+        'National',
+        'Natural sciences',
+        'General',
+        'Tutors',
+      ]);
+      expect(byDivision('Student Services')).toEqual([
+        'Medical',
+        'Psychology',
+        'Library',
+        'Clubs and events',
+      ]);
+      expect(byDivision('Operations')).toEqual(['Facilities', 'Catering', 'Security', 'Transport']);
+      expect(byDivision('Management')).toEqual([]);
+    });
+
+    it('refuse a rename and an archive of Academic, by the application and by the migrator alike', async () => {
+      const id = await academicId();
+      const byApp = (fields: Record<string, string | Date>) =>
+        schoolWide((transaction) =>
+          transaction.updateTable('divisions').set(fields).where('id', '=', id).execute(),
+        );
+      const byMigrator = (fields: Record<string, string | Date>) =>
+        database.migrator.updateTable('divisions').set(fields).where('id', '=', id).execute();
+
+      const changes: Record<string, string | Date>[] = [
+        { name_en: 'Study' },
+        { name_uz: 'Oʻqitish' },
+        { name_ru: 'Учёба' },
+        { archived_at: MOMENT },
+      ];
+      for (const change of changes) {
+        await expect(byApp(change)).rejects.toMatchObject({ code: RESTRICT_VIOLATION });
+        await expect(byMigrator(change)).rejects.toMatchObject({ code: RESTRICT_VIOLATION });
+      }
+      const row = await database.migrator
+        .selectFrom('divisions')
+        .select(['name_en', 'archived_at'])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      expect(row).toEqual({ name_en: 'Academic', archived_at: null });
+    });
+
+    it('let the application neither write built_in nor delete, move or reorder a record', async () => {
+      const refused = (statement: string) =>
+        expect(
+          schoolWide((transaction) => sql.raw(statement).execute(transaction)),
+        ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+      await refused(
+        `insert into divisions (name_uz, name_ru, name_en, built_in, position) values ('A', 'A', 'A', true, 50)`,
+      );
+      await refused(`update divisions set built_in = true where position = 2`);
+      await refused(`update divisions set position = 9 where position = 2`);
+      await refused(`update departments set position = 9`);
+      await refused(
+        `update departments set division_id = (select id from divisions where position = 2)`,
+      );
+      await refused(`delete from departments`);
+      await refused(`delete from divisions`);
+    });
+
+    it('refuse two active divisions of one name in any language, also one that differs in Cyrillic case only; an archived name is free', async () => {
+      await expect(
+        insertDivision({ uz: 'Boshqa', ru: 'Другое', en: ' finance ' }, 20),
+      ).rejects.toMatchObject({
+        code: UNIQUE_VIOLATION,
+        constraint: 'divisions_active_name_en_idx',
+      });
+      await expect(
+        insertDivision({ uz: 'Boshqa', ru: 'ФИНАНСОВЫЙ ОТДЕЛ', en: 'Other' }, 20),
+      ).rejects.toMatchObject({
+        code: UNIQUE_VIOLATION,
+        constraint: 'divisions_active_name_ru_idx',
+      });
+      await expect(
+        insertDivision({ uz: 'MOLIYA BOʻLIMI', ru: 'Другое', en: 'Other' }, 20),
+      ).rejects.toMatchObject({
+        code: UNIQUE_VIOLATION,
+        constraint: 'divisions_active_name_uz_idx',
+      });
+      await insertArchivedDivision({ uz: 'Eski', ru: 'Старый', en: 'Old' }, 21);
+      await expect(insertDivision({ uz: 'Eski', ru: 'Старый', en: 'Old' }, 22)).resolves.toEqual(
+        expect.any(String),
+      );
+    });
+
+    it('refuse two active departments of one name in a division, while another division may have it; refuse one in an unknown division', async () => {
+      const academic = await academicId();
+      const operations = await database.migrator
+        .selectFrom('divisions')
+        .select('id')
+        .where('name_en', '=', 'Operations')
+        .executeTakeFirstOrThrow();
+
+      await expect(
+        insertDepartment(academic, { uz: 'A', ru: 'Б', en: ' steam ' }, 20),
+      ).rejects.toMatchObject({
+        code: UNIQUE_VIOLATION,
+        constraint: 'departments_active_name_en_idx',
+      });
+      await expect(
+        insertDepartment(operations.id, { uz: 'A', ru: 'Б', en: 'STEAM' }, 20),
+      ).resolves.toEqual(expect.any(String));
+      await expect(
+        insertDepartment('0199a000-0000-7000-8000-000000000099', { uz: 'A', ru: 'Б', en: 'C' }, 1),
+      ).rejects.toMatchObject({ code: FOREIGN_KEY_VIOLATION });
+    });
+
+    it('refuse an empty or too long name, a position below one, and two active records on one position', async () => {
+      await expect(insertDivision({ uz: '', ru: 'Б', en: 'C' }, 30)).rejects.toMatchObject({
+        code: CHECK_VIOLATION,
+      });
+      await expect(
+        insertDivision({ uz: 'A', ru: 'Б', en: 'C'.repeat(101) }, 30),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      await expect(insertDivision({ uz: 'A', ru: 'Б', en: 'C' }, 0)).rejects.toMatchObject({
+        code: CHECK_VIOLATION,
+      });
+      await expect(
+        insertDivision({ uz: 'Birinchi', ru: 'Первый', en: 'First' }, 1),
+      ).rejects.toMatchObject({
+        code: UNIQUE_VIOLATION,
+        constraint: 'divisions_active_position_idx',
+      });
+    });
+  });
 });

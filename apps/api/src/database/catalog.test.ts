@@ -34,6 +34,10 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'A report about the app belongs to an account, which has no branch; a row holds ids, the roles of the session, the path of a page, a text and a moment. The owner reads it until a screen exists (task 0.8b-3).',
   notifications:
     'A notification belongs to an account, which has no branch, and names the branch of its event as a label; a row holds ids, a kind, the data of its text and moments. Every route reads the rows of the account of the session only (task 0.9, decided by the owner).',
+  divisions:
+    'docs/spec/03, Divisions: "One list for the whole school ... Divisions are the same in every branch." A row holds names, a position and moments (task 1.2, decided by the owner).',
+  departments:
+    'The departments of the divisions, one list for the whole school as their divisions (docs/spec/03, Division: "Departments"); a row holds ids, names, a position and moments (task 1.2, decided by the owner).',
 };
 
 /**

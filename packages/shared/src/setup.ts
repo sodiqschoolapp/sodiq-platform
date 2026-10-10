@@ -216,3 +216,51 @@ export type RoomList = z.infer<typeof roomListSchema>;
 export const setupIdParamsSchema = z.object({ id: z.uuid() });
 
 export type SetupIdParams = z.infer<typeof setupIdParamsSchema>;
+
+// Division and department (`03`, Divisions; task 1.2): "Each division and
+// department has a name in three languages."
+
+export const DIVISION_NAME_MAX_LENGTH = 100;
+
+/** A name in the three languages of the app (`12`, Language), each required. */
+export const namesSchema = z.object({
+  uz: z.string().trim().min(1).max(DIVISION_NAME_MAX_LENGTH),
+  ru: z.string().trim().min(1).max(DIVISION_NAME_MAX_LENGTH),
+  en: z.string().trim().min(1).max(DIVISION_NAME_MAX_LENGTH),
+});
+
+export type Names = z.infer<typeof namesSchema>;
+
+/** What is typed for a division: its names. Academic's cannot be changed. */
+export const divisionRecordSchema = z.object({ names: namesSchema });
+
+export type DivisionRecord = z.infer<typeof divisionRecordSchema>;
+
+/** What is typed for a department: its names. Its division is the one it was added to. */
+export const departmentRecordSchema = z.object({ names: namesSchema });
+
+export type DepartmentRecord = z.infer<typeof departmentRecordSchema>;
+
+export const departmentSchema = z.object({
+  id: z.uuid(),
+  names: namesSchema,
+  archivedAt: z.iso.datetime().nullable(),
+});
+
+export type Department = z.infer<typeof departmentSchema>;
+
+/** A division with its departments, archived ones included and marked; in the order of the list. */
+export const divisionSchema = z.object({
+  id: z.uuid(),
+  names: namesSchema,
+  /** Academic: "It cannot be renamed or archived." */
+  builtIn: z.boolean(),
+  archivedAt: z.iso.datetime().nullable(),
+  departments: z.array(departmentSchema),
+});
+
+export type Division = z.infer<typeof divisionSchema>;
+
+export const divisionListSchema = z.object({ divisions: z.array(divisionSchema) });
+
+export type DivisionList = z.infer<typeof divisionListSchema>;

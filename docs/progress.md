@@ -2,6 +2,42 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 10 October 2026: task 1.2 Divisions and departments
+
+Plan approved by the owner on pull request #40 (`[review] approved`, with the answers to the eight questions: the active-staff refusal moves to 2.2; the missing Russian and Uzbek names as proposed, Academic's Russian name `Учебный отдел`; two school-wide tables; departments archived and restored with their division, never moved; the permission area `divisions` with the view of the Principal and the Academic Vice Principal; names unique per language among active records; Tutors is plain data; the trigger; and one correction: an explicit `position` column for the order of both lists). The decisions are in `docs/decisions.md`, 10 October 2026 (task 1.2). Nothing under `docs/spec/` was touched.
+
+Built:
+
+- `db/migrations/0015_divisions_departments.sql`: `divisions` (three names, `built_in`, `position`, `archived_at`) and `departments` (`division_id`, three names, `position`, `archived_at`), both school-wide; three partial unique indexes per table on the lowered trimmed names of active rows and one on the position; the trigger `divisions_built_in_guard` (`before update`, refuses a change of Academic's names or `archived_at` for every user with `restrict_violation`); grants `select`, `insert` of the names and the position, `update` of the names and `archived_at`, no delete; the seed of the eight divisions and fourteen departments of `03`, one insert each in the spec's order. Types regenerated.
+- `packages/shared`: `namesSchema`, `divisionRecordSchema`, `departmentRecordSchema`, `divisionSchema`, `departmentSchema`, `divisionListSchema`, `DIVISION_NAME_MAX_LENGTH` in `setup.ts`; the error code `built_in`; the area `divisions` of `PERMISSIONS`.
+- API (`modules/setup/`): `divisions.service.ts` and `divisions.controller.ts` with nine routes (`GET /api/setup/divisions` bound to the branch of the request; `POST /divisions`, `PUT /divisions/:id`, `POST /divisions/:id/archive|restore|departments`, `PUT /departments/:id`, `POST /departments/:id/archive|restore` as school-wide work with entries in `audit_log_school`); `ApiException` carries optional `details`, which `sendError` answers; `refusingDuplicates` maps the violated unique index to the field in `details`. `ROUTE_ACCESS`, the OpenAPI path list, the public-routes list and `SCHOOL_WIDE_TABLES` extended; the web client regenerated.
+- Web (`features/setup/`): `divisions-page.tsx` (the list with the name in the chosen language, active departments and status; filter by status; bulk Archive and Restore naming the refused rows; "Add division" above the list), `division-panel.tsx` (`NamesForm` with the three name fields and the taken name shown beside its field; `DivisionPanel` with Academic's names read-only and the built-in line, archive and restore, the departments table with rename, archive, restore and "Add department"), `setup-api.ts` (`divisionsQuery`, `divisionsKey`, `invalidateDivisions` over every branch's list, `nameOf`); `ApiFailure.details`; the link on the setup page, the route, the page in the Ctrl+K index. Texts `setup.divisions.*`, `setup.divisionsLink*` and `errors.built_in` in uz, ru, en.
+- Browser test in `e2e/setup.spec.ts` with a seeded `divisions` Super Admin account: Academic shown as built in without a rename form or an archive button; a division added with a department; the department renamed; the division archived with its department.
+- Tests: shared `setup.test.ts` and `permissions.test.ts`; API `setup.database.test.ts` (the seed in the spec's order, the trigger for the application and the migrator, no write of `built_in`, no delete, no move or reorder, the unique names per language with a Cyrillic duplicate that differs in case only, the foreign key, the checks, the unique position), `divisions.test.ts` (the list and its readers, every route for the Super Admin with the audit entries naming the assignment and the request, `built_in`, `archived_record`, `already_exists` with the language in `details`, the cascade archive and restore, the refusals of the Principal, the Academic Vice Principal and a Teacher on every writing route, validation), `route-permissions`, `openapi`, `public-routes`, `catalog`; web `divisions-page.test.tsx` (14, including the Russian names and the invalidation of every branch's list), `setup-page.test.tsx`.
+
+Left out, with the task that brings it:
+
+- The refusal of an archive while an active staff member is in the division (409 `archive_refused`), and the staff counts per division: 2.2, noted on its Build line in the build plan. This is the second half of 1.2's "done when".
+- Subjects grouped by departments and the refusal of an archive while a subject is in a department: 2.1. The division and department columns and filters of the staff list: 2.2. Export of the list: 2.2. Forced delete: 2.6.
+- The setup checklist of `edge/academic-year` lists "departments" per branch while the list is school-wide: 1.6 decides what the per-branch item means.
+- A reordering control for divisions and departments: none asked for.
+
+Open, for the owner:
+
+- The Russian division names and the Uzbek and Russian department names are the owner's starting values from the plan; nobody else reviewed them. Academic's cannot be changed in the app (a migration that disables the trigger for its statement can).
+- The Uzbek and Russian wording of `setup.divisions.*` and `errors.built_in` was not reviewed by anybody.
+
+The next sessions must know:
+
+- `divisions` and `departments` have no branch: a service reads and writes them in `transactions.run([], ...)` or in any branch's transaction alike; their audit entries go to `audit_log_school` (`branchId: null`).
+- Academic is the row with `built_in`; `sodiq_app` cannot write that column, and the trigger refuses a change of its names or `archived_at` for the migrator too (`alter table divisions disable trigger divisions_built_in_guard` for one statement when a migration must).
+- A new division or department takes `max(position) + 1` over every row, archived ones included; the divisions rows are read `for update` first, and the division row for a department.
+- `ApiException(code, status, retryAfterSeconds?, details?)`: a refusal about one field names it in `details` as a validation failure does; `refusingDuplicates(work, { <unique index>: '<path>' })` fills them from the constraint name. In the web app `ApiFailure.details` carries them; `takenNameOf` in `division-panel.tsx` reads the language.
+- A record with names in three languages is one `NamesForm` with the fields `uz`, `ru`, `en` and `namesSchema` as the form's schema (the form hook reads issues by the first path element, so the schema of a form is flat); the route body is `{ names }`.
+- A query of a list that is the same in every branch keeps the branch in its key (the call carries the header) and is invalidated by its prefix (`invalidateDivisions`).
+
+The next task is 1.3.
+
 ## 10 October 2026: task 1.1 Branches, buildings, floors and rooms
 
 Plan approved by the owner on pull request #37 (`[review] approved`, with the answers to the nine questions: contacts are one phone and one email; Monday to Friday by default; the time zone fixed to Asia/Tashkent; no archiving of a branch; the Academic Vice Principal views both areas; room names unique per branch; buildings and floors archived only when every room on them is closed, rooms never archived; a bulk "Change status" on the room list; the typed bounds as proposed). The decisions are in `docs/decisions.md`, 10 October 2026. Nothing under `docs/spec/` was touched.

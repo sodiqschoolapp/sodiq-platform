@@ -89,11 +89,15 @@ describe('a frozen permission table', () => {
   // Admin: "Only this role creates branches, buildings, floors and rooms";
   // Principal: "Changes nothing"; the Academic Vice Principal's view was
   // approved by the owner, pull request #37, answer 5).
-  it('gives the Super Admin alone the changes of branches, buildings, floors and rooms', () => {
-    expect(Object.keys(PERMISSIONS).sort()).toEqual(['branches', 'rooms']);
+  // Task 1.2: `divisions` ("Only this role creates ... divisions"; the view
+  // of the Principal and the Academic Vice Principal approved by the owner,
+  // pull request #40, answer 5).
+  it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
+    expect(Object.keys(PERMISSIONS).sort()).toEqual(['branches', 'divisions', 'rooms']);
     expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);
     expect(PERMISSIONS.rooms.super_admin).toEqual(['view', 'create', 'edit', 'archive']);
-    for (const area of ['branches', 'rooms'] as const) {
+    expect(PERMISSIONS.divisions.super_admin).toEqual(['view', 'create', 'edit', 'archive']);
+    for (const area of ['branches', 'rooms', 'divisions'] as const) {
       expect(PERMISSIONS[area].principal).toEqual(['view']);
       expect(PERMISSIONS[area].academic_vice_principal).toEqual(['view']);
       for (const role of ROLES) {

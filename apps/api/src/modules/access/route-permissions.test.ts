@@ -81,6 +81,19 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/setup/rooms': { branch: 'request', roles: SETUP_VIEWERS },
   'POST /api/setup/rooms': { branch: 'request', roles: ['super_admin'] },
   'PUT /api/setup/rooms/:id': { branch: 'request', roles: ['super_admin'] },
+  // Divisions and departments (task 1.2; `02`, Super Admin: "Only this role
+  // creates ... divisions"; the view of the three roles approved by the owner,
+  // pull request #40, answer 5). A division has no branch: every change is
+  // school-wide work; the list is read through the branch of the request.
+  'GET /api/setup/divisions': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/setup/divisions': { branch: 'none', roles: ['super_admin'] },
+  'PUT /api/setup/divisions/:id': { branch: 'none', roles: ['super_admin'] },
+  'POST /api/setup/divisions/:id/archive': { branch: 'none', roles: ['super_admin'] },
+  'POST /api/setup/divisions/:id/restore': { branch: 'none', roles: ['super_admin'] },
+  'POST /api/setup/divisions/:id/departments': { branch: 'none', roles: ['super_admin'] },
+  'PUT /api/setup/departments/:id': { branch: 'none', roles: ['super_admin'] },
+  'POST /api/setup/departments/:id/archive': { branch: 'none', roles: ['super_admin'] },
+  'POST /api/setup/departments/:id/restore': { branch: 'none', roles: ['super_admin'] },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

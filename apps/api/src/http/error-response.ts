@@ -38,6 +38,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   floor_archived:
     'The floor is archived: a room goes on an active floor, and only a closed room stays on an archived one.',
   archived_record: 'The record, or the building it is in, is archived. Restore it first.',
+  built_in: 'Academic is built in: it cannot be renamed or archived.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };
@@ -106,12 +107,18 @@ export function sendError(response: Response, error: unknown): void {
   if (error instanceof ApiException && error.retryAfterSeconds !== undefined) {
     response.setHeader('Retry-After', String(error.retryAfterSeconds));
   }
+  const details =
+    error instanceof ValidationFailedException
+      ? error.details
+      : error instanceof ApiException
+        ? error.details
+        : undefined;
   const body: ApiError = {
     error: {
       code,
       message: MESSAGE[code],
       requestId,
-      ...(error instanceof ValidationFailedException ? { details: error.details } : {}),
+      ...(details === undefined ? {} : { details }),
     },
   };
   response.status(status).json(body);

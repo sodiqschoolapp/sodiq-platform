@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   branchRecordSchema,
   DEFAULT_WORKING_WEEKDAYS,
+  departmentRecordSchema,
+  DIVISION_NAME_MAX_LENGTH,
+  divisionRecordSchema,
   floorRecordSchema,
+  namesSchema,
   buildingRecordSchema,
   ROOM_CAPACITY_MAX,
   ROOM_STATUSES,
@@ -188,5 +192,37 @@ describe('the record of a room', () => {
   it('refuses an empty or too long name', () => {
     expect(paths(roomRecordSchema.safeParse({ ...ROOM, name: '' }))).toEqual(['name']);
     expect(paths(roomRecordSchema.safeParse({ ...ROOM, name: 'R'.repeat(51) }))).toEqual(['name']);
+  });
+});
+
+// docs/spec/03-school-setup.md, Divisions, Names: "Each division and
+// department has a name in three languages." The bound of 100 follows 1.1.
+describe('the records of a division and a department', () => {
+  const NAMES = { uz: 'Moliya boʻlimi', ru: 'Финансовый отдел', en: 'Finance' };
+
+  it('take the three names, trimmed', () => {
+    expect(divisionRecordSchema.parse({ names: { ...NAMES, en: ' Finance ' } })).toEqual({
+      names: NAMES,
+    });
+    expect(departmentRecordSchema.parse({ names: NAMES })).toEqual({ names: NAMES });
+    expect(
+      namesSchema.safeParse({ ...NAMES, uz: 'M'.repeat(DIVISION_NAME_MAX_LENGTH) }).success,
+    ).toBe(true);
+  });
+
+  it('refuse a missing, empty or too long name in any language, naming it', () => {
+    expect(paths(divisionRecordSchema.safeParse({ names: { ...NAMES, ru: ' ' } }))).toEqual([
+      'names.ru',
+    ]);
+    expect(paths(departmentRecordSchema.safeParse({ names: { uz: 'A', en: 'A' } }))).toEqual([
+      'names.ru',
+    ]);
+    expect(
+      paths(
+        divisionRecordSchema.safeParse({
+          names: { ...NAMES, en: 'E'.repeat(DIVISION_NAME_MAX_LENGTH + 1) },
+        }),
+      ),
+    ).toEqual(['names.en']);
   });
 });

@@ -115,6 +115,28 @@ export interface Buildings {
   name: string;
 }
 
+export interface Departments {
+  archived_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  division_id: string;
+  id: Generated<string>;
+  name_en: string;
+  name_ru: string;
+  name_uz: string;
+  position: number;
+}
+
+export interface Divisions {
+  archived_at: Timestamp | null;
+  built_in: Generated<boolean>;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  name_en: string;
+  name_ru: string;
+  name_uz: string;
+  position: number;
+}
+
 export interface FeedbackReports {
   account_id: string;
   created_at: Timestamp;
@@ -216,6 +238,8 @@ export interface DB {
   audit_log_school: AuditLogSchool;
   branches: Branches;
   buildings: Buildings;
+  departments: Departments;
+  divisions: Divisions;
   feedback_reports: FeedbackReports;
   floors: Floors;
   known_devices: KnownDevices;
