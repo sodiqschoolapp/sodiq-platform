@@ -96,11 +96,7 @@ describe('buildings and floors', () => {
   }
 
   const closeRoom = (id: string) =>
-    database.migrator
-      .updateTable('rooms')
-      .set({ status: 'closed' })
-      .where('id', '=', id)
-      .execute();
+    database.migrator.updateTable('rooms').set({ status: 'closed' }).where('id', '=', id).execute();
 
   describe('a building', () => {
     it('is created by the Super Admin in the branch of the request, with an audit entry', async () => {
@@ -160,7 +156,10 @@ describe('buildings and floors', () => {
       expect(same.status).toBe(200);
       const written = await entries('building.edit', id);
       expect(written).toHaveLength(1);
-      expect(written[0]).toMatchObject({ old_value: { name: 'Annex' }, new_value: { name: 'Annex B' } });
+      expect(written[0]).toMatchObject({
+        old_value: { name: 'Annex' },
+        new_value: { name: 'Annex B' },
+      });
     });
 
     it('cannot take the name of another active building', async () => {
@@ -177,9 +176,7 @@ describe('buildings and floors', () => {
       expect((await put(`/api/setup/buildings/${id}`, { name: 'X' }, admin, south)).status).toBe(
         404,
       );
-      expect((await post(`/api/setup/buildings/${id}/archive`, {}, admin, south)).status).toBe(
-        404,
-      );
+      expect((await post(`/api/setup/buildings/${id}/archive`, {}, admin, south)).status).toBe(404);
       expect((await post(`/api/setup/buildings/${UNKNOWN}/floors`, { name: '1' })).status).toBe(
         404,
       );
@@ -218,7 +215,9 @@ describe('buildings and floors', () => {
       });
       const listed = await get('/api/setup/buildings');
       const found = listed.body.buildings.find((one: { id: string }) => one.id === id);
-      expect(found.floors).toEqual([{ id: response.body.id, name: 'Ground', archivedAt: null, roomCount: 0 }]);
+      expect(found.floors).toEqual([
+        { id: response.body.id, name: 'Ground', archivedAt: null, roomCount: 0 },
+      ]);
     });
 
     it('is refused with already_exists for a second active floor of that name in the building, while another building may have it', async () => {
@@ -229,9 +228,7 @@ describe('buildings and floors', () => {
       expect(errorCode(await post(`/api/setup/buildings/${first}/floors`, { name: ' 1 ' }))).toBe(
         'already_exists',
       );
-      expect((await post(`/api/setup/buildings/${second}/floors`, { name: '1' })).status).toBe(
-        201,
-      );
+      expect((await post(`/api/setup/buildings/${second}/floors`, { name: '1' })).status).toBe(201);
     });
 
     it('is renamed with its audit entry, and not found in another branch', async () => {

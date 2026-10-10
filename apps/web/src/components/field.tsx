@@ -17,28 +17,30 @@ interface Described {
   'aria-describedby': string | undefined;
 }
 
-/** The label above a control and its messages below, tied to it for a screen reader. */
-function Labelled({
-  label,
-  error,
-  note,
-  children,
-}: FieldTexts & { children: (control: Described) => ReactNode }) {
-  const id = useId();
+/** The ids of the messages of a control and what `aria-describedby` says. */
+function described(id: string, note: string | undefined, error: string | undefined) {
   const noteId = `${id}-note`;
   const errorId = `${id}-error`;
   const describedBy = [note === undefined ? null : noteId, error === undefined ? null : errorId]
     .filter((part) => part !== null)
     .join(' ');
+  return { noteId, errorId, describedBy: describedBy === '' ? undefined : describedBy };
+}
 
+/** The messages under a control: a lasting note and what to fix. */
+function Messages({
+  noteId,
+  errorId,
+  note,
+  error,
+}: {
+  noteId: string;
+  errorId: string;
+  note: string | undefined;
+  error: string | undefined;
+}) {
   return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      {children({
-        id,
-        'aria-invalid': error !== undefined,
-        'aria-describedby': describedBy === '' ? undefined : describedBy,
-      })}
+    <>
       {note !== undefined && (
         <p id={noteId} className="text-xs text-muted-foreground">
           {note}
@@ -53,6 +55,29 @@ function Labelled({
           </p>
         )}
       </div>
+    </>
+  );
+}
+
+/** The label above a control and its messages below, tied to it for a screen reader. */
+function Labelled({
+  label,
+  error,
+  note,
+  children,
+}: FieldTexts & { children: (control: Described) => ReactNode }) {
+  const id = useId();
+  const { noteId, errorId, describedBy } = described(id, note, error);
+
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      {children({
+        id,
+        'aria-invalid': error !== undefined,
+        'aria-describedby': describedBy,
+      })}
+      <Messages noteId={noteId} errorId={errorId} note={note} error={error} />
     </div>
   );
 }
@@ -115,5 +140,129 @@ export function TextAreaField({ label, error, note, ...textarea }: TextAreaField
     <Labelled label={label} error={error} note={note}>
       {(control) => <Textarea {...control} {...textarea} />}
     </Labelled>
+  );
+}
+
+/** What a ticked `CheckboxField` holds; empty when it is not ticked. */
+export const CHECKED = 'on';
+
+const CHECKBOX = 'size-4 accent-primary';
+
+interface Bound {
+  name: string;
+  /** As every field of a record form: a text. */
+  value: string;
+  onChange: (event: { target: { value: string } }) => void;
+  disabled?: boolean | undefined;
+}
+
+/**
+ * One switch of a record form, for example "shared". It holds `CHECKED` when
+ * ticked and nothing when not, so that `form.bind(name)` fits it like a text
+ * field; the form reads it with `typed.shared === CHECKED`.
+ */
+export function CheckboxField({
+  label,
+  error,
+  note,
+  name,
+  value,
+  onChange,
+  disabled,
+}: FieldTexts & Bound) {
+  const id = useId();
+  const { noteId, errorId, describedBy } = described(id, note, error);
+  return (
+    <div className="grid gap-1.5">
+      <div className="flex items-center gap-2">
+        <input
+          id={id}
+          name={name}
+          type="checkbox"
+          className={CHECKBOX}
+          checked={value === CHECKED}
+          disabled={disabled}
+          aria-invalid={error !== undefined}
+          aria-describedby={describedBy}
+          onChange={(event) => {
+            onChange({ target: { value: event.target.checked ? CHECKED : '' } });
+          }}
+        />
+        <Label htmlFor={id}>{label}</Label>
+      </div>
+      <Messages noteId={noteId} errorId={errorId} note={note} error={error} />
+    </div>
+  );
+}
+
+const LIST_SEPARATOR = ',';
+
+/** The value of a `CheckboxGroupField` for these ticked values. */
+export const listValue = (values: readonly string[]): string => values.join(LIST_SEPARATOR);
+
+/** The ticked values of a `CheckboxGroupField`, from what the form holds. */
+export const listValues = (value: string): string[] =>
+  value === '' ? [] : value.split(LIST_SEPARATOR);
+
+type CheckboxGroupFieldProps = FieldTexts &
+  Bound & { options: readonly { value: string; label: string }[] };
+
+/**
+ * A set of switches that make one field, for example the working weekdays.
+ * The field holds the ticked values joined by commas, in the order of the
+ * options; the form reads them with `listValues`.
+ */
+export function CheckboxGroupField({
+  label,
+  error,
+  note,
+  name,
+  value,
+  onChange,
+  disabled,
+  options,
+}: CheckboxGroupFieldProps) {
+  const id = useId();
+  const { noteId, errorId, describedBy } = described(id, note, error);
+  const ticked = new Set(listValues(value));
+  return (
+    <fieldset
+      className="grid gap-1.5"
+      aria-invalid={error !== undefined}
+      aria-describedby={describedBy}
+      disabled={disabled}
+    >
+      <legend className="mb-1.5 text-sm font-medium">{label}</legend>
+      <div className="flex flex-wrap gap-x-4 gap-y-2">
+        {options.map((option) => (
+          <label key={option.value} className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name={name}
+              value={option.value}
+              className={CHECKBOX}
+              checked={ticked.has(option.value)}
+              onChange={(event) => {
+                const next = new Set(ticked);
+                if (event.target.checked) {
+                  next.add(option.value);
+                } else {
+                  next.delete(option.value);
+                }
+                onChange({
+                  target: {
+                    value: listValue(
+                      options.map((one) => one.value).filter((one) => next.has(one)),
+                    ),
+                  },
+                });
+              }}
+            />
+            {option.label}
+          </label>
+        ))}
+      </div>
+      <Messages noteId={noteId} errorId={errorId} note={note} error={error} />
+    </fieldset>
   );
 }

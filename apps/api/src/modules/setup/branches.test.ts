@@ -145,7 +145,12 @@ describe('the record of a branch', () => {
       });
 
       expect(response.status).toBe(201);
-      expect(response.body).toMatchObject({ name: 'West', address: null, phone: null, email: null });
+      expect(response.body).toMatchObject({
+        name: 'West',
+        address: null,
+        phone: null,
+        email: null,
+      });
     });
 
     it('and refused with already_exists when a branch of that name exists, whatever the case; nothing is written', async () => {
@@ -170,9 +175,9 @@ describe('the record of a branch', () => {
         const response = await create(admin, body);
         expect(response.status).toBe(400);
         expect(errorCode(response)).toBe('validation_failed');
-        expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toEqual(
-          [path],
-        );
+        expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toEqual([
+          path,
+        ]);
       }
       const rows = await database.migrator.selectFrom('branches').select('name').execute();
       expect(rows.map((row) => row.name)).not.toContain('A1');

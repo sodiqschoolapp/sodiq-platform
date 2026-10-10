@@ -21,3 +21,16 @@ export const COMMON_PAGES: readonly IndexedPage[] = [
   // The sample of the shared patterns exists in development only (task 0.8b-1).
   ...(import.meta.env.DEV ? [{ titleKey: 'sample.title', to: '/dev/patterns' } as const] : []),
 ];
+
+/** The pages under "School setup" (task 1.1), indexed when the menu of the role has the item. */
+export const SETUP_PAGES: readonly IndexedPage[] = [
+  { titleKey: 'setup.branch.title', to: '/setup/branch' },
+  { titleKey: 'setup.buildings.title', to: '/setup/buildings' },
+  { titleKey: 'setup.rooms.title', to: '/setup/rooms' },
+];
+
+/** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */
+export function indexedPages(menuPages: readonly IndexedPage[]): IndexedPage[] {
+  const setup = menuPages.some((page) => page.to === '/setup') ? SETUP_PAGES : [];
+  return [...menuPages, ...setup, ...COMMON_PAGES];
+}

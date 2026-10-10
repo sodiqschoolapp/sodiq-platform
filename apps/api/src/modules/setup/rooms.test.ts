@@ -175,9 +175,9 @@ describe('rooms', () => {
         const response = await post('/api/setup/rooms', roomOf('V-1', ground, fields));
         expect(response.status).toBe(400);
         expect(errorCode(response)).toBe('validation_failed');
-        expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toEqual(
-          [path],
-        );
+        expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toEqual([
+          path,
+        ]);
       }
       expect((await entries('room.create')).length).toBe(before);
     });
@@ -282,9 +282,7 @@ describe('rooms', () => {
       expect(errorCode(await put(`/api/setup/rooms/${id}`, roomOf('202', first)))).toBe(
         'already_exists',
       );
-      expect((await put(`/api/setup/rooms/${id}`, roomOf('203', archivedFloor))).status).toBe(
-        404,
-      );
+      expect((await put(`/api/setup/rooms/${id}`, roomOf('203', archivedFloor))).status).toBe(404);
       expect(await entries('room.edit', id)).toHaveLength(0);
     });
 

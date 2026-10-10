@@ -63,6 +63,19 @@ try {
   );
   seeded.vicePrincipal = { login: vicePrincipal.login, password: vicePrincipal.firstPassword };
 
+  // The Super Admin of the setup tests (task 1.1): the role only; the test
+  // sets up the required second step itself, as the Academic Vice Principal's does.
+  const superAdmin = await create('Nodira', 'Ergasheva');
+  await transactions.run([], (transaction) =>
+    assignments.give(transaction, {
+      accountId: superAdmin.id,
+      role: 'super_admin',
+      branchId: null,
+      givenBy: null,
+    }),
+  );
+  seeded.superAdmin = { login: superAdmin.login, password: superAdmin.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');

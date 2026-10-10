@@ -11,10 +11,11 @@ export interface MenuPage {
  * The pages of the menu that are built. A menu item appears only when its page
  * exists (decided by the owner at the plan of task 0.8c); each later task adds
  * its item here with its page, and the menu table of `packages/shared` already
- * says which roles see it. `home` is the only one now.
+ * says which roles see it. `setup` came with task 1.1.
  */
 export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
   home: { titleKey: 'menu.home', to: '/' },
+  setup: { titleKey: 'menu.setup', to: '/setup' },
 };
 
 export const BUILT_ITEMS: ReadonlySet<MenuItem> = new Set(
