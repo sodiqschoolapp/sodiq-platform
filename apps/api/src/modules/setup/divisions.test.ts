@@ -7,7 +7,9 @@ import {
   divisionSchema,
   type Division,
 } from '@sodiq/shared';
+import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
+import { Transactions } from '../../database/transactions.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
@@ -536,6 +538,107 @@ describe('divisions and departments', () => {
       .select((builder) => builder.fn.countAll<string>().as('n'))
       .executeTakeFirstOrThrow();
     expect(rowsAfter.n).toBe(rowsBefore.n);
+  });
+
+  // Code review (must-fix 1): a locking read alone returns the rows it locked,
+  // not a row inserted meanwhile, so two creates at one moment took one
+  // position and the second was told its name was taken. The rows are locked
+  // first and the greatest position read in a second statement. The test takes
+  // the locks, sends the other create, sees it wait in pg_stat_activity, lets
+  // the locks go and reads the answer: no step is decided by a race.
+  describe('two divisions created at the same moment', () => {
+    /** A promise that is settled from outside. */
+    function gate(): { opened: Promise<void>; open: () => void } {
+      let open = (): void => undefined;
+      const opened = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+      return { opened, open };
+    }
+
+    interface Backend {
+      usename: string | null;
+      state: string | null;
+      wait_event_type: string | null;
+    }
+
+    /** The other connections of this database, as the application user sees its own. */
+    const backends = async (): Promise<Backend[]> =>
+      (
+        await sql<Backend>`
+          select usename, state, wait_event_type from pg_stat_activity
+          where datname = current_database() and pid <> pg_backend_pid()
+        `.execute(database.app)
+      ).rows;
+
+    /** Until a call of the application waits for a lock; names the backends when none does in time. */
+    async function waitForWaiter(): Promise<void> {
+      for (let tries = 0; tries < 100; tries += 1) {
+        const seen = await backends();
+        if (seen.some((backend) => backend.wait_event_type === 'Lock')) {
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      throw new Error(
+        `No call waited for the divisions. Seen: ${JSON.stringify(await backends())}`,
+      );
+    }
+
+    const positionOf = (en: string) =>
+      database.migrator
+        .selectFrom('divisions')
+        .select('position')
+        .where('name_en', '=', en)
+        .executeTakeFirst()
+        .then((row) => row?.position);
+
+    it('take two positions in a row: the second waits for the first and is answered 201, not already_exists', async () => {
+      const held = gate();
+      const release = gate();
+      // As createDivision does: the rows locked, the greatest position read, the row written, then the commit.
+      const first = app.get(Transactions).run([], async (transaction) => {
+        await transaction.selectFrom('divisions').select('id').forUpdate().execute();
+        const last = await transaction
+          .selectFrom('divisions')
+          .select((builder) => builder.fn.max('position').as('position'))
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('divisions')
+          .values({
+            ...{ name_uz: 'Birinchi', name_ru: 'Первый', name_en: 'First at once' },
+            position: Number(last.position ?? 0) + 1,
+          })
+          .execute();
+        held.open();
+        await release.opened;
+      });
+      await held.opened;
+
+      try {
+        const second = post('/api/setup/divisions', { names: names('Second at once') }).then(
+          (sent) => sent,
+        );
+        await waitForWaiter();
+        expect(await positionOf('Second at once')).toBeUndefined();
+
+        release.open();
+        await first;
+        const response = await second;
+        expect(response.status).toBe(201);
+        const firstPosition = await positionOf('First at once');
+        expect(firstPosition).toBeDefined();
+        expect(await positionOf('Second at once')).toBe((firstPosition ?? 0) + 1);
+        const listed = divisionListSchema.parse((await list()).body).divisions;
+        expect(listed.slice(-2).map((one) => one.names.en)).toEqual([
+          'First at once',
+          'Second at once',
+        ]);
+      } finally {
+        release.open();
+        await first.catch(() => undefined);
+      }
+    });
   });
 
   it('refuses a body that fails the schema, naming the field, and writes nothing', async () => {

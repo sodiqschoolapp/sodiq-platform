@@ -248,8 +248,7 @@ export const uz: Texts<'one' | 'other'> = {
     roomsLink: 'Xonalar',
     roomsLinkText: 'Har bir xona: qavati, turi, sigʻimi va holati.',
     divisionsLink: 'Boʻlimlar va kafedralar',
-    divisionsLinkText:
-      'Maktab boʻlimlari va har birining kafedralari: barcha filiallar uchun bitta roʻyxat.',
+    divisionsLinkText: 'Butun maktab uchun bitta roʻyxat.',
     branch: {
       title: 'Filial',
       name: 'Nomi',

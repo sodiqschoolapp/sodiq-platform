@@ -146,19 +146,22 @@ export class Divisions {
   }
 
   /**
-   * A new division after the last one. The rows are read for update so that
-   * two divisions added at the same moment do not take one position.
+   * A new division after the last one. The rows are locked first and the
+   * greatest position read in a second statement: a create that waited on
+   * the locks then sees the row the first one inserted and takes the next
+   * position (a locking read alone returns the rows it locked, not a row
+   * inserted meanwhile; found by the code review).
    */
   createDivision(access: Access, record: DivisionRecord, requestId: string): Promise<Division> {
     return refusingDuplicates(
       () =>
         this.transactions.run([], async (transaction) => {
-          const positions = await transaction
+          await transaction.selectFrom('divisions').select('id').forUpdate().execute();
+          const last = await transaction
             .selectFrom('divisions')
-            .select('position')
-            .forUpdate()
-            .execute();
-          const position = Math.max(0, ...positions.map((row) => row.position)) + 1;
+            .select((builder) => builder.fn.max('position').as('position'))
+            .executeTakeFirstOrThrow();
+          const position = Number(last.position ?? 0) + 1;
           const row = await transaction
             .insertInto('divisions')
             .values({ ...columnsOf(record.names), position })
@@ -315,13 +318,27 @@ export class Divisions {
               .set({ archived_at: null })
               .where('id', '=', id)
               .execute();
+            // Read in the order of the list before the update: `returning` promises no order.
             const restored = await transaction
-              .updateTable('departments')
-              .set({ archived_at: null })
+              .selectFrom('departments')
+              .select('id')
               .where('division_id', '=', id)
               .where('archived_at', '=', archivedAt)
-              .returning('id')
+              .orderBy('position')
+              .orderBy('id')
+              .forUpdate()
               .execute();
+            if (restored.length > 0) {
+              await transaction
+                .updateTable('departments')
+                .set({ archived_at: null })
+                .where(
+                  'id',
+                  'in',
+                  restored.map((department) => department.id),
+                )
+                .execute();
+            }
             await this.audit.record(transaction, {
               branchId: null,
               actorId: access.accountId,

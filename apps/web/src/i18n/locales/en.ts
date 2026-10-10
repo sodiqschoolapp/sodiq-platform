@@ -244,8 +244,7 @@ export const en = {
     roomsLink: 'Rooms',
     roomsLinkText: 'Every room with its floor, type, capacity and status.',
     divisionsLink: 'Divisions and departments',
-    divisionsLinkText:
-      'The divisions of the school and the departments of each: one list for every branch.',
+    divisionsLinkText: 'One list for the whole school.',
     branch: {
       title: 'Branch',
       name: 'Name',

@@ -256,7 +256,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     roomsLink: 'Кабинеты',
     roomsLinkText: 'Каждый кабинет: этаж, тип, вместимость и состояние.',
     divisionsLink: 'Отделы и кафедры',
-    divisionsLinkText: 'Отделы школы и кафедры каждого из них: один список для всех филиалов.',
+    divisionsLinkText: 'Один список для всей школы.',
     branch: {
       title: 'Филиал',
       name: 'Название',
