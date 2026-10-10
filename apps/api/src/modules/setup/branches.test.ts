@@ -1,14 +1,22 @@
 import type { INestApplication } from '@nestjs/common';
-import { BRANCH_HEADER } from '@sodiq/shared';
-import request from 'supertest';
+import { apiErrorSchema, BRANCH_HEADER } from '@sodiq/shared';
+import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { errorCode, signInKit, type SignInKit } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { z } from 'zod';
 
 const START = '2026-10-10T09:00:00+05:00';
+
+/** The id of the record an answer names. */
+const bodyId = (response: Response): string => z.object({ id: z.uuid() }).parse(response.body).id;
+
+/** The fields a refused body names, in order. */
+const detailPaths = (response: Response): string[] =>
+  apiErrorSchema.parse(response.body).error.details?.map((detail) => detail.path) ?? [];
 
 const RECORD = {
   name: 'East',
@@ -108,11 +116,11 @@ describe('the record of a branch', () => {
 
       expect(response.status).toBe(201);
       expect(response.body).toEqual({
-        id: expect.any(String),
+        id: expect.any(String) as string,
         ...RECORD,
         timeZone: 'Asia/Tashkent',
       });
-      const row = await stored(response.body.id as string);
+      const row = await stored(bodyId(response));
       expect(row).toMatchObject({
         name: 'East',
         address: 'Yunusobod, 4',
@@ -125,8 +133,8 @@ describe('the record of a branch', () => {
       expect(entries).toHaveLength(1);
       expect(entries[0]).toMatchObject({
         record_type: 'branch',
-        record_id: response.body.id,
-        assignment_id: expect.any(String),
+        record_id: bodyId(response),
+        assignment_id: expect.any(String) as string,
         old_value: null,
         new_value: RECORD,
         request_id: response.headers['x-request-id'],
@@ -175,9 +183,7 @@ describe('the record of a branch', () => {
         const response = await create(admin, body);
         expect(response.status).toBe(400);
         expect(errorCode(response)).toBe('validation_failed');
-        expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toEqual([
-          path,
-        ]);
+        expect(detailPaths(response)).toEqual([path]);
       }
       const rows = await database.migrator.selectFrom('branches').select('name').execute();
       expect(rows.map((row) => row.name)).not.toContain('A1');
@@ -245,7 +251,7 @@ describe('the record of a branch', () => {
       expect(entries[0]).toMatchObject({
         record_type: 'branch',
         record_id: south,
-        assignment_id: expect.any(String),
+        assignment_id: expect.any(String) as string,
         old_value: { address: null, workingWeekdays: [1, 2, 3, 4, 5] },
         new_value: { address: 'Sergeli, 9', workingWeekdays: [1, 2, 3, 4, 5, 6] },
         request_id: response.headers['x-request-id'],

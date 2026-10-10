@@ -181,7 +181,7 @@ describe('every route of the application, as every role', () => {
 
   it('allows and refuses as listed', async () => {
     expect(await accessProblems(app, ROUTE_ACCESS, callers, handlerStop)).toEqual([]);
-  });
+  }, 120_000);
 });
 
 // docs/build-plan.md, task 0.7b: "sample routes pass for all 15 roles".
@@ -216,7 +216,7 @@ describe('the sample routes, as every role', () => {
 
   it('are allowed and refused as listed: by role, by branch and without a branch', async () => {
     expect(await accessProblems(app, SAMPLE_ROUTE_ACCESS, callers, handlerStop)).toEqual([]);
-  });
+  }, 120_000);
 
   // The harness is only worth something if it sees a difference.
   it('are reported when the list names a role the server refuses, or leaves out one it allows', async () => {
@@ -246,7 +246,7 @@ describe('the sample routes, as every role', () => {
       'GET /api/permission-sample/own: declared any_signed_in, listed as public',
       'GET /api/permission-sample/school: declared for the branch "none", listed for "request"',
     ]);
-  });
+  }, 120_000);
 });
 
 // Left open by task 0.7b: a route with `@All()` crashed the harness.

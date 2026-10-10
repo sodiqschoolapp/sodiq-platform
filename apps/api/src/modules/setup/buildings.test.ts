@@ -1,14 +1,38 @@
 import type { INestApplication } from '@nestjs/common';
-import { BRANCH_HEADER } from '@sodiq/shared';
-import request from 'supertest';
+import {
+  apiErrorSchema,
+  BRANCH_HEADER,
+  buildingListSchema,
+  buildingSchema,
+  floorSchema,
+  type Building,
+} from '@sodiq/shared';
+import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { errorCode, signInKit, type SignInKit } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { z } from 'zod';
 
 const START = '2026-10-10T09:00:00+05:00';
+
+/** The id of the record an answer names. */
+const bodyId = (response: Response): string => z.object({ id: z.uuid() }).parse(response.body).id;
+
+/** The fields a refused body names, in order. */
+const detailPaths = (response: Response): string[] =>
+  apiErrorSchema.parse(response.body).error.details?.map((detail) => detail.path) ?? [];
+
+/** The building of this id in the answer of the list. */
+function buildingOf(response: Response, id: string): Building {
+  const found = buildingListSchema.parse(response.body).buildings.find((one) => one.id === id);
+  if (found === undefined) {
+    throw new Error('The list does not hold the building.');
+  }
+  return found;
+}
 // Five minutes on: the Super Admin's idle limit is 15.
 const LATER = '2026-10-10T09:05:00+05:00';
 const UNKNOWN = '0199a000-0000-7000-8000-000000000099';
@@ -80,19 +104,19 @@ describe('buildings and floors', () => {
   async function building(name: string): Promise<string> {
     const response = await post('/api/setup/buildings', { name });
     expect(response.status).toBe(201);
-    return response.body.id as string;
+    return bodyId(response);
   }
 
   async function floor(buildingId: string, name: string): Promise<string> {
     const response = await post(`/api/setup/buildings/${buildingId}/floors`, { name });
     expect(response.status).toBe(201);
-    return response.body.id as string;
+    return bodyId(response);
   }
 
   async function room(floorId: string, name: string, status = 'in_use'): Promise<string> {
     const response = await post('/api/setup/rooms', { ...ROOM, name, floorId, status });
     expect(response.status).toBe(201);
-    return response.body.id as string;
+    return bodyId(response);
   }
 
   const closeRoom = (id: string) =>
@@ -104,7 +128,7 @@ describe('buildings and floors', () => {
 
       expect(response.status).toBe(201);
       expect(response.body).toEqual({
-        id: expect.any(String),
+        id: expect.any(String) as string,
         name: 'Main',
         archivedAt: null,
         floors: [],
@@ -112,15 +136,15 @@ describe('buildings and floors', () => {
       const row = await database.migrator
         .selectFrom('buildings')
         .selectAll()
-        .where('id', '=', response.body.id as string)
+        .where('id', '=', bodyId(response))
         .executeTakeFirstOrThrow();
       expect(row).toMatchObject({ branch_id: north, name: 'Main', archived_at: null });
-      const written = await entries('building.create', response.body.id as string);
+      const written = await entries('building.create', bodyId(response));
       expect(written).toHaveLength(1);
       expect(written[0]).toMatchObject({
         branch_id: north,
         record_type: 'building',
-        assignment_id: expect.any(String),
+        assignment_id: expect.any(String) as string,
         new_value: { name: 'Main' },
         request_id: response.headers['x-request-id'],
       });
@@ -131,7 +155,9 @@ describe('buildings and floors', () => {
       const inSouth = await get('/api/setup/buildings', admin, south);
 
       expect(inNorth.status).toBe(200);
-      expect(inNorth.body.buildings.map((one: { name: string }) => one.name)).toContain('Main');
+      expect(buildingListSchema.parse(inNorth.body).buildings.map((one) => one.name)).toContain(
+        'Main',
+      );
       expect(inSouth.body).toEqual({ buildings: [] });
     });
 
@@ -201,22 +227,21 @@ describe('buildings and floors', () => {
 
       expect(response.status).toBe(201);
       expect(response.body).toEqual({
-        id: expect.any(String),
+        id: expect.any(String) as string,
         name: 'Ground',
         archivedAt: null,
         roomCount: 0,
       });
-      const written = await entries('floor.create', response.body.id as string);
+      const written = await entries('floor.create', bodyId(response));
       expect(written).toHaveLength(1);
       expect(written[0]).toMatchObject({
         branch_id: north,
         record_type: 'floor',
         new_value: { name: 'Ground', buildingId: id },
       });
-      const listed = await get('/api/setup/buildings');
-      const found = listed.body.buildings.find((one: { id: string }) => one.id === id);
+      const found = buildingOf(await get('/api/setup/buildings'), id);
       expect(found.floors).toEqual([
-        { id: response.body.id, name: 'Ground', archivedAt: null, roomCount: 0 },
+        { id: bodyId(response), name: 'Ground', archivedAt: null, roomCount: 0 },
       ]);
     });
 
@@ -251,10 +276,9 @@ describe('buildings and floors', () => {
       await room(floorId, 'C-1');
       await room(floorId, 'C-2', 'closed');
 
-      const listed = await get('/api/setup/buildings');
-      const found = listed.body.buildings.find((one: { id: string }) => one.id === id);
+      const found = buildingOf(await get('/api/setup/buildings'), id);
 
-      expect(found.floors[0].roomCount).toBe(2);
+      expect(found.floors[0]?.roomCount).toBe(2);
     });
 
     it('cannot be archived while a room on it is in use or under repair; nothing is written', async () => {
@@ -283,10 +307,10 @@ describe('buildings and floors', () => {
       const restoredAgain = await post(`/api/setup/floors/${floorId}/restore`);
 
       expect(archived.status).toBe(200);
-      expect(archived.body.archivedAt).toBe(new Date(START).toISOString());
-      expect(again.body.archivedAt).toBe(new Date(START).toISOString());
-      expect(restored.body.archivedAt).toBeNull();
-      expect(restoredAgain.body.archivedAt).toBeNull();
+      expect(floorSchema.parse(archived.body).archivedAt).toBe(new Date(START).toISOString());
+      expect(floorSchema.parse(again.body).archivedAt).toBe(new Date(START).toISOString());
+      expect(floorSchema.parse(restored.body).archivedAt).toBeNull();
+      expect(floorSchema.parse(restoredAgain.body).archivedAt).toBeNull();
       const archives = await entries('floor.archive', floorId);
       expect(archives).toHaveLength(1);
       expect(archives[0]).toMatchObject({
@@ -334,10 +358,9 @@ describe('buildings and floors', () => {
 
       expect(errorCode(response)).toBe('archive_refused');
       expect(await entries('building.archive', id)).toHaveLength(0);
-      const listed = await get('/api/setup/buildings');
-      const found = listed.body.buildings.find((one: { id: string }) => one.id === id);
+      const found = buildingOf(await get('/api/setup/buildings'), id);
       expect(found.archivedAt).toBeNull();
-      expect(found.floors.every((one: { archivedAt: null }) => one.archivedAt === null)).toBe(true);
+      expect(found.floors.every((one) => one.archivedAt === null)).toBe(true);
     });
 
     it('takes its active floors with it, and restoring brings back exactly those; a floor archived earlier stays archived', async () => {
@@ -353,8 +376,9 @@ describe('buildings and floors', () => {
       const archived = await post(`/api/setup/buildings/${id}/archive`);
 
       expect(archived.status).toBe(200);
-      expect(archived.body.archivedAt).toBe(new Date(LATER).toISOString());
-      expect(archived.body.floors).toEqual([
+      const archivedBuilding = buildingSchema.parse(archived.body);
+      expect(archivedBuilding.archivedAt).toBe(new Date(LATER).toISOString());
+      expect(archivedBuilding.floors).toEqual([
         { id: earlier, name: 'Attic', archivedAt: new Date(START).toISOString(), roomCount: 0 },
         { id: ground, name: 'Ground', archivedAt: new Date(LATER).toISOString(), roomCount: 1 },
         { id: first, name: '1', archivedAt: new Date(LATER).toISOString(), roomCount: 0 },
@@ -368,9 +392,9 @@ describe('buildings and floors', () => {
       });
 
       // An archived building stays as it is; its name is free meanwhile.
-      expect((await post(`/api/setup/buildings/${id}/archive`)).body.archivedAt).toBe(
-        new Date(LATER).toISOString(),
-      );
+      expect(
+        buildingSchema.parse((await post(`/api/setup/buildings/${id}/archive`)).body).archivedAt,
+      ).toBe(new Date(LATER).toISOString());
       expect(await entries('building.archive', id)).toHaveLength(1);
       const taken = await building('Whole');
 
@@ -380,8 +404,9 @@ describe('buildings and floors', () => {
 
       const restored = await post(`/api/setup/buildings/${id}/restore`);
       expect(restored.status).toBe(200);
-      expect(restored.body.archivedAt).toBeNull();
-      expect(restored.body.floors).toEqual([
+      const restoredBuilding = buildingSchema.parse(restored.body);
+      expect(restoredBuilding.archivedAt).toBeNull();
+      expect(restoredBuilding.floors).toEqual([
         { id: earlier, name: 'Attic', archivedAt: new Date(START).toISOString(), roomCount: 0 },
         { id: ground, name: 'Ground', archivedAt: null, roomCount: 1 },
         { id: first, name: '1', archivedAt: null, roomCount: 0 },
@@ -417,9 +442,7 @@ describe('buildings and floors', () => {
 
     expect(response.status).toBe(400);
     expect(errorCode(response)).toBe('validation_failed');
-    expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toEqual([
-      'name',
-    ]);
+    expect(detailPaths(response)).toEqual(['name']);
     expect((await entries('building.create')).length).toBe(before);
   });
 });

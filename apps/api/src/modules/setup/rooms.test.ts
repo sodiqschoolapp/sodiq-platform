@@ -1,14 +1,22 @@
 import type { INestApplication } from '@nestjs/common';
-import { BRANCH_HEADER } from '@sodiq/shared';
-import request from 'supertest';
+import { apiErrorSchema, BRANCH_HEADER, roomListSchema } from '@sodiq/shared';
+import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { errorCode, signInKit, type SignInKit } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { z } from 'zod';
 
 const START = '2026-10-10T09:00:00+05:00';
+
+/** The id of the record an answer names. */
+const bodyId = (response: Response): string => z.object({ id: z.uuid() }).parse(response.body).id;
+
+/** The fields a refused body names, in order. */
+const detailPaths = (response: Response): string[] =>
+  apiErrorSchema.parse(response.body).error.details?.map((detail) => detail.path) ?? [];
 const UNKNOWN = '0199a000-0000-7000-8000-000000000099';
 
 // All names are invented.
@@ -69,7 +77,7 @@ describe('rooms', () => {
   async function createRoom(body: object): Promise<string> {
     const response = await post('/api/setup/rooms', body);
     expect(response.status).toBe(201);
-    return response.body.id as string;
+    return bodyId(response);
   }
 
   beforeAll(async () => {
@@ -92,13 +100,12 @@ describe('rooms', () => {
     vicePrincipal = viceBrowser.cookie;
 
     const building = await post('/api/setup/buildings', { name: 'Main' });
-    mainBuilding = building.body.id as string;
-    ground = (await post(`/api/setup/buildings/${mainBuilding}/floors`, { name: 'Ground' })).body
-      .id as string;
-    first = (await post(`/api/setup/buildings/${mainBuilding}/floors`, { name: '1' })).body
-      .id as string;
-    archivedFloor = (await post(`/api/setup/buildings/${mainBuilding}/floors`, { name: 'Attic' }))
-      .body.id as string;
+    mainBuilding = bodyId(building);
+    ground = bodyId(await post(`/api/setup/buildings/${mainBuilding}/floors`, { name: 'Ground' }));
+    first = bodyId(await post(`/api/setup/buildings/${mainBuilding}/floors`, { name: '1' }));
+    archivedFloor = bodyId(
+      await post(`/api/setup/buildings/${mainBuilding}/floors`, { name: 'Attic' }),
+    );
     expect((await post(`/api/setup/floors/${archivedFloor}/archive`)).status).toBe(200);
     const southBuilding = await database.migrator
       .insertInto('buildings')
@@ -125,7 +132,7 @@ describe('rooms', () => {
 
       expect(response.status).toBe(201);
       expect(response.body).toEqual({
-        id: expect.any(String),
+        id: expect.any(String) as string,
         name: '101',
         floorId: ground,
         floorName: 'Ground',
@@ -137,12 +144,12 @@ describe('rooms', () => {
         shared: false,
         maxSimultaneousLessons: null,
       });
-      const written = await entries('room.create', response.body.id as string);
+      const written = await entries('room.create', bodyId(response));
       expect(written).toHaveLength(1);
       expect(written[0]).toMatchObject({
         branch_id: north,
         record_type: 'room',
-        assignment_id: expect.any(String),
+        assignment_id: expect.any(String) as string,
         old_value: null,
         new_value: roomOf('101'),
         request_id: response.headers['x-request-id'],
@@ -175,9 +182,7 @@ describe('rooms', () => {
         const response = await post('/api/setup/rooms', roomOf('V-1', ground, fields));
         expect(response.status).toBe(400);
         expect(errorCode(response)).toBe('validation_failed');
-        expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toEqual([
-          path,
-        ]);
+        expect(detailPaths(response)).toEqual([path]);
       }
       expect((await entries('room.create')).length).toBe(before);
     });
@@ -227,12 +232,12 @@ describe('rooms', () => {
       for (const cookie of [admin, principal, vicePrincipal]) {
         const response = await get('/api/setup/rooms', cookie);
         expect(response.status).toBe(200);
-        const names = response.body.rooms.map((room: { name: string }) => room.name);
+        const names = roomListSchema.parse(response.body).rooms.map((room) => room.name);
         expect(names).toContain('101');
         expect(names).not.toContain('S-1');
       }
       const inSouth = await get('/api/setup/rooms', admin, south);
-      expect(inSouth.body.rooms.map((room: { name: string }) => room.name)).toEqual(['S-1']);
+      expect(roomListSchema.parse(inSouth.body).rooms.map((room) => room.name)).toEqual(['S-1']);
       expect(errorCode(await get('/api/setup/rooms', principal, south))).toBe('permission_denied');
     });
   });
