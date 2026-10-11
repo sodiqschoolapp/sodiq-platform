@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 11 October 2026: task 2.1 Subjects
+
+- Built: migrations 0020 (`subjects` school-wide; `subject_daily_weights` and `subject_quarter_weights` per branch, each distribution 1–100 per part and total 100 in the database; department and closed-year guards), 0021 (`weights_round`) and 0022 (round guards, the closed-year lock); nine routes under `/api/setup/subjects` (area `subjects`); the department archive refused while an active subject is in it; checklist item "Subjects and weights".
+- Pages: Subjects under School setup (list, filters, bulk archive and restore, side panel with the record, the daily distribution and the quarterly ones per year with "Copy quarter 1"); 12 subject colours; texts in uz, ru, en. Plan approved on pull request #52 with four corrections; decisions flagged on issue #42.
+- Left out: per-quarter switches (5.5c); refusal of a switch change while scores exist (8.2); preview, reason and notice of a weights change (9.1); closed-quarter refusal (9.2b); publish check (5.5a); rollover of weights (9.5b); start date and load check of a department move (3.4); export of the list (2.2).
+
+The next sessions must know:
+
+- A weight row counts only in its subject's current `weights_round` and, for a quarter, when its rating part fits the switch (`withWeights` in `apps/api/src/modules/setup/subjects.service.ts`); every reader must apply both.
+- A subject is moved to another department by the Super Admin only; the subject list and pickers come from `GET /api/setup/subjects` (area `subjects`, three roles); other roles will need their own reader.
+- The next task is 2.2.
+
 ## 12 October 2026: decided ahead for Phase 2, gate lifted, one reviewer per event (process change, no task)
 
 - Owner: the answers for tasks 2.1 to 2.6 are in `docs/decisions.md` ("Decided ahead for tasks 2.1 to 2.6"), the gate before Phase 2 is lifted, the routines run on their API trigger and an hourly schedule only (no GitHub triggers), and the reviewer counts rounds by distinct sha and reads the comments again before it posts or merges; the next task is 2.1.

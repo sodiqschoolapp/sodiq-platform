@@ -158,7 +158,7 @@ How to read the task lines:
 
 ## Phase 2. Subjects and people
 
-- [ ] **2.1 Subjects**
+- [x] **2.1 Subjects**
   - Read: `05` (Grading weights on a subject), `07` (Calculation rules), `edge/calculation`.
   - Build: subject with names in three languages, department, grades, journal type, switches (rating exam, group, language rule, demanding), daily distribution, and quarterly distribution per quarter; the subject list.
   - Done when: a graded subject cannot be saved with weights that do not total 100.

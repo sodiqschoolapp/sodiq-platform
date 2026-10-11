@@ -143,6 +143,29 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 11 October 2026: subjects and their weights (task 2.1)
+
+Plan approved on pull request #52 (`[review] approved`, decisions 1 to 16 confirmed, corrections 1 to 4 applied). The owner's answers 3 to 8 above were followed as written. Decisions 17 and 18 and migrations 0021 and 0022 came from the reviews of the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| Area `subjects`: Super Admin and Academic Vice Principal view, create, edit, archive; Principal view; no export yet | Answer 4; `02`; a new area for new routes |
+| `subjects` is school-wide; `subject_daily_weights` and `subject_quarter_weights` are branch tables; a subject is saved with the daily distribution of the branch in use, other branches show "Not set" | Answer 3; the branch filter forbids writing another branch's rows |
+| The rating exam switch is school-wide; a quarterly distribution counts only when its rating part fits the switch | `05`: "A subject without a rating exam has no rating part" |
+| Per-quarter switches (5.5c), the refusal while scores exist (8.2), the preview, reason and notice of a weights change (9.1), the closed-quarter refusal (9.2b), the publish check (5.5a) and rollover (9.5b) are notes on those tasks | Nothing they read exists yet |
+| Archive is the "active switch"; no delete | `05`; as every record so far |
+| A subject is in an active department of the Academic division (trigger `subjects_department_guard`, checking only rows that end up active); a department with an active subject is not archived (`department_has_subjects`) | `03`, Department |
+| Checklist item "Subjects and weights": an active subject, and every active graded subject has its daily distribution here | Answer 6 lets quarterly ones wait for publishing |
+| Every present part weighs 1 to 100, whole numbers, total 100, in the database and the shared schema | A part of 0 would leave `07` rules 3 and 8 a 0/0 (stop-list item 4) |
+| The journal type stays editable; becoming graded again starts a new `weights_round` (0021): no weight row of an earlier round counts, in any branch, daily or quarterly (decision 18); the round only grows and a row is written only in the current round (0022) | Decision 14; rows are kept, not deleted; a round going back would revive old weights without an audit entry |
+| The daily distribution has its own route; an edit takes `daily` only while the branch has none | Decision 15: no lost update across branches |
+| "Copy quarter 1" overwrites quarters 2 to 4 of the year, all or nothing, after a confirmation when one is set | Answer 6 |
+| Only the Super Admin moves a subject to another department (`subject_move_super_admin`); its start date and the refusal against the load come with 3.4 | `edge/people-roles-accounts`: "made by the Super Admin" (decision 17) |
+| The closed-year guard locks the year row whatever its status (0022) | A lock under a status condition locks nothing for an open year |
+| 12 subject colours as tokens of `index.css`, the swatch 3:1 on the background and the name on a 15% tint 4.5:1, in both themes | Answer 7; `12` |
+| Names unique among active subjects per language (case and outer spaces ignored), at most 100 | As divisions (1.2) |
+| New codes: `subject_archived`, `department_not_academic`, `department_archived`, `subject_department_archived` (restore), `department_has_subjects`, `daily_weights_required`, `daily_weights_set`, `attendance_only_no_weights`, `weights_shape_mismatch`, `quarter_one_not_set`, `subject_move_super_admin` | A text must be true on every path that sends it |
+
 ## 11 October 2026: settings and the setup checklist (task 1.6)
 
 Plan approved on pull request #49 (`[review] approved`, decisions 1 to 10 confirmed, decision 4's audit place changed by correction 1, corrections 2 and 3 added tests). The owner's answers 19 to 24 above were followed as written. Flagged on issue #42.
