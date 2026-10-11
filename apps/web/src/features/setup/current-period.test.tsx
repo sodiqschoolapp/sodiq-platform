@@ -5,7 +5,11 @@ import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, renderApp, sessionOf } from '@/testing/render-app';
 
-const YEAR = { id: '0199a000-0000-7000-8000-000000000401', name: '2026–2027', status: 'current' };
+const YEAR = {
+  id: '0199a000-0000-7000-8000-000000000401',
+  name: '2026–2027',
+  status: 'current' as const,
+};
 
 const q = (number: number, startDate: string, endDate: string) => ({ number, startDate, endDate });
 

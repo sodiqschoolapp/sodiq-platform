@@ -120,6 +120,13 @@ describe('academic years', () => {
     expect(response.status).toBe(200);
   }
 
+  const yearRow = (id: string) =>
+    database.migrator
+      .selectFrom('academic_years')
+      .select(['start_date', 'end_date', 'status'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+
   /** A closed year, through the statuses as they go (no route closes a year before task 9.5a). */
   const closeYear = (id: string) =>
     database.migrator.transaction().execute(async (transaction) => {
@@ -380,16 +387,18 @@ describe('academic years', () => {
       expect(detailPaths(response)).toEqual(['startDate']);
     });
 
-    it('of another branch, or an unknown year, are not found', async () => {
+    it('of another branch, or an unknown year, are not found, and nothing changes', async () => {
       const id = await createYear(south, '2030-09-02', '2031-05-25');
 
       for (const target of [id, UNKNOWN]) {
         const response = await put(`/api/setup/academic-years/${target}`, north, {
-          startDate: '2030-09-02',
+          startDate: '2030-09-01',
           endDate: '2031-05-25',
         });
         expect(response.status).toBe(404);
       }
+      expect(await yearRow(id)).toMatchObject({ start_date: '2030-09-02', status: 'planned' });
+      expect(await entries('academic_year.edit', id)).toHaveLength(0);
     });
   });
 
@@ -447,6 +456,18 @@ describe('academic years', () => {
       expect(late.status).toBe(409);
       expect(errorCode(late)).toBe('current_year_exists');
       expect(await entries('academic_year.start', second)).toHaveLength(0);
+    });
+
+    // The permission review: every route that takes an id answers 404 for another branch's.
+    it('of another branch, or an unknown year, is not found, and nothing changes', async () => {
+      const id = await createYear(south, '2044-09-02', '2045-05-25');
+
+      for (const target of [id, UNKNOWN]) {
+        const response = await post(`/api/setup/academic-years/${target}/start`, north);
+        expect(response.status).toBe(404);
+      }
+      expect(await yearRow(id)).toMatchObject({ status: 'planned' });
+      expect(await entries('academic_year.start', id)).toHaveLength(0);
     });
 
     it('is refused for a closed year', async () => {
@@ -598,16 +619,30 @@ describe('academic years', () => {
       expect(errorCode(response)).toBe('year_closed');
     });
 
-    it('of another branch are not found', async () => {
+    it('of another branch are not found, for the Super Admin and the Academic Vice Principal, and nothing changes', async () => {
       const id = await createYear(south, '2034-09-02', '2035-05-25');
 
-      const response = await put(
-        `/api/setup/academic-years/${id}/quarters`,
-        north,
-        quartersBody(DATED),
-      );
-
-      expect(response.status).toBe(404);
+      for (const cookie of [admin, vicePrincipal]) {
+        const response = await put(
+          `/api/setup/academic-years/${id}/quarters`,
+          north,
+          quartersBody([
+            ['2034-09-02', '2034-10-31'],
+            [null, null],
+            [null, null],
+            [null, null],
+          ]),
+          cookie,
+        );
+        expect(response.status).toBe(404);
+      }
+      const quarters = await database.migrator
+        .selectFrom('quarters')
+        .select('start_date')
+        .where('academic_year_id', '=', id)
+        .execute();
+      expect(quarters.map((quarter) => quarter.start_date)).toEqual([null, null, null, null]);
+      expect(await entries('quarters.edit', id)).toHaveLength(0);
     });
   });
 
@@ -656,6 +691,19 @@ describe('academic years', () => {
       expect(
         (await put('/api/setup/branch/go-live', branch, { goLiveDate: null })).body,
       ).toMatchObject({ goLiveDate: null });
+    });
+
+    // The permission review: a year of another branch never counts.
+    it('is refused on a date that only a year of another branch covers', async () => {
+      const branch = await newBranch();
+      const other = await newBranch();
+      await createYear(other, '2026-09-02', '2027-05-25');
+
+      const response = await put('/api/setup/branch/go-live', branch, { goLiveDate: '2026-11-10' });
+
+      expect(response.status).toBe(409);
+      expect(errorCode(response)).toBe('go_live_outside_year');
+      expect(await entries('branch.go_live', branch)).toHaveLength(0);
     });
 
     it('is refused outside every year and inside a closed one', async () => {
