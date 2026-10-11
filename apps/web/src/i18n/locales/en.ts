@@ -266,7 +266,7 @@ export const en = {
       goLiveTitle: 'Go-live date',
       goLiveDate: 'Go-live date',
       goLiveNotSet: 'Not set',
-      goLiveNoYear: 'Add an academic year first.',
+      goLiveNoYear: 'Add a planned or current academic year first.',
       title: 'Branch',
       name: 'Name',
       address: 'Address',

@@ -161,9 +161,16 @@ function GoLiveSection({ branch, canEdit }: { branch: Branch; canEdit: boolean }
   if (!canEdit) {
     body = <p>{shown}</p>;
   } else if (hasYear === false) {
+    // Every year is closed: a date already set can still be cleared (decision 6).
     body = (
       <>
-        <p>{shown}</p>
+        {branch.goLiveDate === null ? (
+          <p>{shown}</p>
+        ) : (
+          <RecordForm form={form} label={t('setup.branch.goLiveTitle')}>
+            <DateField label={t('setup.branch.goLiveDate')} {...form.bind('goLiveDate')} />
+          </RecordForm>
+        )}
         <p className="text-sm text-muted-foreground">{t('setup.branch.goLiveNoYear')}</p>
       </>
     );

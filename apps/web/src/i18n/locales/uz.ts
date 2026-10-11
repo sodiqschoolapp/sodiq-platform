@@ -271,7 +271,7 @@ export const uz: Texts<'one' | 'other'> = {
       goLiveTitle: 'Ishga tushirish sanasi',
       goLiveDate: 'Ishga tushirish sanasi',
       goLiveNotSet: 'Belgilanmagan',
-      goLiveNoYear: 'Avval oʻquv yilini qoʻshing.',
+      goLiveNoYear: 'Avval rejalashtirilgan yoki joriy oʻquv yilini qoʻshing.',
       title: 'Filial',
       name: 'Nomi',
       address: 'Manzil',

@@ -302,6 +302,19 @@ describe('the branch page', () => {
       expect(screen.getByText(en.setup.branch.goLiveNotSet)).toBeDefined();
     });
 
+    it('names the missing year and still lets a date already set be cleared when every year is closed', async () => {
+      fakeApi({
+        'GET /api/auth/session': () => json(superAdmin()),
+        'GET /api/setup/branch': () => json({ ...BRANCH, goLiveDate: '2026-11-10' }),
+        'GET /api/setup/academic-years': () => json({ years: [{ ...YEAR, status: 'closed' }] }),
+      });
+      renderApp(PATH);
+
+      expect(await screen.findByText(en.setup.branch.goLiveNoYear)).toBeDefined();
+      expect(en.setup.branch.goLiveNoYear).toContain('planned or current');
+      expect(field(goLive(), en.setup.branch.goLiveDate)).toBeDefined();
+    });
+
     // .claude/rules/web.md: "Every screen has loading, empty and error states."
     it('says when the years could not be read, with a way to try again', async () => {
       let failing = true;

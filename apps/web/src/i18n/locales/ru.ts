@@ -277,7 +277,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       goLiveTitle: 'Дата запуска',
       goLiveDate: 'Дата запуска',
       goLiveNotSet: 'Не задана',
-      goLiveNoYear: 'Сначала добавьте учебный год.',
+      goLiveNoYear: 'Сначала добавьте запланированный или текущий учебный год.',
       title: 'Филиал',
       name: 'Название',
       address: 'Адрес',

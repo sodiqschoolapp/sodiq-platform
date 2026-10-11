@@ -111,6 +111,7 @@ Plan approved on pull request #44 (`[review] approved`, every decision confirmed
 | "Start year" and the go-live form are switched off with one line while their prerequisite is missing; "Add year" needs only the branch | `edge/academic-year`, first row. |
 | The property test of the top bar's states is a loop over every day of a year for four layouts of the quarters | fast-check is not installed; adding it is the owner's (stop item 5). |
 
+## 10 October 2026: divisions and departments (task 1.2)
 
 Plan approved by the owner on pull request #40 (`[review] approved`, with the answers to the eight questions and one correction). The approval is the owner's approval of the third area of the permission table (`divisions`) and of the two school-wide tables.
 
