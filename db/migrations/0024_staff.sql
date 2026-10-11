@@ -473,9 +473,12 @@ $$;
 grant execute on function staff_out_on(uuid, timestamptz) to sodiq_app;
 
 -- The functions below answer a fact that rows of other branches decide and
--- return a boolean or a count, never row data. Each reads the branches of the
--- transaction with app_branch_ids(), never from an argument, and is named in
--- SECURITY_DEFINER_FUNCTIONS of apps/api/src/database/catalog.test.ts.
+-- return a boolean or a count, never row data, and are named in
+-- SECURITY_DEFINER_FUNCTIONS of apps/api/src/database/catalog.test.ts. Those
+-- that answer for "another branch" (the duplicate warning, the subject side)
+-- read the branches of the transaction with app_branch_ids(), never from an
+-- argument; the others answer for the whole school (sign-in before a branch is
+-- known, the school-wide archives and counts of divisions) and take no branch.
 
 -- The duplicate warning (edge, Staff over time: "The system also warns on the
 -- same name and date of birth, and on the same phone"): whether a person not

@@ -309,6 +309,38 @@ describe('staff records', () => {
       expect(await snapshot()).toEqual(before);
     });
 
+    // `.claude/rules/api.md`: a part allowed to one role only is decided from
+    // every current assignment. An account whose first assignment is the
+    // Academic Vice Principal's and which also holds the Super Admin's.
+    it("decides the Super Admin's part from every assignment and names that one", async () => {
+      const browser = await t.kit.completeSession('Lola', 'Rasulova');
+      const vice = await t.kit.giveRole(browser.account.id, {
+        role: 'academic_vice_principal',
+        branchId: t.north,
+      });
+      const admin = await t.kit.giveRole(browser.account.id, { role: 'super_admin' });
+      expect(vice.id < admin.id).toBe(true);
+      const created = await create();
+      const response = await put(
+        `/api/people/staff/${created.id}`,
+        t.north,
+        editBody(created, { weeklyLessons: 22 }),
+        browser.cookie,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const [entry] = await t.entries('staff.edit', created.id);
+      expect(entry).toMatchObject({ assignment_id: admin.id });
+      const status = await t.post(
+        `/api/people/staff/${created.id}/status`,
+        t.north,
+        { status: 'inactive', from: '2026-10-20' },
+        browser.cookie,
+      );
+      expect(status.status).toBe(200);
+      const [statusEntry] = await t.entries('staff.status', created.id);
+      expect(statusEntry).toMatchObject({ assignment_id: admin.id });
+    });
+
     it('keeps the staff ID through a correction of the admission date (decision 7)', async () => {
       const created = await create({ admissionDate: '2026-09-01' });
       const response = await put(
@@ -356,11 +388,9 @@ describe('staff records', () => {
           404,
           'not_found',
         );
-        refusedWith(
-          await t.post(`/api/people/staff/${id}/identity`, branch, {}, t.principal),
-          branch === t.south ? 403 : 404,
-          branch === t.south ? 'permission_denied' : 'not_found',
-        );
+        // As the Super Admin, whom the guard lets into every branch: the
+        // handler runs and the membership filter answers 404, with no entry.
+        refusedWith(await t.post(`/api/people/staff/${id}/identity`, branch, {}), 404, 'not_found');
         refusedWith(await t.get(`/api/people/staff/${id}`, branch), 404, 'not_found');
       }
       expect(await snapshot()).toEqual(before);
@@ -463,6 +493,25 @@ describe('staff records', () => {
         'not_found',
       );
       expect(await snapshot()).toEqual(before);
+    });
+
+    // The permission review of pull request #53: the Super Admin removes the
+    // branch of the request; the answer is the record as it now is.
+    it('lets the Super Admin remove the branch it works in from a person', async () => {
+      const created = await create();
+      await put(`/api/people/staff/${created.id}/branches`, t.north, {
+        mainBranchId: t.north,
+        furtherBranchIds: [t.south],
+      });
+      const response = await put(`/api/people/staff/${created.id}/branches`, t.north, {
+        mainBranchId: t.south,
+        furtherBranchIds: [],
+      });
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(staffDetailSchema.parse(response.body).branches).toEqual([
+        { branchId: t.south, name: 'South', main: true },
+      ]);
+      refusedWith(await t.get(`/api/people/staff/${created.id}`, t.north), 404, 'not_found');
     });
 
     it('shows a reader who is not the Super Admin only the branch it works in', async () => {
@@ -840,6 +889,13 @@ describe('staff records', () => {
           daily: null,
           ...overrides,
         });
+      const subjectRow = () =>
+        t.database.migrator
+          .selectFrom('subjects')
+          .selectAll()
+          .where('id', '=', subject.id)
+          .executeTakeFirstOrThrow();
+      const before = { subject: await subjectRow(), audit: await t.auditCount() };
       const inBranch = await edit(t.north, { grades: [7, 8] });
       refusedWith(inBranch, 409, 'subject_has_teachers');
       expect(apiErrorSchema.parse(inBranch.body).error.details).toEqual([
@@ -850,6 +906,7 @@ describe('staff records', () => {
       expect(apiErrorSchema.parse(elsewhere.body).error.details).toEqual([
         expect.objectContaining({ path: 'elsewhere', code: '1' }),
       ]);
+      expect({ subject: await subjectRow(), audit: await t.auditCount() }).toEqual(before);
       expect((await edit(t.north, { grades: [8, 9] })).status).toBe(200);
     });
   });

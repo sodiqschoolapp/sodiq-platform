@@ -99,7 +99,11 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   server decides from every current assignment; the Principal views. No
  *   `export` until the export of the lists exists (task 2.2c). A new area
  *   for new routes, decided without the owner on pull request #53
- *   (decision 2), confirmed at its review and flagged on issue #42.
+ *   (decision 2), confirmed at its review and flagged on issue #42. Its
+ *   `edit` covers more than one role may do: the branches and the status
+ *   of a person, and every field but name, phone and email, are the Super
+ *   Admin's; the server decides that part from every current assignment and
+ *   refuses the Academic Vice Principal with 403.
  * - `staff_teaching` (`04`, Academic: subjects with grades, languages of
  *   instruction; task 2.2a): the Super Admin and the Academic Vice Principal,
  *   who "edits a teacher's availability, subjects and grades" (Who can act),

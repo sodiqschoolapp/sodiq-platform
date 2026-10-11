@@ -203,7 +203,7 @@ export class Staff {
           .where('staff_branches.branch_id', '=', branchId)
           .execute()
       ).map((row) => row.id);
-      const items = await this.items(transaction, ids);
+      const items = await this.items(transaction, access, ids);
       return {
         staff: items.sort(
           (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
@@ -326,9 +326,9 @@ export class Staff {
    */
   edit(access: Access, id: string, record: StaffRecord, requestId: string): Promise<StaffDetail> {
     const branchId = branchOf(access);
-    return this.refusing(() =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        const row = await this.lockPerson(transaction, id);
+    return this.refusing(async () =>
+      this.transactions.run(await this.readingBranches(access), async (transaction) => {
+        const row = await this.lockLinked(transaction, id, branchId);
         const divisions = await this.divisionsOf(transaction, id);
         const before = fieldsOf(row, sortDivisions(divisions));
         const after: StaffFields = { ...record, divisions: sortDivisions(record.divisions) };
@@ -382,9 +382,9 @@ export class Staff {
     requestId: string,
   ): Promise<StaffDetail> {
     const branchId = branchOf(access);
-    return this.refusing(() =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        await this.lockPerson(transaction, id);
+    return this.refusing(async () =>
+      this.transactions.run(await this.readingBranches(access), async (transaction) => {
+        await this.lockLinked(transaction, id, branchId);
         const before = await this.teachingOf(transaction, id);
         const after = {
           subjects: [...teaching.subjects].sort((a, b) => a.subjectId.localeCompare(b.subjectId)),
@@ -550,7 +550,7 @@ export class Staff {
             requestId,
           });
         }
-        return this.readDetail(transaction, access, id);
+        return this.readDetail(transaction, access, id, false);
       });
     });
   }
@@ -1002,7 +1002,17 @@ export class Staff {
   }
 
   /** The list rows of the given records, in one read per table. */
-  private async items(transaction: Transaction, ids: readonly string[]): Promise<StaffListItem[]> {
+  /**
+   * The list rows of the given records, in one read per table. The categories
+   * come from the assignments the reader may see: every branch for a Super
+   * Admin, else the branch of the request and the roles without a branch
+   * (the permission review of pull request #53).
+   */
+  private async items(
+    transaction: Transaction,
+    access: Access,
+    ids: readonly string[],
+  ): Promise<StaffListItem[]> {
     if (ids.length === 0) {
       return [];
     }
@@ -1056,7 +1066,14 @@ export class Staff {
     const categories = new Map<string, Role[]>();
     for (const row of rows) {
       if (row.account_id !== null) {
+        const everyBranch = superAdminOf(access) !== undefined;
         const roles = (await currentAssignments(transaction, row.account_id, now))
+          .filter(
+            (assignment) =>
+              everyBranch ||
+              assignment.branchId === null ||
+              assignment.branchId === access.branchId,
+          )
           .map((assignment) => assignment.role)
           .filter((role) => (STAFF_CATEGORY_ROLES as readonly Role[]).includes(role));
         categories.set(row.id, [...new Set(roles)]);
@@ -1109,10 +1126,16 @@ export class Staff {
     });
   }
 
+  /**
+   * The record as the detail route answers it; 404 unless it is linked to the
+   * branch of the request. The branches route of the Super Admin, who reads
+   * every branch, answers also after it removed that link (`requireLink`).
+   */
   private async readDetail(
     transaction: Transaction,
     access: Access,
     id: string,
+    requireLink = true,
   ): Promise<StaffDetail> {
     const branchId = branchOf(access);
     const linked = await transaction
@@ -1121,11 +1144,11 @@ export class Staff {
       .where('staff_id', '=', id)
       .where('branch_id', '=', branchId)
       .executeTakeFirst();
-    if (linked === undefined) {
+    if (requireLink && linked === undefined) {
       throw notFound();
     }
     const row = await this.readPerson(transaction, id);
-    const [item] = await this.items(transaction, [id]);
+    const [item] = await this.items(transaction, access, [id]);
     if (item === undefined) {
       throw notFound();
     }
