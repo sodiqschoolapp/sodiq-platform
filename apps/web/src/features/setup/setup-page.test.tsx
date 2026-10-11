@@ -1,4 +1,4 @@
-import type { Role } from '@sodiq/shared';
+import type { Role, SetupChecklist } from '@sodiq/shared';
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -113,6 +113,23 @@ describe('the School setup entry', () => {
     },
   );
 
+  // Answer 24 (task 1.6): the settings and the travel time for the three roles.
+  it.each(['super_admin', 'principal', 'academic_vice_principal'] as const)(
+    'lists the settings and the travel time for the %s',
+    async (role) => {
+      fakeApi({ 'GET /api/auth/session': () => json(sessionAs(role)) });
+      renderApp('/setup');
+      await screen.findByRole('heading', { name: en.setup.title });
+
+      expect(screen.getByRole('link', { name: en.setup.settingsLink }).getAttribute('href')).toBe(
+        '/setup/settings',
+      );
+      expect(
+        screen.getByRole('link', { name: en.setup.travelTimesLink }).getAttribute('href'),
+      ).toBe('/setup/travel-times');
+    },
+  );
+
   it('says that a role without setup rights has no setup pages', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionAs('teacher')) });
     renderApp('/setup');
@@ -123,3 +140,78 @@ describe('the School setup entry', () => {
     expect(screen.queryByRole('link', { name: en.setup.dayTemplatesLink })).toBeNull();
   });
 });
+
+const CHECKLIST: SetupChecklist = {
+  items: [
+    { key: 'branch', done: true, count: null, years: [] },
+    { key: 'rooms', done: false, count: null, years: [] },
+    { key: 'departments', done: true, count: null, years: [] },
+    { key: 'year', done: true, count: null, years: [] },
+    { key: 'quarters', done: false, count: null, years: ['2026–2027'] },
+    { key: 'slotTypes', done: true, count: null, years: [] },
+    { key: 'defaultTemplate', done: false, count: null, years: [] },
+    { key: 'calendar', done: null, count: 3, years: [] },
+  ],
+};
+
+const checklist = () => within(screen.getByRole('region', { name: en.setup.checklist.title }));
+
+// edge/academic-year: "Each branch has a setup checklist in a fixed order";
+// answer 23: the Super Admin, the Academic Vice Principal and the Principal.
+describe('the setup checklist', () => {
+  it('lists the items in order, each done or missing, the calendar as a count', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/setup/checklist': () => json(CHECKLIST),
+    });
+    renderApp('/setup');
+    await screen.findByRole('region', { name: en.setup.checklist.title });
+    const items = await checklist().findAllByRole('listitem');
+
+    expect(items.map((item) => item.getAttribute('data-item'))).toEqual(
+      CHECKLIST.items.map((item) => item.key),
+    );
+    expect(within(items[0] as HTMLElement).getByLabelText(en.setup.checklist.done)).toBeDefined();
+    expect(
+      within(items[1] as HTMLElement).getByLabelText(en.setup.checklist.missing),
+    ).toBeDefined();
+    expect(items[4]?.textContent).toContain('2026–2027');
+    expect(items[2]?.textContent).toContain(en.setup.checklist.wholeSchool);
+    expect(items[7]?.textContent).toContain('3 entries');
+    expect(
+      within(items[6] as HTMLElement)
+        .getByRole('link', { name: en.setup.checklist.items.defaultTemplate })
+        .getAttribute('href'),
+    ).toBe('/setup/day-template-settings');
+  });
+
+  it.each(['super_admin', 'principal'] as const)('is shown to the %s', async (role) => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs(role)),
+      'GET /api/setup/checklist': () => json(CHECKLIST),
+    });
+    renderApp('/setup');
+    expect(await screen.findByRole('region', { name: en.setup.checklist.title })).toBeDefined();
+  });
+
+  it('is not shown to a role without the settings', async () => {
+    const calls = fakeApi({ 'GET /api/auth/session': () => json(sessionAs('teacher')) });
+    renderApp('/setup');
+    await screen.findByRole('heading', { name: en.setup.title });
+
+    expect(screen.queryByRole('region', { name: en.setup.checklist.title })).toBeNull();
+    expect(calls.some((call) => call.route === 'GET /api/setup/checklist')).toBe(false);
+  });
+
+  it('shows a failure with a retry', async () => {
+    fakeApi({ 'GET /api/auth/session': () => json(sessionAs('principal')) });
+    renderApp('/setup');
+    expect(await checklistRetry()).toBeDefined();
+  });
+});
+
+const checklistRetry = async () =>
+  within(await screen.findByRole('region', { name: en.setup.checklist.title })).findByRole(
+    'button',
+    { name: en.problems.retry },
+  );

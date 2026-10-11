@@ -151,7 +151,7 @@ How to read the task lines:
   - Done when: tests cover a holiday inside a week, a working Saturday and a grade-range entry.
   - From 1.5 (pull request #46): a special date names a template through the special-date input that `templateFor` of `packages/timetable-rules` already takes; a template named by a special date from today on counts as in use for its archive (`templateInUse` in `apps/api/src/modules/setup/day-template-state.ts`); the table of School setup reads no special dates yet.
 
-- [ ] **1.6 Settings and the setup checklist**
+- [x] **1.6 Settings and the setup checklist**
   - Read: `03`, `07` (Entering data, Editing rules and locks), `06` (Teachers who work in several branches), `05` (Language of instruction), `08` (Early-warning list), `edge/academic-year`.
   - Build: settings for edit days, attendance values, early-warning thresholds, travel time between branches and languages of instruction; the fixed grade bands; the per-branch setup checklist with the items that exist so far. Later tasks add their own items to the checklist.
   - Done when: each setting has a permission test and the checklist reflects real state for Phase 1 items.
@@ -222,11 +222,13 @@ How to read the task lines:
   - Read: `07` (The total, Calculation rules), `edge/calculation`, `edge/developer-rules`.
   - Build in `packages/calc`: a fraction type on BigInt; percentage of a work from number and total; attendance values; daily result from the daily distribution; the rules for empty scores.
   - Done when: the worked examples in the spec pass as tests and property tests show no floating point is used.
+  - From 1.6 (pull request #49): the attendance values of late and skipped are stored per quarter (`quarters.late_value`, `quarters.skipped_value`, 50 and 0 by default); the calculation takes the values of the lesson's quarter as input.
 
 - [ ] **4.2 Quarter and year results**
   - Read: `07` (Calculation rules), `08` (Student results), `14` (Journal), `edge/calculation`.
   - Build: quarter averages; quarter result from the quarterly distribution; rating exam handling; provisional results; grade bands; year result as the mean of exact quarter results; rounding once at the end; the folder and format for the reference journals of the quality plan, which the owner fills with hand-checked cases.
   - Done when: the boundary examples in the spec pass (for example 49.5, and the year case of 49.475) and the reference-journal test runs on at least one sample.
+  - From 1.6 (pull request #49, decision 5): the Settings page shows the grade bands as text of the three locale files (`setup.settings.gradeBands`); once the bands are in `packages/calc`, the page reads them from there and a test compares.
 
 - [ ] **4.3 Exemptions, flags and special outcomes**
   - Read: `07` (Exemptions), `edge/exemptions`, `edge/calculation`.
@@ -247,6 +249,7 @@ How to read the task lines:
   - Build in `packages/timetable-rules`: every blocked rule and warning, by clock time; travel time between branches; the language rule; a result that names the rule and the lessons involved.
   - Done when: each rule in the Rules table has passing and failing test cases.
   - From 1.5 (pull request #46): `lessonSlotProblem` and `lessonTimeProblem` exist; every lesson write calls them, so "a lesson can only sit in a lesson slot" holds on the server and not only in the engine.
+  - From 1.6 (pull request #49, decision 4): travel time is `travel_times`, one row per unordered pair of branches; a pair without a row is "not set", never 0 minutes. This task decides what the rule does with an unset pair, and flags it.
 
 - [ ] **5.3 Draft builder, steps 1 to 5**
   - Read: `06` (Building a timetable, Rules), `03` (Slot types and day templates), `04` (Teacher and staff record), `edge/timetable` (After publishing).
@@ -420,6 +423,7 @@ How to read the task lines:
   - Read: `07` (Editing rules and locks), `02` (Head Teachers and Senior Head Teachers), `edge/journal` (Locks, unlocks and corrections).
   - Build: the lock at 23:59 branch time on the lesson date plus the edit days, worked out on each request from stored moments; unlock requests routed to the Head Teacher of the subject, the Senior Head Teacher or the Academic Vice Principal; nobody approves their own; corrections by the Academic Vice Principal with a reason; branch-wide extension of the edit period.
   - Done when: tests at 23:59 and 00:00 pass with the injected clock.
+  - From 1.6 (pull request #49, decision 1): the edit days are `branch_settings.edit_days`, a plain value audited on change. The lock moment is stored per lesson; a change of the edit days re-stores the lock moments of the lessons dated after the change, in the same transaction (`edge/00-definitions`, Lock moment).
 
 - [ ] **8.5 Exemptions**
   - Read: `07` (Exemptions), `edge/exemptions`.
@@ -454,6 +458,7 @@ How to read the task lines:
   - Read: `08` (Student results), `07` (Calculation rules), `edge/calculation`.
   - Build: the Results and Attendance tabs of the student profile; quarter and year results per subject; the trace from a result to its lessons.
   - Done when: every figure shown comes from `packages/calc`.
+  - From 1.6 (pull request #49, decision 3): a change of late or skipped on a quarter (`PUT /api/setup/quarters/:id/attendance-values`) shows the results that change first, as the preview `edge/calculation` asks for, and recalculates them in the same transaction.
 
 - [ ] **9.2a Closing checklist**
   - Read: `07` (Closing a quarter), `edge/journal` (Closing and reopening), `edge/calculation`.
@@ -464,6 +469,7 @@ How to read the task lines:
   - Read: `07` (Closing a quarter), `edge/journal` (Closing and reopening), `edge/academic-year`, `edge/system-behaviour`.
   - Build: close for the whole branch in one step; stored final results with their inputs; the start-quarter choice ("keep" or "not official").
   - Done when: closing against a simultaneous cell save is tested.
+  - From 1.6 (pull request #49, decision 3): a closed quarter refuses a change of its late and skipped values, in the database as `quarters_closed_year_guard` does for a closed year, also after a reopening (`edge/calculation`: "A closed quarter keeps the values it was closed with, also when reopened").
 
 - [ ] **9.2c Reopening and the nightly check**
   - Read: `edge/journal` (Closing and reopening), `edge/system-behaviour`.
@@ -484,6 +490,7 @@ How to read the task lines:
   - Read: `08` (Early-warning list).
   - Build: the list with its thresholds and who sees it.
   - Done when: a subject with fewer than five graded works lists nobody.
+  - From 1.6 (pull request #49, decision 2): the thresholds are `branch_settings.low_result`, `result_drop`, `attendance_percent` and `absences_in_row`; "five graded works" stays fixed in code here (answer 19).
 
 - [ ] **9.4b Home pages**
   - Read: `08` (Home pages by role).

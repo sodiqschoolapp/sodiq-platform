@@ -21,6 +21,7 @@ export type AccountKey =
   | 'years'
   | 'templates'
   | 'calendar'
+  | 'settings'
   | 'shellTools'
   | 'switchers'
   | 'account'
