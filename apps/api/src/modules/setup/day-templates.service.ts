@@ -341,7 +341,16 @@ export class DayTemplates {
       'slot_type.length_change',
       { type: 'slot_type', id },
       {
-        oldValue: { cut: cut === undefined ? null : { ...cut } },
+        oldValue: {
+          cut:
+            cut === undefined
+              ? null
+              : {
+                  lengthMinutes: cut.lengthMinutes,
+                  validFrom: cut.validFrom,
+                  validUntil: cut.validUntil,
+                },
+        },
         newValue: {
           lengthMinutes: change.lengthMinutes,
           validFrom: schedule.validFrom,
@@ -619,9 +628,10 @@ export class DayTemplates {
             cut === undefined
               ? null
               : {
-                  ...cut,
-                  slotTypeIds: [...cut.slotTypeIds],
                   startTime: timeText(cut.startMinutes),
+                  slotTypeIds: [...cut.slotTypeIds],
+                  validFrom: cut.validFrom,
+                  validUntil: cut.validUntil,
                 },
         },
         newValue: {
