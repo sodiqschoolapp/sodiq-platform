@@ -12,8 +12,8 @@ Every teacher must have a lesson plan for each class or group they teach, for ea
 | Lesson number | Order within the quarter. Given by the system. |
 | Date | The date of the dated lesson this item is attached to. Taken from the timetable, never typed. |
 | Topic | Required. |
-| Classwork | Optional. The graded work done in class. Becomes the title of the classwork column in the journal. A lesson with no classwork has no classwork column. |
-| Homework | Optional. The task given at this lesson. A lesson can have no homework; then the next lesson has no homework column. |
+| Classwork | Optional, any number. Each classwork is a graded work done in class and becomes the title of its own classwork column in the journal. A lesson with no classwork has no classwork column. |
+| Homework | Optional, any number. Each homework is a task given at this lesson and becomes a homework column of the next lesson. A lesson can have no homework; then the next lesson has no homework column. |
 | Objectives and materials | Optional: short text, files, links. |
 
 - One plan for each class or group, subject and quarter. The form shows one row for every dated lesson of the quarter, with number and date already filled; the teacher fills in the rest.
@@ -60,9 +60,9 @@ Nothing opens without an approved request, also when the school itself caused th
 
 ## In the journal
 
-- The header of each lesson shows the lesson number and the topic, shortened to fit. Clicking it opens the lesson card: number, date, slot, topic, classwork, homework, objectives, materials.
-- Columns follow the plan. A lesson has a classwork column only if its plan item has a classwork, and a homework column only if the previous lesson's plan item has a homework. A lesson with neither shows attendance only; no empty columns are shown. The titles come from the plan, so to grade a work the teacher only sets the total and types the numbers. If a planned work was not done or not checked, the teacher marks it "not held" and its column is removed from that lesson; this is kept in history. A work that was not in the plan is added through a plan edit request.
-- The lesson card shows two homework lines: "given today", from this lesson's plan item, and "checked today", the task given at the previous lesson, which is what the homework numbers of this lesson refer to.
+- The header of each lesson shows the lesson number and the topic, shortened to fit. Clicking it opens the lesson card: number, date, slot, topic, classworks, homeworks, objectives, materials.
+- Columns follow the plan. A lesson has one classwork column for each classwork of its plan item, and one homework column for each homework of the previous lesson's plan item. A lesson with neither shows attendance only; no empty columns are shown. The titles come from the plan, so to grade a work the teacher only sets the total and types the numbers. If a planned work was not done or not checked, the teacher marks it "not held" and its column is removed from that lesson; this is kept in history. A work that was not in the plan is added through a plan edit request.
+- The lesson card shows two homework lines: "given today", the homeworks of this lesson's plan item, and "checked today", the homeworks given at the previous lesson, which are what the homework numbers of this lesson refer to.
 - Future lessons are shown as columns with number and topic, so the teacher sees what comes next. Nothing can be entered in them.
 - In lesson mode on a phone, topic, classwork and homework are at the top of the screen.
 - The plan is read only in the journal. It is changed only in the plan, inside the window or through an approved request.
