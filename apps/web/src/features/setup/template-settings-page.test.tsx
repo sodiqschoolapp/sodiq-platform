@@ -129,7 +129,7 @@ describe('the page of where day templates apply', () => {
     expect(cellOf(tableElement, 1, 1)).toBe('Main08:00–10:10');
     expect(cellOf(tableElement, 5, 11)).toBe('Friday08:00–09:30');
     expect(calls.some((call) => call.route === 'GET /api/setup/day-template-table')).toBe(true);
-    expect((screen.getByLabelText(en.setup.templateTable.date) as HTMLInputElement).value).toBe(
+    expect(screen.getByLabelText<HTMLInputElement>(en.setup.templateTable.date).value).toBe(
       TOMORROW,
     );
   });

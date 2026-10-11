@@ -102,6 +102,20 @@ try {
   );
   seeded.years = { login: years.login, password: years.firstPassword };
 
+  // The Academic Vice Principal of the day templates test (task 1.5), in a
+  // branch of its own, so that its slot types and templates meet no other test's.
+  const templatesBranch = await insertBranch(migrator, 'Templates browser test branch');
+  const templates = await create('Malika', 'Tursunova');
+  await transactions.run([templatesBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: templates.id,
+      role: 'academic_vice_principal',
+      branchId: templatesBranch,
+      givenBy: null,
+    }),
+  );
+  seeded.templates = { login: templates.login, password: templates.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');

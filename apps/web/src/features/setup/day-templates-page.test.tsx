@@ -204,8 +204,7 @@ describe('the day templates page', () => {
     await openList('academic_vice_principal', {}, 'en', [LUNCH]);
 
     expect(
-      (screen.getByRole('button', { name: en.setup.dayTemplates.add }) as HTMLButtonElement)
-        .disabled,
+      screen.getByRole<HTMLButtonElement>('button', { name: en.setup.dayTemplates.add }).disabled,
     ).toBe(true);
     expect(screen.getByText(en.setup.dayTemplates.needLessonType)).toBeDefined();
   });
@@ -221,9 +220,9 @@ describe('the day templates page', () => {
     // The day of tomorrow, and the same times in the form that starts from it.
     expect(await within(panel).findAllByText('08:00–08:45')).toHaveLength(2);
     const form = within(panel).getByRole('form', { name: en.setup.dayTemplates.changeSlots });
-    expect(
-      (within(form).getByLabelText(en.setup.dayTemplates.from) as HTMLInputElement).value,
-    ).toBe(TOMORROW);
+    expect(within(form).getByLabelText<HTMLInputElement>(en.setup.dayTemplates.from).value).toBe(
+      TOMORROW,
+    );
     fireEvent.click(
       within(form).getByRole('button', {
         name: en.form.remove.replace('{{name}}', 'Lunch · Break').replace('{{place}}', '2'),

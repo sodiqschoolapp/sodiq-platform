@@ -4,7 +4,10 @@ import { accountOf, type AccountKey } from './accounts';
 import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
 import { codeNow } from './totp';
 
-/** The first sign-in of the seeded Super Admin: the forced password change and the required second step. */
+/**
+ * The first sign-in of a seeded Super Admin or Academic Vice Principal: the
+ * forced password change and the required second step.
+ */
 async function signInAsSuperAdmin(
   page: Page,
   accountKey: AccountKey = 'superAdmin',
@@ -273,4 +276,69 @@ test('the Super Admin adds a year, dates its quarters, sets the go-live date and
     en.setup.years.current,
   );
   await expect(topBar).toHaveText(`${name} · Quarter 1`);
+});
+
+// docs/spec/03-school-setup.md, Slot types and day templates: "A day template
+// is a start time and an ordered list of slots ... every start and end time is
+// calculated from the order and the lengths. Times are never typed by hand";
+// "saving a template at any level shows that table with the changes marked,
+// as the preview of the change". The build plan's "done when" for 1.5: times
+// are never typed, reordering recalculates them. Owner's answers 9 to 14.
+test('the Academic Vice Principal adds slot types, builds a template, reorders it and sets it as the default after the preview', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signInAsSuperAdmin(page, 'templates');
+
+  await openSetupPage(page, en.setup.slotTypesLink, en.setup.slotTypes.title);
+  for (const [name, kind, length] of [
+    ['Lesson 45', 'lesson', '45'],
+    ['Lunch', 'break', '40'],
+  ] as const) {
+    await page.getByRole('button', { name: en.setup.slotTypes.add, exact: true }).first().click();
+    const form = page.getByRole('form', { name: en.setup.slotTypes.newTitle });
+    await form.getByLabel(en.setup.slotTypes.name, { exact: true }).fill(name);
+    await form.getByLabel(en.setup.slotTypes.kind, { exact: true }).selectOption(kind);
+    await form.getByLabel(en.setup.slotTypes.length, { exact: true }).fill(length);
+    await form.getByRole('button', { name: en.form.save, exact: true }).click();
+    await expect(page.getByRole('row').filter({ hasText: name })).toContainText(`${length} min`);
+  }
+
+  await openSetupPage(page, en.setup.dayTemplatesLink, en.setup.dayTemplates.title);
+  await page.getByRole('button', { name: en.setup.dayTemplates.add, exact: true }).first().click();
+  const form = page.getByRole('form', { name: en.setup.dayTemplates.newTitle });
+  await form.getByLabel(en.setup.dayTemplates.name, { exact: true }).fill('Main');
+  await form.getByLabel(en.setup.dayTemplates.startTime, { exact: true }).fill('08:00');
+  const choice = form.getByLabel(
+    en.form.addChoice.replace('{{label}}', en.setup.dayTemplates.slots),
+  );
+  const add = form.getByRole('button', { name: en.form.add, exact: true });
+  for (const name of ['Lesson 45 · Lesson', 'Lunch · Break', 'Lesson 45 · Lesson']) {
+    await choice.selectOption({ label: name });
+    await add.click();
+  }
+  const slots = form.getByRole('listitem');
+  await expect(slots).toHaveText([/08:00–08:45/, /08:45–09:25/, /09:25–10:10/]);
+  // Lunch one slot later: the times are calculated again, never typed.
+  await form
+    .getByRole('button', {
+      name: en.form.moveDown.replace('{{name}}', 'Lunch · Break').replace('{{place}}', '2'),
+    })
+    .click();
+  await expect(slots).toHaveText([/08:00–08:45/, /08:45–09:30/, /09:30–10:10/]);
+  await form.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'Main' })).toContainText('08:00–10:10');
+
+  await openSetupPage(page, en.setup.templateSettingsLink, en.setup.templateSettings.title);
+  const set = page.getByRole('form', { name: en.setup.templateSettings.setTitle });
+  await set.getByRole('button', { name: en.form.save, exact: true }).click();
+  const preview = page.getByRole('dialog', { name: en.setup.templateTable.previewTitle });
+  await expect(preview).toBeVisible();
+  // Every working weekday (Monday to Friday) of grades 1 to 11 changes.
+  await expect(preview.locator('[data-changed="true"]')).toHaveCount(55);
+  await preview.getByRole('button', { name: en.setup.templateTable.save, exact: true }).click();
+  await expect(preview).toBeHidden();
+  await expect(saved(set)).toBeVisible();
+  const table = page.getByRole('table', { name: en.setup.templateTable.title });
+  await expect(table.getByRole('cell').filter({ hasText: 'Main' })).toHaveCount(55);
 });

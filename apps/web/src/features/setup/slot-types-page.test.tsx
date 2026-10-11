@@ -157,7 +157,7 @@ describe('the slot types page', () => {
 
     const panel = await openSlotType('Lunch');
     const form = within(panel).getByRole('form', { name: en.setup.slotTypes.changeLength });
-    expect((within(form).getByLabelText(en.setup.slotTypes.from) as HTMLInputElement).value).toBe(
+    expect(within(form).getByLabelText<HTMLInputElement>(en.setup.slotTypes.from).value).toBe(
       '2026-10-11',
     );
     type(within(form).getByLabelText(en.setup.slotTypes.length), '30');
