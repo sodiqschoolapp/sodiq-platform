@@ -436,8 +436,11 @@ describe('the settings of a branch', () => {
     });
 
     it('refuses the branch itself, an unknown branch (404) and minutes outside 0 to 180, and changes nothing', async () => {
+      // An unknown id is the only 404: the Super Admin works in every branch,
+      // so another branch's id is a valid partner, never a refusal.
       const before = await pairs();
       const count = (await schoolEntries()).length;
+      const branchCount = await t.auditCount();
       const same = await put('/api/setup/travel-times', t.north, {
         otherBranchId: t.north,
         minutes: 10,
@@ -457,6 +460,7 @@ describe('the settings of a branch', () => {
       }
       expect(await pairs()).toEqual(before);
       expect((await schoolEntries()).length).toBe(count);
+      expect(await t.auditCount()).toBe(branchCount);
     });
 
     // Answer 24: under `branches` edit, the Super Admin alone.

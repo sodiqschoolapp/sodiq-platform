@@ -81,7 +81,9 @@ export class Transactions {
    * transaction begins with no branch (the branch does not exist yet), and the
    * rows that every branch has (its settings) belong to the new branch. This
    * sets the filter of the rest of that one transaction to the new branch.
-   * It refuses a branch that was not inserted by this transaction, and a
+   * It refuses a branch whose row this transaction did not write (inserted,
+   * or updated: PostgreSQL cannot tell the two apart by the row; the one
+   * caller, the branch create, passes the id its insert returned), and a
    * transaction that already works for a branch, so it can never widen what a
    * request sees.
    */
@@ -98,7 +100,7 @@ export class Transactions {
     const row = found.rows[0];
     if (row?.created_here !== true || row.filter !== '{}') {
       throw new Error(
-        'Only a branch inserted by this transaction, which works for no branch, is entered.',
+        'Only a branch written by this transaction, which works for no branch, is entered.',
       );
     }
     await sql`select set_config(${BRANCH_SETTING}, ${filter}, true)`.execute(transaction);
