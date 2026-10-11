@@ -148,7 +148,7 @@ Three sizes, four kinds, one shape. Every button is a fill with no border.
 
 - Fields and selects: 40 high (44 at phone width, 48 on sign-in), white fill, 1 px `--input` border, corner 8; focus is the 2 px ring. An error is a 2 px `--destructive` border and one line under the field in `--destructive`.
 - A select draws a filled "expand more" icon on the right, never a text caret.
-- A segmented control (two to four choices) is a `--accent` track with 4 px padding; the chosen item is white with navy text, the others muted text, 32 high (40 at phone width).
+- A segmented control (two to four choices) is a `--accent` track with 4 px padding; the chosen item is white with navy text, the others muted text, 32 high (44 at phone width, so the track is 52).
 - Checkboxes use the navy accent colour.
 
 ## Icons
@@ -199,9 +199,10 @@ Text 4.5 : 1 and controls 3 : 1 in both themes (checked by the app's contrast te
 This section belongs to `sodiqschoolapp/sodiq-platform` only.
 
 - **Files.** Tokens in `apps/web/src/index.css`; the contrast test is `apps/web/tooling/contrast.test.ts`; the shadcn/ui button is `apps/web/src/components/ui/button.tsx`; the logo files are in `apps/web/public/brand/`. The page header is `PageHeader`, a list is `ListPage`, and empty, loading and error states are `EmptyState`, `LoadingOutline` and `ErrorState` (`.claude/rules/web.md`).
+- **Sign-in.** Under the large button, the link "Forgot your password?" to the password reset by email (`02`, Before the school goes live; "Decided ahead for tasks 2.1 to 2.6", item 16).
 - **Top bar.** The selects for branch, academic year and quarter (`12`, Context: always shown); at the right the role switch, a select, when the person has several roles.
 - **Menu icons.** Today `home`, Timetable `calendar_month`, Journals `menu_book`, Lesson plans `assignment`, Results `bar_chart`, Requests `forum`, Staff `group`, Students `school`, Classes and groups `grid_view`, Subjects `auto_stories`, Settings and School setup `tune`.
-- **Phone tab bar.** The role's first four menu items and "More" (`12`, Devices).
+- **Phone tab bar.** The role's first four menu items and "More". This is the owner's decision of 12 October 2026 (`docs/decisions.md`, "one design for both apps"); `12`, Devices lists which functions work on a phone, not the tab bar.
 - **Subject colours.** The 12 subject colours of task 2.1 stay as they are (keys and values in `index.css`): a timetable tile or a chip is the colour's 15% tint with the subject in the normal text and a 10 px square of the full colour. A subject colour never carries meaning alone: the subject's name is always written.
 - **Status labels: grades and attendance marks.** Always the digit; colour only helps. Grade 2 danger tint, 3 warning tint, 4 info tint, 5 success tint, each with its text colour. Attendance marks in the journal: 1 plain; 0 and 3 danger tint; 2 warning tint; 4 and 5 (exempt) muted fill with muted text.
 - **Printouts.** The first-password slips (task 2.3: four per A4 page with cut lines; name, role, the three steps to sign in at the site's address, and a box with login, password and date of issue), the personal data report (2.6), and later the PDF exports.
