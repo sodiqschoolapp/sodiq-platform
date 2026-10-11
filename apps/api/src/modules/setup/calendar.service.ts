@@ -297,7 +297,9 @@ export class Calendar {
           ...(old === undefined ? [] : datesFrom(old.firstDate, old.lastDate)),
           ...datesFrom(saved.firstDate, saved.lastDate),
         ]);
-        throw new PreviewDone({ changes: changesOn(context, [...dates].sort(), before, after, entriesAfter) });
+        throw new PreviewDone({
+          changes: changesOn(context, [...dates].sort(), before, after, entriesAfter),
+        });
       });
     } catch (error) {
       if (error instanceof PreviewDone) {
@@ -575,15 +577,9 @@ function toEntry(store: TemplateStore, entry: StoredEntry): CalendarEntry {
 }
 
 /** A result of `dayOn` with the names to show. */
-function dayAnswer(
-  context: Context,
-  entries: readonly StoredEntry[],
-  day: DayResult,
-): CalendarDay {
+function dayAnswer(context: Context, entries: readonly StoredEntry[], day: DayResult): CalendarDay {
   const entryName =
-    day.entryId === null
-      ? null
-      : (entries.find((one) => one.id === day.entryId)?.name ?? null);
+    day.entryId === null ? null : (entries.find((one) => one.id === day.entryId)?.name ?? null);
   if (!day.lessons) {
     return { lessons: false, reason: day.reason, entryId: day.entryId, entryName };
   }

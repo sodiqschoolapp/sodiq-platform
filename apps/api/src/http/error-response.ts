@@ -59,11 +59,13 @@ const MESSAGE: Record<ErrorCode, string> = {
   template_uses_archived_slot_type:
     'The template uses an archived slot type from today on. Restore that slot type first.',
   template_archived: 'The day template is archived.',
-  calendar_date_not_in_future: 'Only calendar dates from tomorrow on can be added, changed or removed.',
+  calendar_date_not_in_future:
+    'Only calendar dates from tomorrow on can be added, changed or removed.',
   calendar_entry_past: 'The calendar entry lies wholly in the past and is read-only.',
   calendar_entry_archived: 'The calendar entry is archived. Restore it first.',
   calendar_outside_year: 'The dates must lie inside one planned or current academic year.',
-  calendar_overlap: 'Another entry of the same kind covers one of these dates for one of these grades.',
+  calendar_overlap:
+    'Another entry of the same kind covers one of these dates for one of these grades.',
   follows_weekday_required: 'A special day on a non-working weekday names the weekday it follows.',
   follows_weekday_not_working: 'The weekday followed must be a working weekday of the branch.',
   go_live_not_school_day: 'The go-live date must be a school day.',

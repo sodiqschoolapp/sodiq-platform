@@ -458,7 +458,10 @@ export class DayTemplates {
 
   listTemplates(access: Access, branchId: string): Promise<DayTemplateList> {
     return this.read(access, branchId, async (transaction, today) => {
-      const [store, entries] = await Promise.all([loadStore(transaction), loadEntries(transaction)]);
+      const [store, entries] = await Promise.all([
+        loadStore(transaction),
+        loadEntries(transaction),
+      ]);
       return {
         today,
         dayTemplates: [...store.templates.values()]

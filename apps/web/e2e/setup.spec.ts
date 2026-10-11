@@ -260,10 +260,16 @@ test('the Super Admin adds a year, dates its quarters, sets the go-live date and
   // A planned year is labelled (edge/academic-year: "The top bar labels a planned year").
   await expect(topBar).toHaveText(`${name} (planned) · Quarter 1`);
 
-  // The go-live date, today, on the branch page.
+  // The go-live date, on the branch page: today, or the next working weekday
+  // (Monday to Friday, the branch's) when today is not one, since go-live is a
+  // school day (task 1.4, decision 7 of pull request #47).
   await openSetupPage(page, en.setup.branchLink, en.setup.branch.title);
   const goLive = page.getByRole('form', { name: en.setup.branch.goLiveTitle });
-  await goLive.getByLabel(en.setup.branch.goLiveDate, { exact: true }).fill(schoolDay(0));
+  let goLiveDay = 0;
+  while ([0, 6].includes(new Date(`${schoolDay(goLiveDay)}T00:00:00Z`).getUTCDay())) {
+    goLiveDay += 1;
+  }
+  await goLive.getByLabel(en.setup.branch.goLiveDate, { exact: true }).fill(schoolDay(goLiveDay));
   await goLive.getByRole('button', { name: en.form.save, exact: true }).click();
   await expect(saved(goLive)).toBeVisible();
 
@@ -341,4 +347,85 @@ test('the Academic Vice Principal adds slot types, builds a template, reorders i
   await expect(saved(set)).toBeVisible();
   const table = page.getByRole('table', { name: en.setup.templateTable.title });
   await expect(table.getByRole('cell').filter({ hasText: 'Main' })).toHaveCount(55);
+});
+
+/** A school date `days` after today in Tashkent, the branch time of the test branch. */
+function dateAfter(days: number): string {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(Date.now());
+  const moment = new Date(`${today}T00:00:00Z`);
+  moment.setUTCDate(moment.getUTCDate() + days);
+  return moment.toISOString().slice(0, 10);
+}
+
+/** The first date at least two days after today that falls on the ISO weekday (Monday 1). */
+function nextWeekday(weekday: number): string {
+  for (let days = 2; ; days += 1) {
+    const date = dateAfter(days);
+    const day = new Date(`${date}T00:00:00Z`).getUTCDay();
+    if ((day === 0 ? 7 : day) === weekday) {
+      return date;
+    }
+  }
+}
+
+// docs/build-plan.md, task 1.4, done when: "a holiday inside a week, a working
+// Saturday and a grade-range entry". docs/spec/03-school-setup.md, Academic
+// calendar: "Each date resolves to 'no lessons' or to one day template";
+// edge/time-dates-calendar: "the impact preview is shown first".
+test('the Academic Vice Principal adds a day off for some grades and a working Saturday after the preview, and checks a date', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signInAsSuperAdmin(page, 'calendar');
+  await openSetupPage(page, en.setup.calendarLink, en.setup.calendar.title);
+
+  const wednesday = nextWeekday(3);
+  const saturday = nextWeekday(6);
+  const add = async (fill: (form: ReturnType<Page['getByRole']>) => Promise<void>) => {
+    await page.getByRole('button', { name: en.setup.calendar.add, exact: true }).first().click();
+    const form = page.getByRole('form', { name: en.setup.calendar.newTitle });
+    await fill(form);
+    await form.getByRole('button', { name: en.form.save, exact: true }).click();
+    return page.getByRole('dialog', { name: en.setup.calendar.previewTitle });
+  };
+
+  const seniors = await add(async (form) => {
+    await form.getByLabel(en.setup.calendar.name, { exact: true }).fill('Seniors off');
+    await form.getByLabel(en.setup.calendar.firstDate, { exact: true }).fill(wednesday);
+    await form.getByLabel(en.setup.calendar.lastDate, { exact: true }).fill(wednesday);
+    await form.getByLabel(en.setup.calendar.scope, { exact: true }).selectOption('grades');
+    await form.getByLabel(en.setup.calendar.gradeFrom, { exact: true }).selectOption('9');
+  });
+  await expect(seniors.getByRole('row').nth(1)).toContainText('Grades 9–11');
+  await expect(seniors.getByRole('row').nth(1)).toContainText(en.setup.calendar.reasons.day_off);
+  await seniors.getByRole('button', { name: en.setup.calendar.save, exact: true }).click();
+  await expect(seniors).toBeHidden();
+  await expect(page.getByRole('row').filter({ hasText: 'Seniors off' })).toContainText(
+    'Grades 9–11',
+  );
+
+  const working = await add(async (form) => {
+    await form.getByLabel(en.setup.calendar.kind, { exact: true }).selectOption('special_day');
+    await form.getByLabel(en.setup.calendar.name, { exact: true }).fill('Working Saturday');
+    await form.getByLabel(en.setup.calendar.firstDate, { exact: true }).fill(saturday);
+    await form.getByLabel(en.setup.calendar.lastDate, { exact: true }).fill(saturday);
+    await form.getByLabel(en.setup.calendar.follows, { exact: true }).selectOption('1');
+  });
+  await expect(working.getByRole('row').nth(1)).toContainText(
+    en.setup.calendar.reasons.not_working_day,
+  );
+  await working.getByRole('button', { name: en.setup.calendar.save, exact: true }).click();
+  await expect(working).toBeHidden();
+  await expect(page.getByRole('row').filter({ hasText: 'Working Saturday' })).toContainText('Main');
+
+  const check = page.getByRole('region', { name: en.setup.calendar.checkTitle });
+  await check.getByLabel(en.setup.calendar.checkDate, { exact: true }).fill(saturday);
+  await expect(check.getByRole('row').nth(1)).toContainText(
+    'Main · lessons of Monday · Working Saturday',
+  );
+  await check.getByLabel(en.setup.calendar.checkDate, { exact: true }).fill(wednesday);
+  await expect(check.getByRole('row').nth(8)).toContainText('Main');
+  await expect(check.getByRole('row').nth(9)).toContainText(
+    `${en.setup.calendar.reasons.day_off} (Seniors off)`,
+  );
 });

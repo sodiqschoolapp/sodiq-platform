@@ -492,7 +492,12 @@ describe('the calendar', () => {
       const archive = await t.post(`/api/setup/calendar-entries/${id}/archive`, branch);
       expect(errorCode(archive)).toBe('calendar_date_not_in_future');
 
-      const kind = await edit({ ...now, kind: 'day_off', dayTemplateId: null, followsWeekday: null });
+      const kind = await edit({
+        ...now,
+        kind: 'day_off',
+        dayTemplateId: null,
+        followsWeekday: null,
+      });
       expect(kind.status).toBe(400);
       expect(detailPaths(kind)).toEqual(['kind']);
     });

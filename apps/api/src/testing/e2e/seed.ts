@@ -116,6 +116,104 @@ try {
   );
   seeded.templates = { login: templates.login, password: templates.firstPassword };
 
+  // The Academic Vice Principal of the calendar test (task 1.4), in a branch of
+  // its own with a year around today and a default template "Main" of two
+  // lessons, written by the migrator: the calendar needs both, and no route of
+  // this role writes a year. The year starts 100 days before today in
+  // Tashkent and lasts 364 days, moved earlier when it would end in its own
+  // calendar year (a year ends in the next one, task 1.3).
+  const calendarBranch = await insertBranch(migrator, 'Calendar browser test branch');
+  const calendar = await create('Feruza', 'Xolmatova');
+  await transactions.run([calendarBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: calendar.id,
+      role: 'academic_vice_principal',
+      branchId: calendarBranch,
+      givenBy: null,
+    }),
+  );
+  const dayMs = 24 * 60 * 60 * 1000;
+  const tashkentToday = new Date(
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(Date.now()),
+  );
+  let yearStart = new Date(tashkentToday.getTime() - 100 * dayMs);
+  if (new Date(yearStart.getTime() + 364 * dayMs).getUTCFullYear() === yearStart.getUTCFullYear()) {
+    yearStart = new Date(yearStart.getTime() - 10 * dayMs);
+  }
+  const isoDate = (moment: Date) => moment.toISOString().slice(0, 10);
+  const startDate = isoDate(yearStart);
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: calendarBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: calendarBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const lesson = await transaction
+      .insertInto('slot_types')
+      .values({ branch_id: calendarBranch, name: 'Lesson 45', kind: 'lesson' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('slot_type_lengths')
+      .values({
+        branch_id: calendarBranch,
+        slot_type_id: lesson.id,
+        length_minutes: 45,
+        valid_from: startDate,
+      })
+      .execute();
+    const template = await transaction
+      .insertInto('day_templates')
+      .values({ branch_id: calendarBranch, name: 'Main' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const version = await transaction
+      .insertInto('day_template_versions')
+      .values({
+        branch_id: calendarBranch,
+        day_template_id: template.id,
+        start_minutes: 480,
+        valid_from: startDate,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('day_template_slots')
+      .values(
+        [1, 2].map((position) => ({
+          version_id: version.id,
+          branch_id: calendarBranch,
+          position,
+          slot_type_id: lesson.id,
+        })),
+      )
+      .execute();
+    await transaction
+      .insertInto('day_template_assignments')
+      .values({
+        branch_id: calendarBranch,
+        level: 'default',
+        day_template_id: template.id,
+        valid_from: startDate,
+      })
+      .execute();
+  });
+  seeded.calendar = { login: calendar.login, password: calendar.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');
