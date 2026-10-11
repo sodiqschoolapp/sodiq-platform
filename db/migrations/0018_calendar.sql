@@ -75,6 +75,8 @@ create table calendar_entries (
 );
 
 create index calendar_entries_template_idx on calendar_entries (day_template_id);
+-- The list of a branch, by first date.
+create index calendar_entries_branch_first_date_idx on calendar_entries (branch_id, first_date);
 
 alter table calendar_entries enable row level security;
 create policy branch_filter on calendar_entries for all to sodiq_app

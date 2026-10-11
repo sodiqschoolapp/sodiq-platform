@@ -99,7 +99,7 @@ export const en = {
       'This template uses an archived slot type from today on. Restore that slot type first, then restore the template.',
     template_archived: 'The day template is archived. Restore it first, or choose another one.',
     calendar_date_not_in_future:
-      'Only dates from tomorrow on can be added, changed or removed. For today, cancel the lessons instead.',
+      'Only dates from tomorrow on can be added, changed or removed; today and past dates stay as they are.',
     calendar_entry_past: 'This entry lies wholly in the past and cannot be changed.',
     calendar_entry_archived: 'This entry is archived. Restore it first, then change it.',
     calendar_outside_year:
@@ -110,7 +110,23 @@ export const en = {
       'A date of this special day is not a working weekday. Choose the weekday whose lessons it follows.',
     follows_weekday_not_working: 'Choose a working weekday of the branch to follow.',
     go_live_not_school_day:
-      'The go-live date must be a school day, and this change would leave it without lessons. Choose another date or keep the school day.',
+      'The go-live date must be a school day: a date with lessons for at least one grade. Choose another date.',
+    calendar_restore_started:
+      'This entry began today or earlier and cannot come back. Add a new entry from tomorrow instead.',
+    calendar_restore_overlap:
+      'An active entry of the same kind now covers one of its dates for one of its grades. Change or archive that entry first.',
+    calendar_restore_outside_year:
+      'Its dates no longer lie inside one planned or current academic year. Add a new entry instead.',
+    calendar_restore_follows_weekday:
+      'The working weekdays of the branch have changed since, and the entry no longer fits them. Add a new entry instead.',
+    calendar_restore_template_archived:
+      'Its day template is archived. Restore the template first, then this entry.',
+    calendar_archive_started:
+      'This entry has begun and cannot be archived. To end it earlier, move its last date.',
+    year_leaves_calendar_entry:
+      'A calendar entry would lie outside the year. Change or archive that entry first, or keep the dates of the year.',
+    go_live_school_day_taken:
+      'This change would leave the go-live date without lessons. Keep the school day, or move the go-live date first.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     archive_refused:

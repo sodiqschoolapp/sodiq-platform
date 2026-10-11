@@ -26,6 +26,7 @@ export {
 export {
   inForceOn,
   isInForceOn,
+  specialDateFor,
   templateFor,
   weekdayOf,
   type DatedRow,

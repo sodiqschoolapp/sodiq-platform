@@ -49,6 +49,33 @@ const REFUSALS: Readonly<Record<string, ErrorCode>> = {
   calendar_entries_no_overlap: 'calendar_overlap',
 };
 
+/** The same for a restore, which answers with codes of its own (`.claude/rules/web.md`: a text is true on every path). */
+const RESTORE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+  calendar_entries_no_overlap: 'calendar_restore_overlap',
+};
+
+/** The codes of the rules of `checkEntry`, as a create or an edit answers them, and as a restore does. */
+interface EntryCodes {
+  readonly outsideYear: ErrorCode;
+  readonly followsRequired: ErrorCode;
+  readonly followsNotWorking: ErrorCode;
+  readonly overlap: ErrorCode;
+}
+
+const SAVE_CODES: EntryCodes = {
+  outsideYear: 'calendar_outside_year',
+  followsRequired: 'follows_weekday_required',
+  followsNotWorking: 'follows_weekday_not_working',
+  overlap: 'calendar_overlap',
+};
+
+const RESTORE_CODES: EntryCodes = {
+  outsideYear: 'calendar_restore_outside_year',
+  followsRequired: 'calendar_restore_follows_weekday',
+  followsNotWorking: 'calendar_restore_follows_weekday',
+  overlap: 'calendar_restore_overlap',
+};
+
 /** What a write knows: its transaction, the branch, today in branch time and the state read under the lock. */
 interface Context {
   readonly transaction: Transaction;
@@ -181,13 +208,14 @@ export class Calendar {
     branchId: string,
     requestId: string,
     work: (context: Context) => Promise<T>,
+    refusals: Readonly<Record<string, ErrorCode>> = REFUSALS,
   ): Promise<T> {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) =>
           work(await this.context(transaction, access, branchId, requestId, true)),
         ),
-      REFUSALS,
+      refusals,
     );
   }
 
@@ -257,7 +285,13 @@ export class Calendar {
   }
 
   restore(access: Access, branchId: string, id: string, requestId: string): Promise<CalendarEntry> {
-    return this.write(access, branchId, requestId, (context) => this.restoreIn(context, id));
+    return this.write(
+      access,
+      branchId,
+      requestId,
+      (context) => this.restoreIn(context, id),
+      RESTORE_REFUSALS,
+    );
   }
 
   /**
@@ -272,35 +306,41 @@ export class Calendar {
     requestId: string,
   ): Promise<CalendarPreview> {
     try {
-      await this.write(access, branchId, requestId, async (context) => {
-        const before = calendarSettings(context.store, context.workingWeekdays, context.entries);
-        const old = change.action === 'create' ? undefined : entryOf(context, change.id);
-        let saved: CalendarEntry;
-        switch (change.action) {
-          case 'create':
-            saved = await this.createIn(context, change.record);
-            break;
-          case 'edit':
-            saved = await this.editIn(context, change.id, change.record);
-            break;
-          case 'archive':
-            saved = await this.archiveIn(context, change.id);
-            break;
-          case 'restore':
-            saved = await this.restoreIn(context, change.id);
-            break;
-        }
-        await sql`set constraints all immediate`.execute(context.transaction);
-        const entriesAfter = await loadEntries(context.transaction);
-        const after = calendarSettings(context.store, context.workingWeekdays, entriesAfter);
-        const dates = new Set([
-          ...(old === undefined ? [] : datesFrom(old.firstDate, old.lastDate)),
-          ...datesFrom(saved.firstDate, saved.lastDate),
-        ]);
-        throw new PreviewDone({
-          changes: changesOn(context, [...dates].sort(), before, after, entriesAfter),
-        });
-      });
+      await this.write(
+        access,
+        branchId,
+        requestId,
+        async (context) => {
+          const before = calendarSettings(context.store, context.workingWeekdays, context.entries);
+          const old = change.action === 'create' ? undefined : entryOf(context, change.id);
+          let saved: CalendarEntry;
+          switch (change.action) {
+            case 'create':
+              saved = await this.createIn(context, change.record);
+              break;
+            case 'edit':
+              saved = await this.editIn(context, change.id, change.record);
+              break;
+            case 'archive':
+              saved = await this.archiveIn(context, change.id);
+              break;
+            case 'restore':
+              saved = await this.restoreIn(context, change.id);
+              break;
+          }
+          await sql`set constraints all immediate`.execute(context.transaction);
+          const entriesAfter = await loadEntries(context.transaction);
+          const after = calendarSettings(context.store, context.workingWeekdays, entriesAfter);
+          const dates = new Set([
+            ...(old === undefined ? [] : datesFrom(old.firstDate, old.lastDate)),
+            ...datesFrom(saved.firstDate, saved.lastDate),
+          ]);
+          throw new PreviewDone({
+            changes: changesOn(context, [...dates].sort(), before, after, entriesAfter),
+          });
+        },
+        change.action === 'restore' ? RESTORE_REFUSALS : REFUSALS,
+      );
     } catch (error) {
       if (error instanceof PreviewDone) {
         return error.preview;
@@ -387,8 +427,19 @@ export class Calendar {
     if (record.dayTemplateId !== before.dayTemplateId) {
       templateIn(context, record.dayTemplateId);
     }
-    if (changed.some((key) => key !== 'name')) {
+    if (moving.length > 0) {
       checkEntry(context, record, id);
+    } else if (changed.some((key) => key !== 'name')) {
+      // Only the first or the last date moved: the dates kept are not judged again.
+      const kept = new Set(datesFrom(before.firstDate, before.lastDate));
+      checkEntry(
+        context,
+        record,
+        id,
+        SAVE_CODES,
+        datesFrom(record.firstDate, record.lastDate).filter((date) => !kept.has(date)),
+        false,
+      );
     }
     await context.transaction
       .updateTable('calendar_entries')
@@ -420,7 +471,7 @@ export class Calendar {
     }
     if (entry.firstDate <= context.today) {
       throw refused(
-        entry.lastDate < context.today ? 'calendar_entry_past' : 'calendar_date_not_in_future',
+        entry.lastDate < context.today ? 'calendar_entry_past' : 'calendar_archive_started',
       );
     }
     const now = this.clock.now();
@@ -444,12 +495,10 @@ export class Calendar {
       return this.answer(context, id);
     }
     if (entry.firstDate <= context.today) {
-      throw refused(
-        entry.lastDate < context.today ? 'calendar_entry_past' : 'calendar_date_not_in_future',
-      );
+      throw refused('calendar_restore_started');
     }
-    templateIn(context, entry.dayTemplateId);
-    checkEntry(context, entry, id);
+    templateIn(context, entry.dayTemplateId, 'calendar_restore_template_archived');
+    checkEntry(context, entry, id, RESTORE_CODES);
     await context.transaction
       .updateTable('calendar_entries')
       .set({ archived_at: null })
@@ -475,7 +524,7 @@ export class Calendar {
       await loadEntries(context.transaction),
     );
     if (losesGoLive(context.goLiveDate, before, after)) {
-      throw refused('go_live_not_school_day');
+      throw refused('go_live_school_day_taken');
     }
   }
 
@@ -498,7 +547,11 @@ function entryOf(context: Context, id: string): StoredEntry {
 }
 
 /** A template named by a special day: of the branch (else 404) and active. */
-function templateIn(context: Context, templateId: string | null): void {
+function templateIn(
+  context: Context,
+  templateId: string | null,
+  archivedCode: ErrorCode = 'template_archived',
+): void {
   if (templateId === null) {
     return;
   }
@@ -507,7 +560,7 @@ function templateIn(context: Context, templateId: string | null): void {
     throw notFound();
   }
   if (template.archivedAt !== null) {
-    throw refused('template_archived', ['dayTemplateId']);
+    throw refused(archivedCode, ['dayTemplateId']);
   }
 }
 
@@ -524,24 +577,36 @@ function checkEntry(
     'kind' | 'firstDate' | 'lastDate' | 'gradeFrom' | 'gradeTo' | 'followsWeekday'
   >,
   id: string | null,
+  codes: EntryCodes = SAVE_CODES,
+  /**
+   * The dates whose day the save changes, for the followed weekday: every date
+   * of the entry, or only the added ones when an edit moves its dates and
+   * nothing else (decision 3: a date the save does not change is not judged
+   * again, the working weekdays may have changed since).
+   */
+  followsDates: readonly string[] = datesFrom(entry.firstDate, entry.lastDate),
+  /** Whether the followed weekday is checked against the working weekdays. */
+  checkFollowed = true,
 ): void {
   const year = context.years.find(
     (one) => one.startDate <= entry.firstDate && entry.lastDate <= one.endDate,
   );
   if (year === undefined) {
-    throw refused('calendar_outside_year', ['firstDate', 'lastDate']);
+    throw refused(codes.outsideYear, ['firstDate', 'lastDate']);
   }
   if (entry.kind === 'special_day') {
     if (
       entry.followsWeekday === null &&
-      datesFrom(entry.firstDate, entry.lastDate).some(
-        (date) => !context.workingWeekdays.includes(weekdayOf(date)),
-      )
+      followsDates.some((date) => !context.workingWeekdays.includes(weekdayOf(date)))
     ) {
-      throw refused('follows_weekday_required', ['followsWeekday']);
+      throw refused(codes.followsRequired, ['followsWeekday']);
     }
-    if (entry.followsWeekday !== null && !context.workingWeekdays.includes(entry.followsWeekday)) {
-      throw refused('follows_weekday_not_working', ['followsWeekday']);
+    if (
+      checkFollowed &&
+      entry.followsWeekday !== null &&
+      !context.workingWeekdays.includes(entry.followsWeekday)
+    ) {
+      throw refused(codes.followsNotWorking, ['followsWeekday']);
     }
   }
   const other = context.entries.find(
@@ -555,7 +620,7 @@ function checkEntry(
   );
   if (other !== undefined) {
     throw refused(
-      'calendar_overlap',
+      codes.overlap,
       ['firstDate', 'lastDate'],
       `Overlaps "${other.name}", ${other.firstDate} to ${other.lastDate}.`,
     );

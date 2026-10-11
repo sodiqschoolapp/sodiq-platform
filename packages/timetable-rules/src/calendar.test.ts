@@ -227,16 +227,15 @@ describe('dayOn', () => {
     });
   });
 
-  // Decision 14 of the plan: a template version withdrawn before it took
-  // effect leaves no date without a version, so a special day keeps its
-  // template; dayOn names the template, its times come from the version in
-  // force (dayOf of the API).
-  it('names the special day template whatever the settings in force', () => {
+  // A special day names its template whatever the regular settings are,
+  // even when none is in force on the date.
+  it('names the special day template whatever the regular settings', () => {
     const special = settings([entry({ id: 'short', kind: 'special_day', dayTemplateId: 'short' })]);
     const withdrawn: CalendarSettings = {
       ...special,
       assignments: [
-        { ...defaultRow, validUntil: '2026-09-01' }, // withdrawn: an empty range
+        // withdrawn: an empty range
+        { ...defaultRow, validUntil: '2026-09-01' },
       ],
     };
     expect(dayOn(5, wednesday, withdrawn)).toMatchObject({ dayTemplateId: 'short' });

@@ -9,7 +9,7 @@
  * (docs/spec/edge-cases/time-dates-calendar.md, "Vacations between quarters"):
  * publishing skips the dates outside the quarters (decision 6 of task 1.4).
  */
-import { templateFor, weekdayOf, type TemplateAssignment } from './templates.js';
+import { specialDateFor, templateFor, weekdayOf, type TemplateAssignment } from './templates.js';
 
 export type CalendarEntryKind = 'day_off' | 'special_day';
 
@@ -81,7 +81,7 @@ export function entryCovers(entry: CalendarEntry, date: string, grade: number): 
  * What a class of this grade has on this date. A day off that covers the
  * grade wins (owner's answer 17: "a day off beats a special day"); then a
  * special day, for the grade's range before the whole branch (`03`'s order,
- * as in `templateFor`); then a weekday that is not a working weekday has no
+ * through `specialDateFor`, as `templateFor` reads it); then a weekday that is not a working weekday has no
  * lessons; then the template set for the date.
  *
  * A special day's lessons follow the date's own weekday on a working weekday
@@ -97,12 +97,26 @@ export function dayOn(grade: number, date: string, settings: CalendarSettings): 
 
   const weekday = weekdayOf(date);
   const working = settings.workingWeekdays.includes(weekday);
-  // The order of templateFor: a special date for the grade's range, then one
-  // for the branch.
-  const specials = covering.filter((entry) => entry.kind === 'special_day');
-  const special =
-    specials.find((entry) => entry.gradeFrom !== null) ??
-    specials.find((entry) => entry.gradeFrom === null);
+  // The special days of the date as special dates of templateFor, whose
+  // order (grade range, then branch) decides which one applies.
+  const chosen = specialDateFor(
+    grade,
+    date,
+    covering.flatMap((entry) =>
+      entry.kind === 'special_day' && entry.dayTemplateId !== null
+        ? [
+            {
+              entryId: entry.id,
+              date,
+              gradeFrom: entry.gradeFrom,
+              gradeTo: entry.gradeTo,
+              dayTemplateId: entry.dayTemplateId,
+            },
+          ]
+        : [],
+    ),
+  );
+  const special = covering.find((entry) => entry.id === chosen?.entryId);
   if (special !== undefined && special.dayTemplateId !== null) {
     return {
       lessons: true,

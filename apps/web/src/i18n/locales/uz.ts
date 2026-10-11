@@ -104,7 +104,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu shablon bugundan boshlab arxivlangan slot turidan foydalanadi. Avval oʻsha slot turini tiklang, keyin shablonni.',
     template_archived: 'Kun shabloni arxivlangan. Avval uni tiklang yoki boshqasini tanlang.',
     calendar_date_not_in_future:
-      'Faqat ertangi kundan boshlab sanalarni qoʻshish, oʻzgartirish yoki olib tashlash mumkin. Bugun uchun darslarni bekor qiling.',
+      'Faqat ertangi kundan boshlab sanalarni qoʻshish, oʻzgartirish yoki olib tashlash mumkin; bugungi va oʻtgan sanalar oʻzgarmaydi.',
     calendar_entry_past: 'Bu yozuv toʻliq oʻtmishda va oʻzgartirilmaydi.',
     calendar_entry_archived: 'Bu yozuv arxivlangan. Avval uni tiklang, keyin oʻzgartiring.',
     calendar_outside_year:
@@ -115,7 +115,23 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu maxsus kunning bir sanasi ish kuni emas. Qaysi hafta kunining darslari oʻtishini tanlang.',
     follows_weekday_not_working: 'Filialning ish kunlaridan birini tanlang.',
     go_live_not_school_day:
-      'Ishga tushirish sanasi oʻquv kuni boʻlishi kerak, bu oʻzgarish esa uni darssiz qoldiradi. Boshqa sana tanlang yoki oʻquv kunini qoldiring.',
+      'Ishga tushirish sanasi oʻquv kuni boʻlishi kerak: kamida bitta sinfda dars boʻladigan kun. Boshqa sana tanlang.',
+    calendar_restore_started:
+      'Bu yozuv bugun yoki undan oldin boshlangan va tiklanmaydi. Uning oʻrniga ertadan boshlab yangi yozuv qoʻshing.',
+    calendar_restore_overlap:
+      'Shu turdagi faol yozuv endi uning sanalaridan birini sinflaridan biri uchun qamrab olgan. Avval oʻsha yozuvni oʻzgartiring yoki arxivlang.',
+    calendar_restore_outside_year:
+      'Uning sanalari endi bitta rejalashtirilgan yoki joriy oʻquv yili ichida emas. Uning oʻrniga yangi yozuv qoʻshing.',
+    calendar_restore_follows_weekday:
+      'Filialning ish kunlari oʻshandan beri oʻzgargan va yozuv ularga mos kelmaydi. Uning oʻrniga yangi yozuv qoʻshing.',
+    calendar_restore_template_archived:
+      'Uning kun shabloni arxivlangan. Avval shablonni, keyin bu yozuvni tiklang.',
+    calendar_archive_started:
+      'Bu yozuv boshlangan va arxivlanmaydi. Uni ertaroq tugatish uchun oxirgi sanasini oʻzgartiring.',
+    year_leaves_calendar_entry:
+      'Taqvim yozuvi yildan tashqarida qolib ketadi. Avval oʻsha yozuvni oʻzgartiring yoki arxivlang, yoki yil sanalarini qoldiring.',
+    go_live_school_day_taken:
+      'Bu oʻzgarish ishga tushirish sanasini darssiz qoldiradi. Oʻquv kunini qoldiring yoki avval ishga tushirish sanasini koʻchiring.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',

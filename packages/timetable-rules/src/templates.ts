@@ -42,6 +42,8 @@ export interface TemplateAssignment extends DatedRow {
 
 /** A special date of the calendar that names a template, for the branch (no grades) or a range of grades. */
 export interface SpecialDateTemplate {
+  /** The calendar entry it comes from, when there is one (task 1.4). */
+  readonly entryId?: string;
   readonly date: string;
   readonly gradeFrom: number | null;
   readonly gradeTo: number | null;
@@ -66,6 +68,24 @@ const holds = (range: { gradeFrom: number | null; gradeTo: number | null }, grad
   grade <= range.gradeTo;
 
 /**
+ * The special date that applies to a class of this grade on this date: one
+ * for its grade range before one for the branch (`03`: "a special date for
+ * its grade range, then a special date for the branch"). The one place of
+ * that order, used by `templateFor` and by the calendar's `dayOn`.
+ */
+export function specialDateFor<Special extends SpecialDateTemplate>(
+  grade: number,
+  date: string,
+  specialDates: readonly Special[],
+): Special | undefined {
+  const special = specialDates.filter((entry) => entry.date === date);
+  return (
+    special.find((entry) => holds(entry, grade)) ??
+    special.find((entry) => entry.gradeFrom === null)
+  );
+}
+
+/**
  * The template of a class of this grade on this date, or `null` when nothing
  * applies. "For a class on a date, the first of these that applies wins: a
  * special date for its grade range, then a special date for the branch, then
@@ -83,13 +103,11 @@ export function templateFor(
   settings: TemplateSettings,
   weekday: number = weekdayOf(date),
 ): string | null {
-  const special = (settings.specialDates ?? []).filter((entry) => entry.date === date);
   const assignments = inForceOn(settings.assignments, date);
   const at = (level: TemplateLevel) => assignments.filter((row) => row.level === level);
 
   const found =
-    special.find((entry) => holds(entry, grade)) ??
-    special.find((entry) => entry.gradeFrom === null) ??
+    specialDateFor(grade, date, settings.specialDates ?? []) ??
     at('weekday_grades').find((row) => row.weekday === weekday && holds(row, grade)) ??
     at('weekday').find((row) => row.weekday === weekday) ??
     at('grades').find((row) => holds(row, grade)) ??

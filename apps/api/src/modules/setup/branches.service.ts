@@ -157,10 +157,10 @@ export class Branches {
             await loadCalendarSettings(transaction, record.workingWeekdays),
           )
         ) {
-          throw new ApiException('go_live_not_school_day', 409, undefined, [
+          throw new ApiException('go_live_school_day_taken', 409, undefined, [
             {
               path: 'workingWeekdays',
-              code: 'go_live_not_school_day',
+              code: 'go_live_school_day_taken',
               message: 'The go-live date would no longer be a school day.',
             },
           ]);

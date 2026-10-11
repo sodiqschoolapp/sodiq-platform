@@ -92,7 +92,7 @@ describe('the calendar', () => {
     const main = await t.createTemplate(branch, 'Main', [lesson, lesson]);
     const short = await t.createTemplate(branch, 'Short', [lesson]);
     await t.assign(branch, main);
-    return { branch, main, short };
+    return { branch, main, short, lesson };
   }
 
   async function create(branch: string, body: object, cookie = t.admin): Promise<CalendarEntry> {
@@ -321,7 +321,7 @@ describe('the calendar', () => {
       endDate: '2027-06-15',
     });
     expect(response.status).toBe(409);
-    expect(errorCode(response)).toBe('calendar_outside_year');
+    expect(errorCode(response)).toBe('year_leaves_calendar_entry');
     expect(detailPaths(response)).toEqual(['endDate']);
     expect(await rowsOf(branch)).toEqual(rows);
     expect(await t.auditCount()).toBe(audit);
@@ -516,7 +516,7 @@ describe('the calendar', () => {
       expect((await edit({ ...now, lastDate: '2026-10-14' })).status).toBe(200);
 
       const archive = await t.post(`/api/setup/calendar-entries/${id}/archive`, branch);
-      expect(errorCode(archive)).toBe('calendar_date_not_in_future');
+      expect(errorCode(archive)).toBe('calendar_archive_started');
 
       const kind = await edit({
         ...now,
@@ -526,6 +526,49 @@ describe('the calendar', () => {
       });
       expect(kind.status).toBe(400);
       expect(detailPaths(kind)).toEqual(['kind']);
+    });
+
+    // The spec review of the branch, finding 3: a date the save does not change
+    // is not judged again, though the working weekdays may have changed since.
+    it('judge only the added dates of a started entry by its followed weekday', async () => {
+      const { branch, short } = await branchWith();
+      // Saved when Saturday and Sunday were working days: no followed weekday.
+      const id = await insertEntry(branch, {
+        kind: 'special_day',
+        name: 'Open days',
+        firstDate: '2026-10-08',
+        lastDate: '2026-10-14',
+        dayTemplateId: short,
+      });
+      const now = record({
+        kind: 'special_day',
+        name: 'Open days',
+        firstDate: '2026-10-08',
+        lastDate: '2026-10-14',
+        dayTemplateId: short,
+      });
+      const edit = (body: object) => t.patch(`/api/setup/calendar-entries/${id}`, branch, body);
+      expect((await edit({ ...now, lastDate: '2026-10-13' })).status).toBe(200);
+      expect((await edit({ ...now, lastDate: '2026-10-16' })).status).toBe(200);
+      const saturday = await edit({ ...now, lastDate: SATURDAY });
+      expect(errorCode(saturday)).toBe('follows_weekday_required');
+    });
+
+    it('restore no entry that began today or earlier', async () => {
+      const { branch } = await branchWith();
+      const id = await insertEntry(branch, { name: 'Begun', firstDate: TODAY, lastDate: MONDAY });
+      await t.database.migrator
+        .updateTable('calendar_entries')
+        .set({ archived_at: new Date('2026-10-01T10:00:00Z') })
+        .where('id', '=', id)
+        .execute();
+      const rows = await rowsOf(branch);
+      const audit = await t.auditCount();
+      const restore = await t.post(`/api/setup/calendar-entries/${id}/restore`, branch);
+      expect(restore.status).toBe(409);
+      expect(errorCode(restore)).toBe('calendar_restore_started');
+      expect(await rowsOf(branch)).toEqual(rows);
+      expect(await t.auditCount()).toBe(audit);
     });
 
     it('leave an entry wholly in the past as it is', async () => {
@@ -579,7 +622,7 @@ describe('the calendar', () => {
       // Restored under the rules of a new entry: here into an overlap.
       await create(branch, record({ firstDate: '2026-11-04' }));
       const restore = await t.post(`/api/setup/calendar-entries/${entry.id}/restore`, branch);
-      expect(errorCode(restore)).toBe('calendar_overlap');
+      expect(errorCode(restore)).toBe('calendar_restore_overlap');
     });
 
     it('restore an entry, but not onto an archived template', async () => {
@@ -590,7 +633,7 @@ describe('the calendar', () => {
       );
       expect((await t.post(`/api/setup/day-templates/${short}/archive`, branch)).status).toBe(200);
       const refused = await t.post(`/api/setup/calendar-entries/${entry.id}/restore`, branch);
-      expect(errorCode(refused)).toBe('template_archived');
+      expect(errorCode(refused)).toBe('calendar_restore_template_archived');
       expect((await t.post(`/api/setup/day-templates/${short}/restore`, branch)).status).toBe(200);
       const restored = await t.post(`/api/setup/calendar-entries/${entry.id}/restore`, branch);
       expect(restored.status).toBe(200);
@@ -770,7 +813,7 @@ describe('the calendar', () => {
       const beforeArchive = await rowsOf(branch);
       const auditBefore = await t.auditCount();
       const archive = await t.post(`/api/setup/calendar-entries/${saturday.id}/archive`, branch);
-      expect(errorCode(archive)).toBe('go_live_not_school_day');
+      expect(errorCode(archive)).toBe('go_live_school_day_taken');
       expect(await rowsOf(branch)).toEqual(beforeArchive);
       expect(await t.auditCount()).toBe(auditBefore);
 
@@ -784,7 +827,7 @@ describe('the calendar', () => {
         branch,
         record({ firstDate: WEDNESDAY }),
       );
-      expect(errorCode(off)).toBe('go_live_not_school_day');
+      expect(errorCode(off)).toBe('go_live_school_day_taken');
       expect(await rowsOf(branch)).toEqual(rows);
       expect(await t.auditCount()).toBe(audit);
       await create(branch, record({ firstDate: WEDNESDAY, gradeFrom: 1, gradeTo: 4 }));
@@ -800,7 +843,7 @@ describe('the calendar', () => {
         workingWeekdays: [1, 2, 4, 5],
       });
       expect(weekdays.status).toBe(409);
-      expect(errorCode(weekdays)).toBe('go_live_not_school_day');
+      expect(errorCode(weekdays)).toBe('go_live_school_day_taken');
       expect(detailPaths(weekdays)).toEqual(['workingWeekdays']);
       expect(await rowsOf(branch)).toEqual(rowsBeforeWeekdays);
       expect(await t.auditCount()).toBe(auditBeforeWeekdays);
@@ -844,6 +887,29 @@ describe('the calendar', () => {
     expect((await t.post(`/api/setup/day-templates/${pastTemplate}/archive`, branch)).status).toBe(
       200,
     );
+  });
+
+  // Decision 14 of the plan: a template version withdrawn before it took effect
+  // leaves no date of a special day without a version of its template.
+  it('keeps a version of a special day template in force after a version is withdrawn', async () => {
+    const { branch, short, lesson } = await branchWith();
+    const date = '2026-11-02';
+    await create(branch, special(short, { firstDate: date }));
+    for (const startTime of ['09:00', '10:00']) {
+      const version = await t.post(`/api/setup/day-templates/${short}/versions`, branch, {
+        from: date,
+        startTime,
+        slotTypeIds: [lesson, lesson],
+      });
+      expect(version.status, JSON.stringify(version.body)).toBe(200);
+    }
+    const template = await t.get(`/api/setup/day-templates/${short}?date=${date}`, branch);
+    expect(template.status).toBe(200);
+    expect((template.body as { slots: unknown[] }).slots).toHaveLength(2);
+    const day = calendarDateSchema.parse(
+      (await t.get(`/api/setup/calendar-day?date=${date}`, branch)).body,
+    );
+    expect(day.grades[0]?.day).toMatchObject({ lessons: true, dayTemplateId: short });
   });
 
   // edge/00-definitions, Branch time: tomorrow is decided by the date in

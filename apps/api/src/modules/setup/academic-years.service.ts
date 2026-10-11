@@ -252,7 +252,7 @@ export class AcademicYears {
             !(inside(entry.firstDate, record) && inside(entry.lastDate, record)),
         );
         if (leftOut.length > 0) {
-          throw refused('calendar_outside_year', [
+          throw refused('year_leaves_calendar_entry', [
             ...(leftOut.some((entry) => entry.firstDate < record.startDate) ? ['startDate'] : []),
             ...(leftOut.some((entry) => entry.lastDate > record.endDate) ? ['endDate'] : []),
           ]);
