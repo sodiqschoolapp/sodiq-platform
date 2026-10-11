@@ -146,7 +146,7 @@ export async function dayTemplatesKit(): Promise<DayTemplatesKit> {
       if (recordId !== undefined) {
         query = query.where('record_id', '=', recordId);
       }
-      return (await query.execute()) as unknown as Record<string, unknown>[];
+      return query.execute();
     },
     async auditCount() {
       return Number(
