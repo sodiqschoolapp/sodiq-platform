@@ -98,6 +98,35 @@ export const en = {
     template_uses_archived_slot_type:
       'This template uses an archived slot type from today on. Restore that slot type first, then restore the template.',
     template_archived: 'The day template is archived. Restore it first, or choose another one.',
+    calendar_date_not_in_future:
+      'Only dates from tomorrow on can be added, changed or removed; today and past dates stay as they are.',
+    calendar_entry_past: 'This entry lies wholly in the past and cannot be changed.',
+    calendar_entry_archived: 'This entry is archived. Restore it first, then change it.',
+    calendar_outside_year:
+      'The dates must lie inside one planned or current academic year. Check the dates, or add the year first.',
+    calendar_overlap:
+      'Another entry of the same kind already covers one of these dates for one of these grades. Change the dates or the grades.',
+    follows_weekday_required:
+      'A date of this special day is not a working weekday. Choose the weekday whose lessons it follows.',
+    follows_weekday_not_working: 'Choose a working weekday of the branch to follow.',
+    go_live_not_school_day:
+      'The go-live date must be a school day: a date with lessons for at least one grade. Choose another date.',
+    calendar_restore_started:
+      'This entry began today or earlier and cannot come back. Add a new entry from tomorrow instead.',
+    calendar_restore_overlap:
+      'An active entry of the same kind now covers one of its dates for one of its grades. Change or archive that entry first.',
+    calendar_restore_outside_year:
+      'Its dates no longer lie inside one planned or current academic year. Add a new entry instead.',
+    calendar_restore_follows_weekday:
+      'The working weekdays of the branch have changed since, and the entry no longer fits them. Add a new entry instead.',
+    calendar_restore_template_archived:
+      'Its day template is archived. Restore the template first, then this entry.',
+    calendar_archive_started:
+      'This entry has begun and cannot be archived. To end it earlier, move its last date.',
+    year_leaves_calendar_entry:
+      'A calendar entry would lie outside the year. Change or archive that entry first, or keep the dates of the year.',
+    go_live_school_day_taken:
+      'This change would leave the go-live date without lessons. Keep the school day, or move the go-live date first.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     archive_refused:
@@ -291,6 +320,8 @@ export const en = {
     dayTemplatesLinkText: 'The start time and the slots of a school day.',
     templateSettingsLink: 'Where templates apply',
     templateSettingsLinkText: 'The template of each weekday and grade.',
+    calendarLink: 'Calendar',
+    calendarLinkText: 'Days off and special days.',
     branch: {
       goLiveTitle: 'Go-live date',
       goLiveDate: 'Go-live date',
@@ -485,6 +516,64 @@ export const en = {
       changedCount_other: '{{count}} cells change; they are outlined.',
       cancel: 'Do not save',
       save: 'Save the change',
+    },
+    calendar: {
+      title: 'Calendar',
+      caption: 'Days off and special days',
+      name: 'Name',
+      kind: 'Kind',
+      kinds: { day_off: 'Day off', special_day: 'Special day' },
+      dates: 'Dates',
+      firstDate: 'First date',
+      lastDate: 'Last date',
+      scope: 'For',
+      wholeBranch: 'Whole branch',
+      someGrades: 'Some grades',
+      grade: 'Grade {{grade}}',
+      grades: 'Grades {{from}}–{{to}}',
+      gradeFrom: 'From grade',
+      gradeTo: 'To grade',
+      template: 'Day template',
+      follows: 'Lessons of',
+      followsNote: 'On a day that is not a working weekday, the lessons of the weekday chosen.',
+      ownWeekday: 'Its own weekday',
+      followsText: 'lessons of {{weekday}}',
+      examWeek: 'Exam week',
+      notExamWeek: 'Not an exam week',
+      examWeeks: {
+        regular_lessons: 'Exam week, regular lessons',
+        no_regular_lessons: 'Exam week, no regular lessons',
+      },
+      reasons: {
+        day_off: 'No lessons: day off',
+        not_working_day: 'No lessons: not a working weekday',
+        no_template: 'No lessons: no day template set',
+      },
+      state: 'State',
+      active: 'Active',
+      archived: 'Archived',
+      when: 'When',
+      coming: 'Today and later',
+      past: 'Past',
+      add: 'Add entry',
+      newTitle: 'New calendar entry',
+      cancel: 'Cancel',
+      save: 'Save',
+      archive: 'Archive',
+      restore: 'Restore',
+      empty: 'Days off and special days of the branch are listed here. There is none yet.',
+      pastNote: 'This entry lies in the past and cannot be changed.',
+      previewTitle: 'What this save changes',
+      noChange: 'No date changes for any grade.',
+      changedCount_one: '{{count}} change of dates and grades.',
+      changedCount_other: '{{count}} changes of dates and grades.',
+      before: 'Before',
+      after: 'After',
+      checkTitle: 'Check a date',
+      checkDate: 'Date',
+      checkDateMissing: 'Enter a date.',
+      gradeColumn: 'Grade',
+      dayColumn: 'The day',
     },
     templateSettings: {
       title: 'Where templates apply',

@@ -103,6 +103,38 @@ export const ERROR_CODES = [
   'template_uses_archived_slot_type',
   /** An archived day template is chosen, or the template changed is archived (task 1.5). */
   'template_archived',
+  /** Only calendar dates from tomorrow on, in branch time, can be added, changed or removed (answer 16; task 1.4). */
+  'calendar_date_not_in_future',
+  /** A calendar entry wholly in the past is read-only (answer 16; task 1.4). */
+  'calendar_entry_past',
+  /** The calendar entry is archived: nothing changes until it is restored (task 1.4). */
+  'calendar_entry_archived',
+  /** A calendar entry lies inside one planned or current academic year of the branch (answer 16; task 1.4). */
+  'calendar_outside_year',
+  /** Another entry of the same kind covers one of these dates for one of these grades (answer 17; task 1.4). */
+  'calendar_overlap',
+  /** A special day with a date on a non-working weekday names the weekday it follows (answer 15; task 1.4). */
+  'follows_weekday_required',
+  /** The weekday a special day follows is a working weekday of the branch (task 1.4). */
+  'follows_weekday_not_working',
+  /** An entry whose first date is today or earlier is not restored (answer 16; task 1.4). */
+  'calendar_restore_started',
+  /** An entry being restored overlaps an active entry of its kind (answer 17; task 1.4). */
+  'calendar_restore_overlap',
+  /** An entry being restored no longer lies inside one planned or current year (task 1.4). */
+  'calendar_restore_outside_year',
+  /** An entry being restored no longer fits the working weekdays with its followed weekday (task 1.4). */
+  'calendar_restore_follows_weekday',
+  /** The day template of an entry being restored is archived (task 1.4). */
+  'calendar_restore_template_archived',
+  /** A started entry is not archived; its last date is moved instead (decision 3 of task 1.4). */
+  'calendar_archive_started',
+  /** A year edit would leave an active calendar entry outside the year (decision 5 of task 1.4). */
+  'year_leaves_calendar_entry',
+  /** A calendar save or a working-weekday edit would leave the go-live date without lessons (task 1.4). */
+  'go_live_school_day_taken',
+  /** The go-live date must be a school day: some grade has lessons on it (`edge/academic-year`; task 1.4). */
+  'go_live_not_school_day',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

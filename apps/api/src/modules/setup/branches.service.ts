@@ -4,6 +4,8 @@ import { ApiException } from '../../http/api-exception.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { Audit } from '../audit/audit.service.js';
 import type { Access } from '../access/permission.guard.js';
+import { isSchoolDay } from '@sodiq/timetable-rules';
+import { loadCalendarSettings, losesGoLive } from './calendar-state.js';
 import { changesOf, notFound, refusingDuplicates } from './setup-refusals.js';
 
 interface BranchRow {
@@ -145,6 +147,24 @@ export class Branches {
         if (changes === null) {
           return before;
         }
+        // Task 1.4, decision 7: a change of the working weekdays may not take
+        // the school day away from the go-live date.
+        if (
+          row.go_live_date !== null &&
+          losesGoLive(
+            row.go_live_date,
+            await loadCalendarSettings(transaction, row.working_weekdays),
+            await loadCalendarSettings(transaction, record.workingWeekdays),
+          )
+        ) {
+          throw new ApiException('go_live_school_day_taken', 409, undefined, [
+            {
+              path: 'workingWeekdays',
+              code: 'go_live_school_day_taken',
+              message: 'The go-live date would no longer be a school day.',
+            },
+          ]);
+        }
         const updated = await transaction
           .updateTable('branches')
           .set({
@@ -216,6 +236,17 @@ export class Branches {
               path: 'goLiveDate',
               code: 'go_live_outside_year',
               message: 'The go-live date must lie inside a planned or current academic year.',
+            },
+          ]);
+        }
+        // Task 1.4, decision 7 (`edge/academic-year`: "Go-live can be on any
+        // school day"): some grade has lessons on it by the calendar.
+        if (!isSchoolDay(date, await loadCalendarSettings(transaction, row.working_weekdays))) {
+          throw new ApiException('go_live_not_school_day', 409, undefined, [
+            {
+              path: 'goLiveDate',
+              code: 'go_live_not_school_day',
+              message: 'The go-live date must be a school day.',
             },
           ]);
         }

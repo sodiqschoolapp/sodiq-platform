@@ -59,6 +59,24 @@ const MESSAGE: Record<ErrorCode, string> = {
   template_uses_archived_slot_type:
     'The template uses an archived slot type from today on. Restore that slot type first.',
   template_archived: 'The day template is archived.',
+  calendar_date_not_in_future:
+    'Only calendar dates from tomorrow on can be added, changed or removed.',
+  calendar_entry_past: 'The calendar entry lies wholly in the past and is read-only.',
+  calendar_entry_archived: 'The calendar entry is archived. Restore it first.',
+  calendar_outside_year: 'The dates must lie inside one planned or current academic year.',
+  calendar_overlap:
+    'Another entry of the same kind covers one of these dates for one of these grades.',
+  follows_weekday_required: 'A special day on a non-working weekday names the weekday it follows.',
+  follows_weekday_not_working: 'The weekday followed must be a working weekday of the branch.',
+  go_live_not_school_day: 'The go-live date must be a school day.',
+  calendar_restore_started: 'An entry whose first date is today or earlier is not restored.',
+  calendar_restore_overlap: 'The entry overlaps an active entry of its kind.',
+  calendar_restore_outside_year: 'The entry no longer lies inside one planned or current year.',
+  calendar_restore_follows_weekday: 'The entry no longer fits the working weekdays.',
+  calendar_restore_template_archived: 'The day template of the entry is archived.',
+  calendar_archive_started: 'A started entry is not archived; move its last date instead.',
+  year_leaves_calendar_entry: 'A calendar entry would lie outside the year.',
+  go_live_school_day_taken: 'The change would leave the go-live date without lessons.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };

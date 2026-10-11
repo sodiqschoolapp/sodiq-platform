@@ -96,6 +96,7 @@ describe('a frozen permission table', () => {
     expect(Object.keys(PERMISSIONS).sort()).toEqual([
       'academic_years',
       'branches',
+      'calendar',
       'current_period',
       'day_templates',
       'divisions',
@@ -153,6 +154,21 @@ describe('a frozen permission table', () => {
         expect(PERMISSIONS.day_templates[role], role).toEqual([]);
       }
       expect(permits(PERMISSIONS, role, 'day_templates', 'export')).toBe(false);
+    }
+  });
+
+  // Task 1.4: the owner's answer 18: `calendar` — Super Admin and Academic
+  // Vice Principal view, create, edit, archive; Principal view.
+  it('gives the calendar to the Super Admin and the Academic Vice Principal', () => {
+    const all = ['view', 'create', 'edit', 'archive'];
+    expect(PERMISSIONS.calendar.super_admin).toEqual(all);
+    expect(PERMISSIONS.calendar.academic_vice_principal).toEqual(all);
+    expect(PERMISSIONS.calendar.principal).toEqual(['view']);
+    for (const role of ROLES) {
+      if (!['super_admin', 'principal', 'academic_vice_principal'].includes(role)) {
+        expect(PERMISSIONS.calendar[role], role).toEqual([]);
+      }
+      expect(permits(PERMISSIONS, role, 'calendar', 'export')).toBe(false);
     }
   });
 

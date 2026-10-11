@@ -98,6 +98,21 @@ describe('the School setup entry', () => {
     },
   );
 
+  // Owner's answer 18 (task 1.4): the Super Admin, the Principal and the
+  // Academic Vice Principal view the calendar.
+  it.each(['super_admin', 'principal', 'academic_vice_principal'] as const)(
+    'lists the calendar for the %s',
+    async (role) => {
+      fakeApi({ 'GET /api/auth/session': () => json(sessionAs(role)) });
+      renderApp('/setup');
+      await screen.findByRole('heading', { name: en.setup.title });
+
+      expect(screen.getByRole('link', { name: en.setup.calendarLink }).getAttribute('href')).toBe(
+        '/setup/calendar',
+      );
+    },
+  );
+
   it('says that a role without setup rights has no setup pages', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionAs('teacher')) });
     renderApp('/setup');

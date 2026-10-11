@@ -125,6 +125,22 @@ export interface Buildings {
   name: string;
 }
 
+export interface CalendarEntries {
+  archived_at: Timestamp | null;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  day_template_id: string | null;
+  exam_week: string | null;
+  first_date: string;
+  follows_weekday: number | null;
+  grade_from: number | null;
+  grade_to: number | null;
+  id: Generated<string>;
+  kind: string;
+  last_date: string;
+  name: string;
+}
+
 export interface DayTemplateAssignments {
   branch_id: string;
   created_at: Generated<Timestamp>;
@@ -317,6 +333,7 @@ export interface DB {
   audit_log_school: AuditLogSchool;
   branches: Branches;
   buildings: Buildings;
+  calendar_entries: CalendarEntries;
   day_template_assignments: DayTemplateAssignments;
   day_template_slots: DayTemplateSlots;
   day_template_versions: DayTemplateVersions;

@@ -72,6 +72,10 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   Vice Principal; task 1.5): slot types and day templates together. The
  *   Super Admin and the Academic Vice Principal view, create, edit and
  *   archive; the Principal views (owner's answer 14).
+ * - `calendar` (`03`, Academic calendar, owner: Academic Vice Principal;
+ *   task 1.4): days off and special days. The Super Admin and the Academic
+ *   Vice Principal view, create, edit and archive; the Principal views
+ *   (owner's answer 18).
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -100,6 +104,11 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['view', 'edit'],
   }),
   day_templates: rows({
+    super_admin: ['view', 'create', 'edit', 'archive'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive'],
+  }),
+  calendar: rows({
     super_admin: ['view', 'create', 'edit', 'archive'],
     principal: ['view'],
     academic_vice_principal: ['view', 'create', 'edit', 'archive'],

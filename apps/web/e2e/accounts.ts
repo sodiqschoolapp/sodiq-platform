@@ -20,6 +20,7 @@ export type AccountKey =
   | 'divisions'
   | 'years'
   | 'templates'
+  | 'calendar'
   | 'shellTools'
   | 'switchers'
   | 'account'
