@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next';
+import { SaveCancelled } from '@/components/form/save-cancelled';
 import { ApiFailure } from './failure';
 
 /**
@@ -7,6 +8,9 @@ import { ApiFailure } from './failure';
  * of the app and is not blamed on the connection.
  */
 export function failureText(t: TFunction, error: unknown): string {
+  if (error instanceof SaveCancelled) {
+    return t('form.notSaved');
+  }
   if (!(error instanceof ApiFailure)) {
     // A fault of the app itself, for example an answer it cannot read.
     return t('problems.unexpected');

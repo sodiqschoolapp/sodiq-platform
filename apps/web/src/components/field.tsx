@@ -1,4 +1,7 @@
-import { useId, type ComponentProps, type ReactNode } from 'react';
+import { ArrowDownIcon, ArrowUpIcon, XIcon } from 'lucide-react';
+import { useId, useState, type ComponentProps, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -271,6 +274,142 @@ export function CheckboxGroupField({
             {option.label}
           </label>
         ))}
+      </div>
+      <Messages noteId={noteId} errorId={errorId} note={note} error={error} />
+    </fieldset>
+  );
+}
+
+type OrderedListFieldProps = FieldTexts &
+  Bound & {
+    /** What can be added, by value and name; a value may be added more than once. */
+    options: readonly { value: string; label: string }[];
+    /** More about the item at a place, for example the times of a slot. */
+    detail?: (value: string, index: number) => ReactNode;
+  };
+
+/**
+ * An ordered list of chosen values that make one field, for example the slots
+ * of a day template (task 1.5; owner's answer 10: "reordering by up and down
+ * buttons"). Each item can be moved up or down or removed, and a value is
+ * added at the end. The field holds the values joined by commas in their
+ * order; the form reads them with `listValues`.
+ */
+export function OrderedListField({
+  label,
+  error,
+  note,
+  name,
+  value,
+  onChange,
+  disabled,
+  options,
+  detail,
+}: OrderedListFieldProps) {
+  const { t } = useTranslation();
+  const id = useId();
+  const { noteId, errorId, describedBy } = described(id, note, error);
+  const items = listValues(value);
+  const [chosen, setChosen] = useState(options[0]?.value ?? '');
+  const labelOf = (item: string) => options.find((option) => option.value === item)?.label ?? item;
+  const set = (next: readonly string[]) => {
+    onChange({ target: { value: listValue(next) } });
+  };
+  const move = (index: number, by: number) => {
+    const next = [...items];
+    const [item] = next.splice(index, 1);
+    if (item !== undefined) {
+      next.splice(index + by, 0, item);
+      set(next);
+    }
+  };
+  return (
+    <fieldset
+      className="grid gap-1.5"
+      aria-invalid={error !== undefined}
+      aria-describedby={describedBy}
+      disabled={disabled}
+    >
+      <legend className="mb-1.5 text-sm font-medium">{label}</legend>
+      <ol className="grid gap-1">
+        {items.map((item, index) => (
+          // The place is the identity: the same value can stand twice.
+          <li
+            key={index}
+            className="flex flex-wrap items-center gap-2 rounded-md border px-2 py-1 text-sm"
+          >
+            <span className="w-6 text-right text-muted-foreground">{index + 1}</span>
+            <span className="min-w-32 flex-1">
+              {labelOf(item)}
+              {detail !== undefined && (
+                <span className="ml-2 text-muted-foreground">{detail(item, index)}</span>
+              )}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={index === 0}
+              aria-label={t('form.moveUp', { name: labelOf(item), place: index + 1 })}
+              onClick={() => {
+                move(index, -1);
+              }}
+            >
+              <ArrowUpIcon aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={index === items.length - 1}
+              aria-label={t('form.moveDown', { name: labelOf(item), place: index + 1 })}
+              onClick={() => {
+                move(index, 1);
+              }}
+            >
+              <ArrowDownIcon aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={t('form.remove', { name: labelOf(item), place: index + 1 })}
+              onClick={() => {
+                set(items.filter((_, place) => place !== index));
+              }}
+            >
+              <XIcon aria-hidden="true" />
+            </Button>
+          </li>
+        ))}
+      </ol>
+      <div className="flex flex-wrap items-end gap-2">
+        <select
+          className={`${SELECT} max-w-xs`}
+          aria-label={t('form.addChoice', { label })}
+          value={chosen}
+          onChange={(event) => {
+            setChosen(event.target.value);
+          }}
+          name={`${name}-choice`}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={chosen === '' || options.length === 0}
+          onClick={() => {
+            set([...items, chosen]);
+          }}
+        >
+          {t('form.add')}
+        </Button>
       </div>
       <Messages noteId={noteId} errorId={errorId} note={note} error={error} />
     </fieldset>

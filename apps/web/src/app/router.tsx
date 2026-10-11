@@ -19,6 +19,9 @@ import { BranchPage } from '@/features/setup/branch-page';
 import { BuildingsPage } from '@/features/setup/buildings-page';
 import { DivisionsPage } from '@/features/setup/divisions-page';
 import { YearsPage } from '@/features/setup/years-page';
+import { SlotTypesPage } from '@/features/setup/slot-types-page';
+import { DayTemplatesPage } from '@/features/setup/day-templates-page';
+import { TemplateSettingsPage } from '@/features/setup/template-settings-page';
 import { RoomsPage } from '@/features/setup/rooms-page';
 import { SetupPage } from '@/features/setup/setup-page';
 import { listSearch } from '@/components/list/list-state';
@@ -122,7 +125,7 @@ const ownPasswordRoute = createRoute({
   component: PasswordPage,
 });
 
-/** School setup (task 1.1): the branch record, buildings and floors, rooms; divisions and departments (task 1.2); academic years (task 1.3). */
+/** School setup (task 1.1): the branch record, buildings and floors, rooms; divisions and departments (task 1.2); academic years (task 1.3); slot types, day templates and where they apply (task 1.5). */
 const setupRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup',
@@ -163,6 +166,27 @@ const yearsRoute = createRoute({
   component: YearsPage,
 });
 
+const slotTypesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/slot-types',
+  validateSearch: listSearch,
+  component: SlotTypesPage,
+});
+
+const dayTemplatesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/day-templates',
+  validateSearch: listSearch,
+  component: DayTemplatesPage,
+});
+
+const templateSettingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/day-template-settings',
+  validateSearch: listSearch,
+  component: TemplateSettingsPage,
+});
+
 /**
  * The sample list of task 0.8b-1, built only from the shared pieces. It opens
  * in development and in the tests; in the built app the address does not
@@ -196,6 +220,9 @@ const routeTree = rootRoute.addChildren([
     roomsRoute,
     divisionsRoute,
     yearsRoute,
+    slotTypesRoute,
+    dayTemplatesRoute,
+    templateSettingsRoute,
     patternsRoute,
   ]),
 ]);
