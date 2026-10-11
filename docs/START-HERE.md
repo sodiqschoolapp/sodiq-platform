@@ -37,7 +37,7 @@ git push -u origin main
 
 ## To prepare from the school
 
-- The decision on question 12 (UID prefix and staff ID format), before task 2.4.
+- The decision on question 12 (UID prefix), before task 2.4.
 - Branches, rooms, calendar, lesson and break lengths, travel time between branches, for Phase 1.
 - Subjects with weights per quarter, Head Teacher appointments, staff with branches and languages, for Phase 2.
 - Five to ten journals from last year with names replaced and results checked by hand, for task 4.2.

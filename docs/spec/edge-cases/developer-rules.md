@@ -16,7 +16,7 @@ These are the guarantees that must hold even if the application code has a fault
 | Pattern entries | The same teacher, room and class rules per version. |
 | One current year | A partial unique index on (branch) where status is current. |
 | One journal | Unique on (class or group, subject, academic year). |
-| Identifiers | A student UID is typed in Release 1 and taken from a per-grade pool in Release 2; either way a unique constraint across the school guarantees it is never used twice. Staff IDs come from a sequence and are unique. A relative's phone is unique across the school among relatives who have one. |
+| Identifiers | A student UID is typed in Release 1 and taken from a per-grade pool in Release 2; either way a unique constraint across the school guarantees it is never used twice. Staff IDs come from one school-wide counter per year of first hire, taken in the same transaction as the record, and a unique constraint across the school, archived records included, guarantees one is never used twice. A relative's phone is unique across the school among relatives who have one. |
 | Cells | Unique on (lesson, student, work). Each cell has a version number used to refuse stale saves. |
 | History and audit | Append-only: the application's database user cannot update or delete them. Partitioned by month. |
 | Branch filter | Set per transaction, never on a pooled connection. Background jobs carry the branch. |

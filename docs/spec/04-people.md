@@ -73,7 +73,7 @@ A close relative is a person record of its own, not a set of fields inside the s
 
 | Block | Fields |
 | --- | --- |
-| Personal | Category (Tutor, Teacher, Head Teacher, Senior Head Teacher), photo, full name, sex, date of birth, education level, phone, email. Staff ID generated automatically (example SI-001). |
+| Personal | Category (Tutor, Teacher, Head Teacher, Senior Head Teacher), photo, full name, sex, date of birth, education level, phone, email. Staff ID given automatically when the record is first saved, in the form S-YYNNNN: "S", a hyphen, the last two digits of the year the person was first hired and a four-digit number in order of hiring within that year (S-260001 is the first person hired in 2026). |
 | Academic | Branches: one main branch and any further branches where the person works. Division: one main division and any further divisions. Department: required in Academic, optional in other divisions; a teacher's subjects come from one department. Subjects, each with the grades taught (multiple). Languages of instruction: Uzbek, Russian or both. Classes taught, filled from the teaching load. Admission date. Contract type (full or part time) and date. |
 | Availability | Days and hours the teacher is at school, entered for each branch where they work as entries that each apply from a date. Used by the timetable. |
 | Status | Active, inactive, left. |
