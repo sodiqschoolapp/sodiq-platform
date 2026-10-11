@@ -55,6 +55,19 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   the Academic Vice Principal reads the list because the department is a
  *   column of the teacher list (`04`) and a filter of the timetable board
  *   (`06`); approved by the owner, pull request #40, answer 5.
+ * - `academic_years` (`03`, Academic year; task 1.3): the Super Admin creates
+ *   a year, edits its dates and runs "Start year" (`edge/academic-year`); the
+ *   Principal and the Academic Vice Principal view (owner's answer 3,
+ *   docs/decisions.md, "Decided ahead for tasks 1.3 to 1.6").
+ * - `quarters` (`03`, Quarters, owner: Academic Vice Principal; task 1.3):
+ *   the Super Admin and the Academic Vice Principal view and date them; the
+ *   Principal views (owner's answer 3).
+ * - `current_period` (`03` and `12`, Context: "The branch, academic year
+ *   and quarter in use are always shown in the top bar"; task 1.3): every role
+ *   reads the year and quarter of its branch for the top bar. The answer holds
+ *   the year's name and status and the quarter's dates, nothing personal.
+ *   Decided without the owner on pull request #44 (decision 8), flagged on
+ *   issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -71,6 +84,33 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view', 'create', 'edit', 'archive'],
     principal: ['view'],
     academic_vice_principal: ['view'],
+  }),
+  academic_years: rows({
+    super_admin: ['view', 'create', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+  }),
+  quarters: rows({
+    super_admin: ['view', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'edit'],
+  }),
+  current_period: rows({
+    super_admin: ['view'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+    spiritual_vice_principal: ['view'],
+    head_tutor: ['view'],
+    tutor: ['view'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
+    teacher: ['view'],
+    student: ['view'],
+    parent: ['view'],
+    hr: ['view'],
+    nurse: ['view'],
+    psychologist: ['view'],
+    librarian: ['view'],
   }),
 } as const satisfies PermissionTable);
 

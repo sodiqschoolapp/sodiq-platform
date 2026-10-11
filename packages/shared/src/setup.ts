@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { schoolDateSchema } from './academic-year.js';
 import { branchIdSchema } from './branches.js';
 
 /**
@@ -79,6 +80,8 @@ export const branchSchema = z.object({
   email: z.string().nullable(),
   workingWeekdays: z.array(weekdaySchema),
   timeZone: z.string(),
+  /** The go-live start date (task 1.3, owner's answer 7), or `null` until it is set. */
+  goLiveDate: schoolDateSchema.nullable(),
 });
 
 export type Branch = z.infer<typeof branchSchema>;

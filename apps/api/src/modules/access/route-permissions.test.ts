@@ -94,6 +94,22 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/setup/departments/:id': { branch: 'none', roles: ['super_admin'] },
   'POST /api/setup/departments/:id/archive': { branch: 'none', roles: ['super_admin'] },
   'POST /api/setup/departments/:id/restore': { branch: 'none', roles: ['super_admin'] },
+  // Academic years and quarters (task 1.3; the owner's answer 3, docs/decisions.md,
+  // "Decided ahead for tasks 1.3 to 1.6"): the Super Admin creates and edits
+  // years and runs "Start year"; the Super Admin and the Academic Vice
+  // Principal date the quarters; the go-live date is an edit of the branch,
+  // the Super Admin's alone (answer 7). The top bar's year and quarter for
+  // every role (decision 8 of pull request #44).
+  'GET /api/setup/academic-years': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/setup/academic-years': { branch: 'request', roles: ['super_admin'] },
+  'PUT /api/setup/academic-years/:id': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/setup/academic-years/:id/start': { branch: 'request', roles: ['super_admin'] },
+  'PUT /api/setup/academic-years/:id/quarters': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'PUT /api/setup/branch/go-live': { branch: 'request', roles: ['super_admin'] },
+  'GET /api/setup/current-period': { branch: 'request', roles: ROLES },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

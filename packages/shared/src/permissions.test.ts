@@ -93,7 +93,14 @@ describe('a frozen permission table', () => {
   // of the Principal and the Academic Vice Principal approved by the owner,
   // pull request #40, answer 5).
   it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
-    expect(Object.keys(PERMISSIONS).sort()).toEqual(['branches', 'divisions', 'rooms']);
+    expect(Object.keys(PERMISSIONS).sort()).toEqual([
+      'academic_years',
+      'branches',
+      'current_period',
+      'divisions',
+      'quarters',
+      'rooms',
+    ]);
     expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);
     expect(PERMISSIONS.rooms.super_admin).toEqual(['view', 'create', 'edit', 'archive']);
     expect(PERMISSIONS.divisions.super_admin).toEqual(['view', 'create', 'edit', 'archive']);
@@ -107,6 +114,36 @@ describe('a frozen permission table', () => {
         expect(permits(PERMISSIONS, role, area, 'create')).toBe(role === 'super_admin');
         expect(permits(PERMISSIONS, role, area, 'export')).toBe(false);
       }
+    }
+  });
+
+  // Task 1.3: the owner's answer 3 (docs/decisions.md, "Decided ahead for
+  // tasks 1.3 to 1.6"): `academic_years` — Super Admin view, create, edit;
+  // Principal and Academic Vice Principal view. `quarters` — Super Admin and
+  // Academic Vice Principal view, edit; Principal view.
+  it('gives the years to the Super Admin and the quarters to the Super Admin and the Academic Vice Principal', () => {
+    expect(PERMISSIONS.academic_years.super_admin).toEqual(['view', 'create', 'edit']);
+    expect(PERMISSIONS.academic_years.principal).toEqual(['view']);
+    expect(PERMISSIONS.academic_years.academic_vice_principal).toEqual(['view']);
+    expect(PERMISSIONS.quarters.super_admin).toEqual(['view', 'edit']);
+    expect(PERMISSIONS.quarters.principal).toEqual(['view']);
+    expect(PERMISSIONS.quarters.academic_vice_principal).toEqual(['view', 'edit']);
+    for (const area of ['academic_years', 'quarters'] as const) {
+      for (const role of ROLES) {
+        if (!['super_admin', 'principal', 'academic_vice_principal'].includes(role)) {
+          expect(PERMISSIONS[area][role], `${area}: ${role}`).toEqual([]);
+        }
+        expect(permits(PERMISSIONS, role, area, 'archive')).toBe(false);
+        expect(permits(PERMISSIONS, role, area, 'export')).toBe(false);
+      }
+    }
+  });
+
+  // Task 1.3, decision 8 of pull request #44: the year and quarter of the top
+  // bar for every role (`03`; `12`, Context), and nothing else.
+  it('lets every role read the year and quarter of the top bar and change nothing there', () => {
+    for (const role of ROLES) {
+      expect(PERMISSIONS.current_period[role], role).toEqual(['view']);
     }
   });
 

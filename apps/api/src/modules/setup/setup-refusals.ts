@@ -1,4 +1,4 @@
-import type { ErrorDetail } from '@sodiq/shared';
+import type { ErrorCode, ErrorDetail } from '@sodiq/shared';
 import { ApiException } from '../../http/api-exception.js';
 
 const UNIQUE_VIOLATION = '23505';
@@ -53,4 +53,54 @@ export function changesOf<T extends Record<string, unknown>>(
     }
   }
   return changed ? { oldValue, newValue } : null;
+}
+
+const EXCLUSION_VIOLATION = '23P01';
+const CHECK_VIOLATION = '23514';
+
+/**
+ * The refusals of the database for academic years and quarters
+ * (db/migrations/0016), by the name of the constraint, index or trigger
+ * check that raised them. The service checks the same rules first, for an
+ * answer that names the field; these answer when two requests race past the
+ * service's checks, or at the commit of a deferred check.
+ */
+export const CONSTRAINT_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+  academic_years_one_current_idx: 'current_year_exists',
+  academic_years_no_overlap: 'dates_overlap',
+  academic_years_closed: 'year_closed',
+  academic_years_status_order: 'year_out_of_order',
+  academic_years_out_of_order: 'year_out_of_order',
+  academic_years_earlier_open: 'earlier_year_not_closed',
+  quarters_no_overlap: 'quarters_out_of_order',
+  quarters_order: 'quarters_out_of_order',
+  academic_year_quarters_count: 'quarters_out_of_order',
+  quarters_outside_year: 'outside_year',
+};
+
+/**
+ * Runs a change whose rules the database guards with named constraints and
+ * triggers, some of them deferred to the commit: wrap the whole
+ * `transactions.run(...)` call, because a deferred check raises after the work
+ * has returned. A refusal named in `CONSTRAINT_REFUSALS` becomes 409 with its
+ * code; anything else is thrown again as it came.
+ */
+export async function refusingConstraints<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    const failure = error as { code?: unknown; constraint?: unknown };
+    const refusal =
+      (failure.code === UNIQUE_VIOLATION ||
+        failure.code === EXCLUSION_VIOLATION ||
+        failure.code === CHECK_VIOLATION) &&
+      typeof failure.constraint === 'string' &&
+      Object.hasOwn(CONSTRAINT_REFUSALS, failure.constraint)
+        ? CONSTRAINT_REFUSALS[failure.constraint]
+        : undefined;
+    if (refusal !== undefined) {
+      throw new ApiException(refusal, 409);
+    }
+    throw error;
+  }
 }
