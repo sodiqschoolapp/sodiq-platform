@@ -92,6 +92,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 11 October 2026: settings and the setup checklist (task 1.6)
+
+Plan approved on pull request #49 (`[review] approved`, decisions 1 to 10 confirmed, decision 4's audit place changed by correction 1, corrections 2 and 3 added tests). The owner's answers 19 to 24 above were followed as written. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| Edit days are a plain column of `branch_settings` (1 to 30, default 7), audited; the lock moments of lessons dated after a change are re-stored by task 8.4 | Answer 19, "one typed table"; `edge/00-definitions`: the lock is fixed per lesson and stored as a moment |
+| Early-warning thresholds are plain values with bounds 1–100, 1–100, 1–100 percent, 1–30 absences; "five graded works" stays in code with 9.4a | Answer 19; `08` sets no bounds, these keep each threshold meaningful |
+| Late and skipped are 0–100 on the quarter row, 50 and 0 by default; "not closed" is "not in a closed year" today (`quarters_closed_year_guard`); the preview and the closed-quarter refusal come with 9.1 and 9.2b | Answer 20; `edge/calculation`; no result and no quarter close exist yet |
+| Travel time is one row per unordered pair in the school-wide `travel_times` (lower id first), 0 to 180; an unset pair is "not set", never 0; audited in `audit_log_school` with both branch ids | Answer 21; `06` makes it a blocking rule; correction 1: a pair belongs to two branches equally |
+| Grade bands are shown as text of the three locale files, no constant in code; a web test keeps the three languages equal | `packages/calc` holds every grade rule and adding one is stop-list item 4; correction 3 |
+| Languages of instruction are `INSTRUCTION_LANGUAGES = ['uz', 'ru']`, read only | `05`, The list; answer 22 |
+| The checklist reads the planned and current years together; item 1 done with one working weekday; item 2 a room in use on an active floor of an active building (rooms are never archived); item 3 the Academic division's departments; item 7 a default setting in force today or later; the calendar counts active entries inside those years | `edge/academic-year`; answer 23 |
+| The checklist sits at the top of School setup for `settings` view; each item links to its page when the role views that area; the links of the page are a list named "School setup" | Answer 23; two links of one name ("Rooms") must stay apart for the browser test |
+| Every branch has its settings row: the migration for existing branches, the branch create in its transaction through `Transactions.enterCreatedBranch`, which enters only a branch inserted by that transaction and only from an empty filter | Correction 2 of the review; a reader never meets a branch without settings |
+| Area `settings` as answer 24; travel time under `branches`; new code `travel_time_same_branch`; a closed year answers `year_closed` | Answer 24; a text must be true |
+| A save that changes nothing writes nothing, on every write route of the task | As the setup routes since 1.1 |
+
 ## 11 October 2026: calendar (task 1.4)
 
 Plan approved on pull request #47 (`[review] approved`, decisions 1 to 7 and 9 to 14 confirmed, decision 8 changed by correction 1, "Check a date" added as decision 15 by correction 2). The owner's answers 15 to 18 above were followed as written. Flagged on issue #42.

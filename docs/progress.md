@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 11 October 2026: task 1.6 Settings and the setup checklist
+
+- Built: migration 0019 (`branch_settings` one row per branch with edit days and the four early-warning thresholds; `late_value` and `skipped_value` on `quarters`; school-wide `travel_times`, one row per unordered pair); `Transactions.enterCreatedBranch` so the branch create writes its settings row; eight routes under `/api/setup` (area `settings`; travel time under `branches`) and the checklist of the eight Phase 1 items.
+- Pages: Settings (edit days, thresholds, late and skipped per quarter, languages and grade bands read only), Travel time, the checklist at the top of School setup; texts in uz, ru, en. Plan approved on pull request #49 with three corrections, all applied; decisions flagged on issue #42.
+- Left out: the re-stored lock moments after an edit-days change (8.4); the preview of changed results and the closed-quarter refusal for late and skipped (9.1, 9.2b); what the rules do with an unset travel time (5.2); grade bands from `packages/calc` (4.2); the daily maximum of lessons (5.2); adding a language of instruction.
+
+The next sessions must know:
+
+- A new checklist item is a key of `CHECKLIST_ITEMS` (`packages/shared/src/settings.ts`), a line in `Settings.checklist` and a page in `PAGES` of `setup-checklist.tsx`.
+- A test that inserts a branch through the migrator uses `insertBranch`, which also writes the settings row; the links of School setup are the list named "School setup", the checklist items above them may share a name.
+- The next task is 2.1, after the owner gate of Phase 2.
+
 ## 11 October 2026: task 1.4 Calendar
 
 - Built: migration 0018 (`calendar_entries`, `calendar_entries_no_overlap` over active rows, a whole-branch entry holding grades 1 to 11); `dayOn` and `isSchoolDay` in `packages/timetable-rules`; seven routes under `/api/setup` in the area `calendar` (list, create, edit, archive, restore, preview, `calendar-day`); go-live a school day in both directions (go-live save, calendar saves, working weekdays); year edits keep entries inside; a special day from today on keeps its template in use.
