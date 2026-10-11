@@ -622,9 +622,13 @@ describe('academic years', () => {
     it('of another branch are not found, for the Super Admin and the Academic Vice Principal, and nothing changes', async () => {
       const id = await createYear(south, '2034-09-02', '2035-05-25');
 
-      for (const cookie of [admin, vicePrincipal]) {
+      for (const [target, cookie] of [
+        [id, admin],
+        [id, vicePrincipal],
+        [UNKNOWN, admin],
+      ] as const) {
         const response = await put(
-          `/api/setup/academic-years/${id}/quarters`,
+          `/api/setup/academic-years/${target}/quarters`,
           north,
           quartersBody([
             ['2034-09-02', '2034-10-31'],
@@ -985,7 +989,7 @@ describe('academic years', () => {
               .execute(),
           ),
         ),
-      ).toBe('quarters_out_of_order');
+      ).toBe('request_refused');
       // At the statement.
       expect(
         await refusedWith(() =>
@@ -998,7 +1002,7 @@ describe('academic years', () => {
         ),
       ).toBe('dates_overlap');
       expect(await refusedWith(setStatus(later, 'current'))).toBe('earlier_year_not_closed');
-      expect(await refusedWith(setStatus(year, 'closed'))).toBe('year_out_of_order');
+      expect(await refusedWith(setStatus(year, 'closed'))).toBe('request_refused');
       expect((await post(`/api/setup/academic-years/${year}/start`, branch)).status).toBe(200);
       expect(
         await refusedWith(() =>

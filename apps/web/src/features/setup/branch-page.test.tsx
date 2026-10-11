@@ -302,6 +302,23 @@ describe('the branch page', () => {
       expect(screen.getByText(en.setup.branch.goLiveNotSet)).toBeDefined();
     });
 
+    // .claude/rules/web.md: "Every screen has loading, empty and error states."
+    it('says when the years could not be read, with a way to try again', async () => {
+      let failing = true;
+      fakeApi({
+        'GET /api/auth/session': () => json(superAdmin()),
+        'GET /api/setup/branch': () => json(BRANCH),
+        'GET /api/setup/academic-years': () =>
+          failing ? refusal('internal_error', 500) : json({ years: [YEAR] }),
+      });
+      renderApp(PATH);
+
+      const retry = await screen.findByRole('button', { name: en.problems.retry });
+      failing = false;
+      fireEvent.click(retry);
+      expect(await screen.findByRole('form', { name: en.setup.branch.goLiveTitle })).toBeDefined();
+    });
+
     it('is read by the Principal as a date in the chosen language', async () => {
       fakeApi({
         'GET /api/auth/session': () => json(principal()),

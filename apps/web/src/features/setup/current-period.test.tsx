@@ -117,4 +117,12 @@ describe('the top bar', () => {
       ),
     ).toBe('2026–2027 · Каникулы, 2-я четверть начинается 10 ноября');
   });
+
+  // `03`: "always shown": a failed call says so.
+  it('says when the year and quarter could not be read', async () => {
+    fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });
+    renderApp('/');
+
+    expect((await screen.findByLabelText(en.period.label)).textContent).toBe(en.period.failed);
+  });
 });

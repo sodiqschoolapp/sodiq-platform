@@ -69,12 +69,14 @@ export const CONSTRAINT_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   academic_years_one_current_idx: 'current_year_exists',
   academic_years_no_overlap: 'dates_overlap',
   academic_years_closed: 'year_closed',
-  academic_years_status_order: 'year_out_of_order',
+  // No route moves a status but "Start year" before task 9.5a; a fault answers the general refusal.
+  academic_years_status_order: 'request_refused',
   academic_years_out_of_order: 'year_out_of_order',
   academic_years_earlier_open: 'earlier_year_not_closed',
   quarters_no_overlap: 'quarters_out_of_order',
   quarters_order: 'quarters_out_of_order',
-  academic_year_quarters_count: 'quarters_out_of_order',
+  // Four quarters are written with their year; a fault answers the general refusal.
+  academic_year_quarters_count: 'request_refused',
   quarters_outside_year: 'outside_year',
 };
 

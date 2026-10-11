@@ -71,11 +71,12 @@ export const en = {
       'A quarter would lie outside the dates of its academic year. Change the dates of the quarter or of the year.',
     quarters_out_of_order:
       'The quarters must follow each other in order without overlapping. Check the dates and save again.',
-    year_closed: 'The academic year is closed: nothing in it changes.',
+    year_closed:
+      'The academic year is closed: its dates and quarters no longer change. Work in a planned or current year.',
     current_year_exists:
       'The branch already has a current academic year. A new one starts once the current one is closed.',
     earlier_year_not_closed:
-      'An earlier academic year of the branch is not closed yet. Close it first.',
+      'An earlier academic year of the branch is still planned or current. A year starts only once every year before it is closed; start the earlier year first, or change its dates.',
     year_out_of_order:
       'A year cannot come before a year that has already started. Choose later dates.',
     go_live_outside_year:
@@ -469,6 +470,7 @@ export const en = {
     },
   },
   period: {
+    failed: 'Year and quarter not loaded',
     label: 'Academic year and quarter',
     noYear: 'No academic year',
     planned: '{{name}} (planned)',

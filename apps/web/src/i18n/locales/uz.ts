@@ -74,10 +74,12 @@ export const uz: Texts<'one' | 'other'> = {
       'Chorak oʻz oʻquv yili sanalaridan tashqariga chiqadi. Chorak yoki yil sanalarini oʻzgartiring.',
     quarters_out_of_order:
       'Choraklar tartib bilan va bir-birini qoplamasdan kelishi kerak. Sanalarni tekshirib, qayta saqlang.',
-    year_closed: 'Oʻquv yili yopilgan: unda hech narsa oʻzgarmaydi.',
+    year_closed:
+      'Oʻquv yili yopilgan: uning sanalari va choraklari endi oʻzgarmaydi. Rejalashtirilgan yoki joriy yilda ishlang.',
     current_year_exists:
       'Filialda joriy oʻquv yili allaqachon bor. Yangisi joriy yil yopilgandan keyin boshlanadi.',
-    earlier_year_not_closed: 'Filialning oldingi oʻquv yili hali yopilmagan. Avval uni yoping.',
+    earlier_year_not_closed:
+      'Filialning oldingi oʻquv yili hali rejalashtirilgan yoki joriy. Yil undan oldingi barcha yillar yopilgandan keyingina boshlanadi: avval oldingi yilni boshlang yoki uning sanalarini oʻzgartiring.',
     year_out_of_order:
       'Yil allaqachon boshlangan yildan oldin kela olmaydi. Keyingi sanalarni tanlang.',
     go_live_outside_year:
@@ -472,14 +474,15 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   period: {
+    failed: 'Yil va chorak yuklanmadi',
     label: 'Oʻquv yili va chorak',
     noYear: 'Oʻquv yili yoʻq',
     planned: '{{name}} (rejalashtirilgan)',
     notDated: 'Choraklar sanasi yoʻq',
     quarter: '{{number}}-chorak',
     vacation: 'Taʼtil',
-    vacationNext: 'Taʼtil, {{number}}-chorak {{date}} boshlanadi',
-    startsOn: '{{number}}-chorak {{date}} boshlanadi',
+    vacationNext: 'Taʼtil, {{number}}-chorak boshlanishi: {{date}}',
+    startsOn: '{{number}}-chorak boshlanishi: {{date}}',
   },
   home: {
     title: 'Bosh sahifa',

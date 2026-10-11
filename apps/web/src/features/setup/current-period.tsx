@@ -55,7 +55,15 @@ export function CurrentPeriod() {
   const { branchId } = useView();
   const period = useQuery(currentPeriodQuery(branchId));
   if (period.data === undefined) {
-    return null;
+    // `03`: "always shown": a call that failed says so instead of leaving the place empty.
+    return period.isError ? (
+      <span
+        aria-label={t('period.label')}
+        className="min-w-0 truncate text-sm text-muted-foreground"
+      >
+        {t('period.failed')}
+      </span>
+    ) : null;
   }
   const parts = [yearText(t, period.data), quarterText(t, i18n.language, period.data)].filter(
     (part): part is string => part !== null,

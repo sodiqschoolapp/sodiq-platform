@@ -135,7 +135,7 @@ How to read the task lines:
   - Build: the eight divisions as data with Academic built in; departments; names in three languages; archive rules.
   - Done when: Academic cannot be renamed or archived and a division with active staff cannot be archived.
 
-- [ ] **1.3 Academic year and quarters**
+- [x] **1.3 Academic year and quarters**
   - Read: `03`, `edge/academic-year`, `edge/time-dates-calendar`.
   - Build: years with status (planned, current, closed); exactly one current year per branch; four quarters with no overlaps or gaps; the go-live start date per branch.
   - Done when: the database refuses a second current year and overlapping quarters.
@@ -147,7 +147,7 @@ How to read the task lines:
 
 - [ ] **1.4 Calendar**
   - Read: `03`, `edge/time-dates-calendar`.
-  - Build: days off and special days for the whole branch or a range of grades; each date resolves to "no lessons" or to one day template.
+  - Build: days off and special days for the whole branch or a range of grades; each date resolves to "no lessons" or to one day template. From 1.3 (pull request #44, decision 6): the go-live date of the branch (`PUT /api/setup/branch/go-live`) must be a school day once the calendar can tell one (`edge/academic-year`: "Go-live can be on any school day"): refuse a go-live date that is a day off, and a day off on the go-live date, with their tests.
   - Done when: tests cover a holiday inside a week, a working Saturday and a grade-range entry.
 
 - [ ] **1.6 Settings and the setup checklist**
@@ -499,7 +499,7 @@ How to read the task lines:
 
 - [ ] **9.5c Starting a year and the full-year simulation**
   - Read: `edge/academic-year`, `14` (Whole system), `edge/system-behaviour`.
-  - Build: "Start year"; the nightly test that runs set-up, publish, entry, calendar change, four closings, year close and rollover with the clock moved through a year.
+  - Build: "Start year" (1.3 built its core: `POST /api/setup/academic-years/:id/start`, planned → current for a branch's first year or once every earlier year is closed; this task adds what the checklist and "Close the year" need around it); the nightly test that runs set-up, publish, entry, calendar change, four closings, year close and rollover with the clock moved through a year.
   - Done when: the simulation passes in CI.
 
 > **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 10, deletes this line.

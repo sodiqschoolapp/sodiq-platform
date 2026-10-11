@@ -2,6 +2,21 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 11 October 2026: task 1.3 Academic year and quarters
+
+- Built: migration 0016 (`academic_years`, `quarters`, `branches.go_live_date`, the constraints and triggers of `docs/decisions.md`, 11 October 2026, task 1.3); `packages/shared/src/academic-year.ts` (schemas, `periodOn`, `schoolDateOf`), eight error codes, the areas `academic_years`, `quarters`, `current_period`; seven routes under `/api/setup` with audit entries; the Academic years page with its panel, the go-live section of the branch page, the year and quarter in the top bar; texts in uz, ru, en.
+- Plan approved on pull request #44 with three corrections, all applied; decisions flagged on issue #42.
+- Left out: "Close the year" (9.5a) and the rest of "Start year" (9.5c); closing a quarter and its frozen dates (9.2b); boundaries only over future dates and year changes with lessons (5.6b); the checklist item "four dated quarters" (1.6); the go-live date as a school day (1.4, noted on its Build line); go-live editable only until the first timetable version (phase 5); past years read only (the first page with year data).
+
+The next sessions must know:
+
+- A year write takes the branch row `for update` first (`AcademicYears`, lock order in its doc comment); keep that order in any new route that changes years.
+- Deferred checks raise at the commit: wrap the whole `transactions.run` in `refusingConstraints`, and map a new constraint name in `CONSTRAINT_REFUSALS`.
+- Today's school date is `schoolDateOf(clock.now(), branch.time_zone)`; `periodOn` gives the current quarter; the web shows dates with `schoolDateText`.
+- `working_weekdays` still has no SQL constraint on repeats: 1.4 reads it in SQL.
+
+The next task is 1.5.
+
 ## 11 October 2026: the loop runs without the owner (process change, no task)
 
 - Decided by the owner: when the spec is silent, a session decides, writes the reading under "Decided without the owner" and flags it on issue #42; only the five things under "Stop and wait for the owner" in `CLAUDE.md` stop a task. The reviewer confirms or changes every decision in its approval, merges at `[review] ready to merge` with green checks, and stops a task after three rounds (`needs-owner`). The ten decisions and the owner's 24 answers for tasks 1.3 to 1.6 are in `docs/decisions.md`, 11 October 2026.

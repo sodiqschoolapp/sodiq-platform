@@ -221,7 +221,8 @@ test('the Super Admin adds a year, dates its quarters, sets the go-live date and
 
   // A year that does not start on 1 January, so that it ends in the next calendar year.
   let start = schoolDay(-2);
-  if (start.endsWith('-01-01')) {
+  // 1 January would end the year in the same calendar year; 29 February a year later is 28 February, too long.
+  if (start.endsWith('-01-01') || start.endsWith('-02-29')) {
     start = schoolDay(-3);
   }
   const end = yearEnd(start);

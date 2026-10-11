@@ -167,6 +167,15 @@ function GoLiveSection({ branch, canEdit }: { branch: Branch; canEdit: boolean }
         <p className="text-sm text-muted-foreground">{t('setup.branch.goLiveNoYear')}</p>
       </>
     );
+  } else if (years.isError) {
+    body = (
+      <ErrorState
+        error={years.error}
+        onRetry={() => {
+          void years.refetch();
+        }}
+      />
+    );
   } else if (hasYear === true) {
     body = (
       <RecordForm form={form} label={t('setup.branch.goLiveTitle')}>
