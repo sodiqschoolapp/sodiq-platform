@@ -18,6 +18,7 @@ import { SampleListPage, sampleSearch } from '@/features/sample/sample-list-page
 import { BranchPage } from '@/features/setup/branch-page';
 import { BuildingsPage } from '@/features/setup/buildings-page';
 import { DivisionsPage } from '@/features/setup/divisions-page';
+import { SubjectsPage } from '@/features/setup/subjects-page';
 import { YearsPage } from '@/features/setup/years-page';
 import { SlotTypesPage } from '@/features/setup/slot-types-page';
 import { CalendarPage } from '@/features/setup/calendar-page';
@@ -162,6 +163,14 @@ const divisionsRoute = createRoute({
   component: DivisionsPage,
 });
 
+/** Subjects and their weights (task 2.1). */
+const subjectsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/subjects',
+  validateSearch: listSearch,
+  component: SubjectsPage,
+});
+
 const yearsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/years',
@@ -248,6 +257,7 @@ const routeTree = rootRoute.addChildren([
     templateSettingsRoute,
     settingsRoute,
     travelTimesRoute,
+    subjectsRoute,
     patternsRoute,
   ]),
 ]);

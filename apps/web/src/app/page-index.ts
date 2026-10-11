@@ -22,7 +22,7 @@ export const COMMON_PAGES: readonly IndexedPage[] = [
   ...(import.meta.env.DEV ? [{ titleKey: 'sample.title', to: '/dev/patterns' } as const] : []),
 ];
 
-/** The pages under "School setup" (tasks 1.1 to 1.6), indexed when the menu of the role has the item. */
+/** The pages under "School setup" (tasks 1.1 to 1.6, subjects from task 2.1), indexed when the menu of the role has the item. */
 export const SETUP_PAGES: readonly IndexedPage[] = [
   { titleKey: 'setup.branch.title', to: '/setup/branch' },
   { titleKey: 'setup.buildings.title', to: '/setup/buildings' },
@@ -35,6 +35,7 @@ export const SETUP_PAGES: readonly IndexedPage[] = [
   { titleKey: 'setup.calendar.title', to: '/setup/calendar' },
   { titleKey: 'setup.settings.title', to: '/setup/settings' },
   { titleKey: 'setup.travelTimes.title', to: '/setup/travel-times' },
+  { titleKey: 'setup.subjects.title', to: '/setup/subjects' },
 ];
 
 /** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */

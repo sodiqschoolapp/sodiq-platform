@@ -17,6 +17,7 @@ const PAGES: Record<ChecklistItemKey, { to: LinkProps['to']; area: string }> = {
   slotTypes: { to: '/setup/slot-types', area: 'day_templates' },
   defaultTemplate: { to: '/setup/day-template-settings', area: 'day_templates' },
   calendar: { to: '/setup/calendar', area: 'calendar' },
+  subjects: { to: '/setup/subjects', area: 'subjects' },
 };
 
 function Mark({ done }: { done: boolean | null }) {
@@ -44,6 +45,13 @@ function ItemText({ item }: { item: ChecklistItem }) {
     return (
       <span className="text-sm text-muted-foreground">
         {t('setup.checklist.undatedYears', { years: item.years.join(', ') })}
+      </span>
+    );
+  }
+  if (item.key === 'subjects' && (item.count ?? 0) > 0) {
+    return (
+      <span className="text-sm text-muted-foreground">
+        {t('setup.checklist.subjectsMissing', { count: item.count ?? 0 })}
       </span>
     );
   }
