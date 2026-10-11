@@ -140,7 +140,7 @@ How to read the task lines:
   - Build: years with status (planned, current, closed); exactly one current year per branch; four quarters with no overlaps or gaps; the go-live start date per branch.
   - Done when: the database refuses a second current year and overlapping quarters.
 
-- [ ] **1.5 Slot types and day templates** (built before 1.4: the calendar points at day templates)
+- [x] **1.5 Slot types and day templates** (built before 1.4: the calendar points at day templates)
   - Read: `03`, `06` (Model), `edge/time-dates-calendar`.
   - Build: slot types (lesson or break, length in minutes); day templates as an ordered list of slots with calculated times; default template, weekday templates, special-date templates and templates per grade range; the order in which a special date (for a grade range, then for the branch), weekday with grade range, weekday, grade range and the default decide the template of a class on a date; the table of the resulting template per weekday and grade, shown again with the changes marked as the preview when a template is saved at any level.
   - Done when: times are never typed, reordering recalculates them, and a lesson can only sit in a lesson slot.
@@ -149,6 +149,7 @@ How to read the task lines:
   - Read: `03`, `edge/time-dates-calendar`.
   - Build: days off and special days for the whole branch or a range of grades; each date resolves to "no lessons" or to one day template. From 1.3 (pull request #44, decision 6): the go-live date of the branch (`PUT /api/setup/branch/go-live`) must be a school day once the calendar can tell one (`edge/academic-year`: "Go-live can be on any school day"): refuse a go-live date that is a day off, and a day off on the go-live date, with their tests.
   - Done when: tests cover a holiday inside a week, a working Saturday and a grade-range entry.
+  - From 1.5 (pull request #46): a special date names a template through the special-date input that `templateFor` of `packages/timetable-rules` already takes; a template named by a special date from today on counts as in use for its archive (`templateInUse` in `apps/api/src/modules/setup/day-template-state.ts`); the table of School setup reads no special dates yet.
 
 - [ ] **1.6 Settings and the setup checklist**
   - Read: `03`, `07` (Entering data, Editing rules and locks), `06` (Teachers who work in several branches), `05` (Language of instruction), `08` (Early-warning list), `edge/academic-year`.
@@ -245,6 +246,7 @@ How to read the task lines:
   - Read: `06` (Rules, Teachers who work in several branches), `05` (Language of instruction), `edge/timetable`.
   - Build in `packages/timetable-rules`: every blocked rule and warning, by clock time; travel time between branches; the language rule; a result that names the rule and the lessons involved.
   - Done when: each rule in the Rules table has passing and failing test cases.
+  - From 1.5 (pull request #46): `lessonSlotProblem` and `lessonTimeProblem` exist; every lesson write calls them, so "a lesson can only sit in a lesson slot" holds on the server and not only in the engine.
 
 - [ ] **5.3 Draft builder, steps 1 to 5**
   - Read: `06` (Building a timetable, Rules), `03` (Slot types and day templates), `04` (Teacher and staff record), `edge/timetable` (After publishing).
@@ -290,6 +292,7 @@ How to read the task lines:
   - Read: `edge/time-dates-calendar`, `06` (Rules, What a change does to existing data), `edge/timetable` (Structure, Versions and drafts).
   - Build: what happens to existing dated lessons when a day off is added or removed, a day template changes, or quarter dates change; for a group of two grades, the choice when a calendar entry leaves school to only one grade (cancel the block, or keep it and exempt the grade that is off), and a lesson in a slot that does not match in both templates created as cancelled.
   - Done when: every row of the edge-case table has a test.
+  - From 1.5 (pull request #46): a length or a template change from a date rechecks every future date with the new times and is refused on an overlap; a lesson slot used by the published timetable is not removed or reordered without a new version (`edge/time-dates-calendar`, "A slot type's length or a day template is changed mid-year"; owner's answer 12).
 
 - [ ] **5.6c Exams in the timetable**
   - Read: `06` (Changes after publishing, Rules, Free now board), `edge/timetable` (Exams, Versions and drafts), `edge/developer-rules`, `edge/calculation` (the rating exam), `edge/time-dates-calendar`.

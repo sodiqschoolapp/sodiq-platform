@@ -92,6 +92,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 11 October 2026: slot types and day templates (task 1.5)
+
+Plan approved on pull request #46 (`[review] approved`, every decision confirmed, three corrections applied). The owner's answers 9 to 14 above were followed as written. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| Lengths, template versions and settings are dated rows `[valid_from, valid_until)`: a change from a date cuts the row in force there (a row starting on the date is withdrawn, `valid_until = valid_from`, kept as history) and the new row runs to where the cut row ran, or to the next later row (`scheduleFrom`). Exclusion constraints keep the rows of a key apart; `dated_rows_only_shrink` lets a row only end earlier, for every user; no delete grant | `03`: "takes effect from a chosen date … its history is kept"; answer 11: grade ranges apart "(database)"; half-open ranges (`edge/developer-rules`). An exclusion constraint is race-safe |
+| A slot type's length is dated; the times of a date use the lengths in force on it. Its kind is fixed at creation; names change in place, audited | Answer 12; one calculation instead of copies; a kind change would move lessons out of lesson slots without a version |
+| The first length and the first version are in force from the day of creation; every change is from tomorrow at the earliest in branch time (`date_not_in_future`) | Nothing can name them before tomorrow |
+| The start time is minutes after midnight (`smallint`), typed `HH:MM`; a day ends by 24:00, checked on every date a change reaches, on create, new version, length change and restore (`day_past_midnight`) | Integers in every calculation; a lesson date is one school date |
+| A version's slots are written only in the transaction of the version: `created_xact xid8` set at insert and granted to nobody, compared with `pg_current_xact_id()` (`day_template_slots_same_transaction`); 1 to 20 slots without a gap and a lesson slot, checked at the commit | The review's correction 1: `xmin` changes when the version is cut |
+| The default can be replaced from a date, not ended (`default_template_required`); ending a planned setting withdraws it; ending one already ended is `already_ended`. A grade range overlapping another in force at its level is refused (`grade_ranges_overlap`); a new row stops before a planned overlapping one | `03`: "A branch has a default template"; the review's correction 2; nothing changes without its own preview |
+| Weekdays 1 to 7 may each get a template; the table shows the branch's working weekdays and grades 1 to 11, and reads the settings in force on its date for every weekday | Answer 13; a working Saturday (1.4) may need one |
+| "In use": a slot type while a version from today on of an active template names it; a template while a setting from today on names it. New codes `slot_type_in_use`, `template_in_use`, `slot_type_archived`, `template_archived`, `no_lesson_slot` instead of `archive_refused` and `archived_record` | Answer 9; the texts of the old codes speak of rooms and buildings, and a text must be true (as in 1.3) |
+| Every write of the area takes the branch row `for update` first | One lock order, as in 1.3; makes the in-use, overlap and midnight checks race-free |
+| The preview is the save run in a transaction that is rolled back (deferred checks made immediate first), under `edit`; shown for a length change, a new version, setting and ending a setting; create, rename, archive and restore save without it | One code path (`03`); those saves change no cell (decision 19 of the review) |
+| The rules live in `packages/timetable-rules` (`dayTimes`, `templateFor` with the special-date order, `inForceOn`, `lessonSlotProblem`), a workspace dependency of the API and the web app | `CLAUDE.md`, one rule engine |
+| Names: one typed name of 1 to 60 characters, unique per branch among active rows, case and spaces ignored | Branch data, as answer 15's calendar names |
+| The three lists answer `today` in branch time; the web app offers tomorrow from it | The device's clock is never used (`edge/00-definitions`) |
+| A cancelled preview throws `SaveCancelled`, which a record form shows as "Not saved: nothing was changed." (`form.notSaved`); the slots are edited with a shared `OrderedListField` (up, down, remove, add) | The form keeps what was typed and tells the truth; no drag and drop (answer 10) |
+
 ## 11 October 2026: academic years and quarters (task 1.3)
 
 Plan approved on pull request #44 (`[review] approved`, every decision confirmed, three corrections applied). The owner's answers 1 to 8 above were followed as written. Flagged on issue #42.
