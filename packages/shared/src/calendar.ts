@@ -1,0 +1,198 @@
+import { z } from 'zod';
+import { schoolDateSchema } from './academic-year.js';
+import { FIRST_GRADE, LAST_GRADE } from './day-templates.js';
+import { weekdaySchema } from './setup.js';
+
+/**
+ * The academic calendar of a branch (docs/spec/03-school-setup.md, Academic
+ * calendar; docs/spec/edge-cases/time-dates-calendar.md; task 1.4). The bounds
+ * and fields are the owner's answers 15 to 18 (docs/decisions.md, "Decided
+ * ahead for tasks 1.3 to 1.6") and the decisions of pull request #47; the
+ * database keeps the same ones (db/migrations/0018), and a test compares them.
+ */
+
+/** Answer 15: "one typed name (branch data such as 'Navruz', not a three-language term)". */
+export const CALENDAR_ENTRY_NAME_MAX_LENGTH = 60;
+
+/** Answer 15: "An entry has a kind (day off or special day)". */
+export const CALENDAR_ENTRY_KINDS = ['day_off', 'special_day'] as const;
+
+export const calendarEntryKindSchema = z.enum(CALENDAR_ENTRY_KINDS);
+
+export type CalendarEntryKindName = z.infer<typeof calendarEntryKindSchema>;
+
+/** Answer 15: an exam week says "regular lessons on this template" or "no regular lessons". */
+export const EXAM_WEEKS = ['regular_lessons', 'no_regular_lessons'] as const;
+
+export const examWeekSchema = z.enum(EXAM_WEEKS);
+
+export type ExamWeekName = z.infer<typeof examWeekSchema>;
+
+const nameSchema = z.string().trim().min(1).max(CALENDAR_ENTRY_NAME_MAX_LENGTH);
+const gradeSchema = z.int().min(FIRST_GRADE).max(LAST_GRADE);
+
+// What is typed.
+
+/**
+ * An entry as a form sends it. Both dates count (decision 1). The grades are
+ * both given (a range upwards) or neither (the whole branch). A special day
+ * names a template and may name the weekday it follows and an exam week; a day
+ * off names none of the three. The server checks the dates against its clock
+ * and the years, and the followed weekday against the working weekdays; the
+ * database keeps the same shape (`calendar_entries_kind_check`).
+ */
+export const calendarEntryRecordSchema = z
+  .object({
+    kind: calendarEntryKindSchema,
+    name: nameSchema,
+    firstDate: schoolDateSchema,
+    lastDate: schoolDateSchema,
+    gradeFrom: gradeSchema.nullable(),
+    gradeTo: gradeSchema.nullable(),
+    dayTemplateId: z.uuid().nullable(),
+    followsWeekday: weekdaySchema.nullable(),
+    examWeek: examWeekSchema.nullable(),
+  })
+  .superRefine((record, context) => {
+    if (record.lastDate < record.firstDate) {
+      context.addIssue({
+        code: 'custom',
+        path: ['lastDate'],
+        message: 'The last date is not before the first.',
+      });
+    }
+    if ((record.gradeFrom === null) !== (record.gradeTo === null)) {
+      context.addIssue({
+        code: 'custom',
+        path: [record.gradeFrom === null ? 'gradeFrom' : 'gradeTo'],
+        message: 'Both grades, or neither for the whole branch.',
+      });
+    }
+    if (record.gradeFrom !== null && record.gradeTo !== null && record.gradeFrom > record.gradeTo) {
+      context.addIssue({
+        code: 'custom',
+        path: ['gradeTo'],
+        message: 'The last grade is not before the first.',
+      });
+    }
+    if (record.kind === 'special_day' && record.dayTemplateId === null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['dayTemplateId'],
+        message: 'A special day names a day template.',
+      });
+    }
+    if (record.kind === 'day_off') {
+      for (const field of ['dayTemplateId', 'followsWeekday', 'examWeek'] as const) {
+        if (record[field] !== null) {
+          context.addIssue({
+            code: 'custom',
+            path: [field],
+            message: 'A day off names no template, weekday or exam week.',
+          });
+        }
+      }
+    }
+  });
+
+export type CalendarEntryRecord = z.infer<typeof calendarEntryRecordSchema>;
+
+/**
+ * A save that can change what a date has, as the preview takes it (`03`;
+ * `edge/time-dates-calendar`, "the impact preview is shown first"; decision 11).
+ */
+export const calendarChangeSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('create'), record: calendarEntryRecordSchema }),
+  z.object({ action: z.literal('edit'), id: z.uuid(), record: calendarEntryRecordSchema }),
+  z.object({ action: z.literal('archive'), id: z.uuid() }),
+  z.object({ action: z.literal('restore'), id: z.uuid() }),
+]);
+
+export type CalendarChange = z.infer<typeof calendarChangeSchema>;
+
+export const calendarDayQuerySchema = z.object({ date: schoolDateSchema });
+
+export type CalendarDayQuery = z.infer<typeof calendarDayQuerySchema>;
+
+// What the routes answer.
+
+export const calendarEntrySchema = z.object({
+  id: z.uuid(),
+  kind: calendarEntryKindSchema,
+  name: z.string(),
+  firstDate: schoolDateSchema,
+  lastDate: schoolDateSchema,
+  gradeFrom: z.int().nullable(),
+  gradeTo: z.int().nullable(),
+  dayTemplateId: z.uuid().nullable(),
+  /** The name of the template, for the list; `null` for a day off. */
+  dayTemplateName: z.string().nullable(),
+  followsWeekday: weekdaySchema.nullable(),
+  examWeek: examWeekSchema.nullable(),
+  archivedAt: z.iso.datetime().nullable(),
+});
+
+export type CalendarEntry = z.infer<typeof calendarEntrySchema>;
+
+/**
+ * Every entry of the branch, archived ones included, by first date. `today` is
+ * the school date of the server's clock in branch time: the web app never
+ * reads the device's clock (`edge/00-definitions`, Branch time).
+ */
+export const calendarEntryListSchema = z.object({
+  today: schoolDateSchema,
+  entries: z.array(calendarEntrySchema),
+});
+
+export type CalendarEntryList = z.infer<typeof calendarEntryListSchema>;
+
+/** Why a date has no lessons for a grade: an entry, a weekday without school, or no template set yet. */
+export const NO_LESSONS_REASONS = ['day_off', 'not_working_day', 'no_template'] as const;
+
+/** What a grade has on a date (`dayOn` of `packages/timetable-rules`), with the names to show. */
+export const calendarDaySchema = z.discriminatedUnion('lessons', [
+  z.object({
+    lessons: z.literal(false),
+    reason: z.enum(NO_LESSONS_REASONS),
+    entryId: z.uuid().nullable(),
+    entryName: z.string().nullable(),
+  }),
+  z.object({
+    lessons: z.literal(true),
+    dayTemplateId: z.uuid(),
+    dayTemplateName: z.string(),
+    followsWeekday: weekdaySchema,
+    examWeek: examWeekSchema.nullable(),
+    entryId: z.uuid().nullable(),
+    entryName: z.string().nullable(),
+  }),
+]);
+
+export type CalendarDay = z.infer<typeof calendarDaySchema>;
+
+/** Every grade on one date ("Check a date", decision 15). */
+export const calendarDateSchema = z.object({
+  date: schoolDateSchema,
+  grades: z.array(z.object({ grade: z.int(), day: calendarDaySchema })),
+});
+
+export type CalendarDate = z.infer<typeof calendarDateSchema>;
+
+/**
+ * What a save changes: runs of consecutive dates and of grades whose day is
+ * the same before and the same after (decision 11), oldest date first.
+ */
+export const calendarPreviewSchema = z.object({
+  changes: z.array(
+    z.object({
+      firstDate: schoolDateSchema,
+      lastDate: schoolDateSchema,
+      gradeFrom: z.int(),
+      gradeTo: z.int(),
+      before: calendarDaySchema,
+      after: calendarDaySchema,
+    }),
+  ),
+});
+
+export type CalendarPreview = z.infer<typeof calendarPreviewSchema>;

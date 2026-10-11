@@ -103,6 +103,20 @@ export const ERROR_CODES = [
   'template_uses_archived_slot_type',
   /** An archived day template is chosen, or the template changed is archived (task 1.5). */
   'template_archived',
+  /** Only calendar dates from tomorrow on, in branch time, can be added, changed or removed (answer 16; task 1.4). */
+  'calendar_date_not_in_future',
+  /** A calendar entry wholly in the past is read-only (answer 16; task 1.4). */
+  'calendar_entry_past',
+  /** A calendar entry lies inside one planned or current academic year of the branch (answer 16; task 1.4). */
+  'calendar_outside_year',
+  /** Another entry of the same kind covers one of these dates for one of these grades (answer 17; task 1.4). */
+  'calendar_overlap',
+  /** A special day with a date on a non-working weekday names the weekday it follows (answer 15; task 1.4). */
+  'follows_weekday_required',
+  /** The weekday a special day follows is a working weekday of the branch (task 1.4). */
+  'follows_weekday_not_working',
+  /** The go-live date must be a school day: some grade has lessons on it (`edge/academic-year`; task 1.4). */
+  'go_live_not_school_day',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
