@@ -92,6 +92,28 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 11 October 2026: calendar (task 1.4)
+
+Plan approved on pull request #47 (`[review] approved`, decisions 1 to 7 and 9 to 14 confirmed, decision 8 changed by correction 1, "Check a date" added as decision 15 by correction 2). The owner's answers 15 to 18 above were followed as written. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| An entry covers its first and its last date and every date between (`daterange(first, last, '[]')`) | Answer 15: "a first and a last date"; an entry is a list of school dates |
+| A whole-branch entry holds grades 1 to 11: two active entries of one kind never share a date for overlapping grades, so a grade-range special day on a whole-branch one is refused (`calendar_entries_no_overlap`); a day off and a special day may share a date, the day off wins | Answer 17, "(database constraint)"; `templateFor` keeps `03`'s order and never has to choose |
+| Only dates after today change: a change of kind-specific fields, grades or template needs the whole entry after today; a moved first or last date adds or removes dates after today only; the name changes while the last date is today or later; an entry wholly in the past is read-only; archive needs the whole entry after today (a started one is shortened) | Answer 16; `edge/time-dates-calendar`, "Today and past dates cannot become a day off" |
+| The kind is fixed at creation (not granted for update) | The two kinds carry different fields |
+| An entry lies inside one planned or current year; a year edit that would leave an active entry outside is refused (`calendar_outside_year`) | Answer 16; the same rule as the go-live date in 1.3 |
+| `dayOn` resolves the calendar, the weekdays and the template settings; vacations (gaps between quarters) are applied by publishing | `edge/time-dates-calendar`, "Vacations between quarters"; quarters may be undated during setup |
+| A school day, for the go-live date: some grade has lessons by `dayOn`, or would once a template is set (`isSchoolDay`); refused at the go-live save and by a calendar save or a working-weekday edit that takes it away (`go_live_not_school_day`) | `edge/academic-year`, "Go-live can be on any school day"; the 1.4 Build line asks for both directions; the go-live date may be set before the first template |
+| Follows weekday: required by the API when a date of the entry is not a working weekday, and must name a working weekday; `dayOn` applies it to the entry's non-working-weekday dates only, the other dates follow their own weekday; not refused by a later change of the working weekdays | Answer 15, "on a non-working weekday, the weekday it follows"; correction 1 of the review |
+| Exam week is a field of a special day: `regular_lessons`, `no_regular_lessons` or empty; the bulk cancel comes with phase 5 | Answer 15 |
+| Names: one typed name of 1 to 60 characters, not unique | Answer 15; "Navruz" comes back every year |
+| The preview is the save run in a transaction that is rolled back, under `calendar` edit, for every save that can change a date; it answers runs of dates and grades with the day before and after; a name-only edit saves without it | `03`; `edge/time-dates-calendar`, "the impact preview is shown first"; the same pattern as 1.5 |
+| The weekday table of School setup stays a table of the regular settings; "Check a date" (`GET /api/setup/calendar-day`, `calendar` view) shows what every grade has on one date | `03`: the table is "for every weekday and grade"; correction 2 of the review |
+| Permission area `calendar` as answer 18; new codes `calendar_date_not_in_future`, `calendar_entry_past`, `calendar_entry_archived`, `calendar_outside_year`, `calendar_overlap`, `follows_weekday_required`, `follows_weekday_not_working`, `go_live_not_school_day` | The texts of the older codes speak of other things; a text must be true |
+| A special day's template always has a version in force on its dates; proved by a test, not checked on each save | Entries start tomorrow at the earliest; `scheduleFrom` leaves no later date without a version |
+| Every calendar write takes the branch row `for update` first; a special day whose last date is today or later keeps its template in use (`templateInUse`) | One lock order with years, templates and go-live; the note of pull request #46 |
+
 ## 11 October 2026: slot types and day templates (task 1.5)
 
 Plan approved on pull request #46 (`[review] approved`, every decision confirmed, three corrections applied). The owner's answers 9 to 14 above were followed as written. Flagged on issue #42.

@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 11 October 2026: task 1.4 Calendar
+
+- Built: migration 0018 (`calendar_entries`, `calendar_entries_no_overlap` over active rows, a whole-branch entry holding grades 1 to 11); `dayOn` and `isSchoolDay` in `packages/timetable-rules`; seven routes under `/api/setup` in the area `calendar` (list, create, edit, archive, restore, preview, `calendar-day`); go-live a school day in both directions (go-live save, calendar saves, working weekdays); year edits keep entries inside; a special day from today on keeps its template in use.
+- Pages: Calendar (list, panel, form, preview before every save that moves a date, "Check a date"); texts in uz, ru, en. Plan approved on pull request #47 with two corrections, both applied; decisions flagged on issue #42.
+- Left out: the lessons of a changed date, the bulk cancel of "no regular lessons" and of today (5.5b, 5.6a, 5.6b, which read `dayOn`); a go-live date in a vacation between dated quarters (4.2 and 5.5b: the start quarter needs it); the checklist item "calendar" (1.6).
+
+The next sessions must know:
+
+- What a grade has on a date is `dayOn` (`packages/timetable-rules/src/calendar.ts`); publishing also skips the dates outside the quarters, which `dayOn` does not read.
+- A calendar write takes the branch row `for update` first (`Calendar`), as the years and templates do; `losesGoLive` (`calendar-state.ts`) guards the go-live date on every write that changes what a date has.
+- The next task is 1.6.
+
 ## 11 October 2026: task 1.5 Slot types and day templates
 
 - Built: migration 0017 (six tables, dated rows `[valid_from, valid_until)` with exclusion constraints, `dated_rows_only_shrink`, the slot checks); the first rules of `packages/timetable-rules` (`dayTimes`, `templateFor`, `inForceOn`, `lessonSlotProblem`); 18 routes under `/api/setup` in the area `day_templates`, with the preview run as the save and rolled back.

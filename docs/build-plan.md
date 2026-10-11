@@ -145,7 +145,7 @@ How to read the task lines:
   - Build: slot types (lesson or break, length in minutes); day templates as an ordered list of slots with calculated times; default template, weekday templates, special-date templates and templates per grade range; the order in which a special date (for a grade range, then for the branch), weekday with grade range, weekday, grade range and the default decide the template of a class on a date; the table of the resulting template per weekday and grade, shown again with the changes marked as the preview when a template is saved at any level.
   - Done when: times are never typed, reordering recalculates them, and a lesson can only sit in a lesson slot.
 
-- [ ] **1.4 Calendar**
+- [x] **1.4 Calendar**
   - Read: `03`, `edge/time-dates-calendar`.
   - Build: days off and special days for the whole branch or a range of grades; each date resolves to "no lessons" or to one day template. From 1.3 (pull request #44, decision 6): the go-live date of the branch (`PUT /api/setup/branch/go-live`) must be a school day once the calendar can tell one (`edge/academic-year`: "Go-live can be on any school day"): refuse a go-live date that is a day off, and a day off on the go-live date, with their tests.
   - Done when: tests cover a holiday inside a week, a working Saturday and a grade-range entry.
