@@ -77,6 +77,27 @@ describe('the School setup entry', () => {
     },
   );
 
+  // Owner's answer 14 (task 1.5): the Super Admin, the Principal and the
+  // Academic Vice Principal view the slot types and day templates.
+  it.each(['super_admin', 'principal', 'academic_vice_principal'] as const)(
+    'lists the slot types, the day templates and where they apply for the %s',
+    async (role) => {
+      fakeApi({ 'GET /api/auth/session': () => json(sessionAs(role)) });
+      renderApp('/setup');
+      await screen.findByRole('heading', { name: en.setup.title });
+
+      expect(screen.getByRole('link', { name: en.setup.slotTypesLink }).getAttribute('href')).toBe(
+        '/setup/slot-types',
+      );
+      expect(
+        screen.getByRole('link', { name: en.setup.dayTemplatesLink }).getAttribute('href'),
+      ).toBe('/setup/day-templates');
+      expect(
+        screen.getByRole('link', { name: en.setup.templateSettingsLink }).getAttribute('href'),
+      ).toBe('/setup/day-template-settings');
+    },
+  );
+
   it('says that a role without setup rights has no setup pages', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionAs('teacher')) });
     renderApp('/setup');
@@ -84,5 +105,6 @@ describe('the School setup entry', () => {
 
     expect(screen.getByText(en.setup.none)).toBeDefined();
     expect(screen.queryByRole('link', { name: en.setup.roomsLink })).toBeNull();
+    expect(screen.queryByRole('link', { name: en.setup.dayTemplatesLink })).toBeNull();
   });
 });
