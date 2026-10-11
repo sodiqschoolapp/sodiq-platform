@@ -40,6 +40,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'docs/spec/03, Divisions: "One list for the whole school ... Divisions are the same in every branch." A row holds names, a position and moments (task 1.2, decided by the owner).',
   departments:
     'The departments of the divisions, one list for the whole school as their divisions (docs/spec/03, Division: "Departments"); a row holds ids, names, a position and moments (task 1.2, decided by the owner).',
+  subjects:
+    'One subject list for the whole school (owner, answer 3 of "Decided ahead for tasks 2.1 to 2.6"); its weights are per branch in subject_daily_weights and subject_quarter_weights. A row holds names, a department id, grades, a colour, switches and moments (task 2.1).',
 };
 
 /**
