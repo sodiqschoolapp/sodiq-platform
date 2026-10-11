@@ -571,6 +571,51 @@ describe('subjects', () => {
       });
     });
 
+    // The review of #52, edge cases "Who can act": "The server allows an action
+    // if any current assignment permits it ... The audit log records which
+    // assignment allowed the action." The Academic Vice Principal assignment is
+    // created first, so it is the one the guard names.
+    it('moves a subject for an account that holds the Academic Vice Principal before the Super Admin, naming the Super Admin assignment', async () => {
+      const both = await t.kit.completeSession('Malika', 'Tursunova');
+      const vice = await t.kit.giveRole(both.account.id, {
+        role: 'academic_vice_principal',
+        branchId: t.north,
+      });
+      const superAdmin = await t.kit.giveRole(both.account.id, { role: 'super_admin' });
+      const subject = await create();
+
+      const listed = await t.get('/api/setup/subjects', t.north, both.cookie);
+      expect(subjectListSchema.parse(listed.body).mayMoveDepartment).toBe(true);
+      const kept = await put(
+        `/api/setup/subjects/${subject.id}`,
+        t.north,
+        editBody(subject, { groupSubject: true }),
+        both.cookie,
+      );
+      expect(kept.status).toBe(200);
+      expect((await schoolEntries('subject.edit', subject.id)).at(-1)).toMatchObject({
+        assignment_id: vice.id,
+      });
+
+      const moved = await put(
+        `/api/setup/subjects/${subject.id}`,
+        t.north,
+        editBody(subject, { departmentId: tutors, groupSubject: true }),
+        both.cookie,
+      );
+
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      expect(subjectSchema.parse(moved.body).departmentId).toBe(tutors);
+      expect((await schoolEntries('subject.edit', subject.id)).at(-1)).toMatchObject({
+        actor_id: both.account.id,
+        assignment_id: superAdmin.id,
+        old_value: { departmentId: steam },
+        new_value: { departmentId: tutors },
+      });
+      const alone = await t.get('/api/setup/subjects', t.north, t.vicePrincipal);
+      expect(subjectListSchema.parse(alone.body).mayMoveDepartment).toBe(false);
+    });
+
     it('into an unknown department is not found, outside Academic refused; nothing is written', async () => {
       const subject = await create();
       const before = await rows();
@@ -885,8 +930,10 @@ describe('subjects', () => {
       expect(await rows()).toEqual(before);
     });
 
-    // Decision 3: a distribution counts only when its shape fits the switch.
-    it('stop fitting when the rating switch is turned off, and count as missing', async () => {
+    // Decision 3: a distribution counts only when its shape fits the switch;
+    // decision 19: a change of the switch starts a new rating round, so the
+    // old distribution shows as not set.
+    it('stop counting when the rating switch is turned off, and count as missing', async () => {
       const branch = await t.newBranch();
       const { yearId, quarterIds } = await insertYear(branch, '2026-09-01');
       const subject = await create({}, branch);
@@ -908,7 +955,65 @@ describe('subjects', () => {
         (await t.get(`/api/setup/subjects/${subject.id}/quarter-weights?yearId=${yearId}`, branch))
           .body,
       );
-      expect(read.quarters[0]).toMatchObject({ weights: RATED, fits: false });
+      expect(read.quarters[0]).toMatchObject({ weights: null, fits: false });
+    });
+
+    // The review of #52 and decision 19: turning the switch off and on again
+    // brings no quarterly distribution of before back into force; the daily
+    // distribution, which has no rating part, stays in every branch.
+    it('count no distribution of before when the rating switch is turned off and on again; the daily one stays', async () => {
+      const branch = await t.newBranch();
+      const { yearId, quarterIds } = await insertYear(branch, '2026-09-01');
+      const subject = await create({}, branch);
+      const southDaily = { attendance: 20, classwork: 40, homework: 40 };
+      await put(`/api/setup/subjects/${subject.id}/daily-weights`, t.south, southDaily);
+      const path = (index: number) =>
+        `/api/setup/subjects/${subject.id}/quarter-weights/${quarterIds[index] ?? ''}`;
+      expect((await put(path(1), branch, RATED)).status).toBe(200);
+      const off = subjectSchema.parse(
+        (
+          await put(
+            `/api/setup/subjects/${subject.id}`,
+            branch,
+            editBody(subject, { ratingExam: false }),
+          )
+        ).body,
+      );
+      expect((await schoolEntries('subject.edit', subject.id)).at(-1)?.details).toEqual({
+        ratingRound: { from: 1, to: 2 },
+      });
+      expect((await put(path(2), branch, UNRATED)).status).toBe(200);
+      const entries = (await t.entries('subject_quarter_weights.set', subject.id)).length;
+
+      const on = await put(
+        `/api/setup/subjects/${subject.id}`,
+        branch,
+        editBody(off, { ratingExam: true }),
+      );
+
+      expect(on.status, JSON.stringify(on.body)).toBe(200);
+      expect(subjectSchema.parse(on.body)).toMatchObject({
+        daily: DAILY,
+        quarterWeightsMissing: 4,
+      });
+      expect((await schoolEntries('subject.edit', subject.id)).at(-1)?.details).toEqual({
+        ratingRound: { from: 2, to: 3 },
+      });
+      expect((await inList(subject.id, t.south)).daily).toEqual(southDaily);
+      const read = subjectQuarterWeightsSchema.parse(
+        (await t.get(`/api/setup/subjects/${subject.id}/quarter-weights?yearId=${yearId}`, branch))
+          .body,
+      );
+      expect(read.quarters.map((quarter) => quarter.weights)).toEqual([null, null, null, null]);
+      expect((await t.entries('subject_quarter_weights.set', subject.id)).length).toBe(entries);
+
+      // Set again: written in the new rating round, audited from "none".
+      expect((await put(path(1), branch, RATED)).status).toBe(200);
+      expect((await t.entries('subject_quarter_weights.set', subject.id)).at(-1)).toMatchObject({
+        old_value: { weights: null },
+        new_value: { weights: RATED },
+      });
+      expect((await inList(subject.id, branch)).quarterWeightsMissing).toBe(3);
     });
   });
 
@@ -949,8 +1054,10 @@ describe('subjects', () => {
         daily: newDaily,
         quarterWeightsMissing: 4,
       });
+      // The switch went off with the journal type and comes back with it: a new rating round too.
       expect((await schoolEntries('subject.edit', subject.id)).at(-1)?.details).toEqual({
         weightsRound: { from: 1, to: 2 },
+        ratingRound: { from: 2, to: 3 },
       });
       // Another branch: its daily distribution of round 1 no longer counts.
       expect((await inList(subject.id, t.south)).daily).toBeNull();

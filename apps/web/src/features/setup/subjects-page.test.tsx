@@ -131,6 +131,7 @@ async function openList({
   quarters = [quarter(1), quarter(2), quarter(3), quarter(4)],
   extra = {},
   language = 'en',
+  mayMoveDepartment = true,
 }: {
   session?: ReturnType<typeof superAdmin>;
   subjects?: Subject[];
@@ -139,6 +140,7 @@ async function openList({
   quarters?: SubjectQuarter[];
   extra?: Record<string, (body: unknown) => Response>;
   language?: 'en' | 'ru';
+  mayMoveDepartment?: boolean;
 } = {}) {
   const account = { ...session, language };
   const answer = (rows: SubjectQuarter[]): SubjectQuarterWeights => ({
@@ -148,7 +150,7 @@ async function openList({
   });
   const calls = fakeApi({
     'GET /api/auth/session': () => json(account),
-    'GET /api/setup/subjects': () => json({ subjects }),
+    'GET /api/setup/subjects': () => json({ subjects, mayMoveDepartment }),
     'GET /api/setup/divisions': () => json({ divisions }),
     'GET /api/setup/academic-years': () => json({ years }),
     [`GET /api/setup/subjects/${MATHS.id}/quarter-weights`]: () => json(answer(quarters)),
@@ -444,6 +446,7 @@ describe('the subjects page', () => {
         assignments: [{ role: 'academic_vice_principal', branchId: NORTH.id }],
         branches: [NORTH],
       }),
+      mayMoveDepartment: false,
     });
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
@@ -451,6 +454,27 @@ describe('the subjects page', () => {
     const form = within(panel).getByRole('form', { name: 'Mathematics' });
     expect(within(form).getByLabelText(subjectsText.department)).toHaveProperty('disabled', true);
     expect(within(form).getByText(subjectsText.departmentLocked)).toBeDefined();
+  });
+
+  // The review of #52: the server decides the move from every current
+  // assignment, so the screen follows its answer, not the role shown.
+  it('lets an account that also holds the Super Admin move a subject while the Academic Vice Principal is shown', async () => {
+    await openList({
+      session: sessionOf({
+        assignments: [
+          { role: 'academic_vice_principal', branchId: NORTH.id },
+          { role: 'super_admin', branchId: null },
+        ],
+        branches: [NORTH],
+      }),
+      mayMoveDepartment: true,
+    });
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+
+    const form = within(panel).getByRole('form', { name: 'Mathematics' });
+    expect(within(form).getByLabelText(subjectsText.department)).toHaveProperty('disabled', false);
+    expect(within(form).queryByText(subjectsText.departmentLocked)).toBeNull();
   });
 
   it('shows the Principal the list and the panel without add, forms or archive', async () => {

@@ -50,6 +50,7 @@ const SUBJECT_COLUMNS = [
   'demanding',
   'archived_at',
   'weights_round',
+  'rating_round',
 ] as const;
 
 interface SubjectRow {
@@ -68,6 +69,11 @@ interface SubjectRow {
   archived_at: Date | null;
   /** The round of being graded (db/migrations/0021, decision 14); a weight row of another round is not counted. */
   weights_round: number;
+  /**
+   * The round of the rating switch (db/migrations/0023, decision 19); a
+   * quarterly row of another rating round is not counted.
+   */
+  rating_round: number;
 }
 
 interface WeightsRow {
@@ -163,6 +169,35 @@ function branchOf(access: Access): string {
 }
 
 /**
+ * The rounds an edit started, for its audit entry: `weightsRound` for a
+ * subject made graded again (decision 14), `ratingRound` for a change of the
+ * rating switch (decision 19). Nothing when neither moved.
+ */
+function roundDetails(
+  row: SubjectRow,
+  round: number,
+  ratingRound: number,
+): { details?: Record<string, { from: number; to: number }> } {
+  const details: Record<string, { from: number; to: number }> = {};
+  if (round !== row.weights_round) {
+    details.weightsRound = { from: row.weights_round, to: round };
+  }
+  if (ratingRound !== row.rating_round) {
+    details.ratingRound = { from: row.rating_round, to: ratingRound };
+  }
+  return Object.keys(details).length === 0 ? {} : { details };
+}
+
+/**
+ * The current Super Admin assignment of the account, the only one that moves
+ * a subject to another department (decision 17). Decided from every current
+ * assignment, not from the one the guard named: edge cases, "Who can act",
+ * "The server allows an action if any current assignment permits it".
+ */
+const superAdminOf = (access: Access): string | undefined =>
+  access.assignments.find((assignment) => assignment.role === 'super_admin')?.id;
+
+/**
  * Subjects and their weights (docs/spec/05-classes-groups-subjects.md, Subject
  * and "Grading weights on a subject"; task 2.1). The subject is school-wide
  * (owner's answer 3) and every change of it is an audit entry of the whole
@@ -189,7 +224,10 @@ export class Subjects {
         .orderBy('name_en')
         .orderBy('id')
         .execute();
-      return { subjects: await this.withWeights(transaction, branchId, rows) };
+      return {
+        subjects: await this.withWeights(transaction, branchId, rows),
+        mayMoveDepartment: superAdminOf(access) !== undefined,
+      };
     });
   }
 
@@ -241,13 +279,17 @@ export class Subjects {
         const row = await this.lockActive(transaction, id);
         const before = fieldsOf(row);
         const after = recordFields(record);
+        // The assignment the audit entry names: for a move, the Super Admin one.
+        let assignmentId = access.assignmentId;
         if (after.departmentId !== before.departmentId) {
           // `edge/people-roles-accounts`: "A teacher moves to another department,
           // or a subject is moved, mid-year. Both changes ... are made by the
           // Super Admin." (Decision 17 of pull request #52.)
-          if (access.role !== 'super_admin') {
+          const superAdmin = superAdminOf(access);
+          if (superAdmin === undefined) {
             throw new ApiException('subject_move_super_admin', 403);
           }
+          assignmentId = superAdmin;
           await this.checkDepartment(transaction, after.departmentId);
         }
         // Decision 14: a subject that becomes graded again starts a new round;
@@ -256,6 +298,11 @@ export class Subjects {
           before.journalType === 'attendance_only' && after.journalType === 'graded'
             ? row.weights_round + 1
             : row.weights_round;
+        // Decision 19: a change of the rating switch starts a new rating round;
+        // the quarterly distributions of every branch from before no longer
+        // count. The daily distribution has no rating part and stays.
+        const ratingRound =
+          before.ratingExam === after.ratingExam ? row.rating_round : row.rating_round + 1;
         const daily = await this.currentDaily(transaction, branchId, id, round);
         if (record.daily !== null && daily !== undefined) {
           throw refused('daily_weights_set');
@@ -267,21 +314,19 @@ export class Subjects {
         if (changes !== null) {
           await transaction
             .updateTable('subjects')
-            .set({ ...columnsOf(after), weights_round: round })
+            .set({ ...columnsOf(after), weights_round: round, rating_round: ratingRound })
             .where('id', '=', id)
             .execute();
           await this.audit.record(transaction, {
             branchId: null,
             actorId: access.accountId,
-            assignmentId: access.assignmentId,
+            assignmentId,
             action: 'subject.edit',
             record: { type: 'subject', id },
             oldValue: changes.oldValue,
             newValue: changes.newValue,
             // A new round: the weights of every branch from before no longer count.
-            ...(round === row.weights_round
-              ? {}
-              : { details: { weightsRound: { from: row.weights_round, to: round } } }),
+            ...roundDetails(row, round, ratingRound),
             requestId,
           });
         }
@@ -480,6 +525,7 @@ export class Subjects {
                 .where('subject_id', '=', id)
                 .where('quarter_id', '=', first.id)
                 .where('weights_round', '=', subject.weights_round)
+                .where('rating_round', '=', subject.rating_round)
                 .executeTakeFirst();
         if (source === undefined || !fits(source, subject.rating_exam)) {
           throw refused('quarter_one_not_set');
@@ -668,16 +714,27 @@ export class Subjects {
   ): Promise<void> {
     const subjectId = subject.id;
     const round = subject.weights_round;
+    const ratingRound = subject.rating_round;
     const before = await transaction
       .selectFrom('subject_quarter_weights')
-      .select(['attendance', 'classwork', 'homework', 'rating_exam', 'weights_round'])
+      .select([
+        'attendance',
+        'classwork',
+        'homework',
+        'rating_exam',
+        'weights_round',
+        'rating_round',
+      ])
       .where('branch_id', '=', branchId)
       .where('subject_id', '=', subjectId)
       .where('quarter_id', '=', quarterId)
       .forUpdate()
       .executeTakeFirst();
+    // A row of an earlier round, or of an earlier rating round, counts as none before.
     const oldValue =
-      before === undefined || before.weights_round !== round ? null : quarterOf(before);
+      before === undefined || before.weights_round !== round || before.rating_round !== ratingRound
+        ? null
+        : quarterOf(before);
     const newValue = quarterOf({
       attendance: weights.attendance,
       classwork: weights.classwork,
@@ -693,6 +750,7 @@ export class Subjects {
       homework: weights.homework,
       rating_exam: weights.ratingExam,
       weights_round: round,
+      rating_round: ratingRound,
     };
     if (before === undefined) {
       await transaction
@@ -774,6 +832,7 @@ export class Subjects {
           'subject_quarter_weights.subject_id',
           'subject_quarter_weights.rating_exam',
           'subject_quarter_weights.weights_round',
+          'subject_quarter_weights.rating_round',
         ])
         .where('subject_quarter_weights.branch_id', '=', branchId)
         .where('subject_quarter_weights.subject_id', 'in', ids)
@@ -789,6 +848,7 @@ export class Subjects {
         (stored) =>
           stored.subject_id === row.id &&
           stored.weights_round === row.weights_round &&
+          stored.rating_round === row.rating_round &&
           (stored.rating_exam !== null) === row.rating_exam,
       ).length;
       return {
@@ -822,7 +882,8 @@ export class Subjects {
           .onRef('subject_quarter_weights.quarter_id', '=', 'quarters.id')
           .on('subject_quarter_weights.subject_id', '=', subject.id)
           .on('subject_quarter_weights.branch_id', '=', branchId)
-          .on('subject_quarter_weights.weights_round', '=', subject.weights_round),
+          .on('subject_quarter_weights.weights_round', '=', subject.weights_round)
+          .on('subject_quarter_weights.rating_round', '=', subject.rating_round),
       )
       .select([
         'quarters.id',

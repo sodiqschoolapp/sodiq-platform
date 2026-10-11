@@ -352,6 +352,7 @@ export interface SubjectQuarterWeights {
   homework: number;
   quarter_id: string;
   rating_exam: number | null;
+  rating_round: Generated<number>;
   subject_id: string;
   weights_round: Generated<number>;
 }
@@ -371,6 +372,7 @@ export interface Subjects {
   name_ru: string;
   name_uz: string;
   rating_exam: Generated<boolean>;
+  rating_round: Generated<number>;
   weights_round: Generated<number>;
 }
 

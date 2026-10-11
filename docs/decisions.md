@@ -145,7 +145,7 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 
 ## 11 October 2026: subjects and their weights (task 2.1)
 
-Plan approved on pull request #52 (`[review] approved`, decisions 1 to 16 confirmed, corrections 1 to 4 applied). The owner's answers 3 to 8 above were followed as written. Decisions 17 and 18 and migrations 0021 and 0022 came from the reviews of the build. Flagged on issue #42.
+Plan approved on pull request #52 (`[review] approved`, decisions 1 to 16 confirmed, corrections 1 to 4 applied). The owner's answers 3 to 8 above were followed as written. Decisions 17 and 18 and migrations 0021 and 0022 came from the reviews of the build; decisions 19 and 20 and migration 0023 from the `[review] changes needed` round. Flagged on issue #42.
 
 | Decision | Reason |
 | --- | --- |
@@ -161,6 +161,8 @@ Plan approved on pull request #52 (`[review] approved`, decisions 1 to 16 confir
 | The daily distribution has its own route; an edit takes `daily` only while the branch has none | Decision 15: no lost update across branches |
 | "Copy quarter 1" overwrites quarters 2 to 4 of the year, all or nothing, after a confirmation when one is set | Answer 6 |
 | Only the Super Admin moves a subject to another department (`subject_move_super_admin`); its start date and the refusal against the load come with 3.4 | `edge/people-roles-accounts`: "made by the Super Admin" (decision 17) |
+| The department move is decided from every current assignment: allowed when one is a Super Admin assignment, which the `subject.edit` entry then names; the list answers `mayMoveDepartment` and the screen follows it, not the role shown (decision 20) | `edge/people-roles-accounts`, "The server allows an action if any current assignment permits it … The audit log records which assignment allowed the action"; the review of #52 |
+| A change of the rating exam switch starts a new `rating_round` (0023): no quarterly distribution of an earlier rating round counts, in any branch; the daily distribution stays; the round only grows and a quarterly row is written only in the current one (decision 19) | The review of #52; `05`: the daily distribution has no rating part, and "Each change is logged"; a switch turned off and on again would otherwise revive old quarterly rows without an audit entry |
 | The closed-year guard locks the year row whatever its status (0022) | A lock under a status condition locks nothing for an open year |
 | 12 subject colours as tokens of `index.css`, the swatch 3:1 on the background and the name on a 15% tint 4.5:1, in both themes | Answer 7; `12` |
 | Names unique among active subjects per language (case and outer spaces ignored), at most 100 | As divisions (1.2) |

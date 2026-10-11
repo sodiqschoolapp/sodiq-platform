@@ -26,6 +26,8 @@ interface SubjectPanelProps {
   departmentName: string;
   canEdit: boolean;
   canArchive: boolean;
+  /** The server's answer, from every current assignment (decision 17), not the role shown. */
+  mayMoveDepartment: boolean;
 }
 
 /**
@@ -41,6 +43,7 @@ export function SubjectPanel({
   departmentName,
   canEdit,
   canArchive,
+  mayMoveDepartment,
 }: SubjectPanelProps) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -49,7 +52,6 @@ export function SubjectPanel({
   const name = nameOf(subject.names, language);
   const active = subject.archivedAt === null;
   const graded = subject.journalType === 'graded';
-  const { role } = useView();
   const refresh = () => invalidateSubjects(queryClient);
 
   const edit = useMutation({
@@ -115,7 +117,7 @@ export function SubjectPanel({
           subject={subject}
           departments={departments}
           hasDaily={graded && subject.daily !== null}
-          departmentLocked={role !== 'super_admin'}
+          departmentLocked={!mayMoveDepartment}
           label={name}
           onSave={async (record) => {
             await edit.mutateAsync(record);
@@ -373,7 +375,7 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
       <h3 className="text-base font-semibold">{title}</h3>
       {open.length === 1 && (
         <p className="text-sm text-muted-foreground">
-          {t('setup.subjects.year')}: {open[0]?.name}
+          {t('setup.subjects.yearNamed', { name: open[0]?.name })}
         </p>
       )}
       {open.length > 1 && (

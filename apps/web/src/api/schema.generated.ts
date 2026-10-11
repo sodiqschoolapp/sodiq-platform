@@ -6735,6 +6735,7 @@ export interface operations {
                             } | null;
                             quarterWeightsMissing: number | null;
                         }[];
+                        mayMoveDepartment: boolean;
                     };
                 };
             };

@@ -196,7 +196,15 @@ export const subjectSchema = subjectFieldsSchema.extend({
 
 export type Subject = z.infer<typeof subjectSchema>;
 
-export const subjectListSchema = z.object({ subjects: z.array(subjectSchema) });
+export const subjectListSchema = z.object({
+  subjects: z.array(subjectSchema),
+  /**
+   * Whether the account may move a subject to another department: it holds a
+   * current Super Admin assignment (decision 17). The server decides it from
+   * every current assignment, so the screen follows this, not the role shown.
+   */
+  mayMoveDepartment: z.boolean(),
+});
 
 export type SubjectList = z.infer<typeof subjectListSchema>;
 

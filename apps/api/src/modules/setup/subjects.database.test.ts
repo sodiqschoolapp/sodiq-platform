@@ -623,6 +623,64 @@ describe('subjects in the database', () => {
     });
   });
 
+  // Migration 0023 (decision 19; the review of #52): the rating round of a
+  // subject only grows, and a quarterly row is written in the current rating
+  // round, so a change of the rating switch brings no old row back into force.
+  describe('keep the rating round', () => {
+    const setRatingRound = (subject: string, round: number, writer: 'app' | 'migrator') => {
+      const update = (db: Database | Transaction) =>
+        db.updateTable('subjects').set({ rating_round: round }).where('id', '=', subject).execute();
+      return writer === 'app' ? asApp(update) : update(database.migrator);
+    };
+
+    it.each(['app', 'migrator'] as const)(
+      'growing only, as the %s; never below 1',
+      async (writer) => {
+        const subject = await insertSubject();
+        await expect(setRatingRound(subject, 2, writer)).resolves.toBeDefined();
+        await expect(setRatingRound(subject, 1, writer)).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'subjects_rating_round_down',
+        });
+        await expect(insertSubject({ rating_round: 0 }, 'migrator')).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      },
+    );
+
+    it.each(['app', 'migrator'] as const)(
+      'with every quarterly row in the current rating round of its subject, as the %s',
+      async (writer) => {
+        const subject = await insertSubject();
+        const [first, second] = await insertYear(
+          north,
+          writer === 'app' ? '2032-09-01' : '2033-09-01',
+        );
+        const weights = { attendance: 10, classwork: 50, homework: 40, rating_exam: null };
+        await insertQuarterWeights(north, subject, first ?? '', weights, writer);
+        await setRatingRound(subject, 2, 'app');
+
+        // A row of rating round 1 is not brought into round 2 without new values, nor kept in round 1.
+        const updateRow = (round: number) => {
+          const update = (db: Database | Transaction) =>
+            db
+              .updateTable('subject_quarter_weights')
+              .set({ rating_round: round })
+              .where('subject_id', '=', subject)
+              .execute();
+          return writer === 'app' ? inBranch(north, update) : update(database.migrator);
+        };
+        await expect(updateRow(1)).rejects.toMatchObject({
+          constraint: 'subject_quarter_weights_current_rating_round',
+        });
+        await expect(updateRow(2)).resolves.toBeDefined();
+        await expect(
+          insertQuarterWeights(north, subject, second ?? '', weights, writer),
+        ).rejects.toMatchObject({ constraint: 'subject_quarter_weights_current_rating_round' });
+      },
+    );
+  });
+
   // CLAUDE.md, "Archive, do not delete"; the grants of 0020 and 0021.
   describe('give the application no removal and no write of protected columns', () => {
     it('refuse a delete from the three tables', async () => {

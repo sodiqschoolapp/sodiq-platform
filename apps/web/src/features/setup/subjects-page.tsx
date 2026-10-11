@@ -376,6 +376,7 @@ export function SubjectsPage() {
             departmentName={departmentNames.get(row.departmentId) ?? ''}
             canEdit={canEdit}
             canArchive={canArchive}
+            mayMoveDepartment={subjects.data?.mayMoveDepartment ?? false}
           />
         )}
       />

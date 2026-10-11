@@ -638,6 +638,7 @@ export const uz: Texts<'one' | 'other'> = {
       quarter: '{{n}}-chorak',
       undated: 'sanasiz',
       year: 'Oʻquv yili',
+      yearNamed: 'Oʻquv yili: {{name}}',
       noYear: 'Choraklik taqsimot uchun rejalashtirilgan yoki joriy oʻquv yili kerak.',
       notSet: 'Belgilanmagan',
       setAgain: 'Reyting imtihoni belgisi oʻzgardi: bu chorakni qaytadan belgilang.',

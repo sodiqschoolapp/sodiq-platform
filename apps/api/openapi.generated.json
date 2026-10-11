@@ -20784,10 +20784,14 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "mayMoveDepartment": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
-                    "subjects"
+                    "subjects",
+                    "mayMoveDepartment"
                   ],
                   "additionalProperties": false
                 }

@@ -631,6 +631,7 @@ export const en = {
       quarter: 'Quarter {{n}}',
       undated: 'not dated',
       year: 'Academic year',
+      yearNamed: 'Academic year: {{name}}',
       noYear: 'Quarterly distributions need a planned or current academic year.',
       notSet: 'Not set',
       setAgain: 'The rating exam switch changed: set this quarter again.',
