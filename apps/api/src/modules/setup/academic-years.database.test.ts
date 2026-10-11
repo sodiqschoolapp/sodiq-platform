@@ -612,38 +612,44 @@ describe('academic years and quarters in the database', () => {
       const branch = await newBranch();
       const other = await addYear(branch, '2027-09-02', '2028-05-25');
       const year = await addYear(branch, '2026-09-02', '2027-05-25');
+      // Each attempt starts when it is awaited: a refusal left waiting would be an unhandled rejection.
       const attempts = [
-        inBranch(branch, (transaction) =>
-          transaction.deleteFrom('quarters').where('academic_year_id', '=', year).execute(),
-        ),
-        inBranch(branch, (transaction) =>
-          transaction.deleteFrom('academic_years').where('id', '=', year).execute(),
-        ),
-        inBranch(branch, (transaction) =>
-          transaction
-            .updateTable('quarters')
-            .set({ academic_year_id: other })
-            .where('academic_year_id', '=', year)
-            .execute(),
-        ),
-        inBranch(branch, (transaction) =>
-          transaction
-            .updateTable('quarters')
-            .set({ number: 4 })
-            .where('academic_year_id', '=', year)
-            .where('number', '=', 1)
-            .execute(),
-        ),
-        inBranch(branch, (transaction) =>
-          transaction
-            .updateTable('academic_years')
-            .set({ branch_id: branch })
-            .where('id', '=', year)
-            .execute(),
-        ),
+        () =>
+          inBranch(branch, (transaction) =>
+            transaction.deleteFrom('quarters').where('academic_year_id', '=', year).execute(),
+          ),
+        () =>
+          inBranch(branch, (transaction) =>
+            transaction.deleteFrom('academic_years').where('id', '=', year).execute(),
+          ),
+        () =>
+          inBranch(branch, (transaction) =>
+            transaction
+              .updateTable('quarters')
+              .set({ academic_year_id: other })
+              .where('academic_year_id', '=', year)
+              .execute(),
+          ),
+        () =>
+          inBranch(branch, (transaction) =>
+            transaction
+              .updateTable('quarters')
+              .set({ number: 4 })
+              .where('academic_year_id', '=', year)
+              .where('number', '=', 1)
+              .execute(),
+          ),
+        () =>
+          inBranch(branch, (transaction) =>
+            transaction
+              .updateTable('academic_years')
+              .set({ branch_id: branch })
+              .where('id', '=', year)
+              .execute(),
+          ),
       ];
       for (const attempt of attempts) {
-        expect((await refusal(attempt)).code).toBe(INSUFFICIENT_PRIVILEGE);
+        expect((await refusal(attempt())).code).toBe(INSUFFICIENT_PRIVILEGE);
       }
     });
 
