@@ -1472,6 +1472,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -1732,6 +1741,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2080,6 +2098,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2361,6 +2388,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2599,6 +2635,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2843,6 +2888,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3099,6 +3153,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3335,6 +3398,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3571,6 +3643,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3798,6 +3879,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4025,6 +4115,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4232,6 +4331,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4439,6 +4547,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4692,6 +4809,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4994,6 +5120,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5308,6 +5443,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5590,6 +5734,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5887,6 +6040,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6197,6 +6359,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6467,6 +6638,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6737,6 +6917,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6991,6 +7180,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -7245,6 +7443,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -7459,6 +7666,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -7673,6 +7889,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -7922,6 +8147,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8183,6 +8417,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8456,6 +8699,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8703,6 +8955,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8991,6 +9252,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -9271,6 +9541,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -9525,6 +9804,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -9793,6 +10081,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10059,6 +10356,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10331,6 +10637,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10577,6 +10892,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10823,6 +11147,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -11056,6 +11389,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -11394,6 +11736,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -11718,6 +12069,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12050,6 +12410,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12400,6 +12769,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12714,6 +13092,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -13028,6 +13415,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -13317,6 +13713,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -13684,6 +14089,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -13985,6 +14399,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -14328,6 +14751,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15144,6 +15576,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15456,6 +15897,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15866,6 +16316,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -16653,6 +17112,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -17075,6 +17543,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -17379,6 +17856,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -17683,6 +18169,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18025,6 +18520,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18229,6 +18733,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18453,6 +18966,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18695,6 +19217,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18950,6 +19481,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19198,6 +19738,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19302,7 +19851,8 @@
                               "quarters",
                               "slotTypes",
                               "defaultTemplate",
-                              "calendar"
+                              "calendar",
+                              "subjects"
                             ]
                           },
                           "done": {
@@ -19417,6 +19967,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19620,6 +20179,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19847,6 +20415,15 @@
                             "go_live_school_day_taken",
                             "go_live_not_school_day",
                             "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19910,6 +20487,3162 @@
         },
         "tags": [
           "TravelTimes"
+        ]
+      }
+    },
+    "/api/setup/subjects": {
+      "get": {
+        "operationId": "SubjectsController_list",
+        "parameters": [
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "subjects": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "names": {
+                            "type": "object",
+                            "properties": {
+                              "uz": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "ru": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "en": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              }
+                            },
+                            "required": [
+                              "uz",
+                              "ru",
+                              "en"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "departmentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "grades": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 11
+                            }
+                          },
+                          "colour": {
+                            "type": "string",
+                            "enum": [
+                              "red",
+                              "orange",
+                              "amber",
+                              "lime",
+                              "green",
+                              "teal",
+                              "cyan",
+                              "blue",
+                              "indigo",
+                              "violet",
+                              "pink",
+                              "brown"
+                            ]
+                          },
+                          "journalType": {
+                            "type": "string",
+                            "enum": [
+                              "graded",
+                              "attendance_only"
+                            ]
+                          },
+                          "ratingExam": {
+                            "type": "boolean"
+                          },
+                          "groupSubject": {
+                            "type": "boolean"
+                          },
+                          "languageRule": {
+                            "type": "boolean"
+                          },
+                          "demanding": {
+                            "type": "boolean"
+                          },
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "archivedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "daily": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "attendance": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 100
+                              },
+                              "classwork": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 100
+                              },
+                              "homework": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 100
+                              }
+                            },
+                            "required": [
+                              "attendance",
+                              "classwork",
+                              "homework"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "quarterWeightsMissing": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "names",
+                          "departmentId",
+                          "grades",
+                          "colour",
+                          "journalType",
+                          "ratingExam",
+                          "groupSubject",
+                          "languageRule",
+                          "demanding",
+                          "id",
+                          "archivedAt",
+                          "daily",
+                          "quarterWeightsMissing"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "subjects"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subjects"
+        ]
+      },
+      "post": {
+        "operationId": "SubjectsController_create",
+        "parameters": [
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "names": {
+                    "type": "object",
+                    "properties": {
+                      "uz": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "ru": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "en": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      }
+                    },
+                    "required": [
+                      "uz",
+                      "ru",
+                      "en"
+                    ]
+                  },
+                  "departmentId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "grades": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 11
+                    }
+                  },
+                  "colour": {
+                    "type": "string",
+                    "enum": [
+                      "red",
+                      "orange",
+                      "amber",
+                      "lime",
+                      "green",
+                      "teal",
+                      "cyan",
+                      "blue",
+                      "indigo",
+                      "violet",
+                      "pink",
+                      "brown"
+                    ]
+                  },
+                  "journalType": {
+                    "type": "string",
+                    "enum": [
+                      "graded",
+                      "attendance_only"
+                    ]
+                  },
+                  "ratingExam": {
+                    "type": "boolean"
+                  },
+                  "groupSubject": {
+                    "type": "boolean"
+                  },
+                  "languageRule": {
+                    "type": "boolean"
+                  },
+                  "demanding": {
+                    "type": "boolean"
+                  },
+                  "daily": {
+                    "nullable": true,
+                    "type": "object",
+                    "properties": {
+                      "attendance": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100
+                      },
+                      "classwork": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100
+                      },
+                      "homework": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100
+                      }
+                    },
+                    "required": [
+                      "attendance",
+                      "classwork",
+                      "homework"
+                    ]
+                  }
+                },
+                "required": [
+                  "names",
+                  "departmentId",
+                  "grades",
+                  "colour",
+                  "journalType",
+                  "ratingExam",
+                  "groupSubject",
+                  "languageRule",
+                  "demanding",
+                  "daily"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "names": {
+                      "type": "object",
+                      "properties": {
+                        "uz": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "ru": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "en": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        }
+                      },
+                      "required": [
+                        "uz",
+                        "ru",
+                        "en"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "departmentId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "grades": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 11
+                      }
+                    },
+                    "colour": {
+                      "type": "string",
+                      "enum": [
+                        "red",
+                        "orange",
+                        "amber",
+                        "lime",
+                        "green",
+                        "teal",
+                        "cyan",
+                        "blue",
+                        "indigo",
+                        "violet",
+                        "pink",
+                        "brown"
+                      ]
+                    },
+                    "journalType": {
+                      "type": "string",
+                      "enum": [
+                        "graded",
+                        "attendance_only"
+                      ]
+                    },
+                    "ratingExam": {
+                      "type": "boolean"
+                    },
+                    "groupSubject": {
+                      "type": "boolean"
+                    },
+                    "languageRule": {
+                      "type": "boolean"
+                    },
+                    "demanding": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "archivedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "daily": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "attendance": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "classwork": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "homework": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "attendance",
+                        "classwork",
+                        "homework"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "quarterWeightsMissing": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "names",
+                    "departmentId",
+                    "grades",
+                    "colour",
+                    "journalType",
+                    "ratingExam",
+                    "groupSubject",
+                    "languageRule",
+                    "demanding",
+                    "id",
+                    "archivedAt",
+                    "daily",
+                    "quarterWeightsMissing"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subjects"
+        ]
+      }
+    },
+    "/api/setup/subjects/{id}": {
+      "put": {
+        "operationId": "SubjectsController_edit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "names": {
+                    "type": "object",
+                    "properties": {
+                      "uz": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "ru": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "en": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      }
+                    },
+                    "required": [
+                      "uz",
+                      "ru",
+                      "en"
+                    ]
+                  },
+                  "departmentId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "grades": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 11
+                    }
+                  },
+                  "colour": {
+                    "type": "string",
+                    "enum": [
+                      "red",
+                      "orange",
+                      "amber",
+                      "lime",
+                      "green",
+                      "teal",
+                      "cyan",
+                      "blue",
+                      "indigo",
+                      "violet",
+                      "pink",
+                      "brown"
+                    ]
+                  },
+                  "journalType": {
+                    "type": "string",
+                    "enum": [
+                      "graded",
+                      "attendance_only"
+                    ]
+                  },
+                  "ratingExam": {
+                    "type": "boolean"
+                  },
+                  "groupSubject": {
+                    "type": "boolean"
+                  },
+                  "languageRule": {
+                    "type": "boolean"
+                  },
+                  "demanding": {
+                    "type": "boolean"
+                  },
+                  "daily": {
+                    "nullable": true,
+                    "type": "object",
+                    "properties": {
+                      "attendance": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100
+                      },
+                      "classwork": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100
+                      },
+                      "homework": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100
+                      }
+                    },
+                    "required": [
+                      "attendance",
+                      "classwork",
+                      "homework"
+                    ]
+                  }
+                },
+                "required": [
+                  "names",
+                  "departmentId",
+                  "grades",
+                  "colour",
+                  "journalType",
+                  "ratingExam",
+                  "groupSubject",
+                  "languageRule",
+                  "demanding",
+                  "daily"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "names": {
+                      "type": "object",
+                      "properties": {
+                        "uz": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "ru": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "en": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        }
+                      },
+                      "required": [
+                        "uz",
+                        "ru",
+                        "en"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "departmentId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "grades": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 11
+                      }
+                    },
+                    "colour": {
+                      "type": "string",
+                      "enum": [
+                        "red",
+                        "orange",
+                        "amber",
+                        "lime",
+                        "green",
+                        "teal",
+                        "cyan",
+                        "blue",
+                        "indigo",
+                        "violet",
+                        "pink",
+                        "brown"
+                      ]
+                    },
+                    "journalType": {
+                      "type": "string",
+                      "enum": [
+                        "graded",
+                        "attendance_only"
+                      ]
+                    },
+                    "ratingExam": {
+                      "type": "boolean"
+                    },
+                    "groupSubject": {
+                      "type": "boolean"
+                    },
+                    "languageRule": {
+                      "type": "boolean"
+                    },
+                    "demanding": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "archivedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "daily": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "attendance": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "classwork": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "homework": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "attendance",
+                        "classwork",
+                        "homework"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "quarterWeightsMissing": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "names",
+                    "departmentId",
+                    "grades",
+                    "colour",
+                    "journalType",
+                    "ratingExam",
+                    "groupSubject",
+                    "languageRule",
+                    "demanding",
+                    "id",
+                    "archivedAt",
+                    "daily",
+                    "quarterWeightsMissing"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subjects"
+        ]
+      }
+    },
+    "/api/setup/subjects/{id}/daily-weights": {
+      "put": {
+        "operationId": "SubjectsController_setDaily",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "attendance": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "classwork": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "homework": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "attendance",
+                  "classwork",
+                  "homework"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "names": {
+                      "type": "object",
+                      "properties": {
+                        "uz": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "ru": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "en": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        }
+                      },
+                      "required": [
+                        "uz",
+                        "ru",
+                        "en"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "departmentId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "grades": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 11
+                      }
+                    },
+                    "colour": {
+                      "type": "string",
+                      "enum": [
+                        "red",
+                        "orange",
+                        "amber",
+                        "lime",
+                        "green",
+                        "teal",
+                        "cyan",
+                        "blue",
+                        "indigo",
+                        "violet",
+                        "pink",
+                        "brown"
+                      ]
+                    },
+                    "journalType": {
+                      "type": "string",
+                      "enum": [
+                        "graded",
+                        "attendance_only"
+                      ]
+                    },
+                    "ratingExam": {
+                      "type": "boolean"
+                    },
+                    "groupSubject": {
+                      "type": "boolean"
+                    },
+                    "languageRule": {
+                      "type": "boolean"
+                    },
+                    "demanding": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "archivedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "daily": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "attendance": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "classwork": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "homework": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "attendance",
+                        "classwork",
+                        "homework"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "quarterWeightsMissing": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "names",
+                    "departmentId",
+                    "grades",
+                    "colour",
+                    "journalType",
+                    "ratingExam",
+                    "groupSubject",
+                    "languageRule",
+                    "demanding",
+                    "id",
+                    "archivedAt",
+                    "daily",
+                    "quarterWeightsMissing"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subjects"
+        ]
+      }
+    },
+    "/api/setup/subjects/{id}/archive": {
+      "post": {
+        "operationId": "SubjectsController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "names": {
+                      "type": "object",
+                      "properties": {
+                        "uz": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "ru": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "en": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        }
+                      },
+                      "required": [
+                        "uz",
+                        "ru",
+                        "en"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "departmentId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "grades": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 11
+                      }
+                    },
+                    "colour": {
+                      "type": "string",
+                      "enum": [
+                        "red",
+                        "orange",
+                        "amber",
+                        "lime",
+                        "green",
+                        "teal",
+                        "cyan",
+                        "blue",
+                        "indigo",
+                        "violet",
+                        "pink",
+                        "brown"
+                      ]
+                    },
+                    "journalType": {
+                      "type": "string",
+                      "enum": [
+                        "graded",
+                        "attendance_only"
+                      ]
+                    },
+                    "ratingExam": {
+                      "type": "boolean"
+                    },
+                    "groupSubject": {
+                      "type": "boolean"
+                    },
+                    "languageRule": {
+                      "type": "boolean"
+                    },
+                    "demanding": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "archivedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "daily": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "attendance": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "classwork": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "homework": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "attendance",
+                        "classwork",
+                        "homework"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "quarterWeightsMissing": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "names",
+                    "departmentId",
+                    "grades",
+                    "colour",
+                    "journalType",
+                    "ratingExam",
+                    "groupSubject",
+                    "languageRule",
+                    "demanding",
+                    "id",
+                    "archivedAt",
+                    "daily",
+                    "quarterWeightsMissing"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subjects"
+        ]
+      }
+    },
+    "/api/setup/subjects/{id}/restore": {
+      "post": {
+        "operationId": "SubjectsController_restore",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "names": {
+                      "type": "object",
+                      "properties": {
+                        "uz": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "ru": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "en": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        }
+                      },
+                      "required": [
+                        "uz",
+                        "ru",
+                        "en"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "departmentId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "grades": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 11
+                      }
+                    },
+                    "colour": {
+                      "type": "string",
+                      "enum": [
+                        "red",
+                        "orange",
+                        "amber",
+                        "lime",
+                        "green",
+                        "teal",
+                        "cyan",
+                        "blue",
+                        "indigo",
+                        "violet",
+                        "pink",
+                        "brown"
+                      ]
+                    },
+                    "journalType": {
+                      "type": "string",
+                      "enum": [
+                        "graded",
+                        "attendance_only"
+                      ]
+                    },
+                    "ratingExam": {
+                      "type": "boolean"
+                    },
+                    "groupSubject": {
+                      "type": "boolean"
+                    },
+                    "languageRule": {
+                      "type": "boolean"
+                    },
+                    "demanding": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "archivedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "daily": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "attendance": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "classwork": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "homework": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "attendance",
+                        "classwork",
+                        "homework"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "quarterWeightsMissing": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "names",
+                    "departmentId",
+                    "grades",
+                    "colour",
+                    "journalType",
+                    "ratingExam",
+                    "groupSubject",
+                    "languageRule",
+                    "demanding",
+                    "id",
+                    "archivedAt",
+                    "daily",
+                    "quarterWeightsMissing"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subjects"
+        ]
+      }
+    },
+    "/api/setup/subjects/{id}/quarter-weights": {
+      "get": {
+        "operationId": "SubjectsController_quarterWeights",
+        "parameters": [
+          {
+            "name": "yearId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "yearId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "yearStatus": {
+                      "type": "string",
+                      "enum": [
+                        "planned",
+                        "current",
+                        "closed"
+                      ]
+                    },
+                    "quarters": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "quarterId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "number": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 4
+                          },
+                          "startDate": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "endDate": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "weights": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "attendance": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "classwork": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "homework": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "ratingExam": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "attendance",
+                              "classwork",
+                              "homework",
+                              "ratingExam"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "fits": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "quarterId",
+                          "number",
+                          "startDate",
+                          "endDate",
+                          "weights",
+                          "fits"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "yearId",
+                    "yearStatus",
+                    "quarters"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subjects"
+        ]
+      }
+    },
+    "/api/setup/subjects/{id}/quarter-weights/{quarterId}": {
+      "put": {
+        "operationId": "SubjectsController_setQuarterWeights",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "quarterId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "attendance": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "classwork": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "homework": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "ratingExam": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "attendance",
+                  "classwork",
+                  "homework",
+                  "ratingExam"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "yearId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "yearStatus": {
+                      "type": "string",
+                      "enum": [
+                        "planned",
+                        "current",
+                        "closed"
+                      ]
+                    },
+                    "quarters": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "quarterId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "number": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 4
+                          },
+                          "startDate": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "endDate": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "weights": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "attendance": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "classwork": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "homework": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "ratingExam": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "attendance",
+                              "classwork",
+                              "homework",
+                              "ratingExam"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "fits": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "quarterId",
+                          "number",
+                          "startDate",
+                          "endDate",
+                          "weights",
+                          "fits"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "yearId",
+                    "yearStatus",
+                    "quarters"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subjects"
+        ]
+      }
+    },
+    "/api/setup/subjects/{id}/quarter-weights/copy": {
+      "post": {
+        "operationId": "SubjectsController_copyQuarterOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "yearId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "yearId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "yearId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "yearStatus": {
+                      "type": "string",
+                      "enum": [
+                        "planned",
+                        "current",
+                        "closed"
+                      ]
+                    },
+                    "quarters": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "quarterId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "number": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 4
+                          },
+                          "startDate": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "endDate": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "weights": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "attendance": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "classwork": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "homework": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "ratingExam": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "attendance",
+                              "classwork",
+                              "homework",
+                              "ratingExam"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "fits": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "quarterId",
+                          "number",
+                          "startDate",
+                          "endDate",
+                          "weights",
+                          "fits"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "yearId",
+                    "yearStatus",
+                    "quarters"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subjects"
         ]
       }
     },
@@ -20047,6 +23780,15 @@
                   "go_live_school_day_taken",
                   "go_live_not_school_day",
                   "travel_time_same_branch",
+                  "subject_archived",
+                  "department_not_academic",
+                  "department_archived",
+                  "department_has_subjects",
+                  "daily_weights_required",
+                  "daily_weights_set",
+                  "attendance_only_no_weights",
+                  "weights_shape_mismatch",
+                  "quarter_one_not_set",
                   "request_refused",
                   "internal_error"
                 ]

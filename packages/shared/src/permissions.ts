@@ -82,6 +82,14 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   setup checklist. The Super Admin and the Academic Vice Principal view and
  *   edit; the Principal views (owner's answers 23 and 24). Travel time between
  *   branches is under `branches` (answer 24).
+ * - `subjects` (`05`, Subject and "Grading weights on a subject"; task 2.1):
+ *   the school-wide subject list and the weights of the branch. The Super
+ *   Admin and every Academic Vice Principal view, create, edit and archive
+ *   subjects (owner's answer 4; `02`: the Academic Vice Principal has "Full
+ *   edit of ... subjects and their weights"); the Principal views. No
+ *   `export` until the export of the lists exists (task 2.2). A new area for
+ *   new routes, decided without the owner on pull request #52 (decision 1),
+ *   flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -123,6 +131,11 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view', 'edit'],
     principal: ['view'],
     academic_vice_principal: ['view', 'edit'],
+  }),
+  subjects: rows({
+    super_admin: ['view', 'create', 'edit', 'archive'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive'],
   }),
   current_period: rows({
     super_admin: ['view'],

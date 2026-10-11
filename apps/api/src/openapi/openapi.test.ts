@@ -107,6 +107,14 @@ describe('OpenAPI document', () => {
         '/api/setup/slot-types/{id}/archive',
         '/api/setup/slot-types/{id}/lengths',
         '/api/setup/slot-types/{id}/restore',
+        '/api/setup/subjects',
+        '/api/setup/subjects/{id}',
+        '/api/setup/subjects/{id}/archive',
+        '/api/setup/subjects/{id}/daily-weights',
+        '/api/setup/subjects/{id}/quarter-weights',
+        '/api/setup/subjects/{id}/quarter-weights/copy',
+        '/api/setup/subjects/{id}/quarter-weights/{quarterId}',
+        '/api/setup/subjects/{id}/restore',
         '/api/setup/travel-times',
       ]);
       expect(document.paths['/api/health']?.get?.responses).toEqual({

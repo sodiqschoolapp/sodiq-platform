@@ -288,66 +288,85 @@ export class Settings {
       const years = await this.openYears(transaction);
       const yearIds = years.map((year) => year.id);
 
-      const [rooms, departments, slotTypes, defaults, quarters, entries] = await Promise.all([
-        // Rooms are never archived; one in use on an active floor of an active building.
-        transaction
-          .selectFrom('rooms')
-          .innerJoin('floors', 'floors.id', 'rooms.floor_id')
-          .innerJoin('buildings', 'buildings.id', 'floors.building_id')
-          .select(sql<number>`count(*)::int`.as('count'))
-          .where('rooms.status', '=', 'in_use')
-          .where('floors.archived_at', 'is', null)
-          .where('buildings.archived_at', 'is', null)
-          .executeTakeFirstOrThrow(),
-        // School-wide (answer 23, "shown as 'whole school'").
-        transaction
-          .selectFrom('departments')
-          .innerJoin('divisions', 'divisions.id', 'departments.division_id')
-          .select(sql<number>`count(*)::int`.as('count'))
-          .where('divisions.built_in', '=', true)
-          .where('departments.archived_at', 'is', null)
-          .executeTakeFirstOrThrow(),
-        transaction
-          .selectFrom('slot_types')
-          .select(sql<number>`count(*)::int`.as('count'))
-          .where('archived_at', 'is', null)
-          .where('kind', '=', 'lesson')
-          .executeTakeFirstOrThrow(),
-        // A default setting in force today or starting later; a withdrawn row
-        // (an empty range) never took effect (decision 6).
-        transaction
-          .selectFrom('day_template_assignments')
-          .select(sql<number>`count(*)::int`.as('count'))
-          .where('level', '=', 'default')
-          .where(
-            sql<boolean>`valid_until is null or (valid_until > ${today}::date and valid_until > valid_from)`,
-          )
-          .executeTakeFirstOrThrow(),
-        yearIds.length === 0
-          ? Promise.resolve([])
-          : transaction
-              .selectFrom('quarters')
-              .select(['academic_year_id', 'start_date'])
-              .where('academic_year_id', 'in', yearIds)
-              .execute(),
-        yearIds.length === 0
-          ? Promise.resolve({ count: 0 })
-          : transaction
-              .selectFrom('calendar_entries')
-              .select(sql<number>`count(*)::int`.as('count'))
-              .where('archived_at', 'is', null)
-              .where((where) =>
-                where.or(
-                  years.map((year) =>
-                    where.and([
-                      where('first_date', '>=', year.start_date),
-                      where('last_date', '<=', year.end_date),
-                    ]),
+      const [rooms, departments, slotTypes, defaults, quarters, entries, subjects] =
+        await Promise.all([
+          // Rooms are never archived; one in use on an active floor of an active building.
+          transaction
+            .selectFrom('rooms')
+            .innerJoin('floors', 'floors.id', 'rooms.floor_id')
+            .innerJoin('buildings', 'buildings.id', 'floors.building_id')
+            .select(sql<number>`count(*)::int`.as('count'))
+            .where('rooms.status', '=', 'in_use')
+            .where('floors.archived_at', 'is', null)
+            .where('buildings.archived_at', 'is', null)
+            .executeTakeFirstOrThrow(),
+          // School-wide (answer 23, "shown as 'whole school'").
+          transaction
+            .selectFrom('departments')
+            .innerJoin('divisions', 'divisions.id', 'departments.division_id')
+            .select(sql<number>`count(*)::int`.as('count'))
+            .where('divisions.built_in', '=', true)
+            .where('departments.archived_at', 'is', null)
+            .executeTakeFirstOrThrow(),
+          transaction
+            .selectFrom('slot_types')
+            .select(sql<number>`count(*)::int`.as('count'))
+            .where('archived_at', 'is', null)
+            .where('kind', '=', 'lesson')
+            .executeTakeFirstOrThrow(),
+          // A default setting in force today or starting later; a withdrawn row
+          // (an empty range) never took effect (decision 6).
+          transaction
+            .selectFrom('day_template_assignments')
+            .select(sql<number>`count(*)::int`.as('count'))
+            .where('level', '=', 'default')
+            .where(
+              sql<boolean>`valid_until is null or (valid_until > ${today}::date and valid_until > valid_from)`,
+            )
+            .executeTakeFirstOrThrow(),
+          yearIds.length === 0
+            ? Promise.resolve([])
+            : transaction
+                .selectFrom('quarters')
+                .select(['academic_year_id', 'start_date'])
+                .where('academic_year_id', 'in', yearIds)
+                .execute(),
+          yearIds.length === 0
+            ? Promise.resolve({ count: 0 })
+            : transaction
+                .selectFrom('calendar_entries')
+                .select(sql<number>`count(*)::int`.as('count'))
+                .where('archived_at', 'is', null)
+                .where((where) =>
+                  where.or(
+                    years.map((year) =>
+                      where.and([
+                        where('first_date', '>=', year.start_date),
+                        where('last_date', '<=', year.end_date),
+                      ]),
+                    ),
                   ),
-                ),
-              )
-              .executeTakeFirstOrThrow(),
-      ]);
+                )
+                .executeTakeFirstOrThrow(),
+          // School-wide subjects with this branch's daily distributions (task
+          // 2.1, decision 7): done when an active subject exists and every
+          // active graded one has its daily distribution here.
+          transaction
+            .selectFrom('subjects')
+            .leftJoin('subject_daily_weights', (join) =>
+              join
+                .onRef('subject_daily_weights.subject_id', '=', 'subjects.id')
+                .on('subject_daily_weights.branch_id', '=', branchId),
+            )
+            .select([
+              sql<number>`count(*)::int`.as('active'),
+              sql<number>`(count(*) filter (where subjects.journal_type = 'graded' and subject_daily_weights.subject_id is null))::int`.as(
+                'missing',
+              ),
+            ])
+            .where('subjects.archived_at', 'is', null)
+            .executeTakeFirstOrThrow(),
+        ]);
 
       const undated = years
         .filter(
@@ -374,6 +393,9 @@ export class Settings {
           item('slotTypes', slotTypes.count > 0),
           item('defaultTemplate', defaults.count > 0),
           item('calendar', null, { count: entries.count }),
+          item('subjects', subjects.active > 0 && subjects.missing === 0, {
+            count: subjects.missing,
+          }),
         ],
       };
     });

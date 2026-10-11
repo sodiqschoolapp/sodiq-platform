@@ -78,6 +78,17 @@ const MESSAGE: Record<ErrorCode, string> = {
   year_leaves_calendar_entry: 'A calendar entry would lie outside the year.',
   go_live_school_day_taken: 'The change would leave the go-live date without lessons.',
   travel_time_same_branch: 'Travel time is set between two different branches.',
+  subject_archived: 'The subject is archived. Restore it first.',
+  department_not_academic: 'A subject belongs to a department of the Academic division.',
+  department_archived: 'The department is archived.',
+  department_has_subjects: 'The department cannot be archived while an active subject is in it.',
+  daily_weights_required: 'A graded subject needs its daily distribution in this branch.',
+  daily_weights_set:
+    'The daily distribution is already set in this branch; change it on its own route.',
+  attendance_only_no_weights: 'An attendance-only subject has no weights.',
+  weights_shape_mismatch:
+    'The distribution has a rating exam part exactly when the subject has a rating exam.',
+  quarter_one_not_set: 'Quarter 1 has no distribution that fits the subject.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };

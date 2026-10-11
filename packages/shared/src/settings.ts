@@ -140,6 +140,7 @@ export const CHECKLIST_ITEMS = [
   'slotTypes',
   'defaultTemplate',
   'calendar',
+  'subjects',
 ] as const;
 
 export const checklistItemKeySchema = z.enum(CHECKLIST_ITEMS);
@@ -148,8 +149,9 @@ export type ChecklistItemKey = z.infer<typeof checklistItemKeySchema>;
 
 /**
  * One item. `done` is `null` for an item that never blocks (the calendar,
- * answer 23); `count` is the calendar's number of entries; `years` names the
- * planned or current years whose quarters are not all dated.
+ * answer 23); `count` is the calendar's number of entries, or for `subjects`
+ * the active graded subjects without a daily distribution in the branch;
+ * `years` names the planned or current years whose quarters are not all dated.
  */
 export const checklistItemSchema = z.object({
   key: checklistItemKeySchema,

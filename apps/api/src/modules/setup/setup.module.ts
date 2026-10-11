@@ -17,13 +17,15 @@ import { Settings } from './settings.service.js';
 import { TravelTimesController } from './travel-times.controller.js';
 import { TravelTimes } from './travel-times.service.js';
 import { Rooms } from './rooms.service.js';
+import { SubjectsController } from './subjects.controller.js';
+import { Subjects } from './subjects.service.js';
 
 /**
  * School setup (docs/spec/03-school-setup.md): the branch record, buildings,
  * floors and rooms (task 1.1); divisions and departments (task 1.2); academic
  * years, quarters and the go-live date (task 1.3); slot types and day
  * templates (task 1.5); the calendar (task 1.4); the settings, travel time
- * and the setup checklist (task 1.6).
+ * and the setup checklist (task 1.6); subjects and their weights (task 2.1).
  */
 @Module({
   controllers: [
@@ -36,6 +38,7 @@ import { Rooms } from './rooms.service.js';
     CalendarController,
     SettingsController,
     TravelTimesController,
+    SubjectsController,
   ],
   providers: [
     Branches,
@@ -47,6 +50,7 @@ import { Rooms } from './rooms.service.js';
     Calendar,
     Settings,
     TravelTimes,
+    Subjects,
   ],
 })
 export class SetupModule {}
