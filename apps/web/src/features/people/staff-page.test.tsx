@@ -221,6 +221,15 @@ describe('the staff page', () => {
     });
     fireEvent.click(within(status).getByRole('button', { name: en.form.save }));
 
+    // A status change asks first, naming the person; "left" says that the roles end.
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText(en.people.staff.statusConfirmLeft)).toBeDefined();
+    expect(within(dialog).getByText('Akmal Karimov')).toBeDefined();
+    expect(calls.some((call) => call.route.endsWith('/status'))).toBe(false);
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: en.people.staff.statusConfirmAction }),
+    );
+
     await waitFor(() => {
       expect(calls.some((call) => call.route === `POST /api/people/staff/${AKMAL.id}/status`)).toBe(
         true,

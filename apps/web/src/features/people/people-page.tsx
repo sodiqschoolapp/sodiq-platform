@@ -55,6 +55,3 @@ export function PeoplePage() {
     </>
   );
 }
-
-/** The areas of the pages under "People": the menu item shows only when the role views one of them. */
-export const PEOPLE_AREAS = ['staff'] as const;

@@ -694,6 +694,9 @@ export const en = {
       archivedDone_other: '{{n}} subjects archived.',
       restored_one: '{{n}} subject restored.',
       restored_other: '{{n}} subjects restored.',
+      teachersHere: 'In this branch: {{names}}.',
+      teachersElsewhere_one: 'In other branches: {{n}} person.',
+      teachersElsewhere_other: 'In other branches: {{n}} people.',
       takenNames: 'Not restored, because an active subject has one of its names now: {{names}}.',
       departmentArchivedNames: 'Not restored, because the department is archived: {{names}}.',
     },
@@ -976,6 +979,12 @@ export const en = {
       until: 'Until',
       teachingOf: 'Subjects and languages of {{name}}',
       branchesOf: 'Branches of {{name}}',
+      statusConfirmTitle: 'Set {{status}} from {{date}}?',
+      statusConfirmText:
+        'A change planned after today is replaced. Once the date has come, the change stays in the history.',
+      statusConfirmLeft:
+        "From that date every role of the person's account ends, and the person cannot sign in. A re-hire does not give the roles back.",
+      statusConfirmAction: 'Set status',
       statusOf: 'Status of {{name}}',
       newStatus: 'New status',
       duplicateTitle: 'Possibly the same person',

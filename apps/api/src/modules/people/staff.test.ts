@@ -11,6 +11,7 @@ import {
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Transactions, type Transaction } from '../../database/transactions.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { errorCode, NEW_PASSWORD } from '../../testing/sign-in-kit.js';
 
@@ -30,12 +31,18 @@ describe('staff records', () => {
   const put = (path: string, branch: string, body: object, cookie = t.admin) =>
     request(t.kit.server).put(path).set('Cookie', cookie).set(BRANCH_HEADER, branch).send(body);
 
+  /** A count as Latin letters, so that a name stays short and of letters only. */
+  const lettersOf = (n: number): string =>
+    n < 26
+      ? String.fromCharCode(97 + n)
+      : lettersOf(Math.floor(n / 26) - 1) + String.fromCharCode(97 + (n % 26));
+
   /** A new person's body with a name and phone of its own. */
   function body(overrides: Record<string, unknown> = {}): Record<string, unknown> {
     count += 1;
     return {
       firstName: 'Akmal',
-      lastName: `Karimov${'a'.repeat(count)}`,
+      lastName: `Karimov${lettersOf(count)}`,
       fatherName: '',
       sex: 'male',
       birthDate: '1990-01-01',
@@ -96,6 +103,8 @@ describe('staff records', () => {
       'staff_languages',
       'staff_statuses',
       'assignments',
+      'staff_status_role_ends',
+      'staff_id_counters',
     ] as const) {
       rows[table] = await sql`select * from ${sql.table(table)} order by 1, 2`.execute(
         t.database.migrator,
@@ -616,7 +625,7 @@ describe('staff records', () => {
 
     describe('of a record with an account', () => {
       async function linked() {
-        const browser = await t.kit.fullSession('Sardor', `Qodirov${'a'.repeat((count += 1))}`);
+        const browser = await t.kit.fullSession('Sardor', `Qodirov${lettersOf((count += 1))}`);
         const created = await create();
         await t.database.migrator
           .updateTable('staff')
@@ -909,5 +918,347 @@ describe('staff records', () => {
       expect({ subject: await subjectRow(), audit: await t.auditCount() }).toEqual(before);
       expect((await edit(t.north, { grades: [8, 9] })).status).toBe(200);
     });
+  });
+
+  // The plan's Locks section and the spec review of the build (must-fix 5):
+  // each pair of changes that meet on a row, run at the same moment. One side
+  // is held open in a transaction that does what its route does; the real
+  // route of the other side is sent, waits for the lock, and then sees the
+  // result of the first.
+  describe('at the same moment', () => {
+    /** Runs `work` in a transaction of the application that stays open until released. */
+    async function holdOpen(branches: string[], work: (transaction: Transaction) => Promise<void>) {
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const done = t.app.get(Transactions).run(branches, async (transaction) => {
+        await work(transaction);
+        ready();
+        await released;
+      });
+      await Promise.race([isReady, done]);
+      return { release, done };
+    }
+
+    /** What a staff save does for a new person in a division: the division FOR SHARE, then the rows. */
+    async function saveInto(
+      transaction: Transaction,
+      division: string,
+      department: string | null,
+    ): Promise<void> {
+      await transaction
+        .selectFrom('divisions')
+        .select('id')
+        .where('id', '=', division)
+        .forShare()
+        .execute();
+      if (department !== null) {
+        await transaction
+          .selectFrom('departments')
+          .select('id')
+          .where('id', '=', department)
+          .forShare()
+          .execute();
+      }
+      count += 1;
+      const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
+      const id = found.rows[0]?.id ?? '';
+      await transaction
+        .insertInto('staff')
+        .values({
+          id,
+          kind: 'person',
+          staff_id: `S-26${String(7000 + count)}`,
+          first_name: 'Bahrom',
+          last_name: `Tursunov${lettersOf(count)}`,
+          sex: 'male',
+          birth_date: '1980-01-01',
+          phone: `+99891${String(1000000 + count)}`,
+          admission_date: '2026-09-01',
+        })
+        .execute();
+      await transaction
+        .insertInto('staff_branches')
+        .values({ staff_id: id, branch_id: t.north, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_divisions')
+        .values({ staff_id: id, division_id: division, department_id: department, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_statuses')
+        .values({ staff_id: id, status: 'active', valid_from: '2026-09-01' })
+        .execute();
+    }
+
+    async function newDivision(): Promise<{ division: string; department: string }> {
+      count += 1;
+      const division = await t.database.migrator
+        .insertInto('divisions')
+        .values({
+          name_uz: `Boʻlim ${String(count)}`,
+          name_ru: `Отдел ${String(count)}`,
+          name_en: `Unit ${String(count)}`,
+          position: 100 + count,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const department = await t.database.migrator
+        .insertInto('departments')
+        .values({
+          division_id: division.id,
+          name_uz: `Guruh ${String(count)}`,
+          name_ru: `Группа ${String(count)}`,
+          name_en: `Group ${String(count)}`,
+          position: 1,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      return { division: division.id, department: department.id };
+    }
+
+    const archive = (path: string) =>
+      request(t.kit.server)
+        .post(path)
+        .set('Cookie', t.admin)
+        .send({})
+        .then((answer) => answer);
+
+    it('the division archive waits for a staff save into it, then is refused', async () => {
+      const { division } = await newDivision();
+      const held = await holdOpen([t.north], (transaction) =>
+        saveInto(transaction, division, null),
+      );
+      const answer = archive(`/api/setup/divisions/${division}/archive`);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      refusedWith(await answer, 409, 'archive_refused');
+    });
+
+    it('the department archive waits for a staff save into it, then is refused', async () => {
+      const { division, department } = await newDivision();
+      const held = await holdOpen([t.north], (transaction) =>
+        saveInto(transaction, division, department),
+      );
+      const answer = archive(`/api/setup/departments/${department}/archive`);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      refusedWith(await answer, 409, 'department_has_staff');
+    });
+
+    const subjectBody = (grades: number[]) => ({
+      names: {
+        uz: `Fan ${String(count)}`,
+        ru: `Предмет ${String(count)}`,
+        en: `Course ${String(count)}`,
+      },
+      departmentId: steam,
+      grades,
+      colour: 'teal',
+      journalType: 'attendance_only',
+      ratingExam: false,
+      groupSubject: false,
+      languageRule: true,
+      demanding: false,
+      daily: null,
+    });
+
+    async function newSubject(): Promise<string> {
+      count += 1;
+      const created = await t.post('/api/setup/subjects', t.north, subjectBody([8, 9]));
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      return (created.body as { id: string }).id;
+    }
+
+    it('the subject edit waits for a teaching save with the grade it removes, then is refused', async () => {
+      const subject = await newSubject();
+      const teacher = await create();
+      const held = await holdOpen([t.north], async (transaction) => {
+        await transaction
+          .selectFrom('subjects')
+          .select('id')
+          .where('id', '=', subject)
+          .forShare()
+          .execute();
+        await transaction
+          .insertInto('staff_languages')
+          .values({ staff_id: teacher.id, language: 'uz' })
+          .execute();
+        await transaction
+          .insertInto('staff_subjects')
+          .values({ staff_id: teacher.id, subject_id: subject, grades: [9] })
+          .execute();
+      });
+      const answer = put(`/api/setup/subjects/${subject}`, t.north, subjectBody([8])).then(
+        (response) => response,
+      );
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      refusedWith(await answer, 409, 'subject_has_teachers');
+    });
+
+    it('the teaching save waits for a subject edit that removes its grade, then is refused', async () => {
+      const subject = await newSubject();
+      const teacher = await create();
+      const held = await holdOpen([t.north], async (transaction) => {
+        await transaction
+          .selectFrom('subjects')
+          .select('id')
+          .where('id', '=', subject)
+          .forUpdate()
+          .execute();
+        await transaction
+          .updateTable('subjects')
+          .set({ grades: [8] })
+          .where('id', '=', subject)
+          .execute();
+      });
+      const answer = put(`/api/people/staff/${teacher.id}/teaching`, t.north, {
+        subjects: [{ subjectId: subject, grades: [9] }],
+        languages: ['uz'],
+      }).then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      refusedWith(await answer, 409, 'grade_not_in_subject');
+    });
+
+    // Must-fix 1 of the spec review: the subject edit does not count people
+    // who left; their re-hire checks the subjects as they now are.
+    it('refuses to re-hire a teacher whose subject lost the grade while the teacher had left', async () => {
+      const subject = await newSubject();
+      const teacher = await create();
+      expect(
+        (
+          await put(`/api/people/staff/${teacher.id}/teaching`, t.north, {
+            subjects: [{ subjectId: subject, grades: [9] }],
+            languages: ['uz'],
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await t.post(`/api/people/staff/${teacher.id}/status`, t.north, {
+            status: 'left',
+            from: '2026-10-10',
+          })
+        ).status,
+      ).toBe(200);
+      expect((await put(`/api/setup/subjects/${subject}`, t.north, subjectBody([8]))).status).toBe(
+        200,
+      );
+      const before = await snapshot();
+      refusedWith(
+        await t.post(`/api/people/staff/${teacher.id}/status`, t.north, {
+          status: 'active',
+          from: '2026-10-12',
+        }),
+        409,
+        'grade_not_in_subject',
+      );
+      expect(await snapshot()).toEqual(before);
+    });
+  });
+
+  describe('more of the roles of a leaver (correction 4)', () => {
+    async function linkedWithRole(validUntil: Date | null) {
+      count += 1;
+      const browser = await t.kit.fullSession('Jahongir', `Sobirov${lettersOf(count)}`);
+      const created = await create();
+      await t.database.migrator
+        .updateTable('staff')
+        .set({ account_id: browser.account.id })
+        .where('id', '=', created.id)
+        .execute();
+      const role = await t.database.migrator
+        .insertInto('assignments')
+        .values({
+          account_id: browser.account.id,
+          role: 'teacher',
+          branch_id: t.north,
+          valid_from: new Date('2026-09-01T00:00:00+05:00'),
+          valid_until: validUntil,
+          created_at: new Date('2026-09-01T00:00:00+05:00'),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const endOf = async () =>
+        (
+          await t.database.migrator
+            .selectFrom('assignments')
+            .select('valid_until')
+            .where('id', '=', role.id)
+            .executeTakeFirstOrThrow()
+        ).valid_until?.toISOString() ?? null;
+      return { created, role, endOf };
+    }
+
+    it('keeps the end of a role that already ends before the date of left', async () => {
+      const early = new Date('2026-10-15T00:00:00+05:00');
+      const { created, endOf } = await linkedWithRole(early);
+      expect(
+        (
+          await t.post(`/api/people/staff/${created.id}/status`, t.north, {
+            status: 'left',
+            from: '2026-10-20',
+          })
+        ).status,
+      ).toBe(200);
+      expect(await endOf()).toBe(early.toISOString());
+    });
+
+    it('does not put back an end that was changed after left wrote it', async () => {
+      const { created, role, endOf } = await linkedWithRole(null);
+      expect(
+        (
+          await t.post(`/api/people/staff/${created.id}/status`, t.north, {
+            status: 'left',
+            from: '2026-10-20',
+          })
+        ).status,
+      ).toBe(200);
+      const changed = new Date('2026-10-18T00:00:00+05:00');
+      await t.database.migrator
+        .updateTable('assignments')
+        .set({ valid_until: changed })
+        .where('id', '=', role.id)
+        .execute();
+      expect(
+        (
+          await t.post(`/api/people/staff/${created.id}/status`, t.north, {
+            status: 'active',
+            from: '2026-10-12',
+          })
+        ).status,
+      ).toBe(200);
+      expect(await endOf()).toBe(changed.toISOString());
+    });
+  });
+
+  // Correction 9: the duplicate warning compares the stored form of a name.
+  it('warns about a name typed with another apostrophe', async () => {
+    const stored = await create({
+      firstName: 'Oʻtkir',
+      lastName: 'Gʻaniyev',
+      birthDate: '1983-08-08',
+    });
+    const answer = await t.post('/api/people/staff/check', t.north, {
+      firstName: 'O’tkir',
+      lastName: "G'aniyev",
+      birthDate: '1983-08-08',
+      phone: '+998 99 000 00 00',
+      staffRecordId: null,
+    });
+    expect(
+      staffCheckResultSchema.parse(answer.body).sameNameAndBirth.map((match) => match.id),
+    ).toEqual([stored.id]);
   });
 });

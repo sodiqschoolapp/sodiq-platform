@@ -700,6 +700,9 @@ export const uz: Texts<'one' | 'other'> = {
       archivedDone_other: '{{n}} ta fan arxivga yuborildi.',
       restored_one: '{{n}} ta fan tiklandi.',
       restored_other: '{{n}} ta fan tiklandi.',
+      teachersHere: 'Shu filialda: {{names}}.',
+      teachersElsewhere_one: 'Boshqa filiallarda: {{n}} kishi.',
+      teachersElsewhere_other: 'Boshqa filiallarda: {{n}} kishi.',
       takenNames: 'Tiklanmadi, chunki uning nomlaridan biri endi faol fanda bor: {{names}}.',
       departmentArchivedNames: 'Tiklanmadi, chunki kafedra arxivda: {{names}}.',
     },
@@ -982,6 +985,12 @@ export const uz: Texts<'one' | 'other'> = {
       until: 'Tugash',
       teachingOf: '{{name}}: fanlar va tillar',
       branchesOf: '{{name}}: filiallar',
+      statusConfirmTitle: '{{date}} dan «{{status}}» qilinsinmi?',
+      statusConfirmText:
+        'Bugundan keyinga rejalashtirilgan oʻzgarish almashtiriladi. Sana kelgach, oʻzgarish tarixda qoladi.',
+      statusConfirmLeft:
+        'Shu sanadan xodim hisobining barcha rollari tugaydi va u tizimga kira olmaydi. Qayta ishga olinganda rollar qaytmaydi.',
+      statusConfirmAction: 'Holatni oʻrnatish',
       statusOf: '{{name}}: holat',
       newStatus: 'Yangi holat',
       duplicateTitle: 'Ehtimol, bu oʻsha odam',

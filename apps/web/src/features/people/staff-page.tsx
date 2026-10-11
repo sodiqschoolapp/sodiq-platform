@@ -128,8 +128,13 @@ export function StaffPage() {
   });
 
   const columns = useMemo((): Column<StaffListItem>[] => {
+    const academic = divisions.data?.divisions.find((division) => division.builtIn)?.id;
+    // The teaching department (in Academic), else the department of the main division.
     const department = (row: StaffListItem) => {
-      const id = row.divisions.find((division) => division.departmentId !== null)?.departmentId;
+      const id = (
+        row.divisions.find((division) => division.divisionId === academic) ??
+        row.divisions.find((division) => division.main)
+      )?.departmentId;
       return id === undefined || id === null ? '' : (departmentNames.get(id) ?? '');
     };
     const grades = (row: StaffListItem) =>
@@ -199,7 +204,7 @@ export function StaffPage() {
         sortValue: (row) => row.status ?? '',
       },
     ];
-  }, [t, departmentNames, subjectNames]);
+  }, [t, departmentNames, subjectNames, divisions.data]);
 
   const filters = useMemo(
     (): Filter<StaffListItem>[] => [

@@ -143,6 +143,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 12 October 2026: staff record and status (task 2.2a)
+
+Split of 2.2 and answer 2 (membership filter) by the owner on pull request #53; plan approved with corrections 1 to 10, decisions 1 to 20 confirmed or changed there. Decisions 21 to 26 came from the build and its reviews. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| One staff record per person; `staff` and the person's tables filtered by membership (`staff_membership`), `staff_branches` a branch table; a third catalog group `MEMBERSHIP_FILTERED_TABLES` | Owner's answer 2; `04` one main and further branches |
+| Cross-branch facts through five SECURITY DEFINER functions that return a boolean or a count; the duplicate and subject-side ones read `app_branch_ids()` | Owner's answer 2; corrections 2 and 17 |
+| Areas `staff` (Super Admin view, create, edit; Academic Vice Principal view, edit of name, phone and email; Principal view) and `staff_teaching` (Super Admin and Academic Vice Principal view, edit; Principal view) | Decision 2; `edge/people-roles-accounts`, Who can act, Accounts and sign-in |
+| Status as dated rows from today on; a planned change taken back, never grown; first row from the admission date; `left` is the archived state; re-hire on the same record | Decisions 4, 5, correction 6 |
+| Inactive and left refused at sign-in after the password matched and on every request; `left` ends the roles at 00:00 of its date (or their own later start) and a taken-back `left` puts them back (`staff_status_role_ends`) | Decision 15, corrections 3 and 4 |
+| Division archive `archive_refused`, department archive `department_has_staff`, while somebody who has not left is in it; the division list counts the whole school's staff by main division | `03`, Divisions; decisions 6 and 20 |
+| A subject's department or removed grade refused while a teacher who has not left has it, checked in the subject edit under the subject's FOR UPDATE lock; a re-hire checks the subjects as they are now, under FOR SHARE (decision 21) | A trigger cannot read the injected clock that "has not left" needs; the spec review closed the re-hire gap |
+| The Super Admin's list and record reads and its branches and status routes run with every branch, after a Super Admin assignment and the request-branch link are found; edit and teaching keep `access.branchIds` (decision 22) | `02`: the Super Admin "Sees all branches"; the branches form needs the person's other branches, the status route the main branch's date |
+| `staff_status_role_ends` is a child table of a person under the membership filter (decision 23) | Owner's answer 2: "`staff` and its child tables get a row filter through membership" |
+| A field the Academic Vice Principal may not change answers 403 `permission_denied`, not a code of its own (decision 24) | It is a permission, decided from the assignments, as every other refusal of a role |
+| The People menu item shows only when the role views one of its pages (`areas` of `MenuPage`) (decision 25) | A Tutor would otherwise reach an empty page |
+| The browser test is an Academic Vice Principal on a seeded teacher; the Super Admin's create is proved by the API and page tests (decision 26) | At most 3 Super Admins can exist and the setup tests hold them |
+
 ## 11 October 2026: subjects and their weights (task 2.1)
 
 Plan approved on pull request #52 (`[review] approved`, decisions 1 to 16 confirmed, corrections 1 to 4 applied). The owner's answers 3 to 8 above were followed as written. Decisions 17 and 18 and migrations 0021 and 0022 came from the reviews of the build; decisions 19 and 20 and migration 0023 from the `[review] changes needed` round. Flagged on issue #42.

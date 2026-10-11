@@ -152,10 +152,14 @@ const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
  * Staff records (docs/spec/04-people.md, Teacher and staff record; task 2.2a,
  * pull request #53). A record is one per person and visible only in the
  * branches the person is linked to (owner's answer 2): every route works in
- * the branch of the request, and a record not linked to it is 404. A Super
- * Admin reads with every branch, because that role "Sees all branches" (`02`)
- * and its branches and status routes change links and decide dates of other
- * branches (decisions 18 and 21). Every change writes its audit entry in its
+ * the branch of the request, and a record not linked to it is 404. Only the
+ * Super Admin, who "Sees all branches" (`02`), works with every branch: its
+ * list and record reads (the other branches of a person), the branches route
+ * (decision 18: the links of other branches) and the status route (the main
+ * branch's date and the roles of every branch), each after a Super Admin
+ * assignment was found and the record found linked to the branch of the
+ * request. The edit and the teaching keep `access.branchIds`, also for a
+ * Super Admin (the spec review of the build). Every change writes its audit entry in its
  * transaction. Lock order: the record, then divisions, departments and
  * subjects FOR SHARE, then the counter of staff IDs.
  */
@@ -326,9 +330,9 @@ export class Staff {
    */
   edit(access: Access, id: string, record: StaffRecord, requestId: string): Promise<StaffDetail> {
     const branchId = branchOf(access);
-    return this.refusing(async () =>
-      this.transactions.run(await this.readingBranches(access), async (transaction) => {
-        const row = await this.lockLinked(transaction, id, branchId);
+    return this.refusing(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        const row = await this.lockPerson(transaction, id);
         const divisions = await this.divisionsOf(transaction, id);
         const before = fieldsOf(row, sortDivisions(divisions));
         const after: StaffFields = { ...record, divisions: sortDivisions(record.divisions) };
@@ -382,9 +386,9 @@ export class Staff {
     requestId: string,
   ): Promise<StaffDetail> {
     const branchId = branchOf(access);
-    return this.refusing(async () =>
-      this.transactions.run(await this.readingBranches(access), async (transaction) => {
-        await this.lockLinked(transaction, id, branchId);
+    return this.refusing(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        await this.lockPerson(transaction, id);
         const before = await this.teachingOf(transaction, id);
         const after = {
           subjects: [...teaching.subjects].sort((a, b) => a.subjectId.localeCompare(b.subjectId)),
@@ -609,6 +613,13 @@ export class Staff {
         if ('refusal' in plan) {
           throw refused(plan.refusal);
         }
+        // A person who stays or becomes employed keeps a profile that fits the
+        // subjects as they are now: a subject's department or grades may have
+        // changed while the person had left, which the subject edit does not
+        // count (the spec review of pull request #53, must-fix 1).
+        if (change.status !== 'left') {
+          await this.checkSubjectsFit(transaction, id);
+        }
         for (const cut of plan.cuts) {
           await transaction
             .updateTable('staff_statuses')
@@ -790,6 +801,45 @@ export class Staff {
         if (department.archived_at !== null) {
           throw refused('department_archived');
         }
+      }
+    }
+  }
+
+  /**
+   * The subjects of a person still in the person's Academic department, with
+   * grades the subject has (`04`). Each subject is read FOR SHARE: a subject
+   * edit at the same moment locks it FOR UPDATE and then counts who has not
+   * left, so one of the two waits for the other and sees its result.
+   */
+  private async checkSubjectsFit(transaction: Transaction, id: string): Promise<void> {
+    const own = await transaction
+      .selectFrom('staff_subjects')
+      .select(['subject_id', 'grades'])
+      .where('staff_id', '=', id)
+      .orderBy('subject_id')
+      .execute();
+    if (own.length === 0) {
+      return;
+    }
+    const academic = await transaction
+      .selectFrom('staff_divisions')
+      .innerJoin('divisions', 'divisions.id', 'staff_divisions.division_id')
+      .select('staff_divisions.department_id')
+      .where('staff_divisions.staff_id', '=', id)
+      .where('divisions.built_in', '=', true)
+      .executeTakeFirst();
+    for (const row of own) {
+      const subject = await transaction
+        .selectFrom('subjects')
+        .select(['department_id', 'grades'])
+        .where('id', '=', row.subject_id)
+        .forShare()
+        .executeTakeFirstOrThrow();
+      if (subject.department_id !== academic?.department_id) {
+        throw refused('subject_outside_department');
+      }
+      if (row.grades.some((grade) => !subject.grades.includes(grade))) {
+        throw refused('grade_not_in_subject');
       }
     }
   }

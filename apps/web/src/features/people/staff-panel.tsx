@@ -19,7 +19,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
+import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
+import { SaveCancelled } from '@/components/form/save-cancelled';
 import {
   CheckboxGroupField,
   DateField,
@@ -501,10 +503,31 @@ function StatusSection({
 }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
+  const confirm = useConfirm();
   const form = useRecordForm<'status' | 'from', StaffStatusChange>({
     schema: asFormSchema<StaffStatusChange>(staffStatusChangeSchema, (path) => [...path]),
     initial: { status: '', from: staff.today },
-    save: onSave,
+    // A status change cannot be taken back once its date has come, and "left"
+    // ends every role of the person's account (`.claude/rules/web.md`).
+    save: async (change) => {
+      const go = await confirm({
+        title: t('people.staff.statusConfirmTitle', {
+          status: t(`people.staff.statuses.${change.status}`),
+          date: schoolDateText(change.from, language),
+        }),
+        text:
+          change.status === 'left'
+            ? t('people.staff.statusConfirmLeft')
+            : t('people.staff.statusConfirmText'),
+        names: [label],
+        action: t('people.staff.statusConfirmAction'),
+        destructive: change.status !== 'active',
+      });
+      if (!go) {
+        throw new SaveCancelled();
+      }
+      await onSave(change);
+    },
   });
   return (
     <section className="grid gap-3">

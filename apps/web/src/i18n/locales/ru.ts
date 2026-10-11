@@ -736,6 +736,11 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       restored_few: '{{n}} предмета восстановлены.',
       restored_many: '{{n}} предметов восстановлено.',
       restored_other: '{{n}} предмета восстановлено.',
+      teachersHere: 'В этом филиале: {{names}}.',
+      teachersElsewhere_one: 'В других филиалах: {{n}} человек.',
+      teachersElsewhere_few: 'В других филиалах: {{n}} человека.',
+      teachersElsewhere_many: 'В других филиалах: {{n}} человек.',
+      teachersElsewhere_other: 'В других филиалах: {{n}} человека.',
       takenNames:
         'Не восстановлены, потому что одно из их названий теперь у действующего предмета: {{names}}.',
       departmentArchivedNames: 'Не восстановлены, потому что кафедра в архиве: {{names}}.',
@@ -1035,6 +1040,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       until: 'По',
       teachingOf: 'Предметы и языки: {{name}}',
       branchesOf: 'Филиалы: {{name}}',
+      statusConfirmTitle: 'Установить «{{status}}» с {{date}}?',
+      statusConfirmText:
+        'Изменение, запланированное после сегодняшнего дня, будет заменено. Когда дата наступит, изменение останется в истории.',
+      statusConfirmLeft:
+        'С этой даты все роли учётной записи сотрудника заканчиваются, и войти нельзя. При повторном приёме роли не возвращаются.',
+      statusConfirmAction: 'Установить статус',
       statusOf: 'Статус: {{name}}',
       newStatus: 'Новый статус',
       duplicateTitle: 'Возможно, это тот же человек',
