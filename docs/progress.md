@@ -4,7 +4,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 ## 12 October 2026: the design system and the brand files (process change, no task)
 
-- Owner: the design system is `docs/design-system.md` (approved from the design board "Sodiq Platform design directions"); the logo, the browser-tab icon and the app icons are in `apps/web/public/brand/`; tasks 2.2d (design system and brand, after 2.2) and 2.7 (polish of Phases 1 and 2, before the Phase 3 gate) are in the build plan with their answers in `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7"); the builder and the reviewer check every screen against the design system. The next task is 2.2, then 2.2d.
+- Owner: the design system is `docs/design-system.md` (approved from the design board "Sodiq Platform design directions"); the logo, the browser-tab icon and the app icons are in `apps/web/public/brand/`; tasks 2.2d (design system and brand, after 2.2) and 2.7 (polish of Phases 1 and 2, before the Phase 3 gate) are in the build plan with their answers in `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7"); the builder and the reviewer check every screen against the design system. The next task is 2.2 (its split into 2.2a, 2.2b and 2.2c is proposed on pull request #53), then 2.2d.
 
 ## 11 October 2026: task 2.1 Subjects
 
