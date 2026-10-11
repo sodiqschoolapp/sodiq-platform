@@ -167,8 +167,8 @@ How to read the task lines:
 
 - [ ] **2.2 Staff records**
   - Read: `04` (Teacher and staff record), `03` (Divisions), `02` (roles table), `06` (Rules), `edge/people-roles-accounts` (Who can act, Staff over time), `edge/timetable` (After publishing).
-  - Build: staff record with main and further branches, main and further divisions, department, subjects with grades, languages of instruction, availability per branch, and status with dates; the staff list with the columns in the spec, filters and Excel export; vacancies (a staff record for a teacher not yet hired; no account, no roles). From 1.2 (decided by the owner, pull request #40, answer 1): `POST /api/setup/divisions/:id/archive` answers 409 `archive_refused` while an active staff member has the division as main or further division, with its test in `apps/api/src/modules/setup/divisions.test.ts`; this is the second half of 1.2's "done when". The bulk Archive of the Divisions page then names the rows refused with `archive_refused` and goes on with the others (`refusalOf` in `apps/web/src/features/setup/divisions-page.tsx` goes on past `built_in` only today), with its text in three languages and its test in `divisions-page.test.tsx`.
-  - Done when: availability in two branches cannot overlap and status changes keep history.
+  - Build: staff record with main and further branches, main and further divisions, department, subjects with grades, languages of instruction, availability per branch, and status with dates; the staff list with the columns in the spec, filters and Excel export; vacancies (a staff record for a teacher not yet hired; no account, no roles); the staff ID S-YYNNNN given at first save from a school-wide counter per year of first hire, with the admission date required (spec change of 12 October 2026). From 1.2 (decided by the owner, pull request #40, answer 1): `POST /api/setup/divisions/:id/archive` answers 409 `archive_refused` while an active staff member has the division as main or further division, with its test in `apps/api/src/modules/setup/divisions.test.ts`; this is the second half of 1.2's "done when". The bulk Archive of the Divisions page then names the rows refused with `archive_refused` and goes on with the others (`refusalOf` in `apps/web/src/features/setup/divisions-page.tsx` goes on past `built_in` only today), with its text in three languages and its test in `divisions-page.test.tsx`.
+  - Done when: availability in two branches cannot overlap and status changes keep history; two staff records saved at the same moment get different IDs, and a re-hired person keeps theirs.
 
 - [ ] **2.3 Accounts and role assignment screens**
   - Read: `02` (Head Teachers and Senior Head Teachers, Rules), `edge/people-roles-accounts` (Who can act, Accounts and sign-in).
@@ -187,7 +187,7 @@ How to read the task lines:
 
 - [ ] **2.6 Audit log screen and personal data tools**
   - Read: `edge/people-roles-accounts` (Personal data and the audit log), `13` (Security).
-  - Build: the audit log screen with search by person, record and date, and the reading rights per role; each user's own sign-in history; the personal data report per person; the locked support account that a Super Admin opens for at most 24 hours; export rules (limited by role, every export logged).
+  - Build: the audit log screen with search by person, record and date, and the reading rights per role; each user's own sign-in history; the personal data report per person; export rules (limited by role, every export logged).
   - Done when: a Principal sees only the branch's log and every export leaves a log entry.
 
 > **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 3, deletes this line.
