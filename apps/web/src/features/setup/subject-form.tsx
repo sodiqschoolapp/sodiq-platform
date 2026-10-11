@@ -96,6 +96,8 @@ interface SubjectFormProps {
    * new subject, and on an edit while the branch has none (decision 15).
    */
   asksDaily: boolean;
+  /** Only the Super Admin moves a subject to another department (decision 17). */
+  departmentLocked?: boolean;
   label: string;
   /** What the name field says when the server answers that the name is taken. */
   onSave: (record: SubjectRecord) => Promise<void>;
@@ -108,7 +110,14 @@ interface SubjectFormProps {
  * switch (on by default)"; `edge/timetable`: the "demanding" switch). An
  * attendance-only subject has no rating exam and no weights.
  */
-export function SubjectForm({ subject, departments, asksDaily, label, onSave }: SubjectFormProps) {
+export function SubjectForm({
+  subject,
+  departments,
+  asksDaily,
+  departmentLocked = false,
+  label,
+  onSave,
+}: SubjectFormProps) {
   const { t } = useTranslation();
   const switchValue = (on: boolean) => (on ? CHECKED : '');
   const form = useRecordForm<SubjectField, SubjectRecord>({
@@ -182,6 +191,8 @@ export function SubjectForm({ subject, departments, asksDaily, label, onSave }: 
           { value: '', label: t('setup.subjects.chooseDepartment') },
           ...departments.map((one) => ({ value: one.id, label: one.name })),
         ]}
+        disabled={departmentLocked}
+        note={departmentLocked ? t('setup.subjects.departmentLocked') : undefined}
         {...form.bind('departmentId')}
       />
       <CheckboxGroupField

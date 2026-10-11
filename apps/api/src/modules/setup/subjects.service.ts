@@ -242,6 +242,12 @@ export class Subjects {
         const before = fieldsOf(row);
         const after = recordFields(record);
         if (after.departmentId !== before.departmentId) {
+          // `edge/people-roles-accounts`: "A teacher moves to another department,
+          // or a subject is moved, mid-year. Both changes ... are made by the
+          // Super Admin." (Decision 17 of pull request #52.)
+          if (access.role !== 'super_admin') {
+            throw new ApiException('subject_move_super_admin', 403);
+          }
           await this.checkDepartment(transaction, after.departmentId);
         }
         // Decision 14: a subject that becomes graded again starts a new round;

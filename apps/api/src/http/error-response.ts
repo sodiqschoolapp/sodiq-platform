@@ -86,6 +86,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   daily_weights_set:
     'The daily distribution is already set in this branch; change it on its own route.',
   attendance_only_no_weights: 'An attendance-only subject has no weights.',
+  subject_move_super_admin: 'Only the Super Admin moves a subject to another department.',
   weights_shape_mismatch:
     'The distribution has a rating exam part exactly when the subject has a rating exam.',
   quarter_one_not_set: 'Quarter 1 has no distribution that fits the subject.',

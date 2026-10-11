@@ -408,6 +408,22 @@ describe('the subjects page', () => {
     expect(within(panel).queryByRole('button', { name: subjectsText.copy })).toBeNull();
   });
 
+  // Decision 17: only the Super Admin moves a subject to another department.
+  it('keeps the department of a subject fixed in the edit of the Academic Vice Principal, saying why', async () => {
+    await openList({
+      session: sessionOf({
+        assignments: [{ role: 'academic_vice_principal', branchId: NORTH.id }],
+        branches: [NORTH],
+      }),
+    });
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+
+    const form = within(panel).getByRole('form', { name: 'Mathematics' });
+    expect(within(form).getByLabelText(subjectsText.department)).toHaveProperty('disabled', true);
+    expect(within(form).getByText(subjectsText.departmentLocked)).toBeDefined();
+  });
+
   it('shows the Principal the list and the panel without add, forms or archive', async () => {
     await openList({ session: principal() });
 

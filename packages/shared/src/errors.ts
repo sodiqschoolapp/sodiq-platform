@@ -151,6 +151,8 @@ export const ERROR_CODES = [
   'daily_weights_set',
   /** An attendance-only subject has no weights (`edge/calculation`; task 2.1). */
   'attendance_only_no_weights',
+  /** Only the Super Admin moves a subject to another department (`edge/people-roles-accounts`; task 2.1, decision 17). */
+  'subject_move_super_admin',
   /** A quarterly distribution has a rating exam part exactly when the subject has a rating exam (`05`; task 2.1, decision 3). */
   'weights_shape_mismatch',
   /** Quarter 1 has no distribution that fits the subject, so there is nothing to copy (answer 6; task 2.1). */

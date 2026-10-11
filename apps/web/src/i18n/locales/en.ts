@@ -123,6 +123,8 @@ export const en = {
     daily_weights_set:
       'This branch already has a daily distribution for the subject. Change it in the subject panel.',
     attendance_only_no_weights: 'An attendance-only subject has no weights.',
+    subject_move_super_admin:
+      'Only the Super Admin moves a subject to another department. Keep its department, or ask the Super Admin.',
     weights_shape_mismatch:
       'The rating exam switch of the subject has changed. Open the subject again and enter the distribution anew.',
     quarter_one_not_set: 'Quarter 1 has no distribution to copy. Set quarter 1 first.',
@@ -584,6 +586,7 @@ export const en = {
       nameEn: 'Name in English',
       nameTaken: 'Another active subject has this name. Choose another.',
       department: 'Department',
+      departmentLocked: 'Only the Super Admin moves a subject to another department.',
       chooseDepartment: 'Choose a department',
       grades: 'Grades',
       grade: 'Grade {{grade}}',

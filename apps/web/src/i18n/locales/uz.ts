@@ -128,6 +128,8 @@ export const uz: Texts<'one' | 'other'> = {
     daily_weights_set:
       'Bu filialda fanning kunlik taqsimoti allaqachon bor. Uni fan panelida oʻzgartiring.',
     attendance_only_no_weights: 'Faqat davomatli fanning vaznlari yoʻq.',
+    subject_move_super_admin:
+      'Fanni boshqa kafedraga faqat Super administrator oʻtkazadi. Kafedrasini qoldiring yoki Super administratorga murojaat qiling.',
     weights_shape_mismatch:
       'Fanning reyting imtihoni belgisi oʻzgardi. Fanni qaytadan oching va taqsimotni yangidan kiriting.',
     quarter_one_not_set: '1-chorakda nusxa olish uchun taqsimot yoʻq. Avval 1-chorakni belgilang.',
@@ -591,6 +593,7 @@ export const uz: Texts<'one' | 'other'> = {
       nameEn: 'Inglizcha nomi',
       nameTaken: 'Bu nom boshqa faol fanda bor. Boshqa nom tanlang.',
       department: 'Kafedra',
+      departmentLocked: 'Fanni boshqa kafedraga faqat Super administrator oʻtkazadi.',
       chooseDepartment: 'Kafedrani tanlang',
       grades: 'Sinflar',
       grade: '{{grade}}-sinf',

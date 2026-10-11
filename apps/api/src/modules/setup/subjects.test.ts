@@ -532,6 +532,67 @@ describe('subjects', () => {
       });
     });
 
+    // `edge/people-roles-accounts`: a subject moved to another department is
+    // moved "by the Super Admin" (the permission review; decision 17).
+    it('moves a subject to another department for the Super Admin only; the Academic Vice Principal is refused and nothing is written', async () => {
+      const subject = await create();
+      const before = await rows();
+      const audit = await auditCount();
+
+      const refused = await put(
+        `/api/setup/subjects/${subject.id}`,
+        t.north,
+        editBody(subject, { departmentId: tutors }),
+        t.vicePrincipal,
+      );
+      expect(refused.status).toBe(403);
+      expect(errorCode(refused)).toBe('subject_move_super_admin');
+      expect(await rows()).toEqual(before);
+      expect(await auditCount()).toBe(audit);
+
+      const kept = await put(
+        `/api/setup/subjects/${subject.id}`,
+        t.north,
+        editBody(subject, { groupSubject: true }),
+        t.vicePrincipal,
+      );
+      expect(kept.status).toBe(200);
+
+      const moved = await put(
+        `/api/setup/subjects/${subject.id}`,
+        t.north,
+        editBody(subject, { departmentId: tutors, groupSubject: true }),
+      );
+      expect(moved.status).toBe(200);
+      expect(subjectSchema.parse(moved.body).departmentId).toBe(tutors);
+      expect((await schoolEntries('subject.edit', subject.id)).at(-1)).toMatchObject({
+        old_value: { departmentId: steam },
+        new_value: { departmentId: tutors },
+      });
+    });
+
+    it('into an unknown department is not found, outside Academic refused; nothing is written', async () => {
+      const subject = await create();
+      const before = await rows();
+      const audit = await auditCount();
+
+      const unknown = await put(
+        `/api/setup/subjects/${subject.id}`,
+        t.north,
+        editBody(subject, { departmentId: UNKNOWN }),
+      );
+      expect(unknown.status).toBe(404);
+      const outside = await put(
+        `/api/setup/subjects/${subject.id}`,
+        t.north,
+        editBody(subject, { departmentId: medical }),
+      );
+      expect(errorCode(outside)).toBe('department_not_academic');
+
+      expect(await rows()).toEqual(before);
+      expect(await auditCount()).toBe(audit);
+    });
+
     it('of an unknown subject is not found, of an archived one refused', async () => {
       const subject = await create();
       expect((await put(`/api/setup/subjects/${UNKNOWN}`, t.north, editBody(subject))).status).toBe(
@@ -679,9 +740,13 @@ describe('subjects', () => {
       expect(errorCode(closed)).toBe('department_archived');
     });
 
-    it('of an unknown subject is not found', async () => {
+    it('of an unknown subject is not found; nothing is written', async () => {
+      const before = await rows();
+      const audit = await auditCount();
       expect((await t.post(`/api/setup/subjects/${UNKNOWN}/archive`, t.north)).status).toBe(404);
       expect((await t.post(`/api/setup/subjects/${UNKNOWN}/restore`, t.north)).status).toBe(404);
+      expect(await rows()).toEqual(before);
+      expect(await auditCount()).toBe(audit);
     });
   });
 

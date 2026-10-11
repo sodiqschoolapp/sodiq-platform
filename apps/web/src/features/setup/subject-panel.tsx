@@ -49,6 +49,7 @@ export function SubjectPanel({
   const name = nameOf(subject.names, language);
   const active = subject.archivedAt === null;
   const graded = subject.journalType === 'graded';
+  const { role } = useView();
   const refresh = () => invalidateSubjects(queryClient);
 
   const edit = useMutation({
@@ -114,6 +115,7 @@ export function SubjectPanel({
           subject={subject}
           departments={departments}
           asksDaily={graded && subject.daily === null}
+          departmentLocked={role !== 'super_admin'}
           label={name}
           onSave={async (record) => {
             await edit.mutateAsync(record);
