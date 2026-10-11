@@ -21,6 +21,8 @@ import { DivisionsPage } from '@/features/setup/divisions-page';
 import { YearsPage } from '@/features/setup/years-page';
 import { SlotTypesPage } from '@/features/setup/slot-types-page';
 import { CalendarPage } from '@/features/setup/calendar-page';
+import { SettingsPage } from '@/features/setup/settings-page';
+import { TravelTimesPage } from '@/features/setup/travel-times-page';
 import { DayTemplatesPage } from '@/features/setup/day-templates-page';
 import { TemplateSettingsPage } from '@/features/setup/template-settings-page';
 import { RoomsPage } from '@/features/setup/rooms-page';
@@ -195,6 +197,18 @@ const calendarRoute = createRoute({
   component: CalendarPage,
 });
 
+const settingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/settings',
+  component: SettingsPage,
+});
+
+const travelTimesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/travel-times',
+  component: TravelTimesPage,
+});
+
 /**
  * The sample list of task 0.8b-1, built only from the shared pieces. It opens
  * in development and in the tests; in the built app the address does not
@@ -232,6 +246,8 @@ const routeTree = rootRoute.addChildren([
     calendarRoute,
     dayTemplatesRoute,
     templateSettingsRoute,
+    settingsRoute,
+    travelTimesRoute,
     patternsRoute,
   ]),
 ]);

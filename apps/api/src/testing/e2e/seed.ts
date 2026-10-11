@@ -214,6 +214,42 @@ try {
   });
   seeded.calendar = { login: calendar.login, password: calendar.firstPassword };
 
+  // The Academic Vice Principal of the settings test (task 1.6), in a branch
+  // of its own with a planned year around today of four undated quarters,
+  // written by the migrator (no route of this role writes a year).
+  const settingsBranch = await insertBranch(migrator, 'Settings browser test branch');
+  const settings = await create('Sevara', 'Qodirova');
+  await transactions.run([settingsBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: settings.id,
+      role: 'academic_vice_principal',
+      branchId: settingsBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: settingsBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: settingsBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+  });
+  seeded.settings = { login: settings.login, password: settings.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');

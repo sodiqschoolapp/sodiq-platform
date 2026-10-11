@@ -12,6 +12,8 @@ import type { Database } from './database.js';
 const SCHOOL_WIDE_TABLES: Record<string, string> = {
   schema_migrations: 'The list of applied migrations; the application can only read it.',
   branches: 'The branches themselves; the branch switcher shows their names.',
+  travel_times:
+    'A travel time belongs to a pair of branches equally (task 1.6, decision 4); the Super Admin alone writes it, and the service answers a reader the pairs of its own branch only. A row holds two branch ids and minutes.',
   request_keys: 'A key is unique across the school; a row holds ids and status only.',
   audit_log_school:
     'Audit entries of events without a branch (sign-ins, relatives); who reads them is decided by the guard (task 2.6).',

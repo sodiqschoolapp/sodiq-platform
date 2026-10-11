@@ -15,12 +15,16 @@ export async function addBranchFilter(migrator: Database, table: string): Promis
   `.execute(migrator);
 }
 
-/** A branch with an invented name, written by the migrator. Returns its id. */
+/**
+ * A branch with an invented name, written by the migrator, with its settings
+ * row, as the branch create writes it (task 1.6, decision 8). Returns its id.
+ */
 export async function insertBranch(migrator: Database, name: string): Promise<string> {
   const row = await migrator
     .insertInto('branches')
     .values({ name })
     .returning('id')
     .executeTakeFirstOrThrow();
+  await migrator.insertInto('branch_settings').values({ branch_id: row.id }).execute();
   return row.id;
 }

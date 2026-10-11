@@ -34,7 +34,11 @@ async function openSetupPage(page: Page, link: string, title: string): Promise<v
     .getByRole('link', { name: new RegExp(en.menu.setup) })
     .click();
   await expect(heading(page, en.setup.title)).toBeVisible();
-  await page.getByRole('link', { name: link, exact: true }).click();
+  // The links of the page, not the items of the setup checklist above them.
+  await page
+    .getByRole('list', { name: en.setup.title })
+    .getByRole('link', { name: link, exact: true })
+    .click();
   await expect(heading(page, title)).toBeVisible();
 }
 
@@ -428,4 +432,64 @@ test('the Academic Vice Principal adds a day off for some grades and a working S
   await expect(check.getByRole('row').nth(9)).toContainText(
     `${en.setup.calendar.reasons.day_off} (Seniors off)`,
   );
+});
+
+// Task 1.6, done when: "each setting has a permission test and the checklist
+// reflects real state for Phase 1 items". The Academic Vice Principal changes
+// the edit days and a late value (answers 19 and 20), and the checklist turns
+// "Lesson slot types" done once one is added (answer 23).
+test('the Academic Vice Principal changes the edit days and a late value, and the checklist follows a new lesson slot type', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signInAsSuperAdmin(page, 'settings');
+  await page
+    .getByRole('navigation', { name: en.layout.menu })
+    .getByRole('link', { name: new RegExp(en.menu.setup) })
+    .click();
+  const checklist = page.getByRole('region', { name: en.setup.checklist.title });
+  const slotTypesItem = checklist.locator('[data-item="slotTypes"]');
+  await expect(slotTypesItem.getByLabel(en.setup.checklist.missing)).toBeVisible();
+  await expect(
+    checklist.locator('[data-item="year"]').getByLabel(en.setup.checklist.done),
+  ).toBeVisible();
+
+  await page
+    .getByRole('list', { name: en.setup.title })
+    .getByRole('link', { name: en.setup.settingsLink, exact: true })
+    .click();
+  await expect(heading(page, en.setup.settings.title)).toBeVisible();
+  const editDays = page.getByRole('form', { name: en.setup.settings.editDaysTitle });
+  await editDays.getByLabel(en.setup.settings.editDays, { exact: true }).fill('10');
+  await editDays.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(saved(editDays)).toBeVisible();
+
+  const year = await page.getByRole('heading', { level: 3 }).first().innerText();
+  const quarter = page.getByRole('form', {
+    name: en.setup.settings.quarterOfYear.replace('{{year}}', year).replace('{{number}}', '1'),
+  });
+  await quarter.getByLabel(en.setup.settings.lateValue, { exact: true }).fill('75');
+  await quarter.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(saved(quarter)).toBeVisible();
+  await page.reload();
+  await expect(
+    page
+      .getByRole('form', { name: en.setup.settings.editDaysTitle })
+      .getByLabel(en.setup.settings.editDays, { exact: true }),
+  ).toHaveValue('10');
+
+  await openSetupPage(page, en.setup.slotTypesLink, en.setup.slotTypes.title);
+  await page.getByRole('button', { name: en.setup.slotTypes.add, exact: true }).first().click();
+  const form = page.getByRole('form', { name: en.setup.slotTypes.newTitle });
+  await form.getByLabel(en.setup.slotTypes.name, { exact: true }).fill('Lesson 40');
+  await form.getByLabel(en.setup.slotTypes.kind, { exact: true }).selectOption('lesson');
+  await form.getByLabel(en.setup.slotTypes.length, { exact: true }).fill('40');
+  await form.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'Lesson 40' })).toContainText('40 min');
+
+  await page
+    .getByRole('navigation', { name: en.layout.menu })
+    .getByRole('link', { name: new RegExp(en.menu.setup) })
+    .click();
+  await expect(slotTypesItem.getByLabel(en.setup.checklist.done)).toBeVisible();
 });

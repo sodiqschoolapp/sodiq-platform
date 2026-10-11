@@ -102,6 +102,7 @@ describe('a frozen permission table', () => {
       'divisions',
       'quarters',
       'rooms',
+      'settings',
     ]);
     expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);
     expect(PERMISSIONS.rooms.super_admin).toEqual(['view', 'create', 'edit', 'archive']);
@@ -170,6 +171,26 @@ describe('a frozen permission table', () => {
       }
       expect(permits(PERMISSIONS, role, 'calendar', 'export')).toBe(false);
     }
+  });
+
+  // Task 1.6: the owner's answer 24: `settings` — Super Admin and Academic
+  // Vice Principal view, edit; Principal view. Travel time stays under
+  // `branches`, whose rows do not change.
+  it('gives the settings to the Super Admin and the Academic Vice Principal', () => {
+    expect(PERMISSIONS.settings.super_admin).toEqual(['view', 'edit']);
+    expect(PERMISSIONS.settings.academic_vice_principal).toEqual(['view', 'edit']);
+    expect(PERMISSIONS.settings.principal).toEqual(['view']);
+    for (const role of ROLES) {
+      if (!['super_admin', 'principal', 'academic_vice_principal'].includes(role)) {
+        expect(PERMISSIONS.settings[role], role).toEqual([]);
+      }
+      for (const action of ['create', 'archive', 'export'] as const) {
+        expect(permits(PERMISSIONS, role, 'settings', action)).toBe(false);
+      }
+    }
+    expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);
+    expect(PERMISSIONS.branches.principal).toEqual(['view']);
+    expect(PERMISSIONS.branches.academic_vice_principal).toEqual(['view']);
   });
 
   // Task 1.3, decision 8 of pull request #44: the year and quarter of the top

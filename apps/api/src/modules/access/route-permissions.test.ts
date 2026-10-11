@@ -43,6 +43,9 @@ const TEMPLATE_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_princip
 // Task 1.4, the owner's answer 18: the area `calendar`.
 const CALENDAR_VIEWERS = SETUP_VIEWERS;
 const CALENDAR_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
+// Task 1.6, the owner's answer 24: the area `settings`; travel time under `branches`.
+const SETTINGS_VIEWERS = SETUP_VIEWERS;
+const SETTINGS_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
@@ -149,6 +152,14 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/setup/calendar-entries/:id/archive': { branch: 'request', roles: CALENDAR_WRITERS },
   'POST /api/setup/calendar-entries/:id/restore': { branch: 'request', roles: CALENDAR_WRITERS },
   'GET /api/setup/calendar-day': { branch: 'request', roles: CALENDAR_VIEWERS },
+  'GET /api/setup/settings': { branch: 'request', roles: SETTINGS_VIEWERS },
+  'PUT /api/setup/settings/edit-days': { branch: 'request', roles: SETTINGS_WRITERS },
+  'PUT /api/setup/settings/early-warning': { branch: 'request', roles: SETTINGS_WRITERS },
+  'GET /api/setup/attendance-values': { branch: 'request', roles: SETTINGS_VIEWERS },
+  'PUT /api/setup/quarters/:id/attendance-values': { branch: 'request', roles: SETTINGS_WRITERS },
+  'GET /api/setup/checklist': { branch: 'request', roles: SETTINGS_VIEWERS },
+  'GET /api/setup/travel-times': { branch: 'request', roles: SETUP_VIEWERS },
+  'PUT /api/setup/travel-times': { branch: 'request', roles: ['super_admin'] },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

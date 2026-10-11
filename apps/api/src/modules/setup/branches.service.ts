@@ -7,6 +7,7 @@ import type { Access } from '../access/permission.guard.js';
 import { isSchoolDay } from '@sodiq/timetable-rules';
 import { loadCalendarSettings, losesGoLive } from './calendar-state.js';
 import { changesOf, notFound, refusingDuplicates } from './setup-refusals.js';
+import { SETTINGS_COLUMNS, toSettings } from './settings-state.js';
 
 interface BranchRow {
   id: string;
@@ -87,7 +88,8 @@ export class Branches {
    * A new branch, by the Super Admin (`02`: "Only this role creates
    * branches"). School-wide work: the branch does not exist when the
    * transaction begins, so its audit entry is an event of the whole school
-   * (`audit_log_school`) that names the branch as its record.
+   * (`audit_log_school`) that names the branch as its record, and holds the
+   * settings the branch starts with.
    */
   create(access: Access, record: BranchRecord, requestId: string): Promise<Branch> {
     return refusingDuplicates(() =>
@@ -104,13 +106,22 @@ export class Branches {
           .returning(COLUMNS)
           .executeTakeFirstOrThrow();
         const branch = toBranch(row);
+        // Every branch has its settings row (task 1.6, decision 8), with the
+        // defaults of the database; it belongs to the new branch, which this
+        // transaction then works for.
+        await this.transactions.enterCreatedBranch(transaction, branch.id);
+        const settings = await transaction
+          .insertInto('branch_settings')
+          .values({ branch_id: branch.id })
+          .returning(SETTINGS_COLUMNS)
+          .executeTakeFirstOrThrow();
         await this.audit.record(transaction, {
           branchId: null,
           actorId: access.accountId,
           assignmentId: access.assignmentId,
           action: 'branch.create',
           record: { type: 'branch', id: branch.id },
-          newValue: fieldsOf(branch),
+          newValue: { ...fieldsOf(branch), settings: toSettings(settings) },
           requestId,
         });
         return branch;

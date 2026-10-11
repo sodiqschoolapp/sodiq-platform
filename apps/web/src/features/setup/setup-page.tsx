@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/states';
 import { useView } from '@/features/access/use-view';
+import { SetupChecklist } from './setup-checklist';
 
 interface SetupLink {
   key: string;
@@ -18,7 +19,8 @@ interface SetupLink {
  * The entry of the menu item "School setup" (docs/spec/03-school-setup.md:
  * "Setup is done once per branch and then drives every other screen"). One
  * link per part that is built; a part is shown when the permission table lets
- * the active role view its area.
+ * the active role view its area. Above the links, the setup checklist of the
+ * branch for the roles that view the settings (task 1.6, answer 23).
  */
 export function SetupPage() {
   const { t } = useTranslation();
@@ -87,7 +89,22 @@ export function SetupPage() {
       text: t('setup.calendarLinkText'),
       area: 'calendar',
     },
+    {
+      key: 'settings',
+      to: '/setup/settings',
+      title: t('setup.settingsLink'),
+      text: t('setup.settingsLinkText'),
+      area: 'settings',
+    },
+    {
+      key: 'travelTimes',
+      to: '/setup/travel-times',
+      title: t('setup.travelTimesLink'),
+      text: t('setup.travelTimesLinkText'),
+      area: 'branches',
+    },
   ];
+  const showsChecklist = role !== null && permits(PERMISSIONS, role, 'settings', 'view');
   const links = all.filter(
     (link) => role !== null && permits(PERMISSIONS, role, link.area, 'view'),
   );
@@ -96,10 +113,11 @@ export function SetupPage() {
     <>
       <PageHeader title={t('setup.title')} breadcrumbs={[{ label: t('home.title'), to: '/' }]} />
       <p className="mb-4 max-w-prose text-sm text-muted-foreground">{t('setup.intro')}</p>
+      {showsChecklist && <SetupChecklist />}
       {links.length === 0 ? (
         <EmptyState text={t('setup.none')} />
       ) : (
-        <ul className="grid max-w-3xl gap-3">
+        <ul aria-label={t('setup.title')} className="grid max-w-3xl gap-3">
           {links.map((link) => (
             <li key={link.key} className="rounded-lg border p-4">
               <Link to={link.to} className="font-medium underline-offset-4 hover:underline">

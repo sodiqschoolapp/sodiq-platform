@@ -135,6 +135,8 @@ export const ERROR_CODES = [
   'go_live_school_day_taken',
   /** The go-live date must be a school day: some grade has lessons on it (`edge/academic-year`; task 1.4). */
   'go_live_not_school_day',
+  /** Travel time is set between two different branches (task 1.6). */
+  'travel_time_same_branch',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
