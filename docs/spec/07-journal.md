@@ -18,8 +18,8 @@ There is one journal for each class or group and subject in an academic year. It
 | --- | --- | --- |
 | Student list | Number, surname and name in alphabetical order, UID. | Fixed on the left. Filled by the system. |
 | Quarter results | Attendance average, classwork average, homework average, rating exam (rating subjects only), quarter result, grade 2–5. | Fixed next to the names. Calculated by the system; a switch shows the same figures for the selected month. |
-| Lessons | One block per dated lesson. Row 1: date, weekday, slot. Row 2: A, then CW and HW with their titles where the lesson has them, then AVG. Row 3: "all present" button; under classwork and under homework, the label "Soni" and the total set by the teacher (for example 30, 5 or 100). A lesson with no classwork and no homework is one narrow attendance column. | Scrolls sideways. Cancelled lessons are grey with the reason. |
-| Lesson cells | Attendance mark; for classwork and for homework, the number typed by the teacher and next to it the percent; lesson score. | The teacher types the attendance mark and the numbers. The system calculates the percents and the lesson score. |
+| Lessons | One block per dated lesson. Row 1: date, weekday, slot. Row 2: A, then one CW column for each classwork of the lesson and one HW column for each homework checked at it, each with its title, then AVG. Row 3: "all present" button; under each classwork and each homework, the label "Soni" and the total set by the teacher for that work (for example 30, 5 or 100). A lesson with no classwork and no homework is one narrow attendance column. | Scrolls sideways. Cancelled lessons are grey with the reason. |
+| Lesson cells | Attendance mark; for each classwork and each homework, the number typed by the teacher and next to it the percent; lesson score. | The teacher types the attendance mark and the numbers. The system calculates the percents and the lesson score. |
 | Bottom row | Class or group averages: attendance, classwork, homework, rating exam, quarter result. | Calculated. |
 | Legend | Attendance marks, grade bands, and the weights in force for this subject and quarter. | Always visible under the grid. |
 
@@ -37,14 +37,14 @@ Students who left or moved are shown in a folded section at the bottom with thei
 | 5 | Fully exempt. Set by the system from an exemption; the teacher cannot type it. |
 
 - **Attendance.** "All present" marks 1 for every student who is not yet marked and not exempt; the teacher then types the exceptions: 0, 2 or 3. This takes seconds.
-- **Classwork and homework.** The columns come from the lesson plan, so a lesson shows only the works it really has. The teacher sets the total of a work, then types a number for each student. The system shows the percent next to the number. The rules are under "The total" below. In an extra lesson, or a lesson held while its plan item is missing, the teacher can add one classwork and one "homework given" by hand. These are the only columns that do not come from the plan.
-- **Homework column.** The homework numbers in a lesson's column are for the homework checked at that lesson, which is the task given at the previous lesson. The column exists only when the previous lesson's plan item has a homework; an empty homework column is never shown. So the first lesson of the year has none, and neither does a lesson after one where no homework was given. Homework given at the last lesson of a quarter is checked, and counted, in the next quarter.
+- **Classwork and homework.** The columns come from the lesson plan, so a lesson shows only the works it really has. A lesson can have any number of classworks and any number of homeworks given, including none of one kind, for example three homeworks and no classwork. Each work has its own column and its own total. The teacher sets the total of a work, then types a number for each student. The system shows the percent next to the number. The rules are under "The total" below. In an extra lesson, or a lesson held while its plan item is missing, the teacher can add any number of classworks and of "homework given" by hand. These are the only columns that do not come from the plan.
+- **Homework column.** The homework numbers in a lesson's homework columns are for the homeworks checked at that lesson, which are the tasks given at the previous lesson: one column for each homework given there. An empty homework column is never shown. So the first lesson of the year has none, and neither does a lesson after one where no homework was given. Homework given at the last lesson of a quarter is checked, and counted, in the next quarter.
 - **Topic.** Taken from the lesson plan and read only in the journal. Only an extra lesson has a topic typed here.
 - **Rating exam.** One score from 0 to 100 per student per quarter, only in rating subjects.
 - **Comments.** A comment can be attached to any attendance mark or score, and a general note to a student for a lesson. Each comment is either "staff only" or "visible to parents".
 - **Saving.** Every cell saves by itself and shows a saved sign. There is no Save button. If the connection drops, entries wait on the device and are sent when it returns; the page warns before closing with unsent entries.
 - **Keyboard.** Arrows, Tab and Enter move between cells; digits type; a key opens the comment.
-- **Lesson mode.** On a phone, one lesson is shown at a time as a list of students with large buttons: attendance, then scores, then homework.
+- **Lesson mode.** On a phone, one lesson is shown at a time as a list of students with large buttons: attendance, then each classwork, then each homework.
 
 ## The total: one flexible way to grade
 
@@ -120,10 +120,10 @@ One rule covers every figure: a student is measured only on the lessons they wer
 
 1. Attendance value of a lesson: present 100, late 50, skipped lesson 0, absent 0. The values for late and skipped can be changed in settings. Exempt lessons (marks 4 and 5, set by the system from exemptions) are left out of all that student's averages.
 2. Classwork percent = number typed ÷ total of that work × 100. Homework percent is calculated the same way. Whatever total the teacher chose, only this percent is used from here on.
-3. Lesson score (AVG) = the subject's daily distribution applied to the attendance value, classwork score and homework score of that lesson. If the lesson had no classwork or no homework, that part is left out and the other weights are scaled up to 100.
+3. Lesson score (AVG) = the subject's daily distribution applied to the attendance value, classwork part and homework part of that lesson. The classwork part is the mean of the percents of that lesson's classworks; the homework part is the mean of the percents of the homeworks checked at that lesson. If the lesson had no classwork or no homework, that part is left out and the other weights are scaled up to 100.
 4. An empty score is not counted. For work not done the teacher types 0. Reminders show lessons where some present students have no score.
 5. Quarter attendance average = the mean of the attendance values of all the student's lessons held in the quarter, without exempt and cancelled lessons.
-6. Quarter classwork average = the mean of the student's classwork scores in the quarter; each work counts equally. The homework average is calculated the same way.
+6. Quarter classwork average = the mean of the student's classwork scores in the quarter; each work counts equally, also when one lesson has several. The homework average is calculated the same way.
 7. Quarter result = attendance average × its weight + classwork average × its weight + homework average × its weight + rating exam × its weight, using the weights of that subject and quarter.
 8. While a part has no data, the result is shown as provisional: calculated on the parts that exist, scaled to 100, and marked. A quarter cannot be closed in a rating subject until every student has a rating exam score, "did not sit" (counts 0) or "exempt" (the part is left out).
 9. Grade = the band of the rounded quarter result: 0–49 is 2, 50–66 is 3, 67–83 is 4, 84–100 is 5.

@@ -220,7 +220,7 @@ How to read the task lines:
 
 - [ ] **4.1 Exact fractions and daily results**
   - Read: `07` (The total, Calculation rules), `edge/calculation`, `edge/developer-rules`.
-  - Build in `packages/calc`: a fraction type on BigInt; percentage of a work from number and total; attendance values; daily result from the daily distribution; the rules for empty scores.
+  - Build in `packages/calc`: a fraction type on BigInt; percentage of a work from number and total; attendance values; daily result from the daily distribution, with the classwork part as the mean of the lesson's classworks and the homework part as the mean of the homeworks checked at it; the rules for empty scores.
   - Done when: the worked examples in the spec pass as tests and property tests show no floating point is used.
   - From 1.6 (pull request #49): the attendance values of late and skipped are stored per quarter (`quarters.late_value`, `quarters.skipped_value`, 50 and 0 by default); the calculation takes the values of the lesson's quarter as input.
 
@@ -367,7 +367,7 @@ How to read the task lines:
 
 - [ ] **7.1a Plans and items**
   - Read: `09` (What a plan contains), `edge/lesson-plans` (How items stay attached).
-  - Build: a plan per class or group and subject; items with topic, classwork, homework and files; file limits; attachment of items to lessons in order; who can see a plan.
+  - Build: a plan per class or group and subject; items with topic, any number of classworks and homeworks (at most 10 of each) and files; file limits; attachment of items to lessons in order; who can see a plan.
   - Done when: a plan fills the lessons of a quarter in order.
 
 - [ ] **7.1b Items follow the timetable**
@@ -396,7 +396,7 @@ How to read the task lines:
 
 - [ ] **8.1 Classwork and homework**
   - Read: `07` (Entering data, The total), `09` (In the journal), `edge/journal` (Entering), `edge/lesson-plans` (Plans and the journal).
-  - Build: columns taken from the plan; works added by hand when a lesson has no plan item, flagged "unplanned"; a total per work, whole numbers only, percent shown; one classwork and one homework per lesson; homework entered on the lesson where it is checked; "not held"; no empty columns.
+  - Build: columns taken from the plan; works added by hand when a lesson has no plan item, flagged "unplanned"; a total per work, whole numbers only, percent shown; any number of classworks and homeworks per lesson (at most 10 of each), each with its own column and total; homework entered on the lesson where it is checked; "not held"; no empty columns.
   - Done when: the first lesson of a journal has no homework column and every entering rule has a test.
 
 - [ ] **8.2 Rating exam and comments**
