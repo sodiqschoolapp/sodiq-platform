@@ -33,13 +33,13 @@ Task requested: $ARGUMENTS
 
 ## The draft pull request
 
-9. First run `git ls-remote --heads origin "task/<id>-*"`. If it lists anything, stop and say "task <id> is already started": another session has it, or one died before its pull request (the start routine names such a branch for the owner). Otherwise create the branch `task/<id>-<short-name>` from `main`. Make one empty commit (`git commit --allow-empty`) with the subject `<id> Plan`, and push it: `git push -u origin task/<id>-<short-name>`.
+9. First run `git ls-remote --heads origin "task/<id>-*"`. If it lists anything, stop and say "task <id> is already started": another session has it, or one died before its pull request (after two hours the start routine deletes such a branch when it holds only empty commits, or opens an issue for the owner when it holds work). Otherwise create the branch `task/<id>-<short-name>` from `main`. Make one empty commit (`git commit --allow-empty`) with the subject `<id> Plan`, and push it: `git push -u origin task/<id>-<short-name>`.
 10. Open a draft pull request (GitHub commands below). The body is the plan of step 7 with the reviewer's notes, under the heading `## Plan`. Print the address of the pull request. In a cloud session, bind the pull request to the session with the `bind_pr` tool (`docs/cloud-loop.md`, section 5), so that `[review]` comments and CI results wake it, and say that you did.
 11. Stop. Say: "Waiting for review on the pull request." Do not edit code before the review.
 
 ## After the review
 
-12. When you are told to continue, or a comment on the pull request reaches you, read every comment of the pull request (GitHub commands below). Review comments start with `[review]`. Act on the newest one:
+12. When you are told to continue, or a comment on the pull request reaches you, read every comment of the pull request (GitHub commands below). Review comments start with `[review]`. Act on the newest one. When it is `approved` or `changes needed`, first post one line on the pull request, "Acting on the review.": the start routine resumes a task that shows no reaction 30 minutes after such a review.
     - `[review] approved`: build. The comment may carry corrections to the plan and may change a decision under "Decided without the owner"; build with the reviewer's version.
     - `[review] changes needed`: change the plan as asked, update the body of the pull request, post a comment that says what changed, then make an empty commit `<id> Plan, revised` and push it, and stop again. A plan revision changes no file; without the push the review routine sees no change newer than its review and never reviews the plan again.
     - `[review] owner decision needed`, or a question: comes only for stop-list items. Answer what you can in a comment and stop; the owner answers the rest.
