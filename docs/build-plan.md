@@ -156,8 +156,6 @@ How to read the task lines:
   - Build: settings for edit days, attendance values, early-warning thresholds, travel time between branches and languages of instruction; the fixed grade bands; the per-branch setup checklist with the items that exist so far. Later tasks add their own items to the checklist.
   - Done when: each setting has a permission test and the checklist reflects real state for Phase 1 items.
 
-> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 2, deletes this line.
-
 ## Phase 2. Subjects and people
 
 - [ ] **2.1 Subjects**

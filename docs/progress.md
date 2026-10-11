@@ -2,6 +2,10 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: decided ahead for Phase 2, gate lifted, one reviewer per event (process change, no task)
+
+- Owner: the answers for tasks 2.1 to 2.6 are in `docs/decisions.md` ("Decided ahead for tasks 2.1 to 2.6"), the gate before Phase 2 is lifted, the routines run on their API trigger and an hourly schedule only (no GitHub triggers), and the reviewer counts rounds by distinct sha and reads the comments again before it posts or merges; the next task is 2.1.
+
 ## 11 October 2026: task 1.6 Settings and the setup checklist
 
 - Built: migration 0019 (`branch_settings` one row per branch with edit days and the four early-warning thresholds; `late_value` and `skipped_value` on `quarters`; school-wide `travel_times`, one row per unordered pair); `Transactions.enterCreatedBranch` so the branch create writes its settings row; eight routes under `/api/setup` (area `settings`; travel time under `branches`) and the checklist of the eight Phase 1 items.
