@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { SUBJECT_COLOURS } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import {
   contrastRatio,
@@ -18,6 +19,9 @@ const css = readFileSync(path.join(import.meta.dirname, '../src/index.css'), 'ut
 /** Text needs 4.5:1 (success criterion 1.4.3), a control's boundary or focus 3:1 (1.4.11). */
 const TEXT = 4.5;
 const CONTROL = 3;
+
+/** The tint of a subject chip, as `subject-colour.tsx` draws it (`/15`). */
+const SUBJECT_TINT = 0.15;
 
 interface Pair {
   name: string;
@@ -211,6 +215,23 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
       bg: over(token('sidebar'), background),
       min: CONTROL,
     },
+    // The 12 subject colours (task 2.1, answer 7; `subject-colour.tsx`): the
+    // swatch is a graphic that tells subjects apart, 3:1 on the background
+    // (1.4.11); the chip writes the name in the normal text on a 15% tint.
+    ...SUBJECT_COLOURS.flatMap((colour): Pair[] => [
+      {
+        name: `subject ${colour}: swatch on background`,
+        fg: token(`subject-${colour}`),
+        bg: background,
+        min: CONTROL,
+      },
+      {
+        name: `subject ${colour}: foreground on its 15% tint over background`,
+        fg: token('foreground'),
+        bg: over(token(`subject-${colour}`), background, SUBJECT_TINT),
+        min: TEXT,
+      },
+    ]),
   ];
 }
 

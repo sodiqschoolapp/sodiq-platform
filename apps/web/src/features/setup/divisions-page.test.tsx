@@ -308,6 +308,25 @@ describe('the divisions page', () => {
     });
   });
 
+  // Task 2.1, decision 9: a department with an active subject is not archived.
+  it('says why a department with active subjects is not archived', async () => {
+    await openList(superAdmin(), [ACADEMIC, OPERATIONS, EVENTS], {
+      [`POST /api/setup/departments/${uid(11)}/archive`]: () =>
+        refusal('department_has_subjects', 409),
+    });
+    fireEvent.click(rowButton('Academic'));
+    const panel = await screen.findByRole('complementary', { name: 'Academic' });
+
+    fireEvent.click(
+      within(panel).getByRole('button', {
+        name: en.setup.divisions.archiveNamed.replace('{{name}}', 'STEAM'),
+      }),
+    );
+    await goOn(en.setup.divisions.archive);
+
+    expect(await within(panel).findByText(en.errors.department_has_subjects)).toBeDefined();
+  });
+
   it('shows an archived division without its rename form, with a way to restore it and no way to change its departments', async () => {
     await openList();
 

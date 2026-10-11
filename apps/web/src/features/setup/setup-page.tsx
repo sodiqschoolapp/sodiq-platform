@@ -103,6 +103,13 @@ export function SetupPage() {
       text: t('setup.travelTimesLinkText'),
       area: 'branches',
     },
+    {
+      key: 'subjects',
+      to: '/setup/subjects',
+      title: t('setup.subjectsLink'),
+      text: t('setup.subjectsLinkText'),
+      area: 'subjects',
+    },
   ];
   const showsChecklist = role !== null && permits(PERMISSIONS, role, 'settings', 'view');
   const links = all.filter(

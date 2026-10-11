@@ -158,7 +158,7 @@ How to read the task lines:
 
 ## Phase 2. Subjects and people
 
-- [ ] **2.1 Subjects**
+- [x] **2.1 Subjects**
   - Read: `05` (Grading weights on a subject), `07` (Calculation rules), `edge/calculation`.
   - Build: subject with names in three languages, department, grades, journal type, switches (rating exam, group, language rule, demanding), daily distribution, and quarterly distribution per quarter; the subject list.
   - Done when: a graded subject cannot be saved with weights that do not total 100.
@@ -211,6 +211,7 @@ How to read the task lines:
   - Read: `05`, `04` (Teacher and staff record), `06` (Building a timetable, Rules), `edge/timetable` (Structure, After publishing).
   - Build: load rows (class or group, subject, one teacher, lessons per week, room needs, double lessons); checks for subject and grade in the teacher's profile, the language rule, split rules, weekly totals against slots and against the contract load across branches; the load belongs to a timetable version; a load row may name a vacancy.
   - Done when: each blocked case in the spec has a test.
+  - From 2.1 (pull request #52, decision 17): `edge/people-roles-accounts`, "A teacher moves to another department, or a subject is moved, mid-year. Both changes carry a start date and are made by the Super Admin. They are refused while a teaching load would have a teacher outside the subject's department; those loads are listed for reassignment first." Since 2.1 only the Super Admin changes `departmentId` on `PUT /api/setup/subjects/:id`; the start date and the refusal against the load come here.
 
 > **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 4, deletes this line.
 
@@ -273,6 +274,7 @@ How to read the task lines:
   - Read: `06` (Editing in the grid, Rules, Changes after publishing, How surprises are prevented), `edge/timetable` (Versions and drafts, After publishing).
   - Build: the impact preview; start date rules; the out-of-date draft check; one publish per branch at a time; a publish that fails changes nothing; quarter shortcuts for the start date; dates under a later availability entry are warnings by date; carry a teacher or room change into later versions.
   - Done when: two publishes at the same moment are tested.
+  - From 2.1 (pull request #52, decisions 2, 3 and 14): the publish check of `edge/academic-year`, "Publishing is blocked unless the year has four dated quarters and every subject in the load has its journal type and, if it is graded, its daily distribution and its quarterly distribution for each quarter the version touches. Attendance-only subjects need no weights." The distributions are the branch's (`subject_daily_weights`, `subject_quarter_weights`); a row counts only in the subject's current `weights_round` and, for a quarter, when its rating exam part fits the subject's switch (as `quarterWeightsMissing` in `apps/api/src/modules/setup/subjects.service.ts` counts).
 
 - [ ] **5.5b Publish: dated lessons**
   - Read: `06` (What a change does to existing data, How surprises are prevented), `edge/timetable` (Versions and drafts), `edge/time-dates-calendar`.
@@ -283,6 +285,7 @@ How to read the task lines:
   - Read: `06` (How surprises are prevented), `07` (first paragraph), `edge/timetable` (Versions and drafts), `edge/developer-rules`.
   - Build: the journal record (one per class or group and subject per year) created or closed at publish, without cells; notices to affected teachers through 0.9; the "changed" mark for a week; withdraw before the start date.
   - Done when: publishing a load with a new subject creates exactly one journal and removing it closes that journal.
+  - From 2.1 (pull request #52, decision 4): `edge/calculation`, "'Rating exam' is switched off, or a subject becomes attendance only, in week 5": "These switches are stored per quarter. They are free before the quarter's first lesson." The journal stores the rating exam switch and the journal type per quarter; until now they are one school-wide value on `subjects`.
 
 - [ ] **5.6a One-day changes**
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing).
@@ -401,6 +404,7 @@ How to read the task lines:
   - Read: `07` (Entering data, Layout), `edge/journal` (Entering).
   - Build: the rating exam score per student per quarter in rating subjects, with "did not sit" and "exempt"; comments on a mark or score and notes per student per lesson, each "staff only" or "visible to parents"; keyboard entry rules.
   - Done when: a non-rating subject has no exam column.
+  - From 2.1 (pull request #52, decision 4): `edge/calculation`: "In a started quarter the change is refused while scores exist." `PUT /api/setup/subjects/:id` refuses a change of the rating exam switch or the journal type while a started quarter holds scores of the subject, with its test.
 
 - [ ] **8.3a Saving and stale saves**
   - Read: `07`, `12` (No lost work), `edge/journal` (Saving and working together), `edge/system-behaviour`.
@@ -457,6 +461,8 @@ How to read the task lines:
   - Build: the Results and Attendance tabs of the student profile; quarter and year results per subject; the trace from a result to its lessons.
   - Done when: every figure shown comes from `packages/calc`.
   - From 1.6 (pull request #49, decision 3): a change of late or skipped on a quarter (`PUT /api/setup/quarters/:id/attendance-values`) shows the results that change first, as the preview `edge/calculation` asks for, and recalculates them in the same transaction.
+  - From 2.1 (pull request #52, decision 14 and migration 0021): every reader of the weights (results, the lesson score, the journal legend) takes a distribution only in the subject's current `weights_round` and, for a quarter, only when its rating exam part fits the switch; a row of an earlier round is not a distribution.
+  - From 2.1 (pull request #52, decision 4): a change of a quarterly distribution (`PUT /api/setup/subjects/:id/quarter-weights/:quarterId` and the copy) in an open quarter: `edge/calculation`, "Before saving, the system shows how many grades will change in each journal, asks for a reason and tells the subject's teachers. The journal legend shows 'changed on [date]'."; `05`: "Each change is logged and results are recalculated at once."
 
 - [ ] **9.2a Closing checklist**
   - Read: `07` (Closing a quarter), `edge/journal` (Closing and reopening), `edge/calculation`.
@@ -468,6 +474,7 @@ How to read the task lines:
   - Build: close for the whole branch in one step; stored final results with their inputs; the start-quarter choice ("keep" or "not official").
   - Done when: closing against a simultaneous cell save is tested.
   - From 1.6 (pull request #49, decision 3): a closed quarter refuses a change of its late and skipped values, in the database as `quarters_closed_year_guard` does for a closed year, also after a reopening (`edge/calculation`: "A closed quarter keeps the values it was closed with, also when reopened").
+  - From 2.1 (pull request #52, decision 12): `05`, "Weights of a quarter can change until the quarter is closed." A closed quarter refuses a write of `subject_quarter_weights`, in the database as `subject_quarter_weights_closed_year_guard` does for a closed year.
 
 - [ ] **9.2c Reopening and the nightly check**
   - Read: `edge/journal` (Closing and reopening), `edge/system-behaviour`.
@@ -504,6 +511,7 @@ How to read the task lines:
   - Read: `04` (Movements), `edge/academic-year`.
   - Build: the rollover plan per branch (classes keep their name and move up a grade; promote, repeat, leave, graduate); what is copied and what is not; undo until a lesson of the new year holds data.
   - Done when: a second run of rollover only shows the plan.
+  - From 2.1 (pull request #52): `edge/academic-year`, "What does rollover copy?": "Copied as drafts to confirm: ... subject weights for the new quarters"; the quarterly distributions of the branch, in the subject's current round.
 
 - [ ] **9.5c Starting a year and the full-year simulation**
   - Read: `edge/academic-year`, `14` (Whole system), `edge/system-behaviour`.

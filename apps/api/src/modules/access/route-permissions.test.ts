@@ -46,6 +46,9 @@ const CALENDAR_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_princip
 // Task 1.6, the owner's answer 24: the area `settings`; travel time under `branches`.
 const SETTINGS_VIEWERS = SETUP_VIEWERS;
 const SETTINGS_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
+// Task 2.1, the owner's answer 4 and decision 1: the area `subjects`.
+const SUBJECT_VIEWERS = SETUP_VIEWERS;
+const SUBJECT_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
@@ -160,6 +163,21 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/setup/checklist': { branch: 'request', roles: SETTINGS_VIEWERS },
   'GET /api/setup/travel-times': { branch: 'request', roles: SETUP_VIEWERS },
   'PUT /api/setup/travel-times': { branch: 'request', roles: ['super_admin'] },
+  'GET /api/setup/subjects': { branch: 'request', roles: SUBJECT_VIEWERS },
+  'POST /api/setup/subjects': { branch: 'request', roles: SUBJECT_WRITERS },
+  'PUT /api/setup/subjects/:id': { branch: 'request', roles: SUBJECT_WRITERS },
+  'PUT /api/setup/subjects/:id/daily-weights': { branch: 'request', roles: SUBJECT_WRITERS },
+  'POST /api/setup/subjects/:id/archive': { branch: 'request', roles: SUBJECT_WRITERS },
+  'POST /api/setup/subjects/:id/restore': { branch: 'request', roles: SUBJECT_WRITERS },
+  'GET /api/setup/subjects/:id/quarter-weights': { branch: 'request', roles: SUBJECT_VIEWERS },
+  'PUT /api/setup/subjects/:id/quarter-weights/:quarterId': {
+    branch: 'request',
+    roles: SUBJECT_WRITERS,
+  },
+  'POST /api/setup/subjects/:id/quarter-weights/copy': {
+    branch: 'request',
+    roles: SUBJECT_WRITERS,
+  },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

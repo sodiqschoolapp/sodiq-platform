@@ -22,6 +22,7 @@ export type AccountKey =
   | 'templates'
   | 'calendar'
   | 'settings'
+  | 'subjects'
   | 'shellTools'
   | 'switchers'
   | 'account'

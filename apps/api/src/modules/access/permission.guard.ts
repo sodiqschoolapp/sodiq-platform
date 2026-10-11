@@ -18,6 +18,7 @@ import { ApiException } from '../../http/api-exception.js';
 import { HeaderPipe } from '../../http/validation.js';
 import { owedStepsAllowedOn, sessionOf } from '../auth/session.guard.js';
 import { declarationsOf } from './access.decorators.js';
+import type { CurrentAssignment } from './current-assignments.js';
 import { decide } from './permission-check.js';
 import { PERMISSION_TABLE } from './permission-table.token.js';
 
@@ -31,6 +32,13 @@ export interface Access {
   branchId: string | null;
   /** For `Transactions.run`: the branch of the request, or nothing for school-wide work. */
   branchIds: readonly string[];
+  /**
+   * Every current assignment of the account, by id, as the session read them
+   * for this request. A route that allows a part of its change to one role only
+   * decides it from all of them, never from `role` (edge cases, "Who can act":
+   * "The server allows an action if any current assignment permits it").
+   */
+  assignments: readonly CurrentAssignment[];
 }
 
 /** Not on the request object: nothing else can set it. */
@@ -127,6 +135,7 @@ export class PermissionGuard implements CanActivate {
       role: assignment.role,
       branchId,
       branchIds: branchId === null ? [] : [branchId],
+      assignments: session.assignments,
     });
     return true;
   }

@@ -336,6 +336,46 @@ export interface SlotTypes {
   name: string;
 }
 
+export interface SubjectDailyWeights {
+  attendance: number;
+  branch_id: string;
+  classwork: number;
+  homework: number;
+  subject_id: string;
+  weights_round: Generated<number>;
+}
+
+export interface SubjectQuarterWeights {
+  attendance: number;
+  branch_id: string;
+  classwork: number;
+  homework: number;
+  quarter_id: string;
+  rating_exam: number | null;
+  rating_round: Generated<number>;
+  subject_id: string;
+  weights_round: Generated<number>;
+}
+
+export interface Subjects {
+  archived_at: Timestamp | null;
+  colour: string;
+  created_at: Generated<Timestamp>;
+  demanding: Generated<boolean>;
+  department_id: string;
+  grades: number[];
+  group_subject: Generated<boolean>;
+  id: Generated<string>;
+  journal_type: string;
+  language_rule: Generated<boolean>;
+  name_en: string;
+  name_ru: string;
+  name_uz: string;
+  rating_exam: Generated<boolean>;
+  rating_round: Generated<number>;
+  weights_round: Generated<number>;
+}
+
 export interface TravelTimes {
   branch_high: string;
   branch_low: string;
@@ -373,5 +413,8 @@ export interface DB {
   sign_in_throttle: SignInThrottle;
   slot_type_lengths: SlotTypeLengths;
   slot_types: SlotTypes;
+  subject_daily_weights: SubjectDailyWeights;
+  subject_quarter_weights: SubjectQuarterWeights;
+  subjects: Subjects;
   travel_times: TravelTimes;
 }

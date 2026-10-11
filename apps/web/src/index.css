@@ -39,6 +39,18 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-subject-red: var(--subject-red);
+  --color-subject-orange: var(--subject-orange);
+  --color-subject-amber: var(--subject-amber);
+  --color-subject-lime: var(--subject-lime);
+  --color-subject-green: var(--subject-green);
+  --color-subject-teal: var(--subject-teal);
+  --color-subject-cyan: var(--subject-cyan);
+  --color-subject-blue: var(--subject-blue);
+  --color-subject-indigo: var(--subject-indigo);
+  --color-subject-violet: var(--subject-violet);
+  --color-subject-pink: var(--subject-pink);
+  --color-subject-brown: var(--subject-brown);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -88,6 +100,20 @@
   --sidebar-border: oklch(0.922 0 0);
   /* Like the ring: 4.53:1 on the sidebar (0.708 was 2.48:1); the menu of 0.8c inherits it. */
   --sidebar-ring: oklch(0.556 0 0);
+  /* The 12 subject colours (task 2.1, answer 7): a swatch at least 3:1 on the
+     background, the name in the normal text on a 15% tint (tooling/contrast.test.ts). */
+  --subject-red: oklch(0.56 0.17 25);
+  --subject-orange: oklch(0.56 0.17 50);
+  --subject-amber: oklch(0.56 0.17 75);
+  --subject-lime: oklch(0.56 0.17 130);
+  --subject-green: oklch(0.56 0.17 150);
+  --subject-teal: oklch(0.56 0.17 185);
+  --subject-cyan: oklch(0.56 0.17 215);
+  --subject-blue: oklch(0.56 0.17 255);
+  --subject-indigo: oklch(0.56 0.17 275);
+  --subject-violet: oklch(0.56 0.17 300);
+  --subject-pink: oklch(0.56 0.17 350);
+  --subject-brown: oklch(0.48 0.08 55);
 }
 
 .dark {
@@ -125,6 +151,18 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --subject-red: oklch(0.74 0.15 25);
+  --subject-orange: oklch(0.74 0.15 50);
+  --subject-amber: oklch(0.74 0.15 75);
+  --subject-lime: oklch(0.74 0.15 130);
+  --subject-green: oklch(0.74 0.15 150);
+  --subject-teal: oklch(0.74 0.15 185);
+  --subject-cyan: oklch(0.74 0.15 215);
+  --subject-blue: oklch(0.74 0.15 255);
+  --subject-indigo: oklch(0.74 0.15 275);
+  --subject-violet: oklch(0.74 0.15 300);
+  --subject-pink: oklch(0.74 0.15 350);
+  --subject-brown: oklch(0.7 0.08 55);
 }
 
 @layer base {

@@ -447,11 +447,28 @@ export class Divisions {
     );
   }
 
-  /** At the moment of the clock. An archived department stays as it is. */
+  /**
+   * At the moment of the clock. An archived department stays as it is.
+   * Refused (`department_has_subjects`) while an active subject is in it
+   * (task 2.1, decision 9). The department is locked first and the subjects
+   * counted in a second statement: a subject created or restored at the same
+   * moment reads the department FOR SHARE (db/migrations/0020), so one of the
+   * two waits for the other and then sees its result.
+   */
   archiveDepartment(access: Access, id: string, requestId: string): Promise<Department> {
     return this.transactions.run([], async (transaction) => {
       const row = await this.lockDepartment(transaction, id);
       if (row.archived_at === null) {
+        const subjects = await transaction
+          .selectFrom('subjects')
+          .select('id')
+          .where('department_id', '=', id)
+          .where('archived_at', 'is', null)
+          .limit(1)
+          .execute();
+        if (subjects.length > 0) {
+          throw new ApiException('department_has_subjects', 409);
+        }
         const now = this.clock.now();
         await transaction
           .updateTable('departments')

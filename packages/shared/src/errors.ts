@@ -137,6 +137,28 @@ export const ERROR_CODES = [
   'go_live_not_school_day',
   /** Travel time is set between two different branches (task 1.6). */
   'travel_time_same_branch',
+  /** The subject is archived: restore it first, then change it or its weights (task 2.1). */
+  'subject_archived',
+  /** A subject belongs to a department of the Academic division (`03`, Department; task 2.1, decision 6). */
+  'department_not_academic',
+  /** The department of the subject is archived (task 2.1, decision 9). */
+  'department_archived',
+  /** A department cannot be archived while an active subject is in it (task 2.1, decision 9). */
+  'department_has_subjects',
+  /** A graded subject is not saved without its daily distribution in the branch (answer 6; task 2.1). */
+  'daily_weights_required',
+  /** The daily distribution of the branch is already set; it is changed on its own route (task 2.1, decision 15). */
+  'daily_weights_set',
+  /** An attendance-only subject has no weights (`edge/calculation`; task 2.1). */
+  'attendance_only_no_weights',
+  /** A subject is not restored while its department is archived (task 2.1, decision 9). */
+  'subject_department_archived',
+  /** Only the Super Admin moves a subject to another department (`edge/people-roles-accounts`; task 2.1, decision 17). */
+  'subject_move_super_admin',
+  /** A quarterly distribution has a rating exam part exactly when the subject has a rating exam (`05`; task 2.1, decision 3). */
+  'weights_shape_mismatch',
+  /** Quarter 1 has no distribution that fits the subject, so there is nothing to copy (answer 6; task 2.1). */
+  'quarter_one_not_set',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
