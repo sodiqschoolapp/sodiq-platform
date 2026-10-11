@@ -68,6 +68,15 @@ describe('OpenAPI document', () => {
         '/api/setup/buildings/{id}/floors',
         '/api/setup/buildings/{id}/restore',
         '/api/setup/current-period',
+        '/api/setup/day-template-assignments',
+        '/api/setup/day-template-assignments/{id}/end',
+        '/api/setup/day-template-table',
+        '/api/setup/day-template-table/preview',
+        '/api/setup/day-templates',
+        '/api/setup/day-templates/{id}',
+        '/api/setup/day-templates/{id}/archive',
+        '/api/setup/day-templates/{id}/restore',
+        '/api/setup/day-templates/{id}/versions',
         '/api/setup/departments/{id}',
         '/api/setup/departments/{id}/archive',
         '/api/setup/departments/{id}/restore',
@@ -81,6 +90,11 @@ describe('OpenAPI document', () => {
         '/api/setup/floors/{id}/restore',
         '/api/setup/rooms',
         '/api/setup/rooms/{id}',
+        '/api/setup/slot-types',
+        '/api/setup/slot-types/{id}',
+        '/api/setup/slot-types/{id}/archive',
+        '/api/setup/slot-types/{id}/lengths',
+        '/api/setup/slot-types/{id}/restore',
       ]);
       expect(document.paths['/api/health']?.get?.responses).toEqual({
         '200': {

@@ -60,7 +60,7 @@ const CHECK_VIOLATION = '23514';
 
 /**
  * The refusals of the database for academic years and quarters
- * (db/migrations/0016), by the name of the constraint, index or trigger
+ * (db/migrations/0016) and for day templates (0017), by the name of the constraint, index or trigger
  * check that raised them. The service checks the same rules first, for an
  * answer that names the field; these answer when two requests race past the
  * service's checks, or at the commit of a deferred check.
@@ -78,6 +78,10 @@ export const CONSTRAINT_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   // Four quarters are written with their year; a fault answers the general refusal.
   academic_year_quarters_count: 'request_refused',
   quarters_outside_year: 'outside_year',
+  // Day templates (task 1.5). The other constraints of 0017 guard against a
+  // fault of the service, which checks first; they stay unmapped (500).
+  day_template_assignments_no_overlap: 'grade_ranges_overlap',
+  day_template_version_lesson_slot: 'no_lesson_slot',
 };
 
 /**

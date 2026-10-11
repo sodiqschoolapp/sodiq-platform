@@ -168,6 +168,13 @@ describe('templateFor', () => {
     expect(templateFor(8, monday, { assignments })).toBe('default');
   });
 
+  it('reads the settings of the date for another weekday when one is given, as the table does', () => {
+    // 2026-10-13 is a Tuesday; the Monday settings in force on it apply.
+    expect(templateFor(10, '2026-10-13', { assignments: everyLevel }, 1)).toBe('monday 10-11');
+    expect(templateFor(5, '2026-10-13', { assignments: everyLevel }, 1)).toBe('monday');
+    expect(templateFor(5, '2026-10-13', { assignments: everyLevel }, 2)).toBe('default');
+  });
+
   it('reads Sunday as weekday 7', () => {
     const assignments: TemplateAssignment[] = [
       {

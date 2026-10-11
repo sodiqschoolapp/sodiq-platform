@@ -72,14 +72,18 @@ const holds = (range: { gradeFrom: number | null; gradeTo: number | null }, grad
  * weekday with grade range, then weekday, then grade range, then the default."
  * Grade ranges at one level never overlap (the database keeps them apart), so
  * each level gives at most one template.
+ *
+ * `weekday` is the weekday of the date unless given: the table of School
+ * setup reads the settings in force on one date for every weekday (owner's
+ * answer 13), and passes no special dates.
  */
 export function templateFor(
   grade: number,
   date: string,
   settings: TemplateSettings,
+  weekday: number = weekdayOf(date),
 ): string | null {
   const special = (settings.specialDates ?? []).filter((entry) => entry.date === date);
-  const weekday = weekdayOf(date);
   const assignments = inForceOn(settings.assignments, date);
   const at = (level: TemplateLevel) => assignments.filter((row) => row.level === level);
 
