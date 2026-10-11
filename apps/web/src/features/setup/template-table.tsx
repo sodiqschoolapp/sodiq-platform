@@ -32,6 +32,8 @@ interface TemplateTableViewProps {
   /** The cells a change touches, marked (`03`: "shows that table with the changes marked"). */
   changed?: readonly { weekday: number; grade: number }[];
   caption: string;
+  /** The date under the table, where no Date field above names it (the preview). */
+  showDate?: boolean;
 }
 
 /**
@@ -40,7 +42,12 @@ interface TemplateTableViewProps {
  * grade in one table"; owner's answer 13): grades down, weekdays across, each
  * cell the template's name and the times of its day.
  */
-export function TemplateTableView({ table, changed = [], caption }: TemplateTableViewProps) {
+export function TemplateTableView({
+  table,
+  changed = [],
+  caption,
+  showDate = false,
+}: TemplateTableViewProps) {
   const { t, i18n } = useTranslation();
   const isChanged = (weekday: number, grade: number) =>
     changed.some((one) => one.weekday === weekday && one.grade === grade);
@@ -87,7 +94,7 @@ export function TemplateTableView({ table, changed = [], caption }: TemplateTabl
           ))}
         </TableBody>
       </Table>
-      {table.weekdays.length > 0 && (
+      {showDate && table.weekdays.length > 0 && (
         <p className="mt-2 text-xs text-muted-foreground">
           {t('setup.templateTable.on', { date: schoolDateText(table.date, i18n.language) })}
         </p>
@@ -160,6 +167,7 @@ export function usePreview(): {
             table={question.preview.after}
             changed={question.preview.changed}
             caption={t('setup.templateTable.previewTitle')}
+            showDate
           />
           <DialogFooter>
             <Button

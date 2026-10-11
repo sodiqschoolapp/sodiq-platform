@@ -50,7 +50,12 @@ import {
   type TemplateStore,
 } from './day-template-state.js';
 import { endFrom, isWithdrawn, scheduleFrom } from './dated-rows.js';
-import { notFound, refusingConstraints, refusingDuplicates } from './setup-refusals.js';
+import {
+  assignmentRefusals,
+  notFound,
+  refusingConstraints,
+  refusingDuplicates,
+} from './setup-refusals.js';
 
 /** A refusal of 409 that names the fields to show it beside. */
 function refused(code: ErrorCode, paths: readonly string[] = []): ApiException {
@@ -141,37 +146,43 @@ export class DayTemplates {
     });
   }
 
-  /** A write: the branch row taken for update first (decision 12); refusals of the database mapped. */
+  /**
+   * A write: the branch row taken for update first (decision 12); refusals of
+   * the database mapped, `refusals` over the general ones.
+   */
   private write<T>(
     access: Access,
     branchId: string,
     requestId: string,
     work: (context: Context) => Promise<T>,
+    refusals: Readonly<Record<string, ErrorCode>> = {},
   ): Promise<T> {
-    return refusingConstraints(() =>
-      refusingDuplicates(
-        () =>
-          this.transactions.run(access.branchIds, async (transaction) => {
-            const branch = await transaction
-              .selectFrom('branches')
-              .select(['time_zone', 'working_weekdays'])
-              .where('id', '=', branchId)
-              .forUpdate()
-              .executeTakeFirst();
-            if (branch === undefined) {
-              throw notFound();
-            }
-            return work({
-              transaction,
-              access,
-              branchId,
-              requestId,
-              today: schoolDateOf(this.clock.now(), branch.time_zone),
-              weekdays: weekdaysOf(branch.working_weekdays),
-            });
-          }),
-        NAME_INDEXES,
-      ),
+    return refusingConstraints(
+      () =>
+        refusingDuplicates(
+          () =>
+            this.transactions.run(access.branchIds, async (transaction) => {
+              const branch = await transaction
+                .selectFrom('branches')
+                .select(['time_zone', 'working_weekdays'])
+                .where('id', '=', branchId)
+                .forUpdate()
+                .executeTakeFirst();
+              if (branch === undefined) {
+                throw notFound();
+              }
+              return work({
+                transaction,
+                access,
+                branchId,
+                requestId,
+                today: schoolDateOf(this.clock.now(), branch.time_zone),
+                weekdays: weekdaysOf(branch.working_weekdays),
+              });
+            }),
+          NAME_INDEXES,
+        ),
+      refusals,
     );
   }
 
@@ -864,8 +875,13 @@ export class DayTemplates {
     record: AssignmentRecord,
     requestId: string,
   ): Promise<Assignment> {
-    return this.write(access, branchId, requestId, async (context) =>
-      DayTemplates.assignmentAnswer(context, await this.setAssignment(context, record)),
+    return this.write(
+      access,
+      branchId,
+      requestId,
+      async (context) =>
+        DayTemplates.assignmentAnswer(context, await this.setAssignment(context, record)),
+      assignmentRefusals(record.level),
     );
   }
 
@@ -931,27 +947,42 @@ export class DayTemplates {
     requestId: string,
   ): Promise<TemplatePreview> {
     try {
-      await this.write(access, branchId, requestId, async (context) => {
-        const date = change.change.from;
-        const before = tableOn(await loadStore(context.transaction), date, context.weekdays);
-        switch (change.kind) {
-          case 'slot_length':
-            await this.changeLength(context, change.slotTypeId, change.change);
-            break;
-          case 'template_version':
-            await this.addVersion(context, change.dayTemplateId, change.change);
-            break;
-          case 'assignment_set':
-            await this.setAssignment(context, change.change);
-            break;
-          case 'assignment_end':
-            await this.endAssignment(context, change.assignmentId, change.change);
-            break;
-        }
-        await sql`set constraints all immediate`.execute(context.transaction);
-        const after = tableOn(await loadStore(context.transaction), date, context.weekdays);
-        throw new PreviewDone({ before, after, changed: changedCells(before, after) });
-      });
+      await this.write(
+        access,
+        branchId,
+        requestId,
+        async (context) => {
+          const date = change.change.from;
+          const storeBefore = await loadStore(context.transaction);
+          const before = tableOn(storeBefore, date, context.weekdays);
+          switch (change.kind) {
+            case 'slot_length':
+              await this.changeLength(context, change.slotTypeId, change.change);
+              break;
+            case 'template_version':
+              await this.addVersion(context, change.dayTemplateId, change.change);
+              break;
+            case 'assignment_set':
+              await this.setAssignment(context, change.change);
+              break;
+            case 'assignment_end':
+              await this.endAssignment(context, change.assignmentId, change.change);
+              break;
+          }
+          await sql`set constraints all immediate`.execute(context.transaction);
+          const storeAfter = await loadStore(context.transaction);
+          const after = tableOn(storeAfter, date, context.weekdays);
+          throw new PreviewDone({
+            before,
+            after,
+            changed: changedCells(
+              { store: storeBefore, table: before },
+              { store: storeAfter, table: after },
+            ),
+          });
+        },
+        change.kind === 'assignment_set' ? assignmentRefusals(change.change.level) : {},
+      );
     } catch (error) {
       if (error instanceof PreviewDone) {
         return error.preview;

@@ -13,6 +13,8 @@ import type { Database } from '../../database/database.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { ApiException } from '../../http/api-exception.js';
+import { assignmentRefusals, refusingConstraints } from './setup-refusals.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
 const CHECK_VIOLATION = '23514';
@@ -474,6 +476,41 @@ describe('slot types and day templates in the database', () => {
           assign(south.branch, south.template, { level: 'default' }, { from: '2026-10-12' }),
         ),
       ).toEqual(ACCEPTED);
+    });
+  });
+
+  // `.claude/rules/web.md`: the text of an error code is true on every path
+  // that sends it. Two settings that overlap are two grade ranges only at the
+  // two grade levels.
+  it('answer the overlap of two settings as overlapping grades at the grade levels only', async () => {
+    const { branch, template } = await setUp();
+    const from = { from: '2026-10-12' };
+    const keys = [
+      { level: 'default' },
+      { level: 'weekday', weekday: 2 },
+      { level: 'grades', gradeFrom: 5, gradeTo: 11 },
+      { level: 'weekday_grades', weekday: 2, gradeFrom: 5, gradeTo: 11 },
+    ] as const;
+    for (const key of keys) {
+      await assign(branch, template, key, from);
+    }
+    const answers: Record<string, unknown> = {};
+    for (const key of keys) {
+      try {
+        await refusingConstraints(
+          () => assign(branch, template, key, from),
+          assignmentRefusals(key.level),
+        );
+        answers[key.level] = 'accepted';
+      } catch (error) {
+        answers[key.level] = error instanceof ApiException ? error.code : error;
+      }
+    }
+    expect(answers).toEqual({
+      default: 'request_refused',
+      weekday: 'request_refused',
+      grades: 'grade_ranges_overlap',
+      weekday_grades: 'grade_ranges_overlap',
     });
   });
 

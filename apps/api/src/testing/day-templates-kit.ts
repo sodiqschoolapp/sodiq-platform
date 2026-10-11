@@ -50,6 +50,11 @@ export interface DayTemplatesKit {
   /** The audit entries of an action, oldest first, of one record when named. */
   entries(action: string, recordId?: string): Promise<Record<string, unknown>[]>;
   auditCount(): Promise<number>;
+  /**
+   * Every row of the six tables of slot types and day templates in a branch,
+   * each column: what a refused change must leave as it was, in both branches.
+   */
+  rowsOf(branch: string): Promise<Record<string, unknown[]>>;
   createSlotType(
     branch: string,
     name: string,
@@ -157,6 +162,31 @@ export async function dayTemplatesKit(): Promise<DayTemplatesKit> {
             .executeTakeFirstOrThrow()
         ).count,
       );
+    },
+    async rowsOf(branch) {
+      const rows: Record<string, unknown[]> = {};
+      for (const table of [
+        'slot_types',
+        'slot_type_lengths',
+        'day_templates',
+        'day_template_versions',
+        'day_template_assignments',
+      ] as const) {
+        rows[table] = await database.migrator
+          .selectFrom(table)
+          .selectAll()
+          .where('branch_id', '=', branch)
+          .orderBy('id')
+          .execute();
+      }
+      rows.day_template_slots = await database.migrator
+        .selectFrom('day_template_slots')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('version_id')
+        .orderBy('position')
+        .execute();
+      return rows;
     },
     async createSlotType(branch, name, kind = 'lesson', lengthMinutes = 45) {
       const response = await post('/api/setup/slot-types', branch, { name, kind, lengthMinutes });

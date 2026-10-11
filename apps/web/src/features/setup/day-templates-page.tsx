@@ -45,6 +45,14 @@ export function DayTemplatesPage() {
   const hasLessonType =
     allSlotTypes?.some((slotType) => slotType.kind === 'lesson' && slotType.archivedAt === null) ??
     false;
+  // A template is drawn with its slot types (names, times) and added from
+  // them: the list waits on both queries and fails with either, and its
+  // failure is the reason "Add day template" is off.
+  const listFailure = templates.isError
+    ? { error: templates.error, retry: () => void templates.refetch() }
+    : slotTypes.isError
+      ? { error: slotTypes.error, retry: () => void slotTypes.refetch() }
+      : null;
 
   const create = useMutation({
     mutationFn: (record: DayTemplateRecord) =>
@@ -178,10 +186,10 @@ export function DayTemplatesPage() {
       <ListPage
         listId="day-templates"
         caption={t('setup.dayTemplates.caption')}
-        rows={templates.data?.dayTemplates}
-        error={templates.error ?? undefined}
+        rows={allSlotTypes === undefined ? undefined : templates.data?.dayTemplates}
+        error={listFailure?.error}
         onRetry={() => {
-          void templates.refetch();
+          listFailure?.retry();
         }}
         rowId={(row) => row.id}
         rowName={(row) => row.name}
@@ -199,6 +207,7 @@ export function DayTemplatesPage() {
               key={row.id}
               summary={row}
               today={today}
+              // The list has no rows before the slot types arrive.
               slotTypes={allSlotTypes ?? []}
               canEdit={can('edit')}
               canArchive={can('archive')}

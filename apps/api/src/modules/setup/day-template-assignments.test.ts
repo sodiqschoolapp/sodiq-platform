@@ -175,11 +175,14 @@ describe('where day templates apply', () => {
     expect(await t.auditCount()).toBe(before);
   });
 
-  it('answer 404 for a setting or a template of another branch, or an unknown one, never a 500 from the key', async () => {
-    const { branch } = await branchWith('Main');
+  it('answer 404 for a setting or a template of another branch, or an unknown one, never a 500 from the key; nothing changes in either branch', async () => {
+    const { branch, templates } = await branchWith('Main');
     const other = await branchWith('Foreign');
     const foreignTemplate = other.templates.Foreign ?? '';
     const foreign = await t.assign(other.branch, foreignTemplate, { level: 'weekday', weekday: 1 });
+    // An own setting of the key the refused ones name: a save would cut it.
+    await t.assign(branch, templates.Main ?? '');
+    const rows = [await t.rowsOf(branch), await t.rowsOf(other.branch)];
     const before = await t.auditCount();
     for (const id of [foreign, UNKNOWN]) {
       expect(
@@ -193,12 +196,7 @@ describe('where day templates apply', () => {
       );
     }
     expect(await t.auditCount()).toBe(before);
-    const row = await t.database.migrator
-      .selectFrom('day_template_assignments')
-      .select('valid_until')
-      .where('id', '=', foreign)
-      .executeTakeFirstOrThrow();
-    expect(row.valid_until).toBeNull();
+    expect([await t.rowsOf(branch), await t.rowsOf(other.branch)]).toEqual(rows);
   });
 
   it('validate the fields of each level', async () => {
@@ -560,6 +558,25 @@ describe('where day templates apply', () => {
       expect(answer.before.cells[0]?.template?.end).toBe(480 + 45 + 40 + 45);
     });
 
+    // `edge/time-dates-calendar`: lunch one slot later. The day keeps its start,
+    // its end and its number of lessons, but the second lesson moves.
+    it('marks every cell of a template whose slots are reordered, the start, the end and the count unchanged', async () => {
+      const { branch, lesson, lunch } = await branchWith();
+      const main = await t.createTemplate(branch, 'Main', [lesson, lunch, lesson, lesson]);
+      await t.assign(branch, main);
+      const response = await preview(branch, {
+        kind: 'template_version',
+        dayTemplateId: main,
+        change: { from: MONDAY, startTime: '08:00', slotTypeIds: [lesson, lesson, lunch, lesson] },
+      });
+      expect(response.status).toBe(200);
+      const answer = templatePreviewSchema.parse(response.body);
+      expect(answer.after.cells.map((one) => one.template)).toEqual(
+        answer.before.cells.map((one) => one.template),
+      );
+      expect(answer.changed).toHaveLength(5 * 11);
+    });
+
     it('covers a new version and the end of a setting', async () => {
       const { branch, lesson, templates } = await branchWith('Main', 'Friday');
       await t.assign(branch, templates.Main ?? '');
@@ -657,7 +674,7 @@ describe('where day templates apply', () => {
       expect(await t.auditCount()).toBe(before);
     });
 
-    it('gives the refusal the save would give, the deferred checks included', async () => {
+    it('gives the refusal the save would give: grade ranges that overlap, a date of today', async () => {
       const { branch, templates } = await branchWith('Senior', 'Upper');
       await t.assign(branch, templates.Senior ?? '', {
         level: 'grades',

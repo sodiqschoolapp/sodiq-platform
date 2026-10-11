@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
-import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const PATH = '/setup/day-template-settings';
 const TODAY = '2026-10-10';
@@ -153,7 +153,66 @@ describe('the page of where day templates apply', () => {
 
     const tableElement = screen.getByRole('table', { name: ru.setup.templateTable.title });
     expect(tableElement.querySelectorAll('thead th')[1]?.textContent).toBe('Понедельник');
-    expect(screen.getAllByText(ru.setup.templateSettings.levels.weekday).length).toBeGreaterThan(0);
+    // The level cell of each row: the filter label and the Weekday column
+    // header have the same Russian words, so only the rows tell.
+    const list = await screen.findByRole('table', { name: ru.setup.templateSettings.listTitle });
+    expect(
+      [...list.querySelectorAll('tbody tr')].map((row) => row.querySelector('th, td')?.textContent),
+    ).toEqual([ru.setup.templateSettings.levels.default, ru.setup.templateSettings.levels.weekday]);
+  });
+
+  // `12`: every screen has loading, empty and error states; `.claude/rules/web.md`:
+  // a part that waits on a query tells loading from failure, a disabled query too.
+  it('says the settings failed in the table that waits on their date, and draws it after a retry', async () => {
+    let calls = 0;
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/setup/day-template-assignments': () => {
+        calls += 1;
+        return calls === 1
+          ? refusal('internal_error', 500)
+          : json({ today: TODAY, assignments: [DEFAULT, FRIDAYS] });
+      },
+      'GET /api/setup/day-templates': () => json({ today: TODAY, dayTemplates: [MAIN, FRIDAY] }),
+      'GET /api/setup/day-template-table': () => json(tableWith('Friday')),
+    });
+    renderApp(PATH);
+
+    const section = await screen.findByRole('region', { name: en.setup.templateTable.title });
+    expect(await within(section).findByRole('alert')).toBeDefined();
+    fireEvent.click(within(section).getByRole('button', { name: en.problems.retry }));
+    const tableElement = await within(section).findByRole('table', {
+      name: en.setup.templateTable.title,
+    });
+    expect(cellOf(tableElement, 1, 1)).toBe('Main08:00–10:10');
+  });
+
+  it('says the templates failed instead of a form that is gone and a list without their names', async () => {
+    let calls = 0;
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/setup/day-template-assignments': () =>
+        json({ today: TODAY, assignments: [DEFAULT, FRIDAYS] }),
+      'GET /api/setup/day-templates': () => {
+        calls += 1;
+        return calls === 1
+          ? refusal('internal_error', 500)
+          : json({ today: TODAY, dayTemplates: [MAIN, FRIDAY] });
+      },
+      'GET /api/setup/day-template-table': () => json(tableWith('Friday')),
+    });
+    renderApp(PATH);
+
+    const set = await screen.findByRole('region', { name: en.setup.templateSettings.setTitle });
+    expect(await within(set).findByRole('alert')).toBeDefined();
+    expect(screen.queryByRole('table', { name: en.setup.templateSettings.listTitle })).toBeNull();
+    fireEvent.click(within(set).getByRole('button', { name: en.problems.retry }));
+
+    expect(
+      await screen.findByRole('form', { name: en.setup.templateSettings.setTitle }),
+    ).toBeDefined();
+    const list = await screen.findByRole('table', { name: en.setup.templateSettings.listTitle });
+    expect(list.textContent).toContain('Friday');
   });
 
   it('sets a template for a weekday after the preview marks the changed cells', async () => {

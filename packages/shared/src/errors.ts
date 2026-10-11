@@ -97,7 +97,7 @@ export const ERROR_CODES = [
   'slot_type_in_use',
   /** A day template cannot be archived while it is set at a level from today on (task 1.5). */
   'template_in_use',
-  /** An archived slot type is chosen, or a template being restored uses one (task 1.5). */
+  /** An archived slot type is chosen for a template (task 1.5). */
   'slot_type_archived',
   /** A template being restored uses an archived slot type from today on (task 1.5). */
   'template_uses_archived_slot_type',

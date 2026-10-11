@@ -193,18 +193,11 @@ describe('day templates', () => {
     expect(await foreignRows()).toEqual(rowsBefore);
   });
 
-  it('refuse a slot type of another branch or an unknown one with 404, never a 500 from the key, for a new version too', async () => {
+  it('refuse a slot type of another branch or an unknown one with 404, never a 500 from the key, for a new version too; nothing changes in either branch', async () => {
     const { branch, lesson } = await slotTypes();
     const other = await slotTypes();
     const own = await t.createTemplate(branch, 'Own', [lesson]);
-    const versions = () =>
-      t.database.migrator
-        .selectFrom('day_template_versions')
-        .select(['id', 'valid_until'])
-        .where('day_template_id', '=', own)
-        .orderBy('id')
-        .execute();
-    const versionsBefore = await versions();
+    const rows = [await t.rowsOf(branch), await t.rowsOf(other.branch)];
     const before = await t.auditCount();
     for (const slotTypeIds of [[lesson, other.lesson], [UNKNOWN]]) {
       const response = await t.post(`/api/setup/day-templates/${own}/versions`, branch, {
@@ -214,7 +207,6 @@ describe('day templates', () => {
       });
       expect(response.status).toBe(404);
     }
-    expect(await versions()).toEqual(versionsBefore);
     for (const slotTypeIds of [[lesson, other.lesson], [UNKNOWN]]) {
       const response = await t.post('/api/setup/day-templates', branch, {
         name: 'Mixed',
@@ -224,6 +216,7 @@ describe('day templates', () => {
       expect(response.status).toBe(404);
     }
     expect(await t.auditCount()).toBe(before);
+    expect([await t.rowsOf(branch), await t.rowsOf(other.branch)]).toEqual(rows);
   });
 
   // Answer 10: "1 to 20 ordered slots with at least one lesson slot".

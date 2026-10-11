@@ -273,20 +273,43 @@ export function tableOn(
   return { date, weekdays: [...weekdays], cells };
 }
 
+/** A table with the store it was drawn from, which holds the times of every slot. */
+export interface DrawnTable {
+  store: TemplateStore;
+  table: TemplateTable;
+}
+
+/**
+ * What a cell shows and what a change can move inside it: the template, and
+ * the kind, start and end of every slot of its day. A summary of the day (its
+ * start, end and number of lessons) misses a break moved one slot later, or two
+ * slots of different lengths swapped.
+ */
+function cellDay({ store, table }: DrawnTable, cell: TableCell): string {
+  if (cell.template === null) {
+    return 'null';
+  }
+  const timed = dayOf(store, cell.template.id, table.date);
+  return JSON.stringify({
+    template: cell.template,
+    slots: timed?.slots.map((slot) => [slot.kind, slot.start, slot.end]) ?? null,
+  });
+}
+
 /**
  * The cells that differ between two tables of one date: another template, or
- * the same template with other times (a changed length or version).
+ * the same template with other times of any slot (a changed length or version).
  */
 export function changedCells(
-  before: TemplateTable,
-  after: TemplateTable,
+  before: DrawnTable,
+  after: DrawnTable,
 ): { weekday: Weekday; grade: number }[] {
-  return after.cells
+  return after.table.cells
     .filter((cell) => {
-      const old = before.cells.find(
+      const old = before.table.cells.find(
         (one) => one.weekday === cell.weekday && one.grade === cell.grade,
       );
-      return JSON.stringify(old?.template ?? null) !== JSON.stringify(cell.template);
+      return (old === undefined ? 'null' : cellDay(before, old)) !== cellDay(after, cell);
     })
     .map((cell) => ({ weekday: cell.weekday, grade: cell.grade }));
 }

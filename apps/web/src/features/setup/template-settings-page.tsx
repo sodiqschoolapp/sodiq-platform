@@ -225,6 +225,19 @@ export function TemplateSettingsPage() {
   // A cleared date field shows tomorrow again, never a table that waits for good.
   const date = chosenDate === null || chosenDate === '' ? tomorrow : chosenDate;
   const table = useQuery(templateTableQuery(branchId, date));
+  // The table waits on the date, which comes from the settings (today in
+  // branch time) until one is chosen: their failure is the table's too.
+  const tableFailure = table.isError
+    ? { error: table.error, retry: () => void table.refetch() }
+    : date === null && assignments.isError
+      ? { error: assignments.error, retry: () => void assignments.refetch() }
+      : null;
+  // The list names the template of each setting: it fails with either query.
+  const listFailure = assignments.isError
+    ? { error: assignments.error, retry: () => void assignments.refetch() }
+    : templates.isError
+      ? { error: templates.error, retry: () => void templates.refetch() }
+      : null;
   const language = i18n.language;
 
   const nameOf = useMemo(() => {
@@ -336,19 +349,28 @@ export function TemplateSettingsPage() {
             }}
           />
         </div>
-        {table.isError ? (
-          <ErrorState
-            error={table.error}
-            onRetry={() => {
-              void table.refetch();
-            }}
-          />
+        {tableFailure !== null ? (
+          <ErrorState error={tableFailure.error} onRetry={tableFailure.retry} />
         ) : table.data === undefined ? (
           <LoadingOutline lines={6} />
         ) : (
           <TemplateTableView table={table.data} caption={t('setup.templateTable.title')} />
         )}
       </section>
+      {canEdit && tomorrow !== null && templates.isError && (
+        <section
+          aria-label={t('setup.templateSettings.setTitle')}
+          className="mb-8 grid max-w-xl gap-3 rounded-lg border p-4"
+        >
+          <h2 className="text-lg font-semibold">{t('setup.templateSettings.setTitle')}</h2>
+          <ErrorState
+            error={templates.error}
+            onRetry={() => {
+              void templates.refetch();
+            }}
+          />
+        </section>
+      )}
       {canEdit && tomorrow !== null && activeTemplates !== undefined && (
         <section
           aria-label={t('setup.templateSettings.setTitle')}
@@ -375,10 +397,10 @@ export function TemplateSettingsPage() {
       <ListPage
         listId="day-template-settings"
         caption={t('setup.templateSettings.listTitle')}
-        rows={assignments.data?.assignments}
-        error={assignments.error ?? undefined}
+        rows={templates.data === undefined ? undefined : assignments.data?.assignments}
+        error={listFailure?.error}
         onRetry={() => {
-          void assignments.refetch();
+          listFailure?.retry();
         }}
         rowId={(row) => row.id}
         rowName={(row) =>

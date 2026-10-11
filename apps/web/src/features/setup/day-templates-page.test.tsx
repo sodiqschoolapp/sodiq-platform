@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
-import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const PATH = '/setup/day-templates';
 const TODAY = '2026-10-10';
@@ -242,6 +242,46 @@ describe('the day templates page', () => {
       screen.getByRole<HTMLButtonElement>('button', { name: en.setup.dayTemplates.add }).disabled,
     ).toBe(true);
     expect(screen.getByText(en.setup.dayTemplates.needLessonType)).toBeDefined();
+  });
+
+  // `12`: every screen has loading, empty and error states; `.claude/rules/web.md`:
+  // a part that waits on a query tells loading from failure.
+  it('says the slot types failed, with a retry, and opens a template asked for in the address once they arrive', async () => {
+    let slotTypeCalls = 0;
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/setup/day-templates': () => json({ today: TODAY, dayTemplates: [MAIN] }),
+      'GET /api/setup/slot-types': () => {
+        slotTypeCalls += 1;
+        return slotTypeCalls === 1
+          ? refusal('internal_error', 500)
+          : json({ today: TODAY, slotTypes: [LESSON, LUNCH] });
+      },
+      [`GET /api/setup/day-templates/${MAIN.id}`]: () => json(MAIN_DETAIL),
+    });
+    renderApp(`${PATH}?open=${MAIN.id}`);
+
+    expect(await screen.findByRole('alert')).toBeDefined();
+    expect(screen.queryByRole('table', { name: en.setup.dayTemplates.caption })).toBeNull();
+    expect(screen.queryByRole('form', { name: en.setup.dayTemplates.changeSlots })).toBeNull();
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: en.setup.dayTemplates.add }).disabled,
+    ).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: en.problems.retry }));
+    const panel = await screen.findByRole('complementary', { name: 'Main' });
+    const form = await within(panel).findByRole('form', {
+      name: en.setup.dayTemplates.changeSlots,
+    });
+    expect(slotsOf(form)).toHaveLength(3);
+    // The choice is one of the slot types that arrived, and Add adds it.
+    const choice = within(form).getByRole<HTMLSelectElement>('combobox', {
+      name: en.form.addChoice.replace('{{label}}', en.setup.dayTemplates.slots),
+    });
+    expect(choice.value).toBe(LESSON.id);
+    fireEvent.click(within(form).getByRole('button', { name: en.form.add }));
+    expect(slotsOf(form)).toHaveLength(4);
+    expect(slotsOf(form)[3]).toContain('Lesson 45');
   });
 
   it('shows the day of a template tomorrow and saves new slots from a date after the preview', async () => {

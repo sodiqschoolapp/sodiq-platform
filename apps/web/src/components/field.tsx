@@ -315,7 +315,12 @@ export function OrderedListField({
   const items = listValues(value);
   const offered =
     addable === undefined ? options : options.filter((option) => addable.includes(option.value));
-  const [chosen, setChosen] = useState(offered[0]?.value ?? '');
+  const [picked, setPicked] = useState(offered[0]?.value ?? '');
+  // The options can change after the first draw (they arrive, or one is
+  // archived): the choice follows them, so the select shows what Add adds.
+  const chosen = offered.some((option) => option.value === picked)
+    ? picked
+    : (offered[0]?.value ?? '');
   const labelOf = (item: string) => options.find((option) => option.value === item)?.label ?? item;
   const set = (next: readonly string[]) => {
     onChange({ target: { value: listValue(next) } });
@@ -394,7 +399,7 @@ export function OrderedListField({
           aria-label={t('form.addChoice', { label })}
           value={chosen}
           onChange={(event) => {
-            setChosen(event.target.value);
+            setPicked(event.target.value);
           }}
           name={`${name}-choice`}
         >

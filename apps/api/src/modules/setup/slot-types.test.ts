@@ -118,9 +118,10 @@ describe('slot types', () => {
     expect(await t.auditCount()).toBe(before);
   });
 
-  it('answer 404 for a slot type of another branch or an unknown one, and change nothing', async () => {
+  it('answer 404 for a slot type of another branch or an unknown one, and change nothing in either branch', async () => {
     const other = await t.newBranch();
     const foreign = await t.createSlotType(other, 'Foreign');
+    const rows = [await t.rowsOf(t.north), await t.rowsOf(other)];
     const before = await t.auditCount();
     for (const id of [foreign, UNKNOWN]) {
       for (const response of [
@@ -141,12 +142,8 @@ describe('slot types', () => {
       }
     }
     expect(await t.auditCount()).toBe(before);
-    const row = await t.database.migrator
-      .selectFrom('slot_types')
-      .select(['name', 'archived_at'])
-      .where('id', '=', foreign)
-      .executeTakeFirstOrThrow();
-    expect(row).toEqual({ name: 'Foreign', archived_at: null });
+    // The names, archive times and lengths (what `/lengths` writes) of both branches.
+    expect([await t.rowsOf(t.north), await t.rowsOf(other)]).toEqual(rows);
   });
 
   it('validate what is typed', async () => {
