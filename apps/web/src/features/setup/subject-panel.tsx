@@ -164,7 +164,7 @@ export function SubjectPanel({
             <p className="text-sm text-muted-foreground">{t('setup.subjects.notSet')}</p>
           ) : canEdit && active ? (
             <WeightsForm
-              key={weightsText(subject.daily, 'en')}
+              key={subject.id}
               kind="daily"
               parts={THREE}
               weights={subject.daily}
@@ -215,6 +215,8 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
     (year) => year.status === 'planned' || year.status === 'current',
   );
   const [chosen, setChosen] = useState<string | null>(null);
+  // A new key for the forms of quarters 2 to 4 after a copy: they show what it wrote.
+  const [copies, setCopies] = useState(0);
   // A choice no longer offered falls back to the first year offered.
   const yearId = open.some((year) => year.id === chosen) ? chosen : (open[0]?.id ?? null);
   const quarters = useQuery(quarterWeightsQuery(branchId, subject.id, yearId));
@@ -246,7 +248,11 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
           body: { yearId: year },
         }),
       ),
-    onSuccess: refresh,
+    // The forms take what the copy wrote once the quarters are read again.
+    onSuccess: async () => {
+      await refresh();
+      setCopies((before) => before + 1);
+    },
   });
 
   const askCopy = async (rows: readonly SubjectQuarter[]) => {
@@ -320,7 +326,7 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
               </h4>
               {canEdit && !frozen ? (
                 <WeightsForm
-                  key={`${row.quarterId}-${row.weights === null ? '' : weightsText(row.weights, 'en')}-${String(row.fits)}`}
+                  key={`${row.quarterId}-${String(subject.ratingExam)}-${row.number === 1 ? '' : String(copies)}`}
                   kind="quarter"
                   parts={parts}
                   weights={row.fits ? row.weights : null}

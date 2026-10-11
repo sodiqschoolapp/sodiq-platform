@@ -493,3 +493,49 @@ test('the Academic Vice Principal changes the edit days and a late value, and th
     .click();
   await expect(slotTypesItem.getByLabel(en.setup.checklist.done)).toBeVisible();
 });
+
+// docs/build-plan.md, task 2.1, done when: "a graded subject cannot be saved
+// with weights that do not total 100". The owner's answers 3 to 8: one subject
+// list, weights per branch, the copy of quarter 1 (answer 6).
+test('the Academic Vice Principal adds a graded subject, is refused at 99, saves at 100, sets quarter 1 and copies it', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signInAsSuperAdmin(page, 'subjects');
+  await openSetupPage(page, en.setup.subjectsLink, en.setup.subjects.title);
+  const texts = en.setup.subjects;
+
+  await page.getByRole('button', { name: texts.add, exact: true }).first().click();
+  const form = page.getByRole('form', { name: texts.newTitle });
+  await form.getByLabel(texts.nameUz, { exact: true }).fill('Astronomiya');
+  await form.getByLabel(texts.nameRu, { exact: true }).fill('Астрономия');
+  await form.getByLabel(texts.nameEn, { exact: true }).fill('Astronomy');
+  await form.getByLabel(texts.department, { exact: true }).selectOption({ label: 'STEAM' });
+  await form.getByLabel(texts.grade.replace('{{grade}}', '10'), { exact: true }).check();
+  await form.getByLabel(texts.grade.replace('{{grade}}', '11'), { exact: true }).check();
+  await form.getByLabel(texts.ratingExam, { exact: true }).check();
+  await form.getByLabel(texts.parts.attendance, { exact: true }).fill('10');
+  await form.getByLabel(texts.parts.classwork, { exact: true }).fill('50');
+  await form.getByLabel(texts.parts.homework, { exact: true }).fill('39');
+  await form.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(form.getByText(texts.totalWrong, { exact: false })).toBeVisible();
+
+  await form.getByLabel(texts.parts.homework, { exact: true }).fill('40');
+  await form.getByRole('button', { name: en.form.save, exact: true }).click();
+  const row = page.getByRole('row').filter({ hasText: 'Astronomy' });
+  await expect(row).toContainText('10 · 50 · 40');
+
+  await row.getByRole('button', { name: 'Astronomy' }).click();
+  const panel = page.getByRole('complementary', { name: 'Astronomy' });
+  const first = panel.getByRole('form', { name: texts.quarter.replace('{{n}}', '1') });
+  await first.getByLabel(texts.parts.attendance, { exact: true }).fill('10');
+  await first.getByLabel(texts.parts.classwork, { exact: true }).fill('30');
+  await first.getByLabel(texts.parts.homework, { exact: true }).fill('20');
+  await first.getByLabel(texts.parts.ratingExam, { exact: true }).fill('40');
+  await first.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(saved(first)).toBeVisible();
+
+  await panel.getByRole('button', { name: texts.copy, exact: true }).click();
+  const fourth = panel.getByRole('form', { name: texts.quarter.replace('{{n}}', '4') });
+  await expect(fourth.getByLabel(texts.parts.ratingExam, { exact: true })).toHaveValue('40');
+});

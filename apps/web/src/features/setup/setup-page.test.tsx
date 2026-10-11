@@ -130,6 +130,20 @@ describe('the School setup entry', () => {
     },
   );
 
+  // Task 2.1, the owner's answer 4: the subjects for the three roles, nobody else.
+  it.each(['super_admin', 'principal', 'academic_vice_principal'] as const)(
+    'lists the subjects for the %s',
+    async (role) => {
+      fakeApi({ 'GET /api/auth/session': () => json(sessionAs(role)) });
+      renderApp('/setup');
+      await screen.findByRole('heading', { name: en.setup.title });
+
+      expect(screen.getByRole('link', { name: en.setup.subjectsLink }).getAttribute('href')).toBe(
+        '/setup/subjects',
+      );
+    },
+  );
+
   it('says that a role without setup rights has no setup pages', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionAs('teacher')) });
     renderApp('/setup');
@@ -138,6 +152,7 @@ describe('the School setup entry', () => {
     expect(screen.getByText(en.setup.none)).toBeDefined();
     expect(screen.queryByRole('link', { name: en.setup.roomsLink })).toBeNull();
     expect(screen.queryByRole('link', { name: en.setup.dayTemplatesLink })).toBeNull();
+    expect(screen.queryByRole('link', { name: en.setup.subjectsLink })).toBeNull();
   });
 });
 
@@ -151,6 +166,7 @@ const CHECKLIST: SetupChecklist = {
     { key: 'slotTypes', done: true, count: null, years: [] },
     { key: 'defaultTemplate', done: false, count: null, years: [] },
     { key: 'calendar', done: null, count: 3, years: [] },
+    { key: 'subjects', done: false, count: 2, years: [] },
   ],
 };
 
@@ -178,6 +194,15 @@ describe('the setup checklist', () => {
     expect(items[4]?.textContent).toContain('2026–2027');
     expect(items[2]?.textContent).toContain(en.setup.checklist.wholeSchool);
     expect(items[7]?.textContent).toContain('3 entries');
+    // Task 2.1, decision 7: the graded subjects without their daily distribution here.
+    expect(items[8]?.textContent).toContain(
+      en.setup.checklist.subjectsMissing_other.replace('{{count}}', '2'),
+    );
+    expect(
+      within(items[8] as HTMLElement)
+        .getByRole('link', { name: en.setup.checklist.items.subjects })
+        .getAttribute('href'),
+    ).toBe('/setup/subjects');
     expect(
       within(items[6] as HTMLElement)
         .getByRole('link', { name: en.setup.checklist.items.defaultTemplate })
