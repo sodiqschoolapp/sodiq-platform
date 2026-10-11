@@ -2,6 +2,10 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: the design system and the brand files (process change, no task)
+
+- Owner: the design system is `docs/design-system.md` (approved from the design board "Sodiq Platform design directions"); the logo, the browser-tab icon and the app icons are in `apps/web/public/brand/`; tasks 2.2d (design system and brand, after 2.2) and 2.7 (polish of Phases 1 and 2, before the Phase 3 gate) are in the build plan with their answers in `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7"); the builder and the reviewer check every screen against the design system. The next task is 2.2, then 2.2d.
+
 ## 11 October 2026: task 2.1 Subjects
 
 - Built: migrations 0020 (`subjects` school-wide; `subject_daily_weights` and `subject_quarter_weights` per branch, each distribution 1–100 per part and total 100 in the database; department and closed-year guards), 0021 (`weights_round`), 0022 (round guards, the closed-year lock) and 0023 (`rating_round` and its guards); nine routes under `/api/setup/subjects` (area `subjects`); the department archive refused while an active subject is in it; checklist item "Subjects and weights".

@@ -52,6 +52,27 @@ Decided by the owner on 11 October 2026, after tasks 1.1 and 1.2 (issue #41: 32 
 | **A progress entry is at most 15 lines** (three on what was built, the left-out items with their task, "The next sessions must know"); `next-task` reads the two newest entries, not the file; the file inventory lives in the pull request body | The reading cost of every session grew with every task (`progress.md` 1,060 lines, `decisions.md` 542 at the review of #43). |
 | **GitHub Actions fires the routines** (decided by the owner later on 11 October 2026). `.github/workflows/routines.yml` calls the routines' API triggers: the review routine on a pull request against `main` opened, pushed to, reopened or marked ready (`Pull request #<n> (<action>, head <sha>)`); the start routine on a merged `task/` pull request (`Merged #<n>`) and on a `[review] approved` or `[review] changes needed` comment on a `task/` pull request (`Review on #<n>: <first line>`), after which it waits ten minutes for "Acting on the review." and resumes a builder that did not wake. Plain `curl`, `permissions: {}`, the four routine URLs and tokens as repository secrets; the hourly schedules stay as a second net. The routines have no GitHub triggers of their own: the owner removed them on 11 October 2026 (recorded on 12 October), because they ran a second reviewer for every event the bridge already fires | On 11 October the routines' GitHub triggers never fired although the app was installed correctly, and a `[review]` comment did not wake the bound builder of #44; GitHub Actions runs on every pull request. A duplicate run (the hourly run meeting a bridged one) finds nothing to do, because reviews compare shas and the reviewer reads the comments again before it posts. |
 
+## Decided ahead for tasks 2.2d and 2.7 (owner, 12 October 2026)
+
+The owner's answers for the design tasks, from the design board "Sodiq Platform design directions" (page "Final") approved on 12 October 2026 with the owner's reviewer. `next-task` reads this section for the task's id; these are answers, not open questions. Written verbatim.
+
+**Approvals (stop-list items approved in advance)**
+
+1. Fonts: the Fontsource packages of Golos Text and Bitter (`@fontsource-variable/golos-text`, `@fontsource-variable/bitter`; the static `@fontsource/…` packages with weights 400 to 700 where a variable one is not published) replace `@fontsource-variable/geist`, which is removed. Both fonts are under the SIL Open Font License. The PDFs made on the server later (`13`, Exports) use the same Golos Text files.
+2. Icons: Material Symbols Rounded, filled (Apache 2.0) replace Lucide; `lucide-react` is removed. Approved: one package of the `@material-symbols` family that ships the SVG files, and `vite-plugin-svgr` if the plan needs it to import SVG files as React components. The plan names the package and the weight (500 as on the board, 400 accepted). Icons are drawn from SVG, never from a font ligature: the icon's name would be text in a component.
+
+**Design**
+
+3. `docs/design-system.md` is the owner's design system. The builder checks every screen against it before the report and the reviewer checks it on every pull request that changes a screen. A screen of a later task follows it from the start.
+4. The 12 subject colours of task 2.1 stay (keys and values).
+5. The menu is navy in both themes. It collapses to a rail of icons by the person's choice, kept in the browser (`localStorage`, key `sodiq.menu`), like the theme.
+6. Counts in the menu are plain numbers; there is no notification dot.
+7. The sign-in page: the slogan "Taʼlim tarbiyadan boshlanadi" is a text of the three languages (uz as written; ru "Образование начинается с воспитания"; en "Education begins with upbringing").
+8. Brand moments (Bitter, the hexagon drawing, the letterhead strip) are only the sign-in page, empty pages, full-page errors and printouts.
+9. The design board also shows the journal, the timetable, the phone lesson mode and a teacher's Today page; they are built by their own tasks and follow the design system then. 2.2d restyles what exists; it builds no new page.
+10. The branch phone (issue #39, item 3): "+998" and nine digits, stored as typed digits and shown grouped as "+998 71 123 45 67"; any other text is refused with a message that shows the format.
+11. The Branches list (issue #39, item 1) is built in 2.7 after the owner's spec change of 12 October 2026 adds it to `03`; until that change is merged the item is reported as waiting for it, not built.
+
 ## Decided ahead for tasks 2.1 to 2.6 (owner, 12 October 2026)
 
 The owner's answers to the questions the plans of these tasks would ask. `next-task` reads this section for the task's id; these are answers, not open questions, and a plan does not ask them again. Written verbatim.

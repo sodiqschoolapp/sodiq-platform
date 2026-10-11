@@ -41,6 +41,7 @@ packages/shared          shared types, validation schemas, roles and permission 
 db/migrations            SQL migrations, numbered, never edited after merge
 docs/spec                the spec (read only)
 docs/recipes             how to build a recurring shape of task, from the code so far
+docs/design-system.md    the look of every screen: tokens, sizes, parts, brand moments
 docs/build-plan.md       ordered tasks with checkboxes
 docs/progress.md         short log of what was done and what is next
 docs/decisions.md        technical decisions and their reasons
