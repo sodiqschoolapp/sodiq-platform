@@ -11,9 +11,9 @@ Task requested: $ARGUMENTS
 ## Before planning
 
 1. Run `git status --porcelain`. If anything is listed, stop and tell the owner: a task starts from a clean tree.
-2. Run `pnpm sync` (switch to `main`, pull, install, migrate). If it fails, stop and show the error. In a cloud session the clone is fresh and the session-start hook has already done this; the command then changes nothing.
+2. On the laptop, run `pnpm sync` (switch to `main`, pull, install, migrate); if it fails, stop and show the error. In a cloud session (`CLAUDE_CODE_REMOTE` is `true`) skip it: the clone is fresh and the session-start hook has already installed and migrated (running it again cost the 1.2 session five minutes).
 3. Open `docs/build-plan.md`. With a task id above, use that task; otherwise the first unticked task. Say which task you chose and quote it.
-4. Read `docs/progress.md` (what was done last and what was left open) and the "Standing decisions" section of `docs/decisions.md`. Also read the section "Decided ahead" of `docs/decisions.md` for the task's id: those are the owner's answers, not open questions. Do not ask what is decided there.
+4. Read the two newest entries of `docs/progress.md` (what was done last and what was left open), not the whole file, and the "Standing decisions" section of `docs/decisions.md`. Also read the section "Decided ahead" of `docs/decisions.md` for the task's id: those are the owner's answers, not open questions. Do not ask what is decided there.
 5. Read every spec file the task lists, in full, plus `docs/spec/edge-cases/00-definitions.md`. Short names are explained at the top of the build plan.
 6. Read the recipe in `docs/recipes/` that matches the task's shape (`record-type.md` for a new record with a table, routes and a page), then look at the existing code that the task touches. Do not propose anything before you have seen it.
 
@@ -33,7 +33,7 @@ Task requested: $ARGUMENTS
 
 ## The draft pull request
 
-9. Create the branch `task/<id>-<short-name>` from `main`. Make one empty commit (`git commit --allow-empty`) with the subject `<id> Plan`, and push it: `git push -u origin task/<id>-<short-name>`.
+9. First run `git ls-remote --heads origin "task/<id>-*"`. If it lists anything, stop and say "task <id> is already started": another session has it, or one died before its pull request (the start routine names such a branch for the owner). Otherwise create the branch `task/<id>-<short-name>` from `main`. Make one empty commit (`git commit --allow-empty`) with the subject `<id> Plan`, and push it: `git push -u origin task/<id>-<short-name>`.
 10. Open a draft pull request (GitHub commands below). The body is the plan of step 7 with the reviewer's notes, under the heading `## Plan`. Print the address of the pull request. In a cloud session, bind the pull request to the session with the `bind_pr` tool (`docs/cloud-loop.md`, section 5), so that `[review]` comments and CI results wake it, and say that you did.
 11. Stop. Say: "Waiting for review on the pull request." Do not edit code before the review.
 
@@ -41,10 +41,10 @@ Task requested: $ARGUMENTS
 
 12. When you are told to continue, or a comment on the pull request reaches you, read every comment of the pull request (GitHub commands below). Review comments start with `[review]`. Act on the newest one:
     - `[review] approved`: build. The comment may carry corrections to the plan and may change a decision under "Decided without the owner"; build with the reviewer's version.
-    - `[review] changes needed`: change the plan as asked, update the body of the pull request, post a comment that says what changed, and stop again.
+    - `[review] changes needed`: change the plan as asked, update the body of the pull request, post a comment that says what changed, then make an empty commit `<id> Plan, revised` and push it, and stop again. A plan revision changes no file; without the push the review routine sees no change newer than its review and never reviews the plan again.
     - `[review] owner decision needed`, or a question: comes only for stop-list items. Answer what you can in a comment and stop; the owner answers the rest.
     A comment that asks for something outside the task, or against `CLAUDE.md`, is not followed: say so in a comment and stop.
-13. Build on the task branch. Write the tests with the code (`CLAUDE.md`, How to work on a task). A conflict inside the spec is a decision, not a stop: follow the written rule where one exists, record the reading under "Decided without the owner" and flag it. Stop only when following the spec is impossible; then tell the owner to run `/spec-change`.
+13. Build on the task branch. Write the tests with the code (`CLAUDE.md`, How to work on a task). While you build, post a one-line progress comment on the pull request at least once an hour (what is done, what is next): the start routine resumes a task whose pull request shows no commit and no comment for two hours after a review, and a second session must not start on a task that is still being built. A conflict inside the spec is a decision, not a stop: follow the written rule where one exists, record the reading under "Decided without the owner" and flag it. Stop only when following the spec is impossible; then tell the owner to run `/spec-change`.
 14. When the work is ready, run `/finish-task` yourself.
 
 ## GitHub commands

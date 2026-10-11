@@ -46,9 +46,12 @@ export default defineConfig({
     // that import a changed file. The tests under tooling/ read these from
     // disk, so a change to one of them runs the whole suite, as a change to a
     // package.json or a config file does (the first two are Vitest's defaults).
+    // The sources of @sodiq/shared too: the app imports its built dist, so the
+    // import graph never links packages/shared/src to a test here.
     forceRerunTriggers: [
       '**/package.json/**',
       '**/{vitest,vite}.config.*/**',
+      '**/packages/shared/src/**',
       '**/openapi.generated.json/**',
       '**/index.css/**',
     ],

@@ -23,10 +23,13 @@ export default defineConfig({
     // `pnpm test:changed` (`vitest run --changed origin/main`) runs the tests
     // that import a changed file. These are read from disk, not imported, so a
     // change to one of them runs the whole suite, as a change to a package.json
-    // or a config file does (the first two are Vitest's defaults).
+    // or a config file does (the first two are Vitest's defaults). The sources
+    // of the shared packages too: the API imports their built dist, so the
+    // import graph never links packages/*/src to a test here.
     forceRerunTriggers: [
       '**/package.json/**',
       '**/{vitest,vite}.config.*/**',
+      '**/packages/*/src/**',
       '**/db/migrations/**',
       '**/db/setup/**',
       '**/openapi.generated.json/**',
