@@ -2,6 +2,14 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 11 October 2026: the loop runs without the owner (process change, no task)
+
+- Decided by the owner: when the spec is silent, a session decides, writes the reading under "Decided without the owner" and flags it on issue #42; only the five things under "Stop and wait for the owner" in `CLAUDE.md` stop a task. The reviewer confirms or changes every decision in its approval, merges at `[review] ready to merge` with green checks, and stops a task after three rounds (`needs-owner`). The ten decisions and the owner's 24 answers for tasks 1.3 to 1.6 are in `docs/decisions.md`, 11 October 2026.
+- Changed: `CLAUDE.md`; the skills `next-task`, `finish-task` and `review-pr`; `.claude/agents/spec-reviewer.md` (four checks from the 1.2 review); `.claude/rules/web.md` (the text rule of issue #39); `docs/cloud-loop.md` (the review routine and the start routine with their full prompts); `docs/build-plan.md` (1.5 before 1.4, the owner gate before Phase 4, the fix-task convention); `docs/recipes/record-type.md` (the recipe for a new record type, from the code of 1.1 and 1.2).
+- New: `pnpm test:changed` (the tests touched by the files changed since `origin/main`, with a build of the shared packages first; a session runs it instead of the full suite, which CI runs on the pull request) and the PostToolUse hook `scripts/hooks/format-written-file.mjs`, which runs Prettier on every file a session writes.
+- A report now has "What to look at", "What the browser test proved" and "Decided without the owner"; the owner hand-tests on the test environment after the merge and answers issue #42 each morning.
+- The next task is 1.3; the order is 1.3, 1.5, 1.4, 1.6. The owner gate before Phase 4 stops the start routine after 3.4.
+
 ## 10 October 2026: task 1.2 Divisions and departments
 
 Plan approved by the owner on pull request #40 (`[review] approved`, with the answers to the eight questions: the active-staff refusal moves to 2.2; the missing Russian and Uzbek names as proposed, Academic's Russian name `Учебный отдел`; two school-wide tables; departments archived and restored with their division, never moved; the permission area `divisions` with the view of the Principal and the Academic Vice Principal; names unique per language among active records; Tutors is plain data; the trigger; and one correction: an explicit `position` column for the order of both lists). The decisions are in `docs/decisions.md`, 10 October 2026 (task 1.2). Nothing under `docs/spec/` was touched.

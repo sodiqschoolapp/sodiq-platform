@@ -5,7 +5,7 @@ A school management web platform for Sodiq School (Uzbekistan): three branches, 
 ## What matters most
 
 1. The timetable and the journal must be correct. A wrong mark or a double-booked teacher is the worst possible bug. When speed of delivery and correctness pull apart, choose correctness.
-2. The spec in `docs/spec/` is the source of truth. Read the files a task names before planning. Do not work from memory of the spec and do not invent rules. If the spec is silent or unclear, stop and ask.
+2. The spec in `docs/spec/` is the source of truth. Read the files a task names before planning. Do not work from memory of the spec and do not invent rules. If the spec is silent or unclear, take the most reasonable reading (the spec's own lines, the standing decisions, the way the school works), write it in the plan under "Decided without the owner" with the reason, and go on; the reviewer confirms or changes it when it approves the plan, and the owner confirms or changes it afterwards on issue #42. Only the things under "Stop and wait for the owner" stop a task.
 3. Never change files under `docs/spec/` on your own. If a rule should change, stop and tell the owner; the owner runs the `/spec-change` skill.
 
 ## Rules that are never broken
@@ -40,6 +40,7 @@ packages/timetable-rules timetable rule engine, pure TypeScript
 packages/shared          shared types, validation schemas, roles and permission table
 db/migrations            SQL migrations, numbered, never edited after merge
 docs/spec                the spec (read only)
+docs/recipes             how to build a recurring shape of task, from the code so far
 docs/build-plan.md       ordered tasks with checkboxes
 docs/progress.md         short log of what was done and what is next
 docs/decisions.md        technical decisions and their reasons
@@ -57,7 +58,9 @@ pnpm install          install dependencies
 pnpm dev              run web, api and worker locally
 pnpm lint             lint all packages
 pnpm typecheck        type-check all packages
-pnpm test             unit and API tests
+pnpm test             unit and API tests (the whole suite; CI runs it on every pull request)
+pnpm test:changed     the tests touched by the files changed since origin/main, in the
+                      packages that changed and in those that depend on them
 pnpm test:e2e         browser tests (Playwright)
 pnpm db:migrate       apply SQL migrations to the local database
 pnpm sync             switch to main, pull, install, migrate (before a hand test)
@@ -69,12 +72,12 @@ pnpm auth:first-account -- --first-name <name> --last-name <name>
 
 ## How to work on a task
 
-1. One task from `docs/build-plan.md` per session and per branch. Start from an up-to-date `main` (`pnpm sync`). Branch name: `task/<id>-<short-name>`. The owner runs `/next-task`; it does steps 2 and 3.
+1. One task from `docs/build-plan.md` per session and per branch. Start from an up-to-date `main` (`pnpm sync`). Branch name: `task/<id>-<short-name>`. The owner or the start routine runs `/next-task`; it does steps 2 and 3.
 2. Read the task, the spec files it lists, `docs/progress.md` and the standing decisions in `docs/decisions.md`. Look at the existing code before proposing anything.
-3. Write a plan first: files to change, database changes, tests to add, open questions. Have the `spec-reviewer` agent check it, then open a draft pull request with the plan and stop. Build only after a `[review] approved` comment on the pull request; follow its corrections. `[review] owner decision needed` waits for the owner.
+3. Write a plan first: files to change, database changes, tests to add, the decisions made without the owner and what needs the owner. Have the `spec-reviewer` agent check it, then open a draft pull request with the plan and stop. Build only after a `[review] approved` comment on the pull request; follow its corrections. `[review] owner decision needed` is for the stop list only ("Stop and wait for the owner") and waits for the owner.
 4. Write the tests with the code. For `packages/calc`, `packages/timetable-rules`, permissions and database constraints, write the failing test first.
-5. Run `pnpm lint`, `pnpm typecheck` and `pnpm test` and fix every failure. Never skip, delete or weaken a test to get to green. If a test is wrong, say so and ask.
-6. When the work is ready, run `/finish-task`: independent review, update of the plan and progress files, push, pull request marked ready with the report and the hand-test steps. Then stop and wait for the `[review]` comment: fix what `changes needed` lists, or you are done at `ready to merge`. Only the owner merges.
+5. Run `pnpm lint`, `pnpm typecheck` and `pnpm test:changed` and fix every failure. CI runs the whole suite on the pull request and is the gate; a red CI is fixed before a review is asked for. Never skip, delete or weaken a test to get to green. If a test is wrong, say so and ask.
+6. When the work is ready, run `/finish-task`: independent review, update of the plan and progress files, push, pull request marked ready with the report (what to look at, what the browser test proved, the decisions made without the owner). Then stop and wait for the `[review]` comment: fix what `changes needed` lists; `ready to merge`: the reviewer merges; nothing is left for you.
 
 The whole loop, the review routine and the cloud environment are described in `docs/cloud-loop.md`. A reviewer uses `/review-pr`.
 
@@ -88,6 +91,7 @@ The whole loop, the review routine and the cloud environment are described in `d
 - Money, marks and totals are integers. Percentages shown to users are derived, never stored as typed input.
 - Each feature folder holds its own components, hooks, API calls and tests. Shared UI goes in `apps/web/src/components`.
 - Commit messages: short imperative subject, task id first, for example `1.3 Add calendar with days off`.
+- No Python on the owner's laptop: a scripted edit uses Node or the Edit tool.
 
 ## Definition of done for a task
 
@@ -97,9 +101,20 @@ The whole loop, the review routine and the cloud environment are described in `d
 - New user-facing text exists in all three languages.
 - The audit log records the new kinds of change.
 - `docs/build-plan.md` is ticked in the same pull request, `docs/progress.md` has a dated entry, and anything left undone is written there.
+- Every decision made without the owner is in the report and on issue #42.
 
 Before task 0.8c some of these do not exist yet (permission guard, languages); skip only those.
 
-## Ask before you do any of these
+## Stop and wait for the owner, even when nobody is watching
 
-Adding a dependency, changing the database schema outside the task, changing a rule in `packages/calc` or the permission table, deleting data or tests, touching deployment or secrets, or anything the spec does not cover.
+Five things stop a task. For these the session posts `[review] owner decision needed` (or says what it needs in the pull request) and stops:
+
+1. Secrets or deployment.
+2. Deleting or weakening a test, a constraint, an index, a trigger or a migration.
+3. Any text under `docs/spec/`.
+4. A rule in `packages/calc` or the exact-arithmetic rule.
+5. A new dependency.
+
+Widening what an existing role may already do in an existing permission area also stops; a new permission area for new routes is decided and flagged like any other decision.
+
+Everything else that used to need asking (a new permission area for new routes, a schema detail the task needs, a name, a default, a UI choice) is decided, written under "Decided without the owner" in the plan and the report, and flagged on issue #42.

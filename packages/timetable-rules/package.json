@@ -14,7 +14,8 @@
     "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.build.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:changed": "vitest run --changed origin/main"
   },
   "devDependencies": {
     "@types/node": "catalog:",

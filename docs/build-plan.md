@@ -8,6 +8,8 @@ How to read the task lines:
 - Every task also reads `edge/00-definitions`. Every task that adds a migration also reads `edge/developer-rules`.
 - "Done when" is the minimum. The definition of done in `CLAUDE.md` applies to every task from 0.8c on; before that, the parts that do not exist yet (permission guard, languages) are skipped.
 - If a task is still too large for one session, split it into a, b, c in this file before starting and ask the owner to confirm.
+- A fix task `<id>b` (for example `1.3b`) is a task the owner adds when a decision made without the owner is changed on issue #42 and code must change (`docs/decisions.md`, 11 October 2026, decision 1). It is placed first among the open tasks, so the start routine takes it next; its Read line names the decision it changes.
+- An owner gate line (`> **Owner gate.** …`) stops the start routine: the first unticked task after such a line is not started until the owner deletes the line.
 
 ## Phase 0. Foundations
 
@@ -138,15 +140,15 @@ How to read the task lines:
   - Build: years with status (planned, current, closed); exactly one current year per branch; four quarters with no overlaps or gaps; the go-live start date per branch.
   - Done when: the database refuses a second current year and overlapping quarters.
 
+- [ ] **1.5 Slot types and day templates** (built before 1.4: the calendar points at day templates)
+  - Read: `03`, `06` (Model), `edge/time-dates-calendar`.
+  - Build: slot types (lesson or break, length in minutes); day templates as an ordered list of slots with calculated times; default template, weekday templates, special-date templates and templates per grade range; the order in which a special date (for a grade range, then for the branch), weekday with grade range, weekday, grade range and the default decide the template of a class on a date; the table of the resulting template per weekday and grade, shown again with the changes marked as the preview when a template is saved at any level.
+  - Done when: times are never typed, reordering recalculates them, and a lesson can only sit in a lesson slot.
+
 - [ ] **1.4 Calendar**
   - Read: `03`, `edge/time-dates-calendar`.
   - Build: days off and special days for the whole branch or a range of grades; each date resolves to "no lessons" or to one day template.
   - Done when: tests cover a holiday inside a week, a working Saturday and a grade-range entry.
-
-- [ ] **1.5 Slot types and day templates**
-  - Read: `03`, `06` (Model), `edge/time-dates-calendar`.
-  - Build: slot types (lesson or break, length in minutes); day templates as an ordered list of slots with calculated times; default template, weekday templates, special-date templates and templates per grade range; the order in which a special date (for a grade range, then for the branch), weekday with grade range, weekday, grade range and the default decide the template of a class on a date; the table of the resulting template per weekday and grade, shown again with the changes marked as the preview when a template is saved at any level.
-  - Done when: times are never typed, reordering recalculates them, and a lesson can only sit in a lesson slot.
 
 - [ ] **1.6 Settings and the setup checklist**
   - Read: `03`, `07` (Entering data, Editing rules and locks), `06` (Teachers who work in several branches), `05` (Language of instruction), `08` (Early-warning list), `edge/academic-year`.
@@ -206,6 +208,8 @@ How to read the task lines:
   - Read: `05`, `04` (Teacher and staff record), `06` (Building a timetable, Rules), `edge/timetable` (Structure, After publishing).
   - Build: load rows (class or group, subject, one teacher, lessons per week, room needs, double lessons); checks for subject and grade in the teacher's profile, the language rule, split rules, weekly totals against slots and against the contract load across branches; the load belongs to a timetable version; a load row may name a vacancy.
   - Done when: each blocked case in the spec has a test.
+
+> **Owner gate.** The start routine stops here. The owner lifts the gate by deleting this line.
 
 ## Phase 4. Calculation module
 

@@ -20,5 +20,18 @@ export default defineConfig({
     // A hook creates or drops whole databases. With every test file doing so at
     // once, two drops in one hook were seen to take more than 30 s (task 0.5b).
     hookTimeout: 60_000,
+    // `pnpm test:changed` (`vitest run --changed origin/main`) runs the tests
+    // that import a changed file. These are read from disk, not imported, so a
+    // change to one of them runs the whole suite, as a change to a package.json
+    // or a config file does (the first two are Vitest's defaults).
+    forceRerunTriggers: [
+      '**/package.json/**',
+      '**/{vitest,vite}.config.*/**',
+      '**/db/migrations/**',
+      '**/db/setup/**',
+      '**/openapi.generated.json/**',
+      '**/render.yaml/**',
+      '**/.env.example/**',
+    ],
   },
 });

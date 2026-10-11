@@ -18,6 +18,11 @@ Read `docs/spec/12-ux-standards.md` before building a new screen.
 - An action that cannot be undone asks through `useConfirm()` (`apps/web/src/components/confirm-dialog.tsx`) and names what it will touch; a bulk action of a list gives `confirm`. Whatever takes a form away without a change of page asks `useLeave()` first (`apps/web/src/components/unsent/unsent-changes.tsx`).
 - A dialog that sends something once (the feedback report, `apps/web/src/features/feedback/`) checks its field with `useRecordForm` and has a Send button of its own; it is not a record form: no `RecordForm`, no entry in the unsent store, and its typed text is kept in the tab while the dialog is closed.
 - Colours come from the tokens of `index.css`. `tooling/contrast.test.ts` checks every text and control pair the components draw to WCAG 2.1 AA in both themes, with the alpha of the class list: a new token, or a component that draws text on a tint, adds its pair there. The theme is `useTheme()` and `ThemeSwitch`; nothing else reads or writes `sodiq.theme`.
+- Text on screens (the owner's rule of 10 October 2026, issue #39): a page explains itself through its title and its content, not through a sentence under the title.
+  - No intro paragraph on pages used every day (journal, timetable, lists, forms).
+  - One short line only on an empty page (what it is for and the first action, `12` Look and feel), beside a switched-off action (why it is off) and under a setting whose effect is not obvious.
+  - A menu page is a title and its links, with at most a few words under a link.
+  - Never explain a field whose label already says it.
 - A page inside the layout starts with `PageHeader` (title, breadcrumbs, actions). A part of a page that waits, is empty or failed uses `LoadingOutline`, `EmptyState` and `ErrorState` (`apps/web/src/components/states.tsx`); a failed call beside a form uses `FailureAlert`.
 - A test of a page with a long table reads rows from the table itself (`document.querySelectorAll('tbody tr')`): a query by role over hundreds of rows takes seconds in jsdom. A filter, an order and an opened record come from the address, which changes a moment after the click: wait for them.
 - The menu hides what a role cannot use, but never rely on that for safety: the server decides.

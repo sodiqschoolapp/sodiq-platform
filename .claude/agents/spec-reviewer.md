@@ -19,8 +19,12 @@ If the request gives you a plan instead of a branch, skip step 1 and step 4 and 
    - direct use of the system clock; a change with no audit entry; a job enqueued outside the transaction;
    - hard-coded user-facing text, or a translation missing in one of the three languages;
    - tests that were skipped, deleted or weakened, and tests that cannot fail;
-   - real-looking personal data in tests, seeds or logs.
-4. Run `pnpm test` if it has not been run and report failures.
+   - real-looking personal data in tests, seeds or logs;
+   - a locking read (`for update`) and an aggregate (`max`, `count`) in one statement: the transaction that waited does not see a row inserted meanwhile; the lock goes in one statement, the aggregate in a second;
+   - the order of rows from `update … returning`, `insert … returning` or any query without `order by` stored, compared or shown: such an order is never relied on;
+   - the text rule of `.claude/rules/web.md`: a page explains itself through its title and its content, not through a sentence under the title;
+   - every "Decided without the owner" item fills a silence of the spec and contradicts no written rule.
+4. Run `pnpm test:changed` if it has not been run and report failures; the full suite runs in CI on the pull request (`docs/decisions.md`, 11 October 2026, decision 5).
 
 Report in this form:
 - **Verdict:** ready, or not ready.
