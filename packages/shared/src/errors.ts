@@ -107,6 +107,8 @@ export const ERROR_CODES = [
   'calendar_date_not_in_future',
   /** A calendar entry wholly in the past is read-only (answer 16; task 1.4). */
   'calendar_entry_past',
+  /** The calendar entry is archived: nothing changes until it is restored (task 1.4). */
+  'calendar_entry_archived',
   /** A calendar entry lies inside one planned or current academic year of the branch (answer 16; task 1.4). */
   'calendar_outside_year',
   /** Another entry of the same kind covers one of these dates for one of these grades (answer 17; task 1.4). */

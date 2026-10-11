@@ -14,6 +14,7 @@ import {
   dayTimes,
   isInForceOn,
   templateFor,
+  type CalendarEntry,
   type Day,
 } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
@@ -356,6 +357,19 @@ export const slotTypeInUse = (store: TemplateStore, slotTypeId: string, today: s
       ),
   );
 
-/** Whether a template is set at a level from `today` on (decision 11). */
-export const templateInUse = (store: TemplateStore, templateId: string, today: string): boolean =>
-  store.assignments.some((row) => row.dayTemplateId === templateId && reachesFrom(row, today));
+/**
+ * Whether a template is set at a level from `today` on (decision 11 of task
+ * 1.5), or named by an active special day of the calendar whose last date is
+ * today or later (task 1.4, from the note of pull request #46).
+ */
+export const templateInUse = (
+  store: TemplateStore,
+  entries: readonly (CalendarEntry & { archivedAt: Date | null })[],
+  templateId: string,
+  today: string,
+): boolean =>
+  store.assignments.some((row) => row.dayTemplateId === templateId && reachesFrom(row, today)) ||
+  entries.some(
+    (entry) =>
+      entry.archivedAt === null && entry.dayTemplateId === templateId && entry.lastDate >= today,
+  );

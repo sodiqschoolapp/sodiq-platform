@@ -260,6 +260,19 @@ describe('isSchoolDay', () => {
     ).toBe(true);
   });
 
+  it('is a school day on a working weekday before any template is set', () => {
+    const none: CalendarSettings = {
+      workingWeekdays: [1, 2, 3, 4, 5],
+      assignments: [],
+      entries: [],
+    };
+    expect(isSchoolDay(wednesday, none)).toBe(true);
+    expect(isSchoolDay(saturday, none)).toBe(false);
+    expect(
+      isSchoolDay(wednesday, { ...none, entries: [entry({ id: 'off', kind: 'day_off' })] }),
+    ).toBe(false);
+  });
+
   it('is no school day on a whole-branch day off or a non-working weekday', () => {
     expect(isSchoolDay(wednesday, settings([entry({ id: 'off', kind: 'day_off' })]))).toBe(false);
     expect(isSchoolDay(saturday, settings([]))).toBe(false);

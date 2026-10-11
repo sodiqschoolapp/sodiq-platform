@@ -19,6 +19,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import { Audit } from '../audit/audit.service.js';
 import type { Access } from '../access/permission.guard.js';
+import { loadEntries } from './calendar-state.js';
 import { notFound, refusingConstraints } from './setup-refusals.js';
 
 interface YearRow {
@@ -240,6 +241,20 @@ export class AcademicYears {
         if (goLiveDate !== null && inside(goLiveDate, before) && !inside(goLiveDate, record)) {
           throw refused('go_live_outside_year', [
             goLiveDate < record.startDate ? 'startDate' : 'endDate',
+          ]);
+        }
+        // Task 1.4, decision 5: an active calendar entry stays inside its year.
+        const leftOut = (await loadEntries(transaction)).filter(
+          (entry) =>
+            entry.archivedAt === null &&
+            inside(entry.firstDate, before) &&
+            inside(entry.lastDate, before) &&
+            !(inside(entry.firstDate, record) && inside(entry.lastDate, record)),
+        );
+        if (leftOut.length > 0) {
+          throw refused('calendar_outside_year', [
+            ...(leftOut.some((entry) => entry.firstDate < record.startDate) ? ['startDate'] : []),
+            ...(leftOut.some((entry) => entry.lastDate > record.endDate) ? ['endDate'] : []),
           ]);
         }
         await transaction

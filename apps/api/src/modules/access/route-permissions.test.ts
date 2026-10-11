@@ -40,6 +40,9 @@ const SETUP_VIEWERS: readonly Role[] = ['super_admin', 'principal', 'academic_vi
 /** Slot types and day templates (task 1.5, answer 14): the Principal views, the other two write. */
 const TEMPLATE_VIEWERS = SETUP_VIEWERS;
 const TEMPLATE_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
+// Task 1.4, the owner's answer 18: the area `calendar`.
+const CALENDAR_VIEWERS = SETUP_VIEWERS;
+const CALENDAR_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
@@ -139,6 +142,13 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   },
   'GET /api/setup/day-template-table': { branch: 'request', roles: TEMPLATE_VIEWERS },
   'POST /api/setup/day-template-table/preview': { branch: 'request', roles: TEMPLATE_WRITERS },
+  'GET /api/setup/calendar-entries': { branch: 'request', roles: CALENDAR_VIEWERS },
+  'POST /api/setup/calendar-entries': { branch: 'request', roles: CALENDAR_WRITERS },
+  'POST /api/setup/calendar-entries/preview': { branch: 'request', roles: CALENDAR_WRITERS },
+  'PATCH /api/setup/calendar-entries/:id': { branch: 'request', roles: CALENDAR_WRITERS },
+  'POST /api/setup/calendar-entries/:id/archive': { branch: 'request', roles: CALENDAR_WRITERS },
+  'POST /api/setup/calendar-entries/:id/restore': { branch: 'request', roles: CALENDAR_WRITERS },
+  'GET /api/setup/calendar-day': { branch: 'request', roles: CALENDAR_VIEWERS },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

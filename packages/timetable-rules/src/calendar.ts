@@ -124,13 +124,15 @@ export function dayOn(grade: number, date: string, settings: CalendarSettings): 
 }
 
 /**
- * Whether the date is a school day: some grade has lessons on it
- * (`edge/academic-year`, "Go-live can be on any school day"; decision 7 of
- * task 1.4).
+ * Whether the date is a school day: some grade has lessons on it, or would
+ * have once a template is set (`edge/academic-year`, "Go-live can be on any
+ * school day"; decision 7 of task 1.4). The calendar decides a school day, not
+ * the templates: the go-live date may be set before the first template.
  */
 export function isSchoolDay(date: string, settings: CalendarSettings): boolean {
   for (let grade = FIRST_GRADE; grade <= LAST_GRADE; grade += 1) {
-    if (dayOn(grade, date, settings).lessons) {
+    const day = dayOn(grade, date, settings);
+    if (day.lessons || day.reason === 'no_template') {
       return true;
     }
   }

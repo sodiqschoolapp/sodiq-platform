@@ -49,6 +49,7 @@ import {
   type TemplateState,
   type TemplateStore,
 } from './day-template-state.js';
+import { loadEntries } from './calendar-state.js';
 import { endFrom, isWithdrawn, scheduleFrom } from './dated-rows.js';
 import {
   assignmentRefusals,
@@ -457,7 +458,7 @@ export class DayTemplates {
 
   listTemplates(access: Access, branchId: string): Promise<DayTemplateList> {
     return this.read(access, branchId, async (transaction, today) => {
-      const store = await loadStore(transaction);
+      const [store, entries] = await Promise.all([loadStore(transaction), loadEntries(transaction)]);
       return {
         today,
         dayTemplates: [...store.templates.values()]
@@ -470,7 +471,7 @@ export class DayTemplates {
               start: timed?.day.start ?? null,
               end: timed?.day.end ?? null,
               lessonSlots: timed === null ? 0 : lessonSlotsOf(timed.day),
-              inUse: templateInUse(store, template.id, today),
+              inUse: templateInUse(store, entries, template.id, today),
             };
           })
           .sort(byName),
@@ -686,7 +687,7 @@ export class DayTemplates {
         throw notFound();
       }
       if (template.archivedAt === null) {
-        if (templateInUse(store, id, context.today)) {
+        if (templateInUse(store, await loadEntries(context.transaction), id, context.today)) {
           throw refused('template_in_use');
         }
         const now = this.clock.now();

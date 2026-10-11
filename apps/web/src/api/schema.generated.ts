@@ -916,6 +916,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/setup/calendar-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CalendarController_list"];
+        put?: never;
+        post: operations["CalendarController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/calendar-entries/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CalendarController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/calendar-entries/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["CalendarController_edit"];
+        trace?: never;
+    };
+    "/api/setup/calendar-entries/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CalendarController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/calendar-entries/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CalendarController_restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/calendar-day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CalendarController_day"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/feedback": {
         parameters: {
             query?: never;
@@ -939,7 +1035,7 @@ export interface components {
         ApiError: {
             error: {
                 /** @enum {string} */
-                code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                 message: string;
                 requestId: string;
                 details?: {
@@ -1653,7 +1749,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1714,7 +1810,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1785,7 +1881,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1853,7 +1949,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1919,7 +2015,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -1989,7 +2085,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2061,7 +2157,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2127,7 +2223,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2193,7 +2289,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2258,7 +2354,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2323,7 +2419,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2382,7 +2478,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2441,7 +2537,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2510,7 +2606,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2592,7 +2688,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2676,7 +2772,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2750,7 +2846,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2830,7 +2926,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2912,7 +3008,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -2984,7 +3080,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3056,7 +3152,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3126,7 +3222,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3196,7 +3292,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3256,7 +3352,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3316,7 +3412,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3385,7 +3481,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3461,7 +3557,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3539,7 +3635,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3608,7 +3704,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3688,7 +3784,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3764,7 +3860,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3834,7 +3930,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3909,7 +4005,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -3983,7 +4079,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4059,7 +4155,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4127,7 +4223,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4195,7 +4291,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4259,7 +4355,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4347,7 +4443,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4431,7 +4527,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4519,7 +4615,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4610,7 +4706,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4692,7 +4788,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4774,7 +4870,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4842,7 +4938,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4920,7 +5016,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -4993,7 +5089,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -5061,7 +5157,7 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
@@ -5198,7 +5294,639 @@ export interface operations {
                     "application/json": {
                         error: {
                             /** @enum {string} */
-                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "request_refused" | "internal_error";
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    CalendarController_list: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        today: string;
+                        entries: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "day_off" | "special_day";
+                            name: string;
+                            /** Format: date */
+                            firstDate: string;
+                            /** Format: date */
+                            lastDate: string;
+                            gradeFrom: number | null;
+                            gradeTo: number | null;
+                            /** Format: uuid */
+                            dayTemplateId: string | null;
+                            dayTemplateName: string | null;
+                            followsWeekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                            /** @enum {string|null} */
+                            examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    CalendarController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "day_off" | "special_day";
+                    name: string;
+                    /** Format: date */
+                    firstDate: string;
+                    /** Format: date */
+                    lastDate: string;
+                    gradeFrom: number | null;
+                    gradeTo: number | null;
+                    /** Format: uuid */
+                    dayTemplateId: string | null;
+                    followsWeekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                    /** @enum {string|null} */
+                    examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        kind: "day_off" | "special_day";
+                        name: string;
+                        /** Format: date */
+                        firstDate: string;
+                        /** Format: date */
+                        lastDate: string;
+                        gradeFrom: number | null;
+                        gradeTo: number | null;
+                        /** Format: uuid */
+                        dayTemplateId: string | null;
+                        dayTemplateName: string | null;
+                        followsWeekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                        /** @enum {string|null} */
+                        examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    CalendarController_preview: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    action: "create";
+                    record: {
+                        /** @enum {string} */
+                        kind: "day_off" | "special_day";
+                        name: string;
+                        /** Format: date */
+                        firstDate: string;
+                        /** Format: date */
+                        lastDate: string;
+                        gradeFrom: number | null;
+                        gradeTo: number | null;
+                        /** Format: uuid */
+                        dayTemplateId: string | null;
+                        followsWeekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                        /** @enum {string|null} */
+                        examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                    };
+                } | {
+                    /** @enum {string} */
+                    action: "edit";
+                    /** Format: uuid */
+                    id: string;
+                    record: {
+                        /** @enum {string} */
+                        kind: "day_off" | "special_day";
+                        name: string;
+                        /** Format: date */
+                        firstDate: string;
+                        /** Format: date */
+                        lastDate: string;
+                        gradeFrom: number | null;
+                        gradeTo: number | null;
+                        /** Format: uuid */
+                        dayTemplateId: string | null;
+                        followsWeekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                        /** @enum {string|null} */
+                        examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                    };
+                } | {
+                    /** @enum {string} */
+                    action: "archive";
+                    /** Format: uuid */
+                    id: string;
+                } | {
+                    /** @enum {string} */
+                    action: "restore";
+                    /** Format: uuid */
+                    id: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        changes: {
+                            /** Format: date */
+                            firstDate: string;
+                            /** Format: date */
+                            lastDate: string;
+                            gradeFrom: number;
+                            gradeTo: number;
+                            before: {
+                                /** @enum {boolean} */
+                                lessons: false;
+                                /** @enum {string} */
+                                reason: "day_off" | "not_working_day" | "no_template";
+                                /** Format: uuid */
+                                entryId: string | null;
+                                entryName: string | null;
+                            } | {
+                                /** @enum {boolean} */
+                                lessons: true;
+                                /** Format: uuid */
+                                dayTemplateId: string;
+                                dayTemplateName: string;
+                                followsWeekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                                /** @enum {string|null} */
+                                examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                                /** Format: uuid */
+                                entryId: string | null;
+                                entryName: string | null;
+                            };
+                            after: {
+                                /** @enum {boolean} */
+                                lessons: false;
+                                /** @enum {string} */
+                                reason: "day_off" | "not_working_day" | "no_template";
+                                /** Format: uuid */
+                                entryId: string | null;
+                                entryName: string | null;
+                            } | {
+                                /** @enum {boolean} */
+                                lessons: true;
+                                /** Format: uuid */
+                                dayTemplateId: string;
+                                dayTemplateName: string;
+                                followsWeekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                                /** @enum {string|null} */
+                                examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                                /** Format: uuid */
+                                entryId: string | null;
+                                entryName: string | null;
+                            };
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    CalendarController_edit: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "day_off" | "special_day";
+                    name: string;
+                    /** Format: date */
+                    firstDate: string;
+                    /** Format: date */
+                    lastDate: string;
+                    gradeFrom: number | null;
+                    gradeTo: number | null;
+                    /** Format: uuid */
+                    dayTemplateId: string | null;
+                    followsWeekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                    /** @enum {string|null} */
+                    examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        kind: "day_off" | "special_day";
+                        name: string;
+                        /** Format: date */
+                        firstDate: string;
+                        /** Format: date */
+                        lastDate: string;
+                        gradeFrom: number | null;
+                        gradeTo: number | null;
+                        /** Format: uuid */
+                        dayTemplateId: string | null;
+                        dayTemplateName: string | null;
+                        followsWeekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                        /** @enum {string|null} */
+                        examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    CalendarController_archive: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        kind: "day_off" | "special_day";
+                        name: string;
+                        /** Format: date */
+                        firstDate: string;
+                        /** Format: date */
+                        lastDate: string;
+                        gradeFrom: number | null;
+                        gradeTo: number | null;
+                        /** Format: uuid */
+                        dayTemplateId: string | null;
+                        dayTemplateName: string | null;
+                        followsWeekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                        /** @enum {string|null} */
+                        examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    CalendarController_restore: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        kind: "day_off" | "special_day";
+                        name: string;
+                        /** Format: date */
+                        firstDate: string;
+                        /** Format: date */
+                        lastDate: string;
+                        gradeFrom: number | null;
+                        gradeTo: number | null;
+                        /** Format: uuid */
+                        dayTemplateId: string | null;
+                        dayTemplateName: string | null;
+                        followsWeekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                        /** @enum {string|null} */
+                        examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    CalendarController_day: {
+        parameters: {
+            query: {
+                date: string;
+            };
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        date: string;
+                        grades: {
+                            grade: number;
+                            day: {
+                                /** @enum {boolean} */
+                                lessons: false;
+                                /** @enum {string} */
+                                reason: "day_off" | "not_working_day" | "no_template";
+                                /** Format: uuid */
+                                entryId: string | null;
+                                entryName: string | null;
+                            } | {
+                                /** @enum {boolean} */
+                                lessons: true;
+                                /** Format: uuid */
+                                dayTemplateId: string;
+                                dayTemplateName: string;
+                                followsWeekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                                /** @enum {string|null} */
+                                examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                                /** Format: uuid */
+                                entryId: string | null;
+                                entryName: string | null;
+                            };
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "go_live_not_school_day" | "request_refused" | "internal_error";
                             message: string;
                             requestId: string;
                             details?: {
