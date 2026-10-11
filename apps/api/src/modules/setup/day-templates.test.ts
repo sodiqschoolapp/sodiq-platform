@@ -159,6 +159,21 @@ describe('day templates', () => {
     const other = await slotTypes();
     const foreign = await t.createTemplate(other.branch, 'Foreign', [other.lesson]);
     const before = await t.auditCount();
+    const foreignRows = () =>
+      Promise.all([
+        t.database.migrator
+          .selectFrom('day_templates')
+          .select(['name', 'archived_at'])
+          .where('id', '=', foreign)
+          .execute(),
+        t.database.migrator
+          .selectFrom('day_template_versions')
+          .select(['id', 'valid_from', 'valid_until'])
+          .where('day_template_id', '=', foreign)
+          .orderBy('id')
+          .execute(),
+      ]);
+    const rowsBefore = await foreignRows();
     for (const id of [foreign, UNKNOWN]) {
       for (const response of [
         await t.get(`/api/setup/day-templates/${id}?date=${TODAY}`, branch),
@@ -175,12 +190,31 @@ describe('day templates', () => {
       }
     }
     expect(await t.auditCount()).toBe(before);
+    expect(await foreignRows()).toEqual(rowsBefore);
   });
 
-  it('refuse a slot type of another branch or an unknown one with 404, never a 500 from the key', async () => {
+  it('refuse a slot type of another branch or an unknown one with 404, never a 500 from the key, for a new version too', async () => {
     const { branch, lesson } = await slotTypes();
     const other = await slotTypes();
+    const own = await t.createTemplate(branch, 'Own', [lesson]);
+    const versions = () =>
+      t.database.migrator
+        .selectFrom('day_template_versions')
+        .select(['id', 'valid_until'])
+        .where('day_template_id', '=', own)
+        .orderBy('id')
+        .execute();
+    const versionsBefore = await versions();
     const before = await t.auditCount();
+    for (const slotTypeIds of [[lesson, other.lesson], [UNKNOWN]]) {
+      const response = await t.post(`/api/setup/day-templates/${own}/versions`, branch, {
+        from: TOMORROW,
+        startTime: '08:00',
+        slotTypeIds,
+      });
+      expect(response.status).toBe(404);
+    }
+    expect(await versions()).toEqual(versionsBefore);
     for (const slotTypeIds of [[lesson, other.lesson], [UNKNOWN]]) {
       const response = await t.post('/api/setup/day-templates', branch, {
         name: 'Mixed',

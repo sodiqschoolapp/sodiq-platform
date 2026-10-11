@@ -594,6 +594,70 @@ describe('where day templates apply', () => {
       expect(cell(ended.after, 5, 1)).toBe('Main');
     });
 
+    it('answers 404 for an id of another branch or an unknown one in any change, and writes nothing', async () => {
+      const own = await branchWith('Main');
+      const other = await branchWith('Foreign');
+      const foreignTemplate = other.templates.Foreign ?? '';
+      const foreignSetting = await t.assign(other.branch, foreignTemplate, {
+        level: 'weekday',
+        weekday: 2,
+      });
+      const ownTemplate = own.templates.Main ?? '';
+      const rows = [await rowsOf(own.branch), await rowsOf(other.branch)];
+      const before = await t.auditCount();
+      for (const foreign of [
+        { slotType: other.lesson, template: foreignTemplate, setting: foreignSetting },
+        { slotType: UNKNOWN, template: UNKNOWN, setting: UNKNOWN },
+      ]) {
+        for (const change of [
+          {
+            kind: 'slot_length',
+            slotTypeId: foreign.slotType,
+            change: { lengthMinutes: 40, from: MONDAY },
+          },
+          {
+            kind: 'template_version',
+            dayTemplateId: foreign.template,
+            change: { from: MONDAY, startTime: '08:00', slotTypeIds: [own.lesson] },
+          },
+          {
+            kind: 'template_version',
+            dayTemplateId: ownTemplate,
+            change: { from: MONDAY, startTime: '08:00', slotTypeIds: [foreign.slotType] },
+          },
+          { kind: 'assignment_set', change: body(foreign.template, {}, MONDAY) },
+          { kind: 'assignment_end', assignmentId: foreign.setting, change: { from: MONDAY } },
+        ]) {
+          const response = await preview(own.branch, change);
+          expect(response.status, JSON.stringify(change)).toBe(404);
+        }
+      }
+      expect(await t.auditCount()).toBe(before);
+      expect([await rowsOf(own.branch), await rowsOf(other.branch)]).toEqual(rows);
+    });
+
+    it('writes nothing for a length change, a new version or an end, and lets the Academic Vice Principal preview too', async () => {
+      const lesson = await t.createSlotType(t.north, 'Lesson for the preview');
+      const main = await t.createTemplate(t.north, 'North preview', [lesson]);
+      const friday = await t.assign(t.north, main, { level: 'weekday', weekday: 5 }, '2026-11-02');
+      const rows = await rowsOf(t.north);
+      const before = await t.auditCount();
+      for (const change of [
+        { kind: 'slot_length', slotTypeId: lesson, change: { lengthMinutes: 40, from: MONDAY } },
+        {
+          kind: 'template_version',
+          dayTemplateId: main,
+          change: { from: MONDAY, startTime: '09:00', slotTypeIds: [lesson] },
+        },
+        { kind: 'assignment_end', assignmentId: friday, change: { from: MONDAY } },
+      ]) {
+        const response = await preview(t.north, change, t.vicePrincipal);
+        expect(response.status, change.kind).toBe(200);
+      }
+      expect(await rowsOf(t.north)).toEqual(rows);
+      expect(await t.auditCount()).toBe(before);
+    });
+
     it('gives the refusal the save would give, the deferred checks included', async () => {
       const { branch, templates } = await branchWith('Senior', 'Upper');
       await t.assign(branch, templates.Senior ?? '', {

@@ -957,7 +957,7 @@ export class DayTemplates {
       }
       throw error;
     }
-    // The work above always throws: either the preview or a refusal.
+    // The work above always throws, the preview or a refusal; TypeScript cannot see that.
     throw new ApiException('internal_error', 500);
   }
 }
