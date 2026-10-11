@@ -125,6 +125,45 @@ export interface Buildings {
   name: string;
 }
 
+export interface DayTemplateAssignments {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  day_template_id: string;
+  grade_from: number | null;
+  grade_to: number | null;
+  id: Generated<string>;
+  level: string;
+  valid_from: string;
+  valid_until: string | null;
+  weekday: number | null;
+}
+
+export interface DayTemplates {
+  archived_at: Timestamp | null;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  name: string;
+}
+
+export interface DayTemplateSlots {
+  branch_id: string;
+  position: number;
+  slot_type_id: string;
+  version_id: string;
+}
+
+export interface DayTemplateVersions {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  created_xact: Generated<string>;
+  day_template_id: string;
+  id: Generated<string>;
+  start_minutes: number;
+  valid_from: string;
+  valid_until: string | null;
+}
+
 export interface Departments {
   archived_at: Timestamp | null;
   created_at: Generated<Timestamp>;
@@ -250,6 +289,25 @@ export interface SignInThrottle {
   login_hash: string;
 }
 
+export interface SlotTypeLengths {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  length_minutes: number;
+  slot_type_id: string;
+  valid_from: string;
+  valid_until: string | null;
+}
+
+export interface SlotTypes {
+  archived_at: Timestamp | null;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  kind: string;
+  name: string;
+}
+
 export interface DB {
   academic_years: AcademicYears;
   account_second_steps: AccountSecondSteps;
@@ -259,6 +317,10 @@ export interface DB {
   audit_log_school: AuditLogSchool;
   branches: Branches;
   buildings: Buildings;
+  day_template_assignments: DayTemplateAssignments;
+  day_template_slots: DayTemplateSlots;
+  day_template_versions: DayTemplateVersions;
+  day_templates: DayTemplates;
   departments: Departments;
   divisions: Divisions;
   feedback_reports: FeedbackReports;
@@ -272,4 +334,6 @@ export interface DB {
   second_step_recovery_codes: SecondStepRecoveryCodes;
   sessions: Sessions;
   sign_in_throttle: SignInThrottle;
+  slot_type_lengths: SlotTypeLengths;
+  slot_types: SlotTypes;
 }

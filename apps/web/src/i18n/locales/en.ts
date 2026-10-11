@@ -81,6 +81,21 @@ export const en = {
       'A year cannot come before a year that has already started. Choose later dates.',
     go_live_outside_year:
       'The go-live date must lie inside a planned or current academic year. Change the dates or the go-live date.',
+    date_not_in_future: 'A change takes effect from tomorrow at the earliest. Choose a later date.',
+    grade_ranges_overlap:
+      'These grades overlap a range already set at this level on that date. End that range first, or choose other grades.',
+    day_past_midnight:
+      'The day would end after midnight. Start earlier, or use fewer or shorter slots.',
+    no_lesson_slot: 'A day template needs at least one lesson slot. Add a lesson slot.',
+    already_ended: 'This setting already ends on or before that date. Nothing changed.',
+    default_template_required:
+      'The branch always has a default template. Set another template as the default instead.',
+    slot_type_in_use:
+      'A day template uses this slot type from today on. Change those templates first, then archive it.',
+    template_in_use:
+      'This template is set for the branch from today on. End or replace that setting first, then archive it.',
+    slot_type_archived: 'An archived slot type is chosen. Restore it first, or choose another one.',
+    template_archived: 'The day template is archived. Restore it first, or choose another one.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     archive_refused:

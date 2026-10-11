@@ -97,6 +97,7 @@ describe('a frozen permission table', () => {
       'academic_years',
       'branches',
       'current_period',
+      'day_templates',
       'divisions',
       'quarters',
       'rooms',
@@ -136,6 +137,22 @@ describe('a frozen permission table', () => {
         expect(permits(PERMISSIONS, role, area, 'archive')).toBe(false);
         expect(permits(PERMISSIONS, role, area, 'export')).toBe(false);
       }
+    }
+  });
+
+  // Task 1.5: the owner's answer 14: `day_templates` (slot types and
+  // templates together) — Super Admin and Academic Vice Principal view,
+  // create, edit, archive; Principal view.
+  it('gives the slot types and day templates to the Super Admin and the Academic Vice Principal', () => {
+    const all = ['view', 'create', 'edit', 'archive'];
+    expect(PERMISSIONS.day_templates.super_admin).toEqual(all);
+    expect(PERMISSIONS.day_templates.academic_vice_principal).toEqual(all);
+    expect(PERMISSIONS.day_templates.principal).toEqual(['view']);
+    for (const role of ROLES) {
+      if (!['super_admin', 'principal', 'academic_vice_principal'].includes(role)) {
+        expect(PERMISSIONS.day_templates[role], role).toEqual([]);
+      }
+      expect(permits(PERMISSIONS, role, 'day_templates', 'export')).toBe(false);
     }
   });
 

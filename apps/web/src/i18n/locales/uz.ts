@@ -84,6 +84,23 @@ export const uz: Texts<'one' | 'other'> = {
       'Yil allaqachon boshlangan yildan oldin kela olmaydi. Keyingi sanalarni tanlang.',
     go_live_outside_year:
       'Ishga tushirish sanasi rejalashtirilgan yoki joriy oʻquv yili ichida boʻlishi kerak. Sanalarni yoki ishga tushirish sanasini oʻzgartiring.',
+    date_not_in_future: 'Oʻzgarish eng erta ertangi kundan kuchga kiradi. Keyinroq sanani tanlang.',
+    grade_ranges_overlap:
+      'Bu sinflar shu sanada shu darajada belgilangan boshqa oraliq bilan kesishadi. Avval oʻsha oraliqni tugating yoki boshqa sinflarni tanlang.',
+    day_past_midnight:
+      'Kun yarim tundan keyin tugaydi. Ertaroq boshlang yoki kamroq yoki qisqaroq slotlardan foydalaning.',
+    no_lesson_slot: 'Kun shablonida kamida bitta dars sloti boʻlishi kerak. Dars slotini qoʻshing.',
+    already_ended:
+      'Bu sozlama shu sanada yoki undan oldin allaqachon tugaydi. Hech narsa oʻzgarmadi.',
+    default_template_required:
+      'Filialda har doim standart shablon boʻladi. Buning oʻrniga boshqa shablonni standart qilib belgilang.',
+    slot_type_in_use:
+      'Bu slot turi bugundan boshlab kun shablonida ishlatiladi. Avval oʻsha shablonlarni oʻzgartiring, keyin arxivlang.',
+    template_in_use:
+      'Bu shablon bugundan boshlab filialda belgilangan. Avval oʻsha belgilashni tugating yoki almashtiring, keyin arxivlang.',
+    slot_type_archived:
+      'Arxivlangan slot turi tanlangan. Avval uni tiklang yoki boshqasini tanlang.',
+    template_archived: 'Kun shabloni arxivlangan. Avval uni tiklang yoki boshqasini tanlang.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',

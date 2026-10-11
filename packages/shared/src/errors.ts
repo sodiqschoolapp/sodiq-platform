@@ -81,6 +81,26 @@ export const ERROR_CODES = [
   'year_out_of_order',
   /** The go-live date must lie inside a planned or current academic year of the branch (task 1.3). */
   'go_live_outside_year',
+  /** A change of the slot types or day templates takes effect from tomorrow at the earliest, in branch time (task 1.5). */
+  'date_not_in_future',
+  /** The grades overlap another range set at the same level on that date (`03`: "Grade ranges set at one level may not overlap"; task 1.5). */
+  'grade_ranges_overlap',
+  /** A day of a template would end after midnight (task 1.5). */
+  'day_past_midnight',
+  /** A day template has at least one lesson slot (answer 10; task 1.5). */
+  'no_lesson_slot',
+  /** The setting already ends on or before that date (task 1.5). */
+  'already_ended',
+  /** The default template can be replaced from a date but not ended (`03`: "A branch has a default template"; task 1.5). */
+  'default_template_required',
+  /** A slot type cannot be archived while a template in use from today on has it (answer 9; task 1.5). */
+  'slot_type_in_use',
+  /** A day template cannot be archived while it is set at a level from today on (task 1.5). */
+  'template_in_use',
+  /** An archived slot type is chosen, or a template being restored uses one (task 1.5). */
+  'slot_type_archived',
+  /** An archived day template is chosen, or the template changed is archived (task 1.5). */
+  'template_archived',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
