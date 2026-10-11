@@ -241,11 +241,7 @@ export function BranchPage() {
         ) : (
           <BranchDetails branch={branch.data} />
         )}
-        <GoLiveSection
-          key={`${branch.data.id}-${branch.data.goLiveDate ?? ''}`}
-          branch={branch.data}
-          canEdit={canEdit}
-        />
+        <GoLiveSection key={branch.data.id} branch={branch.data} canEdit={canEdit} />
       </>
     );
   } else if (branch.isError) {

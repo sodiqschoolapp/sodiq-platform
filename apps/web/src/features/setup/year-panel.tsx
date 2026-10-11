@@ -281,7 +281,7 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
         <h3 className="text-base font-semibold">{t('setup.years.datesTitle')}</h3>
         {canEditYear && !closed ? (
           <YearForm
-            key={`${year.startDate}-${year.endDate}`}
+            key={year.id}
             year={year}
             label={year.name}
             onSave={async (record) => {
@@ -330,9 +330,7 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
         <h3 className="text-base font-semibold">{t('setup.years.quartersTitle')}</h3>
         {canEditQuarters && !closed ? (
           <QuartersFormView
-            key={year.quarters
-              .map((quarter) => `${quarter.startDate ?? ''}${quarter.endDate ?? ''}`)
-              .join('|')}
+            key={year.id}
             year={year}
             onSave={async (form) => {
               await saveQuarters.mutateAsync(form);
