@@ -515,6 +515,7 @@ describe('the settings of a branch', () => {
         'slotTypes',
         'defaultTemplate',
         'calendar',
+        'subjects',
       ]);
       expect(items.map((item) => item.done)).toEqual([
         true,
@@ -525,7 +526,10 @@ describe('the settings of a branch', () => {
         false,
         false,
         null,
+        // No subject yet (task 2.1, decision 7).
+        false,
       ]);
+      expect(items.find((item) => item.key === 'calendar')?.count).toBe(0);
       expect(items.at(-1)?.count).toBe(0);
     });
 

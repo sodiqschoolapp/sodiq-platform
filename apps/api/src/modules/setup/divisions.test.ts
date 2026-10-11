@@ -161,6 +161,27 @@ describe('divisions and departments', () => {
     return bodyId(response);
   }
 
+  /** A graded subject in a department, created through its route (task 2.1). */
+  async function subjectIn(departmentId: string, en: string): Promise<string> {
+    const response = await kit
+      .post('/api/setup/subjects', admin)
+      .set(BRANCH_HEADER, north)
+      .send({
+        names: names(en),
+        departmentId,
+        grades: [7],
+        colour: 'green',
+        journalType: 'graded',
+        ratingExam: false,
+        groupSubject: false,
+        languageRule: true,
+        demanding: false,
+        daily: { attendance: 10, classwork: 50, homework: 40 },
+      });
+    expect(response.status, JSON.stringify(response.body)).toBe(201);
+    return bodyId(response);
+  }
+
   describe('the list', () => {
     it('holds the eight divisions of the spec in its order, Academic built in, each with the departments of the spec', async () => {
       const response = await list();
@@ -465,6 +486,35 @@ describe('divisions and departments', () => {
       });
     });
 
+    // Task 2.1, decision 9: a department with an active subject is not archived.
+    it('is not archived while an active subject is in it; nothing is written; once the subject is archived it is', async () => {
+      const departmentId = await department(academic.id, 'Taught');
+      const subject = await subjectIn(departmentId, 'Taught subject');
+      const before = await entries('department.archive', departmentId);
+
+      const refused = await post(`/api/setup/departments/${departmentId}/archive`);
+
+      expect(refused.status).toBe(409);
+      expect(errorCode(refused)).toBe('department_has_subjects');
+      expect(await entries('department.archive', departmentId)).toEqual(before);
+      expect(
+        (
+          await database.migrator
+            .selectFrom('departments')
+            .select('archived_at')
+            .where('id', '=', departmentId)
+            .executeTakeFirstOrThrow()
+        ).archived_at,
+      ).toBeNull();
+
+      const archived = await kit
+        .post(`/api/setup/subjects/${subject}/archive`, admin)
+        .set(BRANCH_HEADER, north)
+        .send({});
+      expect(archived.status).toBe(200);
+      expect((await post(`/api/setup/departments/${departmentId}/archive`)).status).toBe(200);
+    });
+
     it('is not added to, renamed in or restored in an archived division, and not renamed while archived itself', async () => {
       const id = await division('Shut');
       const open = await department(id, 'Open');
@@ -639,6 +689,64 @@ describe('divisions and departments', () => {
         await first.catch(() => undefined);
       }
     });
+  });
+
+  // Task 2.1, decision 9 and the lock order of archiveDepartment: the
+  // department is locked, then its active subjects counted. A subject created
+  // at the same moment reads the department FOR SHARE (db/migrations/0020).
+  // The test holds such a create open, sends the archive, sees it wait, lets
+  // the create commit and reads the answer: the archive then sees the subject.
+  it('archives no department while a subject is being created in it: the archive waits and is then refused', async () => {
+    const departmentId = await department(academic.id, 'Busy');
+    let open = (): void => undefined;
+    const release = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    let heldNow = (): void => undefined;
+    const held = new Promise<void>((resolve) => {
+      heldNow = resolve;
+    });
+    const create = app.get(Transactions).run([], async (transaction) => {
+      await transaction
+        .insertInto('subjects')
+        .values({
+          name_uz: 'Band',
+          name_ru: 'Занятый',
+          name_en: 'Busy subject',
+          department_id: departmentId,
+          grades: [8],
+          colour: 'red',
+          journal_type: 'attendance_only',
+        })
+        .execute();
+      heldNow();
+      await release;
+    });
+    await held;
+    try {
+      const archive = post(`/api/setup/departments/${departmentId}/archive`).then((sent) => sent);
+      for (let tries = 0; ; tries += 1) {
+        const seen = await sql<{ n: string }>`
+          select count(*) as n from pg_stat_activity
+          where datname = current_database() and wait_event_type = 'Lock'
+        `.execute(database.app);
+        if (Number(seen.rows[0]?.n) > 0) {
+          break;
+        }
+        if (tries > 100) {
+          throw new Error('The archive did not wait for the subject.');
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      open();
+      await create;
+      const response = await archive;
+      expect(response.status).toBe(409);
+      expect(errorCode(response)).toBe('department_has_subjects');
+    } finally {
+      open();
+      await create.catch(() => undefined);
+    }
   });
 
   it('refuses a body that fails the schema, naming the field, and writes nothing', async () => {
