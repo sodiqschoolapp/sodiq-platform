@@ -2,6 +2,10 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: one design for both apps (process change, no task)
+
+- Owner: `docs/design-system.md` is now the text shared word for word with the procurement app above its last section, "This app"; the bottom tab bar at phone width is added to 2.2d; one sign-in for both apps is planned after both are live (`docs/decisions.md`, 12 October 2026).
+
 ## 12 October 2026: the design system and the brand files (process change, no task)
 
 - Owner: the design system is `docs/design-system.md` (approved from the design board "Sodiq Platform design directions"); the logo, the browser-tab icon and the app icons are in `apps/web/public/brand/`; tasks 2.2d (design system and brand, after 2.2) and 2.7 (polish of Phases 1 and 2, before the Phase 3 gate) are in the build plan with their answers in `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7"); the builder and the reviewer check every screen against the design system. The next task is 2.2 (its split into 2.2a, 2.2b and 2.2c is proposed on pull request #53), then 2.2d.
