@@ -19,6 +19,8 @@ import { BranchPage } from '@/features/setup/branch-page';
 import { BuildingsPage } from '@/features/setup/buildings-page';
 import { DivisionsPage } from '@/features/setup/divisions-page';
 import { SubjectsPage } from '@/features/setup/subjects-page';
+import { PeoplePage } from '@/features/people/people-page';
+import { StaffPage } from '@/features/people/staff-page';
 import { YearsPage } from '@/features/setup/years-page';
 import { SlotTypesPage } from '@/features/setup/slot-types-page';
 import { CalendarPage } from '@/features/setup/calendar-page';
@@ -171,6 +173,20 @@ const subjectsRoute = createRoute({
   component: SubjectsPage,
 });
 
+/** People (task 2.2a): the entry of the menu item and the staff list. */
+const peopleRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/people',
+  component: PeoplePage,
+});
+
+const staffRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/people/staff',
+  validateSearch: listSearch,
+  component: StaffPage,
+});
+
 const yearsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/years',
@@ -258,6 +274,8 @@ const routeTree = rootRoute.addChildren([
     settingsRoute,
     travelTimesRoute,
     subjectsRoute,
+    peopleRoute,
+    staffRoute,
     patternsRoute,
   ]),
 ]);

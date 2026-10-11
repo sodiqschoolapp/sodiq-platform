@@ -82,6 +82,12 @@ function typeNames(form: HTMLElement, typed: { uz: string; ru: string; en: strin
   type(within(form).getByLabelText(en.setup.divisions.nameEn), typed.en);
 }
 
+/** Staff per main division, as the server counts them (task 2.2a). */
+const staffCounts = [
+  { divisionId: uid(1), people: 12 },
+  { divisionId: uid(2), people: 3 },
+];
+
 async function openList(
   session = superAdmin(),
   divisions = [ACADEMIC, OPERATIONS, EVENTS],
@@ -93,7 +99,7 @@ async function openList(
   const account = { ...session, language };
   const calls = fakeApi({
     'GET /api/auth/session': () => json(account),
-    'GET /api/setup/divisions': () => json({ divisions: list }),
+    'GET /api/setup/divisions': () => json({ divisions: list, staffCounts }),
     'POST /api/setup/divisions': (body) => {
       const created: Division = {
         id: uid(4),
@@ -149,10 +155,11 @@ describe('the divisions page', () => {
   it('lists the divisions in the chosen language with their active departments and status', async () => {
     await openList();
 
+    // The staff column counts each person once, under the main division (task 2.2a).
     expect(rowsDrawn().map((row) => row.slice(1))).toEqual([
-      ['Academic', '2', en.setup.divisions.active],
-      ['Operations', '1', en.setup.divisions.active],
-      ['Events', '0', en.setup.divisions.archived],
+      ['Academic', '2', '12', en.setup.divisions.active],
+      ['Operations', '1', '3', en.setup.divisions.active],
+      ['Events', '0', '0', en.setup.divisions.archived],
     ]);
   });
 
@@ -383,6 +390,47 @@ describe('the divisions page', () => {
       expect(statuses.map((status) => status.textContent)).toContain(expected);
     });
     expect(calls.filter((call) => call.route.endsWith('/archive'))).toHaveLength(2);
+  });
+
+  // Task 2.2a (from 1.2, decided by the owner on pull request #40, answer 1):
+  // a division with a staff member who has not left is refused and named; the
+  // others are archived.
+  it('names the divisions refused because staff members are in them, and goes on with the rest', async () => {
+    const quiet: Division = { ...OPERATIONS, id: uid(7), names: names('Quiet'), departments: [] };
+    const { calls } = await openList(superAdmin(), [ACADEMIC, OPERATIONS, quiet], {
+      [`POST /api/setup/divisions/${OPERATIONS.id}/archive`]: () => refusal('archive_refused', 409),
+      [`POST /api/setup/divisions/${quiet.id}/archive`]: () =>
+        json({ ...quiet, archivedAt: ARCHIVED_AT }),
+    });
+
+    fireEvent.click(screen.getByLabelText(en.list.selectRow.replace('{{name}}', 'Operations')));
+    fireEvent.click(screen.getByLabelText(en.list.selectRow.replace('{{name}}', 'Quiet')));
+    fireEvent.click(screen.getByRole('button', { name: en.setup.divisions.archive }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.setup.divisions.archive }));
+
+    const expected = `${en.setup.divisions.archived_done_one.replace('{{n}}', '1')} ${en.setup.divisions.staffedNames.replace('{{names}}', 'Operations')}`;
+    await waitFor(() => {
+      const statuses = within(screen.getByRole('main')).getAllByRole('status');
+      expect(statuses.map((status) => status.textContent)).toContain(expected);
+    });
+    expect(calls.filter((call) => call.route.endsWith('/archive'))).toHaveLength(2);
+  });
+
+  it('says in the panel why a division with staff members is not archived', async () => {
+    await openList(superAdmin(), [ACADEMIC, OPERATIONS], {
+      [`POST /api/setup/divisions/${OPERATIONS.id}/archive`]: () => refusal('archive_refused', 409),
+    });
+
+    fireEvent.click(rowButton('Operations'));
+    const panel = await screen.findByRole('complementary', { name: 'Operations' });
+    fireEvent.click(
+      within(panel).getByRole('button', { name: en.setup.divisions.archiveDivision }),
+    );
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.setup.divisions.archive }));
+
+    expect((await within(panel).findByRole('alert')).textContent).toBe(en.setup.divisions.hasStaff);
   });
 
   it('restores several divisions at once, naming the one whose name an active division has now', async () => {

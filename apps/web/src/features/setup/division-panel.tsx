@@ -265,7 +265,10 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
           <span className="text-sm text-muted-foreground">{status(division.archivedAt)}</span>
           {archiveDivision.error !== null && (
             <span role="alert" className="text-sm text-destructive">
-              {failureText(t, archiveDivision.error)}
+              {archiveDivision.error instanceof ApiFailure &&
+              archiveDivision.error.code === 'archive_refused'
+                ? t('setup.divisions.hasStaff')
+                : failureText(t, archiveDivision.error)}
             </span>
           )}
         </div>

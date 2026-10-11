@@ -271,6 +271,16 @@ export function ListPage<Row>({
 
   const openId = panel === undefined ? undefined : state.open;
   const openRow = openId === undefined ? undefined : rows?.find((row) => rowId(row) === openId);
+  // The row last shown in the panel. When it leaves the list while it is open
+  // (archived by somebody else, a reload of the rows), the panel keeps it with
+  // a note, so a form in it keeps what was typed (0.8b-1, settled in 2.2a).
+  const [shownRow, setShownRow] = useState<{ id: string; row: Row } | null>(null);
+  if (openRow !== undefined && openId !== undefined && shownRow?.row !== openRow) {
+    setShownRow({ id: openId, row: openRow });
+  }
+  const goneRow =
+    openRow === undefined && shownRow !== null && shownRow.id === openId ? shownRow.row : undefined;
+  const panelRow = openRow ?? goneRow;
 
   // A button that goes away with its click hands the focus on, so the keyboard
   // does not start again from the top of the page.
@@ -527,7 +537,9 @@ export function ListPage<Row>({
             rows === undefined
               ? t('app.loading')
               : openRow === undefined
-                ? t('list.recordGoneTitle')
+                ? goneRow === undefined
+                  ? t('list.recordGoneTitle')
+                  : rowName(goneRow)
                 : rowName(openRow)
           }
           recordKey={openId}
@@ -541,10 +553,19 @@ export function ListPage<Row>({
             failed ? null : (
               <LoadingOutline />
             )
-          ) : openRow === undefined ? (
+          ) : panelRow === undefined ? (
             <p>{t('list.recordGone')}</p>
           ) : (
-            panel(openRow)
+            // One wrapper whether the row is in the list or has left it, so the
+            // panel is not drawn anew and keeps what was typed.
+            <div className="grid gap-4">
+              {openRow === undefined && (
+                <p role="status" className="text-sm text-muted-foreground">
+                  {t('list.recordLeft')}
+                </p>
+              )}
+              {panel(panelRow)}
+            </div>
           )}
         </SidePanel>
       )}

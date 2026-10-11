@@ -42,10 +42,11 @@ interface HarnessProps {
   start?: ListSearch;
   onExport?: (rows: Room[], columnKeys: string[]) => void;
   actions?: BulkAction<Room>[];
+  panel?: (row: Room) => React.ReactNode;
 }
 
 /** A list whose address is a piece of state. */
-function Harness({ rows, error, start = {}, onExport, actions }: HarnessProps) {
+function Harness({ rows, error, start = {}, onExport, actions, panel }: HarnessProps) {
   const [search, setSearch] = useState(start);
   return (
     <ListPage
@@ -61,6 +62,7 @@ function Harness({ rows, error, start = {}, onExport, actions }: HarnessProps) {
       empty={{ text: 'Rooms are listed here.' }}
       bulkActions={actions ?? [{ key: 'close', label: 'Close the rooms', run: () => undefined }]}
       onExport={onExport}
+      panel={panel}
     />
   );
 }
@@ -142,5 +144,32 @@ describe('a list whose load failed', () => {
 
     expect(screen.getByRole('alert').textContent).toBe(en.problems.noAnswer);
     expect(names()).toEqual(ROOMS.map((room) => room.name));
+  });
+});
+
+// 0.8b-1 left open, settled in 2.2a: a record that leaves the list while its
+// panel is open (archived by somebody else, a reload) keeps what was typed.
+describe('a record that leaves the list while it is open', () => {
+  it('stays in the panel with a note, and what was typed stays', () => {
+    const panel = (row: Room) => <input aria-label={`Note on ${row.name}`} defaultValue="" />;
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <Harness rows={ROOMS} start={{ open: 'r2' }} panel={panel} />
+      </I18nextProvider>,
+    );
+    fireEvent.change(screen.getByLabelText('Note on Room 4'), { target: { value: 'typed' } });
+
+    view.rerender(
+      <I18nextProvider i18n={i18n}>
+        <Harness
+          rows={ROOMS.filter((room) => room.id !== 'r2')}
+          start={{ open: 'r2' }}
+          panel={panel}
+        />
+      </I18nextProvider>,
+    );
+
+    expect(screen.getByLabelText<HTMLInputElement>('Note on Room 4').value).toBe('typed');
+    expect(screen.getByText(en.list.recordLeft)).toBeDefined();
   });
 });

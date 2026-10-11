@@ -68,6 +68,13 @@ function TickAll({ selection }: { selection: Selection }) {
 }
 
 /**
+ * The table scrolls in its own box, and its header stays in view while the
+ * rows scroll under it (0.8b-1, settled with the staff list of 2.2a).
+ */
+const STICKY_BOX = 'max-h-[calc(100vh-14rem)] overflow-y-auto';
+const STICKY_HEAD = 'sticky top-0 z-10 bg-background';
+
+/**
  * The one table of the platform (docs/spec/12-ux-standards.md, Look and feel:
  * one set of tables; no information shown by colour alone). It shows the rows
  * it is given: searching, filtering and sorting them is the work of the list.
@@ -86,9 +93,9 @@ export function DataTable<Row>({
 }: DataTableProps<Row>) {
   const { t } = useTranslation();
   return (
-    <Table>
+    <Table containerClassName={STICKY_BOX}>
       <TableCaption className="sr-only">{caption}</TableCaption>
-      <TableHeader>
+      <TableHeader className={STICKY_HEAD}>
         <TableRow>
           {selection !== undefined && (
             <TableHead scope="col" className="w-8">

@@ -151,7 +151,7 @@ async function openList({
   const calls = fakeApi({
     'GET /api/auth/session': () => json(account),
     'GET /api/setup/subjects': () => json({ subjects, mayMoveDepartment }),
-    'GET /api/setup/divisions': () => json({ divisions }),
+    'GET /api/setup/divisions': () => json({ divisions, staffCounts: [] }),
     'GET /api/setup/academic-years': () => json({ years }),
     [`GET /api/setup/subjects/${MATHS.id}/quarter-weights`]: () => json(answer(quarters)),
     [`GET /api/setup/subjects/${PHYSICS.id}/quarter-weights`]: () => json(answer(quarters)),
