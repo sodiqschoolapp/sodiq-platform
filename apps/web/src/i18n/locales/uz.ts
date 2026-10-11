@@ -100,6 +100,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu shablon bugundan boshlab filialda belgilangan. Avval oʻsha belgilashni tugating yoki almashtiring, keyin arxivlang.',
     slot_type_archived:
       'Arxivlangan slot turi tanlangan. Avval uni tiklang yoki boshqasini tanlang.',
+    template_uses_archived_slot_type:
+      'Bu shablon bugundan boshlab arxivlangan slot turidan foydalanadi. Avval oʻsha slot turini tiklang, keyin shablonni.',
     template_archived: 'Kun shabloni arxivlangan. Avval uni tiklang yoki boshqasini tanlang.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',

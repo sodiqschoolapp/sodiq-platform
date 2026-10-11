@@ -23,7 +23,9 @@ import { isWithdrawn } from './dated-rows.js';
  * Everything a branch has of slot types, templates and their settings, read
  * once per request inside its transaction (the branch filter keeps it to the
  * branch). A branch has a few dozen rows here, so every rule works on the
- * whole state: one reading, no partial queries that could disagree.
+ * whole state. A write reads it after taking the branch row (no other write
+ * of the area runs meanwhile); a read takes no lock, so a write that commits
+ * between its statements can show for one request as half done.
  */
 export interface SlotTypeState {
   readonly id: string;

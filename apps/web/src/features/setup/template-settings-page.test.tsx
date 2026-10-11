@@ -134,6 +134,20 @@ describe('the page of where day templates apply', () => {
     );
   });
 
+  // .claude/rules/web.md: a part that waits on a query never shows the loading outline for good.
+  it('shows the table of tomorrow again when the date field is cleared', async () => {
+    const calls = await openPage();
+    const field = screen.getByLabelText<HTMLInputElement>(en.setup.templateTable.date);
+    type(field, '2026-11-02');
+    type(field, '');
+
+    const tableElement = await screen.findByRole('table', { name: en.setup.templateTable.title });
+    expect(cellOf(tableElement, 1, 1)).toBe('Main08:00–10:10');
+    expect(
+      calls.filter((call) => call.route === 'GET /api/setup/day-template-table').length,
+    ).toBeGreaterThan(1);
+  });
+
   it('names the weekdays and the levels in Russian when Russian is chosen', async () => {
     await openPage('academic_vice_principal', {}, 'ru');
 

@@ -129,6 +129,11 @@ describe('slot types', () => {
           lengthMinutes: 40,
           from: TOMORROW,
         }),
+        // 404 comes before any other refusal, here the date of today.
+        await t.post(`/api/setup/slot-types/${id}/lengths`, t.north, {
+          lengthMinutes: 40,
+          from: TODAY,
+        }),
         await t.post(`/api/setup/slot-types/${id}/archive`, t.north),
         await t.post(`/api/setup/slot-types/${id}/restore`, t.north),
       ]) {

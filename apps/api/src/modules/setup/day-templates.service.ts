@@ -312,8 +312,9 @@ export class DayTemplates {
     id: string,
     change: SlotLengthChange,
   ): Promise<void> {
-    DayTemplates.requireFuture(context, change.from);
+    // An id of another branch or an unknown one answers 404 before any other refusal.
     const slotType = await DayTemplates.slotTypeOf(context, id);
+    DayTemplates.requireFuture(context, change.from);
     if (slotType.archivedAt !== null) {
       throw refused('slot_type_archived');
     }
@@ -599,16 +600,16 @@ export class DayTemplates {
     id: string,
     record: DayTemplateVersionRecord,
   ): Promise<void> {
-    DayTemplates.requireFuture(context, record.from);
     const store = await loadStore(context.transaction);
     const template = store.templates.get(id);
     if (template === undefined) {
       throw notFound();
     }
+    DayTemplates.checkSlots(store, record.slotTypeIds);
+    DayTemplates.requireFuture(context, record.from);
     if (template.archivedAt !== null) {
       throw refused('template_archived');
     }
-    DayTemplates.checkSlots(store, record.slotTypeIds);
     const schedule = scheduleFrom(template.versions, record.from);
     if (schedule.cut !== null) {
       await context.transaction
@@ -723,7 +724,7 @@ export class DayTemplates {
             ),
         );
         if (usesArchived) {
-          throw refused('slot_type_archived');
+          throw refused('template_uses_archived_slot_type');
         }
         await context.transaction
           .updateTable('day_templates')
@@ -771,12 +772,12 @@ export class DayTemplates {
   }
 
   private async setAssignment(context: Context, record: AssignmentRecord): Promise<string> {
-    DayTemplates.requireFuture(context, record.from);
     const store = await loadStore(context.transaction);
     const template = store.templates.get(record.dayTemplateId);
     if (template === undefined) {
       throw notFound();
     }
+    DayTemplates.requireFuture(context, record.from);
     if (template.archivedAt !== null) {
       throw refused('template_archived', ['dayTemplateId']);
     }
@@ -869,11 +870,11 @@ export class DayTemplates {
   }
 
   private async endAssignment(context: Context, id: string, change: AssignmentEnd): Promise<void> {
-    DayTemplates.requireFuture(context, change.from);
     const row = (await loadStore(context.transaction)).assignments.find((one) => one.id === id);
     if (row === undefined) {
       throw notFound();
     }
+    DayTemplates.requireFuture(context, change.from);
     if (row.level === 'default') {
       throw refused('default_template_required');
     }

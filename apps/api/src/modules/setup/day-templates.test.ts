@@ -461,12 +461,12 @@ describe('day templates', () => {
       expect((await t.post(`/api/setup/slot-types/${lunch}/archive`, branch)).status).toBe(200);
       const response = await t.post(`/api/setup/day-templates/${id}/restore`, branch);
       expect(response.status).toBe(409);
-      expect(errorCode(response)).toBe('slot_type_archived');
+      expect(errorCode(response)).toBe('template_uses_archived_slot_type');
     });
 
     // The plan's spec review (finding 2): a length that changed while the template was archived.
     it('refuses the restore of a template whose day would now end after midnight', async () => {
-      const { branch, lesson } = await slotTypes();
+      const { branch } = await slotTypes();
       const other = await t.createSlotType(branch, 'Lesson short', 'lesson', 30);
       const id = await t.createTemplate(branch, 'Late', [other], '23:30');
       await t.post(`/api/setup/day-templates/${id}/archive`, branch);
@@ -484,7 +484,6 @@ describe('day templates', () => {
       expect(response.status).toBe(409);
       expect(errorCode(response)).toBe('day_past_midnight');
       expect(await t.auditCount()).toBe(before);
-      expect(lesson).toBeTruthy();
     });
   });
 

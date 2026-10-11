@@ -282,8 +282,10 @@ export function CheckboxGroupField({
 
 type OrderedListFieldProps = FieldTexts &
   Bound & {
-    /** What can be added, by value and name; a value may be added more than once. */
+    /** Every value the field may hold, by value and name; a value may stand more than once. */
     options: readonly { value: string; label: string }[];
+    /** The values that can be added; every option when left out. Others are only named. */
+    addable?: readonly string[];
     /** More about the item at a place, for example the times of a slot. */
     detail?: (value: string, index: number) => ReactNode;
   };
@@ -304,13 +306,16 @@ export function OrderedListField({
   onChange,
   disabled,
   options,
+  addable,
   detail,
 }: OrderedListFieldProps) {
   const { t } = useTranslation();
   const id = useId();
   const { noteId, errorId, describedBy } = described(id, note, error);
   const items = listValues(value);
-  const [chosen, setChosen] = useState(options[0]?.value ?? '');
+  const offered =
+    addable === undefined ? options : options.filter((option) => addable.includes(option.value));
+  const [chosen, setChosen] = useState(offered[0]?.value ?? '');
   const labelOf = (item: string) => options.find((option) => option.value === item)?.label ?? item;
   const set = (next: readonly string[]) => {
     onChange({ target: { value: listValue(next) } });
@@ -393,7 +398,7 @@ export function OrderedListField({
           }}
           name={`${name}-choice`}
         >
-          {options.map((option) => (
+          {offered.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
@@ -403,7 +408,7 @@ export function OrderedListField({
           type="button"
           variant="outline"
           size="sm"
-          disabled={chosen === '' || options.length === 0}
+          disabled={chosen === '' || offered.length === 0}
           onClick={() => {
             set([...items, chosen]);
           }}

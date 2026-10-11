@@ -1453,6 +1453,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -1695,6 +1696,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -2025,6 +2027,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -2288,6 +2291,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -2508,6 +2512,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -2734,6 +2739,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -2972,6 +2978,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -3190,6 +3197,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -3408,6 +3416,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -3617,6 +3626,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -3826,6 +3836,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -4015,6 +4026,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -4204,6 +4216,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -4439,6 +4452,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -4723,6 +4737,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -5019,6 +5034,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -5283,6 +5299,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -5562,6 +5579,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -5854,6 +5872,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -6106,6 +6125,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -6358,6 +6378,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -6594,6 +6615,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -6830,6 +6852,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -7026,6 +7049,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -7222,6 +7246,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -7453,6 +7478,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -7696,6 +7722,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -7951,6 +7978,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -8180,6 +8208,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -8450,6 +8479,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -8712,6 +8742,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -8948,6 +8979,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -9198,6 +9230,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -9446,6 +9479,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -9700,6 +9734,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -9928,6 +9963,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -10156,6 +10192,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -10371,6 +10408,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -10691,6 +10729,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -10997,6 +11036,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -11311,6 +11351,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -11643,6 +11684,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -11939,6 +11981,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -12235,6 +12278,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -12506,6 +12550,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -12855,6 +12900,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -13138,6 +13184,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -13463,6 +13510,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -14261,6 +14309,7 @@
                             "slot_type_in_use",
                             "template_in_use",
                             "slot_type_archived",
+                            "template_uses_archived_slot_type",
                             "template_archived",
                             "request_refused",
                             "internal_error"
@@ -14443,6 +14492,7 @@
                   "slot_type_in_use",
                   "template_in_use",
                   "slot_type_archived",
+                  "template_uses_archived_slot_type",
                   "template_archived",
                   "request_refused",
                   "internal_error"

@@ -200,6 +200,41 @@ describe('the day templates page', () => {
     });
   });
 
+  it('names an archived slot type still in a template, and never offers it for adding', async () => {
+    const archived = {
+      ...slotType(3, 'Lesson 40', 'lesson', 40),
+      archivedAt: '2026-10-01T10:00:00.000Z',
+    };
+    await openList(
+      'academic_vice_principal',
+      {
+        [`GET /api/setup/day-templates/${MAIN.id}`]: () =>
+          json({
+            ...MAIN_DETAIL,
+            versions: [
+              { ...MAIN_DETAIL.versions[0], slotTypeIds: [archived.id, LUNCH.id, LESSON.id] },
+            ],
+          }),
+      },
+      'en',
+      [LESSON, LUNCH, archived],
+    );
+
+    fireEvent.click(screen.getByText('Main', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Main' });
+    const form = await within(panel).findByRole('form', {
+      name: en.setup.dayTemplates.changeSlots,
+    });
+    expect(slotsOf(form)[0]).toContain('Lesson 40 · Lesson');
+    const choice = within(form).getByLabelText(
+      en.form.addChoice.replace('{{label}}', en.setup.dayTemplates.slots),
+    );
+    expect([...choice.querySelectorAll('option')].map((option) => option.textContent)).toEqual([
+      'Lesson 45 · Lesson',
+      'Lunch · Break',
+    ]);
+  });
+
   it('switches "Add day template" off until a lesson slot type exists, saying why', async () => {
     await openList('academic_vice_principal', {}, 'en', [LUNCH]);
 

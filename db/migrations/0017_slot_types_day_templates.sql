@@ -21,9 +21,11 @@
 --
 -- Lengths, template versions and assignments are dated rows: in force over
 -- [valid_from, valid_until), open while valid_until is empty. A change from a
--- date cuts the row in force, withdraws a planned row starting on or after
--- that date (valid_until = valid_from, an empty range kept as history) and
--- inserts the new row; the API writes valid_from from the injected clock and
+-- date cuts the row in force there (a planned row that starts on that very
+-- date is thereby withdrawn: valid_until = valid_from, an empty range kept as
+-- history) and inserts the new row up to where the cut row ran; ending a
+-- setting withdraws a planned one that starts later. The API writes
+-- valid_from from the injected clock and
 -- decides "tomorrow at the earliest" (CLAUDE.md, Time is injected). Here the
 -- database keeps: no two rows of one key on one date (exclusion constraints),
 -- a row only ever shrinks (dated_rows_only_shrink), nothing else of a dated

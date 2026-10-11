@@ -111,6 +111,8 @@ Plan approved on pull request #46 (`[review] approved`, every decision confirmed
 | The rules live in `packages/timetable-rules` (`dayTimes`, `templateFor` with the special-date order, `inForceOn`, `lessonSlotProblem`), a workspace dependency of the API and the web app | `CLAUDE.md`, one rule engine |
 | Names: one typed name of 1 to 60 characters, unique per branch among active rows, case and spaces ignored | Branch data, as answer 15's calendar names |
 | The three lists answer `today` in branch time; the web app offers tomorrow from it | The device's clock is never used (`edge/00-definitions`) |
+| The lists answer the rows in force or planned; withdrawn rows stay in the database and the audit log but are not listed | A withdrawn row never took effect; the plan's "history included" is read as the history of what was in force (the spec review of the branch) |
+| A template restored while a version from today on uses an archived slot type is refused with its own code, `template_uses_archived_slot_type`; an id of another branch or an unknown one answers 404 before any other refusal | A text must be true where the person meets it; the spec review of the branch |
 | A cancelled preview throws `SaveCancelled`, which a record form shows as "Not saved: nothing was changed." (`form.notSaved`); the slots are edited with a shared `OrderedListField` (up, down, remove, add) | The form keeps what was typed and tells the truth; no drag and drop (answer 10) |
 
 ## 11 October 2026: academic years and quarters (task 1.3)

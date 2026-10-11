@@ -95,6 +95,8 @@ export const en = {
     template_in_use:
       'This template is set for the branch from today on. End or replace that setting first, then archive it.',
     slot_type_archived: 'An archived slot type is chosen. Restore it first, or choose another one.',
+    template_uses_archived_slot_type:
+      'This template uses an archived slot type from today on. Restore that slot type first, then restore the template.',
     template_archived: 'The day template is archived. Restore it first, or choose another one.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',

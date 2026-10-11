@@ -56,6 +56,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   slot_type_in_use: 'The slot type is used by a day template from today on.',
   template_in_use: 'The day template is set at a level from today on.',
   slot_type_archived: 'An archived slot type is chosen.',
+  template_uses_archived_slot_type:
+    'The template uses an archived slot type from today on. Restore that slot type first.',
   template_archived: 'The day template is archived.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',

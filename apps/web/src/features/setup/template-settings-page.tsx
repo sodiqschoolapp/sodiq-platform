@@ -222,8 +222,9 @@ export function TemplateSettingsPage() {
   const today = assignments.data?.today;
   const tomorrow = today === undefined ? null : nextDay(today);
   const [chosenDate, setChosenDate] = useState<string | null>(null);
-  const date = chosenDate ?? tomorrow;
-  const table = useQuery(templateTableQuery(branchId, date === '' ? null : date));
+  // A cleared date field shows tomorrow again, never a table that waits for good.
+  const date = chosenDate === null || chosenDate === '' ? tomorrow : chosenDate;
+  const table = useQuery(templateTableQuery(branchId, date));
   const language = i18n.language;
 
   const nameOf = useMemo(() => {
@@ -329,7 +330,7 @@ export function TemplateSettingsPage() {
           <DateField
             label={t('setup.templateTable.date')}
             name="date"
-            value={date ?? ''}
+            value={chosenDate ?? tomorrow ?? ''}
             onChange={(event) => {
               setChosenDate(event.target.value);
             }}

@@ -47,15 +47,14 @@ function SlotsField({ binding, startTime, date, slotTypes }: SlotsProps) {
           })),
         )
       : null;
+  const active = slotTypes.filter((slotType) => slotType.archivedAt === null);
   const label = (slotType: SlotType) =>
     `${slotType.name} · ${t(`setup.slotTypes.kinds.${slotType.kind}`)}`;
   return (
     <OrderedListField
       label={t('setup.dayTemplates.slots')}
       options={[
-        ...slotTypes
-          .filter((slotType) => slotType.archivedAt === null)
-          .map((slotType) => ({ value: slotType.id, label: label(slotType) })),
+        ...active.map((slotType) => ({ value: slotType.id, label: label(slotType) })),
         // Archived ones still in the list are named, never offered.
         ...[...new Set(ids)]
           .map((id) => known.get(id))
@@ -65,6 +64,7 @@ function SlotsField({ binding, startTime, date, slotTypes }: SlotsProps) {
           )
           .map((slotType) => ({ value: slotType.id, label: label(slotType) })),
       ]}
+      addable={active.map((slotType) => slotType.id)}
       detail={(_id, index) => {
         const slot = timed?.slots[index];
         return slot === undefined ? '' : rangeText(slot.start, slot.end);

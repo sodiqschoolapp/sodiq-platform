@@ -176,7 +176,7 @@ describe('where day templates apply', () => {
   });
 
   it('answer 404 for a setting or a template of another branch, or an unknown one, never a 500 from the key', async () => {
-    const { branch, templates } = await branchWith('Main');
+    const { branch } = await branchWith('Main');
     const other = await branchWith('Foreign');
     const foreignTemplate = other.templates.Foreign ?? '';
     const foreign = await t.assign(other.branch, foreignTemplate, { level: 'weekday', weekday: 1 });
@@ -192,7 +192,6 @@ describe('where day templates apply', () => {
         404,
       );
     }
-    expect(templates.Main).toBeDefined();
     expect(await t.auditCount()).toBe(before);
     const row = await t.database.migrator
       .selectFrom('day_template_assignments')
