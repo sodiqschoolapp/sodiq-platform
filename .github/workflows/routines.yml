@@ -1,0 +1,174 @@
+name: Routines
+
+# The bridge from GitHub to the two routines (docs/cloud-loop.md, section 7).
+# GitHub events did not reach the routines on 11 October 2026; GitHub Actions
+# runs on every pull request, so this workflow fires the routines through their
+# API triggers. The routines' own GitHub triggers and hourly schedules stay as
+# a second net: a duplicate run finds nothing to do, because reviews compare
+# shas. Each job only sends a POST; no code is checked out or run.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, closed]
+    branches: [main]
+  issue_comment:
+    types: [created]
+
+# No job reads the repository. wake-builder alone reads the pull request.
+permissions: {}
+
+jobs:
+  # A new pull request, a push, a reopened one or one marked ready: the review
+  # routine reviews it (or skips it, as .claude/skills/review-pr says).
+  review:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    # One group per pull request, never cancelled: two pushes in a row fire two
+    # runs in order, never in parallel. GitHub keeps one waiting run per group,
+    # so a third push replaces a second that still waits; the reviewer reads
+    # the newest head either way.
+    concurrency:
+      group: routines-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      # Values go through env, never into the command text. The token is never
+      # printed; the retry may fire the routine twice, which finds nothing to do.
+      - name: Fire the review routine
+        env:
+          ROUTINE_URL: ${{ secrets.REVIEW_ROUTINE_URL }}
+          ROUTINE_TOKEN: ${{ secrets.REVIEW_ROUTINE_TOKEN }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          ACTION: ${{ github.event.action }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ -z "$ROUTINE_URL" ] || [ -z "$ROUTINE_TOKEN" ]; then
+            echo "::error::The secrets REVIEW_ROUTINE_URL and REVIEW_ROUTINE_TOKEN must both be set."
+            exit 1
+          fi
+          text="Pull request #$NUMBER ($ACTION, head $HEAD_SHA)"
+          echo "Payload: $text"
+          body=$(jq -n --arg text "$text" '{text: $text}')
+          code=0
+          status=$(curl --fail-with-body --silent --show-error --max-time 30 \
+            --retry 3 --retry-all-errors \
+            --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
+            --request POST "$ROUTINE_URL" \
+            --header "Authorization: Bearer $ROUTINE_TOKEN" \
+            --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
+            --header "anthropic-version: 2023-06-01" \
+            --header "Content-Type: application/json" \
+            --data "$body") || code=$?
+          echo "HTTP status: $status"
+          if [ "$code" -ne 0 ]; then
+            echo "::error::The review routine was not fired (curl exit $code)."
+            cat "$RUNNER_TEMP/response.json" 2>/dev/null || true
+            exit 1
+          fi
+          echo "Session: $(jq -r '.claude_code_session_url // "(no session address in the answer)"' "$RUNNER_TEMP/response.json")"
+
+  # A task pull request merged into main: the start routine starts the next task.
+  start-after-merge:
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.action == 'closed'
+      && github.event.pull_request.merged == true
+      && startsWith(github.event.pull_request.head.ref, 'task/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Fire the start routine
+        env:
+          ROUTINE_URL: ${{ secrets.START_ROUTINE_URL }}
+          ROUTINE_TOKEN: ${{ secrets.START_ROUTINE_TOKEN }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -z "$ROUTINE_URL" ] || [ -z "$ROUTINE_TOKEN" ]; then
+            echo "::error::The secrets START_ROUTINE_URL and START_ROUTINE_TOKEN must both be set."
+            exit 1
+          fi
+          text="Merged #$NUMBER"
+          echo "Payload: $text"
+          body=$(jq -n --arg text "$text" '{text: $text}')
+          code=0
+          status=$(curl --fail-with-body --silent --show-error --max-time 30 \
+            --retry 3 --retry-all-errors \
+            --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
+            --request POST "$ROUTINE_URL" \
+            --header "Authorization: Bearer $ROUTINE_TOKEN" \
+            --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
+            --header "anthropic-version: 2023-06-01" \
+            --header "Content-Type: application/json" \
+            --data "$body") || code=$?
+          echo "HTTP status: $status"
+          if [ "$code" -ne 0 ]; then
+            echo "::error::The start routine was not fired (curl exit $code)."
+            cat "$RUNNER_TEMP/response.json" 2>/dev/null || true
+            exit 1
+          fi
+          echo "Session: $(jq -r '.claude_code_session_url // "(no session address in the answer)"' "$RUNNER_TEMP/response.json")"
+
+  # A [review] approved or changes needed on a task pull request: the builder
+  # should wake now. The start routine watches for "Acting on the review." for
+  # ten minutes and resumes the task when it does not come (cloud-loop.md, §6).
+  wake-builder:
+    if: >-
+      github.event_name == 'issue_comment'
+      && github.event.issue.pull_request
+      && (startsWith(github.event.comment.body, '[review] approved')
+      || startsWith(github.event.comment.body, '[review] changes needed'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    # Only to read the head branch of the pull request; the comment event does
+    # not carry it.
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Read the head branch of the pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_API_URL: ${{ github.api_url }}/repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}
+        run: |
+          set -o pipefail
+          head_ref=$(curl --fail-with-body --silent --show-error --max-time 30 \
+            --retry 3 --retry-all-errors \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$PR_API_URL" | jq -r '.head.ref')
+          echo "Head branch: $head_ref"
+          echo "head_ref=$head_ref" >> "$GITHUB_OUTPUT"
+      - name: Fire the start routine
+        if: startsWith(steps.pr.outputs.head_ref, 'task/')
+        env:
+          ROUTINE_URL: ${{ secrets.START_ROUTINE_URL }}
+          ROUTINE_TOKEN: ${{ secrets.START_ROUTINE_TOKEN }}
+          NUMBER: ${{ github.event.issue.number }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          if [ -z "$ROUTINE_URL" ] || [ -z "$ROUTINE_TOKEN" ]; then
+            echo "::error::The secrets START_ROUTINE_URL and START_ROUTINE_TOKEN must both be set."
+            exit 1
+          fi
+          first_line=$(printf '%s\n' "$COMMENT_BODY" | head -n 1 | tr -d '\r' | cut -c 1-200)
+          text="Review on #$NUMBER: $first_line"
+          echo "Payload: $text"
+          body=$(jq -n --arg text "$text" '{text: $text}')
+          code=0
+          status=$(curl --fail-with-body --silent --show-error --max-time 30 \
+            --retry 3 --retry-all-errors \
+            --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
+            --request POST "$ROUTINE_URL" \
+            --header "Authorization: Bearer $ROUTINE_TOKEN" \
+            --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
+            --header "anthropic-version: 2023-06-01" \
+            --header "Content-Type: application/json" \
+            --data "$body") || code=$?
+          echo "HTTP status: $status"
+          if [ "$code" -ne 0 ]; then
+            echo "::error::The start routine was not fired (curl exit $code)."
+            cat "$RUNNER_TEMP/response.json" 2>/dev/null || true
+            exit 1
+          fi
+          echo "Session: $(jq -r '.claude_code_session_url // "(no session address in the answer)"' "$RUNNER_TEMP/response.json")"
