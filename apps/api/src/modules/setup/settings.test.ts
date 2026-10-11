@@ -1,7 +1,13 @@
 import { BRANCH_HEADER } from '@sodiq/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import {
+  dayTemplatesKit,
+  START,
+  TODAY,
+  UNKNOWN,
+  type DayTemplatesKit,
+} from '../../testing/day-templates-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const DEFAULTS = {
@@ -613,6 +619,62 @@ describe('the settings of a branch', () => {
       items = await stateOf(branch);
       expect(items[7]).toMatchObject({ done: null, count: 1 });
       expect(items.slice(0, 7).every((item) => item.done === true)).toBe(true);
+    });
+
+    // Decision 6: a default setting in force today or starting later; a row
+    // that ended by today, or was withdrawn (an empty range), is not one.
+    it('reads a default template that ended or was withdrawn as missing', async () => {
+      const branch = await t.newBranch();
+      const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', 45);
+      const template = await t.createTemplate(branch, 'Regular', [lesson]);
+      await t.database.migrator
+        .insertInto('day_template_assignments')
+        .values([
+          {
+            branch_id: branch,
+            level: 'default',
+            day_template_id: template,
+            valid_from: '2026-09-01',
+            valid_until: TODAY,
+          },
+          {
+            branch_id: branch,
+            level: 'default',
+            day_template_id: template,
+            valid_from: '2026-10-20',
+            valid_until: '2026-10-20',
+          },
+        ])
+        .execute();
+      expect((await stateOf(branch))[6]?.done).toBe(false);
+    });
+
+    // Answer 23: the departments of the Academic division, school-wide.
+    it('reads the departments as missing while every Academic department is archived', async () => {
+      const branch = await t.newBranch();
+      const academic = t.database.migrator
+        .selectFrom('departments')
+        .innerJoin('divisions', 'divisions.id', 'departments.division_id')
+        .select('departments.id')
+        .where('divisions.built_in', '=', true)
+        .where('departments.archived_at', 'is', null);
+      const ids = (await academic.execute()).map((row) => row.id);
+      expect(ids.length).toBeGreaterThan(0);
+      await t.database.migrator
+        .updateTable('departments')
+        .set({ archived_at: new Date(START) })
+        .where('id', 'in', ids)
+        .execute();
+      try {
+        expect((await stateOf(branch))[2]?.done).toBe(false);
+      } finally {
+        await t.database.migrator
+          .updateTable('departments')
+          .set({ archived_at: null })
+          .where('id', 'in', ids)
+          .execute();
+      }
+      expect((await stateOf(branch))[2]?.done).toBe(true);
     });
 
     it('is read by the three roles of answer 23 and refused to a Teacher', async () => {

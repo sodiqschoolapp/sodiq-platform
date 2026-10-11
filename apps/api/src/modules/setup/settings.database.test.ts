@@ -9,6 +9,9 @@ import {
   SKIPPED_VALUE_DEFAULT,
   TRAVEL_MINUTES_MAX,
 } from '@sodiq/shared';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
@@ -56,6 +59,25 @@ describe('the settings in the database', () => {
   });
 
   describe('the settings row of a branch', () => {
+    // The backfill of 0019 gives every branch that existed before it a row.
+    it('is written for every existing branch by the migration', async () => {
+      const migration = await readFile(
+        path.resolve(import.meta.dirname, '../../../../../db/migrations/0019_settings.sql'),
+        'utf8',
+      );
+      const backfill = 'insert into branch_settings (branch_id) select id from branches;';
+      expect(migration).toContain(backfill);
+      const kept = await database.migrator.selectFrom('branch_settings').selectAll().execute();
+      await database.migrator.deleteFrom('branch_settings').execute();
+      await sql.raw(backfill).execute(database.migrator);
+      const branches = await database.migrator.selectFrom('branches').select('id').execute();
+      const rows = await database.migrator.selectFrom('branch_settings').selectAll().execute();
+      expect(rows.map((row) => row.branch_id).sort()).toEqual(branches.map((row) => row.id).sort());
+      expect(rows.every((row) => row.edit_days === EDIT_DAYS_DEFAULT)).toBe(true);
+      await database.migrator.deleteFrom('branch_settings').execute();
+      await database.migrator.insertInto('branch_settings').values(kept).execute();
+    });
+
     it('starts with the defaults of packages/shared', async () => {
       const row = await database.migrator
         .selectFrom('branch_settings')

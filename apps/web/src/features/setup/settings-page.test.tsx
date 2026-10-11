@@ -156,6 +156,36 @@ describe('the settings page', () => {
     ]);
   });
 
+  it.each([
+    ['ru', ru],
+    ['uz', uz],
+  ] as const)('reads the grade bands from the page in %s', async (language, locale) => {
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(
+          sessionOf({
+            assignments: [{ role: 'principal', branchId: NORTH.id }],
+            branches: [NORTH],
+            language,
+          }),
+        ),
+      'GET /api/setup/settings': () => json(SETTINGS),
+      'GET /api/setup/attendance-values': () => json(VALUES),
+    });
+    renderApp('/setup/settings', language);
+    const table = await screen.findByRole('table', { name: locale.setup.settings.gradeBandsTitle });
+    expect(
+      [...table.querySelectorAll('tbody tr')].map((row) =>
+        [...row.querySelectorAll('td')].map((cell) => cell.textContent),
+      ),
+    ).toEqual([
+      ['0–49', '2'],
+      ['50–66', '3'],
+      ['67–83', '4'],
+      ['84–100', '5'],
+    ]);
+  });
+
   it('draws the grade bands as a table', async () => {
     settingsApi('principal');
     renderApp('/setup/settings');

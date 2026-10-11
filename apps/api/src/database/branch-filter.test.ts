@@ -298,19 +298,16 @@ describe('branch filter', () => {
     it('refuses a branch this transaction did not insert', async () => {
       await expect(
         transactions.run([], (transaction) => transactions.enterCreatedBranch(transaction, north)),
-      ).rejects.toThrow('Only a branch written by this transaction');
+      ).rejects.toThrow('Only a branch inserted by this transaction');
     });
 
-    // The row cannot tell an insert from an update: a branch this transaction
-    // updated is entered too. Only the branch create calls it, with the id its
-    // insert returned, from a transaction that works for no branch.
-    it('enters a branch this transaction updated, as it cannot tell it from one inserted', async () => {
-      const entered = await transactions.run([], async (transaction) => {
-        await sql`update branches set name = name where id = ${east}`.execute(transaction);
-        await transactions.enterCreatedBranch(transaction, east);
-        return labels(transaction);
-      });
-      expect(entered).toEqual(['east row']);
+    it('refuses a branch this transaction only updated', async () => {
+      await expect(
+        transactions.run([], async (transaction) => {
+          await sql`update branches set name = name where id = ${east}`.execute(transaction);
+          await transactions.enterCreatedBranch(transaction, east);
+        }),
+      ).rejects.toThrow('Only a branch inserted by this transaction');
     });
 
     it('refuses a transaction that already works for a branch', async () => {
@@ -319,7 +316,7 @@ describe('branch filter', () => {
           const created = await insertNew(transaction, 'Widened');
           await transactions.enterCreatedBranch(transaction, created);
         }),
-      ).rejects.toThrow('Only a branch written by this transaction');
+      ).rejects.toThrow('Only a branch inserted by this transaction');
     });
 
     it('refuses what is not a branch id', async () => {

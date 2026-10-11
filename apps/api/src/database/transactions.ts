@@ -81,11 +81,11 @@ export class Transactions {
    * transaction begins with no branch (the branch does not exist yet), and the
    * rows that every branch has (its settings) belong to the new branch. This
    * sets the filter of the rest of that one transaction to the new branch.
-   * It refuses a branch whose row this transaction did not write (inserted,
-   * or updated: PostgreSQL cannot tell the two apart by the row; the one
-   * caller, the branch create, passes the id its insert returned), and a
-   * transaction that already works for a branch, so it can never widen what a
-   * request sees.
+   * It refuses a branch this transaction did not insert (its row last written
+   * by this transaction, and created at its start: `created_at` defaults to
+   * `now()`, the moment the transaction began, so a branch only updated here
+   * is refused), and a transaction that already works for a branch, so it can
+   * never widen what a request sees.
    */
   async enterCreatedBranch(transaction: Transaction, branchId: string): Promise<void> {
     const filter = branchFilterValue([branchId]);
@@ -93,14 +93,16 @@ export class Transactions {
       select
         exists (
           select 1 from branches
-          where id = ${branchId}::uuid and xmin::text = (pg_current_xact_id()::xid)::text
+          where id = ${branchId}::uuid
+            and xmin::text = (pg_current_xact_id()::xid)::text
+            and created_at = now()
         ) as created_here,
         current_setting(${BRANCH_SETTING}, true) as filter
     `.execute(transaction);
     const row = found.rows[0];
     if (row?.created_here !== true || row.filter !== '{}') {
       throw new Error(
-        'Only a branch written by this transaction, which works for no branch, is entered.',
+        'Only a branch inserted by this transaction, which works for no branch, is entered.',
       );
     }
     await sql`select set_config(${BRANCH_SETTING}, ${filter}, true)`.execute(transaction);
