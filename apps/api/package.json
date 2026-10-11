@@ -29,6 +29,7 @@
     "@opentelemetry/api": "1.9.1",
     "@sentry/node": "11.5.0",
     "@sodiq/shared": "workspace:*",
+    "@sodiq/timetable-rules": "workspace:*",
     "kysely": "^0.29.6",
     "pg": "^8.23.1",
     "pg-boss": "12.36.0",

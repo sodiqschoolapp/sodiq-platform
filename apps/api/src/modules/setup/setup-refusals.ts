@@ -1,4 +1,9 @@
-import type { ErrorCode, ErrorDetail } from '@sodiq/shared';
+import {
+  levelHasGrades,
+  type ErrorCode,
+  type ErrorDetail,
+  type TemplateLevelName,
+} from '@sodiq/shared';
 import { ApiException } from '../../http/api-exception.js';
 
 const UNIQUE_VIOLATION = '23505';
@@ -60,7 +65,7 @@ const CHECK_VIOLATION = '23514';
 
 /**
  * The refusals of the database for academic years and quarters
- * (db/migrations/0016), by the name of the constraint, index or trigger
+ * (db/migrations/0016) and for day templates (0017), by the name of the constraint, index or trigger
  * check that raised them. The service checks the same rules first, for an
  * answer that names the field; these answer when two requests race past the
  * service's checks, or at the commit of a deferred check.
@@ -78,28 +83,56 @@ export const CONSTRAINT_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   // Four quarters are written with their year; a fault answers the general refusal.
   academic_year_quarters_count: 'request_refused',
   quarters_outside_year: 'outside_year',
+  // Day templates (task 1.5). The other constraints of 0017 guard against a
+  // fault of the service, which checks first; they stay unmapped (500).
+  // Two settings of one key on one date: the general refusal, because the
+  // grade text is true at the two grade levels only (`assignmentRefusals`).
+  day_template_assignments_no_overlap: 'request_refused',
+  day_template_version_lesson_slot: 'no_lesson_slot',
 };
+
+/**
+ * The refusals of a change to the settings of one level, over
+ * `CONSTRAINT_REFUSALS`: two overlapping settings are two grade ranges only at
+ * the two grade levels (`grade_ranges_overlap`); at the default and weekday
+ * levels they answer the general refusal.
+ */
+export const assignmentRefusals = (
+  level: TemplateLevelName,
+): Readonly<Record<string, ErrorCode>> =>
+  levelHasGrades(level) ? { day_template_assignments_no_overlap: 'grade_ranges_overlap' } : {};
 
 /**
  * Runs a change whose rules the database guards with named constraints and
  * triggers, some of them deferred to the commit: wrap the whole
  * `transactions.run(...)` call, because a deferred check raises after the work
- * has returned. A refusal named in `CONSTRAINT_REFUSALS` becomes 409 with its
- * code; anything else is thrown again as it came.
+ * has returned. A refusal named in `refusals` (a change that names its own) or
+ * else in `CONSTRAINT_REFUSALS` becomes 409 with its code; anything else is
+ * thrown again as it came.
  */
-export async function refusingConstraints<T>(work: () => Promise<T>): Promise<T> {
+export async function refusingConstraints<T>(
+  work: () => Promise<T>,
+  refusals: Readonly<Record<string, ErrorCode>> = {},
+): Promise<T> {
   try {
     return await work();
   } catch (error) {
     const failure = error as { code?: unknown; constraint?: unknown };
-    const refusal =
+    const constraint =
       (failure.code === UNIQUE_VIOLATION ||
         failure.code === EXCLUSION_VIOLATION ||
         failure.code === CHECK_VIOLATION) &&
-      typeof failure.constraint === 'string' &&
-      Object.hasOwn(CONSTRAINT_REFUSALS, failure.constraint)
-        ? CONSTRAINT_REFUSALS[failure.constraint]
+      typeof failure.constraint === 'string'
+        ? failure.constraint
         : undefined;
+    const refusal =
+      constraint === undefined
+        ? undefined
+        : Object.hasOwn(refusals, constraint)
+          ? refusals[constraint]
+          : Object.hasOwn(CONSTRAINT_REFUSALS, constraint)
+            ? CONSTRAINT_REFUSALS[constraint]
+            : undefined;
     if (refusal !== undefined) {
       throw new ApiException(refusal, 409);
     }

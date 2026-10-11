@@ -19,6 +19,7 @@ export type AccountKey =
   | 'superAdmin'
   | 'divisions'
   | 'years'
+  | 'templates'
   | 'shellTools'
   | 'switchers'
   | 'account'

@@ -37,6 +37,10 @@ import { createTestDatabase, type TestDatabase } from '../../testing/test-databa
 /** The roles that read the branch record, the buildings, the floors and the rooms of a branch. */
 const SETUP_VIEWERS: readonly Role[] = ['super_admin', 'principal', 'academic_vice_principal'];
 
+/** Slot types and day templates (task 1.5, answer 14): the Principal views, the other two write. */
+const TEMPLATE_VIEWERS = SETUP_VIEWERS;
+const TEMPLATE_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
+
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
@@ -110,6 +114,31 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   },
   'PUT /api/setup/branch/go-live': { branch: 'request', roles: ['super_admin'] },
   'GET /api/setup/current-period': { branch: 'request', roles: ROLES },
+  // Slot types, day templates and where they apply (task 1.5; the owner's
+  // answer 14): the Super Admin and the Academic Vice Principal view, create,
+  // edit and archive; the Principal views. The preview has the permission of
+  // the save it shows (decision 13 of pull request #46).
+  'GET /api/setup/slot-types': { branch: 'request', roles: TEMPLATE_VIEWERS },
+  'POST /api/setup/slot-types': { branch: 'request', roles: TEMPLATE_WRITERS },
+  'PATCH /api/setup/slot-types/:id': { branch: 'request', roles: TEMPLATE_WRITERS },
+  'POST /api/setup/slot-types/:id/lengths': { branch: 'request', roles: TEMPLATE_WRITERS },
+  'POST /api/setup/slot-types/:id/archive': { branch: 'request', roles: TEMPLATE_WRITERS },
+  'POST /api/setup/slot-types/:id/restore': { branch: 'request', roles: TEMPLATE_WRITERS },
+  'GET /api/setup/day-templates': { branch: 'request', roles: TEMPLATE_VIEWERS },
+  'GET /api/setup/day-templates/:id': { branch: 'request', roles: TEMPLATE_VIEWERS },
+  'POST /api/setup/day-templates': { branch: 'request', roles: TEMPLATE_WRITERS },
+  'PATCH /api/setup/day-templates/:id': { branch: 'request', roles: TEMPLATE_WRITERS },
+  'POST /api/setup/day-templates/:id/versions': { branch: 'request', roles: TEMPLATE_WRITERS },
+  'POST /api/setup/day-templates/:id/archive': { branch: 'request', roles: TEMPLATE_WRITERS },
+  'POST /api/setup/day-templates/:id/restore': { branch: 'request', roles: TEMPLATE_WRITERS },
+  'GET /api/setup/day-template-assignments': { branch: 'request', roles: TEMPLATE_VIEWERS },
+  'POST /api/setup/day-template-assignments': { branch: 'request', roles: TEMPLATE_WRITERS },
+  'POST /api/setup/day-template-assignments/:id/end': {
+    branch: 'request',
+    roles: TEMPLATE_WRITERS,
+  },
+  'GET /api/setup/day-template-table': { branch: 'request', roles: TEMPLATE_VIEWERS },
+  'POST /api/setup/day-template-table/preview': { branch: 'request', roles: TEMPLATE_WRITERS },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

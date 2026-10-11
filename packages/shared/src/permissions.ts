@@ -68,6 +68,10 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   the year's name and status and the quarter's dates, nothing personal.
  *   Decided without the owner on pull request #44 (decision 8), flagged on
  *   issue #42.
+ * - `day_templates` (`03`, Slot types and day templates, owner: Academic
+ *   Vice Principal; task 1.5): slot types and day templates together. The
+ *   Super Admin and the Academic Vice Principal view, create, edit and
+ *   archive; the Principal views (owner's answer 14).
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -94,6 +98,11 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view', 'edit'],
     principal: ['view'],
     academic_vice_principal: ['view', 'edit'],
+  }),
+  day_templates: rows({
+    super_admin: ['view', 'create', 'edit', 'archive'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive'],
   }),
   current_period: rows({
     super_admin: ['view'],

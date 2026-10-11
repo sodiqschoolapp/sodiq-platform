@@ -27,7 +27,7 @@ export const DEFAULT_WORKING_WEEKDAYS: readonly Weekday[] = [1, 2, 3, 4, 5];
 /** The time zone of every branch until a task adds a field for it (`edge/00-definitions`, Branch time). */
 export const DEFAULT_TIME_ZONE = 'Asia/Tashkent';
 
-const weekdaySchema = z.union(WEEKDAYS.map((day) => z.literal(day)));
+export const weekdaySchema = z.union(WEEKDAYS.map((day) => z.literal(day)));
 
 /** An optional text field: empty means "none", which the record stores as `null`. */
 const optionalText = (maxLength: number) =>

@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 11 October 2026: task 1.5 Slot types and day templates
+
+- Built: migration 0017 (six tables, dated rows `[valid_from, valid_until)` with exclusion constraints, `dated_rows_only_shrink`, the slot checks); the first rules of `packages/timetable-rules` (`dayTimes`, `templateFor`, `inForceOn`, `lessonSlotProblem`); 18 routes under `/api/setup` in the area `day_templates`, with the preview run as the save and rolled back.
+- Pages: Slot types, Day templates (slots ordered with up and down, times calculated), Where templates apply (the table of weekdays and grades, the settings, the preview dialog before every save that can change a cell); texts in uz, ru, en.
+- Plan approved on pull request #46 with three corrections, all applied; decisions flagged on issue #42.
+- Left out: special dates and the calendar (1.4, noted there); the recheck of lessons and the published-slot lock (5.6b, noted there); lesson writes calling `lessonSlotProblem` (5.2, noted there); the checklist items (1.6); drag and drop of slots (answer 10).
+
+The next sessions must know:
+
+- Every write of the area takes the branch row `for update` first (`DayTemplates.write`); keep it in any new route there.
+- A change from a date goes through `scheduleFrom` / `endFrom` (`dated-rows.ts`); the database refuses overlap and any growth of a dated row.
+- The lists answer `today` in branch time: the web never reads the device's clock. A cancelled preview throws `SaveCancelled`, shown as `form.notSaved`.
+- The next task is 1.4.
+
 ## 11 October 2026: task 1.3 Academic year and quarters
 
 - Built: migration 0016 (`academic_years`, `quarters`, `branches.go_live_date`, the constraints and triggers of `docs/decisions.md`, 11 October 2026, task 1.3); `packages/shared/src/academic-year.ts` (schemas, `periodOn`, `schoolDateOf`), eight error codes, the areas `academic_years`, `quarters`, `current_period`; seven routes under `/api/setup` with audit entries; the Academic years page with its panel, the go-live section of the branch page, the year and quarter in the top bar; texts in uz, ru, en.

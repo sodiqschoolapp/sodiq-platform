@@ -47,6 +47,18 @@ const MESSAGE: Record<ErrorCode, string> = {
   earlier_year_not_closed: 'An earlier academic year of the branch is not closed yet.',
   year_out_of_order: 'A year cannot come before a year that has already started.',
   go_live_outside_year: 'The go-live date must lie inside a planned or current academic year.',
+  date_not_in_future: 'A change takes effect from tomorrow at the earliest.',
+  grade_ranges_overlap: 'The grades overlap another range set at the same level.',
+  day_past_midnight: 'A day of a template would end after midnight.',
+  no_lesson_slot: 'A day template needs at least one lesson slot.',
+  already_ended: 'The setting already ends on or before that date.',
+  default_template_required: 'The default template can be replaced, not ended.',
+  slot_type_in_use: 'The slot type is used by a day template from today on.',
+  template_in_use: 'The day template is set at a level from today on.',
+  slot_type_archived: 'An archived slot type is chosen.',
+  template_uses_archived_slot_type:
+    'The template uses an archived slot type from today on. Restore that slot type first.',
+  template_archived: 'The day template is archived.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };
