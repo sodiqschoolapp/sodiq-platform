@@ -98,6 +98,16 @@ export function Field({ label, error, note, ...input }: FieldProps) {
 }
 
 /**
+ * A field for a school date (task 1.3). The browser's own date input: its value
+ * is `YYYY-MM-DD` whatever the language, as the shared schemas take it; how it
+ * shows the date follows the browser's language, a known limit (decision 10 of
+ * pull request #44: no date-picker library).
+ */
+export function DateField(props: Omit<FieldProps, 'type'>) {
+  return <Field {...props} type="date" />;
+}
+
+/**
  * A field for a whole number. A text field on purpose: a number field of the
  * browser changes its value with the mouse wheel and hides what was typed when
  * it is not a number, so the form could not say what to fix. The form reads it

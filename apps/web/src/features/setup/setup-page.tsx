@@ -18,8 +18,8 @@ interface SetupLink {
  * The entry of the menu item "School setup" (docs/spec/03-school-setup.md:
  * "Setup is done once per branch and then drives every other screen"). One
  * link per part that is built; a part is shown when the permission table lets
- * the active role view its area. Later tasks add the year, the calendar and
- * the templates here.
+ * the active role view its area. Later tasks add the calendar and the
+ * templates here.
  */
 export function SetupPage() {
   const { t } = useTranslation();
@@ -52,6 +52,13 @@ export function SetupPage() {
       title: t('setup.divisionsLink'),
       text: t('setup.divisionsLinkText'),
       area: 'divisions',
+    },
+    {
+      key: 'years',
+      to: '/setup/years',
+      title: t('setup.yearsLink'),
+      text: t('setup.yearsLinkText'),
+      area: 'academic_years',
     },
   ];
   const links = all.filter(

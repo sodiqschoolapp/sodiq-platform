@@ -27,6 +27,7 @@ import { UnsentBanner, UnsentGuard, useLeave } from '@/components/unsent/unsent-
 import { sessionQuery } from '@/features/auth/session';
 import { FeedbackButton } from '@/features/feedback/feedback-button';
 import { NotificationsButton } from '@/features/notifications/notifications-button';
+import { CurrentPeriod } from '@/features/setup/current-period';
 import { rememberTrustAsked, trustWasAsked } from '@/features/auth/trust-asked';
 import { useAccountLanguage } from '@/features/auth/use-account-language';
 import { useSignOut } from '@/features/auth/use-sign-out';
@@ -76,8 +77,8 @@ function NotTrustedNote({ trusted }: { trusted: boolean }) {
  * The frame of every page after sign-in (docs/spec/12-ux-standards.md, One
  * pattern everywhere): the top bar with the search, the notifications (task
  * 0.9), the feedback button, the theme and the language, the role and branch
- * switchers (task 0.8c) and the left menu of the active role. The year and
- * quarter in the top bar come with the school setup.
+ * switchers (task 0.8c), the academic year and quarter of the branch (task
+ * 1.3) and the left menu of the active role.
  */
 export function AppLayout() {
   const { t } = useTranslation();
@@ -106,6 +107,7 @@ export function AppLayout() {
         <Link to="/" className="shrink-0 font-semibold">
           {t('app.name')}
         </Link>
+        <CurrentPeriod />
         <UnsentBanner />
         <div className="ml-auto flex flex-wrap items-center justify-end gap-1 sm:gap-2">
           <RoleSwitcher />

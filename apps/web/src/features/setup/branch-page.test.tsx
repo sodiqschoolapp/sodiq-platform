@@ -15,6 +15,7 @@ const BRANCH: Branch = {
   email: null,
   workingWeekdays: [1, 2, 3, 4, 5],
   timeZone: 'Asia/Tashkent',
+  goLiveDate: null,
 };
 
 const EAST = { id: '0198a000-0000-7000-8000-000000000003', name: 'East' };
@@ -235,5 +236,81 @@ describe('the branch page', () => {
     fireEvent.click(screen.getByRole('button', { name: en.problems.retry }));
 
     await screen.findByRole('form', { name: 'North' });
+  });
+
+  // edge/academic-year, "The school goes live in the middle of the year": "The
+  // Super Admin sets a start date for each branch"; owner's answer 7: inside a
+  // planned or current year. Task 1.3.
+  describe('the go-live date', () => {
+    const YEAR = {
+      id: '0199a000-0000-7000-8000-000000000301',
+      name: '2026–2027',
+      startDate: '2026-09-02',
+      endDate: '2027-05-25',
+      status: 'planned',
+      quarters: [1, 2, 3, 4].map((number) => ({ number, startDate: null, endDate: null })),
+    };
+    const goLive = () => screen.getByRole('form', { name: en.setup.branch.goLiveTitle });
+
+    it('is set by the Super Admin inside a year of the branch', async () => {
+      const calls = fakeApi({
+        'GET /api/auth/session': () => json(superAdmin()),
+        'GET /api/setup/branch': () => json(BRANCH),
+        'GET /api/setup/academic-years': () => json({ years: [YEAR] }),
+        'PUT /api/setup/branch/go-live': (body) => json({ ...BRANCH, ...(body as object) }),
+      });
+      renderApp(PATH);
+      await screen.findByRole('form', { name: en.setup.branch.goLiveTitle });
+
+      type(field(goLive(), en.setup.branch.goLiveDate), '2026-11-10');
+      fireEvent.click(within(goLive()).getByRole('button', { name: en.form.save }));
+
+      await waitFor(() => {
+        expect(calls.find((call) => call.route === 'PUT /api/setup/branch/go-live')?.body).toEqual({
+          goLiveDate: '2026-11-10',
+        });
+      });
+    });
+
+    it('shows its refusal as its text', async () => {
+      fakeApi({
+        'GET /api/auth/session': () => json(superAdmin()),
+        'GET /api/setup/branch': () => json(BRANCH),
+        'GET /api/setup/academic-years': () => json({ years: [YEAR] }),
+        'PUT /api/setup/branch/go-live': () => refusal('go_live_outside_year', 409),
+      });
+      renderApp(PATH);
+      await screen.findByRole('form', { name: en.setup.branch.goLiveTitle });
+
+      type(field(goLive(), en.setup.branch.goLiveDate), '2027-07-01');
+      fireEvent.click(within(goLive()).getByRole('button', { name: en.form.save }));
+
+      expect(await within(goLive()).findByText(en.errors.go_live_outside_year)).toBeDefined();
+    });
+
+    // edge/academic-year: "An action whose prerequisite is missing is switched off and says what is missing."
+    it('is switched off, saying what is missing, while the branch has no planned or current year', async () => {
+      fakeApi({
+        'GET /api/auth/session': () => json(superAdmin()),
+        'GET /api/setup/branch': () => json(BRANCH),
+        'GET /api/setup/academic-years': () => json({ years: [{ ...YEAR, status: 'closed' }] }),
+      });
+      renderApp(PATH);
+
+      expect(await screen.findByText(en.setup.branch.goLiveNoYear)).toBeDefined();
+      expect(screen.queryByRole('form', { name: en.setup.branch.goLiveTitle })).toBeNull();
+      expect(screen.getByText(en.setup.branch.goLiveNotSet)).toBeDefined();
+    });
+
+    it('is read by the Principal as a date in the chosen language', async () => {
+      fakeApi({
+        'GET /api/auth/session': () => json(principal()),
+        'GET /api/setup/branch': () => json({ ...BRANCH, goLiveDate: '2026-11-10' }),
+      });
+      renderApp(PATH);
+
+      expect(await screen.findByText('November 10, 2026')).toBeDefined();
+      expect(screen.queryByRole('form', { name: en.setup.branch.goLiveTitle })).toBeNull();
+    });
   });
 });
