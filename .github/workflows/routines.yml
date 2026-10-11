@@ -3,9 +3,11 @@ name: Routines
 # The bridge from GitHub to the two routines (docs/cloud-loop.md, section 7).
 # GitHub events did not reach the routines on 11 October 2026; GitHub Actions
 # runs on every pull request, so this workflow fires the routines through their
-# API triggers. The routines' own GitHub triggers and hourly schedules stay as
-# a second net: a duplicate run finds nothing to do, because reviews compare
-# shas. Each job only sends a POST; no code is checked out or run.
+# API triggers. The routines have no GitHub triggers of their own (removed by
+# the owner on 11 October 2026: they ran a second reviewer for every event);
+# their hourly schedules stay as a second net, and a duplicate run finds
+# nothing to do, because reviews compare shas. Each job only sends a POST; no
+# code is checked out or run.
 
 on:
   pull_request:
