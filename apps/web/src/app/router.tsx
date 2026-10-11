@@ -18,6 +18,7 @@ import { SampleListPage, sampleSearch } from '@/features/sample/sample-list-page
 import { BranchPage } from '@/features/setup/branch-page';
 import { BuildingsPage } from '@/features/setup/buildings-page';
 import { DivisionsPage } from '@/features/setup/divisions-page';
+import { YearsPage } from '@/features/setup/years-page';
 import { RoomsPage } from '@/features/setup/rooms-page';
 import { SetupPage } from '@/features/setup/setup-page';
 import { listSearch } from '@/components/list/list-state';
@@ -121,7 +122,7 @@ const ownPasswordRoute = createRoute({
   component: PasswordPage,
 });
 
-/** School setup (task 1.1): the branch record, buildings and floors, rooms; divisions and departments (task 1.2). */
+/** School setup (task 1.1): the branch record, buildings and floors, rooms; divisions and departments (task 1.2); academic years (task 1.3). */
 const setupRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup',
@@ -153,6 +154,13 @@ const divisionsRoute = createRoute({
   path: '/setup/divisions',
   validateSearch: listSearch,
   component: DivisionsPage,
+});
+
+const yearsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/years',
+  validateSearch: listSearch,
+  component: YearsPage,
 });
 
 /**
@@ -187,6 +195,7 @@ const routeTree = rootRoute.addChildren([
     buildingsRoute,
     roomsRoute,
     divisionsRoute,
+    yearsRoute,
     patternsRoute,
   ]),
 ]);

@@ -65,6 +65,22 @@ export const ERROR_CODES = [
   'archived_record',
   /** Academic is built in: it is neither renamed nor archived (`03`, Divisions; task 1.2). */
   'built_in',
+  /** The dates overlap another academic year of the branch (task 1.3). */
+  'dates_overlap',
+  /** A quarter would lie outside the dates of its academic year (task 1.3). */
+  'outside_year',
+  /** The four quarters must follow each other in order without overlapping (task 1.3). */
+  'quarters_out_of_order',
+  /** The academic year is closed: nothing in it changes (task 1.3). */
+  'year_closed',
+  /** The branch already has a current academic year (`edge/developer-rules`, One current year; task 1.3). */
+  'current_year_exists',
+  /** An earlier academic year of the branch is not closed yet: "Start year" waits for "Close the year" (task 1.3). */
+  'earlier_year_not_closed',
+  /** A year cannot sit before a year that has already started (task 1.3). */
+  'year_out_of_order',
+  /** The go-live date must lie inside a planned or current academic year of the branch (task 1.3). */
+  'go_live_outside_year',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

@@ -23,6 +23,15 @@ export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface AcademicYears {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  end_date: string;
+  id: Generated<string>;
+  start_date: string;
+  status: Generated<string>;
+}
+
 export interface Accounts {
   created_at: Timestamp;
   created_by: string | null;
@@ -100,6 +109,7 @@ export interface Branches {
   address: string | null;
   created_at: Generated<Timestamp>;
   email: string | null;
+  go_live_date: string | null;
   id: Generated<string>;
   name: string;
   phone: string | null;
@@ -172,6 +182,16 @@ export interface Notifications {
   read_at: Timestamp | null;
 }
 
+export interface Quarters {
+  academic_year_id: string;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  end_date: string | null;
+  id: Generated<string>;
+  number: number;
+  start_date: string | null;
+}
+
 export interface RequestKeys {
   account_id: string | null;
   created_at: Timestamp;
@@ -231,6 +251,7 @@ export interface SignInThrottle {
 }
 
 export interface DB {
+  academic_years: AcademicYears;
   account_second_steps: AccountSecondSteps;
   accounts: Accounts;
   assignments: Assignments;
@@ -244,6 +265,7 @@ export interface DB {
   floors: Floors;
   known_devices: KnownDevices;
   notifications: Notifications;
+  quarters: Quarters;
   request_keys: RequestKeys;
   rooms: Rooms;
   schema_migrations: SchemaMigrations;

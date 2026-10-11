@@ -88,6 +88,20 @@ try {
   );
   seeded.divisions = { login: divisions.login, password: divisions.firstPassword };
 
+  // The Super Admin of the academic years test (task 1.3), with a branch of
+  // its own, so that its years and its top bar meet no other test's.
+  await insertBranch(migrator, 'Years browser test branch');
+  const years = await create('Shahlo', 'Nurmatova');
+  await transactions.run([], (transaction) =>
+    assignments.give(transaction, {
+      accountId: years.id,
+      role: 'super_admin',
+      branchId: null,
+      givenBy: null,
+    }),
+  );
+  seeded.years = { login: years.login, password: years.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');

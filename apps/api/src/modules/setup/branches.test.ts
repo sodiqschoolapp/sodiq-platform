@@ -119,6 +119,7 @@ describe('the record of a branch', () => {
         id: expect.any(String) as string,
         ...RECORD,
         timeZone: 'Asia/Tashkent',
+        goLiveDate: null,
       });
       const row = await stored(bodyId(response));
       expect(row).toMatchObject({
@@ -211,6 +212,7 @@ describe('the record of a branch', () => {
           email: null,
           workingWeekdays: [1, 2, 3, 4, 5],
           timeZone: 'Asia/Tashkent',
+          goLiveDate: null,
         });
       }
     });

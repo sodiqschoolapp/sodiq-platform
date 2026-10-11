@@ -184,3 +184,93 @@ test('the Super Admin sees Academic as built in, adds a division with a departme
     en.setup.divisions.archived,
   );
 });
+
+/** A school date `days` from today in the branch's time zone (`edge/00-definitions`, Branch time). */
+function schoolDay(days: number): string {
+  const moment = new Date(Date.now() + days * 86_400_000);
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tashkent',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(moment);
+}
+
+/** One year after a date, less a day: the longest year the rules allow (decision 1 of pull request #44). */
+function yearEnd(start: string): string {
+  const [year, month, day] = start.split('-').map(Number);
+  const end = new Date(Date.UTC((year ?? 0) + 1, (month ?? 1) - 1, (day ?? 1) - 1));
+  return end.toISOString().slice(0, 10);
+}
+
+// docs/spec/03-school-setup.md: Academic year and Quarters; "The current
+// academic year and quarter are always shown in the top bar."
+// edge/academic-year: "Start year"; the go-live date. Owner's answers 1 to 8
+// for task 1.3. The dates are counted from today, so that today lies in
+// quarter 1 whenever the test runs.
+test('the Super Admin adds a year, dates its quarters, sets the go-live date and starts the year; the top bar shows it', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signInAsSuperAdmin(page, 'years');
+  await page
+    .getByRole('combobox', { name: en.switcher.branch, exact: true })
+    .selectOption({ label: 'Years browser test branch' });
+  const topBar = page.getByLabel(en.period.label, { exact: true });
+  await expect(topBar).toHaveText(en.period.noYear);
+
+  // A year that does not start on 1 January, so that it ends in the next calendar year.
+  let start = schoolDay(-2);
+  // 1 January would end the year in the same calendar year; 29 February a year later is 28 February, too long.
+  if (start.endsWith('-01-01') || start.endsWith('-02-29')) {
+    start = schoolDay(-3);
+  }
+  const end = yearEnd(start);
+  const name = `${start.slice(0, 4)}–${end.slice(0, 4)}`;
+  await openSetupPage(page, en.setup.yearsLink, en.setup.years.title);
+  await page.getByRole('button', { name: en.setup.years.add, exact: true }).first().click();
+  const newYear = page.getByRole('form', { name: en.setup.years.newTitle });
+  await newYear.getByLabel(en.setup.years.startDate, { exact: true }).fill(start);
+  await newYear.getByLabel(en.setup.years.endDate, { exact: true }).fill(end);
+  await newYear.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: name })).toContainText(
+    en.setup.years.planned,
+  );
+
+  // The four quarters, today in quarter 1.
+  await page.getByRole('button', { name, exact: true }).click();
+  const panel = page.getByRole('complementary', { name });
+  const quarters = panel.getByRole('form', { name: en.setup.years.quartersTitle });
+  const dates: [string, string][] = [
+    [start, schoolDay(30)],
+    [schoolDay(40), schoolDay(100)],
+    [schoolDay(110), schoolDay(200)],
+    [schoolDay(210), schoolDay(300)],
+  ];
+  for (const [index, [from, to]] of dates.entries()) {
+    const number = String(index + 1);
+    await quarters.getByLabel(en.setup.years.quarterStart.replace('{{number}}', number)).fill(from);
+    await quarters.getByLabel(en.setup.years.quarterEnd.replace('{{number}}', number)).fill(to);
+  }
+  await quarters.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: name })).toContainText('4 of 4 dated');
+  // A planned year is labelled (edge/academic-year: "The top bar labels a planned year").
+  await expect(topBar).toHaveText(`${name} (planned) · Quarter 1`);
+
+  // The go-live date, today, on the branch page.
+  await openSetupPage(page, en.setup.branchLink, en.setup.branch.title);
+  const goLive = page.getByRole('form', { name: en.setup.branch.goLiveTitle });
+  await goLive.getByLabel(en.setup.branch.goLiveDate, { exact: true }).fill(schoolDay(0));
+  await goLive.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(saved(goLive)).toBeVisible();
+
+  // "Start year", asked first.
+  await openSetupPage(page, en.setup.yearsLink, en.setup.years.title);
+  await page.getByRole('button', { name, exact: true }).click();
+  await panel.getByRole('button', { name: en.setup.years.start, exact: true }).click();
+  await confirmWith(page, en.setup.years.start);
+  await expect(page.getByRole('row').filter({ hasText: name })).toContainText(
+    en.setup.years.current,
+  );
+  await expect(topBar).toHaveText(`${name} · Quarter 1`);
+});

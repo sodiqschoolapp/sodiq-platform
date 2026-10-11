@@ -1,5 +1,7 @@
 import {
+  academicYearListSchema,
   branchSchema,
+  currentPeriodSchema,
   divisionListSchema,
   isLanguage,
   buildingListSchema,
@@ -111,4 +113,81 @@ export const invalidateDivisions = (queryClient: QueryClient): Promise<void> =>
 /** A name in the chosen language (`12`, Language), English when the language is not one of the three. */
 export function nameOf(names: Names, language: string): string {
   return isLanguage(language) ? names[language] : names.en;
+}
+
+/** The academic years of the branch with their quarters (task 1.3), newest first. */
+export const yearsKey = (branchId?: string | null) =>
+  branchId === undefined ? [...SETUP_KEY, 'years'] : [...SETUP_KEY, 'years', branchId];
+
+export const yearsQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: yearsKey(branchId),
+    queryFn: async () =>
+      academicYearListSchema.parse(
+        await answerOf(
+          api.GET('/api/setup/academic-years', { params: { header: branchHeader() } }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/**
+ * The year and quarter of the top bar (`03`; `12`, Context). Not polled: a
+ * switch of branch reads it again (the key), and every change of a year, its
+ * quarters or the go-live date marks it stale (`invalidateYears`).
+ */
+export const periodKey = (branchId?: string | null) =>
+  branchId === undefined ? ['period'] : ['period', branchId];
+
+export const currentPeriodQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: periodKey(branchId),
+    queryFn: async () =>
+      currentPeriodSchema.parse(
+        await answerOf(
+          api.GET('/api/setup/current-period', { params: { header: branchHeader() } }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** After a change of a year, its quarters or the go-live date: the years, the top bar and the branch record. */
+export const invalidateYears = (queryClient: QueryClient): Promise<unknown> =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: yearsKey() }),
+    queryClient.invalidateQueries({ queryKey: periodKey() }),
+    queryClient.invalidateQueries({ queryKey: [...SETUP_KEY, 'branch'] }),
+  ]);
+
+/**
+ * A school date (`YYYY-MM-DD`) in the chosen language (`12`, Language:
+ * "Dates ... follow the chosen language"): "10 November 2026", or "10
+ * November" without the year. Read as a day of the calendar, never moved by a
+ * time zone.
+ */
+export function schoolDateText(date: string, language: string, withYear = true): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Intl.DateTimeFormat(language, {
+    day: 'numeric',
+    month: 'long',
+    ...(withYear ? { year: 'numeric' } : {}),
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1)));
+}
+
+/**
+ * The months a quarter covers (`03`, Quarters: "Months are derived from
+ * dates"), in the chosen language: "September – October".
+ */
+export function monthsText(startDate: string, endDate: string, language: string): string {
+  const month = (date: string) => {
+    const [year, number] = date.split('-').map(Number);
+    const name = new Intl.DateTimeFormat(language, { month: 'long', timeZone: 'UTC' }).format(
+      new Date(Date.UTC(year ?? 1970, (number ?? 1) - 1, 1)),
+    );
+    return name.charAt(0).toLocaleUpperCase(language) + name.slice(1);
+  };
+  const first = month(startDate);
+  const last = month(endDate);
+  return startDate.slice(0, 7) === endDate.slice(0, 7) ? first : `${first} – ${last}`;
 }

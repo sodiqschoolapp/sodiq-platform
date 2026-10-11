@@ -39,7 +39,7 @@ describe('the School setup entry', () => {
     },
   );
 
-  it('lists the branch, the buildings, the rooms and the divisions for the Super Admin, each a link', async () => {
+  it('lists the branch, the buildings, the rooms, the divisions and the years for the Super Admin, each a link', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionAs('super_admin')) });
     renderApp('/setup');
     await screen.findByRole('heading', { name: en.setup.title });
@@ -56,9 +56,26 @@ describe('the School setup entry', () => {
     expect(screen.getByRole('link', { name: en.setup.divisionsLink }).getAttribute('href')).toBe(
       '/setup/divisions',
     );
+    expect(screen.getByRole('link', { name: en.setup.yearsLink }).getAttribute('href')).toBe(
+      '/setup/years',
+    );
     const crumbs = screen.getByRole('navigation', { name: en.layout.breadcrumbs });
     expect(within(crumbs).getByRole('link', { name: en.home.title })).toBeDefined();
   });
+
+  // Owner's answer 3 (task 1.3): the Principal and the Academic Vice Principal view the years.
+  it.each(['principal', 'academic_vice_principal'] as const)(
+    'lists the academic years for the %s',
+    async (role) => {
+      fakeApi({ 'GET /api/auth/session': () => json(sessionAs(role)) });
+      renderApp('/setup');
+      await screen.findByRole('heading', { name: en.setup.title });
+
+      expect(screen.getByRole('link', { name: en.setup.yearsLink }).getAttribute('href')).toBe(
+        '/setup/years',
+      );
+    },
+  );
 
   it('says that a role without setup rights has no setup pages', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionAs('teacher')) });

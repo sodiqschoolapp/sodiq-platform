@@ -1,5 +1,12 @@
 import { Controller, Get, Post, Put } from '@nestjs/common';
-import { branchRecordSchema, branchSchema, type Branch, type BranchRecord } from '@sodiq/shared';
+import {
+  branchRecordSchema,
+  branchSchema,
+  goLiveRecordSchema,
+  type Branch,
+  type BranchRecord,
+  type GoLiveRecord,
+} from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
 import { Returns, ValidBody } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
@@ -7,7 +14,7 @@ import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { Branches } from './branches.service.js';
 
 /** The branch of the request, which a route bound to a branch always has. */
-function branchOf(access: Access): string {
+export function branchOf(access: Access): string {
   if (access.branchId === null) {
     throw new Error('The route is bound to the branch of the request.');
   }
@@ -50,5 +57,17 @@ export class BranchesController {
     @RequestId() requestId: string,
   ): Promise<Branch> {
     return this.branches.edit(access, branchOf(access), record, requestId);
+  }
+
+  /** The go-live start date (task 1.3, owner's answer 7): the Super Admin alone, as every edit of the branch. */
+  @Put('branch/go-live')
+  @Requires('branches', 'edit')
+  @Returns(branchSchema)
+  setGoLive(
+    @CurrentAccess() access: Access,
+    @ValidBody(goLiveRecordSchema) record: GoLiveRecord,
+    @RequestId() requestId: string,
+  ): Promise<Branch> {
+    return this.branches.setGoLive(access, branchOf(access), record, requestId);
   }
 }
