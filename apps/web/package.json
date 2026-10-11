@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -b",
     "test": "vitest run",
+    "test:changed": "vitest run --changed origin/main",
     "test:e2e": "playwright test",
     "api:types": "openapi-typescript ../api/openapi.generated.json --output src/api/schema.generated.ts"
   },

@@ -8,6 +8,8 @@ How to read the task lines:
 - Every task also reads `edge/00-definitions`. Every task that adds a migration also reads `edge/developer-rules`.
 - "Done when" is the minimum. The definition of done in `CLAUDE.md` applies to every task from 0.8c on; before that, the parts that do not exist yet (permission guard, languages) are skipped.
 - If a task is still too large for one session, split it into a, b, c in this file before starting and ask the owner to confirm.
+- A fix task `<id>b` (for example `1.3b`) is a task the owner adds when a decision made without the owner is changed on issue #42 and code must change (`docs/decisions.md`, 11 October 2026, decision 1). It is placed first among the open tasks, so the start routine takes it next; its Read line names the decision it changes.
+- An owner gate line (`> **Owner gate.** …`) stands before every phase from Phase 2 on and stops the start routine: the first unticked task after such a line is not started until the owner deletes the line, after a decided-ahead round for that phase with the owner's reviewer (`docs/decisions.md`, 11 October 2026, decision 8). Within a phase the loop runs without stopping.
 
 ## Phase 0. Foundations
 
@@ -138,20 +140,22 @@ How to read the task lines:
   - Build: years with status (planned, current, closed); exactly one current year per branch; four quarters with no overlaps or gaps; the go-live start date per branch.
   - Done when: the database refuses a second current year and overlapping quarters.
 
+- [ ] **1.5 Slot types and day templates** (built before 1.4: the calendar points at day templates)
+  - Read: `03`, `06` (Model), `edge/time-dates-calendar`.
+  - Build: slot types (lesson or break, length in minutes); day templates as an ordered list of slots with calculated times; default template, weekday templates, special-date templates and templates per grade range; the order in which a special date (for a grade range, then for the branch), weekday with grade range, weekday, grade range and the default decide the template of a class on a date; the table of the resulting template per weekday and grade, shown again with the changes marked as the preview when a template is saved at any level.
+  - Done when: times are never typed, reordering recalculates them, and a lesson can only sit in a lesson slot.
+
 - [ ] **1.4 Calendar**
   - Read: `03`, `edge/time-dates-calendar`.
   - Build: days off and special days for the whole branch or a range of grades; each date resolves to "no lessons" or to one day template.
   - Done when: tests cover a holiday inside a week, a working Saturday and a grade-range entry.
 
-- [ ] **1.5 Slot types and day templates**
-  - Read: `03`, `06` (Model), `edge/time-dates-calendar`.
-  - Build: slot types (lesson or break, length in minutes); day templates as an ordered list of slots with calculated times; default template, weekday templates, special-date templates and templates per grade range; the order in which a special date (for a grade range, then for the branch), weekday with grade range, weekday, grade range and the default decide the template of a class on a date; the table of the resulting template per weekday and grade, shown again with the changes marked as the preview when a template is saved at any level.
-  - Done when: times are never typed, reordering recalculates them, and a lesson can only sit in a lesson slot.
-
 - [ ] **1.6 Settings and the setup checklist**
   - Read: `03`, `07` (Entering data, Editing rules and locks), `06` (Teachers who work in several branches), `05` (Language of instruction), `08` (Early-warning list), `edge/academic-year`.
   - Build: settings for edit days, attendance values, early-warning thresholds, travel time between branches and languages of instruction; the fixed grade bands; the per-branch setup checklist with the items that exist so far. Later tasks add their own items to the checklist.
   - Done when: each setting has a permission test and the checklist reflects real state for Phase 1 items.
+
+> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 2, deletes this line.
 
 ## Phase 2. Subjects and people
 
@@ -185,6 +189,8 @@ How to read the task lines:
   - Build: the audit log screen with search by person, record and date, and the reading rights per role; each user's own sign-in history; the personal data report per person; the locked support account that a Super Admin opens for at most 24 hours; export rules (limited by role, every export logged).
   - Done when: a Principal sees only the branch's log and every export leaves a log entry.
 
+> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 3, deletes this line.
+
 ## Phase 3. Classes, groups and teaching load
 
 - [ ] **3.1 Classes**
@@ -207,6 +213,8 @@ How to read the task lines:
   - Build: load rows (class or group, subject, one teacher, lessons per week, room needs, double lessons); checks for subject and grade in the teacher's profile, the language rule, split rules, weekly totals against slots and against the contract load across branches; the load belongs to a timetable version; a load row may name a vacancy.
   - Done when: each blocked case in the spec has a test.
 
+> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 4, deletes this line.
+
 ## Phase 4. Calculation module
 
 - [ ] **4.1 Exact fractions and daily results**
@@ -223,6 +231,8 @@ How to read the task lines:
   - Read: `07` (Exemptions), `edge/exemptions`, `edge/calculation`.
   - Build: exempt lessons left out; the "Exempt" and "Not assessed" outcomes; the few-lessons flag; the attendance-only flag; start-quarter counting from the go-live date; the stored inputs and module version that go with each final result.
   - Done when: every row of the two edge-case tables has a test.
+
+> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 5, deletes this line.
 
 ## Phase 5. Timetable
 
@@ -326,6 +336,8 @@ How to read the task lines:
   - Build: the named cases of the quality plan as automated tests, including simultaneous actions.
   - Done when: all named cases pass in CI.
 
+> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 6, deletes this line.
+
 ## Phase 6. Journal: model, grid and attendance
 
 - [ ] **6.1 Cells and history**
@@ -342,6 +354,8 @@ How to read the task lines:
   - Read: `07` (Entering data), `edge/journal` (Entering, Attendance figures).
   - Build: attendance marks and their values; "all present"; absence reasons recorded by the Tutor; attendance-only journals (Homework slot, Ma'naviyat soati).
   - Done when: "all present" is one request with one history entry per cell.
+
+> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 7, deletes this line.
 
 ## Phase 7. Lesson plans
 
@@ -369,6 +383,8 @@ How to read the task lines:
   - Read: `09` (Master plans), `edge/lesson-plans`.
   - Build: masters per subject, grade, language and quarter; copy to a class; the "master updated" comparison; a Senior Head Teacher's master for all branches.
   - Done when: a copied plan is independent of its master.
+
+> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 8, deletes this line.
 
 ## Phase 8. Journal: works, rules and exemptions
 
@@ -427,6 +443,8 @@ How to read the task lines:
   - Build: Excel and PDF export of a journal; branch-wide export as a background job from one consistent moment; the support view of one student, journal and date showing every save and refusal.
   - Done when: an export link stops working after 24 hours and access is checked again at download.
 
+> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 9, deletes this line.
+
 ## Phase 9. Results, closing and reports
 
 - [ ] **9.1 Quarter results and the student results page**
@@ -483,6 +501,8 @@ How to read the task lines:
   - Read: `edge/academic-year`, `14` (Whole system), `edge/system-behaviour`.
   - Build: "Start year"; the nightly test that runs set-up, publish, entry, calendar change, four closings, year close and rollover with the clock moved through a year.
   - Done when: the simulation passes in CI.
+
+> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 10, deletes this line.
 
 ## Phase 10. Before go-live
 

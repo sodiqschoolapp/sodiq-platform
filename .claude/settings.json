@@ -70,6 +70,18 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/format-written-file.mjs",
+            "timeout": 30
+          }
+        ]
+      }
     ]
   }
 }
