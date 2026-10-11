@@ -342,6 +342,7 @@ export interface SubjectDailyWeights {
   classwork: number;
   homework: number;
   subject_id: string;
+  weights_round: Generated<number>;
 }
 
 export interface SubjectQuarterWeights {
@@ -352,6 +353,7 @@ export interface SubjectQuarterWeights {
   quarter_id: string;
   rating_exam: number | null;
   subject_id: string;
+  weights_round: Generated<number>;
 }
 
 export interface Subjects {
@@ -369,6 +371,7 @@ export interface Subjects {
   name_ru: string;
   name_uz: string;
   rating_exam: Generated<boolean>;
+  weights_round: Generated<number>;
 }
 
 export interface TravelTimes {

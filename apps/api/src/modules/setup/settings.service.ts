@@ -350,13 +350,15 @@ export class Settings {
                 .executeTakeFirstOrThrow(),
           // School-wide subjects with this branch's daily distributions (task
           // 2.1, decision 7): done when an active subject exists and every
-          // active graded one has its daily distribution here.
+          // active graded one has its daily distribution here, of the subject's
+          // current round (db/migrations/0021).
           transaction
             .selectFrom('subjects')
             .leftJoin('subject_daily_weights', (join) =>
               join
                 .onRef('subject_daily_weights.subject_id', '=', 'subjects.id')
-                .on('subject_daily_weights.branch_id', '=', branchId),
+                .on('subject_daily_weights.branch_id', '=', branchId)
+                .onRef('subject_daily_weights.weights_round', '=', 'subjects.weights_round'),
             )
             .select([
               sql<number>`count(*)::int`.as('active'),

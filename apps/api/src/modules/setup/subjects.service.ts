@@ -49,6 +49,7 @@ const SUBJECT_COLUMNS = [
   'language_rule',
   'demanding',
   'archived_at',
+  'weights_round',
 ] as const;
 
 interface SubjectRow {
@@ -65,6 +66,8 @@ interface SubjectRow {
   language_rule: boolean;
   demanding: boolean;
   archived_at: Date | null;
+  /** The round of being graded (db/migrations/0021, decision 14); a weight row of another round is not counted. */
+  weights_round: number;
 }
 
 interface WeightsRow {
@@ -218,15 +221,7 @@ export class Subjects {
           requestId,
         });
         if (record.daily !== null) {
-          await this.writeDaily(
-            transaction,
-            access,
-            branchId,
-            row.id,
-            null,
-            record.daily,
-            requestId,
-          );
+          await this.writeDaily(transaction, access, branchId, row.id, 1, record.daily, requestId);
         }
         return this.readSubject(transaction, branchId, row.id);
       }),
@@ -249,7 +244,13 @@ export class Subjects {
         if (after.departmentId !== before.departmentId) {
           await this.checkDepartment(transaction, after.departmentId);
         }
-        const daily = await this.dailyRow(transaction, branchId, id);
+        // Decision 14: a subject that becomes graded again starts a new round;
+        // the weights of every branch from before no longer count.
+        const round =
+          before.journalType === 'attendance_only' && after.journalType === 'graded'
+            ? row.weights_round + 1
+            : row.weights_round;
+        const daily = await this.currentDaily(transaction, branchId, id, round);
         if (record.daily !== null && daily !== undefined) {
           throw refused('daily_weights_set');
         }
@@ -260,7 +261,7 @@ export class Subjects {
         if (changes !== null) {
           await transaction
             .updateTable('subjects')
-            .set(columnsOf(after))
+            .set({ ...columnsOf(after), weights_round: round })
             .where('id', '=', id)
             .execute();
           await this.audit.record(transaction, {
@@ -275,7 +276,7 @@ export class Subjects {
           });
         }
         if (record.daily !== null) {
-          await this.writeDaily(transaction, access, branchId, id, null, record.daily, requestId);
+          await this.writeDaily(transaction, access, branchId, id, round, record.daily, requestId);
         }
         return this.readSubject(transaction, branchId, id);
       }),
@@ -290,8 +291,15 @@ export class Subjects {
       if (row.journal_type !== 'graded') {
         throw refused('attendance_only_no_weights');
       }
-      const before = await this.dailyRow(transaction, branchId, id);
-      await this.writeDaily(transaction, access, branchId, id, before ?? null, weights, requestId);
+      await this.writeDaily(
+        transaction,
+        access,
+        branchId,
+        id,
+        row.weights_round,
+        weights,
+        requestId,
+      );
       return this.readSubject(transaction, branchId, id);
     });
   }
@@ -400,7 +408,15 @@ export class Subjects {
         if ((weights.ratingExam !== null) !== subject.rating_exam) {
           throw refused('weights_shape_mismatch');
         }
-        await this.writeQuarter(transaction, access, branchId, id, quarterId, weights, requestId);
+        await this.writeQuarter(
+          transaction,
+          access,
+          branchId,
+          subject,
+          quarterId,
+          weights,
+          requestId,
+        );
         return this.readQuarters(transaction, branchId, subject, quarter.academic_year_id);
       }),
     );
@@ -446,6 +462,7 @@ export class Subjects {
                 .where('branch_id', '=', branchId)
                 .where('subject_id', '=', id)
                 .where('quarter_id', '=', first.id)
+                .where('weights_round', '=', subject.weights_round)
                 .executeTakeFirst();
         if (source === undefined || !fits(source, subject.rating_exam)) {
           throw refused('quarter_one_not_set');
@@ -456,7 +473,7 @@ export class Subjects {
               transaction,
               access,
               branchId,
-              id,
+              subject,
               quarter.id,
               quarterOf(source),
               requestId,
@@ -549,43 +566,59 @@ export class Subjects {
     }
   }
 
-  private dailyRow(
+  /** This branch's daily distribution of the subject's round, or nothing. */
+  private currentDaily(
     transaction: Transaction,
     branchId: string,
     subjectId: string,
+    round: number,
   ): Promise<WeightsRow | undefined> {
     return transaction
       .selectFrom('subject_daily_weights')
       .select(['attendance', 'classwork', 'homework'])
       .where('branch_id', '=', branchId)
       .where('subject_id', '=', subjectId)
+      .where('weights_round', '=', round)
       .forUpdate()
       .executeTakeFirst();
   }
 
-  /** Stores the daily distribution and its audit entry with the values before and after. */
+  /**
+   * Stores the daily distribution of the round and its audit entry with the
+   * values before and after (`05`: "Each change is logged"); a row of an
+   * earlier round counts as none before.
+   */
   private async writeDaily(
     transaction: Transaction,
     access: Access,
     branchId: string,
     subjectId: string,
-    before: WeightsRow | null,
+    round: number,
     weights: DailyWeights,
     requestId: string,
   ): Promise<void> {
-    const oldValue = before === null ? null : dailyOf(before);
+    const stored = await transaction
+      .selectFrom('subject_daily_weights')
+      .select(['attendance', 'classwork', 'homework', 'weights_round'])
+      .where('branch_id', '=', branchId)
+      .where('subject_id', '=', subjectId)
+      .forUpdate()
+      .executeTakeFirst();
+    const oldValue =
+      stored === undefined || stored.weights_round !== round ? null : dailyOf(stored);
     if (oldValue !== null && JSON.stringify(oldValue) === JSON.stringify(dailyOf(weights))) {
       return;
     }
-    if (before === null) {
+    const columns = { ...dailyOf(weights), weights_round: round };
+    if (stored === undefined) {
       await transaction
         .insertInto('subject_daily_weights')
-        .values({ branch_id: branchId, subject_id: subjectId, ...weights })
+        .values({ branch_id: branchId, subject_id: subjectId, ...columns })
         .execute();
     } else {
       await transaction
         .updateTable('subject_daily_weights')
-        .set({ ...weights })
+        .set(columns)
         .where('branch_id', '=', branchId)
         .where('subject_id', '=', subjectId)
         .execute();
@@ -607,20 +640,23 @@ export class Subjects {
     transaction: Transaction,
     access: Access,
     branchId: string,
-    subjectId: string,
+    subject: SubjectRow,
     quarterId: string,
     weights: QuarterWeights,
     requestId: string,
   ): Promise<void> {
+    const subjectId = subject.id;
+    const round = subject.weights_round;
     const before = await transaction
       .selectFrom('subject_quarter_weights')
-      .select(['attendance', 'classwork', 'homework', 'rating_exam'])
+      .select(['attendance', 'classwork', 'homework', 'rating_exam', 'weights_round'])
       .where('branch_id', '=', branchId)
       .where('subject_id', '=', subjectId)
       .where('quarter_id', '=', quarterId)
       .forUpdate()
       .executeTakeFirst();
-    const oldValue = before === undefined ? null : quarterOf(before);
+    const oldValue =
+      before === undefined || before.weights_round !== round ? null : quarterOf(before);
     const newValue = quarterOf({
       attendance: weights.attendance,
       classwork: weights.classwork,
@@ -635,6 +671,7 @@ export class Subjects {
       classwork: weights.classwork,
       homework: weights.homework,
       rating_exam: weights.ratingExam,
+      weights_round: round,
     };
     if (before === undefined) {
       await transaction
@@ -697,7 +734,7 @@ export class Subjects {
     const [daily, quarters, weights] = await Promise.all([
       transaction
         .selectFrom('subject_daily_weights')
-        .select(['subject_id', 'attendance', 'classwork', 'homework'])
+        .select(['subject_id', 'attendance', 'classwork', 'homework', 'weights_round'])
         .where('branch_id', '=', branchId)
         .where('subject_id', 'in', ids)
         .execute(),
@@ -712,24 +749,33 @@ export class Subjects {
         .selectFrom('subject_quarter_weights')
         .innerJoin('quarters', 'quarters.id', 'subject_quarter_weights.quarter_id')
         .innerJoin('academic_years', 'academic_years.id', 'quarters.academic_year_id')
-        .select(['subject_quarter_weights.subject_id', 'subject_quarter_weights.rating_exam'])
+        .select([
+          'subject_quarter_weights.subject_id',
+          'subject_quarter_weights.rating_exam',
+          'subject_quarter_weights.weights_round',
+        ])
         .where('subject_quarter_weights.branch_id', '=', branchId)
         .where('subject_quarter_weights.subject_id', 'in', ids)
         .where('academic_years.status', 'in', ['planned', 'current'])
         .execute(),
     ]);
     return rows.map((row) => {
-      const own = daily.find((weights) => weights.subject_id === row.id);
+      const graded = row.journal_type === 'graded';
+      const own = daily.find(
+        (weights) => weights.subject_id === row.id && weights.weights_round === row.weights_round,
+      );
       const fitting = weights.filter(
         (stored) =>
-          stored.subject_id === row.id && (stored.rating_exam !== null) === row.rating_exam,
+          stored.subject_id === row.id &&
+          stored.weights_round === row.weights_round &&
+          (stored.rating_exam !== null) === row.rating_exam,
       ).length;
       return {
         id: row.id,
         ...fieldsOf(row),
         archivedAt: row.archived_at === null ? null : row.archived_at.toISOString(),
-        daily: own === undefined ? null : dailyOf(own),
-        quarterWeightsMissing: row.journal_type === 'graded' ? quarters.length - fitting : 0,
+        daily: !graded || own === undefined ? null : dailyOf(own),
+        quarterWeightsMissing: graded ? quarters.length - fitting : 0,
       };
     });
   }
@@ -754,7 +800,8 @@ export class Subjects {
         join
           .onRef('subject_quarter_weights.quarter_id', '=', 'quarters.id')
           .on('subject_quarter_weights.subject_id', '=', subject.id)
-          .on('subject_quarter_weights.branch_id', '=', branchId),
+          .on('subject_quarter_weights.branch_id', '=', branchId)
+          .on('subject_quarter_weights.weights_round', '=', subject.weights_round),
       )
       .select([
         'quarters.id',
