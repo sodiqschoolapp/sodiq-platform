@@ -82,7 +82,10 @@ describe('slot types', () => {
     const list = slotTypeListSchema.parse((await t.get('/api/setup/slot-types', branch)).body);
     expect(list.slotTypes.map((one) => one.name)).toEqual(['Break 15', 'Long break']);
     const other = await t.newBranch();
-    expect((await t.get('/api/setup/slot-types', other)).body).toEqual({ slotTypes: [] });
+    expect((await t.get('/api/setup/slot-types', other)).body).toEqual({
+      today: TODAY,
+      slotTypes: [],
+    });
   });
 
   it('are refused to the Principal and a Teacher on every write, and to a Teacher on reading; nothing is written', async () => {

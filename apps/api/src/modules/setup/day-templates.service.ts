@@ -216,6 +216,7 @@ export class DayTemplates {
     return this.read(access, branchId, async (transaction, today) => {
       const store = await loadStore(transaction);
       return {
+        today,
         slotTypes: [...store.slotTypes.values()]
           .map((slotType) => toSlotType(slotType, today))
           .sort(byName),
@@ -446,6 +447,7 @@ export class DayTemplates {
     return this.read(access, branchId, async (transaction, today) => {
       const store = await loadStore(transaction);
       return {
+        today,
         dayTemplates: [...store.templates.values()]
           .map((template) => {
             const timed = dayOf(store, template.id, today);
@@ -746,7 +748,8 @@ export class DayTemplates {
   // Where templates apply.
 
   listAssignments(access: Access, branchId: string): Promise<AssignmentList> {
-    return this.read(access, branchId, async (transaction) => ({
+    return this.read(access, branchId, async (transaction, today) => ({
+      today,
       assignments: (await loadStore(transaction)).assignments
         .filter((row) => !isWithdrawn(row))
         .sort(

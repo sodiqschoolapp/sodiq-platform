@@ -3804,6 +3804,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** Format: date */
+                        today: string;
                         slotTypes: {
                             /** Format: uuid */
                             id: string;
@@ -4233,6 +4235,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** Format: date */
+                        today: string;
                         dayTemplates: {
                             /** Format: uuid */
                             id: string;
@@ -4810,6 +4814,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** Format: date */
+                        today: string;
                         assignments: {
                             /** Format: uuid */
                             id: string;

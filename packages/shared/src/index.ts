@@ -86,6 +86,7 @@ export {
   levelHasGrades,
   levelHasWeekday,
   minutesOf,
+  nextDay,
   SLOT_KINDS,
   SLOT_LENGTH_MAX_MINUTES,
   SLOT_LENGTH_MIN_MINUTES,

@@ -4,6 +4,7 @@ import {
   DAY_TEMPLATE_SLOTS_MAX,
   dayTemplateRecordSchema,
   minutesOf,
+  nextDay,
   SLOT_LENGTH_MAX_MINUTES,
   SLOT_LENGTH_MIN_MINUTES,
   SLOT_TYPE_NAME_MAX_LENGTH,
@@ -117,6 +118,13 @@ describe('the start time', () => {
     for (const time of ['24:00', '8:30', '08:60', '0830', '']) {
       expect(timeOfDaySchema.safeParse(time).success, time).toBe(false);
     }
+  });
+
+  it('gives the next school date, across a month and a year', () => {
+    expect(nextDay('2026-10-10')).toBe('2026-10-11');
+    expect(nextDay('2026-10-31')).toBe('2026-11-01');
+    expect(nextDay('2026-12-31')).toBe('2027-01-01');
+    expect(nextDay('2028-02-28')).toBe('2028-02-29');
   });
 
   it('turns into minutes after midnight and back', () => {

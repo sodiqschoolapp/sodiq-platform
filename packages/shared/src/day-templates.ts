@@ -64,6 +64,13 @@ export function minutesOf(time: string): number {
   return Number(hours) * MINUTES_PER_HOUR + Number(minutes);
 }
 
+/** The school date after the one given: the first date a change can take effect from today. */
+export function nextDay(date: string): string {
+  const day = new Date(`${date}T00:00:00Z`);
+  day.setUTCDate(day.getUTCDate() + 1);
+  return day.toISOString().slice(0, 10);
+}
+
 /** Minutes after midnight as `HH:MM`; the end of a day may be `24:00`. */
 export function timeText(minutes: number): string {
   const hours = Math.floor(minutes / MINUTES_PER_HOUR);
@@ -244,7 +251,15 @@ export const slotTypeSchema = z.object({
 
 export type SlotType = z.infer<typeof slotTypeSchema>;
 
-export const slotTypeListSchema = z.object({ slotTypes: z.array(slotTypeSchema) });
+/**
+ * `today` is the school date of the server's clock in branch time: the web app
+ * never reads the device's clock (`edge/00-definitions`, Branch time), and
+ * offers tomorrow as the first date of a change.
+ */
+export const slotTypeListSchema = z.object({
+  today: schoolDateSchema,
+  slotTypes: z.array(slotTypeSchema),
+});
 
 export type SlotTypeList = z.infer<typeof slotTypeListSchema>;
 
@@ -288,7 +303,10 @@ export const dayTemplateSummarySchema = z.object({
 
 export type DayTemplateSummary = z.infer<typeof dayTemplateSummarySchema>;
 
-export const dayTemplateListSchema = z.object({ dayTemplates: z.array(dayTemplateSummarySchema) });
+export const dayTemplateListSchema = z.object({
+  today: schoolDateSchema,
+  dayTemplates: z.array(dayTemplateSummarySchema),
+});
 
 export type DayTemplateList = z.infer<typeof dayTemplateListSchema>;
 
@@ -319,7 +337,10 @@ export const assignmentSchema = z.object({
 export type Assignment = z.infer<typeof assignmentSchema>;
 
 /** Every setting of the branch, withdrawn ones left out, by level and then date. */
-export const assignmentListSchema = z.object({ assignments: z.array(assignmentSchema) });
+export const assignmentListSchema = z.object({
+  today: schoolDateSchema,
+  assignments: z.array(assignmentSchema),
+});
 
 export type AssignmentList = z.infer<typeof assignmentListSchema>;
 
