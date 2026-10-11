@@ -1,3 +1,13 @@
+import {
+  CONTRACT_TYPES,
+  DAILY_LESSONS_MAX,
+  EDUCATION_LEVELS,
+  INSTRUCTION_LANGUAGES,
+  SEXES,
+  STAFF_NAME_MAX_LENGTH,
+  STAFF_STATUSES,
+  WEEKLY_LESSONS_MAX,
+} from '@sodiq/shared';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
@@ -266,7 +276,11 @@ describe('staff records in the database', () => {
         ),
       ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
       await expect(
-        database.migrator.updateTable('staff').set({ staff_id: taken }).where('id', '=', other).execute(),
+        database.migrator
+          .updateTable('staff')
+          .set({ staff_id: taken })
+          .where('id', '=', other)
+          .execute(),
       ).rejects.toMatchObject({ code: UNIQUE_VIOLATION, constraint: 'staff_staff_id_key' });
     });
 
@@ -336,6 +350,39 @@ describe('staff records in the database', () => {
   });
 
   describe('check what is typed', () => {
+    /** The values a check constraint names, in order, as the database writes the constraint back. */
+    async function valuesOfCheck(name: string): Promise<string[]> {
+      const found = await sql<{ definition: string }>`
+        select pg_get_constraintdef(oid) as definition from pg_constraint where conname = ${name}
+      `.execute(database.migrator);
+      const definition = found.rows[0]?.definition ?? '';
+      return [...definition.matchAll(/'([a-z_]+)'/g)].map((match) => match[1] ?? '');
+    }
+
+    it('keep the lists and bounds equal to those of packages/shared', async () => {
+      expect(await valuesOfCheck('staff_education_level_check')).toEqual([...EDUCATION_LEVELS]);
+      expect(await valuesOfCheck('staff_contract_type_check')).toEqual([...CONTRACT_TYPES]);
+      expect(await valuesOfCheck('staff_sex_check')).toEqual([...SEXES]);
+      expect(await valuesOfCheck('staff_languages_language_check')).toEqual([
+        ...INSTRUCTION_LANGUAGES,
+      ]);
+      expect((await valuesOfCheck('staff_statuses_status_check')).slice(0, 3)).toEqual([
+        ...STAFF_STATUSES,
+      ]);
+      const definition = async (name: string) =>
+        (
+          await sql<{ definition: string }>`
+            select pg_get_constraintdef(oid) as definition from pg_constraint where conname = ${name}
+          `.execute(database.migrator)
+        ).rows[0]?.definition ?? '';
+      expect(await definition('staff_weekly_lessons_check')).toContain(String(WEEKLY_LESSONS_MAX));
+      expect(await definition('staff_daily_lessons_check')).toContain(String(DAILY_LESSONS_MAX));
+      const fn = await sql<{ body: string }>`
+        select prosrc as body from pg_proc where proname = 'staff_name_valid'
+      `.execute(database.migrator);
+      expect(fn.rows[0]?.body).toContain(`<= ${String(STAFF_NAME_MAX_LENGTH)}`);
+    });
+
     const personValues = (fields: Record<string, unknown>) => ({
       kind: 'person',
       staff_id: staffIdOf(2026, 8000 + (count += 1)),
@@ -350,10 +397,7 @@ describe('staff records in the database', () => {
     const insertAsMigrator = (fields: Record<string, unknown>) =>
       sql`select 1`.execute(database.migrator).then(() =>
         database.migrator.transaction().execute(async (transaction) => {
-          await transaction
-            .insertInto('staff')
-            .values(personValues(fields))
-            .execute();
+          await transaction.insertInto('staff').values(personValues(fields)).execute();
           // Not committed: the deferred checks of a person without links would refuse it.
           throw new RolledBack();
         }),

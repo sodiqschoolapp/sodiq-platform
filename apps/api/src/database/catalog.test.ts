@@ -137,11 +137,11 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'staff_count_by_division(timestamp with time zone)':
     'The number of people per main division for the school-wide list of divisions.',
   'staff_duplicate_elsewhere(text,text,date,text)':
-    'Whether a person of another branch has the same name and birth date or the same phone (the duplicate warning, the owner\'s answer).',
+    "Whether a person of another branch has the same name and birth date or the same phone (the duplicate warning, the owner's answer).",
   'staff_in_division(uuid,uuid,timestamp with time zone)':
     'Whether anybody who has not left is in a division or a department: the school-wide archives.',
   'staff_subject_in_use(uuid,smallint[],uuid,timestamp with time zone)':
-    'How many people of other branches a change of a subject\'s department or grades would leave outside it.',
+    "How many people of other branches a change of a subject's department or grades would leave outside it.",
 };
 
 /** The filter of db/migrations/0002, as PostgreSQL writes it back. */
