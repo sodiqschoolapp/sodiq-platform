@@ -123,7 +123,10 @@ describe('the calendar', () => {
     return row.id;
   }
 
-  /** Every row a calendar save may write in a branch: its entries and its branch row. */
+  /**
+   * Every row a calendar save or a refused change of this file may write in a
+   * branch: its entries, its branch row, its years and its day templates.
+   */
   async function rowsOf(branch: string) {
     return {
       entries: await t.database.migrator
@@ -136,6 +139,18 @@ describe('the calendar', () => {
         .selectFrom('branches')
         .selectAll()
         .where('id', '=', branch)
+        .execute(),
+      years: await t.database.migrator
+        .selectFrom('academic_years')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('id')
+        .execute(),
+      templates: await t.database.migrator
+        .selectFrom('day_templates')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('id')
         .execute(),
     };
   }
@@ -238,6 +253,13 @@ describe('the calendar', () => {
             { action: 'archive', id: entry.id },
             cookie,
           ),
+        () =>
+          t.post(
+            '/api/setup/calendar-entries/preview',
+            t.north,
+            { action: 'restore', id: entry.id },
+            cookie,
+          ),
       ];
       for (const attempt of attempts) {
         expect((await attempt()).status).toBe(403);
@@ -292,6 +314,8 @@ describe('the calendar', () => {
     const branch = await t.newBranch();
     const year = await addYear(branch);
     await create(branch, record({ firstDate: '2027-06-28', lastDate: '2027-06-29' }));
+    const rows = await rowsOf(branch);
+    const audit = await t.auditCount();
     const response = await put(`/api/setup/academic-years/${year}`, branch, {
       startDate: '2026-09-01',
       endDate: '2027-06-15',
@@ -299,6 +323,8 @@ describe('the calendar', () => {
     expect(response.status).toBe(409);
     expect(errorCode(response)).toBe('calendar_outside_year');
     expect(detailPaths(response)).toEqual(['endDate']);
+    expect(await rowsOf(branch)).toEqual(rows);
+    expect(await t.auditCount()).toBe(audit);
     const longer = await put(`/api/setup/academic-years/${year}`, branch, {
       startDate: '2026-09-01',
       endDate: '2027-06-30',
@@ -579,6 +605,10 @@ describe('the calendar', () => {
     const north = await branchWith();
     const south = await branchWith();
     await create(north.branch, record({ firstDate: '2026-11-02' }));
+    const special404 = await create(
+      north.branch,
+      special(north.short, { firstDate: '2026-11-16' }),
+    );
     const southEntry = await create(south.branch, record({ firstDate: '2026-11-02' }));
     const rows = [await rowsOf(north.branch), await rowsOf(south.branch)];
     const before = await t.auditCount();
@@ -621,22 +651,23 @@ describe('the calendar', () => {
         expect((await attempt()).status).toBe(404);
       }
     }
-    const special404 = await create(
-      north.branch,
-      special(north.short, { firstDate: '2026-11-16' }),
-    );
     for (const template of [south.short, UNKNOWN]) {
-      const response = await t.patch(
-        `/api/setup/calendar-entries/${special404.id}`,
-        north.branch,
-        special(template, { firstDate: '2026-11-16' }),
-      );
-      expect(response.status).toBe(404);
+      const body = special(template, { firstDate: '2026-11-16' });
+      for (const attempt of [
+        () => t.patch(`/api/setup/calendar-entries/${special404.id}`, north.branch, body),
+        () =>
+          t.post('/api/setup/calendar-entries/preview', north.branch, {
+            action: 'edit',
+            id: special404.id,
+            record: body,
+          }),
+      ]) {
+        expect((await attempt()).status).toBe(404);
+      }
     }
-    const after = await rowsOf(north.branch);
-    expect(after.entries.filter((row) => row.id !== special404.id)).toEqual(rows[0]?.entries);
+    expect(await rowsOf(north.branch)).toEqual(rows[0]);
     expect(await rowsOf(south.branch)).toEqual(rows[1]);
-    expect(await t.auditCount()).toBe(before + 1);
+    expect(await t.auditCount()).toBe(before);
   });
 
   // Decision 11: the preview is the save, rolled back.
@@ -709,12 +740,16 @@ describe('the calendar', () => {
         branch,
         record({ name: 'Seniors', firstDate: THURSDAY, gradeFrom: 9, gradeTo: 11 }),
       );
+      const rows = await rowsOf(branch);
+      const audit = await t.auditCount();
       for (const date of [WEDNESDAY, SUNDAY]) {
         const response = await goLive(date);
         expect(response.status, date).toBe(409);
         expect(errorCode(response)).toBe('go_live_not_school_day');
         expect(detailPaths(response)).toEqual(['goLiveDate']);
       }
+      expect(await rowsOf(branch)).toEqual(rows);
+      expect(await t.auditCount()).toBe(audit);
       expect((await goLive(THURSDAY)).status).toBe(200);
       await create(
         branch,
@@ -732,20 +767,29 @@ describe('the calendar', () => {
       expect(
         (await put('/api/setup/branch/go-live', branch, { goLiveDate: SATURDAY })).status,
       ).toBe(200);
+      const beforeArchive = await rowsOf(branch);
+      const auditBefore = await t.auditCount();
       const archive = await t.post(`/api/setup/calendar-entries/${saturday.id}/archive`, branch);
       expect(errorCode(archive)).toBe('go_live_not_school_day');
+      expect(await rowsOf(branch)).toEqual(beforeArchive);
+      expect(await t.auditCount()).toBe(auditBefore);
 
       expect(
         (await put('/api/setup/branch/go-live', branch, { goLiveDate: WEDNESDAY })).status,
       ).toBe(200);
       const rows = await rowsOf(branch);
+      const audit = await t.auditCount();
       const off = await t.post(
         '/api/setup/calendar-entries',
         branch,
         record({ firstDate: WEDNESDAY }),
       );
       expect(errorCode(off)).toBe('go_live_not_school_day');
+      expect(await rowsOf(branch)).toEqual(rows);
+      expect(await t.auditCount()).toBe(audit);
       await create(branch, record({ firstDate: WEDNESDAY, gradeFrom: 1, gradeTo: 4 }));
+      const rowsBeforeWeekdays = await rowsOf(branch);
+      const auditBeforeWeekdays = await t.auditCount();
 
       const current = branchSchema.parse((await t.get('/api/setup/branch', branch)).body);
       const weekdays = await put('/api/setup/branch', branch, {
@@ -758,7 +802,8 @@ describe('the calendar', () => {
       expect(weekdays.status).toBe(409);
       expect(errorCode(weekdays)).toBe('go_live_not_school_day');
       expect(detailPaths(weekdays)).toEqual(['workingWeekdays']);
-      expect((await rowsOf(branch)).branch).toEqual(rows.branch);
+      expect(await rowsOf(branch)).toEqual(rowsBeforeWeekdays);
+      expect(await t.auditCount()).toBe(auditBeforeWeekdays);
     });
   });
 
@@ -790,8 +835,12 @@ describe('the calendar', () => {
     );
     expect(list.dayTemplates.find((one) => one.id === short)?.inUse).toBe(true);
     expect(list.dayTemplates.find((one) => one.id === pastTemplate)?.inUse).toBe(false);
+    const rows = await rowsOf(branch);
+    const audit = await t.auditCount();
     const refused = await t.post(`/api/setup/day-templates/${short}/archive`, branch);
     expect(errorCode(refused)).toBe('template_in_use');
+    expect(await rowsOf(branch)).toEqual(rows);
+    expect(await t.auditCount()).toBe(audit);
     expect((await t.post(`/api/setup/day-templates/${pastTemplate}/archive`, branch)).status).toBe(
       200,
     );
