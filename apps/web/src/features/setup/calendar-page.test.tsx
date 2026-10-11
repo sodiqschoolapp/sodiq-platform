@@ -1,0 +1,359 @@
+import type { CalendarDate, CalendarEntry, CalendarPreview, DayTemplateList } from '@sodiq/shared';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { en } from '@/i18n/locales/en';
+import { ru } from '@/i18n/locales/ru';
+import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+
+const PATH = '/setup/calendar';
+// Saturday 10 October 2026 in branch time.
+const TODAY = '2026-10-10';
+
+const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
+
+const SHORT = uid(9);
+
+const TEMPLATES: DayTemplateList = {
+  today: TODAY,
+  dayTemplates: [
+    {
+      id: uid(8),
+      name: 'Main',
+      archivedAt: null,
+      start: 480,
+      end: 840,
+      lessonSlots: 6,
+      inUse: true,
+    },
+    {
+      id: SHORT,
+      name: 'Short',
+      archivedAt: null,
+      start: 480,
+      end: 720,
+      lessonSlots: 4,
+      inUse: false,
+    },
+  ],
+};
+
+const entry = (fields: Partial<CalendarEntry> & Pick<CalendarEntry, 'id' | 'name'>) => ({
+  kind: 'day_off' as const,
+  firstDate: '2026-10-14',
+  lastDate: '2026-10-14',
+  gradeFrom: null,
+  gradeTo: null,
+  dayTemplateId: null,
+  dayTemplateName: null,
+  followsWeekday: null,
+  examWeek: null,
+  archivedAt: null,
+  ...fields,
+});
+
+const HOLIDAY = entry({ id: uid(1), name: 'Teachers day' });
+const SATURDAY = entry({
+  id: uid(2),
+  name: 'Working Saturday',
+  kind: 'special_day',
+  firstDate: '2026-10-17',
+  lastDate: '2026-10-17',
+  dayTemplateId: SHORT,
+  dayTemplateName: 'Short',
+  followsWeekday: 1,
+});
+const SENIORS = entry({
+  id: uid(3),
+  name: 'Seniors exams',
+  kind: 'special_day',
+  firstDate: '2026-10-05',
+  lastDate: '2026-10-16',
+  gradeFrom: 9,
+  gradeTo: 11,
+  dayTemplateId: SHORT,
+  dayTemplateName: 'Short',
+  examWeek: 'no_regular_lessons',
+});
+const PAST = entry({
+  id: uid(4),
+  name: 'Autumn holiday',
+  firstDate: '2026-10-01',
+  lastDate: '2026-10-02',
+});
+
+const PREVIEW: CalendarPreview = {
+  changes: [
+    {
+      firstDate: '2026-10-17',
+      lastDate: '2026-10-17',
+      gradeFrom: 1,
+      gradeTo: 11,
+      before: { lessons: false, reason: 'not_working_day', entryId: null, entryName: null },
+      after: {
+        lessons: true,
+        dayTemplateId: SHORT,
+        dayTemplateName: 'Short',
+        followsWeekday: 1,
+        examWeek: null,
+        entryId: null,
+        entryName: 'Working Saturday',
+      },
+    },
+  ],
+};
+
+const sessionAs = (
+  role: 'super_admin' | 'principal' | 'academic_vice_principal',
+  language = 'en',
+) => ({
+  ...sessionOf({
+    assignments: [{ role, branchId: role === 'super_admin' ? null : NORTH.id }],
+    branches: [NORTH],
+  }),
+  language,
+});
+
+const rowsDrawn = (table: HTMLElement): string[][] =>
+  [...table.querySelectorAll('tbody tr')].map((row) =>
+    [...row.querySelectorAll('th, td')].map((cell) => cell.textContent ?? ''),
+  );
+
+const type = (input: HTMLElement, value: string): void => {
+  fireEvent.change(input, { target: { value } });
+};
+
+async function openList(
+  role: 'super_admin' | 'principal' | 'academic_vice_principal' = 'academic_vice_principal',
+  extra: Record<string, (body: unknown) => Response> = {},
+  language: 'en' | 'ru' = 'en',
+) {
+  const calls = fakeApi({
+    'GET /api/auth/session': () => json(sessionAs(role, language)),
+    'GET /api/setup/calendar-entries': () =>
+      json({ today: TODAY, entries: [PAST, SENIORS, HOLIDAY, SATURDAY] }),
+    'GET /api/setup/day-templates': () => json(TEMPLATES),
+    ...extra,
+  });
+  renderApp(PATH, language);
+  const texts = language === 'ru' ? ru : en;
+  await screen.findByRole('heading', { name: texts.setup.calendar.title });
+  // The table of the list is drawn again once its rows arrive: read it afresh.
+  const table = () => screen.getByRole('table', { name: texts.setup.calendar.caption });
+  await waitFor(() => {
+    expect(rowsDrawn(table())).toHaveLength(4);
+  });
+  return { calls, table };
+}
+
+const openEntry = async (name: string) => {
+  fireEvent.click(screen.getByText(name, { selector: 'button' }));
+  return screen.findByRole('complementary', { name });
+};
+
+// docs/spec/03-school-setup.md, Academic calendar: "Days off (holidays,
+// vacations) and special days ... Each date resolves to 'no lessons' or to one
+// day template"; the owner's answers 15 to 18 (task 1.4).
+describe('the calendar page', () => {
+  it('lists the entries with their dates, kind, grades and template', async () => {
+    const { table } = await openList();
+
+    expect(rowsDrawn(table())).toEqual([
+      ['Autumn holiday', 'October 1 – October 2, 2026', 'Day off', 'Whole branch', '', 'Active'],
+      [
+        'Seniors exams',
+        'October 5 – October 16, 2026',
+        'Special day',
+        'Grades 9–11',
+        'Short',
+        'Active',
+      ],
+      ['Teachers day', 'October 14, 2026', 'Day off', 'Whole branch', '', 'Active'],
+      ['Working Saturday', 'October 17, 2026', 'Special day', 'Whole branch', 'Short', 'Active'],
+    ]);
+  });
+
+  it('names the kinds in Russian when Russian is chosen', async () => {
+    const { table } = await openList('academic_vice_principal', {}, 'ru');
+
+    expect(rowsDrawn(table()).map((row) => row[2])).toEqual([
+      ru.setup.calendar.kinds.day_off,
+      ru.setup.calendar.kinds.special_day,
+      ru.setup.calendar.kinds.day_off,
+      ru.setup.calendar.kinds.special_day,
+    ]);
+  });
+
+  it('adds a working Saturday after its preview', async () => {
+    const { calls } = await openList('academic_vice_principal', {
+      'POST /api/setup/calendar-entries/preview': () => json(PREVIEW),
+      'POST /api/setup/calendar-entries': (body) =>
+        json({ ...SATURDAY, ...(body as object), id: uid(5), dayTemplateName: 'Short' }, 201),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: en.setup.calendar.add }));
+    const form = await screen.findByRole('form', { name: en.setup.calendar.newTitle });
+    type(within(form).getByLabelText(en.setup.calendar.kind), 'special_day');
+    type(within(form).getByLabelText(en.setup.calendar.name), 'Working Saturday');
+    type(within(form).getByLabelText(en.setup.calendar.firstDate), '2026-10-17');
+    type(within(form).getByLabelText(en.setup.calendar.lastDate), '2026-10-17');
+    type(within(form).getByLabelText(en.setup.calendar.template), SHORT);
+    type(within(form).getByLabelText(en.setup.calendar.follows), '1');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+    const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
+    expect(rowsDrawn(dialog)).toEqual([
+      [
+        'October 17, 2026',
+        'Whole branch',
+        en.setup.calendar.reasons.not_working_day,
+        'Short · lessons of Monday · Working Saturday',
+      ],
+    ]);
+    const record = {
+      kind: 'special_day',
+      name: 'Working Saturday',
+      firstDate: '2026-10-17',
+      lastDate: '2026-10-17',
+      gradeFrom: null,
+      gradeTo: null,
+      dayTemplateId: SHORT,
+      followsWeekday: 1,
+      examWeek: null,
+    };
+    expect(
+      calls.find((call) => call.route === 'POST /api/setup/calendar-entries/preview')?.body,
+    ).toEqual({ action: 'create', record });
+    expect(calls.some((call) => call.route === 'POST /api/setup/calendar-entries')).toBe(false);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: en.setup.calendar.save }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === 'POST /api/setup/calendar-entries')?.body).toEqual(
+        record,
+      );
+    });
+  });
+
+  it('sends nothing when the preview is cancelled, and says so', async () => {
+    const { calls } = await openList('academic_vice_principal', {
+      'POST /api/setup/calendar-entries/preview': () => json(PREVIEW),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: en.setup.calendar.add }));
+    const form = await screen.findByRole('form', { name: en.setup.calendar.newTitle });
+    type(within(form).getByLabelText(en.setup.calendar.name), 'Day off');
+    type(within(form).getByLabelText(en.setup.calendar.firstDate), '2026-10-20');
+    type(within(form).getByLabelText(en.setup.calendar.lastDate), '2026-10-20');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.setup.calendar.cancel }));
+
+    expect(await within(form).findByText(en.form.notSaved)).not.toBeNull();
+    expect(calls.some((call) => call.route === 'POST /api/setup/calendar-entries')).toBe(false);
+  });
+
+  it('shows the refusal of the server in words', async () => {
+    await openList('academic_vice_principal', {
+      'POST /api/setup/calendar-entries/preview': () =>
+        json(
+          {
+            error: {
+              code: 'follows_weekday_required',
+              message: 'x',
+              requestId: 'r',
+              details: [{ path: 'followsWeekday', code: 'follows_weekday_required', message: 'x' }],
+            },
+          },
+          409,
+        ),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: en.setup.calendar.add }));
+    const form = await screen.findByRole('form', { name: en.setup.calendar.newTitle });
+    type(within(form).getByLabelText(en.setup.calendar.kind), 'special_day');
+    type(within(form).getByLabelText(en.setup.calendar.name), 'Saturday');
+    type(within(form).getByLabelText(en.setup.calendar.firstDate), '2026-10-17');
+    type(within(form).getByLabelText(en.setup.calendar.lastDate), '2026-10-17');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+    expect(await within(form).findByText(en.errors.follows_weekday_required)).not.toBeNull();
+  });
+
+  // Decision 3 of pull request #47: only dates after today change.
+  it('offers a started entry its name and last date only, and no archive', async () => {
+    await openList();
+    const panel = await openEntry('Seniors exams');
+
+    expect(within(panel).getByLabelText(en.setup.calendar.name)).not.toBeNull();
+    expect(within(panel).getByLabelText(en.setup.calendar.lastDate)).not.toBeNull();
+    expect(within(panel).queryByLabelText(en.setup.calendar.firstDate)).toBeNull();
+    expect(within(panel).queryByLabelText(en.setup.calendar.template)).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.setup.calendar.archive })).toBeNull();
+  });
+
+  it('keeps an entry wholly in the past read-only', async () => {
+    await openList();
+    const panel = await openEntry('Autumn holiday');
+
+    expect(within(panel).getByText(en.setup.calendar.pastNote)).not.toBeNull();
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.setup.calendar.archive })).toBeNull();
+  });
+
+  it('saves a new name without a preview', async () => {
+    const { calls } = await openList('academic_vice_principal', {
+      'PATCH /api/setup/calendar-entries/0199a000-0000-7000-8000-000000000001': (body) =>
+        json({ ...HOLIDAY, ...(body as object) }),
+    });
+    const panel = await openEntry('Teachers day');
+    type(within(panel).getByLabelText(en.setup.calendar.name), 'Teachers and mentors day');
+    fireEvent.click(within(panel).getByRole('button', { name: en.form.save }));
+
+    await waitFor(() => {
+      expect(calls.some((call) => call.route.startsWith('PATCH '))).toBe(true);
+    });
+    expect(calls.some((call) => call.route.endsWith('/preview'))).toBe(false);
+  });
+
+  it('lets the Principal read without adding or changing', async () => {
+    await openList('principal');
+
+    expect(screen.queryByRole('button', { name: en.setup.calendar.add })).toBeNull();
+    const panel = await openEntry('Teachers day');
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.setup.calendar.archive })).toBeNull();
+  });
+
+  it('tells what every grade has on a date', async () => {
+    const day: CalendarDate = {
+      date: '2026-10-14',
+      grades: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((grade) => ({
+        grade,
+        day:
+          grade < 9
+            ? {
+                lessons: true,
+                dayTemplateId: uid(8),
+                dayTemplateName: 'Main',
+                followsWeekday: 3,
+                examWeek: null,
+                entryId: null,
+                entryName: null,
+              }
+            : { lessons: false, reason: 'day_off', entryId: uid(6), entryName: 'Seniors off' },
+      })),
+    };
+    await openList('principal', { 'GET /api/setup/calendar-day': () => json(day) });
+    const check = screen.getByRole('region', { name: en.setup.calendar.checkTitle });
+    type(within(check).getByLabelText(en.setup.calendar.checkDate), '2026-10-14');
+
+    const table = await within(check).findByRole('table');
+    await waitFor(() => {
+      expect(rowsDrawn(table)).toHaveLength(11);
+    });
+    expect(rowsDrawn(table)[0]).toEqual(['1', 'Main']);
+    expect(rowsDrawn(table)[8]).toEqual([
+      '9',
+      `${en.setup.calendar.reasons.day_off} (Seniors off)`,
+    ]);
+  });
+});

@@ -32,6 +32,7 @@ export const SETUP_PAGES: readonly IndexedPage[] = [
   { titleKey: 'setup.slotTypes.title', to: '/setup/slot-types' },
   { titleKey: 'setup.dayTemplates.title', to: '/setup/day-templates' },
   { titleKey: 'setup.templateSettings.title', to: '/setup/day-template-settings' },
+  { titleKey: 'setup.calendar.title', to: '/setup/calendar' },
 ];
 
 /** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */
