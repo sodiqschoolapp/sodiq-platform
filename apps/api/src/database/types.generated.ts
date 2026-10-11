@@ -117,6 +117,16 @@ export interface Branches {
   working_weekdays: Generated<number[]>;
 }
 
+export interface BranchSettings {
+  absences_in_row: Generated<number>;
+  attendance_percent: Generated<number>;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  edit_days: Generated<number>;
+  low_result: Generated<number>;
+  result_drop: Generated<number>;
+}
+
 export interface Buildings {
   archived_at: Timestamp | null;
   branch_id: string;
@@ -243,7 +253,9 @@ export interface Quarters {
   created_at: Generated<Timestamp>;
   end_date: string | null;
   id: Generated<string>;
+  late_value: Generated<number>;
   number: number;
+  skipped_value: Generated<number>;
   start_date: string | null;
 }
 
@@ -324,6 +336,13 @@ export interface SlotTypes {
   name: string;
 }
 
+export interface TravelTimes {
+  branch_high: string;
+  branch_low: string;
+  created_at: Generated<Timestamp>;
+  minutes: number;
+}
+
 export interface DB {
   academic_years: AcademicYears;
   account_second_steps: AccountSecondSteps;
@@ -331,6 +350,7 @@ export interface DB {
   assignments: Assignments;
   audit_log: AuditLog;
   audit_log_school: AuditLogSchool;
+  branch_settings: BranchSettings;
   branches: Branches;
   buildings: Buildings;
   calendar_entries: CalendarEntries;
@@ -353,4 +373,5 @@ export interface DB {
   sign_in_throttle: SignInThrottle;
   slot_type_lengths: SlotTypeLengths;
   slot_types: SlotTypes;
+  travel_times: TravelTimes;
 }

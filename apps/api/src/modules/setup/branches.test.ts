@@ -137,10 +137,26 @@ describe('the record of a branch', () => {
         record_id: bodyId(response),
         assignment_id: expect.any(String) as string,
         old_value: null,
-        new_value: RECORD,
+        new_value: {
+          ...RECORD,
+          settings: {
+            editDays: 7,
+            lowResult: 50,
+            resultDrop: 15,
+            attendancePercent: 80,
+            absencesInRow: 3,
+          },
+        },
         request_id: response.headers['x-request-id'],
       });
       expect(entries[0]?.actor_id).not.toBeNull();
+      // Every branch has its settings row (task 1.6, decision 8).
+      const settings = await database.migrator
+        .selectFrom('branch_settings')
+        .selectAll()
+        .where('branch_id', '=', bodyId(response))
+        .executeTakeFirstOrThrow();
+      expect(settings).toMatchObject({ edit_days: 7, low_result: 50, absences_in_row: 3 });
       expect(entries[0]?.occurred_at.toISOString()).toBe(new Date(START).toISOString());
     });
 

@@ -76,6 +76,12 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   task 1.4): days off and special days. The Super Admin and the Academic
  *   Vice Principal view, create, edit and archive; the Principal views
  *   (owner's answer 18).
+ * - `settings` (`07`, Editing rules and locks: the edit days are "a setting of
+ *   the Academic Vice Principal"; `08`, Early-warning list; `edge/calculation`,
+ *   late and skipped per quarter; task 1.6): the settings of a branch and its
+ *   setup checklist. The Super Admin and the Academic Vice Principal view and
+ *   edit; the Principal views (owner's answers 23 and 24). Travel time between
+ *   branches is under `branches` (answer 24).
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -112,6 +118,11 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view', 'create', 'edit', 'archive'],
     principal: ['view'],
     academic_vice_principal: ['view', 'create', 'edit', 'archive'],
+  }),
+  settings: rows({
+    super_admin: ['view', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'edit'],
   }),
   current_period: rows({
     super_admin: ['view'],

@@ -114,6 +114,8 @@ export const uz: Texts<'one' | 'other'> = {
     follows_weekday_required:
       'Bu maxsus kunning bir sanasi ish kuni emas. Qaysi hafta kunining darslari oʻtishini tanlang.',
     follows_weekday_not_working: 'Filialning ish kunlaridan birini tanlang.',
+    travel_time_same_branch:
+      'Yoʻl vaqti shu filial bilan boshqa filial orasida belgilanadi. Boshqa filialni tanlang.',
     go_live_not_school_day:
       'Ishga tushirish sanasi oʻquv kuni boʻlishi kerak: kamida bitta sinfda dars boʻladigan kun. Boshqa sana tanlang.',
     calendar_restore_started:

@@ -77,6 +77,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   calendar_archive_started: 'A started entry is not archived; move its last date instead.',
   year_leaves_calendar_entry: 'A calendar entry would lie outside the year.',
   go_live_school_day_taken: 'The change would leave the go-live date without lessons.',
+  travel_time_same_branch: 'Travel time is set between two different branches.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };

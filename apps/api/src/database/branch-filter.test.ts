@@ -268,4 +268,52 @@ describe('branch filter', () => {
       expect(await transactions.run([east], labels)).toEqual(['east row']);
     });
   });
+
+  // Task 1.6, correction 2 of pull request #49: the branch create enters the
+  // branch it inserted, for the rest of that one transaction, and nothing else.
+  describe('entering a branch just created', () => {
+    const insertNew = (transaction: Transaction, name: string) =>
+      sql<{ id: string }>`insert into branches (name) values (${name}) returning id`
+        .execute(transaction)
+        .then((result) => result.rows[0]?.id ?? '');
+
+    it('sees and writes the rows of the new branch for the rest of that transaction', async () => {
+      const seen = await transactions.run([], async (transaction) => {
+        const created = await insertNew(transaction, 'Entered');
+        expect(await labels(transaction)).toEqual([]);
+        await transactions.enterCreatedBranch(transaction, created);
+        await sql`insert into scratch_rows (id, branch_id, label) values (30, ${created}, 'new branch row')`.execute(
+          transaction,
+        );
+        return labels(transaction);
+      });
+
+      expect(seen).toEqual(['new branch row']);
+      // The next transaction starts with the filter of its own request.
+      expect(await transactions.run([], labels)).toEqual([]);
+      expect(await transactions.run([north], labels)).toEqual(['north row']);
+      await sql`delete from scratch_rows where id = 30`.execute(database.migrator);
+    });
+
+    it('refuses a branch this transaction did not insert', async () => {
+      await expect(
+        transactions.run([], (transaction) => transactions.enterCreatedBranch(transaction, north)),
+      ).rejects.toThrow('Only a branch inserted by this transaction');
+    });
+
+    it('refuses a transaction that already works for a branch', async () => {
+      await expect(
+        transactions.run([south], async (transaction) => {
+          const created = await insertNew(transaction, 'Widened');
+          await transactions.enterCreatedBranch(transaction, created);
+        }),
+      ).rejects.toThrow('Only a branch inserted by this transaction');
+    });
+
+    it('refuses what is not a branch id', async () => {
+      await expect(
+        transactions.run([], (transaction) => transactions.enterCreatedBranch(transaction, "x'}")),
+      ).rejects.toThrow('not a branch id');
+    });
+  });
 });

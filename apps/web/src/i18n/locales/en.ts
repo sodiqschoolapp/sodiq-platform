@@ -109,6 +109,8 @@ export const en = {
     follows_weekday_required:
       'A date of this special day is not a working weekday. Choose the weekday whose lessons it follows.',
     follows_weekday_not_working: 'Choose a working weekday of the branch to follow.',
+    travel_time_same_branch:
+      'Travel time is set between this branch and another one. Choose another branch.',
     go_live_not_school_day:
       'The go-live date must be a school day: a date with lessons for at least one grade. Choose another date.',
     calendar_restore_started:
