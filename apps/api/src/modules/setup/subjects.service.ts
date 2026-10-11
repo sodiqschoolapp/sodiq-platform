@@ -278,6 +278,10 @@ export class Subjects {
             record: { type: 'subject', id },
             oldValue: changes.oldValue,
             newValue: changes.newValue,
+            // A new round: the weights of every branch from before no longer count.
+            ...(round === row.weights_round
+              ? {}
+              : { details: { weightsRound: { from: row.weights_round, to: round } } }),
             requestId,
           });
         }
@@ -340,33 +344,40 @@ export class Subjects {
   /**
    * Brings back an archived subject. `already_exists` while an active subject
    * has one of its names; `department_archived` while its department is
-   * archived (decision 9). An active subject stays as it is.
+   * archived (decision 9), with a code of its own (`subject_department_archived`): on a restore
+   * there is no department to choose. An active subject stays as it is.
    */
   restore(access: Access, id: string, requestId: string): Promise<Subject> {
     const branchId = branchOf(access);
-    return this.refusing(() =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        const row = await this.lock(transaction, id);
-        if (row.archived_at !== null) {
-          await this.checkDepartment(transaction, row.department_id);
-          await transaction
-            .updateTable('subjects')
-            .set({ archived_at: null })
-            .where('id', '=', id)
-            .execute();
-          await this.audit.record(transaction, {
-            branchId: null,
-            actorId: access.accountId,
-            assignmentId: access.assignmentId,
-            action: 'subject.restore',
-            record: { type: 'subject', id },
-            oldValue: { archivedAt: row.archived_at.toISOString() },
-            newValue: { archivedAt: null },
-            requestId,
-          });
-        }
-        return this.readSubject(transaction, branchId, id);
-      }),
+    return this.refusing(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          const row = await this.lock(transaction, id);
+          if (row.archived_at !== null) {
+            await this.checkDepartment(
+              transaction,
+              row.department_id,
+              'subject_department_archived',
+            );
+            await transaction
+              .updateTable('subjects')
+              .set({ archived_at: null })
+              .where('id', '=', id)
+              .execute();
+            await this.audit.record(transaction, {
+              branchId: null,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'subject.restore',
+              record: { type: 'subject', id },
+              oldValue: { archivedAt: row.archived_at.toISOString() },
+              newValue: { archivedAt: null },
+              requestId,
+            });
+          }
+          return this.readSubject(transaction, branchId, id);
+        }),
+      { ...SUBJECT_REFUSALS, subjects_department_archived: 'subject_department_archived' },
     );
   }
 
@@ -492,11 +503,11 @@ export class Subjects {
   }
 
   /** Name refusals in `details`, then the department refusals of the database. */
-  private refusing<T>(work: () => Promise<T>): Promise<T> {
-    return refusingDuplicates(
-      () => refusingConstraints(work, SUBJECT_REFUSALS),
-      SUBJECT_NAME_INDEXES,
-    );
+  private refusing<T>(
+    work: () => Promise<T>,
+    refusals: Readonly<Record<string, ErrorCode>> = SUBJECT_REFUSALS,
+  ): Promise<T> {
+    return refusingDuplicates(() => refusingConstraints(work, refusals), SUBJECT_NAME_INDEXES);
   }
 
   /**
@@ -504,7 +515,11 @@ export class Subjects {
    * Academic division (decisions 6 and 9), read FOR SHARE so that an archive
    * of it at the same moment waits. An unknown id is `not_found`.
    */
-  private async checkDepartment(transaction: Transaction, departmentId: string): Promise<void> {
+  private async checkDepartment(
+    transaction: Transaction,
+    departmentId: string,
+    archived: ErrorCode = 'department_archived',
+  ): Promise<void> {
     const department = await transaction
       .selectFrom('departments')
       .innerJoin('divisions', 'divisions.id', 'departments.division_id')
@@ -519,7 +534,7 @@ export class Subjects {
       throw refused('department_not_academic');
     }
     if (department.archived_at !== null) {
-      throw refused('department_archived');
+      throw refused(archived);
     }
   }
 
@@ -781,7 +796,7 @@ export class Subjects {
         ...fieldsOf(row),
         archivedAt: row.archived_at === null ? null : row.archived_at.toISOString(),
         daily: !graded || own === undefined ? null : dailyOf(own),
-        quarterWeightsMissing: graded ? quarters.length - fitting : 0,
+        quarterWeightsMissing: graded && quarters.length > 0 ? quarters.length - fitting : null,
       };
     });
   }

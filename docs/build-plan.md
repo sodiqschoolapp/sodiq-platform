@@ -461,6 +461,7 @@ How to read the task lines:
   - Build: the Results and Attendance tabs of the student profile; quarter and year results per subject; the trace from a result to its lessons.
   - Done when: every figure shown comes from `packages/calc`.
   - From 1.6 (pull request #49, decision 3): a change of late or skipped on a quarter (`PUT /api/setup/quarters/:id/attendance-values`) shows the results that change first, as the preview `edge/calculation` asks for, and recalculates them in the same transaction.
+  - From 2.1 (pull request #52, decision 14 and migration 0021): every reader of the weights (results, the lesson score, the journal legend) takes a distribution only in the subject's current `weights_round` and, for a quarter, only when its rating exam part fits the switch; a row of an earlier round is not a distribution.
   - From 2.1 (pull request #52, decision 4): a change of a quarterly distribution (`PUT /api/setup/subjects/:id/quarter-weights/:quarterId` and the copy) in an open quarter: `edge/calculation`, "Before saving, the system shows how many grades will change in each journal, asks for a reason and tells the subject's teachers. The journal legend shows 'changed on [date]'."; `05`: "Each change is logged and results are recalculated at once."
 
 - [ ] **9.2a Closing checklist**

@@ -76,7 +76,7 @@ const SPIRIT: Subject = {
   ratingExam: false,
   demanding: false,
   daily: null,
-  quarterWeightsMissing: 0,
+  quarterWeightsMissing: null,
 };
 
 const OLD: Subject = {
@@ -157,13 +157,15 @@ async function openList({
       json({ ...MATHS, ...(body as object), id: uid(25), quarterWeightsMissing: 4 }, 201),
     [`PUT /api/setup/subjects/${MATHS.id}`]: (body) => json({ ...MATHS, ...(body as object) }),
     [`PUT /api/setup/subjects/${PHYSICS.id}`]: (body) => json({ ...PHYSICS, ...(body as object) }),
+    [`PUT /api/setup/subjects/${SPIRIT.id}`]: (body) => json({ ...SPIRIT, ...(body as object) }),
     [`PUT /api/setup/subjects/${MATHS.id}/daily-weights`]: (body) =>
       json({ ...MATHS, daily: body }),
     [`PUT /api/setup/subjects/${MATHS.id}/quarter-weights/${uid(41)}`]: (body) =>
       json(answer([quarter(1, body as SubjectQuarter['weights']), ...quarters.slice(1)])),
     [`POST /api/setup/subjects/${MATHS.id}/quarter-weights/copy`]: () =>
       json(answer([1, 2, 3, 4].map((number) => quarter(number, RATED)))),
-    [`POST /api/setup/subjects/${OLD.id}/restore`]: () => refusal('department_archived', 409),
+    [`POST /api/setup/subjects/${OLD.id}/restore`]: () =>
+      refusal('subject_department_archived', 409),
     ...extra,
   });
   const shell = renderApp(PATH, language);
@@ -352,6 +354,33 @@ describe('the subjects page', () => {
     });
   });
 
+  // Decision 14: an attendance-only subject made graded again needs this
+  // branch's daily distribution in the same request (the spec review).
+  it('asks for the daily distribution when an attendance-only subject is made graded, and sends it', async () => {
+    const { calls } = await openList();
+    fireEvent.click(rowButton('Spiritual hour'));
+    const panel = await screen.findByRole('complementary', { name: 'Spiritual hour' });
+    const form = within(panel).getByRole('form', { name: 'Spiritual hour' });
+    expect(within(form).queryByLabelText(subjectsText.parts.attendance)).toBeNull();
+
+    fireEvent.change(within(form).getByLabelText(subjectsText.journalType), {
+      target: { value: 'graded' },
+    });
+    type(within(form).getByLabelText(subjectsText.parts.attendance), '20');
+    type(within(form).getByLabelText(subjectsText.parts.classwork), '40');
+    type(within(form).getByLabelText(subjectsText.parts.homework), '40');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `PUT /api/setup/subjects/${SPIRIT.id}`)?.body,
+      ).toMatchObject({
+        journalType: 'graded',
+        daily: { attendance: 20, classwork: 40, homework: 40 },
+      });
+    });
+  });
+
   it('sets quarter 1 with four parts for a rating subject and copies it after asking when other quarters are set', async () => {
     const { calls } = await openList({
       quarters: [quarter(1, RATED), quarter(2), quarter(3, RATED), quarter(4)],
@@ -443,6 +472,6 @@ describe('the subjects page', () => {
     fireEvent.click(within(panel).getByRole('button', { name: subjectsText.restoreSubject }));
     await goOn(subjectsText.restore);
 
-    expect(await within(panel).findByText(en.errors.department_archived)).toBeDefined();
+    expect(await within(panel).findByText(en.errors.subject_department_archived)).toBeDefined();
   });
 });

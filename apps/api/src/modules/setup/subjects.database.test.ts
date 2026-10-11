@@ -496,6 +496,133 @@ describe('subjects in the database', () => {
     });
   });
 
+  // Migrations 0021 and 0022 (decision 14; the spec review): the round of a
+  // subject only grows, and a weight row is written in the current round.
+  describe('keep the weights round', () => {
+    const setRound = (subject: string, round: number, writer: 'app' | 'migrator' = 'app') => {
+      const update = (db: Database | Transaction) =>
+        db
+          .updateTable('subjects')
+          .set({ weights_round: round })
+          .where('id', '=', subject)
+          .execute();
+      return writer === 'app' ? asApp(update) : update(database.migrator);
+    };
+
+    it.each(['app', 'migrator'] as const)(
+      'growing only, as the %s; never below 1',
+      async (writer) => {
+        const subject = await insertSubject();
+        await expect(setRound(subject, 2, writer)).resolves.toBeDefined();
+        await expect(setRound(subject, 1, writer)).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'subjects_weights_round_down',
+        });
+        await expect(insertSubject({ weights_round: 0 }, 'migrator')).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      },
+    );
+
+    it.each(['app', 'migrator'] as const)(
+      'with every weight row in the current round of its subject, as the %s',
+      async (writer) => {
+        const subject = await insertSubject();
+        const [quarter] = await insertYear(north, writer === 'app' ? '2030-09-01' : '2031-09-01');
+        await insertDaily(north, subject, { attendance: 10, classwork: 50, homework: 40 }, writer);
+        await setRound(subject, 2);
+
+        // A row of round 1 is not brought into round 2 without new values, nor kept in round 1.
+        const updateDaily = (round: number) => {
+          const update = (db: Database | Transaction) =>
+            db
+              .updateTable('subject_daily_weights')
+              .set({ weights_round: round })
+              .where('subject_id', '=', subject)
+              .execute();
+          return writer === 'app' ? inBranch(north, update) : update(database.migrator);
+        };
+        await expect(updateDaily(1)).rejects.toMatchObject({
+          constraint: 'subject_weights_current_round',
+        });
+        await expect(updateDaily(2)).resolves.toBeDefined();
+        await expect(
+          insertQuarterWeights(
+            north,
+            subject,
+            quarter ?? '',
+            { attendance: 10, classwork: 50, homework: 40, rating_exam: null },
+            writer,
+          ),
+        ).rejects.toMatchObject({ constraint: 'subject_weights_current_round' });
+      },
+    );
+
+    // 0022: the closed-year guard locks the year row whatever its status, so a
+    // close of the year waits for a weights write of that moment. The test
+    // holds the write open, sends the close, sees it wait, then lets go.
+    it('makes a close of the year wait for a quarterly distribution being written', async () => {
+      const branch = await insertBranch(database.migrator, 'Lock branch');
+      const [quarter] = await insertYear(branch, '2026-09-01');
+      const year = await database.migrator
+        .selectFrom('quarters')
+        .select('academic_year_id')
+        .where('id', '=', quarter ?? '')
+        .executeTakeFirstOrThrow();
+      const subject = await insertSubject();
+      let open = (): void => undefined;
+      const release = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+      let heldNow = (): void => undefined;
+      const held = new Promise<void>((resolve) => {
+        heldNow = resolve;
+      });
+      const write = inBranch(branch, async (transaction) => {
+        await transaction
+          .insertInto('subject_quarter_weights')
+          .values({
+            branch_id: branch,
+            subject_id: subject,
+            quarter_id: quarter ?? '',
+            attendance: 10,
+            classwork: 50,
+            homework: 40,
+          })
+          .execute();
+        heldNow();
+        await release;
+      });
+      await held;
+      try {
+        const close = database.migrator
+          .updateTable('academic_years')
+          .set({ status: 'current' })
+          .where('id', '=', year.academic_year_id)
+          .execute();
+        for (let tries = 0; ; tries += 1) {
+          const waiting = await sql<{ n: string }>`
+            select count(*) as n from pg_stat_activity
+            where datname = current_database() and wait_event_type = 'Lock'
+          `.execute(database.migrator);
+          if (Number(waiting.rows[0]?.n) > 0) {
+            break;
+          }
+          if (tries > 100) {
+            throw new Error('The change of the year did not wait for the weights.');
+          }
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        open();
+        await write;
+        await close;
+      } finally {
+        open();
+        await write.catch(() => undefined);
+      }
+    });
+  });
+
   // CLAUDE.md, "Archive, do not delete"; the grants of 0020 and 0021.
   describe('give the application no removal and no write of protected columns', () => {
     it('refuse a delete from the three tables', async () => {

@@ -151,6 +151,8 @@ export const ERROR_CODES = [
   'daily_weights_set',
   /** An attendance-only subject has no weights (`edge/calculation`; task 2.1). */
   'attendance_only_no_weights',
+  /** A subject is not restored while its department is archived (task 2.1, decision 9). */
+  'subject_department_archived',
   /** Only the Super Admin moves a subject to another department (`edge/people-roles-accounts`; task 2.1, decision 17). */
   'subject_move_super_admin',
   /** A quarterly distribution has a rating exam part exactly when the subject has a rating exam (`05`; task 2.1, decision 3). */

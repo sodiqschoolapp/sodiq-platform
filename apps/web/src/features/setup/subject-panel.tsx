@@ -114,7 +114,7 @@ export function SubjectPanel({
           key={`${subject.id}-${subject.journalType}-${String(subject.daily === null)}`}
           subject={subject}
           departments={departments}
-          asksDaily={graded && subject.daily === null}
+          hasDaily={graded && subject.daily !== null}
           departmentLocked={role !== 'super_admin'}
           label={name}
           onSave={async (record) => {
@@ -371,6 +371,11 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
   return (
     <section className="grid gap-3">
       <h3 className="text-base font-semibold">{title}</h3>
+      {open.length === 1 && (
+        <p className="text-sm text-muted-foreground">
+          {t('setup.subjects.year')}: {open[0]?.name}
+        </p>
+      )}
       {open.length > 1 && (
         <SelectField
           label={t('setup.subjects.year')}

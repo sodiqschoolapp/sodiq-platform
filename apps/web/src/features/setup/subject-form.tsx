@@ -92,10 +92,12 @@ interface SubjectFormProps {
   /** The active departments of Academic (decision 6). */
   departments: readonly DepartmentChoice[];
   /**
-   * Whether the form asks for this branch's daily distribution: always for a
-   * new subject, and on an edit while the branch has none (decision 15).
+   * Whether this branch already has the daily distribution of the subject in
+   * its current round. When it has none, a graded subject (as typed) asks for
+   * it: always for a new subject, after "attendance only" is changed to
+   * "graded", and while the branch has none (decisions 14 and 15).
    */
-  asksDaily: boolean;
+  hasDaily: boolean;
   /** Only the Super Admin moves a subject to another department (decision 17). */
   departmentLocked?: boolean;
   label: string;
@@ -113,7 +115,7 @@ interface SubjectFormProps {
 export function SubjectForm({
   subject,
   departments,
-  asksDaily,
+  hasDaily,
   departmentLocked = false,
   label,
   onSave,
@@ -153,7 +155,7 @@ export function SubjectForm({
         languageRule: typed.languageRule === CHECKED,
         demanding: typed.demanding === CHECKED,
         daily:
-          graded && asksDaily
+          graded && !hasDaily
             ? {
                 attendance: wholeNumber(typed.dailyattendance),
                 classwork: wholeNumber(typed.dailyclasswork),
@@ -230,7 +232,7 @@ export function SubjectForm({
       <CheckboxField label={t('setup.subjects.groupSubject')} {...form.bind('groupSubject')} />
       <CheckboxField label={t('setup.subjects.languageRule')} {...form.bind('languageRule')} />
       <CheckboxField label={t('setup.subjects.demanding')} {...form.bind('demanding')} />
-      {graded && asksDaily && (
+      {graded && !hasDaily && (
         <fieldset className="grid gap-2">
           <legend className="mb-1.5 text-sm font-medium">{t('setup.subjects.daily')}</legend>
           <WeightFields

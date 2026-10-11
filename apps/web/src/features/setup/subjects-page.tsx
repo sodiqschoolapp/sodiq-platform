@@ -104,7 +104,7 @@ export function SubjectsPage() {
           } else if (
             restore &&
             error instanceof ApiFailure &&
-            error.code === 'department_archived'
+            error.code === 'subject_department_archived'
           ) {
             result.departmentArchived.push(name);
           } else {
@@ -170,8 +170,10 @@ export function SubjectsPage() {
         cell: (row) =>
           row.journalType !== 'graded'
             ? t('setup.subjects.none')
-            : number.format(row.quarterWeightsMissing),
-        sortValue: (row) => row.quarterWeightsMissing,
+            : row.quarterWeightsMissing === null
+              ? t('setup.subjects.none')
+              : number.format(row.quarterWeightsMissing),
+        sortValue: (row) => row.quarterWeightsMissing ?? -1,
         numeric: true,
       },
       {
@@ -306,7 +308,7 @@ export function SubjectsPage() {
           <SubjectForm
             subject={null}
             departments={choices}
-            asksDaily
+            hasDaily={false}
             label={t('setup.subjects.newTitle')}
             onSave={async (record) => {
               await create.mutateAsync(record);

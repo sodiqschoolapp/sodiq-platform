@@ -122,7 +122,10 @@ export const en = {
       'A graded subject needs its daily distribution in this branch. Fill in attendance, classwork and homework.',
     daily_weights_set:
       'This branch already has a daily distribution for the subject. Change it in the subject panel.',
-    attendance_only_no_weights: 'An attendance-only subject has no weights.',
+    attendance_only_no_weights:
+      'An attendance-only subject has no weights. To give it weights, make it graded first.',
+    subject_department_archived:
+      'The department of this subject is archived. Restore the department first, then the subject.',
     subject_move_super_admin:
       'Only the Super Admin moves a subject to another department. Keep its department, or ask the Super Admin.',
     weights_shape_mismatch:

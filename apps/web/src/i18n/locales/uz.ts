@@ -127,7 +127,10 @@ export const uz: Texts<'one' | 'other'> = {
       'Baholanadigan fanga shu filialda kunlik taqsimot kerak. Davomat, sinf ishi va uy vazifasini kiriting.',
     daily_weights_set:
       'Bu filialda fanning kunlik taqsimoti allaqachon bor. Uni fan panelida oʻzgartiring.',
-    attendance_only_no_weights: 'Faqat davomatli fanning vaznlari yoʻq.',
+    attendance_only_no_weights:
+      'Faqat davomatli fanning vaznlari yoʻq. Vazn berish uchun avval uni baholanadigan qiling.',
+    subject_department_archived:
+      'Bu fanning kafedrasi arxivda. Avval kafedrani, keyin fanni tiklang.',
     subject_move_super_admin:
       'Fanni boshqa kafedraga faqat Super administrator oʻtkazadi. Kafedrasini qoldiring yoki Super administratorga murojaat qiling.',
     weights_shape_mismatch:

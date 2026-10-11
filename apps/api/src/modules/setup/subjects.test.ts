@@ -232,7 +232,7 @@ describe('subjects', () => {
         demanding: true,
         archivedAt: null,
         daily: DAILY,
-        quarterWeightsMissing: 0,
+        quarterWeightsMissing: null,
       });
       const requestId = response.headers['x-request-id'];
       const created = await schoolEntries('subject.create', subject.id);
@@ -497,7 +497,7 @@ describe('subjects', () => {
       expect(subjectSchema.parse(off.body)).toMatchObject({
         journalType: 'attendance_only',
         daily: null,
-        quarterWeightsMissing: 0,
+        quarterWeightsMissing: null,
       });
       const kept = await t.database.migrator
         .selectFrom('subject_daily_weights')
@@ -737,7 +737,7 @@ describe('subjects', () => {
 
       const closed = await t.post(`/api/setup/subjects/${moved.id}/restore`, t.north);
       expect(closed.status).toBe(409);
-      expect(errorCode(closed)).toBe('department_archived');
+      expect(errorCode(closed)).toBe('subject_department_archived');
     });
 
     it('of an unknown subject is not found; nothing is written', async () => {
@@ -909,6 +909,116 @@ describe('subjects', () => {
           .body,
       );
       expect(read.quarters[0]).toMatchObject({ weights: RATED, fits: false });
+    });
+  });
+
+  // Decision 14 and migration 0021 (the spec review): a subject made graded
+  // again starts a new round; no weight of an earlier round counts, in any
+  // branch, for the list, the quarters, the copy and the checklist.
+  describe('a new round of weights', () => {
+    it('leaves every distribution of the earlier round out, here and in another branch, until it is set again', async () => {
+      const branch = await t.newBranch();
+      const { yearId, quarterIds } = await insertYear(branch, '2026-09-01');
+      const subject = await create({}, branch);
+      const southDaily = { attendance: 20, classwork: 40, homework: 40 };
+      await put(`/api/setup/subjects/${subject.id}/daily-weights`, t.south, southDaily);
+      await put(
+        `/api/setup/subjects/${subject.id}/quarter-weights/${quarterIds[0] ?? ''}`,
+        branch,
+        RATED,
+      );
+      const off = subjectSchema.parse(
+        (
+          await put(
+            `/api/setup/subjects/${subject.id}`,
+            branch,
+            editBody(subject, { journalType: 'attendance_only', ratingExam: false }),
+          )
+        ).body,
+      );
+      const newDaily = { attendance: 30, classwork: 40, homework: 30 };
+
+      const on = await put(
+        `/api/setup/subjects/${subject.id}`,
+        branch,
+        editBody(off, { journalType: 'graded', ratingExam: true, daily: newDaily }),
+      );
+
+      expect(on.status).toBe(200);
+      expect(subjectSchema.parse(on.body)).toMatchObject({
+        daily: newDaily,
+        quarterWeightsMissing: 4,
+      });
+      expect((await schoolEntries('subject.edit', subject.id)).at(-1)?.details).toEqual({
+        weightsRound: { from: 1, to: 2 },
+      });
+      // Another branch: its daily distribution of round 1 no longer counts.
+      expect((await inList(subject.id, t.south)).daily).toBeNull();
+      // This branch: quarter 1 of round 1 shows as not set, and is not copied.
+      const read = subjectQuarterWeightsSchema.parse(
+        (await t.get(`/api/setup/subjects/${subject.id}/quarter-weights?yearId=${yearId}`, branch))
+          .body,
+      );
+      expect(read.quarters[0]).toMatchObject({ weights: null, fits: false });
+      expect(
+        errorCode(
+          await t.post(`/api/setup/subjects/${subject.id}/quarter-weights/copy`, branch, {
+            yearId,
+          }),
+        ),
+      ).toBe('quarter_one_not_set');
+
+      // The other branch sets it again: written in the new round, shown, audited from "none".
+      const again = await put(
+        `/api/setup/subjects/${subject.id}/daily-weights`,
+        t.south,
+        southDaily,
+      );
+      expect(subjectSchema.parse(again.body).daily).toEqual(southDaily);
+      const row = await t.database.migrator
+        .selectFrom('subject_daily_weights')
+        .select('weights_round')
+        .where('subject_id', '=', subject.id)
+        .where('branch_id', '=', t.south)
+        .executeTakeFirstOrThrow();
+      expect(row.weights_round).toBe(2);
+      expect((await t.entries('subject_daily_weights.set', subject.id)).at(-1)).toMatchObject({
+        branch_id: t.south,
+        old_value: { daily: null },
+      });
+    });
+
+    it('keeps the checklist item open for a daily distribution of an earlier round', async () => {
+      const branch = await t.newBranch();
+      for (const subject of await list(branch)) {
+        if (subject.archivedAt === null && subject.journalType === 'graded') {
+          await put(`/api/setup/subjects/${subject.id}/daily-weights`, branch, DAILY);
+        }
+      }
+      const itemOf = async () =>
+        setupChecklistSchema
+          .parse((await t.get('/api/setup/checklist', branch)).body)
+          .items.find((item) => item.key === 'subjects');
+      expect(await itemOf()).toMatchObject({ done: true });
+
+      const subject = await create({}, branch);
+      const off = subjectSchema.parse(
+        (
+          await put(
+            `/api/setup/subjects/${subject.id}`,
+            branch,
+            editBody(subject, { journalType: 'attendance_only', ratingExam: false }),
+          )
+        ).body,
+      );
+      // Back to graded from another branch: this branch's row is of round 1.
+      await put(
+        `/api/setup/subjects/${subject.id}`,
+        t.south,
+        editBody(off, { journalType: 'graded', daily: DAILY }),
+      );
+
+      expect(await itemOf()).toMatchObject({ done: false, count: 1 });
     });
   });
 

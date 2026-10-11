@@ -188,9 +188,10 @@ export const subjectSchema = subjectFieldsSchema.extend({
   /**
    * How many quarters of the branch's planned and current years have no
    * quarterly distribution that fits the rating switch (decision 3); 0 for
-   * an attendance-only subject.
+   * an attendance-only subject. `null` when there is nothing to count: an
+   * attendance-only subject, or a branch without a planned or current year.
    */
-  quarterWeightsMissing: z.int().min(0),
+  quarterWeightsMissing: z.int().min(0).nullable(),
 });
 
 export type Subject = z.infer<typeof subjectSchema>;
