@@ -159,6 +159,32 @@ export const ERROR_CODES = [
   'weights_shape_mismatch',
   /** Quarter 1 has no distribution that fits the subject, so there is nothing to copy (answer 6; task 2.1). */
   'quarter_one_not_set',
+  /** The 9,999 staff IDs of the year of first hire are all given (`edge/people-roles-accounts`: "A 10,000th hire in one year is refused"; task 2.2a). */
+  'staff_id_exhausted',
+  /** A staff member in the Academic division has a department there (`04`; task 2.2a). */
+  'staff_department_required',
+  /** A teacher's subjects come from their Academic department (`04`; task 2.2a). */
+  'subject_outside_department',
+  /** A grade taught is one of the grades of the subject (task 2.2a). */
+  'grade_not_in_subject',
+  /** A teacher with a subject has a language of instruction (task 2.2a). */
+  'languages_required',
+  /** The division is archived: a staff record names active divisions (task 2.2a). */
+  'division_archived',
+  /** A status change is dated today or later (`edge/people-roles-accounts`, Staff over time; task 2.2a, decision 4). */
+  'status_from_past',
+  /** A status change is dated on or after the first status of the record, its admission (task 2.2a). */
+  'status_before_admission',
+  /** The status asked for is already in force from that date and nothing is planned after it (task 2.2a). */
+  'status_unchanged',
+  /** Nobody sets their own staff record to inactive or left (task 2.2a, correction 5). */
+  'own_status',
+  /** The password was right, but the staff member is inactive or has left (`edge/people-roles-accounts`, Staff over time; task 2.2a). */
+  'account_inactive',
+  /** A subject keeps its department and grades while a teacher who has not left has them (task 2.2a, decision 13). */
+  'subject_has_teachers',
+  /** A department cannot be archived while a staff member who has not left is in it (task 2.2a, decision 20). */
+  'department_has_staff',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

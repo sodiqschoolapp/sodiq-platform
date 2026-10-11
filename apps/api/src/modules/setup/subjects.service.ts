@@ -17,6 +17,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import { refuseTeachersOutside } from '../people/subject-teachers.js';
 import { changesOf, notFound, refusingConstraints, refusingDuplicates } from './setup-refusals.js';
 
 /** The field of the record each unique index of the names covers. */
@@ -291,6 +292,16 @@ export class Subjects {
           }
           assignmentId = superAdmin;
           await this.checkDepartment(transaction, after.departmentId);
+        }
+        // Task 2.2a, decision 13: a department move or a removed grade is
+        // refused while a teacher who has not left has the subject outside them.
+        const gradesRemoved = before.grades.some((grade) => !after.grades.includes(grade));
+        if (after.departmentId !== before.departmentId || gradesRemoved) {
+          await refuseTeachersOutside(
+            transaction,
+            { subjectId: id, grades: after.grades, departmentId: after.departmentId },
+            this.clock.now(),
+          );
         }
         // Decision 14: a subject that becomes graded again starts a new round;
         // the weights of every branch from before no longer count.

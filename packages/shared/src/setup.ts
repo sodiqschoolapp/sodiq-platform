@@ -264,6 +264,15 @@ export const divisionSchema = z.object({
 
 export type Division = z.infer<typeof divisionSchema>;
 
-export const divisionListSchema = z.object({ divisions: z.array(divisionSchema) });
+export const divisionListSchema = z.object({
+  divisions: z.array(divisionSchema),
+  /**
+   * The staff of the whole school per division, each person counted once under
+   * the main division, without those who have left (`03`, Divisions: "counted
+   * once, under the main division"; task 2.2a). A division without staff is
+   * not listed.
+   */
+  staffCounts: z.array(z.object({ divisionId: z.uuid(), people: z.int().min(1) })),
+});
 
 export type DivisionList = z.infer<typeof divisionListSchema>;
