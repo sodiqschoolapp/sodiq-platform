@@ -159,6 +159,27 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   Academic Vice Principal does, decided without the owner on pull request
  *   #65 (decision 2, Look first), confirmed at its review and flagged on
  *   issue #42.
+ * - `students`, `student_contact`, `student_identity`, `student_financial`
+ *   (`04`, Student record; `edge/people-roles-accounts`, Personal data and
+ *   the audit log; task 2.4a): the student list with the Basic group (name,
+ *   UID, class, photo, and sex, grade and start date), its create and edit,
+ *   and the three groups of readers. `students`: the Super Admin and the
+ *   Academic Vice Principal view, create and edit ("Full edit of students",
+ *   `02`); the Principal, the Vice Principal for Spiritual and Moral
+ *   Education, the Head Tutor, the Tutor, the Head Teacher and the Senior Head
+ *   Teacher view (`02`: each "Sees the student list of the branch" or the
+ *   "Full student list across classes and groups"; a Senior Head Teacher in
+ *   each branch of a request). Teachers have no list (`02`: "Own lessons").
+ *   The Tutor opens no profile until the class scope of task 3.1.
+ *   `student_contact`: the Super Admin, the Principal, the Academic Vice
+ *   Principal, the Vice Principal for Spiritual and Moral Education and the
+ *   Head Tutor (the class Tutor with task 3.1). `student_identity`: the
+ *   Super Admin and the Academic Vice Principal; the Principal sees it hidden
+ *   with a logged show under `students` `view`. `student_financial`: the
+ *   Super Admin, the Academic Vice Principal and the Principal. Four new areas
+ *   for new routes, decided without the owner on pull request #67 (decision
+ *   2, Look first: the Senior Head Teacher reads students of every branch),
+ *   confirmed at its review and flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -236,6 +257,32 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['view'],
     senior_head_teacher: ['view'],
     head_teacher: ['view'],
+  }),
+  students: rows({
+    super_admin: ['view', 'create', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create', 'edit'],
+    spiritual_vice_principal: ['view'],
+    head_tutor: ['view'],
+    tutor: ['view'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
+  }),
+  student_contact: rows({
+    super_admin: ['view'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+    spiritual_vice_principal: ['view'],
+    head_tutor: ['view'],
+  }),
+  student_identity: rows({
+    super_admin: ['view'],
+    academic_vice_principal: ['view'],
+  }),
+  student_financial: rows({
+    super_admin: ['view'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
   }),
   current_period: rows({
     super_admin: ['view'],

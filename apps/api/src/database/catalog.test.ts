@@ -157,6 +157,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'Whether a reset link may be made for an account (not locked, not inactive or left, an email on record, written last by a Super Admin or by an Academic Vice Principal of a branch of its roles, read from audit_log through last_email_change), a yes or no for the public request before any branch is known (task 2.3c-2).',
   'reset_by_person_name(uuid)':
     'The first and last name of the administrator who reset an account\'s password, shown to that account\'s person while the reset password is in use ("your password was reset by X").',
+  'student_duplicate_elsewhere(text,date)':
+    'Whether a student of another branch has the same folded name and birth date (the duplicate warning across all branches, edge/students-classes-groups; task 2.4a, decision 16 of pull request #67); a yes or no.',
   'super_admin_active_count(timestamp with time zone)':
     "The number of active Super Admins (the last Super Admin rule and its banner); a Super Admin's record may be in any branch.",
   'staff_account_blocked(uuid,timestamp with time zone)':

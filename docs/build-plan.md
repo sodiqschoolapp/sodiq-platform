@@ -226,15 +226,21 @@ How to read the task lines:
   - Done when: tests cover each rule of the email reset with the injected clock, its public routes are the exact list of `PUBLIC_ROUTES`, and the browser test asks for a reset from the sign-in page and sets the own photo.
   - Split from 2.3c on pull request #65 (decision 1, Look first).
 
-- [ ] **2.4 Student records**
+- [x] **2.4a Student record, UID and readers** (2.4 split in two, pull request #67, decision 1)
   - Read: `04` (Student record, UID sets), `edge/students-classes-groups`, `edge/people-roles-accounts` (Personal data and the audit log), `16` (question 12 is open: the UID is typed by hand and must be unique; do not build automatic UIDs).
-  - Build: student record with contract and scholarship fields; statuses (active, inactive, graduated) with restore; profile tabs that have data so far; the student list with columns, filters and Excel export; hidden fields shown only to allowed roles, each viewing logged; a student account created with the record and switched off until Release 2.
+  - Build: student record with contract and scholarship fields; the UID typed by hand, unique across the school for good (inactive, graduated and corrected-away UIDs included), its set warning and its correction with a reason; the duplicate checks (JSHSHIR and document number block, name and birth date warn); the field groups and their readers, the Principal's logged show; the dated status rows (every student starts active); a student account created with the record and switched off until Release 2; the student list and the profile with the tabs that have data.
   - Done when: a duplicate UID is refused, including against archived records.
+
+- [ ] **2.4b Statuses, photos and export** (pull request #67, decision 1)
+  - Read: `04` (Student record, Movements), `edge/students-classes-groups`, `edge/people-roles-accounts` (Personal data and the audit log), the plan of pull request #67.
+  - Build: leaving (inactive, a date and a reason, scheduled when in the future, cancellable until the date), "undo leaving" with a reason, coming back from the Inactive list with a new contract, the Super Admin's restore of a graduated student with a reason; the delete of a student created twice (no data; `edge`: "A student is created twice by mistake"); "restore this student" offered on a document match of the branch; bulk actions on ticked rows (archive, export); the Excel export of the list by readers (whole-branch contact or identity fields for the Super Admin and the Academic Vice Principal only; Tutors their own class from 3.1); student photos (a second `FileRoute`); the list of active students without consent (answer 23); the "No class" counter on the Academic Vice Principal's home page.
+  - Done when: a leaving and a return keep the UID and history, and an export holds only the groups the role reads.
 
 - [ ] **2.5 Close relatives (Parents)**
   - Read: `04` (Close relatives), `edge/close-relatives`.
   - Build: school-wide relative records unique by main phone; links to several students with relationship, main contact, portal access and "receives notices"; the "no phone of their own" case; the Parent list and page; a Parent account created with the record and switched off until Release 2.
   - Done when: a student cannot be saved without at least one relative and phone uniqueness holds across branches.
+  - From 2.4a (pull request #67, decision 10): the students saved by 2.4a have no relative yet; the rule "at least one relative" refuses the edit of such a record until one is linked, and the student form of 2.4a gains the relative step.
 
 - [ ] **2.6 Audit log screen and personal data tools**
   - Read: `edge/people-roles-accounts` (Personal data and the audit log), `13` (Security).
@@ -252,6 +258,7 @@ How to read the task lines:
   - Read: `05`, `edge/students-classes-groups`, `edge/developer-rules`.
   - Build: class as grade plus name (shown as "7 Oxford"), language of instruction, Tutor, main classroom, maximum size; class membership as date ranges that cannot overlap (database constraint); class scope for Tutors in the permission guard; class cards and list.
   - Done when: the database refuses a student in two classes on one date and the Tutor language rule is enforced.
+  - From 2.4a (pull request #67): the class, groups and tutor columns and the class, group and language filters of the student list (`04`); a Tutor opens the profiles of their own class and reads its Contact group (`02`; until then `GET people/students/:id` refuses a Tutor-only reader, decision 6); an active student with no class is allowed only before their start date (`edge/students-classes-groups`, "A student is enrolled in August before classes are formed").
 
 - [ ] **3.2 Groups and splits**
   - Read: `05`, `06` (Model, Rules), `03` (Slot types and day templates), `edge/timetable` (Structure), `edge/time-dates-calendar`, `edge/students-classes-groups`.
@@ -262,6 +269,7 @@ How to read the task lines:
   - Read: `04` (Movements), `edge/students-classes-groups`.
   - Build: class transfer and group transfer with an effective date; leave and restore; scheduled moves; confirmation when moving between an Uzbek and a Russian class; the History tab. The effect inside journals is built in 8.6.
   - Done when: history shows each move with dates and a move into the past is handled as the spec says.
+  - From 2.4a (pull request #67): leaving takes the student out of classes and groups from the date and a return places them in a class (2.4b builds the status side); the move to another branch (`edge/students-classes-groups`, "A student moves to another branch": released by the sending Academic Vice Principal, accepted by the receiving one, both by the Super Admin) as one update of `students.branch_id` through a guarded function, the keys of 0032 carrying the child rows (decision 15); the Super Admin's merge of two student records, the older UID kept (`edge`: "The Super Admin can merge two records").
 
 - [ ] **3.4 Teaching load**
   - Read: `05`, `04` (Teacher and staff record), `06` (Building a timetable, Rules), `edge/timetable` (Structure, After publishing).

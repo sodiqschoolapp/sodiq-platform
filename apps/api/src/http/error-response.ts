@@ -133,6 +133,9 @@ const MESSAGE: Record<ErrorCode, string> = {
   account_not_locked: 'The account is not locked.',
   second_step_off: 'The account has no second step to reset.',
   account_missing: 'The staff record has no account yet.',
+  uid_set_mismatch: "The UID is not in the set of the student's grade; confirm to save it.",
+  student_value_taken: 'A value of the student is given to another student.',
+  no_academic_year: 'The start date is in no academic year of the branch.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };

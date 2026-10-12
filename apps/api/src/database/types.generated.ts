@@ -448,6 +448,68 @@ export interface StaffSubjects {
   subject_id: string;
 }
 
+export interface StudentAccounts {
+  branch_id: string;
+  created_at: Timestamp;
+  student_id: string;
+  switched_on_at: Timestamp | null;
+}
+
+export interface StudentContracts {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  number: string;
+  signed_on: string;
+  student_id: string;
+}
+
+export interface Students {
+  address: string | null;
+  birth_date: string;
+  branch_id: string;
+  consent_signed_on: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  diagnostic_score: number | null;
+  document_number: string | null;
+  document_type: string | null;
+  email: string | null;
+  first_name: string;
+  grade: number;
+  id: Generated<string>;
+  jshshir: string | null;
+  last_name: string;
+  name_key: string;
+  paternal_name: string | null;
+  phone: string | null;
+  previous_school: string | null;
+  region: string | null;
+  scholarship_amount: number | null;
+  scholarship_coverage: string | null;
+  scholarship_type: Generated<string>;
+  sex: string;
+  starts_on: string;
+  uid: string;
+}
+
+export interface StudentStatuses {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  status: string;
+  student_id: string;
+  valid_from: string;
+  valid_until: string | null;
+}
+
+export interface StudentUids {
+  branch_id: string;
+  held_from: Timestamp;
+  student_id: string;
+  uid: string;
+}
+
 export interface SubjectDailyWeights {
   attendance: number;
   branch_id: string;
@@ -537,6 +599,11 @@ export interface DB {
   staff_status_role_ends: StaffStatusRoleEnds;
   staff_statuses: StaffStatuses;
   staff_subjects: StaffSubjects;
+  student_accounts: StudentAccounts;
+  student_contracts: StudentContracts;
+  student_statuses: StudentStatuses;
+  student_uids: StudentUids;
+  students: Students;
   subject_daily_weights: SubjectDailyWeights;
   subject_quarter_weights: SubjectQuarterWeights;
   subjects: Subjects;

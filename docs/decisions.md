@@ -186,6 +186,41 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 12 October 2026: student record, UID and readers (task 2.4a)
+
+Plan approved on pull request #67 with corrections 1 to 6; decisions 1 to 17 confirmed there, 5 changed (correction 2), 4, 16 and 17 marked Look first. Decisions 18 to 21 came from the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 2.4 split into 2.4a (record, UID, readers) and 2.4b (statuses, photos, export), with lines added to 2.5, 3.1 and 3.3 | Decision 1; the 2.2 split precedent |
+| **Look first.** Areas `students` (Super Admin and Academic Vice Principal view, create, edit; Principal, Spiritual Vice Principal, Head Tutor, Tutor, Head Teacher, Senior Head Teacher view), `student_contact`, `student_identity`, `student_financial` (the readers of `edge/people-roles-accounts`); the Senior Head Teacher reads students of every branch, each request in its branch; Teachers have no list | Decision 2; `02` roles table; Personal data and the audit log |
+| **Look first.** A taken UID, JSHSHIR, document or contract number names its holder only when the holder is a student of the branch; otherwise "a student of another branch". Proposed `/spec-change` for `edge/students-classes-groups`, the Release 1 UID row: "…the message names that student when they are in the same branch, and says \"a student of another branch\" otherwise." | Decision 3; Branch on every row (`CLAUDE.md`) |
+| **Look first.** Groups: date of birth, documents, JSHSHIR, address and region in Identity; phone and email in Contact; previous school, diagnostic score and consent with the Financial readers; sex, grade and start date in Basic | Decision 4; the narrowest group that fits |
+| **Look first.** `student_duplicate_elsewhere` on `SECURITY_DEFINER_FUNCTIONS`, a boolean only | Decision 16; the duplicate check "across all branches" |
+| **Look first.** Unique indexes without `branch_id` on `student_uids.uid`, `students.uid`, JSHSHIR, document number and contract number: an exception to "A unique constraint on a branch table includes `branch_id`" | Decision 17; `developer-rules`, Identifiers; answer 22 |
+| The UID set from `uidSetOf(grade, year)`, the year being the branch's academic year of any status that holds the start date, else the first that begins after it; `no_academic_year` when neither exists; without `confirmUidSet` a mismatch is 409 `uid_set_mismatch`; "SI" is display only | Decision 5 as changed by correction 2 |
+| A Tutor reads the list and opens no profile until the class scope of 3.1 | Decision 6 |
+| Every UID a student held stays reserved to that student for good in `student_uids` (insert only); the current one must be a row of it (deferred key) | Decision 7; correction 1 |
+| One folding, `spellingKey` of `packages/shared`, for the stored `name_key` and every list search; a change to it comes with a migration that rewrites `name_key` | Decision 8; answer 18 |
+| The student account is a row of `student_accounts` with `switched_on_at` held empty by a check | Decision 9; phone and SMS sign-in from Release 2 |
+| Required: names, sex, birth date, grade, start date, UID, contract number and date; the relative comes with 2.5 | Decision 10 |
+| Document number unique whatever its type; JSHSHIR unique when filled; a match blocks | Decision 11 |
+| Student phone in international format, `+998` offered | Decision 12 |
+| Grade, class ("No class") and status filters now; group and language filters with 3.1 and 3.2 | Decision 13 |
+| A branch table; the move to another branch in 3.3 is one update of `students.branch_id`, the child keys `on update cascade` carry the rows; `student_statuses` has its own shrink trigger that lets the branch change | Decisions 14, 15 |
+| The start date is fixed at the create: the first status row starts there and rows only shrink; `starts_on` is in no update grant (decision taken in the build, code review) | A correction of a start date belongs with the status changes of 2.4b |
+| A taken value is 409 `student_value_taken`, not `already_exists`, whose text speaks of a name; `details[].recordId` (an optional field of the shared error detail) names a holder of the branch, `held_elsewhere` otherwise (decision taken in the build) | `.claude/rules/web.md`: the text of an error code is true on every path that sends it |
+| The holder of a taken value is looked up after the refused transaction, in a new one through the branch filter (decision taken in the build) | Correction 6; the refused transaction is aborted |
+| The profile tabs are the segmented control of the design system inside the panel; a tab of a group the reader cannot see is not drawn, and one tab draws no control (decision taken in the build, spec review) | `04`, "Profile tabs"; only the tabs that have data so far |
+| **Look first.** The audit entries `student.create` and `student.edit` hold the identity fields as typed, as the staff entries do; the audit screen of 2.6 must hide them from a reader without the Identity group, or log a show (decision taken in the build, both reviews) | `edge/people-roles-accounts`: the Principal reads the branch's log and sees identity fields only with a logged show |
+| Before its start date a student is active: the status shown is the row in force, else the first row after today (decision taken in the build, spec review) | `edge/students-classes-groups`: "An active student with no class is allowed only before their start date" |
+| `spellingKey` also writes every h not after s or c as x (Russian х stands for Uzbek x and h: Рахимов is Rahimov); the Russian у of an Uzbek ў is not folded (Уткир stays apart from Ўткир), so u and o stay apart (decision taken in the build, spec review) | Answer 18 names Oʻtkir, O'tkir, Ўткир; folding u into o would merge distinct names in every search |
+| The list shows the grade in the Class column ("Grade 7, no class") until classes exist; no Grade column (decision taken in the build, spec review) | `04`: the column order, and "class (grade and name)" |
+| A correction writes `students.uid` before its `student_uids` row, the order of the create (decision taken in the build, spec review) | Both meet first on `students_uid_idx`: the second waits and is refused, never a deadlock |
+| `studentId` in the body of the duplicate check is a student of the branch, else 404; an index that refuses a value the write did not name answers `request_refused` (decisions taken in the build, reviews) | `.claude/rules/api.md`, ids in the body; no claim about a holder without its value |
+| A refusal naming a holder of the branch whom the list does not hold yet says "another student of this branch" and the list is read again; no link in the field message (decision taken in the build, spec review) | A field message is text; the list search finds the student by the UID shown |
+| The student phone has the staff check (`^\+[0-9]{7,15}$`), not the plan's stricter one (decision taken in the build) | One phone shape for people; the shared schema is the staff one |
+
 ## 12 October 2026: password reset by email and the own photo (task 2.3c-2)
 
 Plan approved on pull request #66 with corrections 1 to 3; decisions 1 to 19 confirmed there. Flagged on issue #42.

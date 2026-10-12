@@ -256,3 +256,92 @@ test('an Academic Vice Principal locks, unlocks and resets a teacher’s passwor
   await expect(access.getByText(/Password reset by/)).toBeVisible();
   await expect(panel.getByRole('alert')).toHaveCount(0);
 });
+
+// Task 2.4a: an Academic Vice Principal adds a student with a UID outside the
+// set of the grade and confirms it (04, UID sets, Release 1), finds the
+// student by a Cyrillic spelling of the name (answer 18), opens the profile
+// with its two tabs, and is refused a second student with the same UID, the
+// holder named (edge/students-classes-groups). The readers of each group and
+// the refusals of other branches are proved by the API and page tests. With
+// SCREENSHOTS=1 the list, the profile and the refusal are saved for the report
+// under docs/screens/2.4a/. All names are invented.
+const STUDENT_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.4a');
+
+async function studentScreenshot(page: Page, name: string): Promise<void> {
+  if (process.env.SCREENSHOTS !== '1') {
+    return;
+  }
+  await page.waitForTimeout(400);
+  mkdirSync(STUDENT_SCREENS, { recursive: true });
+  await page.screenshot({ path: path.join(STUDENT_SCREENS, `${name}.png`) });
+}
+
+test('an Academic Vice Principal adds a student and is refused a second with the same UID', async ({
+  page,
+}) => {
+  const account = accountOf('students');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page
+    .getByRole('navigation', { name: en.layout.menu })
+    .getByRole('link', { name: new RegExp(en.menu.people) })
+    .click();
+  await page.getByRole('link', { name: en.people.studentsLink, exact: true }).click();
+  await expect(heading(page, en.people.students.title)).toBeVisible();
+
+  const texts = en.people.students;
+  // Today in Tashkent: inside the seeded year, which began 100 days ago.
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(Date.now());
+  async function add(lastName: string, contract: string) {
+    // While the list is empty its empty state offers the same button.
+    await page.getByRole('button', { name: texts.add, exact: true }).first().click();
+    const form = page.getByRole('form', { name: texts.newTitle });
+    await form.getByLabel(texts.uid, { exact: true }).fill('9999001');
+    await form.getByLabel(texts.lastName, { exact: true }).fill(lastName);
+    await form.getByLabel(texts.firstName, { exact: true }).fill("O'tkir");
+    await form.getByLabel(texts.sex, { exact: true }).selectOption('male');
+    await form.getByLabel(texts.birthDate, { exact: true }).fill('2014-03-02');
+    await form.getByLabel(texts.grade, { exact: true }).selectOption('7');
+    await form.getByLabel(texts.startsOn, { exact: true }).fill(today);
+    await form.getByLabel(texts.contractNumber, { exact: true }).fill(contract);
+    await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(today);
+    await form.getByRole('button', { name: en.form.save, exact: true }).click();
+    const question = page.getByRole('alertdialog', { name: texts.setTitle });
+    await expect(question).toBeVisible();
+    await question.getByRole('button', { name: texts.saveAnyway, exact: true }).click();
+    return form;
+  }
+
+  await add('Rahimov', 'E2E-STUDENT-1');
+  await expect(page.getByRole('form', { name: texts.newTitle })).toHaveCount(0);
+  await page.getByRole('searchbox', { name: en.list.search }).fill('Ўткир');
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await expect(page.locator('tbody tr').first()).toContainText('9999001');
+  await studentScreenshot(page, 'list');
+
+  await page.getByRole('button', { name: 'Oʻtkir Rahimov', exact: true }).click();
+  const panel = page.getByRole('complementary', { name: 'Oʻtkir Rahimov' });
+  await expect(panel.getByRole('radio', { name: texts.tabs.overview })).toBeVisible();
+  await panel.getByText(texts.tabs.contract, { exact: true }).click();
+  await expect(panel.getByText(/E2E-STUDENT-1/)).toBeVisible();
+  await studentScreenshot(page, 'profile');
+  await panel.getByRole('button', { name: en.list.closePanel }).click();
+
+  const form = await add('Qodirov', 'E2E-STUDENT-2');
+  await expect(
+    form.getByText(texts.takenHere.replace('{{student}}', 'Oʻtkir Rahimov (9999001)')),
+  ).toBeVisible();
+  await form.getByLabel(texts.uid, { exact: true }).scrollIntoViewIfNeeded();
+  await studentScreenshot(page, 'uid-taken');
+});

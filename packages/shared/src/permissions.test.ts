@@ -109,6 +109,44 @@ describe('a frozen permission table', () => {
     }
   });
 
+  // Task 2.4a, decision 2 of pull request #67: the student list and the
+  // three groups of readers of edge/people-roles-accounts (Personal data and
+  // the audit log).
+  it('gives the student list to the roles of 02 and each group of fields to its readers', () => {
+    const editors = ['super_admin', 'academic_vice_principal'];
+    const viewers = [
+      'principal',
+      'spiritual_vice_principal',
+      'head_tutor',
+      'tutor',
+      'senior_head_teacher',
+      'head_teacher',
+    ];
+    const groups: Record<string, string[]> = {
+      student_contact: [
+        'super_admin',
+        'principal',
+        'academic_vice_principal',
+        'spiritual_vice_principal',
+        'head_tutor',
+      ],
+      student_identity: ['super_admin', 'academic_vice_principal'],
+      student_financial: ['super_admin', 'principal', 'academic_vice_principal'],
+    };
+    for (const role of ROLES) {
+      const students = editors.includes(role)
+        ? ['view', 'create', 'edit']
+        : viewers.includes(role)
+          ? ['view']
+          : [];
+      expect(PERMISSIONS.students[role], role).toEqual(students);
+      for (const [area, readers] of Object.entries(groups)) {
+        const rowsOfArea = PERMISSIONS[area as keyof typeof PERMISSIONS];
+        expect(rowsOfArea[role], `${area} ${role}`).toEqual(readers.includes(role) ? ['view'] : []);
+      }
+    }
+  });
+
   it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
     expect(Object.keys(PERMISSIONS).sort()).toEqual([
       'academic_years',
@@ -125,6 +163,10 @@ describe('a frozen permission table', () => {
       'settings',
       'staff',
       'staff_teaching',
+      'student_contact',
+      'student_financial',
+      'student_identity',
+      'students',
       'subjects',
       'vacancies',
     ]);

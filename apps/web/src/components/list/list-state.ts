@@ -1,3 +1,4 @@
+import { spellingKey } from '@sodiq/shared';
 import type { ReactNode } from 'react';
 
 /** One column of a list. The texts are given translated. */
@@ -116,18 +117,19 @@ export function nextSort(current: Sort | null, key: string): string | undefined 
   return current.descending ? undefined : `-${key}`;
 }
 
-// The apostrophe of the keyboard and its look-alikes: a person types o' where
-// the record has oʻ (U+02BB), or the other way round.
-const APOSTROPHES = /['`´ʻʼ‘’]/g;
-
-/** A text as the search compares it: no difference of case, of apostrophes or of composed letters. */
-export function searchKey(value: string, language: string): string {
-  return value.normalize('NFKC').toLocaleLowerCase(language).replace(APOSTROPHES, "'");
+/**
+ * A text as the search compares it: `spellingKey` of packages/shared, the one
+ * folding of the platform (answer 18: "Search and the duplicate check treat
+ * look-alike spellings as the same (Oʻtkir, O'tkir, Ўткир)"): no difference
+ * of case, of apostrophes, of composed letters or of script (task 2.4a).
+ */
+export function searchKey(value: string): string {
+  return spellingKey(value);
 }
 
 /** Null when nothing is typed; otherwise the words a row must all contain. */
-export function searchWords(q: string | undefined, language: string): string[] | null {
-  const words = searchKey(q ?? '', language)
+export function searchWords(q: string | undefined): string[] | null {
+  const words = searchKey(q ?? '')
     .split(/\s+/)
     .filter((word) => word !== '');
   return words.length === 0 ? null : words;
@@ -154,7 +156,7 @@ export function matchingRows<Row>(
       ? [{ filter, value }]
       : [];
   });
-  const words = searchWords(search.q, language);
+  const words = searchWords(search.q);
   const searched = columns.flatMap((column) =>
     column.searchText === undefined ? [] : [column.searchText],
   );
@@ -166,7 +168,7 @@ export function matchingRows<Row>(
     if (words === null) {
       return true;
     }
-    const haystack = searchKey(searched.map((textOf) => textOf(row)).join('\n'), language);
+    const haystack = searchKey(searched.map((textOf) => textOf(row)).join('\n'));
     return words.every((word) => haystack.includes(word));
   });
 

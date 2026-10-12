@@ -57,6 +57,19 @@ const SUBJECT_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principa
 const STAFF_VIEWERS = SETUP_VIEWERS;
 const STAFF_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
+// Task 2.4a, decision 2 of pull request #67: the area `students`.
+const STUDENT_VIEWERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'spiritual_vice_principal',
+  'head_tutor',
+  'tutor',
+  'senior_head_teacher',
+  'head_teacher',
+];
+const STUDENT_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
+
 // Task 2.3c-1, decision 2 of pull request #65: the area `account_access`.
 const ACCESS_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
@@ -215,6 +228,17 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/people/staff/:id/branches': { branch: 'request', roles: STAFF_EDITORS },
   'POST /api/people/staff/:id/status': { branch: 'request', roles: STAFF_EDITORS },
   'POST /api/people/staff/:id/identity': { branch: 'request', roles: STAFF_VIEWERS },
+  // Task 2.4a, decision 2 of pull request #67: student records. The guard
+  // lets every viewer reach the record and the show; the route refuses a
+  // Tutor-only reader of the record and every reader but the Principal of the
+  // show (students.test.ts).
+  'GET /api/people/students': { branch: 'request', roles: STUDENT_VIEWERS },
+  'POST /api/people/students/check': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/students': { branch: 'request', roles: STUDENT_EDITORS },
+  'GET /api/people/students/:id': { branch: 'request', roles: STUDENT_VIEWERS },
+  'PUT /api/people/students/:id': { branch: 'request', roles: STUDENT_EDITORS },
+  'PUT /api/people/students/:id/uid': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/students/:id/identity': { branch: 'request', roles: STUDENT_VIEWERS },
   // Task 2.3a, decision 4 of pull request #62: the account section.
   'GET /api/people/staff/:id/account': { branch: 'request', roles: ['super_admin', 'principal'] },
   'GET /api/people/staff/:id/account/suggestion': { branch: 'request', roles: ['super_admin'] },

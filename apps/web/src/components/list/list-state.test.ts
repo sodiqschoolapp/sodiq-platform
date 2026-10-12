@@ -88,7 +88,9 @@ describe('the search of a list', () => {
   it('finds oʻ and gʻ typed with the apostrophe of the keyboard, and the other way round', () => {
     expect(names({ q: "o'g'iloy" })).toEqual(['Oʻgʻiloy Karimova']);
     expect(names({ q: 'o`g’iloy' })).toEqual(['Oʻgʻiloy Karimova']);
-    expect(searchKey('Oʻgʻiloy', 'uz')).toBe(searchKey("O'G'ILOY", 'uz'));
+    expect(searchKey('Oʻgʻiloy')).toBe(searchKey("O'G'ILOY"));
+    // Answer 18: a Cyrillic spelling finds the Latin one (task 2.4a).
+    expect(searchKey('Ўткир')).toBe(searchKey('Oʻtkir'));
   });
 
   it('does not look into a column that is not searched', () => {
