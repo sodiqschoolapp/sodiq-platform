@@ -81,6 +81,10 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/auth/sign-out': 'any_signed_in',
   'POST /api/auth/sign-out-everywhere': 'any_signed_in',
   'PUT /api/auth/language': 'any_signed_in',
+  // The own photo (task 2.3c-2, decision 18 of pull request #66): the Principal too.
+  'PUT /api/auth/photo': 'any_signed_in',
+  'DELETE /api/auth/photo': 'any_signed_in',
+  'GET /api/auth/photo': 'any_signed_in',
   'POST /api/auth/second-step': 'any_signed_in',
   'GET /api/auth/second-step': 'any_signed_in',
   'POST /api/auth/second-step/set-up': 'any_signed_in',

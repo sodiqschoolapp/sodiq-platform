@@ -1,14 +1,11 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { JobRunner } from '../../jobs/job-runner.js';
 import { AccessModule } from '../access/access.module.js';
 import { PermissionGuard } from '../access/permission.guard.js';
 import { AccountLocks } from './account-locks.service.js';
 import { Accounts } from './accounts.service.js';
 import { AuthController } from './auth.controller.js';
-import { EmailPasswordResets } from './email-password-resets.service.js';
 import { FirstAccount } from './first-account.service.js';
-import { PasswordResetMailer, passwordResetMailJob } from './password-reset-mail.job.js';
 import { PasswordResets } from './password-resets.service.js';
 import { SecondStepKeyCheck } from './second-step-key-check.js';
 import { SecondStepRule } from './second-step-rule.js';
@@ -29,8 +26,6 @@ import { TwoStep } from './two-step.service.js';
     Sessions,
     SignInThrottle,
     PasswordResets,
-    EmailPasswordResets,
-    PasswordResetMailer,
     AccountLocks,
     SecondStepRule,
     SecondStepSecrets,
@@ -45,6 +40,7 @@ import { TwoStep } from './two-step.service.js';
   exports: [
     Accounts,
     Sessions,
+    SignInThrottle,
     PasswordResets,
     AccountLocks,
     TwoStep,
@@ -52,16 +48,4 @@ import { TwoStep } from './two-step.service.js';
     FirstAccount,
   ],
 })
-export class AuthModule implements OnModuleInit {
-  constructor(
-    private readonly runner: JobRunner,
-    private readonly resetMailer: PasswordResetMailer,
-  ) {}
-
-  onModuleInit(): void {
-    // The mail of a password reset by email (task 2.3c-2).
-    this.runner.handle(passwordResetMailJob, (transaction, data) =>
-      this.resetMailer.send(transaction, data),
-    );
-  }
-}
+export class AuthModule {}

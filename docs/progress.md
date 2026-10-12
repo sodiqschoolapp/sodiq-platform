@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: task 2.3c-2 Password reset by email and the own photo
+
+- Built: migration 0031 (`password_reset_links`, set once by a trigger; `password_reset_allowed`, `password_reset_address`, `own_staff_record`, `last_email_change`); the public `POST auth/password-reset` and `.../confirm` in `PasswordResetEmailModule`, the job `auth.password_reset_mail`, the log-only `LogMailer` (`apps/api/src/mail/`); `PUT/DELETE/GET auth/photo`; the email edit limited by `reachingAssignment` (`account-reach.ts`, shared with `AccountAccess`).
+- Screens: "Forgot your password?" under the sign-in button, `/forgot-password`, `/reset-password`, the "Photo" section of the account page, the email of the staff form off where `rights.email` is false; browser test `password-reset.spec.ts` (screenshots in `docs/screens/2.3c-2/`).
+- Tests: `password-reset-email.test.ts` (every rule with the clock, races both ways), `password-reset-links.database.test.ts`, `own-photo.test.ts`, `staff-email.test.ts`, `mailer.test.ts`, the config, list and web tests.
+- Left out: sending real mail (Resend, a provider account; go-live tasks): **`LogMailer` must be replaced before any real staff email is loaded on a server** (correction 3 of #66); the live `WEB_ORIGIN` (go-live); the reset by email in the sign-in history and the 48-hour report (2.6, 6.1); the own photo in the menu avatar.
+
+The next sessions must know:
+
+- Every password write calls `closeOpenResetLinks` in its transaction; so does an email change. A new password write must too.
+- A module that needs the job queue or the mailer stays out of `AuthModule`: the first-account command and the e2e seed build `AuthModule` without them.
+- The next task is 2.4.
+
 ## 12 October 2026: task 2.3c-1 Locks and resets by an administrator
 
 - Built: area `account_access` and six routes (`people/staff/:id/account/access`, `lock`, `unlock`, `password-reset`, `second-step-reset`, `people/accounts/never-used`) in `AccountAccess`; the last active Super Admin refusal; the Academic Vice Principal limited to Teachers, Tutors, Head Teachers and the Head Tutor of the branch and kept from undoing a Super Admin's lock; migration 0030 `staff_period_start` for "never used".

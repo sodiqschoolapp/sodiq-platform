@@ -28,7 +28,11 @@ export default defineConfig({
     {
       command: 'pnpm --filter @sodiq/api e2e:server',
       cwd: '../..',
-      env: { E2E_API_PORT: String(API_PORT) },
+      env: {
+        E2E_API_PORT: String(API_PORT),
+        // The address in the links of the mails (task 2.3c-2).
+        E2E_WEB_ORIGIN: `http://localhost:${String(WEB_PORT)}`,
+      },
       url: `http://127.0.0.1:${String(API_PORT)}/api/health`,
       reuseExistingServer: false,
       // In CI the servers' output is the only way to see why they did not start.

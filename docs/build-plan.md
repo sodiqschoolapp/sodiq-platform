@@ -218,7 +218,7 @@ How to read the task lines:
   - Done when: the refusals of locks and resets are tested, including the last Super Admin rule and the Academic Vice Principal's limits, and the browser test locks, unlocks and resets a teacher's password.
   - Split from 2.3c on pull request #65 (decision 1, Look first).
 
-- [ ] **2.3c-2 Password reset by email and the own photo**
+- [x] **2.3c-2 Password reset by email and the own photo** (pull request #66)
   - Read: `02` (Accounts and sign-in: build order), `edge/people-roles-accounts` (Accounts and sign-in), `docs/decisions.md` ("Decided ahead for tasks 2.1 to 2.6", answer 16), `docs/design-system.md` (This app, Sign-in), the plan of pull request #65.
   - Build: password reset by email through a mail service that only logs locally until go-live, with the address taken from the staff record (moved from 0.6b; its routes are public and go into `PUBLIC_ROUTES`), its link and its one-time use held by stored moments and the injected clock; the link "Forgot your password?" under the large button of the sign-in page (`docs/design-system.md`, This app, Sign-in).
   - From 2.2c-2 (pull request #59): the own photo on the own account page (`edge/people-roles-accounts`: "Staff can change their own ... photo"): a route of the own account (`@AnySignedIn()`) on the staff record linked to the session's account, with the same store, byte check and audit entry as `StaffPhotos`; the Principal too.
@@ -402,6 +402,7 @@ How to read the task lines:
   - Read: `07`, `edge/journal`, `edge/developer-rules`.
   - Build: cells unique on lesson, student and work, each with a version number; history per cell; who is expected in a lesson on its date.
   - From 2.3 (pull request #62): the report of entries made within 48 hours of a password reset (`edge/people-roles-accounts`, Accounts and sign-in: "A report lists entries made within 48 hours of a reset"), once cells exist.
+  - From 2.3c-2 (pull request #66, decision 6): the report also counts a password reset by email (`auth.password_reset_by_email`), and marks one that follows an email change by somebody else (the entry's `lastEmailChange`).
   - Done when: a stale save is refused and history records who changed what.
 
 - [ ] **6.2 Journal grid**

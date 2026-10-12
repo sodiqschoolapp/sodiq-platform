@@ -44,6 +44,7 @@ describe('OpenAPI document', () => {
         '/api/auth/password',
         '/api/auth/password-reset',
         '/api/auth/password-reset/confirm',
+        '/api/auth/photo',
         '/api/auth/second-step',
         '/api/auth/second-step/confirm',
         '/api/auth/second-step/set-up',

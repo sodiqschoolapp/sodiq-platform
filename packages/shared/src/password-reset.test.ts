@@ -42,11 +42,13 @@ describe('the new password chosen with a link', () => {
   });
 });
 
+const PARTS = ['subject', 'greeting', 'body', 'validity', 'ignore'] as const;
+
 describe('the texts of the mails', () => {
   it('have every part in the three languages, the link and the minutes in their places', () => {
     for (const language of LANGUAGES) {
       const texts = MAIL_TEXTS[language].passwordReset;
-      for (const text of Object.values(texts)) {
+      for (const text of PARTS.map((part) => texts[part])) {
         expect(text.trim(), language).not.toBe('');
       }
       expect(texts.body, language).toContain('{link}');
@@ -55,7 +57,7 @@ describe('the texts of the mails', () => {
   });
 
   it('write Uzbek oʻ and gʻ with U+02BB, never the keyboard apostrophe', () => {
-    for (const text of Object.values(MAIL_TEXTS.uz.passwordReset)) {
+    for (const text of PARTS.map((part) => MAIL_TEXTS.uz.passwordReset[part])) {
       expect(text, text).not.toMatch(/['`’‘]/);
     }
   });

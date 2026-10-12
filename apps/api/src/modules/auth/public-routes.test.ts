@@ -52,11 +52,13 @@ describe('the routes that work without sign-in', () => {
   // The check above is only worth something if it sees every route.
   it('are found among all routes of the application', () => {
     expect(routesOf(app).map((route) => route.name)).toEqual([
+      'DELETE /api/auth/photo',
       'DELETE /api/auth/trusted-devices/:id',
       'DELETE /api/people/staff/:id/photo',
       'GET /api/access/branches-without-vice-principal',
       'GET /api/access/head-teachers',
       'GET /api/access/super-admins',
+      'GET /api/auth/photo',
       'GET /api/auth/second-step',
       'GET /api/auth/session',
       'GET /api/auth/sessions',
@@ -166,6 +168,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/setup/subjects/:id/restore',
       'POST /api/setup/subjects/export',
       'PUT /api/auth/language',
+      'PUT /api/auth/photo',
       'PUT /api/people/staff/:id',
       'PUT /api/people/staff/:id/availability',
       'PUT /api/people/staff/:id/branches',
