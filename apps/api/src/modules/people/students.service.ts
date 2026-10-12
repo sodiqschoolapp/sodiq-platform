@@ -378,14 +378,13 @@ export class Students {
           .insertInto('student_accounts')
           .values({ student_id: id, branch_id: branchId, created_at: moment })
           .execute();
-        const { confirmUidSet: _confirmed, ...record } = input;
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
           assignmentId: access.assignmentId,
           action: 'student.create',
           record: { type: 'student', id },
-          newValue: record,
+          newValue: { ...input, confirmUidSet: undefined },
           requestId,
         });
         return this.readDetail(transaction, access, id);
