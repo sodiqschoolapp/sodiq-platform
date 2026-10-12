@@ -4,6 +4,7 @@ import {
   staffCheckResultSchema,
   staffCheckSchema,
   staffDetailSchema,
+  staffExportSchema,
   staffIdentitySchema,
   staffListSchema,
   staffParamsSchema,
@@ -14,6 +15,7 @@ import {
   type StaffCheck,
   type StaffCheckResult,
   type StaffDetail,
+  type StaffExport,
   type StaffIdentity,
   type StaffList,
   type StaffParams,
@@ -22,7 +24,8 @@ import {
   type StaffTeaching,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ValidBody, ValidParams } from '../../http/schemas.js';
+import { Returns, ReturnsFile, ValidBody, ValidParams } from '../../http/schemas.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { Staff } from './staff.service.js';
@@ -44,6 +47,21 @@ export class StaffController {
   @Returns(staffListSchema)
   list(@CurrentAccess() access: Access): Promise<StaffList> {
     return this.staff.list(access);
+  }
+
+  /**
+   * The Excel file of the list (task 2.2c-1): the ids of the ticked or matching
+   * rows, the columns shown, the search and filters for the audit entry.
+   */
+  @Post('staff/export')
+  @Requires('staff', 'export')
+  @ReturnsFile()
+  export(
+    @CurrentAccess() access: Access,
+    @ValidBody(staffExportSchema) request: StaffExport,
+    @RequestId() requestId: string,
+  ): Promise<XlsxFile> {
+    return this.staff.export(access, request, requestId);
   }
 
   @Get('staff/:id')

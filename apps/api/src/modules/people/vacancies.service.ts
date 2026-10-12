@@ -6,6 +6,8 @@ import {
   type InstructionLanguage,
   type SchoolDate,
   type VacancyDetail,
+  type VacancyExport,
+  type VacancyExportColumn,
   type VacancyList,
   type VacancyListItem,
   type VacancyRecord,
@@ -16,9 +18,20 @@ import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import {
+  exportList,
+  gradesOf,
+  joined,
+  nameIn,
+  oneCell,
+  readSchoolNames,
+  type ExportColumn,
+  type SchoolNames,
+} from '../audit/export-list.js';
 import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusals.js';
 
 /** The refusals of the database for a vacancy (db/migrations/0024, 0025), by the name of the constraint. */
@@ -105,26 +118,54 @@ export class Vacancies {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const today = await this.todayIn(transaction, branchId);
-      const ids = (
-        await transaction
-          .selectFrom('staff')
-          .innerJoin('staff_branches', 'staff_branches.staff_id', 'staff.id')
-          .select('staff.id')
-          .where('staff.kind', '=', 'vacancy')
-          .where('staff_branches.branch_id', '=', branchId)
-          .execute()
-      ).map((row) => row.id);
-      const items = await this.items(transaction, ids, today);
-      return {
-        vacancies: items.sort(
-          (a, b) =>
-            (a.status === b.status ? 0 : a.status === 'open' ? -1 : 1) ||
-            a.name.localeCompare(b.name) ||
-            a.id.localeCompare(b.id),
-        ),
-        today,
-      };
+      return { vacancies: await this.readList(transaction, branchId, today), today };
     });
+  }
+
+  /**
+   * The Excel file of the Vacancies list (task 2.2c-1): its Export button is
+   * the asking of `04`, Vacancy ("exports leave them out unless asked";
+   * decision 6). The rows read as the list reads them, in one transaction.
+   */
+  export(access: Access, request: VacancyExport, requestId: string): Promise<XlsxFile> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const today = await this.todayIn(transaction, branchId);
+      const items = await this.readList(transaction, branchId, today);
+      const names = await readSchoolNames(transaction);
+      return exportList(transaction, this.audit, this.clock, access, requestId, {
+        list: 'vacancies',
+        action: 'vacancy.export',
+        request,
+        rows: new Map(items.map((item) => [item.id, item])),
+        allowed: () => true,
+        columns: vacancyExportColumns(names),
+      });
+    });
+  }
+
+  /** The vacancies of the branch as the list shows them: open first, then by name. */
+  private async readList(
+    transaction: Transaction,
+    branchId: string,
+    today: SchoolDate,
+  ): Promise<VacancyListItem[]> {
+    const ids = (
+      await transaction
+        .selectFrom('staff')
+        .innerJoin('staff_branches', 'staff_branches.staff_id', 'staff.id')
+        .select('staff.id')
+        .where('staff.kind', '=', 'vacancy')
+        .where('staff_branches.branch_id', '=', branchId)
+        .execute()
+    ).map((row) => row.id);
+    const items = await this.items(transaction, ids, today);
+    return items.sort(
+      (a, b) =>
+        (a.status === b.status ? 0 : a.status === 'open' ? -1 : 1) ||
+        a.name.localeCompare(b.name) ||
+        a.id.localeCompare(b.id),
+    );
   }
 
   detail(access: Access, id: string): Promise<VacancyDetail> {
@@ -701,4 +742,41 @@ export class Vacancies {
     );
     return { ...item, statuses, today };
   }
+}
+
+/** The columns of the vacancy file, as the Vacancies list shows them; the contract load as a number. */
+function vacancyExportColumns(
+  names: SchoolNames,
+): Record<VacancyExportColumn, ExportColumn<VacancyListItem>> {
+  return {
+    name: oneCell(
+      (texts) => texts.vacancies.columns.name,
+      (row) => row.name,
+    ),
+    department: oneCell(
+      (texts) => texts.vacancies.columns.department,
+      (row, _texts, language) => nameIn(names.departments, row.departmentId, language),
+    ),
+    subjects: oneCell(
+      (texts) => texts.vacancies.columns.subjects,
+      (row, _texts, language) =>
+        joined(row.subjects.map((subject) => nameIn(names.subjects, subject.subjectId, language))),
+    ),
+    grades: oneCell(
+      (texts) => texts.vacancies.columns.grades,
+      (row) => gradesOf(row.subjects),
+    ),
+    languages: oneCell(
+      (texts) => texts.vacancies.columns.languages,
+      (row, texts) => joined(row.languages.map((one) => texts.instructionLanguages[one])),
+    ),
+    weeklyLessons: oneCell(
+      (texts) => texts.vacancies.columns.weeklyLessons,
+      (row) => row.weeklyLessons,
+    ),
+    status: oneCell(
+      (texts) => texts.vacancies.columns.status,
+      (row, texts) => texts.vacancyStatuses[row.status],
+    ),
+  };
 }

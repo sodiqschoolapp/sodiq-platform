@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type {
   Building,
+  BuildingExport,
+  BuildingExportColumn,
   BuildingList,
   BuildingRecord,
   Clock,
@@ -10,8 +12,10 @@ import type {
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import { exportList, oneCell, type ExportColumn } from '../audit/export-list.js';
 import { notFound, refusingDuplicates } from './setup-refusals.js';
 
 interface FloorRow {
@@ -52,6 +56,43 @@ function floorsIn(transaction: Transaction) {
     .orderBy('floors.created_at')
     .orderBy('floors.id');
 }
+
+/** The buildings of the branch with their floors, archived ones included; oldest first. */
+async function readBuildings(transaction: Transaction): Promise<Building[]> {
+  const buildings = await transaction
+    .selectFrom('buildings')
+    .select(['id', 'name', 'archived_at'])
+    .orderBy('created_at')
+    .orderBy('id')
+    .execute();
+  const floors = await floorsIn(transaction).execute();
+  return buildings.map((building) => ({
+    id: building.id,
+    name: building.name,
+    archivedAt: moment(building.archived_at),
+    floors: floors.filter((floor) => floor.building_id === building.id).map(toFloor),
+  }));
+}
+
+/** The columns of the buildings file as the list counts them: active floors, rooms on every floor. */
+const BUILDING_EXPORT: Record<BuildingExportColumn, ExportColumn<Building>> = {
+  name: oneCell(
+    (texts) => texts.buildings.columns.name,
+    (row) => row.name,
+  ),
+  floors: oneCell(
+    (texts) => texts.buildings.columns.floors,
+    (row) => row.floors.filter((floor) => floor.archivedAt === null).length,
+  ),
+  rooms: oneCell(
+    (texts) => texts.buildings.columns.rooms,
+    (row) => row.floors.reduce((sum, floor) => sum + floor.roomCount, 0),
+  ),
+  status: oneCell(
+    (texts) => texts.buildings.columns.status,
+    (row, texts) => (row.archivedAt === null ? texts.active : texts.archived),
+  ),
+};
 
 /**
  * Buildings and floors (docs/spec/03-school-setup.md, Building, floor, room:
@@ -113,22 +154,23 @@ export class Buildings {
 
   /** The buildings of the branch with their floors, archived ones included and marked; oldest first. */
   list(access: Access): Promise<BuildingList> {
+    return this.transactions.run(access.branchIds, async (transaction) => ({
+      buildings: await readBuildings(transaction),
+    }));
+  }
+
+  /** The Excel file of the list (task 2.2c-1), from the rows the list reads, in one transaction. */
+  export(access: Access, request: BuildingExport, requestId: string): Promise<XlsxFile> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const buildings = await transaction
-        .selectFrom('buildings')
-        .select(['id', 'name', 'archived_at'])
-        .orderBy('created_at')
-        .orderBy('id')
-        .execute();
-      const floors = await floorsIn(transaction).execute();
-      return {
-        buildings: buildings.map((building) => ({
-          id: building.id,
-          name: building.name,
-          archivedAt: moment(building.archived_at),
-          floors: floors.filter((floor) => floor.building_id === building.id).map(toFloor),
-        })),
-      };
+      const buildings = await readBuildings(transaction);
+      return exportList(transaction, this.audit, this.clock, access, requestId, {
+        list: 'buildings',
+        action: 'building.export',
+        request,
+        rows: new Map(buildings.map((building) => [building.id, building])),
+        allowed: () => true,
+        columns: BUILDING_EXPORT,
+      });
     });
   }
 

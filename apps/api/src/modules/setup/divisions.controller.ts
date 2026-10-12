@@ -2,6 +2,7 @@ import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
   departmentRecordSchema,
   departmentSchema,
+  divisionExportSchema,
   divisionListSchema,
   divisionRecordSchema,
   divisionSchema,
@@ -9,12 +10,14 @@ import {
   type Department,
   type DepartmentRecord,
   type Division,
+  type DivisionExport,
   type DivisionList,
   type DivisionRecord,
   type SetupIdParams,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ValidBody, ValidParams } from '../../http/schemas.js';
+import { Returns, ReturnsFile, ValidBody, ValidParams } from '../../http/schemas.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { Divisions } from './divisions.service.js';
@@ -37,6 +40,21 @@ export class DivisionsController {
   @Returns(divisionListSchema)
   list(@CurrentAccess() access: Access): Promise<DivisionList> {
     return this.divisions.list(access);
+  }
+
+  /**
+   * The Excel file of the list (task 2.2c-1), made in the branch of the
+   * request like the list, and logged there.
+   */
+  @Post('divisions/export')
+  @Requires('divisions', 'export')
+  @ReturnsFile()
+  export(
+    @CurrentAccess() access: Access,
+    @ValidBody(divisionExportSchema) request: DivisionExport,
+    @RequestId() requestId: string,
+  ): Promise<XlsxFile> {
+    return this.divisions.export(access, request, requestId);
   }
 
   @Post('divisions')

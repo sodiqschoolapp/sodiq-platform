@@ -1,16 +1,25 @@
 import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
   vacancyDetailSchema,
+  vacancyExportSchema,
   vacancyListSchema,
   vacancyParamsSchema,
   vacancyRecordSchema,
   type VacancyDetail,
+  type VacancyExport,
   type VacancyList,
   type VacancyParams,
   type VacancyRecord,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ReturnsNothing, ValidBody, ValidParams } from '../../http/schemas.js';
+import {
+  Returns,
+  ReturnsFile,
+  ReturnsNothing,
+  ValidBody,
+  ValidParams,
+} from '../../http/schemas.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { Vacancies } from './vacancies.service.js';
@@ -31,6 +40,18 @@ export class VacanciesController {
   @Returns(vacancyListSchema)
   list(@CurrentAccess() access: Access): Promise<VacancyList> {
     return this.vacancies.list(access);
+  }
+
+  /** The Excel file of the Vacancies list (task 2.2c-1; decision 6). */
+  @Post('vacancies/export')
+  @Requires('vacancies', 'export')
+  @ReturnsFile()
+  export(
+    @CurrentAccess() access: Access,
+    @ValidBody(vacancyExportSchema) request: VacancyExport,
+    @RequestId() requestId: string,
+  ): Promise<XlsxFile> {
+    return this.vacancies.export(access, request, requestId);
   }
 
   @Get('vacancies/:id')

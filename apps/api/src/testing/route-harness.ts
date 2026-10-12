@@ -70,7 +70,7 @@ export function declarationProblems(
       );
     }
     if (!route.describesAnswer) {
-      problems.push(`${route.name}: no @Returns or @ReturnsNothing`);
+      problems.push(`${route.name}: no @Returns, @ReturnsNothing or @ReturnsFile`);
     }
     if (route.method === ALL_METHODS) {
       // Left open by 0.7b: such a route crashed the harness instead of being named.

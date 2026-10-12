@@ -1,16 +1,19 @@
 import { Controller, Get, Post, Put } from '@nestjs/common';
 import {
+  roomExportSchema,
   roomListSchema,
   roomRecordSchema,
   roomSchema,
   setupIdParamsSchema,
   type Room,
+  type RoomExport,
   type RoomList,
   type RoomRecord,
   type SetupIdParams,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ValidBody, ValidParams } from '../../http/schemas.js';
+import { Returns, ReturnsFile, ValidBody, ValidParams } from '../../http/schemas.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { Rooms } from './rooms.service.js';
@@ -25,6 +28,18 @@ export class RoomsController {
   @Returns(roomListSchema)
   list(@CurrentAccess() access: Access): Promise<RoomList> {
     return this.rooms.list(access);
+  }
+
+  /** The Excel file of the list (task 2.2c-1). */
+  @Post('rooms/export')
+  @Requires('rooms', 'export')
+  @ReturnsFile()
+  export(
+    @CurrentAccess() access: Access,
+    @ValidBody(roomExportSchema) request: RoomExport,
+    @RequestId() requestId: string,
+  ): Promise<XlsxFile> {
+    return this.rooms.export(access, request, requestId);
   }
 
   @Post('rooms')
