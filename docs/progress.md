@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: task 2.2d-1 Tokens, type, icons and controls
+
+- Built: the colour tokens of `docs/design-system.md` for both themes in `index.css` (new: `primary-hover`, `secondary-hover`, the state colours and tints, `today`, `top-bar`, `link`, `checkbox`), every pair in `contrast.test.ts`; Golos Text from our own files; Material Symbols Rounded filled (weight 500) through `components/icons.tsx`, `lucide-react` and Geist removed; `button.tsx` with three sizes and four kinds; `control.ts` (`FIELD`, `CHECKBOX`, `FOCUS_RING`, `PANEL`), `Select` and `Segmented`; the list in a white panel with the selection bar in `--today`; the notifications count as a plain number; the icons in `index.html`.
+- Tests: `design-parts.test.ts` reads every source for removed kinds and sizes, other icon sets, stripes and pills; the browser test `design.spec.ts` (own account `design`) checks the font and the canvas in both themes and saves the screenshots of `docs/screens/2.2d-1/`. 2.2d split in two; plan approved on pull request #60 with six corrections.
+- Left out: the shell, the sign-in page, empty pages and errors as brand moments, the letterhead and the menu icons (2.2d-2); single screens redesigned (2.7).
+
+The next sessions must know:
+
+- Every icon is a named component of `apps/web/src/components/icons.tsx` (add a file of `@material-symbols/svg-500/rounded/<name>-fill.svg?react` there); "expand_more" is the package's `keyboard_arrow_down`.
+- A field, a select and a checkbox take `FIELD`, `Select` and `CHECKBOX` of `components/ui/`; page content sits in `PANEL`; a record form on a page gets its panel from `index.css`.
+- Bitter (`@fontsource-variable/bitter`) is installed but not imported yet: 2.2d-2 imports it for the brand moments.
+- The next task is 2.2d-2.
+
 ## 12 October 2026: task 2.2c-2 Photos
 
 - Built: migration 0026 (`staff.photo_id`, `photo_type`; `staff_vacancy_check` with `photo_id is null`); `PUT`, `DELETE`, `GET /api/people/staff/:id/photo` under `staff` edit and view; the declared file route of `json-only.ts` (`FILE_ROUTES`, `fileBodyMiddleware`, `ValidFile`), the photo store (R2 through `@aws-sdk/client-s3` 3.1141.0, memory, none) chosen from `R2_*` or `PHOTOS_IN_MEMORY`; no store call inside a transaction.

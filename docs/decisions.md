@@ -186,6 +186,21 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 12 October 2026: tokens, type, icons and controls (task 2.2d-1)
+
+Plan approved on pull request #60 with corrections 1 to 6; decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 2.2d split into 2.2d-1 (tokens, type, icons, controls) and 2.2d-2 (layout shell and brand moments) | Decision 1; two independent halves of about 60 files |
+| **Look first.** `@fontsource-variable/golos-text` and `@fontsource-variable/bitter` 5.3.0 (OFL-1.1), `@material-symbols/svg-500` 0.48.0 (Apache-2.0), `vite-plugin-svgr` 5.2.0 (MIT, dev); `lucide-react` and `@fontsource-variable/geist` removed. `pnpm audit --prod`: nothing; `pnpm audit`: one high advisory (`braces`, through `kysely-codegen` and `shadcn`), already on `main`, none through the new packages | Decision 2; "Decided ahead for tasks 2.2d and 2.7", items 1 and 2 |
+| **Look first.** A small button and a square small one are 44 high below 640 px | Decision 3; proposed wording on #42 |
+| **Look first.** Checkboxes are navy in the light theme and the foreground colour in the dark theme (`--checkbox`) | Decision 4; navy on the dark card fails 3 : 1; proposed wording on #42 |
+| **Look first.** The contrast pairs of the old class lists left `contrast.test.ts` with their classes; every pair the new class lists draw is checked in both themes at the same thresholds | Decision 5; `docs/design-system.md` approved on 12 October 2026 |
+| The theme choice is the segmented control (three values); outline buttons became secondary, or quiet for "Cancel" beside a primary and a toolbar "Reset"; archive buttons of the panels are danger, restore secondary | Decisions 7 and 9; What we never do 6 |
+| The dark tints are literal oklch values of the colour at 16% over the card (sRGB mix); `--chart-*` removed | Decisions 10 and 11 |
+| The open row of a list is the `--today` fill with its text in bold, never a stripe; a chosen segment carries a check mark | What we never do 3; "no information shown by colour alone" |
+
 ## 12 October 2026: staff photos (task 2.2c-2)
 
 Plan approved on pull request #59 with corrections 1 to 3; decisions 1 to 14 confirmed there, 10 changed (the order of the refusals). Flagged on issue #42.
