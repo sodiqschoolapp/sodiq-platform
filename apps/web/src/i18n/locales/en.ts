@@ -185,8 +185,7 @@ export const en = {
     student_not_graduated:
       'This student is not graduated now. Reload the page to see the current status.',
     restore_before_graduation: 'Choose a date on or after the day the student graduated.',
-    date_in_closed_year:
-      'That date is in a closed academic year. Choose a date in an open year.',
+    date_in_closed_year: 'That date is in a closed academic year. Choose a date in an open year.',
     student_has_data:
       'This student has data (a scholarship, a leaving, a graduation or a second contract). Record a leaving instead.',
     student_changed: 'This student was changed by someone else. Reload the page and try again.',
@@ -1137,7 +1136,8 @@ export const en = {
       leaveTitle: 'Leave school',
       lastDay: 'Last day at school',
       leaveConfirmTitle: 'Record that this student leaves?',
-      leaveConfirmText: 'The student becomes inactive from the day after the last day. All data is kept.',
+      leaveConfirmText:
+        'The student becomes inactive from the day after the last day. All data is kept.',
       leaveAction: 'Leave school',
       cancelLeaving: 'Cancel the leaving',
       cancelConfirmTitle: 'Cancel the scheduled leaving?',

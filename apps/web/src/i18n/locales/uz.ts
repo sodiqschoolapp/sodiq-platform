@@ -1149,7 +1149,8 @@ export const uz: Texts<'one' | 'other'> = {
       leaveTitle: 'Maktabdan ketish',
       lastDay: 'Maktabdagi oxirgi kun',
       leaveConfirmTitle: 'Oʻquvchining ketishini qayd etasizmi?',
-      leaveConfirmText: 'Oʻquvchi oxirgi kundan keyingi kundan nofaol boʻladi. Barcha maʼlumotlar saqlanadi.',
+      leaveConfirmText:
+        'Oʻquvchi oxirgi kundan keyingi kundan nofaol boʻladi. Barcha maʼlumotlar saqlanadi.',
       leaveAction: 'Ketishni qayd etish',
       cancelLeaving: 'Rejalashtirilgan ketishni bekor qilish',
       cancelConfirmTitle: 'Rejalashtirilgan ketish bekor qilinsinmi?',
@@ -1161,7 +1162,8 @@ export const uz: Texts<'one' | 'other'> = {
       restoreFrom: 'Faol boʻlgan sana',
       deleteTitle: 'Ikki marta yaratilgan oʻquvchini oʻchirish',
       deleteConfirmTitle: 'Bu oʻquvchi oʻchirilsinmi?',
-      deleteConfirmText: 'Faqat xato bilan ikki marta yaratilgan oʻquvchi uchun. UID band boʻlib qoladi.',
+      deleteConfirmText:
+        'Faqat xato bilan ikki marta yaratilgan oʻquvchi uchun. UID band boʻlib qoladi.',
       deleteAction: 'Oʻchirish',
       bulkLeave: 'Maktabdan ketish',
       bulkLeaveTitle_one: 'Maktabdan ketish: {{n}} ta oʻquvchi',

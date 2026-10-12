@@ -303,7 +303,8 @@ export function plannedAfter(
   const live = liveRows(rows);
   const shown = live.findIndex((row) => row.validUntil === null || row.validUntil > today);
   const status = live[shown]?.status;
-  const next = shown === -1 ? undefined : live.slice(shown + 1).find((row) => row.status !== status);
+  const next =
+    shown === -1 ? undefined : live.slice(shown + 1).find((row) => row.status !== status);
   return next !== undefined && next.validFrom > today
     ? { status: next.status, from: next.validFrom }
     : null;

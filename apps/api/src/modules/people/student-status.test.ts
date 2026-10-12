@@ -192,7 +192,6 @@ describe('planLeaving (edge: "The leave date is the last day as a student")', ()
       }
     }
   });
-
 });
 
 describe('planCancelLeaving', () => {

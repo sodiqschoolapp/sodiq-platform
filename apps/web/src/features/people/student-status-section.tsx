@@ -35,6 +35,12 @@ const fieldOf = (path: readonly PropertyKey[]): PropertyKey[] => {
   return [...path];
 };
 
+/** The day before a school date. Calendar arithmetic only; no clock is read. */
+function dayBefore(date: string): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, (day ?? 1) - 1)).toISOString().slice(0, 10);
+}
+
 const LEAVING_SCHEMA = asFormSchema<StudentLeaving>(studentLeavingSchema, fieldOf);
 const UNDO_SCHEMA = asFormSchema<StudentUndoLeaving>(studentUndoLeavingSchema, fieldOf);
 const RETURN_SCHEMA = asFormSchema<StudentReturn>(studentReturnSchema, fieldOf);
@@ -125,7 +131,8 @@ export function StatusSection({
                 : t('people.students.statusRowUntil', {
                     status: t(`people.students.statuses.${row.status}`),
                     from: schoolDateText(row.from, language),
-                    until: schoolDateText(row.until, language),
+                    // A row ends before `until`: the text names its last day.
+                    until: schoolDateText(dayBefore(row.until), language),
                   })}
             </span>
             <span className="text-muted-foreground">

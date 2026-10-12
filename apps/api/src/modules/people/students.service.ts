@@ -731,23 +731,21 @@ export class Students {
     transaction: Transaction,
     id: string,
   ): Promise<{ id: string; number: string; signed_on: string }> {
-    return transaction
-      .selectFrom('student_contracts')
-      .select(['id', 'number', 'signed_on'])
-      .where('student_id', '=', id)
-      // The newest contract is the one with the latest id (uuidv7): `created_at` is
-      // bookkeeping only (spec review of the plan of #68, finding 14).
-      .orderBy('id', 'desc')
-      .limit(1)
-      .forUpdate()
-      .executeTakeFirstOrThrow();
+    return (
+      transaction
+        .selectFrom('student_contracts')
+        .select(['id', 'number', 'signed_on'])
+        .where('student_id', '=', id)
+        // The newest contract is the one with the latest id (uuidv7): `created_at` is
+        // bookkeeping only (spec review of the plan of #68, finding 14).
+        .orderBy('id', 'desc')
+        .limit(1)
+        .forUpdate()
+        .executeTakeFirstOrThrow()
+    );
   }
 
-  async readDetail(
-    transaction: Transaction,
-    access: Access,
-    id: string,
-  ): Promise<StudentDetail> {
+  async readDetail(transaction: Transaction, access: Access, id: string): Promise<StudentDetail> {
     const branchId = branchOf(access);
     const row = await this.readStudent(transaction, id);
     const today = await this.todayIn(transaction, branchId);
@@ -790,7 +788,7 @@ export class Students {
       sex: row.sex as Sex,
       grade: row.grade,
       startsOn: row.starts_on,
-      status: (now?.status ?? null),
+      status: now?.status ?? null,
       contact: contact ? { phone: row.phone, email: row.email } : null,
       identity: identity ? identityOf(row) : null,
       identityHidden: !identity && principalOf(access) !== undefined,
@@ -836,8 +834,7 @@ export class Students {
           access.branchId,
           PERMISSIONS,
         ) !== undefined,
-      deletable:
-        canArchive && !holdsData(rows, row.scholarship_type, Number(contractCount.count)),
+      deletable: canArchive && !holdsData(rows, row.scholarship_type, Number(contractCount.count)),
       today,
     };
   }

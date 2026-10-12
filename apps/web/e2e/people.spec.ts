@@ -428,6 +428,7 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   const row = page.locator('tbody tr').filter({ hasText: '9998001' });
   await expect(row).toContainText(texts.statuses.active);
   await expect(row).toContainText(texts.inactiveFrom.replace('{{date}}', '').trim());
+  await panel.getByRole('heading', { name: texts.statusTitle }).scrollIntoViewIfNeeded();
   await leavingScreenshot(page, 'scheduled');
   await panel.getByRole('button', { name: texts.cancelLeaving, exact: true }).click();
   await page
@@ -456,6 +457,7 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   await expect(row).toContainText(texts.statuses.active);
   await expect(row).toContainText('9998001');
   await expect(panel.getByText(texts.causes.return, { exact: true })).toBeVisible();
+  await panel.getByRole('heading', { name: texts.statusTitle }).scrollIntoViewIfNeeded();
   await leavingScreenshot(page, 'returned');
   await panel.getByRole('button', { name: en.list.closePanel }).click();
 
