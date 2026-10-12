@@ -13,6 +13,7 @@ import {
   type SchoolDate,
   type StaffAccount,
   type SubjectsChange,
+  type BranchesWithoutVice,
   type SuperAdminSummary,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -531,6 +532,21 @@ export class StaffAccounts {
     return this.transactions.run([], async (transaction) => ({
       active: await activeSuperAdmins(transaction, await transactionMoment(transaction)),
     }));
+  }
+
+  /**
+   * The branches, id and name only, where no Academic Vice Principal is active
+   * at the moment of the transaction (`branches_without_vice_principal`, 0029):
+   * compared on each request, never a stored flag.
+   */
+  branchesWithoutVice(): Promise<BranchesWithoutVice> {
+    return this.transactions.run([], async (transaction) => {
+      const at = await transactionMoment(transaction);
+      const found = await sql<{ id: string; name: string }>`
+        select id, name from branches_without_vice_principal(${at}::timestamptz)
+      `.execute(transaction);
+      return { branches: found.rows.map((row) => ({ id: row.id, name: row.name })) };
+    });
   }
 
   /** The errors of `Assignments` and the last Super Admin rule as coded refusals. */

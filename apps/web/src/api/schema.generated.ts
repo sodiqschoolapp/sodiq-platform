@@ -1540,6 +1540,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/access/branches-without-vice-principal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffAccountsController_branchesWithoutVice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/access/head-teachers": {
         parameters: {
             query?: never;
@@ -9875,6 +9891,60 @@ export interface operations {
                 content: {
                     "application/json": {
                         active: number;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "account_exists" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    StaffAccountsController_branchesWithoutVice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        branches: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
                     };
                 };
             };

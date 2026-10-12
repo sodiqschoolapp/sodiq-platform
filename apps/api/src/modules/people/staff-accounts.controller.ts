@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, Post } from '@nestjs/common';
 import {
   accountCreateSchema,
+  branchesWithoutViceSchema,
   firstPasswordSlipSchema,
   loginSuggestionSchema,
   roleEndSchema,
@@ -11,6 +12,7 @@ import {
   subjectsChangeSchema,
   superAdminSummarySchema,
   type AccountCreate,
+  type BranchesWithoutVice,
   type FirstPasswordSlip,
   type LoginSuggestion,
   type RoleEnd,
@@ -125,5 +127,17 @@ export class StaffAccountsController {
   @Returns(superAdminSummarySchema)
   superAdmins(): Promise<SuperAdminSummary> {
     return this.staffAccounts.superAdmins();
+  }
+
+  /**
+   * The branches with no active Academic Vice Principal now (edge cases, Who
+   * can act: "a branch with no active Academic Vice Principal shows an alert
+   * to the Super Admin"; task 2.3b-2), for the Super Admin, as the count above.
+   */
+  @Get('access/branches-without-vice-principal')
+  @Requires('accounts', 'create', { branch: 'none' })
+  @Returns(branchesWithoutViceSchema)
+  branchesWithoutVice(): Promise<BranchesWithoutVice> {
+    return this.staffAccounts.branchesWithoutVice();
   }
 }

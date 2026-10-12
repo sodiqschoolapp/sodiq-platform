@@ -1,5 +1,6 @@
 import {
   BRANCH_HEADER,
+  branchesWithoutViceSchema,
   firstPasswordSlipSchema,
   loginSuggestionSchema,
   sessionResponseSchema,
@@ -911,6 +912,79 @@ describe('the account section of a staff record', () => {
 
   // Decision 7: a re-hire gives a new first password and its slip; the login
   // and staff ID stay; no role comes back (decision 8).
+  // Task 2.3b-2: the alert of a branch with no active Academic Vice Principal
+  // (edge cases, Who can act), for the Super Admin alone. The injected clock
+  // decides the answer on each request (decisions 1 to 3 of #64).
+  describe('the branches without an active Academic Vice Principal', () => {
+    const listed = async (cookie = t.admin) => {
+      const response = await t.kit.get('/api/access/branches-without-vice-principal', cookie);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      return branchesWithoutViceSchema.parse(response.body).branches;
+    };
+    const ids = async () => (await listed()).map((branch) => branch.id);
+
+    it('lists the branch with none by id and name, and not the one with an active one', async () => {
+      const before = await t.auditCount();
+      const branches = await listed();
+      expect(branches).toContainEqual({ id: t.south, name: 'South' });
+      expect(branches.map((branch) => branch.id)).not.toContain(t.north);
+      expect(await t.auditCount()).toBe(before);
+    });
+
+    it('follows the clock: a role that begins tomorrow takes the branch out at midnight', async () => {
+      const branch = await t.newBranch();
+      const made = await withAccount(undefined, branch);
+      const given = await give(
+        made.id,
+        { role: 'academic_vice_principal', branchId: branch, from: TOMORROW },
+        branch,
+      );
+      expect(given.status, JSON.stringify(given.body)).toBe(201);
+      expect(await ids()).toContain(branch);
+      t.clock.set('2026-10-11T00:01:00+05:00');
+      try {
+        expect(await ids()).not.toContain(branch);
+      } finally {
+        t.clock.set(START);
+      }
+    });
+
+    it('follows the clock: an inactive status from tomorrow puts the branch in at midnight', async () => {
+      const branch = await t.newBranch();
+      const made = await withAccount(undefined, branch);
+      const given = await give(
+        made.id,
+        { role: 'academic_vice_principal', branchId: branch, from: TODAY },
+        branch,
+      );
+      expect(given.status, JSON.stringify(given.body)).toBe(201);
+      const inactive = await t.post(`/api/people/staff/${made.id}/status`, branch, {
+        status: 'inactive',
+        from: TOMORROW,
+      });
+      expect(inactive.status, JSON.stringify(inactive.body)).toBe(200);
+      expect(await ids()).not.toContain(branch);
+      t.clock.set('2026-10-11T00:01:00+05:00');
+      try {
+        expect(await ids()).toContain(branch);
+      } finally {
+        t.clock.set(START);
+      }
+    });
+
+    it('is refused to every other role, with nothing written', async () => {
+      const before = await t.auditCount();
+      for (const cookie of [t.principal, t.vicePrincipal, t.teacher]) {
+        refusedWith(
+          await t.kit.get('/api/access/branches-without-vice-principal', cookie),
+          403,
+          'permission_denied',
+        );
+      }
+      expect(await t.auditCount()).toBe(before);
+    });
+  });
+
   describe('a re-hire', () => {
     it('forces a password change with a new first password, valid 7 days from the re-hire', async () => {
       const made = await withAccount();
