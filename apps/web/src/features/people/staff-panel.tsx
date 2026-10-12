@@ -29,7 +29,6 @@ import {
   listValues,
   SelectField,
 } from '@/components/field';
-import { type FormIssue, type FormSchema } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
@@ -37,6 +36,8 @@ import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { nameOf, schoolDateText } from '@/features/setup/setup-api';
 import { invalidateStaff, staffDetailQuery } from './people-api';
+import { AvailabilitySection } from './availability-section';
+import { asFormSchema } from './form-schema';
 import { StaffForm } from './staff-form';
 
 interface StaffPanelProps {
@@ -130,6 +131,7 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
           await teaching.mutateAsync(record);
         }}
       />
+      <AvailabilitySection id={staff.id} label={name} />
       {staff.rights.all && (
         <BranchesSection
           staff={staff}
@@ -253,33 +255,6 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
     </section>
   );
 }
-
-const asFormSchema = <Values,>(
-  schema: {
-    safeParse: (input: unknown) => {
-      success: boolean;
-      data?: Values;
-      error?: { issues: FormIssue[] };
-    };
-  },
-  fieldOf: (path: readonly PropertyKey[]) => PropertyKey[],
-): FormSchema<Values> => ({
-  safeParse: (input) => {
-    const result = schema.safeParse(input);
-    if (result.success) {
-      return { success: true, data: result.data as Values };
-    }
-    return {
-      success: false,
-      error: {
-        issues: (result.error?.issues ?? []).map((issue) => ({
-          ...issue,
-          path: fieldOf(issue.path),
-        })),
-      },
-    };
-  },
-});
 
 /**
  * Subjects with the grades taught and the languages of instruction (`04`).

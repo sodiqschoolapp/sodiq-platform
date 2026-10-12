@@ -17,7 +17,7 @@ interface PeopleLink {
 /**
  * The entry of the menu item "People" (docs/spec/04-people.md): one link per
  * list that is built, shown when the permission table lets the active role
- * view its area. Staff came with task 2.2a; students and relatives come with
+ * view its area. Staff came with task 2.2a, vacancies with 2.2b; students and relatives come with
  * tasks 2.4 and 2.5.
  */
 export function PeoplePage() {
@@ -30,6 +30,13 @@ export function PeoplePage() {
       title: t('people.staffLink'),
       text: t('people.staffLinkText'),
       area: 'staff',
+    },
+    {
+      key: 'vacancies',
+      to: '/people/vacancies',
+      title: t('people.vacanciesLink'),
+      text: t('people.vacanciesLinkText'),
+      area: 'vacancies',
     },
   ];
   const links = all.filter(
