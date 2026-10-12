@@ -186,6 +186,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 12 October 2026: staff photos (task 2.2c-2)
+
+Plan approved on pull request #59 with corrections 1 to 3; decisions 1 to 14 confirmed there, 10 changed (the order of the refusals). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** `@aws-sdk/client-s3` 3.1141.0 pinned in `apps/api`; Apache-2.0, maintained, `pnpm audit --prod` finds nothing | Decision 1; approved in advance by answer 2 |
+| **Look first.** The Academic Vice Principal sets and removes staff photos of the branch under `staff` `edit`, as the Super Admin does; the reach is that of the 2.2a contact edit | Decision 2; the photo is in the Basic group (`edge/people-roles-accounts`, Personal data and the audit log) |
+| **Look first.** `staff_vacancy_check` dropped and created again in 0026 with `photo_id is null` added; a test compares it with 0024's | Decision 13; tightened, not weakened; 2.2b correction 2 |
+| The upload is the raw image as the body of the one declared exception of `json-only.ts` (`FILE_ROUTES` in `apps/api/src/http/file-routes.ts`), read by `fileBodyMiddleware` before the guards and by the handler only through `ValidFile` (built on `Body`, in `apps/api/src/http/`); `file-routes.test.ts` pins the list against the handlers. `.claude/rules/api.md` is unchanged: its line on the input readers is proposed on issue #42 | Decision 3, correction 1; a cross-site form cannot send a raw `image/*` body |
+| The server reads the size from the header and refuses more than 800 pixels a side (`photo_invalid`); the file is stored as sent, so a client other than the app keeps its metadata | Decision 4 |
+| The browser sends a JPEG at quality 0.85 on white, shrunk to at most 800 pixels; the server takes JPEG and PNG | Decisions 5, 7 (one size) |
+| `Cache-Control: no-store` on the photo too; the page keeps it in memory per photo id as a `data:` address | Decision 6 |
+| A replaced or removed photo's object stays in the bucket; the audit entry `staff.photo` names the old and new ids, never the bytes | Decision 8; "the platform erases nothing" |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, all four or none, in `render.yaml` with `sync: false`; `PHOTOS_IN_MEMORY=1` for a laptop and the browser tests, refused with the R2 variables | Decision 9; answer 2 |
+| 5 MB is 5,000,000 bytes (`PHOTO_MAX_BYTES`); over it 413 `photo_too_large`. Refusals in order: 415 and 413 (before the guards), 403, 415 of `ValidFile` (a body that is not a file), 404 (also a vacancy with no store), 503 `photos_not_configured`, 400 `photo_invalid`, 503 `photos_unavailable` | Decision 10 as changed by correction 3; correction 2 |
+| No call to the store with a transaction open: the record is read, the object put, then one transaction locks the record, reads its branch link again `for share` and writes the photo and the audit entry; the R2 client has one attempt and a timeout of 10 seconds | Spec review of the plan; `edge/system-behaviour` ("Only that function fails") |
+| A photo can be set on an inactive or left person; removing a missing photo is 204 with no audit entry; the photo is not an Excel column (`Column.exported: false`) | Decisions 11, 12, 14 |
+| Any role that views staff records reads the photos (`staff` `view`); reading a photo is not audited | `edge/people-roles-accounts`: "Ordinary page views are not recorded" |
+
 ## 12 October 2026: exports (task 2.2c-1)
 
 Plan approved on pull request #58 with corrections 1 to 5; decisions 1 to 14 confirmed there, 7 and 9 with the texts in `packages/shared` (correction 3). Flagged on issue #42.

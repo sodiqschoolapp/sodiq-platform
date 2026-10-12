@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: task 2.2c-2 Photos
+
+- Built: migration 0026 (`staff.photo_id`, `photo_type`; `staff_vacancy_check` with `photo_id is null`); `PUT`, `DELETE`, `GET /api/people/staff/:id/photo` under `staff` edit and view; the declared file route of `json-only.ts` (`FILE_ROUTES`, `fileBodyMiddleware`, `ValidFile`), the photo store (R2 through `@aws-sdk/client-s3` 3.1141.0, memory, none) chosen from `R2_*` or `PHOTOS_IN_MEMORY`; no store call inside a transaction.
+- Pages: the photo column of the staff list (not exported) and the photo section of the staff panel (add, change, remove; the browser shrinks to 800 pixels and sends a JPEG); initials whenever there is no photo to show; texts in uz, ru, en. Plan approved on pull request #59 with three corrections.
+- Left out: the own photo on the own account page (2.3, written there); student photos (2.4); thumbnails and removing old objects (decisions 7 and 8).
+
+The next sessions must know:
+
+- A route that takes a file is an entry of `FILE_ROUTES` (`apps/api/src/http/file-routes.ts`) read with `@ValidFile(entry)`; `file-routes.test.ts` pins the list against the handlers. A photo answer is `@ReturnsPhoto()` with a `PhotoFile`.
+- `PersonPhoto` (`apps/web/src/components/person-photo.tsx`) shows a photo query as a `data:` address with the initials underneath; 2.4 uses it for students.
+- The R2 values are the owner's to enter in Render; until then the photo routes answer `photos_not_configured`. The browser tests run with `PHOTOS_IN_MEMORY=1`.
+- The next task is 2.2d.
+
 ## 12 October 2026: task 2.2c-1 Exports
 
 - Built: `export` in five areas for the Super Admin, Principal and Academic Vice Principal; six `POST …/export` routes (staff, vacancies, buildings, rooms, divisions, subjects) that read the list's own rows in one transaction, answer 404 for an id the list does not hold, leave the phone out of the Principal's staff file and write one audit entry with search, filters, columns and the row count; ExcelJS 4.4.0 with a uuid override (`pnpm audit --prod` clean); `@ReturnsFile`, `XlsxFile` and `exportList`.
