@@ -22,9 +22,8 @@ export const LOGIN_MAX_LENGTH = 64;
 export const loginSchema = z.string().max(LOGIN_MAX_LENGTH).regex(LOGIN_FORMAT);
 
 /**
- * The roles a Super Admin gives on the account section in 2.3a (decision 6):
- * the Head Teacher and the Senior Head Teacher come with their subjects in
- * 2.3b; Student and Parent are Release 2; HR, Nurse, Psychologist and
+ * The roles a Super Admin gives on the account section (2.3a, decision 6;
+ * 2.3b-1): Student and Parent are Release 2; HR, Nurse, Psychologist and
  * Librarian Release 3 (`02`).
  */
 export const GIVABLE_ROLES = [
@@ -34,8 +33,41 @@ export const GIVABLE_ROLES = [
   'spiritual_vice_principal',
   'head_tutor',
   'tutor',
+  'senior_head_teacher',
+  'head_teacher',
   'teacher',
 ] as const satisfies readonly Role[];
+
+/**
+ * The roles given with a list of subjects (`02`, Head Teachers and Senior
+ * Head Teachers: "The Super Admin makes the appointment and chooses the
+ * subjects"; task 2.3b-1). The database keeps the same two in
+ * `assignment_subjects_role_check` (db/migrations/0028).
+ */
+export const APPOINTMENT_ROLES = [
+  'head_teacher',
+  'senior_head_teacher',
+] as const satisfies readonly Role[];
+
+export const isAppointment = (role: Role): boolean =>
+  (APPOINTMENT_ROLES as readonly Role[]).includes(role);
+
+/** The subjects of an appointment: at least one, each once. */
+export const appointmentSubjectsSchema = z
+  .array(z.uuid())
+  .min(1)
+  .refine((ids) => new Set(ids.map((id) => id.toLowerCase())).size === ids.length, {
+    message: 'Each subject once.',
+  });
+
+/** A subject of an appointment, with its names for the screen in each language. */
+export const appointedSubjectSchema = z.object({
+  id: z.uuid(),
+  names: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+  archived: z.boolean(),
+});
+
+export type AppointedSubject = z.infer<typeof appointedSubjectSchema>;
 
 export const givableRoleSchema = z.enum(GIVABLE_ROLES);
 
@@ -102,6 +134,8 @@ export const accountRoleSchema = z.object({
   state: roleStateSchema,
   givenBy: actorSchema.nullable(),
   endedBy: actorSchema.nullable(),
+  /** The subjects of a Head Teacher or Senior Head Teacher appointment; empty for every other role. */
+  subjects: z.array(appointedSubjectSchema),
 });
 
 export type AccountRole = z.infer<typeof accountRoleSchema>;
@@ -134,12 +168,28 @@ export const staffAccountSchema = z.object({
 
 export type StaffAccount = z.infer<typeof staffAccountSchema>;
 
-/** A role from a date (decision 10): no branch for the Super Admin, one of the person's branches for every other role. */
-export const roleGiveSchema = z.object({
-  role: givableRoleSchema,
-  branchId: branchIdSchema.nullable(),
-  from: schoolDateSchema,
-});
+/**
+ * A role from a date (decision 10): no branch for the Super Admin and the
+ * Senior Head Teacher, one of the person's branches for every other role.
+ * The Head Teacher and the Senior Head Teacher come with their subjects, and
+ * only they (task 2.3b-1).
+ */
+export const roleGiveSchema = z
+  .object({
+    role: givableRoleSchema,
+    branchId: branchIdSchema.nullable(),
+    from: schoolDateSchema,
+    subjectIds: appointmentSubjectsSchema.optional(),
+  })
+  .superRefine((give, context) => {
+    if (isAppointment(give.role) !== (give.subjectIds !== undefined)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['subjectIds'],
+        message: 'A Head Teacher and a Senior Head Teacher are given with subjects; no other role is.',
+      });
+    }
+  });
 
 export type RoleGive = z.infer<typeof roleGiveSchema>;
 
@@ -147,6 +197,18 @@ export type RoleGive = z.infer<typeof roleGiveSchema>;
 export const roleEndSchema = z.object({ from: schoolDateSchema });
 
 export type RoleEnd = z.infer<typeof roleEndSchema>;
+
+/**
+ * The subjects of an appointment from a date (task 2.3b-1, decision 6): the
+ * appointment ends then and a new one with these subjects begins at the same
+ * moment.
+ */
+export const subjectsChangeSchema = z.object({
+  subjectIds: appointmentSubjectsSchema,
+  from: schoolDateSchema,
+});
+
+export type SubjectsChange = z.infer<typeof subjectsChangeSchema>;
 
 export const roleParamsSchema = z.object({ id: z.uuid(), assignmentId: z.uuid() });
 
@@ -156,3 +218,23 @@ export type RoleParams = z.infer<typeof roleParamsSchema>;
 export const superAdminSummarySchema = z.object({ active: z.int().nonnegative() });
 
 export type SuperAdminSummary = z.infer<typeof superAdminSummarySchema>;
+
+/** One appointment in the list of a branch (task 2.3b-1, `GET access/head-teachers`). */
+export const appointmentSchema = z.object({
+  id: z.uuid(),
+  role: z.enum(APPOINTMENT_ROLES),
+  /** The holder: the name when the staff record is linked to the branch of the request, else the login only (decision 14). */
+  person: actorSchema,
+  /** The subjects the reader may see: every one for a branch-wide role, the own ones for a Head Teacher or Senior Head Teacher. */
+  subjects: z.array(appointedSubjectSchema),
+  from: schoolDateSchema,
+  /** The first day without it; `null` while it has no end. */
+  until: schoolDateSchema.nullable(),
+  state: roleStateSchema,
+});
+
+export type Appointment = z.infer<typeof appointmentSchema>;
+
+export const appointmentListSchema = z.object({ appointments: z.array(appointmentSchema) });
+
+export type AppointmentList = z.infer<typeof appointmentListSchema>;

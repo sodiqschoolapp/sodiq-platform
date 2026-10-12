@@ -217,6 +217,12 @@ export const ERROR_CODES = [
   'assignment_ended',
   /** A role is given or ended from today or later (task 2.3a, decision 10). */
   'role_from_past',
+  /** A subject of the appointment has another Head Teacher in that branch, or another Senior Head Teacher, at some moment of it (`02`, One per subject per branch; task 2.3b-1). `details` name the subjects when they are known. */
+  'head_teacher_taken',
+  /** A subject of an appointment does not exist or is archived (task 2.3b-1, decision 12). */
+  'subject_unknown',
+  /** Only the subjects of a Head Teacher or Senior Head Teacher appointment are changed (task 2.3b-1). */
+  'role_not_appointment',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
