@@ -212,7 +212,7 @@ How to read the task lines:
   - Done when: the alert is tested for an Academic Vice Principal who is inactive, locked, ended or planned, and the browser test shows the list and the banner.
   - Split from 2.3b on pull request #63 (decision 1, Look first).
 
-- [ ] **2.3c-1 Locks and resets by an administrator**
+- [x] **2.3c-1 Locks and resets by an administrator** (pull request #65)
   - Read: `02` (Accounts and sign-in: build order), `edge/people-roles-accounts` (Who can act, Staff over time, Accounts and sign-in), the plan of pull request #65.
   - Build: lock and unlock with a reason; the refusal to lock the last active Super Admin (the check of 2.3a); the route for the password reset by an administrator (the service exists since 0.6b) with who may reset whom; the route for the second-step reset by a Super Admin (the service exists since 0.6c), which always comes with a password reset (0.6d); the Academic Vice Principal resets and locks only Teachers, Tutors, Head Teachers and the Head Tutor of the branch; the report of accounts never used.
   - Done when: the refusals of locks and resets are tested, including the last Super Admin rule and the Academic Vice Principal's limits, and the browser test locks, unlocks and resets a teacher's password.

@@ -209,6 +209,7 @@ Plan approved on pull request #65 with corrections 1 to 5; decisions 1 to 14 con
 | Decision 14 (no migration) changed by the review of the build: migration 0030 adds `staff_period_start` only | The person-wide moment must not depend on the reader's branch |
 | An Academic Vice Principal does not undo a lock made by an account that holds a Super Admin role now (403 `permission_denied`, nothing written, `can.unlock` false); the Super Admin undoes any lock, and an Academic Vice Principal undoes another Academic Vice Principal's | Decided with the review of the build; the spec gives the Academic Vice Principal "lock accounts", not the override of the Super Admin |
 | `account_missing` says "Ask the Super Admin to create it", true for both administrators who meet it | Review of the build; `.claude/rules/web.md`, a code's text is true on every path |
+| **Look first.** "Locked by" and "Reset by" show the acting account's login always and its name only when its record is readable, as the account section of 2.3a does (correction 1 of #62): a Principal or Academic Vice Principal of north can see the login of a south administrator who locked or reset a person of both branches, and the lock reason | Permission review of the build, should-fix 3; personal data across branches, kept for one rule across both sections; the owner may prefer to hide the login when the name cannot be read |
 
 ## 12 October 2026: Head Teachers list and the Academic Vice Principal alert (task 2.3b-2)
 
