@@ -3,6 +3,7 @@ import {
   nextDay,
   schoolDateOf,
   STAFF_CATEGORY_ROLES,
+  STAFF_CONTACT_EXPORT_COLUMNS,
   STAFF_CONTACT_FIELDS,
   type Clock,
   type ContractType,
@@ -17,6 +18,8 @@ import {
   type StaffCheckResult,
   type StaffDetail,
   type StaffDivisions,
+  type StaffExport,
+  type StaffExportColumn,
   type StaffIdentity,
   type StaffList,
   type StaffListItem,
@@ -30,9 +33,20 @@ import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import { currentAssignments } from '../access/current-assignments.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import {
+  exportList,
+  gradesOf,
+  joined,
+  nameIn,
+  oneCell,
+  readSchoolNames,
+  type ExportColumn,
+  type SchoolNames,
+} from '../audit/export-list.js';
 import {
   changesOf,
   notFound,
@@ -199,24 +213,62 @@ export class Staff {
   async list(access: Access): Promise<StaffList> {
     const branchId = branchOf(access);
     const branches = await this.readingBranches(access);
+    return this.transactions.run(branches, async (transaction) => ({
+      staff: await this.readList(transaction, access, branchId),
+      today: await this.todayIn(transaction, branchId),
+    }));
+  }
+
+  /**
+   * The Excel file of the staff list (task 2.2c-1): the rows read as the list
+   * reads them, in one transaction with the same branches, so the file never
+   * shows more than the list. Vacancies are never in it (`04`, Vacancy:
+   * "exports leave them out unless asked"; decision 6). The Principal's file
+   * leaves out the phone (decision 4), decided from every current assignment
+   * as the record's contact fields are.
+   */
+  async export(access: Access, request: StaffExport, requestId: string): Promise<XlsxFile> {
+    const branchId = branchOf(access);
+    const branches = await this.readingBranches(access);
+    const contact = superAdminOf(access) !== undefined || viceOf(access) !== undefined;
     return this.transactions.run(branches, async (transaction) => {
-      const ids = (
-        await transaction
-          .selectFrom('staff')
-          .innerJoin('staff_branches', 'staff_branches.staff_id', 'staff.id')
-          .select('staff.id')
-          .where('staff.kind', '=', 'person')
-          .where('staff_branches.branch_id', '=', branchId)
-          .execute()
-      ).map((row) => row.id);
-      const items = await this.items(transaction, access, ids);
-      return {
-        staff: items.sort(
-          (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
-        ),
-        today: await this.todayIn(transaction, branchId),
-      };
+      const items = await this.readList(transaction, access, branchId);
+      const names = await readSchoolNames(transaction);
+      return exportList(transaction, this.audit, this.clock, access, requestId, {
+        list: 'staff',
+        action: 'staff.export',
+        request,
+        rows: new Map(items.map((item) => [item.id, item])),
+        allowed: (column) => contact || !STAFF_CONTACT_EXPORT_COLUMNS.includes(column),
+        // A file with the phone names the assignment that allowed it.
+        assignmentFor: (columns) =>
+          columns.some((column) => STAFF_CONTACT_EXPORT_COLUMNS.includes(column))
+            ? (superAdminOf(access) ?? viceOf(access))
+            : undefined,
+        columns: staffExportColumns(names),
+      });
     });
+  }
+
+  /** The people of the branch, as the list shows them: by last name, then first name. */
+  private async readList(
+    transaction: Transaction,
+    access: Access,
+    branchId: string,
+  ): Promise<StaffListItem[]> {
+    const ids = (
+      await transaction
+        .selectFrom('staff')
+        .innerJoin('staff_branches', 'staff_branches.staff_id', 'staff.id')
+        .select('staff.id')
+        .where('staff.kind', '=', 'person')
+        .where('staff_branches.branch_id', '=', branchId)
+        .execute()
+    ).map((row) => row.id);
+    const items = await this.items(transaction, access, ids);
+    return items.sort(
+      (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
+    );
   }
 
   /** One person of the branch of the request, with the status history and the rights of the account. */
@@ -1298,3 +1350,70 @@ const statusValue = (row: StoredStatusRow) => ({
   from: row.validFrom,
   until: row.validUntil,
 });
+
+/**
+ * The columns of the staff file, as the list shows them (`04`, "Teacher list
+ * columns"): the department is the teaching one (in Academic), else that of
+ * the main division; grades as numbers; the status with the planned status and
+ * its first day as a date (edge cases, system behaviour: "Excel exports
+ * contain real numbers and dates").
+ */
+function staffExportColumns(
+  names: SchoolNames,
+): Record<StaffExportColumn, ExportColumn<StaffListItem>> {
+  return {
+    name: oneCell(
+      (texts) => texts.staff.columns.name,
+      (row) => `${row.firstName} ${row.lastName}`,
+    ),
+    staffId: oneCell(
+      (texts) => texts.staff.columns.staffId,
+      (row) => row.staffId,
+    ),
+    category: oneCell(
+      (texts) => texts.staff.columns.category,
+      (row, texts) => joined(row.categories.map((role) => texts.roles[role])),
+    ),
+    branches: oneCell(
+      (texts) => texts.staff.columns.branches,
+      (row) => joined(row.branches.map((branch) => branch.name)),
+    ),
+    department: oneCell(
+      (texts) => texts.staff.columns.department,
+      (row, _texts, language) =>
+        nameIn(
+          names.departments,
+          (
+            row.divisions.find((division) => division.divisionId === names.academicId) ??
+            row.divisions.find((division) => division.main)
+          )?.departmentId,
+          language,
+        ),
+    ),
+    subjects: oneCell(
+      (texts) => texts.staff.columns.subjects,
+      (row, _texts, language) =>
+        joined(row.subjects.map((subject) => nameIn(names.subjects, subject.subjectId, language))),
+    ),
+    grades: oneCell(
+      (texts) => texts.staff.columns.grades,
+      (row, texts) => gradesOf(row.subjects, texts),
+    ),
+    languages: oneCell(
+      (texts) => texts.staff.columns.languages,
+      (row, texts) => joined(row.languages.map((one) => texts.instructionLanguages[one])),
+    ),
+    phone: oneCell(
+      (texts) => texts.staff.columns.phone,
+      (row) => row.phone,
+    ),
+    status: {
+      headings: (texts) => [texts.staff.columns.status, texts.plannedStatus, texts.plannedFrom],
+      cells: (row, texts) => [
+        row.status === null ? texts.notStarted : texts.staffStatuses[row.status],
+        row.planned === null ? null : texts.staffStatuses[row.planned.status],
+        row.planned === null ? null : { date: row.planned.from },
+      ],
+    },
+  };
+}

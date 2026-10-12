@@ -57,6 +57,12 @@ const SUBJECT_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principa
 const STAFF_VIEWERS = SETUP_VIEWERS;
 const STAFF_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
+// Task 2.2c-1, decision 2 of pull request #58: `export` in `rooms`,
+// `divisions`, `subjects`, `staff` and `vacancies` for the three roles that
+// view them. The server further leaves the phone out of the Principal's staff
+// file (tested in people/exports.test.ts).
+const EXPORTERS = SETUP_VIEWERS;
+
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
@@ -90,6 +96,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/setup/branch': { branch: 'request', roles: SETUP_VIEWERS },
   'PUT /api/setup/branch': { branch: 'request', roles: ['super_admin'] },
   'GET /api/setup/buildings': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/setup/buildings/export': { branch: 'request', roles: EXPORTERS },
   'POST /api/setup/buildings': { branch: 'request', roles: ['super_admin'] },
   'PUT /api/setup/buildings/:id': { branch: 'request', roles: ['super_admin'] },
   'POST /api/setup/buildings/:id/archive': { branch: 'request', roles: ['super_admin'] },
@@ -99,6 +106,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/setup/floors/:id/archive': { branch: 'request', roles: ['super_admin'] },
   'POST /api/setup/floors/:id/restore': { branch: 'request', roles: ['super_admin'] },
   'GET /api/setup/rooms': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/setup/rooms/export': { branch: 'request', roles: EXPORTERS },
   'POST /api/setup/rooms': { branch: 'request', roles: ['super_admin'] },
   'PUT /api/setup/rooms/:id': { branch: 'request', roles: ['super_admin'] },
   // Divisions and departments (task 1.2; `02`, Super Admin: "Only this role
@@ -106,6 +114,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // pull request #40, answer 5). A division has no branch: every change is
   // school-wide work; the list is read through the branch of the request.
   'GET /api/setup/divisions': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/setup/divisions/export': { branch: 'request', roles: EXPORTERS },
   'POST /api/setup/divisions': { branch: 'none', roles: ['super_admin'] },
   'PUT /api/setup/divisions/:id': { branch: 'none', roles: ['super_admin'] },
   'POST /api/setup/divisions/:id/archive': { branch: 'none', roles: ['super_admin'] },
@@ -171,6 +180,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/setup/travel-times': { branch: 'request', roles: SETUP_VIEWERS },
   'PUT /api/setup/travel-times': { branch: 'request', roles: ['super_admin'] },
   'GET /api/setup/subjects': { branch: 'request', roles: SUBJECT_VIEWERS },
+  'POST /api/setup/subjects/export': { branch: 'request', roles: EXPORTERS },
   'POST /api/setup/subjects': { branch: 'request', roles: SUBJECT_WRITERS },
   'PUT /api/setup/subjects/:id': { branch: 'request', roles: SUBJECT_WRITERS },
   'PUT /api/setup/subjects/:id/daily-weights': { branch: 'request', roles: SUBJECT_WRITERS },
@@ -186,6 +196,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: SUBJECT_WRITERS,
   },
   'GET /api/people/staff': { branch: 'request', roles: STAFF_VIEWERS },
+  'POST /api/people/staff/export': { branch: 'request', roles: EXPORTERS },
   'GET /api/people/staff/:id': { branch: 'request', roles: STAFF_VIEWERS },
   'POST /api/people/staff/check': { branch: 'request', roles: ['super_admin'] },
   'POST /api/people/staff': { branch: 'request', roles: ['super_admin'] },
@@ -198,6 +209,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/people/staff/:id/availability': { branch: 'request', roles: STAFF_VIEWERS },
   'PUT /api/people/staff/:id/availability': { branch: 'request', roles: STAFF_EDITORS },
   'GET /api/people/vacancies': { branch: 'request', roles: STAFF_VIEWERS },
+  'POST /api/people/vacancies/export': { branch: 'request', roles: EXPORTERS },
   'GET /api/people/vacancies/:id': { branch: 'request', roles: STAFF_VIEWERS },
   'POST /api/people/vacancies': { branch: 'request', roles: STAFF_EDITORS },
   'PUT /api/people/vacancies/:id': { branch: 'request', roles: STAFF_EDITORS },
@@ -432,7 +444,7 @@ describe('the harness', () => {
 
     expect(declarationProblems(app, listed)).toEqual([
       'GET /api/permission-faults/early: open to a session that owes a step of sign-in (second_step), which only a route of the own account may be',
-      'GET /api/permission-faults/no-answer-schema: no @Returns or @ReturnsNothing',
+      'GET /api/permission-faults/no-answer-schema: no @Returns, @ReturnsNothing or @ReturnsFile',
       'GET /api/permission-faults/no-answer-schema: not in the list of who may call it',
       'GET /api/permission-faults/twice: 2 access declarations, it needs exactly one',
       'GET /api/permission-faults/undeclared: 0 access declarations, it needs exactly one',

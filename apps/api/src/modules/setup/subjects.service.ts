@@ -8,6 +8,8 @@ import type {
   QuarterWeights,
   Subject,
   SubjectColour,
+  SubjectExport,
+  SubjectExportColumn,
   SubjectList,
   SubjectQuarterWeights,
   SubjectRecord,
@@ -15,8 +17,18 @@ import type {
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import {
+  exportList,
+  joined,
+  nameIn,
+  oneCell,
+  readSchoolNames,
+  type ExportColumn,
+  type SchoolNames,
+} from '../audit/export-list.js';
 import { refuseTeachersOutside } from '../people/subject-teachers.js';
 import { changesOf, notFound, refusingConstraints, refusingDuplicates } from './setup-refusals.js';
 
@@ -218,18 +230,41 @@ export class Subjects {
   /** Every subject, archived ones included and marked, with this branch's weights. */
   list(access: Access): Promise<SubjectList> {
     const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => ({
+      subjects: await this.readList(transaction, branchId),
+      mayMoveDepartment: superAdminOf(access) !== undefined,
+    }));
+  }
+
+  /**
+   * The Excel file of the list (task 2.2c-1): the school-wide subjects with
+   * the daily distribution of the branch of the request, never another
+   * branch's, read as the list reads them in one transaction.
+   */
+  export(access: Access, request: SubjectExport, requestId: string): Promise<XlsxFile> {
+    const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const rows = await transaction
-        .selectFrom('subjects')
-        .select(SUBJECT_COLUMNS)
-        .orderBy('name_en')
-        .orderBy('id')
-        .execute();
-      return {
-        subjects: await this.withWeights(transaction, branchId, rows),
-        mayMoveDepartment: superAdminOf(access) !== undefined,
-      };
+      const subjects = await this.readList(transaction, branchId);
+      const names = await readSchoolNames(transaction);
+      return exportList(transaction, this.audit, this.clock, access, requestId, {
+        list: 'subjects',
+        action: 'subject.export',
+        request,
+        rows: new Map(subjects.map((subject) => [subject.id, subject])),
+        allowed: () => true,
+        columns: subjectExportColumns(names),
+      });
     });
+  }
+
+  private async readList(transaction: Transaction, branchId: string): Promise<Subject[]> {
+    const rows = await transaction
+      .selectFrom('subjects')
+      .select(SUBJECT_COLUMNS)
+      .orderBy('name_en')
+      .orderBy('id')
+      .execute();
+    return this.withWeights(transaction, branchId, rows);
   }
 
   /**
@@ -933,4 +968,65 @@ export class Subjects {
       }),
     };
   }
+}
+
+/**
+ * The columns of the subjects file: the daily distribution as three number
+ * columns, empty for an attendance-only subject or one not set; the quarters
+ * not set as a number, empty when there is nothing to count.
+ */
+function subjectExportColumns(
+  names: SchoolNames,
+): Record<SubjectExportColumn, ExportColumn<Subject>> {
+  return {
+    name: oneCell(
+      (texts) => texts.subjects.columns.name,
+      (row, _texts, language) => row.names[language],
+    ),
+    department: oneCell(
+      (texts) => texts.subjects.columns.department,
+      (row, _texts, language) => nameIn(names.departments, row.departmentId, language),
+    ),
+    grades: oneCell(
+      (texts) => texts.subjects.columns.grades,
+      (row) => joined(row.grades.map(String)),
+    ),
+    journalType: oneCell(
+      (texts) => texts.subjects.columns.journalType,
+      (row, texts) => texts.journalTypes[row.journalType],
+    ),
+    ratingExam: oneCell(
+      (texts) => texts.subjects.columns.ratingExam,
+      (row, texts) => (row.ratingExam ? texts.yes : texts.no),
+    ),
+    daily: {
+      headings: (texts) =>
+        [texts.weightParts.attendance, texts.weightParts.classwork, texts.weightParts.homework].map(
+          (part) => `${texts.subjects.columns.daily}: ${part}`,
+        ),
+      cells: (row) =>
+        row.daily === null
+          ? [null, null, null]
+          : [row.daily.attendance, row.daily.classwork, row.daily.homework],
+    },
+    quarterly: oneCell(
+      (texts) => texts.subjects.columns.quarterly,
+      (row) => row.quarterWeightsMissing,
+    ),
+    switches: oneCell(
+      (texts) => texts.subjects.columns.switches,
+      (row, texts) =>
+        joined(
+          [
+            row.groupSubject ? texts.switches.groupSubject : null,
+            row.languageRule ? texts.switches.languageRule : null,
+            row.demanding ? texts.switches.demanding : null,
+          ].filter((text): text is string => text !== null),
+        ),
+    ),
+    status: oneCell(
+      (texts) => texts.subjects.columns.status,
+      (row, texts) => (row.archivedAt === null ? texts.active : texts.archived),
+    ),
+  };
 }

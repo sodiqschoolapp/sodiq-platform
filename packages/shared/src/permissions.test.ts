@@ -92,6 +92,9 @@ describe('a frozen permission table', () => {
   // Task 1.2: `divisions` ("Only this role creates ... divisions"; the view
   // of the Principal and the Academic Vice Principal approved by the owner,
   // pull request #40, answer 5).
+  // Task 2.2c-1, decision 2 of pull request #58: `export` in `rooms` and
+  // `divisions` for the three roles that view them (`02`, Rules; `12`,
+  // Lists: every list has export), and none in `branches`.
   it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
     expect(Object.keys(PERMISSIONS).sort()).toEqual([
       'academic_years',
@@ -109,17 +112,30 @@ describe('a frozen permission table', () => {
       'vacancies',
     ]);
     expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);
-    expect(PERMISSIONS.rooms.super_admin).toEqual(['view', 'create', 'edit', 'archive']);
-    expect(PERMISSIONS.divisions.super_admin).toEqual(['view', 'create', 'edit', 'archive']);
+    expect(PERMISSIONS.rooms.super_admin).toEqual(['view', 'create', 'edit', 'archive', 'export']);
+    expect(PERMISSIONS.divisions.super_admin).toEqual([
+      'view',
+      'create',
+      'edit',
+      'archive',
+      'export',
+    ]);
+    expect(PERMISSIONS.branches.principal).toEqual(['view']);
+    expect(PERMISSIONS.branches.academic_vice_principal).toEqual(['view']);
+    for (const area of ['rooms', 'divisions'] as const) {
+      expect(PERMISSIONS[area].principal).toEqual(['view', 'export']);
+      expect(PERMISSIONS[area].academic_vice_principal).toEqual(['view', 'export']);
+    }
     for (const area of ['branches', 'rooms', 'divisions'] as const) {
-      expect(PERMISSIONS[area].principal).toEqual(['view']);
-      expect(PERMISSIONS[area].academic_vice_principal).toEqual(['view']);
       for (const role of ROLES) {
         if (!['super_admin', 'principal', 'academic_vice_principal'].includes(role)) {
           expect(PERMISSIONS[area][role], `${area}: ${role}`).toEqual([]);
         }
         expect(permits(PERMISSIONS, role, area, 'create')).toBe(role === 'super_admin');
-        expect(permits(PERMISSIONS, role, area, 'export')).toBe(false);
+        expect(permits(PERMISSIONS, role, area, 'export')).toBe(
+          area !== 'branches' &&
+            ['super_admin', 'principal', 'academic_vice_principal'].includes(role),
+        );
       }
     }
   });
@@ -179,34 +195,35 @@ describe('a frozen permission table', () => {
 
   // Task 2.1: the owner's answer 4 and decision 1 of pull request #52:
   // `subjects` — Super Admin and Academic Vice Principal view, create, edit,
-  // archive; Principal view; nobody else; no export yet.
+  // archive; Principal view; nobody else. Task 2.2c-1, decision 2 of pull
+  // request #58: `export` for the three.
   it('gives the subjects to the Super Admin and the Academic Vice Principal', () => {
-    expect(PERMISSIONS.subjects.super_admin).toEqual(['view', 'create', 'edit', 'archive']);
-    expect(PERMISSIONS.subjects.academic_vice_principal).toEqual([
-      'view',
-      'create',
-      'edit',
-      'archive',
-    ]);
-    expect(PERMISSIONS.subjects.principal).toEqual(['view']);
+    const all = ['view', 'create', 'edit', 'archive', 'export'];
+    expect(PERMISSIONS.subjects.super_admin).toEqual(all);
+    expect(PERMISSIONS.subjects.academic_vice_principal).toEqual(all);
+    expect(PERMISSIONS.subjects.principal).toEqual(['view', 'export']);
     for (const role of ROLES) {
       if (!['super_admin', 'principal', 'academic_vice_principal'].includes(role)) {
         expect(PERMISSIONS.subjects[role], role).toEqual([]);
       }
-      expect(permits(PERMISSIONS, role, 'subjects', 'export')).toBe(false);
+      expect(permits(PERMISSIONS, role, 'subjects', 'export')).toBe(
+        ['super_admin', 'principal', 'academic_vice_principal'].includes(role),
+      );
     }
   });
 
   // Task 2.2a, decision 2 of pull request #53 (confirmed at its review):
   // `staff` — the Super Admin views, creates and edits; the Academic Vice
   // Principal views and edits (the server keeps that edit to name, phone and
-  // email); the Principal views; no export until 2.2c. `staff_teaching` —
-  // subjects, grades and languages: the Super Admin and the Academic Vice
-  // Principal view and edit; the Principal views. Nobody else.
+  // email); the Principal views. `staff_teaching` — subjects, grades and
+  // languages: the Super Admin and the Academic Vice Principal view and edit;
+  // the Principal views. Nobody else. Task 2.2c-1, decision 2 of pull request
+  // #58: `export` in `staff` for the three; none in `staff_teaching`, which
+  // has no list.
   it('gives the staff records to the Super Admin, the Academic Vice Principal and the Principal', () => {
-    expect(PERMISSIONS.staff.super_admin).toEqual(['view', 'create', 'edit']);
-    expect(PERMISSIONS.staff.academic_vice_principal).toEqual(['view', 'edit']);
-    expect(PERMISSIONS.staff.principal).toEqual(['view']);
+    expect(PERMISSIONS.staff.super_admin).toEqual(['view', 'create', 'edit', 'export']);
+    expect(PERMISSIONS.staff.academic_vice_principal).toEqual(['view', 'edit', 'export']);
+    expect(PERMISSIONS.staff.principal).toEqual(['view', 'export']);
     expect(PERMISSIONS.staff_teaching.super_admin).toEqual(['view', 'edit']);
     expect(PERMISSIONS.staff_teaching.academic_vice_principal).toEqual(['view', 'edit']);
     expect(PERMISSIONS.staff_teaching.principal).toEqual(['view']);
@@ -215,7 +232,10 @@ describe('a frozen permission table', () => {
         if (!['super_admin', 'principal', 'academic_vice_principal'].includes(role)) {
           expect(PERMISSIONS[area][role], role).toEqual([]);
         }
-        expect(permits(PERMISSIONS, role, area, 'export')).toBe(false);
+        expect(permits(PERMISSIONS, role, area, 'export')).toBe(
+          area === 'staff' &&
+            ['super_admin', 'principal', 'academic_vice_principal'].includes(role),
+        );
         expect(permits(PERMISSIONS, role, area, 'archive')).toBe(false);
       }
     }
@@ -223,17 +243,20 @@ describe('a frozen permission table', () => {
 
   // Task 2.2b, decision 1 of pull request #57: `vacancies` — the Super Admin
   // and the Academic Vice Principal view, create, edit and archive (close,
-  // reopen, delete); the Principal views; no export until 2.2c. Nobody else.
+  // reopen, delete); the Principal views. Nobody else. Task 2.2c-1, decision
+  // 2 of pull request #58: `export` for the three.
   it('gives the vacancies to the Super Admin, the Academic Vice Principal and the Principal', () => {
-    const all = ['view', 'create', 'edit', 'archive'];
+    const all = ['view', 'create', 'edit', 'archive', 'export'];
     expect(PERMISSIONS.vacancies.super_admin).toEqual(all);
     expect(PERMISSIONS.vacancies.academic_vice_principal).toEqual(all);
-    expect(PERMISSIONS.vacancies.principal).toEqual(['view']);
+    expect(PERMISSIONS.vacancies.principal).toEqual(['view', 'export']);
     for (const role of ROLES) {
       if (!['super_admin', 'principal', 'academic_vice_principal'].includes(role)) {
         expect(PERMISSIONS.vacancies[role], role).toEqual([]);
       }
-      expect(permits(PERMISSIONS, role, 'vacancies', 'export')).toBe(false);
+      expect(permits(PERMISSIONS, role, 'vacancies', 'export')).toBe(
+        ['super_admin', 'principal', 'academic_vice_principal'].includes(role),
+      );
     }
   });
 

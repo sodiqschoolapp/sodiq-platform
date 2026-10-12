@@ -13,3 +13,9 @@ catalog:
 # of the Swagger UI files inside @nestjs/swagger) only sends install statistics.
 allowBuilds:
   '@scarf/scarf': false
+
+# ExcelJS 4.4.0 (task 2.2c-1) depends on uuid 8, which has a moderate audit
+# finding (GHSA-w5hq-g745-h8pq) in v3/v5/v6; ExcelJS calls only v4. uuid 11
+# keeps a CommonJS entry, so the override clears the finding without a fork.
+overrides:
+  'uuid@<11.1.1': ^11.1.1

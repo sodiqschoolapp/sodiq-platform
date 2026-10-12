@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { sql } from 'kysely';
 import type {
+  DivisionExport,
+  DivisionExportColumn,
   Clock,
   Department,
   DepartmentRecord,
@@ -12,8 +14,10 @@ import type {
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import { exportList, oneCell, type ExportColumn } from '../audit/export-list.js';
 import { changesOf, notFound, refusingDuplicates } from './setup-refusals.js';
 
 interface NamedRow {
@@ -141,32 +145,55 @@ export class Divisions {
 
   /** Every division with its departments, archived ones included and marked; in the order of `03`. */
   list(access: Access): Promise<DivisionList> {
+    return this.transactions.run(access.branchIds, (transaction) => this.readList(transaction));
+  }
+
+  /**
+   * The Excel file of the list (task 2.2c-1): the names in the language of the
+   * account, the counts of the list, read in one transaction with it. The
+   * entry belongs to the branch of the request, where the export was made.
+   */
+  export(access: Access, request: DivisionExport, requestId: string): Promise<XlsxFile> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const divisions = await transaction
-        .selectFrom('divisions')
-        .select(['id', 'name_uz', 'name_ru', 'name_en', 'built_in', 'archived_at'])
-        .orderBy('position')
-        .orderBy('id')
-        .execute();
-      const departments = await departmentsIn(transaction).execute();
-      const counts = await sql<{ division_id: string; people: number }>`
-        select division_id, people from staff_count_by_division(${this.clock.now()})
-      `.execute(transaction);
-      return {
-        staffCounts: counts.rows
-          .map((row) => ({ divisionId: row.division_id, people: row.people }))
-          .sort((a, b) => a.divisionId.localeCompare(b.divisionId)),
-        divisions: divisions.map((division) => ({
-          id: division.id,
-          names: namesOf(division),
-          builtIn: division.built_in,
-          archivedAt: moment(division.archived_at),
-          departments: departments
-            .filter((department) => department.division_id === division.id)
-            .map(toDepartment),
-        })),
-      };
+      const list = await this.readList(transaction);
+      const people = new Map(list.staffCounts.map((row) => [row.divisionId, row.people]));
+      return exportList(transaction, this.audit, this.clock, access, requestId, {
+        list: 'divisions',
+        action: 'division.export',
+        request,
+        rows: new Map(list.divisions.map((division) => [division.id, division])),
+        allowed: () => true,
+        columns: divisionExportColumns(people),
+      });
     });
+  }
+
+  /** The divisions with their departments and staff counts, as the list route answers them. */
+  private async readList(transaction: Transaction): Promise<DivisionList> {
+    const divisions = await transaction
+      .selectFrom('divisions')
+      .select(['id', 'name_uz', 'name_ru', 'name_en', 'built_in', 'archived_at'])
+      .orderBy('position')
+      .orderBy('id')
+      .execute();
+    const departments = await departmentsIn(transaction).execute();
+    const counts = await sql<{ division_id: string; people: number }>`
+      select division_id, people from staff_count_by_division(${this.clock.now()})
+    `.execute(transaction);
+    return {
+      staffCounts: counts.rows
+        .map((row) => ({ divisionId: row.division_id, people: row.people }))
+        .sort((a, b) => a.divisionId.localeCompare(b.divisionId)),
+      divisions: divisions.map((division) => ({
+        id: division.id,
+        names: namesOf(division),
+        builtIn: division.built_in,
+        archivedAt: moment(division.archived_at),
+        departments: departments
+          .filter((department) => department.division_id === division.id)
+          .map(toDepartment),
+      })),
+    };
   }
 
   /**
@@ -584,4 +611,28 @@ export class Divisions {
     }
     return row;
   }
+}
+
+/** The columns of the divisions file: active departments and the staff of the list, as numbers. */
+function divisionExportColumns(
+  people: ReadonlyMap<string, number>,
+): Record<DivisionExportColumn, ExportColumn<Division>> {
+  return {
+    name: oneCell(
+      (texts) => texts.divisions.columns.name,
+      (row, _texts, language) => row.names[language],
+    ),
+    departments: oneCell(
+      (texts) => texts.divisions.columns.departments,
+      (row) => row.departments.filter((department) => department.archivedAt === null).length,
+    ),
+    staff: oneCell(
+      (texts) => texts.divisions.columns.staff,
+      (row) => people.get(row.id) ?? 0,
+    ),
+    status: oneCell(
+      (texts) => texts.divisions.columns.status,
+      (row, texts) => (row.archivedAt === null ? texts.active : texts.archived),
+    ),
+  };
 }

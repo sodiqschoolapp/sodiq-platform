@@ -5,6 +5,7 @@ import type {
   SubjectQuarter,
   SubjectQuarterWeights,
 } from '@sodiq/shared';
+import { EXPORT_TEXTS, SUBJECT_EXPORT_COLUMNS } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -559,5 +560,24 @@ describe('the subjects page', () => {
     await goOn(subjectsText.restore);
 
     expect(await within(panel).findByText(en.errors.subject_department_archived)).toBeDefined();
+  });
+});
+
+/** The headers of the table, without the column of checkboxes. */
+const headingsDrawn = (): string[] =>
+  [...document.querySelectorAll('thead th')]
+    .filter((cell) => cell.querySelector('input') === null)
+    .map((cell) => cell.textContent ?? '');
+
+// Task 2.2c-1: the Export button of the list, for the Principal too (`02`:
+// "Exports are allowed"), and the columns of the file are those of the screen,
+// with the same headings (`EXPORT_TEXTS` of `packages/shared`).
+describe('the export of the subjects list', () => {
+  it('is offered, and the columns of the screen are those of the file, with its headings', async () => {
+    await openList({ session: principal() });
+    expect(screen.getByRole('button', { name: en.list.export })).toBeTruthy();
+    expect(headingsDrawn()).toEqual(
+      SUBJECT_EXPORT_COLUMNS.map((key) => EXPORT_TEXTS.en.subjects.columns[key]),
+    );
   });
 });

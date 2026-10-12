@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   SetMetadata,
+  UseInterceptors,
   type ExecutionContext,
 } from '@nestjs/common';
 import {
@@ -21,6 +22,7 @@ import type { Request } from 'express';
 import { z } from 'zod';
 import { RESPONSE_SCHEMA } from './response-schema.interceptor.js';
 import { HeaderPipe, SchemaPipe } from './validation.js';
+import { XLSX_MEDIA_TYPE, XlsxFileInterceptor } from './xlsx.js';
 
 // The package does not export its schema type by name.
 type SchemaObject = Exclude<
@@ -149,4 +151,24 @@ export function Returns(schema: z.ZodType, status = 200): MethodDecorator {
 /** For a route that answers with no body: status 204, in the document too. */
 export function ReturnsNothing(): MethodDecorator {
   return applyDecorators(HttpCode(204), ApiResponse({ status: 204 }));
+}
+
+/** Metadata key under which `@ReturnsFile` marks a route that answers a file. */
+export const RETURNS_FILE = Symbol('RETURNS_FILE');
+
+/**
+ * For a route that answers an Excel file (an export, task 2.2c-1): status 200
+ * with the file, described in the document as a binary answer of that type.
+ * The handler returns an `XlsxFile`; `XlsxFileInterceptor` sends it.
+ */
+export function ReturnsFile(): MethodDecorator {
+  return applyDecorators(
+    HttpCode(200),
+    ApiResponse({
+      status: 200,
+      content: { [XLSX_MEDIA_TYPE]: { schema: { type: 'string', format: 'binary' } } },
+    }),
+    SetMetadata(RETURNS_FILE, true),
+    UseInterceptors(XlsxFileInterceptor),
+  );
 }

@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { ListPage, type BulkAction } from '@/components/list/list-page';
+import { useExport } from '@/components/list/use-export';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState } from '@/components/states';
@@ -54,6 +55,8 @@ export function SubjectsPage() {
   const canCreate = role !== null && permits(PERMISSIONS, role, 'subjects', 'create');
   const canEdit = role !== null && permits(PERMISSIONS, role, 'subjects', 'edit');
   const canArchive = role !== null && permits(PERMISSIONS, role, 'subjects', 'archive');
+  const canExport = role !== null && permits(PERMISSIONS, role, 'subjects', 'export');
+  const exporter = useExport<Subject>('subjects', (row) => row.id);
   const subjects = useQuery(subjectsQuery(branchId));
   const divisions = useQuery(divisionsQuery(branchId));
   const language = i18n.language;
@@ -361,6 +364,8 @@ export function SubjectsPage() {
         rowName={(row) => nameOf(row.names, language)}
         columns={columns}
         filters={filters}
+        onExport={canExport ? exporter.onExport : undefined}
+        exportState={exporter.state}
         search={search}
         onSearchChange={open}
         empty={{

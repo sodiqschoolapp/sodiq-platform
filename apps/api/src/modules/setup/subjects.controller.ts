@@ -5,6 +5,7 @@ import {
   newSubjectRecordSchema,
   quarterWeightsSchema,
   setupIdParamsSchema,
+  subjectExportSchema,
   subjectListSchema,
   subjectQuarterParamsSchema,
   subjectQuarterWeightsQuerySchema,
@@ -16,6 +17,7 @@ import {
   type QuarterWeights,
   type SetupIdParams,
   type Subject,
+  type SubjectExport,
   type SubjectList,
   type SubjectQuarterParams,
   type SubjectQuarterWeights,
@@ -23,7 +25,8 @@ import {
   type SubjectRecord,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
+import { Returns, ReturnsFile, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { Subjects } from './subjects.service.js';
@@ -45,6 +48,18 @@ export class SubjectsController {
   @Returns(subjectListSchema)
   list(@CurrentAccess() access: Access): Promise<SubjectList> {
     return this.subjects.list(access);
+  }
+
+  /** The Excel file of the list with this branch's daily distribution (task 2.2c-1). */
+  @Post('subjects/export')
+  @Requires('subjects', 'export')
+  @ReturnsFile()
+  export(
+    @CurrentAccess() access: Access,
+    @ValidBody(subjectExportSchema) request: SubjectExport,
+    @RequestId() requestId: string,
+  ): Promise<XlsxFile> {
+    return this.subjects.export(access, request, requestId);
   }
 
   @Post('subjects')

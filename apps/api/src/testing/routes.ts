@@ -3,6 +3,7 @@ import { ModulesContainer } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { API_PREFIX } from '../app.setup.js';
 import { RESPONSE_SCHEMA } from '../http/response-schema.interceptor.js';
+import { RETURNS_FILE } from '../http/schemas.js';
 import { declarationsOf, type RouteAccess } from '../modules/access/access.decorators.js';
 import { owedStepsAllowedOn } from '../modules/auth/session.guard.js';
 
@@ -15,7 +16,7 @@ export interface Route {
   access: RouteAccess[];
   /** The owed steps of sign-in the handler may be reached with (`@AllowedBefore...`). */
   allowedBefore: string[];
-  /** Whether the handler says what it answers: `@Returns(schema)` or `@ReturnsNothing()`. */
+  /** Whether the handler says what it answers: `@Returns(schema)`, `@ReturnsNothing()` or `@ReturnsFile()`. */
   describesAnswer: boolean;
 }
 
@@ -84,6 +85,7 @@ export function routesOf(app: INestApplication): Route[] {
               allowedBefore: owedStepsAllowedOn(handler),
               describesAnswer:
                 Reflect.getMetadata(RESPONSE_SCHEMA, handler) !== undefined ||
+                Reflect.getMetadata(RETURNS_FILE, handler) === true ||
                 Reflect.getMetadata(HTTP_CODE, handler) === 204,
             });
           }

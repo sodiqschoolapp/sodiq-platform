@@ -17,6 +17,7 @@ import { answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { ListPage } from '@/components/list/list-page';
+import { useExport } from '@/components/list/use-export';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState } from '@/components/states';
@@ -38,8 +39,9 @@ const fullName = (row: Pick<StaffListItem, 'firstName' | 'lastName'>) =>
  * columns: ... name, ID, category, branches, department, subjects, grades,
  * languages of instruction, phone, status"; task 2.2a), each opened in the
  * side panel. The Super Admin adds people; the Academic Vice Principal and the
- * Principal read the list. Photos, the export and the last column come with
- * tasks 2.2c and 8.x.
+ * Principal read the list and export it (task 2.2c-1; the server leaves the
+ * phone out of the Principal's file). Photos and the last column come with
+ * tasks 2.2c-2 and 8.x.
  */
 export function StaffPage() {
   const { t, i18n } = useTranslation();
@@ -51,6 +53,8 @@ export function StaffPage() {
   const confirm = useConfirm();
   const [adding, setAdding] = useState(false);
   const canCreate = role !== null && permits(PERMISSIONS, role, 'staff', 'create');
+  const canExport = role !== null && permits(PERMISSIONS, role, 'staff', 'export');
+  const exporter = useExport<StaffListItem>('staff', (row) => row.id);
   const staff = useQuery(staffQuery(branchId));
   const divisions = useQuery(divisionsQuery(branchId));
   const subjects = useQuery(subjectsQuery(branchId));
@@ -338,6 +342,8 @@ export function StaffPage() {
         rowName={fullName}
         columns={columns}
         filters={filters}
+        onExport={canExport ? exporter.onExport : undefined}
+        exportState={exporter.state}
         search={search}
         onSearchChange={open}
         empty={{

@@ -173,11 +173,16 @@ How to read the task lines:
   - Build: availability per branch, per weekday, as time ranges valid from a date, edited by each branch's Academic Vice Principal and read only from the other branches; vacancies (a staff record for a teacher not yet hired; no account, no roles, no staff ID): create, edit, close, reopen, and delete when it never held a load; their section of the staff list.
   - Done when: availability in two branches cannot overlap on any date, and a vacancy cannot hold personal data or a staff ID.
 
-- [ ] **2.2c Exports and photos**
-  - Read: `04` (Student record, Teacher and staff record), `edge/people-roles-accounts` (Personal data and the audit log), `13`.
-  - Build: Excel export (ExcelJS, answer 1) of the staff list and of the lists that waited for it (rooms and buildings, divisions, subjects): the route gets the search, the filters and the column keys or the ids, the server decides what the role may see, vacancies only when asked, every export logged with its filters and row count; staff photos in the R2 bucket (answer 2), uploaded through a declared exception of `json-only.ts`, shrunk in the browser, served through the API.
-  - Done when: an export contains only what the role may see and leaves an audit entry, and photos work with the in-memory store and refuse on their own when R2 is not configured.
+- [x] **2.2c-1 Exports** (2.2c split in two, pull request #58, decision 1)
+  - Read: `04` (Student record, Teacher and staff record, Vacancy), `edge/people-roles-accounts` (Who can act, Personal data and the audit log), `13`, `12` (Lists, Language).
+  - Build: Excel export (ExcelJS, answer 1) of the staff list, of the vacancies and of the lists that waited for it (buildings, rooms, divisions, subjects): the route gets the ids (ticked rows, or every matching row), the column keys, the search and the filters, the server decides what the role may see, vacancies only from their own list, every export logged with its filters and row count.
+  - Done when: an export contains only what the role may see and leaves an audit entry.
+
+- [ ] **2.2c-2 Photos**
+  - Read: `04` (Student record, Teacher and staff record, Vacancy), `edge/people-roles-accounts` (Personal data and the audit log), `13`.
+  - Build: staff photos in the R2 bucket (answer 2), uploaded through a declared exception of `json-only.ts`, shrunk in the browser, served through the API; the photo column of the staff list.
   - From 2.2b (pull request #57, correction 2): `04` Vacancy, "nothing personal": a vacancy's photo is refused by the database (the photo column joins `staff_vacancy_check`) and the upload route answers 404 for a vacancy's id.
+  - Done when: photos work with the in-memory store and refuse on their own when R2 is not configured.
 
 - [ ] **2.2d Design system and brand**
   - Read: `docs/design-system.md` (all of it), `12` (Look and feel, Devices), `.claude/rules/web.md`, `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7"). The owner's design board is described there; the board itself is not in the repository.

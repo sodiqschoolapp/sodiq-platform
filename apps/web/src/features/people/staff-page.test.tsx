@@ -1,4 +1,5 @@
 import type { Division, Role, StaffDetail, StaffListItem, Subject } from '@sodiq/shared';
+import { EXPORT_TEXTS, STAFF_EXPORT_COLUMNS } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -353,5 +354,29 @@ describe('the staff page', () => {
       shown,
     );
     expect(screen.queryByRole('link', { name: en.people.staffLink }) !== null).toBe(shown);
+  });
+});
+
+/** The headers of the table, without the column of checkboxes. */
+const headingsDrawn = (): string[] =>
+  [...document.querySelectorAll('thead th')]
+    .filter((cell) => cell.querySelector('input') === null)
+    .map((cell) => cell.textContent ?? '');
+
+// Task 2.2c-1: the Export button of the list, for the Principal too (`02`:
+// "Exports are allowed"), and the columns of the file are those of the screen,
+// with the same headings (`EXPORT_TEXTS` of `packages/shared`).
+describe('the export of the staff list', () => {
+  it('is offered, and the columns of the screen are those of the file, with its headings', async () => {
+    openList('principal');
+    renderApp(PATH);
+    await screen.findByRole('heading', { name: en.people.staff.title });
+    await waitFor(() => {
+      expect(document.querySelectorAll('tbody tr')).toHaveLength(2);
+    });
+    expect(screen.getByRole('button', { name: en.list.export })).toBeTruthy();
+    expect(headingsDrawn()).toEqual(
+      STAFF_EXPORT_COLUMNS.map((key) => EXPORT_TEXTS.en.staff.columns[key]),
+    );
   });
 });

@@ -1,15 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   roomStatusSchema,
   roomTypeSchema,
+  type Clock,
   type Room,
+  type RoomExport,
+  type RoomExportColumn,
   type RoomList,
   type RoomRecord,
 } from '@sodiq/shared';
+import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import { exportList, oneCell, type ExportColumn } from '../audit/export-list.js';
 import { changesOf, notFound, refusingDuplicates } from './setup-refusals.js';
 
 interface RoomRow {
@@ -74,6 +80,45 @@ function roomsIn(transaction: Transaction) {
     ]);
 }
 
+/** The rooms of the branch with the names of their floor and building, oldest first. */
+async function readRooms(transaction: Transaction): Promise<Room[]> {
+  const rows = await roomsIn(transaction).orderBy('rooms.created_at').orderBy('rooms.id').execute();
+  return rows.map(toRoom);
+}
+
+/** The columns of the rooms file; capacity and the lessons at once of a shared room as numbers. */
+const ROOM_EXPORT: Record<RoomExportColumn, ExportColumn<Room>> = {
+  name: oneCell(
+    (texts) => texts.rooms.columns.name,
+    (row) => row.name,
+  ),
+  building: oneCell(
+    (texts) => texts.rooms.columns.building,
+    (row) => row.buildingName,
+  ),
+  floor: oneCell(
+    (texts) => texts.rooms.columns.floor,
+    (row) => row.floorName,
+  ),
+  type: oneCell(
+    (texts) => texts.rooms.columns.type,
+    (row, texts) => texts.roomTypes[row.type],
+  ),
+  capacity: oneCell(
+    (texts) => texts.rooms.columns.capacity,
+    (row) => row.capacity,
+  ),
+  status: oneCell(
+    (texts) => texts.rooms.columns.status,
+    (row, texts) => texts.roomStatuses[row.status],
+  ),
+  shared: oneCell(
+    (texts) => texts.rooms.columns.shared,
+    (row, texts) =>
+      row.shared && row.maxSimultaneousLessons !== null ? row.maxSimultaneousLessons : texts.no,
+  ),
+};
+
 /**
  * Rooms (docs/spec/03-school-setup.md, Building, floor, room: "name or
  * number, floor, type, capacity, status"; docs/spec/edge-cases/timetable.md,
@@ -88,6 +133,7 @@ export class Rooms {
   constructor(
     private readonly transactions: Transactions,
     private readonly audit: Audit,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   private async readRoom(transaction: Transaction, id: string): Promise<Room> {
@@ -130,12 +176,23 @@ export class Rooms {
 
   /** The rooms of the branch with the names of their floor and building, oldest first. */
   list(access: Access): Promise<RoomList> {
+    return this.transactions.run(access.branchIds, async (transaction) => ({
+      rooms: await readRooms(transaction),
+    }));
+  }
+
+  /** The Excel file of the list (task 2.2c-1), from the rows the list reads, in one transaction. */
+  export(access: Access, request: RoomExport, requestId: string): Promise<XlsxFile> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const rows = await roomsIn(transaction)
-        .orderBy('rooms.created_at')
-        .orderBy('rooms.id')
-        .execute();
-      return { rooms: rows.map(toRoom) };
+      const rooms = await readRooms(transaction);
+      return exportList(transaction, this.audit, this.clock, access, requestId, {
+        list: 'rooms',
+        action: 'room.export',
+        request,
+        rows: new Map(rooms.map((room) => [room.id, room])),
+        allowed: () => true,
+        columns: ROOM_EXPORT,
+      });
     });
   }
 

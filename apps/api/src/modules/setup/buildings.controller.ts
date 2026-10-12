@@ -1,5 +1,6 @@
 import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
+  buildingExportSchema,
   buildingListSchema,
   buildingRecordSchema,
   buildingSchema,
@@ -7,6 +8,7 @@ import {
   floorSchema,
   setupIdParamsSchema,
   type Building,
+  type BuildingExport,
   type BuildingList,
   type BuildingRecord,
   type Floor,
@@ -14,7 +16,8 @@ import {
   type SetupIdParams,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ValidBody, ValidParams } from '../../http/schemas.js';
+import { Returns, ReturnsFile, ValidBody, ValidParams } from '../../http/schemas.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { Buildings } from './buildings.service.js';
@@ -33,6 +36,18 @@ export class BuildingsController {
   @Returns(buildingListSchema)
   list(@CurrentAccess() access: Access): Promise<BuildingList> {
     return this.buildings.list(access);
+  }
+
+  /** The Excel file of the list (task 2.2c-1). */
+  @Post('buildings/export')
+  @Requires('rooms', 'export')
+  @ReturnsFile()
+  export(
+    @CurrentAccess() access: Access,
+    @ValidBody(buildingExportSchema) request: BuildingExport,
+    @RequestId() requestId: string,
+  ): Promise<XlsxFile> {
+    return this.buildings.export(access, request, requestId);
   }
 
   @Post('buildings')

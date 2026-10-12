@@ -1,6 +1,6 @@
-import type { Building, Room } from '@sodiq/shared';
+import { EXPORT_TEXTS, ROOM_EXPORT_COLUMNS, type Building, type Room } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
@@ -341,5 +341,106 @@ describe('the room list', () => {
     const panel = await screen.findByRole('complementary', { name: 'Sports hall' });
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(within(panel).getByText('2 lessons at once')).toBeDefined();
+  });
+});
+
+/** The headers of the table, without the column of checkboxes. */
+const headingsDrawn = (): string[] =>
+  [...document.querySelectorAll('thead th')]
+    .filter((cell) => cell.querySelector('input') === null)
+    .map((cell) => cell.textContent ?? '');
+
+/** An Excel answer of the export route, with the headers the server sends. */
+const fileAnswer = (columns: string): Response =>
+  new Response(new Blob(['PK']), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="rooms-2026-10-10.xlsx"; filename*=UTF-8''${encodeURIComponent('Xonalar-2026-10-10.xlsx')}`,
+      'X-Export-Columns': columns,
+    },
+  });
+
+/** The downloads the page started: the file name of each saved file. */
+function downloads(): string[] {
+  const names: string[] = [];
+  // jsdom makes no object addresses; the test's own URL does, and goes after the test.
+  class FileUrl extends URL {
+    static override createObjectURL = (): string => 'blob:file';
+    static override revokeObjectURL = (): void => undefined;
+  }
+  vi.stubGlobal('URL', FileUrl);
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    names.push(this.download);
+  });
+  return names;
+}
+
+// Task 2.2c-1: the Export button sends the ids, the columns shown and the
+// search and filters; the server makes the file and decides what the role may
+// see (edge cases, Personal data and the audit log).
+describe('the export of the room list', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('sends the matching rows in the order shown, the columns shown, the search and filters, and saves the file', async () => {
+    const saved = downloads();
+    const { calls } = await openList(principal(), ROOMS, [MAIN, ANNEX], {
+      'POST /api/setup/rooms/export': () =>
+        fileAnswer('name,building,floor,type,capacity,status,shared'),
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(3);
+    });
+    expect(headingsDrawn()).toEqual(
+      ROOM_EXPORT_COLUMNS.map((key) => EXPORT_TEXTS.en.rooms.columns[key]),
+    );
+    fireEvent.change(screen.getByLabelText(en.setup.rooms.type), {
+      target: { value: 'laboratory' },
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: en.list.export }));
+
+    await waitFor(() => {
+      expect(saved).toEqual(['Xonalar-2026-10-10.xlsx']);
+    });
+    expect(calls.find((call) => call.route === 'POST /api/setup/rooms/export')?.body).toEqual({
+      ids: [ROOMS[1]?.id],
+      columns: [...ROOM_EXPORT_COLUMNS],
+      selection: 'matching',
+      search: '',
+      filters: { type: 'laboratory' },
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('names the columns the server left out, and shows a refusal with its text', async () => {
+    downloads();
+    let answer = () => fileAnswer('name,building');
+    await openList(principal(), ROOMS, [MAIN, ANNEX], {
+      'POST /api/setup/rooms/export': () => answer(),
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(3);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: en.list.export }));
+
+    const left = ROOM_EXPORT_COLUMNS.filter((key) => key !== 'name' && key !== 'building')
+      .map((key) => EXPORT_TEXTS.en.rooms.columns[key])
+      .join(', ');
+    expect(
+      await screen.findByText(en.list.exportColumnsLeftOut.replace('{{columns}}', left)),
+    ).toBeTruthy();
+
+    answer = () => refusal('permission_denied', 403);
+    fireEvent.click(screen.getByRole('button', { name: en.list.export }));
+    expect((await screen.findByRole('alert')).textContent).toBe(en.errors.permission_denied);
   });
 });
