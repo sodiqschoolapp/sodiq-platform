@@ -136,7 +136,7 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'staff_account_blocked(uuid,timestamp with time zone)':
     'Whether the staff record of an account is inactive or left today: sign-in and every request run before a branch is known.',
   'staff_availability_elsewhere(uuid)':
-    "The working hours of the other branches of one record linked to a branch of the transaction, read only (06: the Academic Vice Principal \"sees the others read only\"); rows of hours, nothing personal.",
+    'The working hours of the other branches of one record linked to a branch of the transaction, read only (06: the Academic Vice Principal "sees the others read only"); rows of hours, nothing personal.',
   'staff_count_by_division(timestamp with time zone)':
     'The number of people per main division for the school-wide list of divisions.',
   'staff_duplicate_elsewhere(text,text,date,text)':
@@ -150,7 +150,7 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'staff_subject_in_use(uuid,smallint[],uuid,timestamp with time zone)':
     "How many people of other branches a change of a subject's department or grades would leave outside it.",
   'vacancy_delete(uuid)':
-    "Deletes one vacancy of a branch of the transaction with every row of it (04: one that never held a load can be deleted); the membership filter hides the record once its link is gone, and sodiq_app keeps no delete right on staff or its history.",
+    'Deletes one vacancy of a branch of the transaction with every row of it (04: one that never held a load can be deleted); the membership filter hides the record once its link is gone, and sodiq_app keeps no delete right on staff or its history.',
 };
 
 /** The filter of db/migrations/0002, as PostgreSQL writes it back. */

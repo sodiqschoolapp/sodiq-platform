@@ -5,7 +5,7 @@ import { type FormIssue, type FormSchema } from '@/components/form/form-messages
  * the field that shows it (task 2.2a; the availability and vacancy forms of
  * task 2.2b).
  */
-export const asFormSchema = <Values,>(
+export const asFormSchema = <Values>(
   schema: {
     safeParse: (input: unknown) => {
       success: boolean;

@@ -69,9 +69,7 @@ export const availabilityQuery = (branchId: string | null, id: string) =>
 
 /** The vacancies of the branch of the switcher (task 2.2b). */
 export const vacanciesKey = (branchId?: string | null) =>
-  branchId === undefined
-    ? [...PEOPLE_KEY, 'vacancies']
-    : [...PEOPLE_KEY, 'vacancies', branchId];
+  branchId === undefined ? [...PEOPLE_KEY, 'vacancies'] : [...PEOPLE_KEY, 'vacancies', branchId];
 
 export const vacanciesQuery = (branchId: string | null) =>
   queryOptions({

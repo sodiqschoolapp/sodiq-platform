@@ -447,9 +447,7 @@ function TeachersOutside({ error }: { error: unknown }) {
       const person = staff.data?.staff.find((one) => one.id === id);
       return person === undefined ? '' : `${person.firstName} ${person.lastName}`;
     }),
-    ...vacancyIds.map(
-      (id) => vacancies.data?.vacancies.find((one) => one.id === id)?.name ?? '',
-    ),
+    ...vacancyIds.map((id) => vacancies.data?.vacancies.find((one) => one.id === id)?.name ?? ''),
   ];
   return (
     <div className="grid gap-1 text-sm" role="status">

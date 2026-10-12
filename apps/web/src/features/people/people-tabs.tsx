@@ -16,7 +16,11 @@ export function PeopleTabs({ current }: { current: 'staff' | 'vacancies' }) {
   if (role === null || !permits(PERMISSIONS, role, 'vacancies', 'view')) {
     return null;
   }
-  const tab = (key: 'staff' | 'vacancies', to: '/people/staff' | '/people/vacancies', text: string) => (
+  const tab = (
+    key: 'staff' | 'vacancies',
+    to: '/people/staff' | '/people/vacancies',
+    text: string,
+  ) => (
     <Link
       to={to}
       aria-current={current === key ? 'page' : undefined}

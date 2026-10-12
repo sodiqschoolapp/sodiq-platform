@@ -25,7 +25,11 @@ describe('availability', () => {
     expect(rangesOverlap(monday('08:00', '13:00'), monday('13:00', '17:00'))).toBe(false);
     expect(rangesOverlap(monday('08:00', '13:00'), monday('12:59', '17:00'))).toBe(true);
     expect(
-      rangesOverlap(monday('08:00', '13:00'), { weekday: 2 as const, start: '08:00', end: '13:00' }),
+      rangesOverlap(monday('08:00', '13:00'), {
+        weekday: 2 as const,
+        start: '08:00',
+        end: '13:00',
+      }),
     ).toBe(false);
   });
 

@@ -148,9 +148,8 @@ export class Vacancies {
           const fields = fieldsOf(record);
           // The id first: the new row is visible only once its branch link
           // exists, so the insert cannot read it back (the membership policy).
-          const id = (
-            await sql<{ id: string }>`select uuidv7() as id`.execute(transaction)
-          ).rows[0]?.id;
+          const id = (await sql<{ id: string }>`select uuidv7() as id`.execute(transaction)).rows[0]
+            ?.id;
           if (id === undefined) {
             throw new Error('uuidv7() answered nothing.');
           }

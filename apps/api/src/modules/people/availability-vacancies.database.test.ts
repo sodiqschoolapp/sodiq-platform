@@ -288,7 +288,12 @@ describe('availability and vacancies in the database', () => {
         until: '2026-11-02',
         ranges: [MONDAY_MORNING],
       });
-      await addEntry({ branch: east, staff: movedLater, from: '2026-11-02', ranges: [MONDAY_MORNING] });
+      await addEntry({
+        branch: east,
+        staff: movedLater,
+        from: '2026-11-02',
+        ranges: [MONDAY_MORNING],
+      });
     });
 
     it('never compares a withdrawn entry', async () => {
