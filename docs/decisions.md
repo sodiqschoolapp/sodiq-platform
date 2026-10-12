@@ -171,6 +171,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 12 October 2026: availability and vacancies (task 2.2b)
+
+Plan approved on pull request #57 with corrections 1 to 5; decisions 1 to 14 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| Availability routes under `staff_teaching` (same roles and actions); vacancies in a new area `vacancies` (Super Admin and Academic Vice Principal view, create, edit, archive; Principal view); close, reopen and delete are `archive` | Decision 1; `02`, `edge/people-roles-accounts` Who can act |
+| An entry is the whole week of one branch from a date; an empty entry means no hours there; ranges half-open in wall-clock minutes, compared across branches as they are | Decisions 2, 3; owner's answer 10; one time zone (`00-definitions`) |
+| A new entry is tomorrow at the earliest while one is in force today, today otherwise; ranges on non-working weekdays accepted | Decision 4; today's hours stay as history |
+| The overlap refusal `availability_overlap` names the weekdays only (`weekday.<n>`); the exclusion of 0025 is the backstop with empty `details` | Decision 6; the other branch's times never reach the client |
+| A vacancy's name unique among the open vacancies of its branch, checked under `for no key update` of the branch row; close and reopen act from today; a reopen re-checks department, subjects, grades and name | Decisions 5, 7, 14; the re-hire rule of `.claude/rules/database.md` |
+| Three SECURITY DEFINER functions beyond the 2.2a pattern: `staff_availability_elsewhere` returns rows of hours, `vacancy_delete` writes, `staff_record_kind` returns a text | Decision 8; the membership filter |
+| `staff_main_branch_check` returns when its record no longer exists (read through `staff_record_kind`) | Decision 9, confirmed not a weakening |
+| Availability and vacancy routes use the branch of the request, also for the Super Admin | Decision 13 |
+| A branch removed from a person ends its hours there from tomorrow | Decision 11 |
+| The vacancy delete keeps the whole record in its audit entry | Correction 1 |
+| Vacancies are a second list at `/people/vacancies` reached by a tab of the staff list (decision taken in the build) | One list per address keeps its own search, filters and open record (`listSearch`) |
+
 ## 12 October 2026: staff record and status (task 2.2a)
 
 Split of 2.2 and answer 2 (membership filter) by the owner on pull request #53; plan approved with corrections 1 to 10, decisions 1 to 20 confirmed or changed there. Decisions 21 to 26 came from the build and its reviews. Flagged on issue #42.

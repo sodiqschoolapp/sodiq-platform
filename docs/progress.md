@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: task 2.2b Availability and vacancies
+
+- Built: migration 0025 (`staff_availability` entries from a date and their ranges, both branch tables; an exclusion on person, weekday, minutes and dates across every branch; `staff_record_kind`, `staff_availability_elsewhere`, `vacancy_delete` SECURITY DEFINER; `staff_main_branch_check` skips a deleted record; one branch per vacancy); two availability routes under `staff_teaching` and seven vacancy routes in the new area `vacancies`; a branch removed from a person ends its hours from tomorrow.
+- Pages: the Availability section in the staff panel and the vacancy panel (own branch editable, other branches read only); Vacancies as the second section of the teacher list (`/people/vacancies`) with add, edit, close, reopen and delete; open vacancies named in the subject refusal; texts in uz, ru, en. Plan approved on pull request #57 with five corrections.
+- Left out: filling a vacancy and its history of fills (5.7a); the close refusal while a load row names a vacancy and "delete only when it never held a load" (3.4, written there); the vacancy photo refusal (2.2c, written there); exports with vacancies on request (2.2c); lessons flagged outside a new entry and the availability rule of the rule engine (5.x).
+
+The next sessions must know:
+
+- Availability ranges compare wall-clock minutes because every branch is in one time zone; the task that makes `branches.time_zone` writable converts to real clock time in the exclusion of 0025 first.
+- An open entry ends at `'infinity'` in the database (so the ranges' foreign key covers the end); the API answers `null`.
+- A vacancy is a `staff` row of kind `vacancy`; the person routes filter `kind = 'person'`, the vacancy routes `kind = 'vacancy'`, and the cross-branch functions of 0024 count both.
+- The next task is 2.2c.
+
 ## 12 October 2026: task 2.2a Staff record and status
 
 - Built: migration 0024 (`staff` one record per person filtered by membership, `staff_branches` a branch table, the person's divisions, subjects, languages and dated statuses; the staff ID counter; the role ends a "left" wrote; five SECURITY DEFINER functions answering with a boolean or a count); nine routes under `/api/people/staff` (areas `staff`, `staff_teaching`); sign-in and every request refused for an inactive or left person; division and department archives refused while somebody who has not left is in them; a subject's department or grades kept while a teacher has them.
