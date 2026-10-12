@@ -171,9 +171,11 @@ export const en = {
     account_inactive:
       'Your staff record is inactive or you have left the school, so you cannot sign in. Ask the Super Admin if this is wrong.',
     subject_has_teachers:
-      'Teachers who have not left have this subject with these grades in this department. Change their subjects first, then the subject.',
+      'Teachers who have not left, or open vacancies, have this subject with these grades in this department. Change their subjects first, then the subject.',
     department_has_staff:
-      'Staff members who have not left are in this department. Move them to another department first.',
+      'Staff members who have not left, or open vacancies, are in this department. Move them to another department or close the vacancies first.',
+    availability_overlap:
+      'These hours overlap the hours in another branch on the same weekday. Change the times, or ask the other branch to change theirs.',
     archive_refused:
       'It cannot be archived while a room in it is in use or under repair. Close the rooms first.',
     floor_archived:

@@ -185,6 +185,8 @@ export const ERROR_CODES = [
   'subject_has_teachers',
   /** A department cannot be archived while a staff member who has not left is in it (task 2.2a, decision 20). */
   'department_has_staff',
+  /** Hours of a staff record overlap its hours in another branch on a date (`06`, Teachers who work in several branches; task 2.2b). `details` names the weekdays when the service finds them. */
+  'availability_overlap',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

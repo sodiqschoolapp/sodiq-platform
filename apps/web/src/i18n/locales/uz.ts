@@ -177,9 +177,11 @@ export const uz: Texts<'one' | 'other'> = {
     account_inactive:
       'Xodim kartochkangiz faol emas yoki ishdan ketgansiz, shuning uchun kira olmaysiz. Xato boʻlsa, super administratorga murojaat qiling.',
     subject_has_teachers:
-      'Ishdan ketmagan oʻqituvchilarda bu fan shu sinflar bilan shu kafedrada bor. Avval ularning fanlarini, keyin fanni oʻzgartiring.',
+      'Ishdan ketmagan oʻqituvchilarda yoki ochiq vakansiyalarda bu fan shu sinflar bilan shu kafedrada bor. Avval ularning fanlarini, keyin fanni oʻzgartiring.',
     department_has_staff:
-      'Bu kafedrada ishdan ketmagan xodimlar bor. Avval ularni boshqa kafedraga oʻtkazing.',
+      'Bu kafedrada ishdan ketmagan xodimlar yoki ochiq vakansiyalar bor. Avval ularni boshqa kafedraga oʻtkazing yoki vakansiyalarni yoping.',
+    availability_overlap:
+      'Bu soatlar boshqa filialdagi soatlar bilan haftaning shu kunida ustma-ust tushadi. Vaqtni oʻzgartiring yoki boshqa filialdan oʻzinikini oʻzgartirishni soʻrang.',
     archive_refused:
       'Undagi xona foydalanishda yoki taʼmirda ekan, arxivlab boʻlmaydi. Avval xonalarni yoping.',
     floor_archived:
