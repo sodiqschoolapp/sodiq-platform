@@ -4,6 +4,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { insertSubject } from '../../testing/subjects-kit.js';
+import { insertAppointmentSubjects } from './appointment-subjects.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
@@ -70,10 +71,7 @@ describe('the subjects of appointments in the database', () => {
   }
 
   function addSubjects(transaction: Transaction, assignment: string, subjects: readonly string[]) {
-    return transaction
-      .insertInto('assignment_subjects')
-      .values(subjects.map((subject) => ({ assignment_id: assignment, subject_id: subject })))
-      .execute();
+    return insertAppointmentSubjects(transaction, assignment, subjects);
   }
 
   /** An appointment with its subjects, in one transaction of the application. */

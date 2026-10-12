@@ -186,7 +186,8 @@ export const roleGiveSchema = z
       context.addIssue({
         code: 'custom',
         path: ['subjectIds'],
-        message: 'A Head Teacher and a Senior Head Teacher are given with subjects; no other role is.',
+        message:
+          'A Head Teacher and a Senior Head Teacher are given with subjects; no other role is.',
       });
     }
   });

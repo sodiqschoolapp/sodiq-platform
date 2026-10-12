@@ -23,6 +23,12 @@ export interface CurrentAssignment {
   role: Role;
   /** `null` for the Super Admin and the Senior Head Teacher, who work across branches. */
   branchId: string | null;
+  /**
+   * The subjects of a Head Teacher or Senior Head Teacher appointment, in
+   * small letters; empty for every other role (task 2.3b-1). Fixed for the
+   * life of the assignment (db/migrations/0028).
+   */
+  subjectIds: readonly string[];
 }
 
 /**
@@ -45,10 +51,26 @@ export async function currentAssignments(
     )
     .orderBy('id')
     .execute();
+  const subjects =
+    found.length === 0
+      ? []
+      : await transaction
+          .selectFrom('assignment_subjects')
+          .select(['assignment_id', 'subject_id'])
+          .where(
+            'assignment_id',
+            'in',
+            found.map((row) => row.id),
+          )
+          .orderBy('subject_id')
+          .execute();
   return found.map((row) => ({
     id: row.id,
     role: roleSchema.parse(row.role),
     branchId: row.branch_id,
+    subjectIds: subjects
+      .filter((subject) => subject.assignment_id === row.id)
+      .map((subject) => subject.subject_id.toLowerCase()),
   }));
 }
 

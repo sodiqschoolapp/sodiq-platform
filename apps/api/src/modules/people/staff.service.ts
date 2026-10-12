@@ -78,6 +78,11 @@ const STAFF_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   staff_main_division: 'request_refused',
   staff_main_branch: 'request_refused',
   staff_statuses_no_overlap: 'request_refused',
+  // A `left` taken back brings a Head Teacher or Senior Head Teacher
+  // appointment back over a holder of a subject appointed meanwhile
+  // (decision 10 of #63).
+  assignment_subjects_one_head_teacher: 'head_teacher_taken',
+  assignment_subjects_one_senior: 'head_teacher_taken',
 };
 
 /** JSHSHIR is unique when filled (`edge/people-roles-accounts`, Staff over time). */

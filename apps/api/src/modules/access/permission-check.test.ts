@@ -18,6 +18,7 @@ function held(role: CurrentAssignment['role'], branchId: string | null): Current
     id: `0199b1c0-0000-7000-8000-1000000000${String(next).padStart(2, '0')}`,
     role,
     branchId,
+    subjectIds: [],
   };
 }
 

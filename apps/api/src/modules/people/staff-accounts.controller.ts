@@ -8,6 +8,7 @@ import {
   roleParamsSchema,
   staffAccountSchema,
   staffParamsSchema,
+  subjectsChangeSchema,
   superAdminSummarySchema,
   type AccountCreate,
   type FirstPasswordSlip,
@@ -17,6 +18,7 @@ import {
   type RoleParams,
   type StaffAccount,
   type StaffParams,
+  type SubjectsChange,
   type SuperAdminSummary,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
@@ -91,6 +93,30 @@ export class StaffAccountsController {
     @RequestId() requestId: string,
   ): Promise<StaffAccount> {
     return this.staffAccounts.end(access, params.id, params.assignmentId, end, requestId);
+  }
+
+  /**
+   * The subjects of a Head Teacher or Senior Head Teacher appointment from a
+   * date: the appointment ends and a new one begins at the same moment (task
+   * 2.3b-1, decision 6 of #63).
+   */
+  @Post('people/staff/:id/roles/:assignmentId/subjects')
+  @HttpCode(200)
+  @Requires('accounts', 'edit')
+  @Returns(staffAccountSchema)
+  changeSubjects(
+    @CurrentAccess() access: Access,
+    @ValidParams(roleParamsSchema) params: RoleParams,
+    @ValidBody(subjectsChangeSchema) change: SubjectsChange,
+    @RequestId() requestId: string,
+  ): Promise<StaffAccount> {
+    return this.staffAccounts.changeSubjects(
+      access,
+      params.id,
+      params.assignmentId,
+      change,
+      requestId,
+    );
   }
 
   /** For the banner while fewer than two Super Admins exist; `create` is the Super Admin's alone. */

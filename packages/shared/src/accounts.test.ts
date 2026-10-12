@@ -84,10 +84,12 @@ describe('accounts', () => {
 
     it('name each subject once', () => {
       expect(give('head_teacher', [subject, subject.toUpperCase()])).toBe(false);
-      expect(subjectsChangeSchema.safeParse({ subjectIds: [subject], from: '2026-10-12' }).success).toBe(
-        true,
+      expect(
+        subjectsChangeSchema.safeParse({ subjectIds: [subject], from: '2026-10-12' }).success,
+      ).toBe(true);
+      expect(subjectsChangeSchema.safeParse({ subjectIds: [], from: '2026-10-12' }).success).toBe(
+        false,
       );
-      expect(subjectsChangeSchema.safeParse({ subjectIds: [], from: '2026-10-12' }).success).toBe(false);
     });
   });
 });

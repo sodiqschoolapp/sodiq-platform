@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
+import { insertSubject } from '../../testing/subjects-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { Audit } from '../audit/audit.service.js';
 import { Accounts } from '../auth/accounts.service.js';
@@ -12,7 +13,9 @@ import {
   AssignmentBranchError,
   AssignmentOverlapError,
   Assignments,
+  HeadTeacherTakenError,
   OwnSuperAdminRemovalError,
+  SubjectUnknownError,
   TooManySuperAdminsError,
   UnknownAssignmentError,
   type NewAssignment,
@@ -36,6 +39,8 @@ describe('assignments', () => {
   let north: string;
   let south: string;
   let administrator: string;
+  let mathematics: string;
+  let physics: string;
   const clock = new FixedClock(START);
 
   /** A new account without a role. */
@@ -108,6 +113,8 @@ describe('assignments', () => {
     north = await insertBranch(database.migrator, 'North');
     south = await insertBranch(database.migrator, 'South');
     administrator = await account('Ilhom', 'Qodirov');
+    mathematics = await insertSubject(database.migrator, 'Mathematics');
+    physics = await insertSubject(database.migrator, 'Physics');
   });
 
   afterAll(async () => {
@@ -129,7 +136,9 @@ describe('assignments', () => {
         }),
       );
 
-      expect(await current(teacher)).toEqual([{ id: given.id, role: 'teacher', branchId: north }]);
+      expect(await current(teacher)).toEqual([
+        { id: given.id, role: 'teacher', branchId: north, subjectIds: [] },
+      ]);
       expect(await rowsOf(teacher)).toEqual([
         {
           role: 'teacher',
@@ -163,13 +172,21 @@ describe('assignments', () => {
     it('without a branch are written to the log of the school', async () => {
       const senior = await account('Barno', 'Valiyeva');
 
-      const given = await give({ accountId: senior, role: 'senior_head_teacher', branchId: null });
+      const given = await give({
+        accountId: senior,
+        role: 'senior_head_teacher',
+        branchId: null,
+        subjectIds: [mathematics],
+      });
 
       expect(await current(senior)).toEqual([
-        { id: given.id, role: 'senior_head_teacher', branchId: null },
+        { id: given.id, role: 'senior_head_teacher', branchId: null, subjectIds: [mathematics] },
       ]);
       expect(await auditOf(given.id, 'audit_log_school')).toMatchObject([
-        { action: 'assignment.given', new_value: { role: 'senior_head_teacher', branchId: null } },
+        {
+          action: 'assignment.given',
+          new_value: { role: 'senior_head_teacher', branchId: null, subjectIds: [mathematics] },
+        },
       ]);
     });
 
@@ -179,7 +196,12 @@ describe('assignments', () => {
 
       await give({ accountId: person, role: 'teacher', branchId: north });
       await give({ accountId: person, role: 'tutor', branchId: north });
-      await give({ accountId: person, role: 'head_teacher', branchId: north });
+      await give({
+        accountId: person,
+        role: 'head_teacher',
+        branchId: north,
+        subjectIds: [physics],
+      });
       await give({ accountId: person, role: 'teacher', branchId: south });
 
       expect(
@@ -228,6 +250,61 @@ describe('assignments', () => {
 
       expect(await rowsOf(person)).toEqual([]);
       expect(await auditOf(id, 'audit_log')).toEqual([]);
+    });
+
+    // `02`, Head Teachers and Senior Head Teachers (task 2.3b-1).
+    describe('with subjects', () => {
+      it('name the subjects another Head Teacher of the branch holds', async () => {
+        const first = await account('Jasur', 'Valiyev');
+        const second = await account('Kamola', 'Valiyeva');
+        const chemistry = await insertSubject(database.migrator, 'Chemistry');
+        const biology = await insertSubject(database.migrator, 'Biology');
+        await give({
+          accountId: first,
+          role: 'head_teacher',
+          branchId: south,
+          subjectIds: [chemistry],
+        });
+
+        const refused = give({
+          accountId: second,
+          role: 'head_teacher',
+          branchId: south,
+          subjectIds: [biology, chemistry],
+        });
+
+        await expect(refused).rejects.toBeInstanceOf(HeadTeacherTakenError);
+        await expect(refused).rejects.toMatchObject({ subjectIds: [chemistry] });
+        expect(await rowsOf(second)).toEqual([]);
+      });
+
+      it('refuse an unknown or archived subject', async () => {
+        const person = await account('Lola', 'Valiyeva');
+        const archived = await insertSubject(database.migrator, 'Latin', START);
+
+        for (const subject of [archived, '019a0000-0000-7000-8000-0000000000ff']) {
+          await expect(
+            give({
+              accountId: person,
+              role: 'head_teacher',
+              branchId: north,
+              subjectIds: [subject],
+            }),
+          ).rejects.toBeInstanceOf(SubjectUnknownError);
+        }
+        expect(await rowsOf(person)).toEqual([]);
+      });
+
+      it('are a fault of the code without subjects, or for another role', async () => {
+        const person = await account('Malika', 'Valiyeva');
+
+        await expect(
+          give({ accountId: person, role: 'head_teacher', branchId: north }),
+        ).rejects.toThrow('given with subjects');
+        await expect(
+          give({ accountId: person, role: 'teacher', branchId: north, subjectIds: [physics] }),
+        ).rejects.toThrow('given with subjects');
+      });
     });
 
     describe('are refused', () => {
@@ -391,7 +468,9 @@ describe('assignments', () => {
       const second = await give({ accountId: person, role: 'tutor', branchId: north });
 
       expect(second.id).not.toBe(first.id);
-      expect(await current(person)).toEqual([{ id: second.id, role: 'tutor', branchId: north }]);
+      expect(await current(person)).toEqual([
+        { id: second.id, role: 'tutor', branchId: north, subjectIds: [] },
+      ]);
       expect(await rowsOf(person)).toHaveLength(2);
       clock.set(START);
     });

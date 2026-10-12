@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import {
   DEFAULT_TIME_ZONE,
+  isAppointment,
+  SCHOOL_WIDE_ROLES,
   schoolDateOf,
   type AccountRole,
-  type Actor,
   type ErrorCode,
   type FirstPasswordSlip,
   type LoginSuggestion,
@@ -11,6 +12,7 @@ import {
   type RoleGive,
   type SchoolDate,
   type StaffAccount,
+  type SubjectsChange,
   type SuperAdminSummary,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -21,7 +23,9 @@ import {
   AssignmentBranchError,
   AssignmentOverlapError,
   Assignments,
+  HeadTeacherTakenError,
   OwnSuperAdminRemovalError,
+  SubjectUnknownError,
   TooManySuperAdminsError,
   UnknownAssignmentError,
 } from '../access/assignments.service.js';
@@ -33,6 +37,8 @@ import {
   lockSuperAdmins,
 } from '../access/super-admins.js';
 import { Accounts, LoginTakenError } from '../auth/accounts.service.js';
+import { appointedSubjects } from '../access/appointment-subjects.js';
+import { actorsOf } from './actors.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { startOfDate } from './staff-status.js';
 import { Staff } from './staff.service.js';
@@ -199,53 +205,194 @@ export class StaffAccounts {
         if (person.accountId === null) {
           throw refused('no_account');
         }
-        await this.refuseLeft(transaction, id);
-        if ((give.role === 'super_admin') !== (give.branchId === null)) {
-          throw new ApiException('validation_failed', 400, undefined, [
-            {
-              path: 'branchId',
-              code: 'branch',
-              message: 'The Super Admin has no branch; every other role has one.',
-            },
-          ]);
+        await this.giveTo(
+          transaction,
+          access,
+          superAdmin,
+          person,
+          person.accountId,
+          give,
+          requestId,
+        );
+        return this.sectionOf(transaction, access, person, branchId);
+      }),
+    );
+  }
+
+  /**
+   * The give of a role to the account of a locked record. A Head Teacher or
+   * Senior Head Teacher appointment given from today begins at the moment of
+   * the give, so that it follows one ended today without overlapping it
+   * (decision 5 of #63, Look first); every other role, and every later date,
+   * begins at 00:00 of the day (decision 10 of #62).
+   */
+  private async giveTo(
+    transaction: Transaction,
+    access: Access,
+    superAdmin: string,
+    person: Person,
+    accountId: string,
+    give: RoleGive,
+    requestId: string,
+  ): Promise<void> {
+    await this.refuseLeft(transaction, person.id);
+    if (SCHOOL_WIDE_ROLES.includes(give.role) !== (give.branchId === null)) {
+      throw new ApiException('validation_failed', 400, undefined, [
+        {
+          path: 'branchId',
+          code: 'branch',
+          message:
+            'The Super Admin and the Senior Head Teacher have no branch; every other role has one.',
+        },
+      ]);
+    }
+    if (give.branchId !== null) {
+      const linked = await transaction
+        .selectFrom('staff_branches')
+        .select('branch_id')
+        .where('staff_id', '=', person.id)
+        .where('branch_id', '=', give.branchId.toLowerCase())
+        .executeTakeFirst();
+      if (linked === undefined) {
+        throw refused('role_branch_not_person');
+      }
+    }
+    const zone = await this.zoneOf(transaction, give.branchId);
+    const now = await transactionMoment(transaction);
+    const today = schoolDateOf(now, zone);
+    if (give.from < today) {
+      throw refused('role_from_past');
+    }
+    const leave = await this.leaveAfter(transaction, person.id, give.from);
+    const validFrom =
+      isAppointment(give.role) && give.from === today
+        ? now
+        : await startOfDate(transaction, give.from, zone);
+    await this.namingTaken(give.subjectIds ?? [], () =>
+      this.assignments.give(transaction, {
+        accountId,
+        role: give.role,
+        branchId: give.branchId?.toLowerCase() ?? null,
+        validFrom,
+        givenBy: access.accountId,
+        actingAssignmentId: superAdmin,
+        personId: person.id,
+        requestId,
+        ...(give.subjectIds === undefined ? {} : { subjectIds: give.subjectIds }),
+      }),
+    );
+    if (leave !== null) {
+      // It ends at the planned `left` as the roles held when that row was
+      // written did, and comes back with them when it is taken back.
+      await this.staff.endRoles(transaction, access, superAdmin, {
+        staffId: person.id,
+        accountId,
+        statusId: leave.id,
+        dateStart: await startOfDate(transaction, leave.validFrom, leave.timeZone),
+        requestId,
+      });
+    }
+  }
+
+  /**
+   * `head_teacher_taken` with the subjects another holder has, by their place
+   * in the list sent (an error detail never repeats a value sent).
+   */
+  private async namingTaken<T>(sent: readonly string[], work: () => Promise<T>): Promise<T> {
+    try {
+      return await work();
+    } catch (error) {
+      if (error instanceof HeadTeacherTakenError) {
+        const taken = new Set(error.subjectIds.map((subjectId) => subjectId.toLowerCase()));
+        throw new ApiException(
+          'head_teacher_taken',
+          409,
+          undefined,
+          sent.flatMap((subjectId, index) =>
+            taken.has(subjectId.toLowerCase())
+              ? [
+                  {
+                    path: `subjectIds.${String(index)}`,
+                    code: 'taken',
+                    message: 'The subject has another holder at that time.',
+                  },
+                ]
+              : [],
+          ),
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * The subjects of a Head Teacher or Senior Head Teacher appointment from a
+   * date (decision 6 of #63): in one transaction the appointment ends at that
+   * moment (now for today) and a new one of the same role and branch with the
+   * new subjects begins at the same moment. The end comes first, so a subject
+   * that is kept passes from the old appointment to the new one without an
+   * overlap (correction 2 of the review of #63). Under the lock of the
+   * assignment, read again after the lock: of two changes at once the second
+   * finds it ended (`assignment_ended`).
+   */
+  async changeSubjects(
+    access: Access,
+    id: string,
+    assignmentId: string,
+    change: SubjectsChange,
+    requestId: string,
+  ): Promise<StaffAccount> {
+    const branchId = branchOf(access);
+    const superAdmin = this.actingAs(access);
+    return this.refusing(async () =>
+      this.transactions.run(await this.readingBranches(access), async (transaction) => {
+        await lockSuperAdmins(transaction);
+        const person = await this.findPerson(transaction, id, branchId, true);
+        if (person.accountId === null) {
+          throw refused('no_account');
         }
-        if (give.branchId !== null) {
-          const linked = await transaction
-            .selectFrom('staff_branches')
-            .select('branch_id')
-            .where('staff_id', '=', id)
-            .where('branch_id', '=', give.branchId.toLowerCase())
-            .executeTakeFirst();
-          if (linked === undefined) {
-            throw refused('role_branch_not_person');
-          }
+        const assignment = await transaction
+          .selectFrom('assignments')
+          .select(['id', 'role', 'branch_id', 'valid_from', 'valid_until'])
+          .where('id', '=', assignmentId)
+          .where('account_id', '=', person.accountId)
+          .forUpdate()
+          .executeTakeFirst();
+        if (assignment === undefined) {
+          throw notFound();
         }
-        const zone = await this.zoneOf(transaction, give.branchId);
-        if (give.from < schoolDateOf(await transactionMoment(transaction), zone)) {
+        if (!isAppointment(assignment.role as AccountRole['role'])) {
+          throw refused('role_not_appointment');
+        }
+        const now = await transactionMoment(transaction);
+        const zone = await this.zoneOf(transaction, assignment.branch_id);
+        const today = schoolDateOf(now, zone);
+        if (change.from < today) {
           throw refused('role_from_past');
         }
-        const leave = await this.leaveAfter(transaction, id, give.from);
-        await this.assignments.give(transaction, {
-          accountId: person.accountId,
-          role: give.role,
-          branchId: give.branchId?.toLowerCase() ?? null,
-          validFrom: await startOfDate(transaction, give.from, zone),
-          givenBy: access.accountId,
+        const at = change.from === today ? now : await startOfDate(transaction, change.from, zone);
+        await this.assignments.end(transaction, {
+          assignmentId,
+          endedBy: access.accountId,
+          at,
           actingAssignmentId: superAdmin,
           personId: id,
           requestId,
         });
-        if (leave !== null) {
-          // It ends at the planned `left` as the roles held when that row was
-          // written did, and comes back with them when it is taken back.
-          await this.staff.endRoles(transaction, access, superAdmin, {
-            staffId: id,
-            accountId: person.accountId,
-            statusId: leave.id,
-            dateStart: await startOfDate(transaction, leave.validFrom, leave.timeZone),
-            requestId,
-          });
-        }
+        await this.giveTo(
+          transaction,
+          access,
+          superAdmin,
+          person,
+          person.accountId,
+          {
+            role: assignment.role as RoleGive['role'],
+            branchId: assignment.branch_id,
+            from: change.from,
+            subjectIds: change.subjectIds,
+          },
+          requestId,
+        );
         return this.sectionOf(transaction, access, person, branchId);
       }),
     );
@@ -344,6 +491,12 @@ export class StaffAccounts {
       }
       if (error instanceof AssignmentBranchError) {
         throw refused('role_branch_not_person');
+      }
+      if (error instanceof HeadTeacherTakenError) {
+        throw refused('head_teacher_taken');
+      }
+      if (error instanceof SubjectUnknownError) {
+        throw refused('subject_unknown');
       }
       throw error;
     }
@@ -541,9 +694,13 @@ export class StaffAccounts {
       .orderBy('assignments.valid_from')
       .orderBy('assignments.id')
       .execute();
-    const actors = await this.actorsOf(
+    const actors = await actorsOf(
       transaction,
       rows.flatMap((row) => [row.given_by, row.ended_by]),
+    );
+    const subjects = await appointedSubjects(
+      transaction,
+      rows.map((row) => row.id),
     );
     const roles: AccountRole[] = rows.map((row) => {
       const zone = row.time_zone ?? DEFAULT_TIME_ZONE;
@@ -564,6 +721,7 @@ export class StaffAccounts {
               : 'current',
         givenBy: row.given_by === null ? null : (actors.get(row.given_by) ?? null),
         endedBy: row.ended_by === null ? null : (actors.get(row.ended_by) ?? null),
+        subjects: subjects.get(row.id) ?? [],
       };
     });
     return {
@@ -578,44 +736,5 @@ export class StaffAccounts {
       left,
       today,
     };
-  }
-
-  /**
-   * Who gave or ended roles: the login always, the name only when the staff
-   * record of that account is in a branch this transaction may read (the
-   * membership filter), never through a function that reads every branch
-   * (correction 1 of the review of pull request #62).
-   */
-  private async actorsOf(
-    transaction: Transaction,
-    ids: readonly (string | null)[],
-  ): Promise<Map<string, Actor>> {
-    const wanted = [...new Set(ids.filter((id): id is string => id !== null))];
-    const actors = new Map<string, Actor>();
-    if (wanted.length === 0) {
-      return actors;
-    }
-    const logins = await transaction
-      .selectFrom('accounts')
-      .select(['id', 'login'])
-      .where('id', 'in', wanted)
-      .execute();
-    const names = await transaction
-      .selectFrom('staff')
-      .select(['account_id', 'first_name', 'last_name'])
-      .where('account_id', 'in', wanted)
-      .where('kind', '=', 'person')
-      .execute();
-    for (const row of logins) {
-      const named = names.find((name) => name.account_id === row.id);
-      actors.set(row.id, {
-        login: row.login,
-        name:
-          named?.first_name == null || named.last_name == null
-            ? null
-            : { firstName: named.first_name, lastName: named.last_name },
-      });
-    }
-    return actors;
   }
 }

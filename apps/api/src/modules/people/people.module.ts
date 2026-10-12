@@ -5,6 +5,8 @@ import { AccessModule } from '../access/access.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { AvailabilityController } from './availability.controller.js';
 import { StaffAvailability } from './availability.service.js';
+import { HeadTeachersController } from './head-teachers.controller.js';
+import { HeadTeachers } from './head-teachers.service.js';
 import { PHOTO_STORE, photoStoreOf } from './photo-store.js';
 import { StaffAccountsController } from './staff-accounts.controller.js';
 import { StaffAccounts } from './staff-accounts.service.js';
@@ -18,13 +20,15 @@ import { Vacancies } from './vacancies.service.js';
 /**
  * People (docs/spec/04-people.md): staff records and their status (task
  * 2.2a), availability and vacancies (task 2.2b), staff photos (task 2.2c-2),
- * the account section of a record (task 2.3a).
+ * the account section of a record (task 2.3a), the Head Teacher appointments
+ * (task 2.3b-1).
  */
 @Module({
   imports: [AccessModule, AuthModule],
   controllers: [
     StaffController,
     StaffAccountsController,
+    HeadTeachersController,
     StaffPhotosController,
     AvailabilityController,
     VacanciesController,
@@ -32,6 +36,7 @@ import { Vacancies } from './vacancies.service.js';
   providers: [
     Staff,
     StaffAccounts,
+    HeadTeachers,
     StaffPhotos,
     StaffAvailability,
     Vacancies,
