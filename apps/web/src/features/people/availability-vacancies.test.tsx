@@ -1,0 +1,390 @@
+import type {
+  Availability,
+  Division,
+  Role,
+  StaffDetail,
+  StaffListItem,
+  Subject,
+  VacancyDetail,
+  VacancyListItem,
+} from '@sodiq/shared';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { en } from '@/i18n/locales/en';
+import { ru } from '@/i18n/locales/ru';
+import { fakeApi, json, NORTH, nothing, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+
+const uid = (n: number): string => `0199c000-0000-7000-8000-${String(n).padStart(12, '0')}`;
+
+const ACADEMIC: Division = {
+  id: uid(1),
+  names: { uz: 'Oʻquv boʻlimi', ru: 'Учебный отдел', en: 'Academic' },
+  builtIn: true,
+  archivedAt: null,
+  departments: [
+    { id: uid(11), names: { uz: 'STEAM', ru: 'STEAM', en: 'STEAM' }, archivedAt: null },
+  ],
+};
+
+const MATHEMATICS: Subject = {
+  id: uid(21),
+  names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+  departmentId: uid(11),
+  grades: [5, 6, 7],
+  colour: 'blue',
+  journalType: 'graded',
+  ratingExam: true,
+  groupSubject: false,
+  languageRule: true,
+  demanding: false,
+  archivedAt: null,
+  daily: { attendance: 10, classwork: 50, homework: 40 },
+  quarterWeightsMissing: null,
+};
+
+// All names are invented.
+const AKMAL: StaffListItem = {
+  id: uid(31),
+  staffId: 'S-260001',
+  firstName: 'Akmal',
+  lastName: 'Karimov',
+  fatherName: null,
+  categories: ['teacher'],
+  branches: [
+    { branchId: NORTH.id, name: 'North', main: true },
+    { branchId: SOUTH.id, name: 'South', main: false },
+  ],
+  divisions: [{ divisionId: ACADEMIC.id, departmentId: uid(11), main: true }],
+  subjects: [{ subjectId: MATHEMATICS.id, grades: [5, 6] }],
+  languages: ['uz'],
+  phone: '+998901234567',
+  status: 'active',
+  planned: null,
+};
+
+const AKMAL_DETAIL: StaffDetail = {
+  ...AKMAL,
+  sex: 'male',
+  birthDate: '1990-05-06',
+  jshshir: null,
+  identityHidden: false,
+  educationLevel: null,
+  email: null,
+  admissionDate: '2026-09-01',
+  contractType: null,
+  contractDate: null,
+  weeklyLessons: null,
+  dailyLessons: null,
+  statuses: [{ id: uid(41), status: 'active', from: '2026-09-01', until: null }],
+  rights: { all: false, contact: true, teaching: true },
+  today: '2026-10-10',
+};
+
+const HOURS: Availability = {
+  entries: [
+    {
+      id: uid(51),
+      from: '2026-09-01',
+      until: null,
+      ranges: [{ weekday: 1, start: '08:00', end: '13:00' }],
+    },
+  ],
+  elsewhere: [
+    {
+      branchId: SOUTH.id,
+      name: 'South',
+      entries: [
+        {
+          id: uid(52),
+          from: '2026-09-01',
+          until: null,
+          ranges: [{ weekday: 2, start: '14:00', end: '17:00' }],
+        },
+      ],
+    },
+  ],
+  today: '2026-10-10',
+  earliestFrom: '2026-10-11',
+};
+
+const BRANCH = {
+  id: NORTH.id,
+  name: 'North',
+  address: null,
+  phone: null,
+  email: null,
+  workingWeekdays: [1, 2, 3, 4, 5],
+  timeZone: 'Asia/Tashkent',
+  goLiveDate: null,
+};
+
+const OPEN: VacancyListItem = {
+  id: uid(61),
+  name: 'English vacancy 2',
+  departmentId: uid(11),
+  subjects: [{ subjectId: MATHEMATICS.id, grades: [7] }],
+  languages: ['uz'],
+  weeklyLessons: 18,
+  dailyLessons: 6,
+  status: 'open',
+};
+
+const CLOSED: VacancyListItem = {
+  ...OPEN,
+  id: uid(62),
+  name: 'Physics vacancy 1',
+  status: 'closed',
+};
+
+const vacancyDetail = (row: VacancyListItem): VacancyDetail => ({
+  ...row,
+  statuses: [{ id: uid(71), status: row.status, from: '2026-10-01', until: null }],
+  today: '2026-10-10',
+});
+
+const sessionAs = (role: Role, language: 'en' | 'ru' = 'en') => ({
+  ...sessionOf({
+    assignments: [{ role, branchId: role === 'super_admin' ? null : NORTH.id }],
+    branches: [NORTH, SOUTH],
+  }),
+  language,
+});
+
+const rowsDrawn = (): string[][] =>
+  [...document.querySelectorAll('tbody tr')].map((row) =>
+    [...row.querySelectorAll('td')].map((cell) => cell.textContent ?? ''),
+  );
+
+function api(
+  role: Role,
+  extra: Record<string, (body: unknown) => Response> = {},
+  language: 'en' | 'ru' = 'en',
+) {
+  return fakeApi({
+    'GET /api/auth/session': () => json(sessionAs(role, language)),
+    'GET /api/people/staff': () => json({ staff: [AKMAL], today: '2026-10-10' }),
+    'GET /api/people/vacancies': () => json({ vacancies: [OPEN, CLOSED], today: '2026-10-10' }),
+    'GET /api/setup/divisions': () => json({ divisions: [ACADEMIC], staffCounts: [] }),
+    'GET /api/setup/subjects': () => json({ subjects: [MATHEMATICS], mayMoveDepartment: false }),
+    'GET /api/setup/branch': () => json(BRANCH),
+    [`GET /api/people/staff/${AKMAL.id}`]: () => json(AKMAL_DETAIL),
+    [`GET /api/people/staff/${AKMAL.id}/availability`]: () => json(HOURS),
+    [`GET /api/people/vacancies/${OPEN.id}`]: () => json(vacancyDetail(OPEN)),
+    ...extra,
+  });
+}
+
+async function openAkmal() {
+  renderApp('/people/staff');
+  await screen.findByRole('heading', { name: en.people.staff.title });
+  fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
+  const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+  await within(panel).findByRole('heading', { name: en.people.availability.title });
+  return panel;
+}
+
+// docs/spec/04-people.md (Availability, Vacancy); 06, Teachers who work in
+// several branches; task 2.2b.
+describe('availability', () => {
+  it('shows the hours of the branch and the other branches read only', async () => {
+    api('academic_vice_principal');
+    const panel = await openAkmal();
+    expect(await within(panel).findByText('08:00–13:00')).toBeDefined();
+    expect(
+      within(panel).getByRole('heading', {
+        name: en.people.availability.elsewhere.replace('{{name}}', 'South'),
+      }),
+    ).toBeDefined();
+    expect(within(panel).getByText('14:00–17:00')).toBeDefined();
+    expect(
+      within(panel).getByRole('button', { name: en.people.availability.change }),
+    ).toBeDefined();
+  });
+
+  it('sends a new week from a date', async () => {
+    const calls = api('academic_vice_principal', {
+      [`PUT /api/people/staff/${AKMAL.id}/availability`]: () => json(HOURS),
+    });
+    const panel = await openAkmal();
+    fireEvent.click(
+      await within(panel).findByRole('button', { name: en.people.availability.change }),
+    );
+    const form = await within(panel).findByRole('form', {
+      name: en.people.availability.changeOf.replace('{{name}}', 'Akmal Karimov'),
+    });
+    expect((within(form).getByLabelText('Monday') as HTMLInputElement).value).toBe('08:00–13:00');
+    fireEvent.change(within(form).getByLabelText('Tuesday'), {
+      target: { value: '09:00-12:00, 13:00–15:00' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route.startsWith('PUT'))).toBe(true);
+    });
+    expect(calls.find((call) => call.route.startsWith('PUT'))?.body).toEqual({
+      from: '2026-10-11',
+      ranges: [
+        { weekday: 1, start: '08:00', end: '13:00' },
+        { weekday: 2, start: '09:00', end: '12:00' },
+        { weekday: 2, start: '13:00', end: '15:00' },
+      ],
+    });
+  });
+
+  it('says what to fix before sending, and names the weekdays of an overlap', async () => {
+    const calls = api('academic_vice_principal', {
+      [`PUT /api/people/staff/${AKMAL.id}/availability`]: () =>
+        Response.json(
+          {
+            error: {
+              code: 'availability_overlap',
+              message: 'ENGLISH TEXT FOR THE DEVELOPER',
+              requestId: 'test-request',
+              details: [{ path: 'weekday.2', code: 'overlap', message: 'x' }],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    const panel = await openAkmal();
+    fireEvent.click(
+      await within(panel).findByRole('button', { name: en.people.availability.change }),
+    );
+    const form = await within(panel).findByRole('form', {
+      name: en.people.availability.changeOf.replace('{{name}}', 'Akmal Karimov'),
+    });
+    fireEvent.change(within(form).getByLabelText('Tuesday'), { target: { value: '15:00-14:00' } });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(within(form).getByLabelText('Tuesday').getAttribute('aria-invalid')).toBe('true');
+    });
+    expect(calls.some((call) => call.route.startsWith('PUT'))).toBe(false);
+    fireEvent.change(within(form).getByLabelText('Tuesday'), { target: { value: '14:00-16:00' } });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(await within(panel).findByText(en.errors.availability_overlap)).toBeDefined();
+    expect(
+      within(panel).getByText(en.people.availability.overlapDays.replace('{{days}}', 'Tuesday')),
+    ).toBeDefined();
+  });
+
+  it('gives the Principal no change', async () => {
+    api('principal');
+    const panel = await openAkmal();
+    expect(await within(panel).findByText('08:00–13:00')).toBeDefined();
+    expect(within(panel).queryByRole('button', { name: en.people.availability.change })).toBeNull();
+  });
+});
+
+describe('the vacancies', () => {
+  it('are a section of the teacher list, open ones first', async () => {
+    api('academic_vice_principal');
+    renderApp('/people/staff');
+    await screen.findByRole('heading', { name: en.people.staff.title });
+    const tabs = screen.getByRole('navigation', { name: en.people.sections });
+    fireEvent.click(within(tabs).getByRole('link', { name: en.people.vacancies.title }));
+    await screen.findByRole('heading', { name: en.people.vacancies.title });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    expect(rowsDrawn()[0]).toEqual([
+      'English vacancy 2',
+      'STEAM',
+      'Mathematics',
+      en.setup.subjects.grade.replace('{{grade}}', '7'),
+      en.people.staff.languages.uz,
+      '18',
+      en.people.vacancies.statuses.open,
+    ]);
+    expect(rowsDrawn()[1]?.at(-1)).toBe(en.people.vacancies.statuses.closed);
+  });
+
+  it('names the statuses in Russian when Russian is chosen', async () => {
+    api('academic_vice_principal', {}, 'ru');
+    renderApp('/people/vacancies', 'ru');
+    await screen.findByRole('heading', { name: ru.people.vacancies.title });
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row.at(-1))).toEqual([
+        ru.people.vacancies.statuses.open,
+        ru.people.vacancies.statuses.closed,
+      ]);
+    });
+  });
+
+  it('are added by the Academic Vice Principal with nothing personal', async () => {
+    const calls = api('academic_vice_principal', {
+      'POST /api/people/vacancies': () => json(vacancyDetail(OPEN), 201),
+    });
+    renderApp('/people/vacancies');
+    const add = await screen.findByRole('button', { name: en.people.vacancies.add });
+    await waitFor(() => {
+      expect((add as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(add);
+    const form = await screen.findByRole('form', { name: en.people.vacancies.newTitle });
+    fireEvent.change(within(form).getByLabelText(en.people.vacancies.name), {
+      target: { value: 'Mathematics vacancy 1' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.vacancies.department), {
+      target: { value: uid(11) },
+    });
+    fireEvent.click(await within(form).findByLabelText('Mathematics'));
+    fireEvent.click(
+      await within(form).findByLabelText(en.setup.subjects.grade.replace('{{grade}}', '7')),
+    );
+    fireEvent.click(within(form).getByLabelText(en.people.staff.languages.ru));
+    fireEvent.change(within(form).getByLabelText(en.people.staff.weeklyLessons), {
+      target: { value: '12' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/vacancies')).toBe(true);
+    });
+    expect(calls.find((call) => call.route === 'POST /api/people/vacancies')?.body).toEqual({
+      name: 'Mathematics vacancy 1',
+      departmentId: uid(11),
+      subjects: [{ subjectId: MATHEMATICS.id, grades: [7] }],
+      languages: ['ru'],
+      weeklyLessons: 12,
+      dailyLessons: null,
+    });
+  });
+
+  it('give the Principal no add, form, close or delete', async () => {
+    api('principal');
+    renderApp(`/people/vacancies?open=${OPEN.id}`);
+    const panel = await screen.findByRole('complementary', { name: OPEN.name });
+    await within(panel).findByRole('heading', { name: en.people.vacancies.statusTitle });
+    expect(screen.queryByRole('button', { name: en.people.vacancies.add })).toBeNull();
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.people.vacancies.close })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.people.vacancies.delete })).toBeNull();
+  });
+
+  it('are closed, and deleted after a confirmation that names them', async () => {
+    let closed = false;
+    const calls = api('academic_vice_principal', {
+      [`GET /api/people/vacancies/${OPEN.id}`]: () =>
+        json(vacancyDetail(closed ? { ...OPEN, status: 'closed' } : OPEN)),
+      [`GET /api/people/staff/${OPEN.id}/availability`]: () =>
+        json({ ...HOURS, entries: [], elsewhere: [] }),
+      [`POST /api/people/vacancies/${OPEN.id}/close`]: () => {
+        closed = true;
+        return json(vacancyDetail({ ...OPEN, status: 'closed' }));
+      },
+      [`POST /api/people/vacancies/${OPEN.id}/delete`]: () => nothing(),
+    });
+    renderApp(`/people/vacancies?open=${OPEN.id}`);
+    const panel = await screen.findByRole('complementary', { name: OPEN.name });
+    fireEvent.click(await within(panel).findByRole('button', { name: en.people.vacancies.close }));
+    await within(panel).findByRole('button', { name: en.people.vacancies.reopen });
+    fireEvent.click(within(panel).getByRole('button', { name: en.people.vacancies.delete }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText(OPEN.name)).toBeDefined();
+    expect(calls.some((call) => call.route.endsWith('/delete'))).toBe(false);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.vacancies.delete }));
+    await waitFor(() => {
+      expect(
+        calls.some((call) => call.route === `POST /api/people/vacancies/${OPEN.id}/delete`),
+      ).toBe(true);
+    });
+  });
+});

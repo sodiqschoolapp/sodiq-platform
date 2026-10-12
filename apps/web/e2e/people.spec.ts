@@ -7,7 +7,8 @@ import { codeNow } from './totp';
 // docs/spec/04-people.md, Teacher and staff record; task 2.2a. An Academic
 // Vice Principal opens a teacher of the branch, changes the phone and gives
 // the teacher a subject with its grades and a language of instruction (edge,
-// Who can act). The Super Admin's create is proved by the API and page tests:
+// Who can act); then (task 2.2b) gives the teacher hours on Monday, and adds
+// and closes a vacancy in the section of its own (04, Availability, Vacancy). The Super Admin's create is proved by the API and page tests:
 // no fourth Super Admin can be seeded. All names are invented.
 test('an Academic Vice Principal gives a teacher of the branch a subject', async ({ page }) => {
   const account = accountOf('staff');
@@ -59,4 +60,40 @@ test('an Academic Vice Principal gives a teacher of the branch a subject', async
 
   await expect(row).toContainText('Geometry');
   await expect(row).toContainText(en.setup.subjects.grade.replace('{{grade}}', '8'));
+
+  // Task 2.2b: the hours of the branch, from today (the first entry).
+  const hours = en.people.availability;
+  await panel.getByRole('button', { name: hours.change, exact: true }).click();
+  const week = panel.getByRole('form', {
+    name: hours.changeOf.replace('{{name}}', 'Oybek Qoʻchqorov'),
+  });
+  await week.getByLabel('Monday', { exact: true }).fill('08:00–13:00');
+  await week.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(panel.getByText('08:00–13:00', { exact: true })).toBeVisible();
+  await expect(panel.getByText(hours.inForce, { exact: true })).toBeVisible();
+
+  // A vacancy, in the section of its own, added and closed.
+  const vacancies = en.people.vacancies;
+  await page
+    .getByRole('navigation', { name: en.people.sections })
+    .getByRole('link', { name: vacancies.title, exact: true })
+    .click();
+  await expect(heading(page, vacancies.title)).toBeVisible();
+  // On an empty list the button stands in the header and on the empty page.
+  await page.getByRole('button', { name: vacancies.add, exact: true }).first().click();
+  const added = page.getByRole('form', { name: vacancies.newTitle, exact: true });
+  await added.getByLabel(vacancies.name, { exact: true }).fill('Geometry vacancy 1');
+  await added.getByLabel(vacancies.department, { exact: true }).selectOption({ label: 'STEAM' });
+  await added.getByLabel('Geometry', { exact: true }).check();
+  await added
+    .getByLabel(en.setup.subjects.grade.replace('{{grade}}', '8'), { exact: true })
+    .check();
+  await added.getByLabel(texts.languages.uz, { exact: true }).check();
+  await added.getByRole('button', { name: en.form.save, exact: true }).click();
+  const vacancyRow = page.getByRole('row').filter({ hasText: 'Geometry vacancy 1' });
+  await expect(vacancyRow).toContainText(vacancies.statuses.open);
+  await vacancyRow.getByRole('button', { name: 'Geometry vacancy 1' }).click();
+  const vacancyPanel = page.getByRole('complementary', { name: 'Geometry vacancy 1' });
+  await vacancyPanel.getByRole('button', { name: vacancies.close, exact: true }).click();
+  await expect(vacancyRow).toContainText(vacancies.statuses.closed);
 });
