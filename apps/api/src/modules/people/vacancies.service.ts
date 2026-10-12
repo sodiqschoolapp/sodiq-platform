@@ -146,17 +146,24 @@ export class Vacancies {
           const academic = await this.checkDepartment(transaction, record.departmentId);
           await this.checkSubjects(transaction, record.subjects, []);
           const fields = fieldsOf(record);
-          const row = await transaction
+          // The id first: the new row is visible only once its branch link
+          // exists, so the insert cannot read it back (the membership policy).
+          const id = (
+            await sql<{ id: string }>`select uuidv7() as id`.execute(transaction)
+          ).rows[0]?.id;
+          if (id === undefined) {
+            throw new Error('uuidv7() answered nothing.');
+          }
+          await transaction
             .insertInto('staff')
             .values({
+              id,
               kind: 'vacancy',
               vacancy_name: fields.name,
               weekly_lessons: fields.weeklyLessons,
               daily_lessons: fields.dailyLessons,
             })
-            .returning('id')
-            .executeTakeFirstOrThrow();
-          const id = row.id;
+            .execute();
           await transaction
             .insertInto('staff_branches')
             .values({ staff_id: id, branch_id: branchId, is_main: true })
