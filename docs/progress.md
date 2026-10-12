@@ -11,6 +11,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 The next sessions must know:
 
 - `Transactions.run` sets `app.now` from the injected clock; a rule the database compares with it reads `transactionMoment(transaction)` in code, never a later `clock.now()`. A test that writes `assignments.valid_until` as the application goes through `Transactions.run`; set-up through the migrator.
+- `assignments` has no row policy: a read for someone other than the Super Admin keeps to `access.branchIds` and the roles without a branch in code. A role give checks the `left` rows (`leaveAfter`) and ends at a planned `left` through `Staff.endRoles`.
 - Every change that can remove a Super Admin takes `lockSuperAdmins` first, then counts with `activeSuperAdmins` before and after (`keepingASuperAdmin`); 2.3c's lock uses the same.
 - A first password lives only in the slip dialog's state (`.claude/rules/web.md`, the new secret rule).
 - The next task is 2.3b.

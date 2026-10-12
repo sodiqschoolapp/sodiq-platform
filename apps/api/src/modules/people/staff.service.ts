@@ -693,7 +693,10 @@ export class Staff {
           .where('staff_branches.staff_id', '=', id)
           .where('staff_branches.is_main', '=', true)
           .executeTakeFirstOrThrow();
-        const today = schoolDateOf(this.clock.now(), main.time_zone);
+        // One moment for the code and for `assignments_end_guard` (code round
+        // 1 of #62, finding 5).
+        const now = await transactionMoment(transaction);
+        const today = schoolDateOf(now, main.time_zone);
         const rows: StoredStatusRow[] = (
           await transaction
             .selectFrom('staff_statuses')
@@ -715,7 +718,6 @@ export class Staff {
         }
         // A re-hire (task 2.3a, decision 7).
         const rehire = rehires(rows, change, today);
-        const now = this.clock.now();
         const before = await activeSuperAdmins(transaction, now);
         // A person who stays or becomes employed keeps a profile that fits the
         // subjects as they are now: a subject's department or grades may have
@@ -1071,9 +1073,11 @@ export class Staff {
   /**
    * Ends the roles of the account at `end`, each at its own start when that is
    * later; an assignment that already ends earlier keeps its end
-   * (correction 4). The end each had is kept to put it back.
+   * (correction 4). The end each had is kept to put it back. The role give
+   * of the account section calls it too, for a role given before a planned
+   * `left` (code round 1 of #62, finding 1).
    */
-  private async endRoles(
+  async endRoles(
     transaction: Transaction,
     access: Access,
     superAdmin: string,

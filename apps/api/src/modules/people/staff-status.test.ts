@@ -117,7 +117,17 @@ describe('a re-hire', () => {
       row('b', 'left', '2026-10-05', null),
     ];
     expect(rehires(rows, { status: 'active', from: '2026-10-20' }, TODAY)).toBe(true);
-    expect(rehires(rows, { status: 'inactive', from: '2026-10-20' }, TODAY)).toBe(false);
+    // Re-hired on leave: the first change after the `left` (code round 1, finding 7).
+    expect(rehires(rows, { status: 'inactive', from: '2026-10-20' }, TODAY)).toBe(true);
+  });
+
+  it('is not the return from a leave that followed a re-hire', () => {
+    const rows = [
+      row('a', 'active', '2026-09-01', '2026-10-05'),
+      row('b', 'left', '2026-10-05', '2026-10-08'),
+      row('c', 'inactive', '2026-10-08', null),
+    ];
+    expect(rehires(rows, { status: 'active', from: '2026-10-20' }, TODAY)).toBe(false);
   });
 
   it('is not the return after a left planned after today, which the change takes back', () => {

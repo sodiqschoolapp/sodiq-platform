@@ -255,7 +255,7 @@ describe('the first-account command', () => {
     firstAccount = new FirstAccount(
       transactions,
       new Accounts(clock, audit),
-      new Assignments(clock, audit),
+      new Assignments(audit),
       clock,
     );
   });

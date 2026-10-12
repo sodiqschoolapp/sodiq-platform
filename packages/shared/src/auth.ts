@@ -50,7 +50,8 @@ export const sessionResponseSchema = z.object({
   /**
    * The first and last name of the staff record linked to the account, for
    * the menu (pull request #61, decision 6); `null` for an account with no
-   * record, such as the first Super Admin, which shows its login.
+   * record, such as the first Super Admin, which shows its login. `null` too
+   * while a step of sign-in is owed (task 2.3a, code round 1, finding 6).
    */
   name: personNameSchema.nullable(),
   secondStep: secondStepStateSchema,

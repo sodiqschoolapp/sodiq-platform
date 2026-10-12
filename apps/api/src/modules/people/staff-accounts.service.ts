@@ -1,10 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   DEFAULT_TIME_ZONE,
   schoolDateOf,
   type AccountRole,
   type Actor,
-  type Clock,
   type ErrorCode,
   type FirstPasswordSlip,
   type LoginSuggestion,
@@ -15,8 +14,7 @@ import {
   type SuperAdminSummary,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
-import { CLOCK } from '../../clock/clock.module.js';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import {
   AssignmentAlreadyEndedError,
@@ -37,6 +35,7 @@ import {
 import { Accounts, LoginTakenError } from '../auth/accounts.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { startOfDate } from './staff-status.js';
+import { Staff } from './staff.service.js';
 
 /** The current Super Admin assignment of the account (`.claude/rules/api.md`: from every assignment). */
 const superAdminOf = (access: Access): string | undefined =>
@@ -81,7 +80,7 @@ export class StaffAccounts {
     private readonly transactions: Transactions,
     private readonly accounts: Accounts,
     private readonly assignments: Assignments,
-    @Inject(CLOCK) private readonly clock: Clock,
+    private readonly staff: Staff,
   ) {}
 
   /** Every branch for a Super Admin, else the branch of the request. */
@@ -222,9 +221,10 @@ export class StaffAccounts {
           }
         }
         const zone = await this.zoneOf(transaction, give.branchId);
-        if (give.from < schoolDateOf(this.clock.now(), zone)) {
+        if (give.from < schoolDateOf(await transactionMoment(transaction), zone)) {
           throw refused('role_from_past');
         }
+        const leave = await this.leaveAfter(transaction, id, give.from);
         await this.assignments.give(transaction, {
           accountId: person.accountId,
           role: give.role,
@@ -235,6 +235,17 @@ export class StaffAccounts {
           personId: id,
           requestId,
         });
+        if (leave !== null) {
+          // It ends at the planned `left` as the roles held when that row was
+          // written did, and comes back with them when it is taken back.
+          await this.staff.endRoles(transaction, access, superAdmin, {
+            staffId: id,
+            accountId: person.accountId,
+            statusId: leave.id,
+            dateStart: await startOfDate(transaction, leave.validFrom, leave.timeZone),
+            requestId,
+          });
+        }
         return this.sectionOf(transaction, access, person, branchId);
       }),
     );
@@ -263,20 +274,29 @@ export class StaffAccounts {
         }
         const assignment = await transaction
           .selectFrom('assignments')
-          .select(['id', 'branch_id'])
+          .select(['id', 'branch_id', 'valid_until'])
           .where('id', '=', assignmentId)
           .where('account_id', '=', person.accountId)
           .executeTakeFirst();
         if (assignment === undefined) {
           throw notFound();
         }
-        const now = this.clock.now();
+        // The moment `assignments_end_guard` compares with (code round 1, finding 5).
+        const now = await transactionMoment(transaction);
         const zone = await this.zoneOf(transaction, assignment.branch_id);
         const today = schoolDateOf(now, zone);
         if (end.from < today) {
           throw refused('role_from_past');
         }
         const at = end.from === today ? now : await startOfDate(transaction, end.from, zone);
+        if (
+          assignment.valid_until !== null &&
+          at > assignment.valid_until &&
+          (await this.endedByLeave(transaction, assignmentId))
+        ) {
+          // An end a `left` gave is not moved past it (finding 1).
+          throw refused('staff_left');
+        }
         await keepingASuperAdmin(transaction, now, () =>
           this.assignments.end(transaction, {
             assignmentId,
@@ -295,7 +315,7 @@ export class StaffAccounts {
   /** The number of active Super Admins, for the banner while fewer than two exist. */
   superAdmins(): Promise<SuperAdminSummary> {
     return this.transactions.run([], async (transaction) => ({
-      active: await activeSuperAdmins(transaction, this.clock.now()),
+      active: await activeSuperAdmins(transaction, await transactionMoment(transaction)),
     }));
   }
 
@@ -377,9 +397,71 @@ export class StaffAccounts {
     }
   }
 
+  /**
+   * "Left: all roles ended" for a role from `from` (code round 1 of #62,
+   * finding 1): a role that would begin while a `left` row is in force, with
+   * or without a return planned, is refused; a `left` planned after its
+   * start is answered, at which the role ends (decision 12). By the status
+   * rules at most one change is planned after today, so the first such
+   * `left` is the only one. Status dates are school dates of the main branch.
+   */
+  private async leaveAfter(
+    transaction: Transaction,
+    id: string,
+    from: SchoolDate,
+  ): Promise<{ id: string; validFrom: SchoolDate; timeZone: string } | null> {
+    const lefts = await transaction
+      .selectFrom('staff_statuses')
+      .innerJoin('staff_branches', (join) =>
+        join
+          .onRef('staff_branches.staff_id', '=', 'staff_statuses.staff_id')
+          .on('staff_branches.is_main', '=', true),
+      )
+      .innerJoin('branches', 'branches.id', 'staff_branches.branch_id')
+      .select(['staff_statuses.id', 'staff_statuses.valid_from', 'branches.time_zone'])
+      .where('staff_statuses.staff_id', '=', id)
+      .where('staff_statuses.status', '=', 'left')
+      // Not taken back, and not over before the role begins.
+      .where((builder) =>
+        builder.or([
+          builder('staff_statuses.valid_until', 'is', null),
+          builder.and([
+            builder('staff_statuses.valid_until', '>', builder.ref('staff_statuses.valid_from')),
+            builder('staff_statuses.valid_until', '>', from),
+          ]),
+        ]),
+      )
+      .orderBy('staff_statuses.valid_from')
+      .execute();
+    if (lefts.some((left) => left.valid_from <= from)) {
+      throw refused('staff_left');
+    }
+    const first = lefts[0];
+    return first === undefined
+      ? null
+      : { id: first.id, validFrom: first.valid_from, timeZone: first.time_zone };
+  }
+
+  /** Whether the end of the assignment was given by a `left` row that is not taken back. */
+  private async endedByLeave(transaction: Transaction, assignmentId: string): Promise<boolean> {
+    const found = await transaction
+      .selectFrom('staff_status_role_ends')
+      .innerJoin('staff_statuses', 'staff_statuses.id', 'staff_status_role_ends.status_id')
+      .select('staff_statuses.id')
+      .where('staff_status_role_ends.assignment_id', '=', assignmentId)
+      .where((builder) =>
+        builder.or([
+          builder('staff_statuses.valid_until', 'is', null),
+          builder('staff_statuses.valid_until', '>', builder.ref('staff_statuses.valid_from')),
+        ]),
+      )
+      .executeTakeFirst();
+    return found !== undefined;
+  }
+
   private async leftForGood(transaction: Transaction, id: string): Promise<boolean> {
     const found = await sql<{ out: boolean }>`
-      select staff_out_for_good(${id}::uuid, ${this.clock.now()}) as out
+      select staff_out_for_good(${id}::uuid, ${await transactionMoment(transaction)}) as out
     `.execute(transaction);
     return found.rows[0]?.out === true;
   }
@@ -403,7 +485,7 @@ export class StaffAccounts {
     person: Person,
     branchId: string,
   ): Promise<StaffAccount> {
-    const now = this.clock.now();
+    const now = await transactionMoment(transaction);
     const today = schoolDateOf(now, await this.zoneOf(transaction, branchId));
     const left = await this.leftForGood(transaction, person.id);
     const canEdit = superAdminOf(access) !== undefined;
@@ -436,6 +518,19 @@ export class StaffAccounts {
         'branches.time_zone',
       ])
       .where('assignments.account_id', '=', person.accountId)
+      // `assignments` has no row policy: a reader other than the Super Admin
+      // sees the roles of the branches of the request and the two without a
+      // branch, never another branch's (code round 1 of #62, finding 2).
+      .$if(!canEdit, (query) =>
+        query.where((builder) =>
+          builder.or([
+            builder('assignments.branch_id', 'is', null),
+            ...(access.branchIds.length === 0
+              ? []
+              : [builder('assignments.branch_id', 'in', [...access.branchIds])]),
+          ]),
+        ),
+      )
       // One taken back before it began was never in force: it is not shown.
       .where((builder) =>
         builder.or([

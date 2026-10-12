@@ -459,6 +459,13 @@ describe('the account section of a staff record', () => {
         409,
         'role_branch_not_person',
       );
+      // An unknown branch id in the body reads as one the person is not linked
+      // to, as another branch does (code round 1, finding 3).
+      refusedWith(
+        await give(made.id, { role: 'teacher', branchId: UNKNOWN, from: TODAY }),
+        409,
+        'role_branch_not_person',
+      );
       refusedWith(
         await give(made.id, { role: 'principal', branchId: t.north, from: '2026-10-09' }),
         409,
@@ -492,6 +499,91 @@ describe('the account section of a staff record', () => {
         'validation_failed',
       );
       expect(await snapshot()).toEqual(before);
+    });
+
+    // Code round 1, finding 1: "Left: all roles ended" holds for a role given
+    // after the `left` was written too.
+    it('ends a role given before a planned leave at it, and refuses one from the leave on', async () => {
+      const made = await withAccount();
+      const left = await t.post(`/api/people/staff/${made.id}/status`, t.north, {
+        status: 'left',
+        from: '2026-12-01',
+      });
+      expect(left.status, JSON.stringify(left.body)).toBe(200);
+      const before = await snapshot();
+      for (const from of ['2026-12-01', '2026-12-05']) {
+        refusedWith(
+          await give(made.id, { role: 'teacher', branchId: t.north, from }),
+          409,
+          'staff_left',
+        );
+      }
+      expect(await snapshot()).toEqual(before);
+
+      const response = await give(made.id, { role: 'teacher', branchId: t.north, from: TOMORROW });
+      expect(response.status, JSON.stringify(response.body)).toBe(201);
+      const teacher = roleOf(staffAccountSchema.parse(response.body), 'teacher');
+      expect(teacher).toMatchObject({ from: TOMORROW, until: '2026-12-01', state: 'planned' });
+      expect(await t.entries('assignment.end', teacher.id)).toMatchObject([
+        { reason: 'staff_left', person_id: made.id, assignment_id: t.adminAssignment },
+      ]);
+      // Its end is not moved past the leave.
+      const ended = await snapshot();
+      refusedWith(await end(made.id, teacher.id, '2026-12-10'), 409, 'staff_left');
+      expect(await snapshot()).toEqual(ended);
+      expect((await end(made.id, teacher.id, '2026-11-20')).status).toBe(200);
+      expect(roleOf(await section(made.id), 'teacher').until).toBe('2026-11-20');
+
+      // A second role, then the leave taken back: the role it ended comes back.
+      const tutor = roleOf(
+        staffAccountSchema.parse(
+          (await give(made.id, { role: 'tutor', branchId: t.north, from: TODAY })).body,
+        ),
+        'tutor',
+      );
+      expect(tutor.until).toBe('2026-12-01');
+      const back = await t.post(`/api/people/staff/${made.id}/status`, t.north, {
+        status: 'active',
+        from: TODAY,
+      });
+      expect(back.status, JSON.stringify(back.body)).toBe(200);
+      const after = await section(made.id);
+      expect(roleOf(after, 'tutor').until).toBeNull();
+      // The end typed later is not the leave's: it stays.
+      expect(roleOf(after, 'teacher').until).toBe('2026-11-20');
+    });
+
+    it('refuses a role that would begin while the person is left, a return planned or not', async () => {
+      const made = await withAccount();
+      expect(
+        (
+          await t.post(`/api/people/staff/${made.id}/status`, t.north, {
+            status: 'left',
+            from: TODAY,
+          })
+        ).status,
+      ).toBe(200);
+      const back = await t.post(`/api/people/staff/${made.id}/status`, t.north, {
+        status: 'active',
+        from: '2026-10-20',
+      });
+      expect(back.status, JSON.stringify(back.body)).toBe(200);
+      const before = await snapshot();
+      for (const from of [TODAY, '2026-10-19']) {
+        refusedWith(
+          await give(made.id, { role: 'teacher', branchId: t.north, from }),
+          409,
+          'staff_left',
+        );
+      }
+      expect(await snapshot()).toEqual(before);
+      const response = await give(made.id, {
+        role: 'teacher',
+        branchId: t.north,
+        from: '2026-10-20',
+      });
+      expect(response.status, JSON.stringify(response.body)).toBe(201);
+      expect(roleOf(staffAccountSchema.parse(response.body), 'teacher').until).toBeNull();
     });
 
     it('refuses a fourth Super Admin', async () => {
@@ -710,6 +802,8 @@ describe('the account section of a staff record', () => {
       ['a role end', 'a role end', 'end', 'end'],
       ['a role end', 'a status change', 'end', 'status'],
       ['a status change', 'a role end', 'status', 'end'],
+      // Code round 1, finding 4: the two status changes meet on the lock too.
+      ['a status change', 'a status change', 'status', 'status'],
     ])('refuses %s that waits for %s at the same moment', async (_route, _held, route, held) => {
       const first = await secondSuperAdmin();
       const second = await secondSuperAdmin();
@@ -897,6 +991,67 @@ describe('the account section of a staff record', () => {
       expect(kept.password_expires_at).toEqual(new Date('2026-10-27T00:00:00+05:00'));
     });
 
+    // Code round 1, finding 7: re-hired on leave, the change to `inactive` is
+    // the re-hire; the return to `active` later is not a second one.
+    it('forces the change at a re-hire on leave, and not again at the return', async () => {
+      const made = await withAccount();
+      expect(
+        (
+          await t.post(`/api/people/staff/${made.id}/status`, t.north, {
+            status: 'left',
+            from: TODAY,
+          })
+        ).status,
+      ).toBe(200);
+      const onLeave = await t.post(`/api/people/staff/${made.id}/status`, t.north, {
+        status: 'inactive',
+        from: '2026-10-20',
+      });
+      expect(onLeave.status, JSON.stringify(onLeave.body)).toBe(200);
+      const slip = staffStatusAnswerSchema.parse(onLeave.body).slip;
+      expect(slip).toMatchObject({
+        login: made.slip.login,
+        validUntil: new Date('2026-10-27T00:00:00+05:00').toISOString(),
+      });
+      expect(slip?.password).not.toBe(made.slip.password);
+      expect(await schoolEntries('account.rehire_password', made.accountId)).toHaveLength(1);
+      const account = await t.database.migrator
+        .selectFrom('accounts')
+        .select('must_change_password')
+        .where('id', '=', made.accountId)
+        .executeTakeFirstOrThrow();
+      expect(account.must_change_password).toBe(true);
+
+      // Re-hired on leave earlier (the rows as that history leaves them; the
+      // clock does not move, so that the sessions of the kit stay): the return
+      // to `active` is no second re-hire.
+      const earlier = await withAccount();
+      await t.database.migrator
+        .updateTable('staff_statuses')
+        .set({ valid_until: '2026-10-05' })
+        .where('staff_id', '=', earlier.id)
+        .execute();
+      await t.database.migrator
+        .insertInto('staff_statuses')
+        .values([
+          {
+            staff_id: earlier.id,
+            status: 'left',
+            valid_from: '2026-10-05',
+            valid_until: '2026-10-08',
+          },
+          { staff_id: earlier.id, status: 'inactive', valid_from: '2026-10-08', valid_until: null },
+        ])
+        .execute();
+      const back = await t.post(`/api/people/staff/${earlier.id}/status`, t.north, {
+        status: 'active',
+        from: TOMORROW,
+      });
+      expect(back.status, JSON.stringify(back.body)).toBe(200);
+      expect(staffStatusAnswerSchema.parse(back.body).slip).toBeNull();
+      expect(await schoolEntries('account.rehire_password', earlier.accountId)).toEqual([]);
+    });
+
     it('keeps an end that passed earlier today when the person leaves today', async () => {
       const made = await withAccount();
       const teacher = roleOf(
@@ -996,6 +1151,50 @@ describe('the account section of a staff record', () => {
     });
   });
 
+  // Code round 1, finding 2: `assignments` has no row policy, so the section
+  // keeps a reader other than the Super Admin to the roles of the branch of
+  // the request and the two without a branch.
+  describe('the roles of other branches', () => {
+    it('are not shown to the Principal, and are to the Super Admin', async () => {
+      const made = await withAccount();
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: made.id, branch_id: t.south, is_main: false })
+        .execute();
+      for (const body of [
+        { role: 'teacher', branchId: t.north, from: TODAY },
+        { role: 'tutor', branchId: t.south, from: TODAY },
+        { role: 'super_admin', branchId: null, from: TODAY },
+      ]) {
+        const given = await give(made.id, body);
+        expect(given.status, JSON.stringify(given.body)).toBe(201);
+      }
+      const read = await section(made.id, t.north, t.principal);
+      expect(read.account?.roles.map((role) => role.role).sort()).toEqual([
+        'super_admin',
+        'teacher',
+      ]);
+      expect((await section(made.id)).account?.roles.map((role) => role.role).sort()).toEqual([
+        'super_admin',
+        'teacher',
+        'tutor',
+      ]);
+    });
+
+    it('answers the Principal 404 for a record of another branch only', async () => {
+      const southern = await withAccount(undefined, t.south);
+      expect(
+        (await give(southern.id, { role: 'teacher', branchId: t.south, from: TODAY }, t.south))
+          .status,
+      ).toBe(201);
+      refusedWith(
+        await t.get(`/api/people/staff/${southern.id}/account`, t.north, t.principal),
+        404,
+        'not_found',
+      );
+    });
+  });
+
   // Pull request #61, decision 6, and decision 9: the session answers the
   // person's own name, and the name of who reset the password.
   describe('the session', () => {
@@ -1003,6 +1202,14 @@ describe('the account section of a staff record', () => {
       const made = await withAccount();
       const signIn = await t.kit.signIn(made.slip.login, made.slip.password);
       const cookie = cookieOf(signIn) ?? '';
+      // Code round 1, finding 6: while a step is owed the password alone
+      // reads no name; the forced change is that step here.
+      const owed = sessionResponseSchema.parse((await t.kit.get('/api/auth/session', cookie)).body);
+      expect(owed.mustChangePassword).toBe(true);
+      expect(owed.name).toBeNull();
+      expect((await t.kit.changePassword(cookie, made.slip.password, NEW_PASSWORD)).status).toBe(
+        204,
+      );
       const answer = sessionResponseSchema.parse(
         (await t.kit.get('/api/auth/session', cookie)).body,
       );

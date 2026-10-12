@@ -1,8 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { MAX_SUPER_ADMINS, SCHOOL_WIDE_ROLES, type Clock, type Role } from '@sodiq/shared';
+import { Injectable } from '@nestjs/common';
+import { MAX_SUPER_ADMINS, SCHOOL_WIDE_ROLES, type Role } from '@sodiq/shared';
 import { sql } from 'kysely';
-import { CLOCK } from '../../clock/clock.module.js';
-import type { Transaction } from '../../database/transactions.js';
+import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { Audit } from '../audit/audit.service.js';
 import { UnknownAccountError } from '../auth/password-resets.service.js';
@@ -97,10 +96,7 @@ const EXCLUSION_VIOLATION = '23P01';
  */
 @Injectable()
 export class Assignments {
-  constructor(
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly audit: Audit,
-  ) {}
+  constructor(private readonly audit: Audit) {}
 
   /**
    * Gives an account a role, from now or from `validFrom`, in the caller's
@@ -135,7 +131,8 @@ export class Assignments {
         throw new AssignmentBranchError();
       }
     }
-    const now = this.clock.now();
+    // The moment the end trigger compares with (code round 1 of #62, finding 5).
+    const now = await transactionMoment(transaction);
     const validFrom = assignment.validFrom ?? now;
     if (assignment.role === 'super_admin') {
       await this.refuseFourthSuperAdmin(transaction, assignment.accountId, now);
@@ -207,7 +204,7 @@ export class Assignments {
     if (assignment === undefined) {
       throw new UnknownAssignmentError();
     }
-    const now = this.clock.now();
+    const now = await transactionMoment(transaction);
     // Ended: its end has come, or it was taken back before it began (its end
     // is its start, which can still be ahead).
     if (

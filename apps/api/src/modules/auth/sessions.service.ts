@@ -568,14 +568,20 @@ export class Sessions {
    */
   async answerOf(session: ActiveSession): Promise<SessionResponse> {
     return this.transactions.run([], async (transaction) => {
+      // The own name only once no step is owed: before the second step the
+      // password alone would read it (code round 1 of #62, finding 6). The
+      // resetter is named while the change is owed, as the change page needs it.
+      const owed = owesAStep(session);
       const names = {
-        name: await personName(transaction, sql`own_person_name(${session.accountId}::uuid)`),
+        name: owed
+          ? null
+          : await personName(transaction, sql`own_person_name(${session.accountId}::uuid)`),
         resetBy:
           session.passwordResetBy === null
             ? null
             : await personName(transaction, sql`reset_by_person_name(${session.accountId}::uuid)`),
       };
-      if (owesAStep(session)) {
+      if (owed) {
         return answerOf(session, [], names);
       }
       return answerOf(session, await branchChoices(transaction, session.assignments), names);

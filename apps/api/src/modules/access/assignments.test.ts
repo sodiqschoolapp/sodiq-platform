@@ -103,7 +103,7 @@ describe('assignments', () => {
     database = await createTestDatabase();
     transactions = new Transactions(database.app, clock);
     const audit = new Audit(clock);
-    assignments = new Assignments(clock, audit);
+    assignments = new Assignments(audit);
     accounts = new Accounts(clock, audit);
     north = await insertBranch(database.migrator, 'North');
     south = await insertBranch(database.migrator, 'South');
@@ -556,7 +556,7 @@ describe('the Super Admin role', () => {
     database = await createTestDatabase();
     transactions = new Transactions(database.app, clock);
     const audit = new Audit(clock);
-    assignments = new Assignments(clock, audit);
+    assignments = new Assignments(audit);
     accounts = new Accounts(clock, audit);
   });
 
