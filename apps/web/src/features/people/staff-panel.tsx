@@ -39,6 +39,7 @@ import { Button } from '@/components/ui/button';
 import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
 import { useView } from '@/features/access/use-view';
 import { nameOf, schoolDateText } from '@/features/setup/setup-api';
+import { AccountAccessSection } from './account-access-section';
 import { AccountSection } from './account-section';
 import { FirstPasswordSlipDialog } from './first-password-slip';
 import {
@@ -183,6 +184,7 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
         }}
       />
       {staff.rights.accounts && <AccountSection staff={staff} label={name} />}
+      {staff.rights.accountAccess && <AccountAccessSection staff={staff} label={name} />}
       {slip !== null && (
         <FirstPasswordSlipDialog
           slip={slip}

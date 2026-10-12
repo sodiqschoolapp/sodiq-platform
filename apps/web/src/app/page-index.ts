@@ -43,6 +43,7 @@ export const PEOPLE_PAGES: readonly (IndexedPage & { area: string })[] = [
   { titleKey: 'people.staff.title', to: '/people/staff', area: 'staff' },
   { titleKey: 'people.vacancies.title', to: '/people/vacancies', area: 'vacancies' },
   { titleKey: 'people.headTeachers.title', to: '/people/head-teachers', area: 'head_teachers' },
+  { titleKey: 'people.neverUsed.title', to: '/people/never-used', area: 'account_access' },
 ];
 
 /** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */

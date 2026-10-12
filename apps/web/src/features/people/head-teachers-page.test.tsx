@@ -141,7 +141,7 @@ describe('the Head Teachers of the branch', () => {
     expect(screen.queryByRole('link', { name: en.people.headTeachers.toStaff })).toBeNull();
   });
 
-  it('shows the three sections as tabs to the Super Admin, and none to a Head Teacher', async () => {
+  it('shows the sections as tabs to the Super Admin, and none to a Head Teacher', async () => {
     open('super_admin', [HEAD]);
     await screen.findByRole('heading', { name: en.people.headTeachers.title });
     const nav = within(tabs() ?? document.body);
@@ -149,6 +149,8 @@ describe('the Head Teachers of the branch', () => {
       en.people.staff.title,
       en.people.vacancies.title,
       en.people.headTeachers.title,
+      // Task 2.3c-1: the accounts never used, a fourth section.
+      en.people.neverUsed.title,
     ]);
     expect(
       nav.getByRole('link', { name: en.people.headTeachers.title }).getAttribute('aria-current'),
