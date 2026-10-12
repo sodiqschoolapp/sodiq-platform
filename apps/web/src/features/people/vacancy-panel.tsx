@@ -115,7 +115,7 @@ export function VacancyPanel({
         {canArchive && (
           <div className="flex flex-wrap gap-3">
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               disabled={status.isPending}
               onClick={() => {

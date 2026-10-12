@@ -181,7 +181,7 @@ export const uz: Texts<'one' | 'other'> = {
     department_has_staff:
       'Bu kafedrada ishdan ketmagan xodimlar yoki ochiq vakansiyalar bor. Avval ularni boshqa kafedraga oʻtkazing yoki vakansiyalarni yoping.',
     availability_overlap:
-      'Bu soatlar boshqa filialdagi soatlar bilan haftaning shu kunida ustma-ust tushadi. Vaqtni oʻzgartiring yoki boshqa filialdan oʻzinikini oʻzgartirishni soʻrang.',
+      'Bu soatlar boshqa filialdagi soatlar bilan haftaning shu kunida ustma-ust tushadi. Ular ustma-ust tushmasligi uchun vaqtni oʻzgartiring.',
     archive_refused:
       'Undagi xona foydalanishda yoki taʼmirda ekan, arxivlab boʻlmaydi. Avval xonalarni yoping.',
     floor_archived:

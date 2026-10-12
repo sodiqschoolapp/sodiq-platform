@@ -26,7 +26,7 @@ export function PeopleTabs({ current }: { current: 'staff' | 'vacancies' }) {
       aria-current={current === key ? 'page' : undefined}
       className={
         current === key
-          ? 'border-b-2 border-primary px-1 pb-2 font-medium'
+          ? 'border-b-2 border-foreground px-1 pb-2 font-semibold'
           : 'border-b-2 border-transparent px-1 pb-2 text-muted-foreground hover:text-foreground'
       }
     >

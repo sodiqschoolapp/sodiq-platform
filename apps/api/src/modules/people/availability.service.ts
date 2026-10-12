@@ -270,7 +270,7 @@ export class StaffAvailability {
 
   // ---------------------------------------------------------------------------
 
-  /** The kind of a record linked to the branch of the request, locked when asked; 404 otherwise. */
+  /** The kind of a record linked to the branch of the request, locked with its link when asked; 404 otherwise. */
   private async linked(
     transaction: Transaction,
     id: string,
@@ -296,6 +296,24 @@ export class StaffAvailability {
     const row = await query.executeTakeFirst();
     if (row === undefined) {
       throw notFound();
+    }
+    if (lock) {
+      // The link read again after the lock, in a statement of its own: the
+      // statement that waited for the record kept the snapshot of before the
+      // wait, and a removal of the branch (the branches route, which locks the
+      // record first) does not update the record, so nothing re-checks it
+      // (the spec review of the build, must-fix 1). FOR SHARE keeps the link
+      // until this write commits.
+      const link = await transaction
+        .selectFrom('staff_branches')
+        .select('staff_id')
+        .where('staff_id', '=', id)
+        .where('branch_id', '=', branchId)
+        .forShare()
+        .executeTakeFirst();
+      if (link === undefined) {
+        throw notFound();
+      }
     }
     return row.kind;
   }

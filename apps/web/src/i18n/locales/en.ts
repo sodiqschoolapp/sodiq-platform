@@ -175,7 +175,7 @@ export const en = {
     department_has_staff:
       'Staff members who have not left, or open vacancies, are in this department. Move them to another department or close the vacancies first.',
     availability_overlap:
-      'These hours overlap the hours in another branch on the same weekday. Change the times, or ask the other branch to change theirs.',
+      'These hours overlap the hours in another branch on the same weekday. Change the times so that they do not overlap.',
     archive_refused:
       'It cannot be archived while a room in it is in use or under repair. Close the rooms first.',
     floor_archived:

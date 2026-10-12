@@ -263,13 +263,15 @@ export function VacanciesPage() {
           action: addButton === false ? undefined : addButton,
         }}
         panel={(row) =>
-          divisions.data === undefined ? null : (
+          // The page shows a failed query of divisions or subjects with a
+          // retry; the panel waits for both, so that no name is drawn blank.
+          divisions.data === undefined || subjects.data === undefined ? null : (
             <VacancyPanel
               key={row.id}
               id={row.id}
               name={row.name}
               divisions={divisions.data}
-              subjects={subjects.data?.subjects ?? []}
+              subjects={subjects.data.subjects}
               onDeleted={() => {
                 open({ ...search, open: undefined }, 'replace');
               }}

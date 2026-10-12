@@ -188,6 +188,10 @@ Plan approved on pull request #57 with corrections 1 to 5; decisions 1 to 14 con
 | A branch removed from a person ends its hours there from tomorrow | Decision 11 |
 | The vacancy delete keeps the whole record in its audit entry | Correction 1 |
 | Vacancies are a second list at `/people/vacancies` reached by a tab of the staff list (decision taken in the build) | One list per address keeps its own search, filters and open record (`listSearch`) |
+| The Principal, who views `staff_teaching`, also reads the other branches' hours read only (decision taken in the build) | `02`: the Principal "views everything in the branch"; working hours only, nothing personal |
+| No error code `vacancy_not_deletable`: the service answers 404 first, and the function's refusal maps to `request_refused` (decision taken in the build) | The function refuses only in a race the service already excludes; 3.4 adds the load refusal with a code of its own |
+| The vacancy delete answers 204 with no body (decision taken in the build) | `ReturnsNothing` of the API, as for every route that returns nothing |
+| The overlap refusal names its weekdays in a line under the form, not on the fields (decision taken in the build) | The refused range may be one of several typed in one field |
 
 ## 12 October 2026: staff record and status (task 2.2a)
 

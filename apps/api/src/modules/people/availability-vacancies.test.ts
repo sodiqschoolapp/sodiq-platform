@@ -705,6 +705,18 @@ describe('availability and vacancies', () => {
         .set({ grades: [8, 9] })
         .where('id', '=', subject)
         .execute();
+      // The subject moved to another department while the vacancy was closed.
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ department_id: languages })
+        .where('id', '=', subject)
+        .execute();
+      refusedWith(await reopen(), 409, 'subject_outside_department');
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ department_id: steam })
+        .where('id', '=', subject)
+        .execute();
       await t.database.migrator
         .updateTable('departments')
         .set({ archived_at: new Date('2026-10-10T12:00:00Z') })
@@ -974,6 +986,259 @@ describe('availability and vacancies', () => {
         'not_found',
       );
       refusedWith(await setHours(created.id, t.north, TODAY, []), 404, 'not_found');
+    });
+  });
+
+  // .claude/rules/api.md: each pair of changes that meet on a row, run at the
+  // same moment, in both directions. One side is held open in a transaction
+  // that does what its route does; the real route of the other side is sent,
+  // waits for the lock, and then sees the result of the first.
+  describe('at the same moment', () => {
+    /** Starts a route, waits until it waits for a lock, then lets the held side commit. */
+    async function routeAfter(
+      held: { release: () => void; done: Promise<void> },
+      route: () => Promise<Response>,
+    ): Promise<Response> {
+      const answer = route().then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      return answer;
+    }
+
+    /** What the availability write does first: the record, then its link in the branch. */
+    async function lockForHours(transaction: Transaction, id: string, branch: string) {
+      await transaction.selectFrom('staff').select('id').where('id', '=', id).forUpdate().execute();
+      await transaction
+        .selectFrom('staff_branches')
+        .select('staff_id')
+        .where('staff_id', '=', id)
+        .where('branch_id', '=', branch)
+        .forShare()
+        .execute();
+    }
+
+    /** An open entry written as the availability write writes it. */
+    async function writeEntry(
+      transaction: Transaction,
+      id: string,
+      branch: string,
+      start: number,
+      end: number,
+    ) {
+      const entry = await transaction
+        .insertInto('staff_availability')
+        .values({ branch_id: branch, staff_id: id, valid_from: TODAY })
+        .returning(['id', 'valid_until'])
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('staff_availability_ranges')
+        .values({
+          entry_id: entry.id,
+          branch_id: branch,
+          staff_id: id,
+          weekday: 1,
+          start_minutes: start,
+          end_minutes: end,
+          valid_from: TODAY,
+          valid_until: entry.valid_until,
+        })
+        .execute();
+    }
+
+    /** A vacancy written as the create writes it, after the lock of the branch row. */
+    async function createVacancy(transaction: Transaction, name: string) {
+      await transaction
+        .selectFrom('branches')
+        .select('id')
+        .where('id', '=', t.north)
+        .forNoKeyUpdate()
+        .execute();
+      const id = (await sql<{ id: string }>`select uuidv7() as id`.execute(transaction)).rows[0]
+        ?.id;
+      if (id === undefined) {
+        throw new Error('No id.');
+      }
+      await transaction
+        .insertInto('staff')
+        .values({ id, kind: 'vacancy', vacancy_name: name })
+        .execute();
+      await transaction
+        .insertInto('staff_branches')
+        .values({ staff_id: id, branch_id: t.north, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_divisions')
+        .values({ staff_id: id, division_id: academic, department_id: steam, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_statuses')
+        .values({ staff_id: id, status: 'open', valid_from: TODAY })
+        .execute();
+    }
+
+    it('an hours write waits for a removal of its branch, then finds nothing', async () => {
+      const id = await person(t.north, [t.south]);
+      const removal = await holdOpen([t.north, t.south], async (transaction) => {
+        await transaction
+          .selectFrom('staff')
+          .select('id')
+          .where('id', '=', id)
+          .forUpdate()
+          .execute();
+        await transaction
+          .deleteFrom('staff_branches')
+          .where('staff_id', '=', id)
+          .where('branch_id', '=', t.south)
+          .execute();
+      });
+      refusedWith(
+        await routeAfter(removal, () =>
+          setHours(id, t.south, TODAY, [monday('08:00', '13:00')], southVice),
+        ),
+        404,
+        'not_found',
+      );
+      expect(
+        await t.database.migrator
+          .selectFrom('staff_availability')
+          .select('id')
+          .where('staff_id', '=', id)
+          .execute(),
+      ).toEqual([]);
+    });
+
+    it('a removal of a branch waits for an hours write there, then ends those hours', async () => {
+      const id = await person(t.north, [t.south]);
+      const write = await holdOpen([t.south], async (transaction) => {
+        await lockForHours(transaction, id, t.south);
+        await writeEntry(transaction, id, t.south, 480, 780);
+      });
+      const removed = await routeAfter(write, () =>
+        put(`/api/people/staff/${id}/branches`, t.north, {
+          mainBranchId: t.north,
+          furtherBranchIds: [],
+        }),
+      );
+      expect(removed.status, JSON.stringify(removed.body)).toBe(200);
+      const rows = await t.database.migrator
+        .selectFrom('staff_availability')
+        .select(sql<string>`valid_until::text`.as('until'))
+        .where('staff_id', '=', id)
+        .execute();
+      expect(rows).toEqual([{ until: TOMORROW }]);
+    });
+
+    it('an hours write of the first branch waits for one of the second, then is refused', async () => {
+      const id = await person(t.north, [t.south]);
+      const south = await holdOpen([t.south], async (transaction) => {
+        await lockForHours(transaction, id, t.south);
+        await writeEntry(transaction, id, t.south, 540, 600);
+      });
+      refusedWith(
+        await routeAfter(south, () => setHours(id, t.north, TODAY, [monday('08:00', '13:00')])),
+        409,
+        'availability_overlap',
+      );
+    });
+
+    it('a reopen waits for a create of its name, then is refused', async () => {
+      const created = await vacancy({ name: 'Drawing vacancy 1' });
+      expect(
+        (await t.post(`/api/people/vacancies/${created.id}/close`, t.north, {}, t.vicePrincipal))
+          .status,
+      ).toBe(200);
+      const create = await holdOpen([t.north], (transaction) =>
+        createVacancy(transaction, 'Drawing vacancy 1'),
+      );
+      refusedWith(
+        await routeAfter(create, () =>
+          t.post(`/api/people/vacancies/${created.id}/reopen`, t.north, {}, t.vicePrincipal),
+        ),
+        409,
+        'already_exists',
+      );
+    });
+
+    it('a rename waits for a create of that name, then is refused', async () => {
+      const created = await vacancy({ name: 'Singing vacancy 1' });
+      const create = await holdOpen([t.north], (transaction) =>
+        createVacancy(transaction, 'Singing vacancy 2'),
+      );
+      refusedWith(
+        await routeAfter(create, () =>
+          put(
+            `/api/people/vacancies/${created.id}`,
+            t.north,
+            vacancyBody({ name: 'Singing vacancy 2' }),
+            t.vicePrincipal,
+          ),
+        ),
+        409,
+        'already_exists',
+      );
+    });
+
+    it('a close waits for a delete, then finds nothing', async () => {
+      const created = await vacancy();
+      const deleting = await holdOpen([t.north], async (transaction) => {
+        await sql`select vacancy_delete(${created.id}::uuid)`.execute(transaction);
+      });
+      refusedWith(
+        await routeAfter(deleting, () =>
+          t.post(`/api/people/vacancies/${created.id}/close`, t.north, {}, t.vicePrincipal),
+        ),
+        404,
+        'not_found',
+      );
+    });
+
+    it('a delete waits for a close, then keeps the closed row in its audit entry', async () => {
+      const created = await vacancy();
+      const closing = await holdOpen([t.north], async (transaction) => {
+        await transaction
+          .selectFrom('staff')
+          .select('id')
+          .where('id', '=', created.id)
+          .forUpdate()
+          .execute();
+        await transaction
+          .updateTable('staff_statuses')
+          .set({ valid_until: TODAY })
+          .where('staff_id', '=', created.id)
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: created.id, status: 'closed', valid_from: TODAY })
+          .execute();
+      });
+      const deleted = await routeAfter(closing, () =>
+        t.post(`/api/people/vacancies/${created.id}/delete`, t.north, {}, t.vicePrincipal),
+      );
+      expect(deleted.status, JSON.stringify(deleted.body)).toBe(204);
+      const [entry] = await t.entries('vacancy.delete', created.id);
+      expect(entry).toMatchObject({
+        old_value: {
+          statuses: [
+            { status: 'open', from: TODAY, until: TODAY },
+            { status: 'closed', from: TODAY, until: null },
+          ],
+        },
+      });
+    });
+
+    it('an hours write waits for a delete, then finds nothing', async () => {
+      const created = await vacancy();
+      const deleting = await holdOpen([t.north], async (transaction) => {
+        await sql`select vacancy_delete(${created.id}::uuid)`.execute(transaction);
+      });
+      refusedWith(
+        await routeAfter(deleting, () =>
+          setHours(created.id, t.north, TODAY, [monday('08:00', '13:00')]),
+        ),
+        404,
+        'not_found',
+      );
     });
   });
 });

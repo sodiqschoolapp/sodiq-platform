@@ -103,7 +103,7 @@ export function AvailabilitySection({ id, label }: { id: string; label: string }
         {canEdit && !changing && (
           <div>
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => {
                 setChanging(true);
