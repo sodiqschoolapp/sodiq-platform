@@ -3,40 +3,57 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useView } from '@/features/access/use-view';
 
+type Section = 'staff' | 'vacancies' | 'head-teachers';
+
+const SECTIONS: readonly {
+  key: Section;
+  to: '/people/staff' | '/people/vacancies' | '/people/head-teachers';
+  area: string;
+  title: 'people.staff.title' | 'people.vacancies.title' | 'people.headTeachers.title';
+}[] = [
+  { key: 'staff', to: '/people/staff', area: 'staff', title: 'people.staff.title' },
+  { key: 'vacancies', to: '/people/vacancies', area: 'vacancies', title: 'people.vacancies.title' },
+  {
+    key: 'head-teachers',
+    to: '/people/head-teachers',
+    area: 'head_teachers',
+    title: 'people.headTeachers.title',
+  },
+];
+
 /**
- * The two sections of the teacher list (`04`, Vacancy: "The teacher list
- * shows vacancies in a section of their own"; task 2.2b): the staff and the
- * vacancies, each a list with its own address, so that each keeps its own
- * search, filters and open record. The vacancies show for a role that views
- * them.
+ * The sections of People, each a list with its own address, so that each
+ * keeps its own search, filters and open record: the staff and the vacancies
+ * (`04`, Vacancy: "The teacher list shows vacancies in a section of their
+ * own"; task 2.2b) and the Head Teachers (task 2.3b-2). A tab shows for each
+ * section the role views; the row shows when there are two or more
+ * (decision 6 of #64).
  */
-export function PeopleTabs({ current }: { current: 'staff' | 'vacancies' }) {
+export function PeopleTabs({ current }: { current: Section }) {
   const { t } = useTranslation();
   const { role } = useView();
-  if (role === null || !permits(PERMISSIONS, role, 'vacancies', 'view')) {
+  const shown = SECTIONS.filter(
+    (section) => role !== null && permits(PERMISSIONS, role, section.area, 'view'),
+  );
+  if (shown.length < 2) {
     return null;
   }
-  const tab = (
-    key: 'staff' | 'vacancies',
-    to: '/people/staff' | '/people/vacancies',
-    text: string,
-  ) => (
-    <Link
-      to={to}
-      aria-current={current === key ? 'page' : undefined}
-      className={
-        current === key
-          ? 'border-b-2 border-foreground px-1 pb-2 font-semibold'
-          : 'border-b-2 border-transparent px-1 pb-2 text-muted-foreground hover:text-foreground'
-      }
-    >
-      {text}
-    </Link>
-  );
   return (
     <nav aria-label={t('people.sections')} className="mb-4 flex gap-6 border-b">
-      {tab('staff', '/people/staff', t('people.staff.title'))}
-      {tab('vacancies', '/people/vacancies', t('people.vacancies.title'))}
+      {shown.map((section) => (
+        <Link
+          key={section.key}
+          to={section.to}
+          aria-current={current === section.key ? 'page' : undefined}
+          className={
+            current === section.key
+              ? 'border-b-2 border-foreground px-1 pb-2 font-semibold'
+              : 'border-b-2 border-transparent px-1 pb-2 text-muted-foreground hover:text-foreground'
+          }
+        >
+          {t(section.title)}
+        </Link>
+      ))}
     </nav>
   );
 }

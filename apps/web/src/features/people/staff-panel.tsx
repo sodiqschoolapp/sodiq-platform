@@ -36,11 +36,13 @@ import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
+import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
 import { useView } from '@/features/access/use-view';
 import { nameOf, schoolDateText } from '@/features/setup/setup-api';
 import { AccountSection } from './account-section';
 import { FirstPasswordSlipDialog } from './first-password-slip';
 import {
+  invalidateHeadTeachers,
   invalidateStaff,
   removeStaffPhoto,
   staffAccountKey,
@@ -109,8 +111,13 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
       const parsed = staffStatusAnswerSchema.parse(answer);
       setSlip(parsed.slip);
       await refresh(answer);
-      // A `left` ends the roles of the account.
-      await queryClient.invalidateQueries({ queryKey: staffAccountKey(id) });
+      // A `left` ends the roles of the account, its appointments with them, and
+      // an inactive or left Academic Vice Principal puts the branch in the alert.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: staffAccountKey(id) }),
+        invalidateHeadTeachers(queryClient),
+        invalidateBranchesWithoutVice(queryClient),
+      ]);
     },
   });
 

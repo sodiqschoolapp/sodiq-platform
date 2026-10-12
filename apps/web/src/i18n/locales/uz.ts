@@ -283,6 +283,7 @@ export const uz: Texts<'one' | 'other'> = {
     continue: 'Davom etish',
   },
   layout: {
+    viceBanner: 'Faol oʻquv ishlari boʻyicha direktor oʻrinbosari yoʻq:',
     superAdminBanner:
       'Faol super administratorlar ikkitadan kam. Maktab super administratorsiz qolmasligi uchun rolni ikkinchi xodimga bering.',
     topBar: 'Yuqori panel',
@@ -978,6 +979,26 @@ export const uz: Texts<'one' | 'other'> = {
     staffLinkText: 'Oʻqituvchilar va boshqa xodimlar',
     vacanciesLink: 'Vakansiyalar',
     vacanciesLinkText: 'Hali ishga olinmagan oʻqituvchilar',
+    headTeachersLink: 'Fan rahbarlari',
+    headTeachersLinkText: 'Kim qaysi fanlarga rahbar',
+    headTeachers: {
+      title: 'Fan rahbarlari',
+      caption: 'Filial fan rahbarlari',
+      emptyTitle: 'Fan rahbarlari yoʻq',
+      empty: 'Bu filialda birorta fan rahbari tayinlanmagan. Uni xodim hisobida tayinlang.',
+      emptyView: 'Bu filialda sizga koʻrinadigan fanlarga fan rahbari tayinlanmagan.',
+      toStaff: 'Xodimlar roʻyxatini ochish',
+      role: 'Rol',
+      person: 'Xodim',
+      subjects: 'Fanlar',
+      from: 'Boshlanishi',
+      until: 'Tugashi',
+      state: 'Holati',
+      states: {
+        planned: 'Rejalashtirilgan',
+        current: 'Amalda',
+      },
+    },
     sections: 'Oʻqituvchilar roʻyxati boʻlimlari',
     availability: {
       title: 'Ish vaqti',

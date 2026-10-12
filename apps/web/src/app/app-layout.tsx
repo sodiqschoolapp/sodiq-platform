@@ -7,6 +7,7 @@ import { setBranchInUse } from '@/api/branch-in-use';
 import { PhoneTabBar, SideMenu, type PersonActions } from '@/features/access/app-menu';
 import { Logo } from '@/components/brand/logo';
 import { SuperAdminBanner } from '@/features/access/super-admin-banner';
+import { BranchesWithoutViceBanner } from '@/features/access/vice-principal-banner';
 import { BranchSwitcher, RoleSwitcher } from '@/features/access/switchers';
 import { useView } from '@/features/access/use-view';
 import { CommandSearch } from '@/components/search/command-search';
@@ -134,6 +135,7 @@ export function AppLayout() {
         </header>
         <main className="min-w-0 flex-1 p-8 max-sm:p-4 max-sm:pb-24">
           <SuperAdminBanner />
+          <BranchesWithoutViceBanner />
           <NotTrustedNote trusted={session?.trustedUntil != null} />
           <FailureAlert error={signOut.error ?? accountLanguage.error} />
           <Outlet />

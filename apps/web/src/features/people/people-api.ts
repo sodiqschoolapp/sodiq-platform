@@ -1,4 +1,5 @@
 import {
+  appointmentListSchema,
   availabilitySchema,
   loginSuggestionSchema,
   staffAccountSchema,
@@ -202,3 +203,29 @@ export const removeStaffPhoto = (id: string) =>
       params: { header: branchHeader(), path: { id } },
     }),
   );
+
+export const headTeachersKey = (branchId?: string | null) =>
+  branchId === undefined
+    ? [...PEOPLE_KEY, 'head-teachers']
+    : [...PEOPLE_KEY, 'head-teachers', branchId];
+
+/**
+ * The Head Teacher and Senior Head Teacher appointments of the branch, current
+ * and planned (task 2.3b-1, `GET access/head-teachers`); a Head Teacher or
+ * Senior Head Teacher gets their own subjects only.
+ */
+export const headTeachersQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: headTeachersKey(branchId),
+    queryFn: async () =>
+      appointmentListSchema.parse(
+        await answerOf(
+          api.GET('/api/access/head-teachers', { params: { header: branchHeader() } }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** After a give, a change or an end of an appointment, or a status change that ends or brings back roles. */
+export const invalidateHeadTeachers = (queryClient: QueryClient): Promise<unknown> =>
+  queryClient.invalidateQueries({ queryKey: headTeachersKey() });

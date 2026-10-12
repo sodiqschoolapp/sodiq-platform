@@ -274,6 +274,7 @@ export const en = {
     continue: 'Continue',
   },
   layout: {
+    viceBanner: 'No active Academic Vice Principal in:',
     superAdminBanner:
       'Fewer than two Super Admins are active. Give the role to a second person, so that the school is never left without one.',
     topBar: 'Top bar',
@@ -969,6 +970,27 @@ export const en = {
     staffLinkText: 'Teachers and other staff',
     vacanciesLink: 'Vacancies',
     vacanciesLinkText: 'Teachers not yet hired',
+    headTeachersLink: 'Head Teachers',
+    headTeachersLinkText: 'Who oversees which subjects',
+    headTeachers: {
+      title: 'Head Teachers',
+      caption: 'Head Teachers of the branch',
+      emptyTitle: 'No Head Teachers',
+      empty:
+        'No Head Teacher is appointed in this branch. Appoint one on the account of a staff record.',
+      emptyView: 'No Head Teacher is appointed for your view of this branch.',
+      toStaff: 'Open the staff list',
+      role: 'Role',
+      person: 'Person',
+      subjects: 'Subjects',
+      from: 'From',
+      until: 'Until',
+      state: 'State',
+      states: {
+        planned: 'Planned',
+        current: 'In force',
+      },
+    },
     sections: 'Sections of the teacher list',
     availability: {
       title: 'Availability',
