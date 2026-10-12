@@ -212,12 +212,19 @@ How to read the task lines:
   - Done when: the alert is tested for an Academic Vice Principal who is inactive, locked, ended or planned, and the browser test shows the list and the banner.
   - Split from 2.3b on pull request #63 (decision 1, Look first).
 
-- [ ] **2.3c Locks, resets and the own account**
-  - Read: `02` (Accounts and sign-in: build order), `edge/people-roles-accounts` (Who can act, Staff over time, Accounts and sign-in), `docs/decisions.md` (answer 16).
-  - Build: lock and unlock; the refusal to lock the last active Super Admin (the check of 2.3a); the route for the password reset by an administrator (the service exists since 0.6b) with who may reset whom; the route for the second-step reset by a Super Admin (the service exists since 0.6c), which always comes with a password reset (0.6d); the Academic Vice Principal resets and locks only Teachers, Tutors, Head Teachers and the Head Tutor of the branch; the report of accounts never used; password reset by email through a mail service that only logs locally, with the address taken from the staff record (moved from 0.6b; its routes are public and go into `PUBLIC_ROUTES`); the link "Forgot your password?" under the large button of the sign-in page (`docs/design-system.md`, This app, Sign-in).
+- [x] **2.3c-1 Locks and resets by an administrator** (pull request #65)
+  - Read: `02` (Accounts and sign-in: build order), `edge/people-roles-accounts` (Who can act, Staff over time, Accounts and sign-in), the plan of pull request #65.
+  - Build: lock and unlock with a reason; the refusal to lock the last active Super Admin (the check of 2.3a); the route for the password reset by an administrator (the service exists since 0.6b) with who may reset whom; the route for the second-step reset by a Super Admin (the service exists since 0.6c), which always comes with a password reset (0.6d); the Academic Vice Principal resets and locks only Teachers, Tutors, Head Teachers and the Head Tutor of the branch; the report of accounts never used.
+  - Done when: the refusals of locks and resets are tested, including the last Super Admin rule and the Academic Vice Principal's limits, and the browser test locks, unlocks and resets a teacher's password.
+  - Split from 2.3c on pull request #65 (decision 1, Look first).
+
+- [ ] **2.3c-2 Password reset by email and the own photo**
+  - Read: `02` (Accounts and sign-in: build order), `edge/people-roles-accounts` (Accounts and sign-in), `docs/decisions.md` ("Decided ahead for tasks 2.1 to 2.6", answer 16), `docs/design-system.md` (This app, Sign-in), the plan of pull request #65.
+  - Build: password reset by email through a mail service that only logs locally until go-live, with the address taken from the staff record (moved from 0.6b; its routes are public and go into `PUBLIC_ROUTES`), its link and its one-time use held by stored moments and the injected clock; the link "Forgot your password?" under the large button of the sign-in page (`docs/design-system.md`, This app, Sign-in).
   - From 2.2c-2 (pull request #59): the own photo on the own account page (`edge/people-roles-accounts`: "Staff can change their own ... photo"): a route of the own account (`@AnySignedIn()`) on the staff record linked to the session's account, with the same store, byte check and audit entry as `StaffPhotos`; the Principal too.
   - From 2.2a (pull request #53): decide whether the Academic Vice Principal may change the email of their own record or a Super Admin's (the edit of 2.2a allows name, phone and email of any record of the branch).
-  - Done when: the refusals of locks and resets are tested, including the last Super Admin rule, and tests cover each rule of the email reset with the injected clock.
+  - Done when: tests cover each rule of the email reset with the injected clock, its public routes are the exact list of `PUBLIC_ROUTES`, and the browser test asks for a reset from the sign-in page and sets the own photo.
+  - Split from 2.3c on pull request #65 (decision 1, Look first).
 
 - [ ] **2.4 Student records**
   - Read: `04` (Student record, UID sets), `edge/students-classes-groups`, `edge/people-roles-accounts` (Personal data and the audit log), `16` (question 12 is open: the UID is typed by hand and must be unique; do not build automatic UIDs).
@@ -351,7 +358,7 @@ How to read the task lines:
 
 - [ ] **5.7a Teacher absence**
   - Read: `06` (Changes after publishing, Teachers who work in several branches), `04` (Teacher and staff record), `edge/timetable` (Versions and drafts, After publishing), `edge/people-roles-accounts` (Staff over time), `07` (Closing a quarter, Who can do what), `09` (When something else changes).
-  - Build: an absence entered once for the person, covering every branch; "needs a teacher" and "unresolved" lessons on the Academic Vice Principal's home page; what happens when a teacher goes inactive or leaves, or a room is closed; filling a vacancy publishes a version that changes only the teacher of its rows; an acting teacher named for a vacancy's journal for a period, who owns the plan, adds works and enters the rating exam.
+  - Build: an absence entered once for the person, covering every branch; "needs a teacher" and "unresolved" lessons on the Academic Vice Principal's home page; what happens when a teacher goes inactive or leaves, or a room is closed; a locked teacher's future lessons go to "needs a teacher" (Staff over time: "'Lock now' ... The teacher's future lessons go to 'needs a teacher'"; the lock itself came with 2.3c-1, pull request #65); filling a vacancy publishes a version that changes only the teacher of its rows; an acting teacher named for a vacancy's journal for a period, who owns the plan, adds works and enters the rating exam.
   - Done when: an absence entered in one branch reaches the Academic Vice Principal of the other.
 
 - [ ] **5.7b Substitution**

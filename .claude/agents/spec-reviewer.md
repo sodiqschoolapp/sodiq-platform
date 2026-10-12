@@ -28,6 +28,8 @@ If the request gives you a plan instead of a branch, skip step 1 and step 4 and 
    - a changed screen that departs from `docs/design-system.md`: a colour that is not a token, a button size or kind it does not list, an icon from another set, or any pattern of its list "What we never do" (owner, 12 October 2026).
    - debug output left in code or tests (`console.log`, a query that prints rows): a test prints nothing but its result (found by both reviews of task 2.3a);
    - a lock test that proves only an order of locks where the plan promised that the second of two changes sees the first: the held side makes the change and the test shows the second refused (found by the spec review of task 2.3a);
+   - a test that creates a fixture under `if (status === 201)` or a similar guard asserts the status instead; a conditional fixture lets a case pass without running (found by the review of task 2.3c-1);
+   - a person-wide fact (the time zone of the main branch, an employment period, a status) is never read through the row-filtered `staff_branches` or `branches`; it comes from a SECURITY DEFINER function, so every reader gets the same answer (found by the review of task 2.3c-1);
 4. Run `pnpm test:changed` if it has not been run and report failures; the full suite runs in CI on the pull request (`docs/decisions.md`, 11 October 2026, decision 5).
 
 Report in this form:

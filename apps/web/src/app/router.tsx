@@ -20,6 +20,7 @@ import { BuildingsPage } from '@/features/setup/buildings-page';
 import { DivisionsPage } from '@/features/setup/divisions-page';
 import { SubjectsPage } from '@/features/setup/subjects-page';
 import { HeadTeachersPage } from '@/features/people/head-teachers-page';
+import { NeverUsedPage } from '@/features/people/never-used-page';
 import { PeoplePage } from '@/features/people/people-page';
 import { StaffPage } from '@/features/people/staff-page';
 import { VacanciesPage } from '@/features/people/vacancies-page';
@@ -209,6 +210,14 @@ const headTeachersRoute = createRoute({
   component: HeadTeachersPage,
 });
 
+/** The accounts never used of the branch, a section of People (task 2.3c-1). */
+const neverUsedRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/people/never-used',
+  validateSearch: listSearch,
+  component: NeverUsedPage,
+});
+
 const yearsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/years',
@@ -300,6 +309,7 @@ const routeTree = rootRoute.addChildren([
     staffRoute,
     vacanciesRoute,
     headTeachersRoute,
+    neverUsedRoute,
     patternsRoute,
   ]),
 ]);

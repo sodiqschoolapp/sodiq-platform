@@ -57,6 +57,9 @@ const SUBJECT_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principa
 const STAFF_VIEWERS = SETUP_VIEWERS;
 const STAFF_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
+// Task 2.3c-1, decision 2 of pull request #65: the area `account_access`.
+const ACCESS_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
+
 // Task 2.2c-1, decision 2 of pull request #58: `export` in `rooms`,
 // `divisions`, `subjects`, `staff` and `vacancies` for the three roles that
 // view them. The server further leaves the phone out of the Principal's staff
@@ -215,6 +218,22 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: ['super_admin'],
   },
   'GET /api/access/super-admins': { branch: 'none', roles: ['super_admin'] },
+  // Task 2.3c-1, decision 2 of pull request #65: the sign-in access of an
+  // account. The server further keeps the Academic Vice Principal to the four
+  // roles of the branch and the second-step reset to the Super Admin
+  // (tested in account-access.test.ts).
+  'GET /api/people/staff/:id/account/access': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/people/staff/:id/account/lock': { branch: 'request', roles: ACCESS_EDITORS },
+  'POST /api/people/staff/:id/account/unlock': { branch: 'request', roles: ACCESS_EDITORS },
+  'POST /api/people/staff/:id/account/password-reset': {
+    branch: 'request',
+    roles: ACCESS_EDITORS,
+  },
+  'POST /api/people/staff/:id/account/second-step-reset': {
+    branch: 'request',
+    roles: ACCESS_EDITORS,
+  },
+  'GET /api/people/accounts/never-used': { branch: 'request', roles: SETUP_VIEWERS },
   // Task 2.3b-2: the alert of a branch with no active Academic Vice Principal.
   'GET /api/access/branches-without-vice-principal': { branch: 'none', roles: ['super_admin'] },
   // Task 2.3b-1: the subjects of an appointment under `accounts` `edit`; the

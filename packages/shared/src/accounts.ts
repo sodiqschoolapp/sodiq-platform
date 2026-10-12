@@ -93,16 +93,17 @@ export type LoginSuggestion = z.infer<typeof loginSuggestionSchema>;
 
 /**
  * The slip of a first password (answer 15: "a printable page from the
- * browser, one slip per person"). Answered once, by the create and by a
- * re-hire, and stored nowhere ("printed once on per-person slips and not
- * stored", Accounts and sign-in).
+ * browser, one slip per person"). Answered once, by the create, by a re-hire
+ * and by a password reset of an administrator (task 2.3c-1, decision 9), and
+ * stored nowhere ("printed once on per-person slips and not stored", Accounts
+ * and sign-in).
  */
 export const firstPasswordSlipSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),
   login: z.string(),
   password: z.string(),
-  /** The first password works until this moment (7 days). */
+  /** The password works until the moment it names (7 days for a first password, 24 hours for a reset). */
   validUntil: z.iso.datetime(),
 });
 
@@ -249,3 +250,84 @@ export type Appointment = z.infer<typeof appointmentSchema>;
 export const appointmentListSchema = z.object({ appointments: z.array(appointmentSchema) });
 
 export type AppointmentList = z.infer<typeof appointmentListSchema>;
+
+/**
+ * The reason of a lock, kept with it and in the audit log (edge cases, Staff
+ * over time: "'Lock now' ... is logged with a reason"; 0.6d). The API checks
+ * the same bound (`AccountLocks`).
+ */
+export const LOCK_REASON_MAX_LENGTH = 500;
+
+/** The body of a lock (task 2.3c-1, decision 11): a reason of 1 to 500 characters after trimming. */
+export const lockSchema = z.object({
+  reason: z.string().trim().min(1).max(LOCK_REASON_MAX_LENGTH),
+});
+
+export type Lock = z.infer<typeof lockSchema>;
+
+/**
+ * What the reader may do with the sign-in access of an account, decided by
+ * the server from every current assignment and the state of the account
+ * (task 2.3c-1, decisions 3, 4 and 13): the screen shows a button only where
+ * this says so.
+ */
+export const accessActionsSchema = z.object({
+  lock: z.boolean(),
+  unlock: z.boolean(),
+  resetPassword: z.boolean(),
+  resetSecondStep: z.boolean(),
+});
+
+export type AccessActions = z.infer<typeof accessActionsSchema>;
+
+/** The sign-in access of an account (task 2.3c-1). */
+export const accountAccessDetailSchema = z.object({
+  login: z.string(),
+  /** The lock in force, or `null` while the account is not locked. */
+  locked: z
+    .object({ at: z.iso.datetime(), by: actorSchema.nullable(), reason: z.string() })
+    .nullable(),
+  /** A reset by an administrator whose one-time password is not changed yet, or `null`. */
+  passwordReset: z
+    .object({ at: z.iso.datetime(), by: actorSchema.nullable(), validUntil: z.iso.datetime() })
+    .nullable(),
+  /** No session was opened since the start of the person's current employment period (decision 10). */
+  neverUsed: z.boolean(),
+  /** A confirmed second step is in force. */
+  secondStepOn: z.boolean(),
+});
+
+export type AccountAccessDetail = z.infer<typeof accountAccessDetailSchema>;
+
+/** The section "Sign-in access" of a staff record: the account, or none yet, and what the reader may do. */
+export const accountAccessSchema = z.object({
+  account: accountAccessDetailSchema.nullable(),
+  can: accessActionsSchema,
+});
+
+export type AccountAccess = z.infer<typeof accountAccessSchema>;
+
+/**
+ * One account in the report of accounts never used (Accounts and sign-in: "A
+ * report lists accounts never used"; task 2.3c-1, decision 10).
+ */
+export const neverUsedAccountSchema = z.object({
+  staffId: z.uuid(),
+  /** The staff ID of the record (`S-000001`). */
+  staffNumber: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  login: z.string(),
+  createdAt: z.iso.datetime(),
+  /** The end of the first or one-time password in force; `null` once the person chose one. */
+  passwordValidUntil: z.iso.datetime().nullable(),
+  /** That password has run out at the moment of the request: an administrator gives a new one. */
+  expired: z.boolean(),
+  locked: z.boolean(),
+});
+
+export type NeverUsedAccount = z.infer<typeof neverUsedAccountSchema>;
+
+export const neverUsedListSchema = z.object({ accounts: z.array(neverUsedAccountSchema) });
+
+export type NeverUsedList = z.infer<typeof neverUsedListSchema>;

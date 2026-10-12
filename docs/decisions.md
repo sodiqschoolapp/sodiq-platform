@@ -186,6 +186,31 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 12 October 2026: locks and resets by an administrator (task 2.3c-1)
+
+Plan approved on pull request #65 with corrections 1 to 5; decisions 1 to 14 confirmed there (decision 10 changed by correction 2). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Task 2.3c split into 2.3c-1 (locks, administrator resets, the Academic Vice Principal's limits, the never-used report) and 2.3c-2 (email reset, its public routes and mail service, the sign-in link, the own photo, the email-edit question) | Decision 1; two independent halves, the second with public routes |
+| **Look first.** New area `account_access`: Super Admin and Academic Vice Principal view and edit, Principal views, every other role nothing; it widens what the Academic Vice Principal does | Decision 2; Who can act: "He may reset passwords and lock accounts only for Teachers, Tutors, Head Teachers and the Head Tutor of his branch" |
+| **Look first.** The Academic Vice Principal acts on an account only when every role of it not ended (current or planned) is Teacher, Tutor, Head Teacher or Head Tutor and at least one is in the branch of the request; otherwise 403 `permission_denied` | Decision 3; one account serves every branch, so a lock or a reset reaches all of them |
+| **Exception to `.claude/rules/database.md`** (reads of `assignments` keep to `access.branchIds`): `AccountAccess.actingAssignment` reads the target account's roles in every branch. Only the yes or no leaves the server (403, or `can` false), never another branch's role, branch or assignment; a test checks the 403 bodies and the read. The rule file itself is not changed | Decision 3, correction 4 of the review of #65; the check needs every role of the account, and a line in `.claude/rules/` would loosen the loop's rules |
+| The Super Admin locks, unlocks and resets every account but their own, and resets any second step but their own; the own check (409 `own_account`) comes before the role check | Decisions 4 and 11; `02`, Accounts and sign-in, the own refusals of 0.6b and 0.6d |
+| Only the lock checks the count of active Super Admins (409 `last_super_admin`), under `lockSuperAdmins`, which every change of these routes takes first, before the staff row and the account row | Decision 5 |
+| The second-step reset needs a confirmed second step (409 `second_step_off`, checked on the row read under its lock, before anything is removed) and always resets the password in the same transaction; its answer is the slip | Decision 6, corrections 1 and 5 |
+| No password reset for a person who has left for good (409 `staff_left`); the lock stays possible | Decision 7 |
+| The audit entries keep `account.locked`, `account.unlocked`, `account.password_reset`, `account.second_step_reset`, and name the acting assignment, the person and the branch of the request (so they go to the branch's log) | Decision 8 |
+| The reset answers `firstPasswordSlipSchema`, valid until now + 24 hours, shown under the title "Password reset" | Decision 9; answer 15 |
+| **Look first.** "Never used": no session since 00:00, in the main branch's time zone, of the start of the person's current employment period (the `valid_from` of the first `active` or `inactive` status after the latest `left` that has begun, else the first status; that `left` while no return follows it), read through `staff_period_start(record_id, at)` (db/migrations/0030, `SECURITY DEFINER`, on `SECURITY_DEFINER_FUNCTIONS`), so that every reader gets the same answer whichever branch link it sees; a person who has left for good is not listed; the account section of 2.3a uses the same rule | Decision 10, correction 2; State from stored moments; the review of the build found the zone read through the row-filtered `staff_branches` |
+| New codes `own_account`, `account_already_locked`, `account_not_locked`, `second_step_off`, `account_missing` (409) | Decision 11; each text true on its path |
+| No request key; a repeated lock answers 409, a repeated reset issues a new password | Decision 12 |
+| The Principal and the Academic Vice Principal see the access state of every account of the branch; buttons only where `can` allows | Decision 13 |
+| Decision 14 (no migration) changed by the review of the build: migration 0030 adds `staff_period_start` only | The person-wide moment must not depend on the reader's branch |
+| An Academic Vice Principal does not undo a lock made by an account that holds a Super Admin role now (403 `permission_denied`, nothing written, `can.unlock` false); the Super Admin undoes any lock, and an Academic Vice Principal undoes another Academic Vice Principal's | Decided with the review of the build; the spec gives the Academic Vice Principal "lock accounts", not the override of the Super Admin |
+| `account_missing` says "Ask the Super Admin to create it", true for both administrators who meet it | Review of the build; `.claude/rules/web.md`, a code's text is true on every path |
+| **Look first.** "Locked by" and "Reset by" show the acting account's login always and its name only when its record is readable, as the account section of 2.3a does (correction 1 of #62): a Principal or Academic Vice Principal of north can see the login of a south administrator who locked or reset a person of both branches, and the lock reason | Permission review of the build, should-fix 3; personal data across branches, kept for one rule across both sections; the owner may prefer to hide the login when the name cannot be read |
+
 ## 12 October 2026: Head Teachers list and the Academic Vice Principal alert (task 2.3b-2)
 
 Plan approved on pull request #64 with corrections 1 to 3; decisions 1 to 9 confirmed there. Flagged on issue #42.

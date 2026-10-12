@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: task 2.3c-1 Locks and resets by an administrator
+
+- Built: area `account_access` and six routes (`people/staff/:id/account/access`, `lock`, `unlock`, `password-reset`, `second-step-reset`, `people/accounts/never-used`) in `AccountAccess`; the last active Super Admin refusal; the Academic Vice Principal limited to Teachers, Tutors, Head Teachers and the Head Tutor of the branch and kept from undoing a Super Admin's lock; migration 0030 `staff_period_start` for "never used".
+- Screens: the "Sign-in access" section of the staff panel (lock with reason, unlock, reset slips) and People → "Accounts never used" (`/people/never-used`); the browser test in `people.spec.ts` (screenshots in `docs/screens/2.3c-1/`).
+- Tests: `account-access.test.ts` (every route allowed and refused, 404s, own account, races both ways, trust ended, audit branch), the period-start pin in `staff-accounts.test.ts`, the web section and page tests.
+- Left out: password reset by email, "Forgot your password?", the own photo and the Academic Vice Principal's email edit (2.3c-2); a locked teacher's lessons to "needs a teacher" (5.7a); entries within 48 hours of a reset (6.1); export of the never-used report and the audit screen (2.6).
+
+The next sessions must know:
+
+- "Never used" and any person-wide moment come from `staff_period_start` / `staff-account-records.ts`; never read the main branch's zone through `staff_branches`.
+- A change of roles or status invalidates `accountAccessKey(id)` and `neverUsedKey()` with `staffAccountKey`.
+- The next task is 2.3c-2.
+
 ## 12 October 2026: task 2.3b-2 Head Teachers list and the Academic Vice Principal alert
 
 - Built: migration 0029 (`branches_without_vice_principal(at)`, `SECURITY DEFINER`, ids and names only); `GET access/branches-without-vice-principal` for the Super Admin; the banner `BranchesWithoutViceBanner` beside the Super Admin banner, each name opening that branch's staff list; the "Head Teachers" section of People (`/people/head-teachers`) on the route of 2.3b-1, with tabs per section the role views and "People" in the menu for Head Teachers and Senior Head Teachers.

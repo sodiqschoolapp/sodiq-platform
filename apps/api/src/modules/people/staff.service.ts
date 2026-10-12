@@ -1367,6 +1367,12 @@ export class Staff {
       // The account section (task 2.3a, decision 4): the Super Admin, and the
       // Principal of the branch of the request.
       accounts: superAdminOf(access) !== undefined || principalOf(access) !== undefined,
+      // The section "Sign-in access" (task 2.3c-1, decision 13): the three
+      // readers of the area `account_access` in the branch of the request.
+      accountAccess:
+        superAdminOf(access) !== undefined ||
+        principalOf(access) !== undefined ||
+        viceOf(access) !== undefined,
     };
     // Identity fields: the Super Admin and the Academic Vice Principal; hidden
     // for the Principal, who has a logged show (decision 9).

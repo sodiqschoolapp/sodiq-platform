@@ -145,6 +145,20 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   Appointing stays in `accounts` `edit`. A new area for new routes,
  *   decided without the owner on pull request #63 (decision 8), confirmed at
  *   its review and flagged on issue #42.
+ * - `account_access` (`edge/people-roles-accounts`, Who can act: the
+ *   Academic Vice Principal "may reset passwords and lock accounts only for
+ *   Teachers, Tutors, Head Teachers and the Head Tutor of his branch";
+ *   Accounts and sign-in; task 2.3c-1): the sign-in access of an account of
+ *   the branch (lock, unlock, password reset, second-step reset) and the
+ *   report of accounts never used. The Super Admin and the Academic Vice
+ *   Principal view and edit; the Principal, who "views everything in the
+ *   branch" (`02`), views. The server keeps the Academic Vice Principal to
+ *   accounts whose every role not ended is one of those four with one in the
+ *   branch, and the second-step reset to the Super Admin, decided from every
+ *   current assignment. A new area for new routes that widens what the
+ *   Academic Vice Principal does, decided without the owner on pull request
+ *   #65 (decision 2, Look first), confirmed at its review and flagged on
+ *   issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -210,6 +224,11 @@ export const PERMISSIONS = freezeTable({
   accounts: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],
+  }),
+  account_access: rows({
+    super_admin: ['view', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'edit'],
   }),
   head_teachers: rows({
     super_admin: ['view'],

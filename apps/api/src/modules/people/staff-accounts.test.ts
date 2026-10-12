@@ -1065,6 +1065,22 @@ describe('the account section of a staff record', () => {
       expect(kept.password_expires_at).toEqual(new Date('2026-10-27T00:00:00+05:00'));
     });
 
+    // Task 2.3c-1, correction 2 of the review of #65: "never used" counts
+    // the sessions of the current employment period only.
+    it('shows a re-hired account as never used while its sessions predate the re-hire', async () => {
+      const made = await withAccount();
+      expect((await t.kit.signIn(made.slip.login, made.slip.password)).status).toBe(200);
+      expect((await section(made.id)).account?.neverUsed).toBe(false);
+      for (const body of [
+        { status: 'left', from: TODAY },
+        { status: 'active', from: '2026-10-20' },
+      ]) {
+        const response = await t.post(`/api/people/staff/${made.id}/status`, t.north, body);
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+      }
+      expect((await section(made.id)).account?.neverUsed).toBe(true);
+    });
+
     // Code round 1, finding 7: re-hired on leave, the change to `inactive` is
     // the re-hire; the return to `active` later is not a second one.
     it('forces the change at a re-hire on leave, and not again at the return', async () => {

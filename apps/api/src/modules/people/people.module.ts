@@ -3,6 +3,8 @@ import { CONFIG } from '../../config/config.module.js';
 import type { AppConfig } from '../../config/config.js';
 import { AccessModule } from '../access/access.module.js';
 import { AuthModule } from '../auth/auth.module.js';
+import { AccountAccessController } from './account-access.controller.js';
+import { AccountAccess } from './account-access.service.js';
 import { AvailabilityController } from './availability.controller.js';
 import { StaffAvailability } from './availability.service.js';
 import { HeadTeachersController } from './head-teachers.controller.js';
@@ -21,13 +23,14 @@ import { Vacancies } from './vacancies.service.js';
  * People (docs/spec/04-people.md): staff records and their status (task
  * 2.2a), availability and vacancies (task 2.2b), staff photos (task 2.2c-2),
  * the account section of a record (task 2.3a), the Head Teacher appointments
- * (task 2.3b-1).
+ * (task 2.3b-1), the sign-in access of an account (task 2.3c-1).
  */
 @Module({
   imports: [AccessModule, AuthModule],
   controllers: [
     StaffController,
     StaffAccountsController,
+    AccountAccessController,
     HeadTeachersController,
     StaffPhotosController,
     AvailabilityController,
@@ -36,6 +39,7 @@ import { Vacancies } from './vacancies.service.js';
   providers: [
     Staff,
     StaffAccounts,
+    AccountAccess,
     HeadTeachers,
     StaffPhotos,
     StaffAvailability,

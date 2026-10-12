@@ -126,6 +126,11 @@ const MESSAGE: Record<ErrorCode, string> = {
   appointment_ends_by_then: 'The appointment ends on or before that date.',
   role_not_appointment:
     'Only the subjects of a Head Teacher or Senior Head Teacher appointment are changed.',
+  own_account: 'Nobody locks, unlocks or resets their own account.',
+  account_already_locked: 'The account is already locked.',
+  account_not_locked: 'The account is not locked.',
+  second_step_off: 'The account has no second step to reset.',
+  account_missing: 'The staff record has no account yet.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };

@@ -1,7 +1,9 @@
 import {
+  accountAccessSchema,
   appointmentListSchema,
   availabilitySchema,
   loginSuggestionSchema,
+  neverUsedListSchema,
   staffAccountSchema,
   staffDetailSchema,
   staffListSchema,
@@ -229,3 +231,41 @@ export const headTeachersQuery = (branchId: string | null) =>
 /** After a give, a change or an end of an appointment, or a status change that ends or brings back roles. */
 export const invalidateHeadTeachers = (queryClient: QueryClient): Promise<unknown> =>
   queryClient.invalidateQueries({ queryKey: headTeachersKey() });
+
+/**
+ * The sign-in access of a record's account (task 2.3c-1): its lock, a reset
+ * in force, and what the reader may do. Never holds a one-time password: the
+ * slip lives only in the dialog that shows it.
+ */
+export const accountAccessKey = (id?: string) =>
+  id === undefined ? [...PEOPLE_KEY, 'access'] : [...PEOPLE_KEY, 'access', id];
+
+export const accountAccessQuery = (branchId: string | null, id: string) =>
+  queryOptions({
+    queryKey: [...accountAccessKey(id), branchId],
+    queryFn: async () =>
+      accountAccessSchema.parse(
+        await answerOf(
+          api.GET('/api/people/staff/{id}/account/access', {
+            params: { header: branchHeader(), path: { id } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** The accounts never used of the branch (task 2.3c-1, decision 10). */
+export const neverUsedKey = (branchId?: string | null) =>
+  branchId === undefined ? [...PEOPLE_KEY, 'never-used'] : [...PEOPLE_KEY, 'never-used', branchId];
+
+export const neverUsedQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: neverUsedKey(branchId),
+    queryFn: async () =>
+      neverUsedListSchema.parse(
+        await answerOf(
+          api.GET('/api/people/accounts/never-used', { params: { header: branchHeader() } }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });

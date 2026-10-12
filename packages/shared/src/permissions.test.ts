@@ -112,6 +112,7 @@ describe('a frozen permission table', () => {
   it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
     expect(Object.keys(PERMISSIONS).sort()).toEqual([
       'academic_years',
+      'account_access',
       'accounts',
       'branches',
       'calendar',
@@ -271,6 +272,26 @@ describe('a frozen permission table', () => {
       for (const action of ['create', 'edit'] as const) {
         expect(permits(PERMISSIONS, role, 'accounts', action)).toBe(role === 'super_admin');
       }
+    }
+  });
+
+  // Task 2.3c-1, decision 2 of pull request #65 (Look first): `account_access` —
+  // the Super Admin and the Academic Vice Principal view the sign-in access of
+  // an account and lock, unlock and reset it (`edit`; Who can act: "He may
+  // reset passwords and lock accounts only for Teachers, Tutors, Head Teachers
+  // and the Head Tutor of his branch", decided further on the server); the
+  // Principal views. Nobody else.
+  it('gives the sign-in access to the Super Admin and the Academic Vice Principal, its view to the Principal', () => {
+    expect(PERMISSIONS.account_access.super_admin).toEqual(['view', 'edit']);
+    expect(PERMISSIONS.account_access.academic_vice_principal).toEqual(['view', 'edit']);
+    expect(PERMISSIONS.account_access.principal).toEqual(['view']);
+    for (const role of ROLES) {
+      if (!['super_admin', 'principal', 'academic_vice_principal'].includes(role)) {
+        expect(PERMISSIONS.account_access[role], role).toEqual([]);
+      }
+      expect(permits(PERMISSIONS, role, 'account_access', 'edit')).toBe(
+        role === 'super_admin' || role === 'academic_vice_principal',
+      );
     }
   });
 

@@ -3,13 +3,17 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useView } from '@/features/access/use-view';
 
-type Section = 'staff' | 'vacancies' | 'head-teachers';
+type Section = 'staff' | 'vacancies' | 'head-teachers' | 'never-used';
 
 const SECTIONS: readonly {
   key: Section;
-  to: '/people/staff' | '/people/vacancies' | '/people/head-teachers';
+  to: '/people/staff' | '/people/vacancies' | '/people/head-teachers' | '/people/never-used';
   area: string;
-  title: 'people.staff.title' | 'people.vacancies.title' | 'people.headTeachers.title';
+  title:
+    | 'people.staff.title'
+    | 'people.vacancies.title'
+    | 'people.headTeachers.title'
+    | 'people.neverUsed.title';
 }[] = [
   { key: 'staff', to: '/people/staff', area: 'staff', title: 'people.staff.title' },
   { key: 'vacancies', to: '/people/vacancies', area: 'vacancies', title: 'people.vacancies.title' },
@@ -18,6 +22,13 @@ const SECTIONS: readonly {
     to: '/people/head-teachers',
     area: 'head_teachers',
     title: 'people.headTeachers.title',
+  },
+  // Task 2.3c-1: the accounts never used, for the readers of `account_access`.
+  {
+    key: 'never-used',
+    to: '/people/never-used',
+    area: 'account_access',
+    title: 'people.neverUsed.title',
   },
 ];
 

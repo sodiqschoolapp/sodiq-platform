@@ -7,7 +7,7 @@ import { ApiException } from '../../http/api-exception.js';
 import { rolesOf } from '../access/current-assignments.js';
 import { Audit } from '../audit/audit.service.js';
 import { FIRST_PASSWORD_LENGTH, randomFirstPassword } from './accounts.service.js';
-import { UnknownAccountError } from './password-resets.service.js';
+import { auditOf, UnknownAccountError, type AuditNames } from './password-resets.service.js';
 import { SecondStepRule } from './second-step-rule.js';
 import { SecondStepSecrets } from './second-step-secrets.js';
 import { Sessions, type ActiveSession } from './sessions.service.js';
@@ -51,12 +51,29 @@ export class OwnSecondStepResetError extends Error {
   }
 }
 
-export interface SecondStepReset {
+/**
+ * The account has no confirmed second step to reset (task 2.3c-1, decision 6
+ * and correction 5 of the review of pull request #65): found on the row read
+ * under its lock, before anything is removed.
+ */
+export class SecondStepOffError extends Error {
+  constructor() {
+    super('The account has no second step to reset.');
+  }
+}
+
+export interface SecondStepReset extends AuditNames {
   /** The account whose second step is reset. */
   accountId: string;
   /** The account of the administrator who resets it. */
   resetBy: string;
   requestId?: string;
+  /**
+   * Refuse with `SecondStepOffError` when no confirmed second step is in force
+   * (the route of task 2.3c-1); left out, a reset of none is logged with
+   * `wasOn: false`, as in 0.6c.
+   */
+  requireOn?: boolean;
 }
 
 /** What the authenticator app needs. Shown once and stored only encrypted. */
@@ -320,10 +337,14 @@ export class TwoStep {
    * second step and its recovery codes are removed; where it is required, the
    * person sets it up again before anything else.
    *
-   * Until the screens of task 2.3 this has no route: who may reset whom is
-   * checked there. Only tests call it.
+   * The route of task 2.3c-1 (`AccountAccess`) decides who may reset whom and
+   * resets the password in the same transaction. Answers whether a confirmed
+   * second step was in force, read under the lock of its row.
    */
-  async resetByAdministrator(transaction: Transaction, reset: SecondStepReset): Promise<void> {
+  async resetByAdministrator(
+    transaction: Transaction,
+    reset: SecondStepReset,
+  ): Promise<{ wasOn: boolean }> {
     if (reset.resetBy === reset.accountId) {
       throw new OwnSecondStepResetError();
     }
@@ -336,15 +357,22 @@ export class TwoStep {
       throw new UnknownAccountError();
     }
     const row = await this.lockedRow(transaction, reset.accountId);
+    const wasOn = row !== undefined && row.confirmed_at !== null;
+    // Checked on the locked row and before the removal, so that a refused
+    // reset writes nothing (correction 5 of the review of #65).
+    if (reset.requireOn === true && !wasOn) {
+      throw new SecondStepOffError();
+    }
     await this.remove(transaction, reset.accountId);
     await this.audit.record(transaction, {
-      branchId: null,
       actorId: reset.resetBy,
+      ...auditOf(reset),
       action: 'account.second_step_reset',
       record: { type: 'account', id: reset.accountId },
-      details: { wasOn: row !== undefined && row.confirmed_at !== null },
+      details: { wasOn },
       ...(reset.requestId === undefined ? {} : { requestId: reset.requestId }),
     });
+    return { wasOn };
   }
 
   private refuseUnlessRight(checked: Checked): void {

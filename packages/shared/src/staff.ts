@@ -332,6 +332,12 @@ export const staffRightsSchema = z.object({
   teaching: z.boolean(),
   /** The account section: the Super Admin and the Principal read it (task 2.3a, decision 4). */
   accounts: z.boolean(),
+  /**
+   * The section "Sign-in access": the Super Admin, the Academic Vice Principal
+   * and the Principal read it (task 2.3c-1, decision 13); what each may change
+   * comes with the section.
+   */
+  accountAccess: z.boolean(),
 });
 
 export type StaffRights = z.infer<typeof staffRightsSchema>;

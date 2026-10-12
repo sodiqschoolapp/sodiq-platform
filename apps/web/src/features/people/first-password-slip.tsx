@@ -57,16 +57,20 @@ export function FirstPasswordSlipCard({ slip, issued }: { slip: Slip; issued: st
  * once on per-person slips and not stored"). The password lives only in the
  * state of the page that opened this dialog: closing it drops it, and nothing
  * keeps it in a query cache or the offline queue (correction 4 of the review
- * of pull request #62). "Print" prints the slip alone.
+ * of pull request #62). "Print" prints the slip alone. A password reset by an
+ * administrator shows the same slip under its own title (task 2.3c-1,
+ * decision 9): its three steps hold for a one-time password too.
  */
 export function FirstPasswordSlipDialog({
   slip,
   issued,
   onClose,
+  kind = 'first',
 }: {
   slip: Slip;
   issued: string;
   onClose: () => void;
+  kind?: 'first' | 'reset';
 }) {
   const { t } = useTranslation();
   const [printing, setPrinting] = useState(false);
@@ -99,7 +103,9 @@ export function FirstPasswordSlipDialog({
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{t('people.account.slipTitle')}</DialogTitle>
+            <DialogTitle>
+              {kind === 'reset' ? t('people.access.slipTitle') : t('people.account.slipTitle')}
+            </DialogTitle>
             <DialogDescription>{t('people.account.slipOnce')}</DialogDescription>
           </DialogHeader>
           <FirstPasswordSlipCard slip={slip} issued={issued} />
