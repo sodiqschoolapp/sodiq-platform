@@ -18,6 +18,7 @@ import {
   type CurrentAssignment,
 } from '../access/current-assignments.js';
 import { Audit } from '../audit/audit.service.js';
+import { staffAccountBlocked } from '../people/staff-account.js';
 import { idleLimitMs } from './idle-limit.js';
 import { LOGIN_FORMAT } from './login.js';
 import { hashPassword, verifyPassword } from './password-hash.js';
@@ -237,6 +238,17 @@ export class Sessions {
       throw new ApiException('account_locked', 403);
     }
     const now = this.clock.now();
+    // Task 2.2a: an inactive or left staff member is refused only after the
+    // password matched, as a locked account is (correction 3 of the review of
+    // pull request #53), and the attempt goes into the sign-in history.
+    if (
+      await this.transactions.run([], (transaction) =>
+        staffAccountBlocked(transaction, account.id, now),
+      )
+    ) {
+      await this.recordInactiveSignIn(account.id, origin.requestId);
+      throw new ApiException('account_inactive', 403);
+    }
     if (account.password_expires_at !== null && account.password_expires_at <= now) {
       throw new ApiException('password_expired', 401);
     }
@@ -437,6 +449,11 @@ export class Sessions {
         // A lock ends every session; this holds also if one were still open.
         return undefined;
       }
+      // An inactive or left staff member is refused on every request from the
+      // date of the status, read from the stored rows (task 2.2a).
+      if (await staffAccountBlocked(transaction, used.account_id, now)) {
+        return undefined;
+      }
       return {
         sessionId: used.id,
         accountId: used.account_id,
@@ -495,7 +512,10 @@ export class Sessions {
       }
       const peeked: PeekedSession[] = [];
       for (const row of await query.execute()) {
-        if (row.locked_at !== null) {
+        if (
+          row.locked_at !== null ||
+          (await staffAccountBlocked(transaction, row.account_id, now))
+        ) {
           continue;
         }
         const assignments = await currentAssignments(transaction, row.account_id, now);
@@ -1002,6 +1022,20 @@ export class Sessions {
         // Nobody is signed in.
         actorId: null,
         action: 'auth.sign_in_locked',
+        record: { type: 'account', id: accountId },
+        ...(requestId === undefined ? {} : { requestId }),
+      }),
+    );
+  }
+
+  /** A right password of an inactive or left staff member: in the sign-in history, as a locked sign-in. */
+  private async recordInactiveSignIn(accountId: string, requestId?: string): Promise<void> {
+    await this.transactions.run([], (transaction) =>
+      this.audit.record(transaction, {
+        branchId: null,
+        // Nobody is signed in.
+        actorId: null,
+        action: 'auth.sign_in_inactive',
         record: { type: 'account', id: accountId },
         ...(requestId === undefined ? {} : { requestId }),
       }),

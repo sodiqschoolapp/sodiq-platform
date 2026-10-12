@@ -50,6 +50,13 @@ const SETTINGS_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_princip
 const SUBJECT_VIEWERS = SETUP_VIEWERS;
 const SUBJECT_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
+// Task 2.2a, decision 2 of pull request #53: the areas `staff` and
+// `staff_teaching`. The server further keeps the branches and the status to
+// the Super Admin and the Academic Vice Principal's edit to name, phone and
+// email, decided from every current assignment (tested in staff.test.ts).
+const STAFF_VIEWERS = SETUP_VIEWERS;
+const STAFF_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
+
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
@@ -178,6 +185,15 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: SUBJECT_WRITERS,
   },
+  'GET /api/people/staff': { branch: 'request', roles: STAFF_VIEWERS },
+  'GET /api/people/staff/:id': { branch: 'request', roles: STAFF_VIEWERS },
+  'POST /api/people/staff/check': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/people/staff': { branch: 'request', roles: ['super_admin'] },
+  'PUT /api/people/staff/:id': { branch: 'request', roles: STAFF_EDITORS },
+  'PUT /api/people/staff/:id/teaching': { branch: 'request', roles: STAFF_EDITORS },
+  'PUT /api/people/staff/:id/branches': { branch: 'request', roles: STAFF_EDITORS },
+  'POST /api/people/staff/:id/status': { branch: 'request', roles: STAFF_EDITORS },
+  'POST /api/people/staff/:id/identity': { branch: 'request', roles: STAFF_VIEWERS },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

@@ -151,7 +151,7 @@ async function openList({
   const calls = fakeApi({
     'GET /api/auth/session': () => json(account),
     'GET /api/setup/subjects': () => json({ subjects, mayMoveDepartment }),
-    'GET /api/setup/divisions': () => json({ divisions }),
+    'GET /api/setup/divisions': () => json({ divisions, staffCounts: [] }),
     'GET /api/setup/academic-years': () => json({ years }),
     [`GET /api/setup/subjects/${MATHS.id}/quarter-weights`]: () => json(answer(quarters)),
     [`GET /api/setup/subjects/${PHYSICS.id}/quarter-weights`]: () => json(answer(quarters)),
@@ -440,6 +440,68 @@ describe('the subjects page', () => {
   });
 
   // Decision 17: only the Super Admin moves a subject to another department.
+  // Task 2.2a, decision 13 and correction 7 of the review of pull request #53:
+  // the teachers of this branch by name, those of other branches as a number.
+  it('names the teachers of the branch and counts the others when a grade cannot be removed', async () => {
+    const teacher = uid(91);
+    await openList({
+      extra: {
+        [`PUT /api/setup/subjects/${MATHS.id}`]: () =>
+          Response.json(
+            {
+              error: {
+                code: 'subject_has_teachers',
+                message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                requestId: 'test-request',
+                details: [
+                  { path: `staff.${teacher}`, code: 'teaches', message: 'x' },
+                  { path: 'elsewhere', code: '2', message: 'x' },
+                ],
+              },
+            },
+            { status: 409 },
+          ),
+        'GET /api/people/staff': () =>
+          json({
+            today: '2026-10-10',
+            staff: [
+              {
+                id: teacher,
+                staffId: 'S-260007',
+                firstName: 'Zarina',
+                lastName: 'Hamidova',
+                fatherName: null,
+                categories: [],
+                branches: [{ branchId: NORTH.id, name: 'North', main: true }],
+                divisions: [],
+                subjects: [],
+                languages: [],
+                phone: '+998901112233',
+                status: 'active',
+                planned: null,
+              },
+            ],
+          }),
+      },
+    });
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+    const form = within(panel).getByRole('form', { name: 'Mathematics' });
+    fireEvent.click(
+      within(form).getByLabelText(subjectsText.grade.replace('{{grade}}', String(MATHS.grades[0]))),
+    );
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+    expect(
+      await within(panel).findByText(
+        subjectsText.teachersHere.replace('{{names}}', 'Zarina Hamidova'),
+      ),
+    ).toBeDefined();
+    expect(
+      within(panel).getByText(subjectsText.teachersElsewhere_other.replace('{{n}}', '2')),
+    ).toBeDefined();
+  });
+
   it('keeps the department of a subject fixed in the edit of the Academic Vice Principal, saying why', async () => {
     await openList({
       session: sessionOf({

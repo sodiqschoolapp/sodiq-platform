@@ -38,8 +38,19 @@ export const SETUP_PAGES: readonly IndexedPage[] = [
   { titleKey: 'setup.subjects.title', to: '/setup/subjects' },
 ];
 
+/** The pages under "People" (task 2.2a), each with the area the role must view. */
+export const PEOPLE_PAGES: readonly (IndexedPage & { area: string })[] = [
+  { titleKey: 'people.staff.title', to: '/people/staff', area: 'staff' },
+];
+
 /** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */
-export function indexedPages(menuPages: readonly IndexedPage[]): IndexedPage[] {
+export function indexedPages(
+  menuPages: readonly IndexedPage[],
+  views: (area: string) => boolean = () => true,
+): IndexedPage[] {
   const setup = menuPages.some((page) => page.to === '/setup') ? SETUP_PAGES : [];
-  return [...menuPages, ...setup, ...COMMON_PAGES];
+  const people = menuPages.some((page) => page.to === '/people')
+    ? PEOPLE_PAGES.filter((page) => views(page.area)).map(({ titleKey, to }) => ({ titleKey, to }))
+    : [];
+  return [...menuPages, ...setup, ...people, ...COMMON_PAGES];
 }

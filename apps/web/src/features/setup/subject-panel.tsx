@@ -3,13 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
-import { answerOf } from '@/api/failure';
+import { ApiFailure, answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { SelectField } from '@/components/field';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
+import { staffQuery } from '@/features/people/people-api';
 import { nameOf, schoolDateText, yearsQuery } from './setup-api';
 import { SubjectChip } from './subject-colour';
 import { SubjectForm, type DepartmentChoice } from './subject-form';
@@ -160,6 +161,8 @@ export function SubjectPanel({
           ))}
         </dl>
       )}
+
+      <TeachersOutside error={edit.error} />
 
       {graded && (
         <section className="grid gap-3">
@@ -392,5 +395,56 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
       )}
       {body}
     </section>
+  );
+}
+
+/**
+ * Who keeps a subject from losing its department or a grade (task 2.2a,
+ * decision 13 and correction 7 of the review of pull request #53): the staff
+ * of this branch by name, those of other branches as a number only.
+ */
+function TeachersOutside({ error }: { error: unknown }) {
+  const { t, i18n } = useTranslation();
+  const { branchId } = useView();
+  const refused = error instanceof ApiFailure && error.code === 'subject_has_teachers';
+  const staff = useQuery({ ...staffQuery(branchId), enabled: refused && branchId !== null });
+  if (!refused) {
+    return null;
+  }
+  const details = error.details ?? [];
+  const ids = details
+    .filter((detail) => detail.path.startsWith('staff.'))
+    .map((detail) => detail.path.slice('staff.'.length));
+  const elsewhere = Number(details.find((detail) => detail.path === 'elsewhere')?.code ?? '0');
+  const number = new Intl.NumberFormat(i18n.language);
+  if (staff.isError) {
+    return (
+      <ErrorState
+        error={staff.error}
+        onRetry={() => {
+          void staff.refetch();
+        }}
+      />
+    );
+  }
+  if (ids.length > 0 && staff.data === undefined) {
+    return <LoadingOutline lines={1} />;
+  }
+  const names = ids.map((id) => {
+    const person = staff.data?.staff.find((one) => one.id === id);
+    return person === undefined ? '' : `${person.firstName} ${person.lastName}`;
+  });
+  return (
+    <div className="grid gap-1 text-sm" role="status">
+      {names.length > 0 && <p>{t('setup.subjects.teachersHere', { names: names.join(', ') })}</p>}
+      {elsewhere > 0 && (
+        <p>
+          {t('setup.subjects.teachersElsewhere', {
+            count: elsewhere,
+            n: number.format(elsewhere),
+          })}
+        </p>
+      )}
+    </div>
   );
 }

@@ -24,15 +24,20 @@ interface Outcome {
   done: number;
   refused: string[];
   taken: string[];
+  /** Refused because a staff member who has not left is in it (task 2.2a). */
+  staffed: string[];
 }
 
 /** The refusals a bulk action names instead of stopping at: the others go on. */
-function refusalOf(error: unknown, restore: boolean): 'refused' | 'taken' | null {
+function refusalOf(error: unknown, restore: boolean): 'refused' | 'taken' | 'staffed' | null {
   if (!(error instanceof ApiFailure)) {
     return null;
   }
   if (!restore && error.code === 'built_in') {
     return 'refused';
+  }
+  if (!restore && error.code === 'archive_refused') {
+    return 'staffed';
   }
   return restore && error.code === 'already_exists' ? 'taken' : null;
 }
@@ -75,7 +80,7 @@ export function DivisionsPage() {
   /** One call per division, in order; a refusal of one does not stop the others. */
   const archiveMany = useMutation({
     mutationFn: async ({ rows, restore }: { rows: Division[]; restore: boolean }) => {
-      const result: Outcome = { restore, done: 0, refused: [], taken: [] };
+      const result: Outcome = { restore, done: 0, refused: [], taken: [], staffed: [] };
       for (const row of rows) {
         try {
           await answerOf(
@@ -99,6 +104,15 @@ export function DivisionsPage() {
     onSettled: refresh,
   });
 
+  /** People per main division, of the whole school (`03`, Divisions: "counted once, under the main division"). */
+  const staffCounts = useMemo(
+    () =>
+      new Map(
+        (divisions.data?.staffCounts ?? []).map((row) => [row.divisionId, row.people] as const),
+      ),
+    [divisions.data],
+  );
+
   const columns = useMemo(
     (): Column<Division>[] => [
       {
@@ -118,6 +132,13 @@ export function DivisionsPage() {
         numeric: true,
       },
       {
+        key: 'staff',
+        header: t('setup.divisions.staff'),
+        cell: (row) => number.format(staffCounts.get(row.id) ?? 0),
+        sortValue: (row) => staffCounts.get(row.id) ?? 0,
+        numeric: true,
+      },
+      {
         key: 'status',
         header: t('setup.divisions.status'),
         cell: (row) =>
@@ -125,7 +146,7 @@ export function DivisionsPage() {
         sortValue: (row) => (row.archivedAt === null ? 0 : 1),
       },
     ],
-    [t, number, language],
+    [t, number, language, staffCounts],
   );
 
   const filters = useMemo(
@@ -231,6 +252,9 @@ export function DivisionsPage() {
           )}
           {outcome.taken.length > 0 && (
             <> {t('setup.divisions.takenNames', { names: outcome.taken.join(', ') })}</>
+          )}
+          {outcome.staffed.length > 0 && (
+            <> {t('setup.divisions.staffedNames', { names: outcome.staffed.join(', ') })}</>
           )}
         </p>
       )}

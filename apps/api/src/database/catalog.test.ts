@@ -40,6 +40,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'docs/spec/03, Divisions: "One list for the whole school ... Divisions are the same in every branch." A row holds names, a position and moments (task 1.2, decided by the owner).',
   departments:
     'The departments of the divisions, one list for the whole school as their divisions (docs/spec/03, Division: "Departments"); a row holds ids, names, a position and moments (task 1.2, decided by the owner).',
+  staff_id_counters:
+    'One counter of staff IDs per year of first hire for the whole school (docs/spec/edge-cases/developer-rules.md, Identifiers: "one school-wide counter per year"); a row holds a year and a number, nothing personal (task 2.2a, confirmed at the review of pull request #53).',
   subjects:
     'One subject list for the whole school (owner, answer 3 of "Decided ahead for tasks 2.1 to 2.6"); its weights are per branch in subject_daily_weights and subject_quarter_weights. A row holds names, a department id, grades, a colour, switches and moments (task 2.1).',
 };
@@ -59,6 +61,54 @@ const SCHOOL_WIDE_WITH_BRANCH: Record<string, string> = {
 };
 
 /**
+ * Tables of a staff record, filtered by membership (owner's answer 2 on pull
+ * request #53): a row is visible and writable only when the person is linked
+ * in `staff_branches` (a branch table) to a branch of the transaction. Each
+ * has no `branch_id`, row security on and exactly the policy
+ * `staff_membership` written below, naming the column that holds the id of
+ * the person. `openInsert`: the insert check is `true` (the record is
+ * inserted before its first link; `staff_main_branch_check` refuses a commit
+ * without one). Adding a name here is a decision for the owner, like the lists
+ * above.
+ */
+const MEMBERSHIP_FILTERED_TABLES: Record<
+  string,
+  { reason: string; column: string; openInsert?: true }
+> = {
+  staff: {
+    reason:
+      'The staff record: one per person for every branch they work in (docs/spec/04, Teacher and staff record), with the personal data of the person.',
+    column: 'id',
+    openInsert: true,
+  },
+  staff_divisions: {
+    reason: 'The divisions and departments of a staff record.',
+    column: 'staff_id',
+  },
+  staff_subjects: {
+    reason: 'The subjects of a staff record with the grades taught.',
+    column: 'staff_id',
+  },
+  staff_languages: {
+    reason: 'The languages of instruction of a staff record.',
+    column: 'staff_id',
+  },
+  staff_statuses: {
+    reason: 'The dated status history of a staff record.',
+    column: 'staff_id',
+  },
+  staff_status_role_ends: {
+    reason:
+      'The ends a "left" status wrote on the assignments of the account of a staff record, kept to put them back.',
+    column: 'staff_id',
+  },
+};
+
+/** The membership condition of a table, as PostgreSQL writes it back. */
+const membershipExpression = (table: string, column: string) =>
+  `(EXISTS ( SELECT 1 FROM staff_branches b WHERE (b.staff_id = ${table}.${column})))`;
+
+/**
  * The partitions of `audit_log_school` (db/migrations/0003): one per month from
  * October 2026 to December 2029 and the default one. The application user has
  * no right on any of them. A migration that adds months extends this range.
@@ -76,9 +126,25 @@ function auditSchoolPartitions(): Record<string, string> {
 
 /**
  * Functions that run with the rights of their owner, who is not filtered, each
- * with its reason. None today.
+ * with its reason. Each answers a fact that rows of other branches decide and
+ * returns a boolean or a count, never row data, reading the branches of the
+ * transaction itself (task 2.2a, owner's answer 2 and the review of pull
+ * request #53, correction 2 and decision 17).
  */
-const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {};
+const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
+  'staff_account_blocked(uuid,timestamp with time zone)':
+    'Whether the staff record of an account is inactive or left today: sign-in and every request run before a branch is known.',
+  'staff_count_by_division(timestamp with time zone)':
+    'The number of people per main division for the school-wide list of divisions.',
+  'staff_duplicate_elsewhere(text,text,date,text)':
+    "Whether a person of another branch has the same name and birth date or the same phone (the duplicate warning, the owner's answer).",
+  'staff_in_division(uuid,uuid,timestamp with time zone)':
+    'Whether anybody who has not left is in a division or a department: the school-wide archives.',
+  'staff_out_for_good(uuid,timestamp with time zone)':
+    'Whether one record is out of the school and stays out (no re-hire planned), whichever branch link the request sees.',
+  'staff_subject_in_use(uuid,smallint[],uuid,timestamp with time zone)':
+    "How many people of other branches a change of a subject's department or grades would leave outside it.",
+};
 
 /** The filter of db/migrations/0002, as PostgreSQL writes it back. */
 const FILTER_EXPRESSION =
@@ -92,6 +158,9 @@ interface TableRow {
   row_security: boolean;
   policies: number;
   filter_policies: number;
+  membership_policies: number;
+  membership_using: string | null;
+  membership_check: string | null;
   filter_using: string | null;
   filter_check: string | null;
 }
@@ -101,6 +170,7 @@ async function tableProblems(
   database: Database,
   schoolWide: Record<string, string> = SCHOOL_WIDE_TABLES,
   schoolWideWithBranch: Record<string, string> = SCHOOL_WIDE_WITH_BRANCH,
+  membership: typeof MEMBERSHIP_FILTERED_TABLES = MEMBERSHIP_FILTERED_TABLES,
 ): Promise<string[]> {
   const found = await sql<TableRow>`
     select
@@ -127,7 +197,21 @@ async function tableProblems(
       (
         select pg_get_expr(p.polwithcheck, p.polrelid) from pg_policy p
         where p.polrelid = c.oid and p.polname = 'branch_filter'
-      ) as filter_check
+      ) as filter_check,
+      (
+        select count(*)::int from pg_policy p
+        where p.polrelid = c.oid and p.polname = 'staff_membership' and p.polcmd = '*'
+          and p.polpermissive
+          and p.polroles = array[(select oid from pg_roles where rolname = 'sodiq_app')]
+      ) as membership_policies,
+      (
+        select pg_get_expr(p.polqual, p.polrelid) from pg_policy p
+        where p.polrelid = c.oid and p.polname = 'staff_membership'
+      ) as membership_using,
+      (
+        select pg_get_expr(p.polwithcheck, p.polrelid) from pg_policy p
+        where p.polrelid = c.oid and p.polname = 'staff_membership'
+      ) as membership_check
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
     left join pg_attribute a
@@ -141,6 +225,30 @@ async function tableProblems(
   for (const table of found.rows) {
     const listed = table.name in schoolWide;
     const withBranch = table.name in schoolWideWithBranch;
+    const member = membership[table.name];
+    if (member !== undefined) {
+      if (table.has_branch_id) {
+        problems.push(`${table.name}: filtered by membership but has branch_id`);
+      }
+      if (listed || withBranch) {
+        problems.push(`${table.name}: filtered by membership and listed as school-wide`);
+      }
+      if (!table.row_security) {
+        problems.push(`${table.name}: row security is off`);
+      }
+      const expected = membershipExpression(table.name, member.column);
+      if (
+        table.membership_policies !== 1 ||
+        table.policies !== 1 ||
+        squeeze(table.membership_using) !== expected ||
+        squeeze(table.membership_check) !== (member.openInsert === true ? 'true' : expected)
+      ) {
+        problems.push(
+          `${table.name}: the staff_membership policy is missing, not the standard one, or not alone`,
+        );
+      }
+      continue;
+    }
     if (!table.has_branch_id) {
       if (!listed) {
         problems.push(`${table.name}: no branch_id and not in the list of school-wide tables`);
@@ -196,6 +304,11 @@ async function tableProblems(
   for (const name of Object.keys(schoolWideWithBranch)) {
     if (!names.has(name)) {
       problems.push(`${name}: named as school-wide with a branch but does not exist`);
+    }
+  }
+  for (const name of Object.keys(membership)) {
+    if (!names.has(name)) {
+      problems.push(`${name}: filtered by membership but does not exist`);
     }
   }
   return problems;
@@ -406,6 +519,9 @@ describe('the migrations', () => {
     for (const reason of Object.values(SECURITY_DEFINER_FUNCTIONS)) {
       expect(reason.length).toBeGreaterThan(10);
     }
+    for (const { reason } of Object.values(MEMBERSHIP_FILTERED_TABLES)) {
+      expect(reason.length).toBeGreaterThan(10);
+    }
   });
 
   it('create every view with security_invoker = true', async () => {
@@ -579,6 +695,97 @@ describe('the catalog checks', () => {
         'scratch_listed: listed as school-wide but has branch_id',
         'scratch_gone: listed as school-wide but does not exist',
       ]);
+    });
+
+    // Owner's answer 2 on pull request #53: the tables of a staff record are
+    // filtered by membership. The exception is by name and by exact policy.
+    describe('with the list of tables filtered by membership', () => {
+      const memberAs = (name: string) => ({
+        ...MEMBERSHIP_FILTERED_TABLES,
+        [name]: { reason: 'Named for this test.', column: 'staff_id' },
+      });
+      const scratchMember = async (name: string) => {
+        await sql`
+          create table ${sql.table(name)} (id integer primary key, staff_id uuid not null)
+        `.execute(database.migrator);
+        await sql`alter table ${sql.table(name)} enable row level security`.execute(
+          database.migrator,
+        );
+      };
+
+      it('accept a named table with the standard policy', async () => {
+        await scratchMember('scratch_member');
+        await sql`
+          create policy staff_membership on scratch_member for all to sodiq_app
+            using (exists (select 1 from staff_branches b where b.staff_id = scratch_member.staff_id))
+            with check (exists (select 1 from staff_branches b where b.staff_id = scratch_member.staff_id))
+        `.execute(database.migrator);
+
+        expect(
+          await tableProblems(
+            database.migrator,
+            SCHOOL_WIDE_TABLES,
+            SCHOOL_WIDE_WITH_BRANCH,
+            memberAs('scratch_member'),
+          ),
+        ).toEqual([]);
+        expect(await tableProblems(database.migrator)).toEqual([
+          'scratch_member: no branch_id and not in the list of school-wide tables',
+        ]);
+      });
+
+      it.each([
+        [
+          'no check on written rows',
+          `create policy staff_membership on scratch_member for all to sodiq_app
+             using (exists (select 1 from staff_branches b where b.staff_id = scratch_member.staff_id))
+             with check (true)`,
+        ],
+        [
+          'a weaker condition',
+          `create policy staff_membership on scratch_member for all to sodiq_app
+             using (true)
+             with check (exists (select 1 from staff_branches b where b.staff_id = scratch_member.staff_id))`,
+        ],
+        [
+          'a second policy that lets more through',
+          `create policy staff_membership on scratch_member for all to sodiq_app
+             using (exists (select 1 from staff_branches b where b.staff_id = scratch_member.staff_id))
+             with check (exists (select 1 from staff_branches b where b.staff_id = scratch_member.staff_id));
+           create policy read_all on scratch_member for select to sodiq_app using (true)`,
+        ],
+      ])('name a named table whose policy has %s', async (_name, statement) => {
+        await scratchMember('scratch_member');
+        await sql.raw(statement).execute(database.migrator);
+
+        expect(
+          await tableProblems(
+            database.migrator,
+            SCHOOL_WIDE_TABLES,
+            SCHOOL_WIDE_WITH_BRANCH,
+            memberAs('scratch_member'),
+          ),
+        ).toEqual([
+          'scratch_member: the staff_membership policy is missing, not the standard one, or not alone',
+        ]);
+      });
+
+      it('name a named table with row security off and one that does not exist', async () => {
+        await sql`create table scratch_member (id integer primary key, staff_id uuid)`.execute(
+          database.migrator,
+        );
+
+        expect(
+          await tableProblems(database.migrator, SCHOOL_WIDE_TABLES, SCHOOL_WIDE_WITH_BRANCH, {
+            ...memberAs('scratch_member'),
+            scratch_gone: { reason: 'Named for this test.', column: 'staff_id' },
+          }),
+        ).toEqual([
+          'scratch_member: row security is off',
+          'scratch_member: the staff_membership policy is missing, not the standard one, or not alone',
+          'scratch_gone: filtered by membership but does not exist',
+        ]);
+      });
     });
 
     // Decided by the owner at task 0.7a: `assignments` is school-wide and names
@@ -790,7 +997,10 @@ describe('the catalog checks', () => {
         'scratch_count(): SECURITY DEFINER and not in the allow-list',
       ]);
       expect(
-        await functionProblems(database.migrator, { 'scratch_count()': 'Allowed for this test.' }),
+        await functionProblems(database.migrator, {
+          ...SECURITY_DEFINER_FUNCTIONS,
+          'scratch_count()': 'Allowed for this test.',
+        }),
       ).toEqual([]);
       expect(
         await functionProblems(database.migrator, { 'scratch_gone()': 'Listed for this test.' }),

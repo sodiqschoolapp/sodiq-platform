@@ -286,6 +286,78 @@ try {
   });
   seeded.subjects = { login: subjects.login, password: subjects.firstPassword };
 
+  // The Academic Vice Principal of the staff test (task 2.2a) in a branch of
+  // its own, a teacher of that branch and a subject of STEAM to give the
+  // teacher. The Super Admin, who alone adds a person, cannot be seeded once
+  // more: at most 3 exist (MAX_SUPER_ADMINS), and the setup tests hold them.
+  // Written by the migrator.
+  const staffBranch = await insertBranch(migrator, 'Staff browser test branch');
+  const staff = await create('Sevara', 'Nurmatova');
+  await transactions.run([staffBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: staff.id,
+      role: 'academic_vice_principal',
+      branchId: staffBranch,
+      givenBy: null,
+    }),
+  );
+  const academic = await migrator
+    .selectFrom('divisions')
+    .select('id')
+    .where('built_in', '=', true)
+    .executeTakeFirstOrThrow();
+  const steam = await migrator
+    .selectFrom('departments')
+    .select('id')
+    .where('name_en', '=', 'STEAM')
+    .executeTakeFirstOrThrow();
+  await migrator
+    .insertInto('subjects')
+    .values({
+      name_uz: 'Geometriya',
+      name_ru: 'Геометрия',
+      name_en: 'Geometry',
+      department_id: steam.id,
+      grades: [7, 8, 9],
+      colour: 'green',
+      journal_type: 'graded',
+    })
+    .execute();
+  await migrator.transaction().execute(async (transaction) => {
+    const person = await transaction
+      .insertInto('staff')
+      .values({
+        kind: 'person',
+        staff_id: 'S-269001',
+        first_name: 'Oybek',
+        last_name: 'Qoʻchqorov',
+        sex: 'male',
+        birth_date: '1987-04-12',
+        phone: '+998935554433',
+        admission_date: '2026-09-01',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: person.id, branch_id: staffBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: person.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+      .execute();
+  });
+  seeded.staff = { login: staff.login, password: staff.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');
