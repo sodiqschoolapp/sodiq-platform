@@ -235,6 +235,7 @@ describe('a password reset by an administrator', () => {
       for (const cookie of [administrator.cookie, third.cookie]) {
         expect((await kit.get('/api/auth/session', cookie)).body).toMatchObject({
           mustChangePassword: false,
+          name: null,
           passwordResetBy: null,
           language: 'uz',
           trustedUntil: null,
@@ -256,6 +257,7 @@ describe('a password reset by an administrator', () => {
         login: 'p.maxmudova',
         secondStep: 'not_needed',
         mustChangePassword: true,
+        name: null,
         passwordResetBy: 'o.maxmudov',
         language: 'uz',
         trustedUntil: null,
@@ -283,6 +285,7 @@ describe('a password reset by an administrator', () => {
         login: 'r.maxmudova',
         secondStep: 'not_needed',
         mustChangePassword: false,
+        name: null,
         passwordResetBy: null,
         language: 'uz',
         trustedUntil: null,
@@ -304,6 +307,7 @@ describe('a password reset by an administrator', () => {
         login: 's.maxmudov',
         secondStep: 'not_needed',
         mustChangePassword: true,
+        name: null,
         passwordResetBy: null,
         language: 'uz',
         trustedUntil: null,

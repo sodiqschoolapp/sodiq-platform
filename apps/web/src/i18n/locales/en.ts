@@ -194,6 +194,21 @@ export const en = {
     floor_archived:
       'The floor is archived. A room on an archived floor can only be moved: choose an active floor, or restore the floor first.',
     archived_record: 'It is archived, or the building it is in is. Restore first, then change it.',
+    account_exists: 'This person already has an account. Reload the page to see it.',
+    login_taken: 'This login is taken. Logins are never given twice: choose another one.',
+    no_account: 'This person has no account yet. Create the account first, then give roles.',
+    staff_left: 'This person has left the school. Change the status to active first.',
+    role_branch_not_person:
+      'This person does not work in that branch. Add the branch to the staff record first, or choose one of their branches.',
+    role_overlap:
+      'This person already holds this role in this branch on that date. Choose a later date, or end the current role first.',
+    too_many_super_admins:
+      'There can be at most 3 Super Admins. End another Super Admin role first.',
+    own_super_admin_role: 'You cannot end your own Super Admin role. Ask another Super Admin.',
+    last_super_admin:
+      'This would leave the school without an active Super Admin. Give the Super Admin role to another person first.',
+    assignment_ended: 'This role has already ended. To give it again, give it as a new role.',
+    role_from_past: 'Roles start and end today or later. Choose today or a later date.',
     internal_error:
       'Something went wrong on the server. Try again in a moment. If it happens again, tell an administrator.',
   } satisfies Record<ErrorCode, string>,

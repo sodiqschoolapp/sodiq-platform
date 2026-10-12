@@ -205,6 +205,16 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/people/staff/:id/branches': { branch: 'request', roles: STAFF_EDITORS },
   'POST /api/people/staff/:id/status': { branch: 'request', roles: STAFF_EDITORS },
   'POST /api/people/staff/:id/identity': { branch: 'request', roles: STAFF_VIEWERS },
+  // Task 2.3a, decision 4 of pull request #62: the account section.
+  'GET /api/people/staff/:id/account': { branch: 'request', roles: ['super_admin', 'principal'] },
+  'GET /api/people/staff/:id/account/suggestion': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/people/staff/:id/account': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/people/staff/:id/roles': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/people/staff/:id/roles/:assignmentId/end': {
+    branch: 'request',
+    roles: ['super_admin'],
+  },
+  'GET /api/access/super-admins': { branch: 'none', roles: ['super_admin'] },
   // Task 2.2c-2: photos under `staff` (decision 2 of pull request #59).
   'PUT /api/people/staff/:id/photo': { branch: 'request', roles: STAFF_EDITORS },
   'DELETE /api/people/staff/:id/photo': { branch: 'request', roles: STAFF_EDITORS },

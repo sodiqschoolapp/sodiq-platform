@@ -4,10 +4,11 @@ import {
   languageSchema,
   type Clock,
   type Language,
+  type PersonName,
   type SecondStepState,
   type SessionResponse,
 } from '@sodiq/shared';
-import { sql } from 'kysely';
+import { sql, type RawBuilder } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -20,7 +21,7 @@ import {
 import { Audit } from '../audit/audit.service.js';
 import { staffAccountBlocked } from '../people/staff-account.js';
 import { idleLimitMs } from './idle-limit.js';
-import { LOGIN_FORMAT } from './login.js';
+import { isLogin } from './login.js';
 import { hashPassword, verifyPassword } from './password-hash.js';
 import { SecondStepRule } from './second-step-rule.js';
 import { answerOf, owesAStep } from './session-answer.js';
@@ -50,6 +51,24 @@ function randomToken(): string {
   return randomBytes(SESSION_TOKEN_BYTES).toString('base64url');
 }
 
+/**
+ * A first and last name answered by one of the name functions of
+ * db/migrations/0027 (`own_person_name`, `reset_by_person_name`), each of
+ * which answers a name only (task 2.3a, decision 9).
+ */
+async function personName(
+  transaction: Transaction,
+  call: RawBuilder<unknown>,
+): Promise<PersonName | null> {
+  const found = await sql<{ first_name: string | null; last_name: string | null }>`
+    select first_name, last_name from ${call}
+  `.execute(transaction);
+  const row = found.rows[0];
+  return row?.first_name == null || row.last_name == null
+    ? null
+    : { firstName: row.first_name, lastName: row.last_name };
+}
+
 /** The session of a request, read from the database on that request. */
 export interface ActiveSession {
   sessionId: string;
@@ -62,7 +81,10 @@ export interface ActiveSession {
   secondStep: SecondStepState;
   /** A first or reset password is in use: nothing but the password change is allowed. */
   mustChangePassword: boolean;
-  /** The login of the administrator who reset the password, while the reset password is in use. */
+  /**
+   * The login of the administrator who reset the password, while the reset
+   * password is in use; the answer shows their name (`Sessions.answerOf`).
+   */
   passwordResetBy: string | null;
   /**
    * On a trusted device: the moment the session ends, 7 days after its
@@ -195,7 +217,7 @@ export class Sessions {
     // Text that no login can be is an unknown login. It is not sent to the
     // database, which would refuse some of it (a zero byte) with a fault, and
     // it is not counted: no account can ever have it.
-    const found = LOGIN_FORMAT.test(login)
+    const found = isLogin(login)
       ? await this.transactions.run([], async (transaction) => {
           const account = await transaction
             .selectFrom('accounts')
@@ -545,13 +567,19 @@ export class Sessions {
    * for the branch switcher only.
    */
   async answerOf(session: ActiveSession): Promise<SessionResponse> {
-    if (owesAStep(session)) {
-      return answerOf(session, []);
-    }
-    const branches = await this.transactions.run([], (transaction) =>
-      branchChoices(transaction, session.assignments),
-    );
-    return answerOf(session, branches);
+    return this.transactions.run([], async (transaction) => {
+      const names = {
+        name: await personName(transaction, sql`own_person_name(${session.accountId}::uuid)`),
+        resetBy:
+          session.passwordResetBy === null
+            ? null
+            : await personName(transaction, sql`reset_by_person_name(${session.accountId}::uuid)`),
+      };
+      if (owesAStep(session)) {
+        return answerOf(session, [], names);
+      }
+      return answerOf(session, await branchChoices(transaction, session.assignments), names);
+    });
   }
 
   /** Ends this session; other sessions of the account stay. */

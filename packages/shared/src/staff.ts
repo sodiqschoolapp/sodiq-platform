@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
+import { firstPasswordSlipSchema } from './accounts.js';
 import { roleSchema, type Role } from './roles.js';
 import { instructionLanguageSchema } from './settings.js';
 import { subjectGradesSchema } from './subjects.js';
@@ -329,6 +330,8 @@ export const staffRightsSchema = z.object({
   contact: z.boolean(),
   /** Subjects, grades and languages. */
   teaching: z.boolean(),
+  /** The account section: the Super Admin and the Principal read it (task 2.3a, decision 4). */
+  accounts: z.boolean(),
 });
 
 export type StaffRights = z.infer<typeof staffRightsSchema>;
@@ -353,6 +356,18 @@ export const staffDetailSchema = staffListItemSchema.extend({
 });
 
 export type StaffDetail = z.infer<typeof staffDetailSchema>;
+
+/**
+ * The answer of a status change: the record, and the slip of a new first
+ * password when the change re-hires a person with an account (task 2.3a,
+ * decision 7: "Re-hiring restores the same record, staff ID and login with a
+ * new employment period and a forced password change").
+ */
+export const staffStatusAnswerSchema = staffDetailSchema.extend({
+  slip: firstPasswordSlipSchema.nullable(),
+});
+
+export type StaffStatusAnswer = z.infer<typeof staffStatusAnswerSchema>;
 
 /** The identity fields shown on a logged "show" (decision 9). */
 export const staffIdentitySchema = z.object({

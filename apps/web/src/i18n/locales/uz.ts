@@ -200,6 +200,23 @@ export const uz: Texts<'one' | 'other'> = {
     floor_archived:
       'Qavat arxivlangan. Arxivlangan qavatdagi xonani faqat koʻchirish mumkin: faol qavatni tanlang yoki avval qavatni tiklang.',
     archived_record: 'U yoki u joylashgan bino arxivlangan. Avval tiklang, keyin oʻzgartiring.',
+    account_exists: 'Bu xodimning hisobi allaqachon bor. Uni koʻrish uchun sahifani yangilang.',
+    login_taken: 'Bu login band. Loginlar ikki marta berilmaydi: boshqasini tanlang.',
+    no_account: 'Bu xodimda hali hisob yoʻq. Avval hisob yarating, keyin rollar bering.',
+    staff_left: 'Bu xodim ishdan ketgan. Avval holatini faolga qaytaring.',
+    role_branch_not_person:
+      'Bu xodim shu filialda ishlamaydi. Avval filialni kartochkaga qoʻshing yoki uning filiallaridan birini tanlang.',
+    role_overlap:
+      'Bu xodimda shu sanada shu filialda bu rol allaqachon bor. Keyinroq sanani tanlang yoki avval amaldagi rolni tugating.',
+    too_many_super_admins:
+      'Super administratorlar uchtadan oshmaydi. Avval boshqa super administrator rolini tugating.',
+    own_super_admin_role:
+      'Oʻz super administrator rolingizni tugata olmaysiz. Boshqa super administratorga murojaat qiling.',
+    last_super_admin:
+      'Shundan keyin maktabda faol super administrator qolmaydi. Avval super administrator rolini boshqa xodimga bering.',
+    assignment_ended: 'Bu rol allaqachon tugagan. Qaytarish uchun uni yangidan bering.',
+    role_from_past:
+      'Rol bugun yoki keyinroq boshlanadi va tugaydi. Bugungi yoki keyingi sanani tanlang.',
     internal_error:
       'Serverda xatolik yuz berdi. Birozdan keyin qayta urinib koʻring. Takrorlansa, administratorga xabar bering.',
   },

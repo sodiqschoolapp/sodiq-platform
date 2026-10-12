@@ -7,6 +7,7 @@ import type { JsonValue } from '../../database/types.generated.js';
 import { Audit } from '../audit/audit.service.js';
 import { UnknownAccountError } from '../auth/password-resets.service.js';
 import { notEnded } from './current-assignments.js';
+import { lockSuperAdmins } from './super-admins.js';
 
 /** A role that needs a branch was given without one, or the other way round, or the branch does not exist. */
 export class AssignmentBranchError extends Error {
@@ -62,28 +63,37 @@ export interface NewAssignment {
   /** For the audit entry, for example which command acted. */
   details?: JsonValue;
   requestId?: string;
+  /** For the audit entry: the assignment that allowed the administrator to act (task 2.3a). */
+  actingAssignmentId?: string;
+  /** For the audit entry: the staff record of the person (task 2.3a). */
+  personId?: string;
 }
 
 export interface AssignmentEnd {
   assignmentId: string;
   /** The account of the administrator who ends it. */
   endedBy: string;
+  /**
+   * The moment it ends; now when left out. A moment ahead ends it then, and
+   * may be moved while it is still ahead (0.7a; task 2.3a).
+   */
+  at?: Date;
   requestId?: string;
+  /** For the audit entry: the assignment that allowed the administrator to act (task 2.3a). */
+  actingAssignmentId?: string;
+  /** For the audit entry: the staff record of the person (task 2.3a). */
+  personId?: string;
 }
 
 const EXCLUSION_VIOLATION = '23P01';
-
-/** Any fixed number: two Super Admin assignments given at the same moment wait for each other. */
-const SUPER_ADMIN_COUNT_LOCK = 60_701;
 
 /**
  * Edge cases, "Who can act": rights are assignments: person, role, branch,
  * with dates. An assignment is given and ended, never changed or removed, so
  * history shows who held which role when.
  *
- * Until the screens of task 2.3 this service has no route: who may give which
- * role to whom, and the refusal to remove the last active Super Admin, come
- * there. The first-account command and tests call it.
+ * The routes of the account section call it (task 2.3a, `StaffAccounts`),
+ * and the first-account command.
  */
 @Injectable()
 export class Assignments {
@@ -168,15 +178,21 @@ export class Assignments {
       },
       ...(assignment.details === undefined ? {} : { details: assignment.details }),
       ...(assignment.requestId === undefined ? {} : { requestId: assignment.requestId }),
+      ...(assignment.actingAssignmentId === undefined
+        ? {}
+        : { assignmentId: assignment.actingAssignmentId }),
+      ...(assignment.personId === undefined ? {} : { personId: assignment.personId }),
     });
     return inserted;
   }
 
   /**
-   * Ends an assignment now, in the caller's transaction, with its audit entry:
-   * from this moment it gives no right, at the next request of the person. An
-   * assignment that has not begun yet ends at its start and is never in force.
-   * For a role with a branch the transaction must work for that branch.
+   * Ends an assignment now, or at `at`, in the caller's transaction, with its
+   * audit entry: from that moment it gives no right, at the next request of
+   * the person. An assignment that begins after that moment ends at its start
+   * and is never in force. An end still ahead is moved (0.7a); one that has
+   * passed is final (`assignments_end_guard`, db/migrations/0027). For a role
+   * with a branch the transaction must work for that branch.
    *
    * Throws `UnknownAssignmentError`, `AssignmentAlreadyEndedError` and
    * `OwnSuperAdminRemovalError`.
@@ -203,7 +219,8 @@ export class Assignments {
     if (assignment.role === 'super_admin' && assignment.account_id === ending.endedBy) {
       throw new OwnSuperAdminRemovalError();
     }
-    const validUntil = assignment.valid_from > now ? assignment.valid_from : now;
+    const at = ending.at !== undefined && ending.at > now ? ending.at : now;
+    const validUntil = assignment.valid_from > at ? assignment.valid_from : at;
     await transaction
       .updateTable('assignments')
       .set({ valid_until: validUntil, ended_by: ending.endedBy })
@@ -218,6 +235,10 @@ export class Assignments {
       newValue: { validUntil: validUntil.toISOString() },
       details: { accountId: assignment.account_id, role: assignment.role },
       ...(ending.requestId === undefined ? {} : { requestId: ending.requestId }),
+      ...(ending.actingAssignmentId === undefined
+        ? {}
+        : { assignmentId: ending.actingAssignmentId }),
+      ...(ending.personId === undefined ? {} : { personId: ending.personId }),
     });
   }
 
@@ -232,7 +253,7 @@ export class Assignments {
     accountId: string,
     now: Date,
   ): Promise<void> {
-    await sql`select pg_advisory_xact_lock(${SUPER_ADMIN_COUNT_LOCK})`.execute(transaction);
+    await lockSuperAdmins(transaction);
     const others = await transaction
       .selectFrom('assignments')
       .select('account_id')
