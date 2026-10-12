@@ -293,7 +293,10 @@ describe('availability and vacancies', () => {
       expect(apiErrorSchema.parse(refused.body).error.details).toEqual([
         expect.objectContaining({ path: 'weekday.1', code: 'overlap' }),
       ]);
-      expect(JSON.stringify(refused.body)).not.toMatch(/08:00|13:00|480|780/);
+      // Neither the message nor the details carry the other branch's times
+      // (the request id is random and is left out of the check).
+      const { message, details } = apiErrorSchema.parse(refused.body).error;
+      expect(JSON.stringify({ message, details })).not.toMatch(/08:00|13:00|\b480\b|\b780\b/);
       expect(await snapshot()).toEqual(before);
       const touching = await setHours(id, t.south, TODAY, [monday('13:00', '17:00')], southVice);
       expect(touching.status, JSON.stringify(touching.body)).toBe(200);
@@ -549,6 +552,70 @@ describe('availability and vacancies', () => {
         .where('id', '=', vacancyDetailSchema.parse(stripped.body).id)
         .executeTakeFirstOrThrow();
       expect(row).toEqual({ phone: null, first_name: null });
+    });
+
+    it('answer 404 for an unknown department or subject in the body, changing nothing', async () => {
+      const created = await vacancy();
+      const before = await snapshot();
+      const unknownSubject = { subjects: [{ subjectId: UNKNOWN, grades: [7] }] };
+      for (const body of [{ departmentId: UNKNOWN }, unknownSubject]) {
+        refusedWith(
+          await t.post('/api/people/vacancies', t.north, vacancyBody(body), t.vicePrincipal),
+          404,
+          'not_found',
+        );
+        refusedWith(
+          await put(
+            `/api/people/vacancies/${created.id}`,
+            t.north,
+            vacancyBody(body),
+            t.vicePrincipal,
+          ),
+          404,
+          'not_found',
+        );
+      }
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('refuse a department outside the Academic division', async () => {
+      const division = await t.database.migrator
+        .insertInto('divisions')
+        .values({ name_uz: 'Xoʻjalik', name_ru: 'Хозяйство', name_en: 'Facilities', position: 91 })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const department = await t.database.migrator
+        .insertInto('departments')
+        .values({
+          division_id: division.id,
+          name_uz: 'Bogʻ',
+          name_ru: 'Сад',
+          name_en: 'Garden',
+          position: 1,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const before = await snapshot();
+      refusedWith(
+        await t.post(
+          '/api/people/vacancies',
+          t.north,
+          vacancyBody({ departmentId: department.id, subjects: [], languages: [] }),
+          t.vicePrincipal,
+        ),
+        409,
+        'department_not_academic',
+      );
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('are deleted by the Super Admin too, the audit entry naming that assignment', async () => {
+      const created = await vacancy();
+      expect(
+        (await t.post(`/api/people/vacancies/${created.id}/delete`, t.north, {}, t.admin)).status,
+      ).toBe(204);
+      const [entry] = await t.entries('vacancy.delete', created.id);
+      expect(entry).toMatchObject({ assignment_id: t.adminAssignment });
     });
 
     it('are edited, closed and reopened, each audited', async () => {
