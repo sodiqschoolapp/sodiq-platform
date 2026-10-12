@@ -304,6 +304,8 @@ export const staffListItemSchema = z.object({
   status: staffStatusSchema.nullable(),
   /** A change planned after today, if any. */
   planned: z.object({ status: staffStatusSchema, from: schoolDateSchema }).nullable(),
+  /** The current photo (task 2.2c-2): a new id per upload, `null` when there is none. */
+  photoId: z.uuid().nullable(),
 });
 
 export type StaffListItem = z.infer<typeof staffListItemSchema>;

@@ -1,6 +1,6 @@
 # The test environment on Render (docs/spec/13-technology.md, Hosting and
 # Running cost; task 0.10). The owner creates it once from this file
-# (Dashboard, Blueprints, New Blueprint Instance) and enters the three values
+# (Dashboard, Blueprints, New Blueprint Instance) and enters the values
 # marked `sync: false` when asked; they are never written here.
 #
 # Deploys are started by the deploy job of .github/workflows/ci.yml after the
@@ -45,6 +45,17 @@ services:
       - key: SENTRY_DSN
         sync: false
       - key: VITE_SENTRY_DSN
+        sync: false
+      # The R2 bucket of the photos (task 2.2c-2, the owner's answer 2): entered
+      # by the owner in the dashboard, never here. Unset: photos answer "not
+      # configured yet" and everything else works.
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
         sync: false
 
   - type: worker

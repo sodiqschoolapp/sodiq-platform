@@ -15,10 +15,10 @@ import {
   type Subject,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
-import { answerOf } from '@/api/failure';
+import { answerOf, ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { SaveCancelled } from '@/components/form/save-cancelled';
@@ -30,12 +30,20 @@ import {
   SelectField,
 } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
+import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { nameOf, schoolDateText } from '@/features/setup/setup-api';
-import { invalidateStaff, staffDetailQuery } from './people-api';
+import {
+  invalidateStaff,
+  removeStaffPhoto,
+  setStaffPhoto,
+  staffDetailQuery,
+  staffPhotoQuery,
+} from './people-api';
+import { photoRefusalOf, shrinkPhoto } from './shrink-photo';
 import { AvailabilitySection } from './availability-section';
 import { asFormSchema } from './form-schema';
 import { StaffForm } from './staff-form';
@@ -106,6 +114,7 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
 
   return (
     <div className="grid gap-6">
+      <PhotoSection staff={staff} name={name} onChange={refresh} />
       <Overview staff={staff} divisions={divisions} />
       {staff.rights.contact && (
         <section className="grid gap-3">
@@ -153,6 +162,122 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
 }
 
 /** What everybody who sees the record reads; birth date and JSHSHIR behind a logged show for the Principal. */
+/**
+ * The photo of the record (task 2.2c-2): shown to every reader, set and
+ * removed by those who change the record's contact fields, the Super Admin
+ * and the Academic Vice Principal (decision 2). The browser checks the type
+ * and the 5 MB, then shrinks the photo before it is sent (answer 2).
+ */
+function PhotoSection({
+  staff,
+  name,
+  onChange,
+}: {
+  staff: StaffDetail;
+  name: string;
+  onChange: (answer: unknown) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const { branchId } = useView();
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
+  const input = useRef<HTMLInputElement>(null);
+  const upload = useMutation({
+    mutationFn: async (file: File) => {
+      const refusal = photoRefusalOf(file);
+      if (refusal !== null) {
+        throw new ApiFailure(refusal);
+      }
+      let shrunk: Blob;
+      try {
+        shrunk = await shrinkPhoto(file);
+      } catch {
+        throw new ApiFailure('photo_invalid');
+      }
+      return setStaffPhoto(staff.id, shrunk);
+    },
+    onSuccess: onChange,
+  });
+  const remove = useMutation({
+    mutationFn: () => removeStaffPhoto(staff.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: staffDetailQuery(branchId, staff.id).queryKey,
+      });
+      await invalidateStaff(queryClient);
+    },
+  });
+  const pending = upload.isPending || remove.isPending;
+
+  return (
+    <section className="grid gap-3" aria-label={t('people.staff.photo.title')}>
+      <div className="flex flex-wrap items-center gap-4">
+        <PersonPhoto
+          name={name}
+          initials={initialsOf(staff.firstName, staff.lastName)}
+          photo={staff.photoId === null ? null : staffPhotoQuery(branchId, staff.id, staff.photoId)}
+          size="lg"
+        />
+        {staff.rights.contact && (
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={input}
+              type="file"
+              accept="image/jpeg,image/png"
+              className="hidden"
+              aria-label={t(
+                staff.photoId === null ? 'people.staff.photo.add' : 'people.staff.photo.change',
+              )}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                if (file !== undefined) {
+                  remove.reset();
+                  upload.mutate(file);
+                }
+              }}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={pending}
+              onClick={() => {
+                input.current?.click();
+              }}
+            >
+              {t(staff.photoId === null ? 'people.staff.photo.add' : 'people.staff.photo.change')}
+            </Button>
+            {staff.photoId !== null && (
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={pending}
+                onClick={() => {
+                  void confirm({
+                    title: t('people.staff.photo.removeTitle'),
+                    text: t('people.staff.photo.removeText'),
+                    names: [name],
+                    action: t('people.staff.photo.remove'),
+                    destructive: true,
+                  }).then((go) => {
+                    if (go) {
+                      upload.reset();
+                      remove.mutate();
+                    }
+                  });
+                }}
+              >
+                {t('people.staff.photo.remove')}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+      <FailureAlert error={upload.error ?? remove.error} />
+    </section>
+  );
+}
+
 function Overview({ staff, divisions }: { staff: StaffDetail; divisions: DivisionList }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;

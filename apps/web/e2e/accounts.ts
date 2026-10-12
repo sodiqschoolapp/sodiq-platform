@@ -25,6 +25,7 @@ export type AccountKey =
   | 'subjects'
   | 'staff'
   | 'staffExport'
+  | 'staffPhoto'
   | 'shellTools'
   | 'switchers'
   | 'account'

@@ -1152,7 +1152,7 @@ export class Staff {
     const list = [...ids];
     const rows = await transaction
       .selectFrom('staff')
-      .select(STAFF_COLUMNS)
+      .select([...STAFF_COLUMNS, 'photo_id'])
       .where('id', 'in', list)
       .execute();
     const links = await transaction
@@ -1255,6 +1255,7 @@ export class Staff {
           planned === undefined
             ? null
             : { status: planned.status as StaffStatus, from: planned.valid_from },
+        photoId: row.photo_id,
       };
     });
   }

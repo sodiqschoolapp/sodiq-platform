@@ -15,6 +15,8 @@ export interface Column<Row> {
   fixed?: boolean;
   /** Numbers: set to the end of the cell. */
   numeric?: boolean;
+  /** `false`: not a cell of the Excel file (a photo, task 2.2c-2); the export never asks for it. */
+  exported?: boolean;
 }
 
 /** A filter above a list: one value of a short set, or all. */

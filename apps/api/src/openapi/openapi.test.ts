@@ -62,6 +62,7 @@ describe('OpenAPI document', () => {
         '/api/people/staff/{id}/availability',
         '/api/people/staff/{id}/branches',
         '/api/people/staff/{id}/identity',
+        '/api/people/staff/{id}/photo',
         '/api/people/staff/{id}/status',
         '/api/people/staff/{id}/teaching',
         '/api/people/vacancies',

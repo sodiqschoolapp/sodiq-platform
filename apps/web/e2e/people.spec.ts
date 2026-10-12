@@ -131,3 +131,69 @@ test('an Academic Vice Principal exports the staff list of the branch', async ({
   expect(statSync(await file.path()).size).toBeGreaterThan(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
+
+// Task 2.2c-2: an Academic Vice Principal adds the photo of a person of the
+// branch (decision 2). The browser shrinks a photo of 1600 by 1200 pixels to
+// 800 by 600 and sends it as a JPEG; the list then shows it in the photo
+// column. The API keeps it in memory here (PHOTOS_IN_MEMORY); what is refused
+// and who may do what is proved by the API and page tests. All names are invented.
+test('an Academic Vice Principal adds the photo of a person of the branch', async ({ page }) => {
+  const account = accountOf('staffPhoto');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/people/staff');
+  await expect(heading(page, en.people.staff.title)).toBeVisible();
+  const row = page.getByRole('row').filter({ hasText: 'Mirzayev' });
+  // No photo yet: the initials.
+  await expect(row.getByRole('cell').first()).toHaveText('SM');
+
+  // A PNG of 1600 by 1200 pixels, drawn by the browser itself.
+  const png = await page.evaluate(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1600;
+    canvas.height = 1200;
+    const context = canvas.getContext('2d');
+    if (context !== null) {
+      context.fillStyle = '#1b2a63';
+      context.fillRect(0, 0, 1600, 1200);
+    }
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/png');
+    });
+    const bytes = new Uint8Array(await (blob ?? new Blob()).arrayBuffer());
+    let text = '';
+    for (const byte of bytes) {
+      text += String.fromCharCode(byte);
+    }
+    return btoa(text);
+  });
+
+  await row.getByRole('button', { name: 'Shahzod Mirzayev' }).click();
+  const panel = page.getByRole('complementary', { name: 'Shahzod Mirzayev' });
+  const sent = page.waitForRequest(
+    (request) => request.method() === 'PUT' && request.url().endsWith('/photo'),
+  );
+  await panel.getByLabel(en.people.staff.photo.add).setInputFiles({
+    name: 'photo.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(png, 'base64'),
+  });
+  expect((await sent).headers()['content-type']).toBe('image/jpeg');
+  await expect(panel.getByRole('button', { name: en.people.staff.photo.change })).toBeVisible();
+
+  const shown = row.getByRole('img', { name: 'Shahzod Mirzayev' });
+  await expect(shown).toHaveAttribute('src', /^data:image\/jpeg;base64,/);
+  expect(await shown.evaluate((image: HTMLImageElement) => [image.naturalWidth, image.naturalHeight])).toEqual([800, 600]);
+  await expect(panel.getByRole('alert')).toHaveCount(0);
+});

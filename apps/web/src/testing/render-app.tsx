@@ -72,8 +72,15 @@ export function fakeApi(handlers: Record<string, Handler>): ApiCall[] {
         throw new TypeError('The generated client hands fetch a Request.');
       }
       const route = `${input.method} ${new URL(input.url).pathname}`;
-      const text = await input.text();
-      const body: unknown = text === '' ? undefined : JSON.parse(text);
+      // A file (a photo, task 2.2c-2) is recorded by its type and size, not read as JSON.
+      const type = input.headers.get('Content-Type') ?? '';
+      let body: unknown;
+      if (type.startsWith('image/')) {
+        body = { type, size: (await input.arrayBuffer()).byteLength };
+      } else {
+        const text = await input.text();
+        body = text === '' ? undefined : JSON.parse(text);
+      }
       calls.push({ route, body });
       const handler = handlers[route];
       if (handler === undefined) {

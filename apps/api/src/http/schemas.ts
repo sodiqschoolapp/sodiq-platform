@@ -4,6 +4,7 @@ import {
   createParamDecorator,
   HttpCode,
   Param,
+  UnsupportedMediaTypeException,
   Query,
   SetMetadata,
   UseInterceptors,
@@ -11,15 +12,18 @@ import {
 } from '@nestjs/common';
 import {
   ApiBody,
+  ApiConsumes,
   ApiHeader,
   ApiParam,
   ApiQuery,
   ApiResponse,
   type OpenAPIObject,
 } from '@nestjs/swagger';
-import { REQUEST_KEY_HEADER, requestKeySchema } from '@sodiq/shared';
+import { PHOTO_TYPES, REQUEST_KEY_HEADER, requestKeySchema } from '@sodiq/shared';
 import type { Request } from 'express';
 import { z } from 'zod';
+import { UploadedFile, type FileRoute } from './file-routes.js';
+import { PhotoFileInterceptor } from './photo-file.js';
 import { RESPONSE_SCHEMA } from './response-schema.interceptor.js';
 import { HeaderPipe, SchemaPipe } from './validation.js';
 import { XLSX_MEDIA_TYPE, XlsxFileInterceptor } from './xlsx.js';
@@ -101,6 +105,36 @@ export function ValidParams(schema: z.ZodObject): ParameterDecorator {
   };
 }
 
+/** Metadata key under which `ValidFile` names the declared file route of a handler. */
+export const TAKES_FILE = Symbol('TAKES_FILE');
+
+/**
+ * The file of a declared file route (`FILE_ROUTES` in `file-routes.ts`, task
+ * 2.2c-2), as `fileBodyMiddleware` read it. Anything else in the body (JSON,
+ * nothing at all) is refused with 415: a route that takes a file reads its
+ * body only through this decorator, with its entry of `FILE_ROUTES`.
+ *
+ *     setPhoto(@ValidFile(STAFF_PHOTO_ROUTE) file: UploadedFile)
+ */
+export function ValidFile(route: FileRoute): ParameterDecorator {
+  return (target, key, index) => {
+    if (key === undefined) {
+      throw new Error('ValidFile belongs on a parameter of a route method.');
+    }
+    Body({
+      transform: (value: unknown): UploadedFile => {
+        if (value instanceof UploadedFile && route.types.includes(value.type)) {
+          return value;
+        }
+        throw new UnsupportedMediaTypeException();
+      },
+    })(target, key, index);
+    onMethod(SetMetadata(TAKES_FILE, route), target, key);
+    onMethod(ApiConsumes(...route.types), target, key);
+    onMethod(ApiBody({ schema: { type: 'string', format: 'binary' } }), target, key);
+  };
+}
+
 /** One header of the request, by its name in lower case. */
 const HeaderValue = createParamDecorator(
   (name: string, context: ExecutionContext): unknown =>
@@ -170,5 +204,23 @@ export function ReturnsFile(): MethodDecorator {
     }),
     SetMetadata(RETURNS_FILE, true),
     UseInterceptors(XlsxFileInterceptor),
+  );
+}
+
+/**
+ * For a route that answers a photo (task 2.2c-2): status 200 with the image,
+ * described in the document as a binary answer of each photo type. The
+ * handler returns a `PhotoFile`; `PhotoFileInterceptor` sends it.
+ */
+export function ReturnsPhoto(): MethodDecorator {
+  const binary = { schema: { type: 'string', format: 'binary' } } as const;
+  return applyDecorators(
+    HttpCode(200),
+    ApiResponse({
+      status: 200,
+      content: Object.fromEntries(PHOTO_TYPES.map((type) => [type, binary])),
+    }),
+    SetMetadata(RETURNS_FILE, true),
+    UseInterceptors(PhotoFileInterceptor),
   );
 }

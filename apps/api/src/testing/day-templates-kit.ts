@@ -3,7 +3,7 @@ import { BRANCH_HEADER, type DayTemplate, type SlotType } from '@sodiq/shared';
 import request, { type Response, type Test } from 'supertest';
 import { expect } from 'vitest';
 import { insertBranch } from './branch-filter-sql.js';
-import { createTestApp } from './create-test-app.js';
+import { createTestApp, type TestAppOptions } from './create-test-app.js';
 import { FixedClock } from './fixed-clock.js';
 import { signInKit, type SignInKit } from './sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
@@ -80,12 +80,14 @@ export interface DayTemplatesKit {
   ): Promise<string>;
 }
 
-export async function dayTemplatesKit(): Promise<DayTemplatesKit> {
+export async function dayTemplatesKit(
+  options: Pick<TestAppOptions, 'photoStore'> = {},
+): Promise<DayTemplatesKit> {
   const database = await createTestDatabase();
   const clock = new FixedClock(START);
   const north = await insertBranch(database.migrator, 'North');
   const south = await insertBranch(database.migrator, 'South');
-  const app = await createTestApp({ database: database.app, clock });
+  const app = await createTestApp({ database: database.app, clock, ...options });
   const kit = signInKit(app);
   const adminBrowser = await kit.completeSession('Aziza', 'Karimova');
   await kit.giveRole(adminBrowser.account.id, { role: 'super_admin' });

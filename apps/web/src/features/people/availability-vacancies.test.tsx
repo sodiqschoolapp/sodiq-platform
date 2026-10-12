@@ -61,6 +61,7 @@ const AKMAL: StaffListItem = {
   phone: '+998901234567',
   status: 'active',
   planned: null,
+  photoId: null,
 };
 
 const AKMAL_DETAIL: StaffDetail = {

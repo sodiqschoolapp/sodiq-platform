@@ -29,6 +29,73 @@ describe('loadConfig', () => {
       trustProxy: false,
       webFiles: undefined,
       reporting: { dsn: undefined, environment: 'development', release: undefined },
+      photos: { store: 'none' },
+    });
+  });
+
+  // Task 2.2c-2, the owner's answer 2: the R2 bucket from four variables, all
+  // or none; decision 9: memory for a laptop and the browser tests, never with R2.
+  describe('the photo store', () => {
+    const R2 = {
+      R2_ACCOUNT_ID: 'a'.repeat(32),
+      R2_ACCESS_KEY_ID: 'invented-access-key-id',
+      R2_SECRET_ACCESS_KEY: 'invented-secret-that-must-never-be-printed',
+      R2_BUCKET: 'sodiq-photos-test',
+    };
+
+    it('uses no store when nothing is set, also when the variables are empty', () => {
+      expect(loadConfig(VALID).photos).toEqual({ store: 'none' });
+      expect(
+        loadConfig({
+          ...VALID,
+          R2_ACCOUNT_ID: '',
+          R2_ACCESS_KEY_ID: '',
+          R2_SECRET_ACCESS_KEY: '',
+          R2_BUCKET: '',
+          PHOTOS_IN_MEMORY: '',
+        }).photos,
+      ).toEqual({ store: 'none' });
+    });
+
+    it('uses R2 when all four are set', () => {
+      expect(loadConfig({ ...VALID, ...R2 }).photos).toEqual({
+        store: 'r2',
+        accountId: R2.R2_ACCOUNT_ID,
+        accessKeyId: R2.R2_ACCESS_KEY_ID,
+        secretAccessKey: R2.R2_SECRET_ACCESS_KEY,
+        bucket: R2.R2_BUCKET,
+      });
+    });
+
+    it('uses memory only when asked', () => {
+      expect(loadConfig({ ...VALID, PHOTOS_IN_MEMORY: '1' }).photos).toEqual({ store: 'memory' });
+      expect(loadConfig({ ...VALID, PHOTOS_IN_MEMORY: '0' }).photos).toEqual({ store: 'none' });
+    });
+
+    it.each(Object.keys(R2))('refuses the R2 variables without %s, naming it', (missing) => {
+      const problem = problemOf({ ...VALID, ...R2, [missing]: undefined });
+      expect(problem).toContain(`${missing} must`);
+      expect(problem).not.toContain(R2.R2_SECRET_ACCESS_KEY);
+      expect(problem).not.toContain(R2.R2_ACCESS_KEY_ID);
+    });
+
+    it('refuses memory together with R2', () => {
+      const problem = problemOf({ ...VALID, ...R2, PHOTOS_IN_MEMORY: '1' });
+      expect(problem).toContain('PHOTOS_IN_MEMORY must');
+      expect(problem).not.toContain(R2.R2_SECRET_ACCESS_KEY);
+    });
+
+    it('refuses a wrong account id or bucket without printing it', () => {
+      const problem = problemOf({
+        ...VALID,
+        ...R2,
+        R2_ACCOUNT_ID: 'not-an-account',
+        R2_BUCKET: 'Not_A_Bucket',
+      });
+      expect(problem).toContain('R2_ACCOUNT_ID must');
+      expect(problem).toContain('R2_BUCKET must');
+      expect(problem).not.toContain('not-an-account');
+      expect(problem).not.toContain('Not_A_Bucket');
     });
   });
 

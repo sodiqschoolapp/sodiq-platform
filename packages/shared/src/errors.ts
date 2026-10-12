@@ -187,6 +187,14 @@ export const ERROR_CODES = [
   'department_has_staff',
   /** Hours of a staff record overlap its hours in another branch on a date (`06`, Teachers who work in several branches; task 2.2b). `details` names the weekdays when the service finds them. */
   'availability_overlap',
+  /** The file is not a JPEG or PNG photo of at most 800 pixels a side (answer 2; task 2.2c-2). */
+  'photo_invalid',
+  /** The photo is larger than 5 MB (answer 2; task 2.2c-2). */
+  'photo_too_large',
+  /** No photo store is configured on this server: photos cannot be added or shown yet (answer 2; task 2.2c-2). */
+  'photos_not_configured',
+  /** The photo store did not answer in time or refused; only photos fail (`edge/system-behaviour`; task 2.2c-2). */
+  'photos_unavailable',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

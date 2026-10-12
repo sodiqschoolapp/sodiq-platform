@@ -20,13 +20,14 @@ import { ListPage } from '@/components/list/list-page';
 import { useExport } from '@/components/list/use-export';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
+import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { divisionsQuery, nameOf } from '@/features/setup/setup-api';
 import { subjectsQuery } from '@/features/setup/subjects-api';
-import { invalidateStaff, staffQuery } from './people-api';
+import { invalidateStaff, staffPhotoQuery, staffQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
 import { StaffForm } from './staff-form';
 import { StaffPanel } from './staff-panel';
@@ -146,6 +147,19 @@ export function StaffPage() {
       [...new Set(row.subjects.flatMap((subject) => subject.grades))].sort((a, b) => a - b);
     return [
       {
+        // `04`: "checkbox, number, photo, name, ..."; not a cell of the Excel file.
+        key: 'photo',
+        header: t('people.staff.photo.column'),
+        cell: (row) => (
+          <PersonPhoto
+            name={fullName(row)}
+            initials={initialsOf(row.firstName, row.lastName)}
+            photo={row.photoId === null ? null : staffPhotoQuery(branchId, row.id, row.photoId)}
+          />
+        ),
+        exported: false,
+      },
+      {
         key: 'name',
         header: t('people.staff.name'),
         cell: (row) => fullName(row),
@@ -209,7 +223,7 @@ export function StaffPage() {
         sortValue: (row) => row.status ?? '',
       },
     ];
-  }, [t, departmentNames, subjectNames, divisions.data]);
+  }, [t, departmentNames, subjectNames, divisions.data, branchId]);
 
   const filters = useMemo(
     (): Filter<StaffListItem>[] => [

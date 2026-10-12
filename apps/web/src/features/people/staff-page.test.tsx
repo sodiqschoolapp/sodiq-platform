@@ -1,10 +1,10 @@
 import type { Division, Role, StaffDetail, StaffListItem, Subject } from '@sodiq/shared';
 import { EXPORT_TEXTS, STAFF_EXPORT_COLUMNS } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
-import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
 const PATH = '/people/staff';
 
@@ -62,6 +62,7 @@ const AKMAL: StaffListItem = {
   phone: '+998901234567',
   status: 'active',
   planned: null,
+  photoId: null,
 };
 
 const NODIRA: StaffListItem = {
@@ -140,6 +141,8 @@ describe('the staff page', () => {
     // In the order of the server (by surname); no checkbox column without bulk actions.
     expect(rowsDrawn()).toEqual([
       [
+        // The photo column: the initials while there is no photo.
+        'AK',
         'Akmal Karimov',
         'S-260001',
         en.roles.teacher,
@@ -152,6 +155,7 @@ describe('the staff page', () => {
         en.people.staff.statuses.active,
       ],
       [
+        'NA',
         'Nodira Aliyeva',
         'S-260002',
         '',
@@ -185,7 +189,7 @@ describe('the staff page', () => {
     renderApp(`${PATH}?f=${encodeURIComponent(JSON.stringify({ status: 'active' }))}`);
     await screen.findByRole('heading', { name: en.people.staff.title });
     await waitFor(() => {
-      expect(rowsDrawn().map((row) => row[0])).toEqual(['Akmal Karimov']);
+      expect(rowsDrawn().map((row) => row[1])).toEqual(['Akmal Karimov']);
     });
   });
 
@@ -375,8 +379,226 @@ describe('the export of the staff list', () => {
       expect(document.querySelectorAll('tbody tr')).toHaveLength(2);
     });
     expect(screen.getByRole('button', { name: en.list.export })).toBeTruthy();
-    expect(headingsDrawn()).toEqual(
-      STAFF_EXPORT_COLUMNS.map((key) => EXPORT_TEXTS.en.staff.columns[key]),
+    // The photo is a column of the screen and not of the file (task 2.2c-2, decision 14).
+    expect(headingsDrawn()).toEqual([
+      en.people.staff.photo.column,
+      ...STAFF_EXPORT_COLUMNS.map((key) => EXPORT_TEXTS.en.staff.columns[key]),
+    ]);
+  });
+
+  it('never asks the server for the photo column', async () => {
+    class FileUrl extends URL {
+      static override createObjectURL = (): string => 'blob:file';
+      static override revokeObjectURL = (): void => undefined;
+    }
+    vi.stubGlobal('URL', FileUrl);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    const calls = openList('principal', {
+      'POST /api/people/staff/export': () =>
+        new Response(new Blob(['PK']), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'X-Export-Columns': STAFF_EXPORT_COLUMNS.join(','),
+          },
+        }),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(document.querySelectorAll('tbody tr')).toHaveLength(2);
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.list.export }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/staff/export')).toBe(true);
+    });
+    const sent = calls.find((call) => call.route === 'POST /api/people/staff/export')?.body as {
+      columns: string[];
+    };
+    expect(sent.columns).toEqual([...STAFF_EXPORT_COLUMNS]);
+    vi.restoreAllMocks();
+  });
+});
+
+// Task 2.2c-2: the photo column and the photo of the panel. The owner's answer
+// 2; edge/system-behaviour: "photos fall back to initials".
+describe('staff photos', () => {
+  const PHOTO_ID = uid(51);
+  const WITH_PHOTO: StaffListItem = { ...AKMAL, photoId: PHOTO_ID };
+  // A PNG of one pixel; the page shows it as a data: address.
+  const PIXEL = Uint8Array.from(
+    atob(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNoAAAAggCBd81ytgAAAABJRU5ErkJggg==',
+    ),
+    (char) => char.charCodeAt(0),
+  );
+  const photoAnswer = () =>
+    new Response(new Blob([PIXEL], { type: 'image/png' }), {
+      status: 200,
+      headers: { 'Content-Type': 'image/png' },
+    });
+
+  function openWith(
+    role: Role,
+    extra: Record<string, (body: unknown) => Response> = {},
+    language: 'en' | 'ru' = 'en',
+    detail: Partial<StaffDetail> = {},
+  ) {
+    return fakeApi({
+      'GET /api/auth/session': () => json(sessionAs(role, language)),
+      'GET /api/people/staff': () => json({ staff: [WITH_PHOTO, NODIRA], today: '2026-10-10' }),
+      'GET /api/setup/divisions': () =>
+        json({ divisions: [ACADEMIC, MANAGEMENT], staffCounts: [] }),
+      'GET /api/setup/subjects': () => json({ subjects: [MATHEMATICS], mayMoveDepartment: false }),
+      [`GET /api/people/staff/${AKMAL.id}`]: () => json(detailOf(WITH_PHOTO, detail)),
+      [`GET /api/people/staff/${AKMAL.id}/photo`]: photoAnswer,
+      ...extra,
+    });
+  }
+
+  const photoCell = (name: string) =>
+    [...document.querySelectorAll('tbody tr')]
+      .find((row) => row.textContent.includes(name))
+      ?.querySelector('td');
+
+  it('shows the photo in the list, and the initials where there is none', async () => {
+    const calls = openWith('principal');
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(photoCell('Akmal Karimov')?.querySelector('img')?.getAttribute('src')).toMatch(
+        /^data:image\/png;base64,/,
+      );
+    });
+    expect(photoCell('Akmal Karimov')?.querySelector('img')?.getAttribute('alt')).toBe(
+      'Akmal Karimov',
     );
+    expect(photoCell('Nodira Aliyeva')?.querySelector('img')).toBeNull();
+    expect(photoCell('Nodira Aliyeva')?.textContent).toBe('NA');
+    // Only the person with a photo is asked for one.
+    expect(calls.filter((call) => call.route.endsWith('/photo')).map((call) => call.route)).toEqual(
+      [`GET /api/people/staff/${AKMAL.id}/photo`],
+    );
+  });
+
+  it('keeps the initials when the photo cannot be read', async () => {
+    openWith('principal', {
+      [`GET /api/people/staff/${AKMAL.id}/photo`]: () => refusal('photos_unavailable', 503),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(document.querySelectorAll('tbody tr')).toHaveLength(2);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(photoCell('Akmal Karimov')?.querySelector('img')).toBeNull();
+    expect(photoCell('Akmal Karimov')?.textContent).toBe('AK');
+  });
+
+  async function openPanel() {
+    await screen.findByRole('heading', { name: en.people.staff.title });
+    fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
+    return screen.findByRole('complementary', { name: 'Akmal Karimov' });
+  }
+
+  it('gives the Principal no photo buttons', async () => {
+    openWith('principal', {}, 'en', { rights: { all: false, contact: false, teaching: false } });
+    renderApp(PATH);
+    const panel = await openPanel();
+    await within(panel).findByRole('region', { name: en.people.staff.photo.title });
+    expect(within(panel).queryByRole('button', { name: en.people.staff.photo.change })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.people.staff.photo.remove })).toBeNull();
+  });
+
+  it('removes the photo after the question', async () => {
+    let removed = false;
+    const calls = openWith('academic_vice_principal', {
+      [`DELETE /api/people/staff/${AKMAL.id}/photo`]: () => {
+        removed = true;
+        return new Response(null, { status: 204 });
+      },
+      [`GET /api/people/staff/${AKMAL.id}`]: () =>
+        json(
+          detailOf(removed ? AKMAL : WITH_PHOTO, {
+            rights: { all: false, contact: true, teaching: true },
+          }),
+        ),
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    fireEvent.click(
+      await within(panel).findByRole('button', { name: en.people.staff.photo.remove }),
+    );
+    const question = await screen.findByRole('alertdialog');
+    fireEvent.click(within(question).getByRole('button', { name: en.people.staff.photo.remove }));
+    await waitFor(() => {
+      expect(
+        calls.some((call) => call.route === `DELETE /api/people/staff/${AKMAL.id}/photo`),
+      ).toBe(true);
+    });
+    await within(panel).findByRole('button', { name: en.people.staff.photo.add });
+  });
+
+  it('refuses a file that is not a JPEG or PNG before sending it, in Russian too', async () => {
+    const calls = openWith('super_admin', {}, 'ru');
+    renderApp(PATH, 'ru');
+    await screen.findByRole('heading', { name: ru.people.staff.title });
+    fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const input = await within(panel).findByLabelText(ru.people.staff.photo.change);
+    fireEvent.change(input, {
+      target: { files: [new File(['GIF89a'], 'photo.gif', { type: 'image/gif' })] },
+    });
+    expect(await within(panel).findByText(ru.errors.photo_invalid)).toBeTruthy();
+    expect(calls.some((call) => call.route.startsWith('PUT'))).toBe(false);
+  });
+
+  it('refuses a file of more than 5 MB before reading it', async () => {
+    const calls = openWith('super_admin');
+    renderApp(PATH);
+    const panel = await openPanel();
+    const input = await within(panel).findByLabelText(en.people.staff.photo.change);
+    const big = new File([new Uint8Array(5_000_001)], 'photo.jpg', { type: 'image/jpeg' });
+    fireEvent.change(input, { target: { files: [big] } });
+    expect(await within(panel).findByText(en.errors.photo_too_large)).toBeTruthy();
+    expect(calls.some((call) => call.route.startsWith('PUT'))).toBe(false);
+  });
+
+  it('sends the shrunk photo as a JPEG and says when photos are not configured', async () => {
+    // jsdom draws nothing: the browser's canvas is stood in for by a JPEG of the right size.
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn(() => Promise.resolve({ width: 1600, height: 1200, close: () => undefined })),
+    );
+    const drawn: { width: number; height: number }[] = [];
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (
+      this: HTMLCanvasElement,
+    ) {
+      drawn.push({ width: this.width, height: this.height });
+      return {
+        fillStyle: '',
+        fillRect: () => undefined,
+        drawImage: () => undefined,
+      } as unknown as CanvasRenderingContext2D;
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => {
+      callback(new Blob([new Uint8Array(1234)], { type: 'image/jpeg' }));
+    });
+    const calls = openWith('super_admin', {
+      [`PUT /api/people/staff/${AKMAL.id}/photo`]: () => refusal('photos_not_configured', 503),
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    const input = await within(panel).findByLabelText(en.people.staff.photo.change);
+    fireEvent.change(input, {
+      target: { files: [new File([new Uint8Array(10)], 'photo.png', { type: 'image/png' })] },
+    });
+    expect(await within(panel).findByText(en.errors.photos_not_configured)).toBeTruthy();
+    expect(drawn).toEqual([{ width: 800, height: 600 }]);
+    expect(
+      calls.find((call) => call.route === `PUT /api/people/staff/${AKMAL.id}/photo`)?.body,
+    ).toEqual({
+      type: 'image/jpeg',
+      size: 1234,
+    });
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 });
