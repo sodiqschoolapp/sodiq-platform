@@ -143,12 +143,19 @@ whose newest [review] is "approved": it is being built. When nothing needs a
 review or a merge, say so and stop.
 If the pull request is a draft, review the plan: confirm or change every item
 under "Decided without the owner", each with a reason, and list the result under
-**Decisions** in the approval; [review] owner decision needed only for a stop-list
-item or a real contradiction in the spec, never because the spec is silent.
-If it is ready, wait for CI on the head commit first (every 30 seconds, up to 15
-minutes); when checks or e2e failed, post only [review] changes needed at <sha>:
-CI red (<check>), which is no code round, and review no code. Then review the
-code. On a pull request with a task id, any change under .claude/, CLAUDE.md,
+**Decisions** in the approval, every decision of a Look first kind marked Look
+first and listed first; [review] owner decision needed only for a stop-list item
+of CLAUDE.md, never because the spec is silent or contradicts itself (a
+contradiction is decided like a silence: confirm or change the reading, marked
+Look first, with the proposed /spec-change wording).
+If it is ready, read the check runs of the head commit first. When there are
+none and the pull request's mergeable_state is dirty, GitHub ran no CI because
+the branch conflicts with main: post only [review] changes needed at <sha>: CI
+red (no checks: merge conflict with main), naming the conflicting files when
+they can be found, which is no code round, and review no code. Otherwise wait for
+CI on the head commit (every 30 seconds, up to 15 minutes); when checks or e2e
+failed, post only [review] changes needed at <sha>: CI red (<check>), which is
+no code round, and review no code. Then review the code. On a pull request with a task id, any change under .claude/, CLAUDE.md,
 .github/, scripts/hooks/ or docs/cloud-loop.md is [review] owner decision needed:
 the loop may not loosen its own rules. The two exceptions: added lines in
 .claude/agents/*.md or .claude/rules/*.md that add a check or a fact (an added
@@ -258,8 +265,9 @@ with no task id: the first unticked task. Follow it to the end of "The draft pul
 request": the branch task/<id>-<short-name>, the empty commit, the draft pull
 request with the plan. Then bind the pull request to this session with the bind_pr
 tool so that review comments and CI results reach it, say that you did, and stop.
-If the skill tells you to stop for the owner (a split, a stop-list item, a task
-already started), stop there and say why.
+If the skill tells you to stop for the owner (a stop-list item, a task already
+started), stop there and say why. A task too large is no stop: the skill splits
+it and goes on.
 ```
 
 Two tasks in parallel are started by the owner, not by this routine, and only when the reviewer paired them.
