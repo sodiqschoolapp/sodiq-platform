@@ -137,7 +137,7 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
 // "Other divisions are data. The Super Admin adds, renames and archives them";
 // departments archived with their division (decided by the owner, pull
 // request #40, answer 4).
-test('the Super Admin sees Academic as built in, adds a division with a department, renames the department and archives the division with it, then creates an account and gives a role', async ({
+test('the Super Admin sees Academic as built in, adds a division with a department, renames the department and archives the division with it, then creates an account, gives a role and appoints a Head Teacher', async ({
   page,
 }) => {
   test.setTimeout(150_000);
@@ -195,6 +195,9 @@ test('the Super Admin sees Academic as built in, adds a division with a departme
 
   await test.step('creates an account, gives a role and signs in with the slip', () =>
     createAccountAndSignIn(page));
+
+  await test.step('appoints a Head Teacher of two subjects and is refused a second one', () =>
+    appointHeadTeachers(page));
 });
 
 // Task 2.3a, pull request #62: the account section of a staff record. With
@@ -265,6 +268,66 @@ async function createAccountAndSignIn(page: Page): Promise<void> {
     'Feruza Aminova',
   );
   await other.close();
+}
+
+// Task 2.3b-1, pull request #63: Head Teacher appointments. With
+// SCREENSHOTS=1 the account section is saved under docs/screens/2.3b-1/.
+const APPOINTMENT_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.3b-1');
+
+/** The give form of the account section of a person in the open staff list. */
+async function giveFormOf(page: Page, name: string) {
+  await page.getByRole('button', { name, exact: true }).click();
+  const panel = page.getByRole('complementary', { name });
+  const section = panel.getByRole('region', { name: en.people.account.title });
+  const give = section.getByRole('form', {
+    name: en.people.account.giveOf.replace('{{name}}', name),
+  });
+  return { section, give };
+}
+
+/**
+ * The Super Admin appoints Rustam Nazarov Head Teacher of Algebra and
+ * Trigonometry in the branch, and is refused Saida Yusupova as a second Head
+ * Teacher of Algebra (`02`, One per subject per branch). Runs in the session
+ * of the divisions test, after the account test, for the same reason.
+ */
+async function appointHeadTeachers(page: Page): Promise<void> {
+  await page.goto('/people/staff');
+  await page
+    .getByRole('combobox', { name: en.switcher.branch, exact: true })
+    .selectOption({ label: 'Accounts browser test branch' });
+  await expect(heading(page, en.people.staff.title)).toBeVisible();
+
+  const first = await giveFormOf(page, 'Rustam Nazarov');
+  await first.give
+    .getByLabel(en.people.account.newRole, { exact: true })
+    .selectOption('head_teacher');
+  const subjects = first.give.getByRole('group', { name: en.people.account.subjects });
+  await subjects.getByLabel('Algebra', { exact: true }).check();
+  await subjects.getByLabel('Trigonometry', { exact: true }).check();
+  await first.give.getByRole('button', { name: en.form.save, exact: true }).click();
+  const row = first.section.locator('tr[data-role="head_teacher"]');
+  await expect(row).toContainText(en.people.account.states.current);
+  await expect(row.locator('[data-subjects]')).toHaveText('Algebra, Trigonometry');
+  if (process.env.SCREENSHOTS === '1') {
+    mkdirSync(APPOINTMENT_SCREENS, { recursive: true });
+    await first.section.screenshot({ path: path.join(APPOINTMENT_SCREENS, 'appointment.png') });
+  }
+
+  const second = await giveFormOf(page, 'Saida Yusupova');
+  await second.give
+    .getByLabel(en.people.account.newRole, { exact: true })
+    .selectOption('head_teacher');
+  await second.give
+    .getByRole('group', { name: en.people.account.subjects })
+    .getByLabel('Algebra', { exact: true })
+    .check();
+  await second.give.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(second.give.getByText(en.errors.head_teacher_taken)).toBeVisible();
+  await expect(second.section.locator('tr[data-role="head_teacher"]')).toHaveCount(0);
+  if (process.env.SCREENSHOTS === '1') {
+    await second.section.screenshot({ path: path.join(APPOINTMENT_SCREENS, 'refused.png') });
+  }
 }
 
 /** A school date `days` from today in the branch's time zone (`edge/00-definitions`, Branch time). */
