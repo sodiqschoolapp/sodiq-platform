@@ -616,9 +616,13 @@ export class Staff {
         // A person who stays or becomes employed keeps a profile that fits the
         // subjects as they are now: a subject's department or grades may have
         // changed while the person had left, which the subject edit does not
-        // count (the spec review of pull request #53, must-fix 1).
+        // count (the spec review of pull request #53, must-fix 1). The same
+        // holds for its divisions and departments, which an archive may have
+        // closed while the person had left; they are read FOR SHARE against
+        // an archive at the same moment (code round 1, finding 1).
         if (change.status !== 'left') {
           await this.checkSubjectsFit(transaction, id);
+          await this.checkDivisions(transaction, await this.divisionsOf(transaction, id));
         }
         for (const cut of plan.cuts) {
           await transaction

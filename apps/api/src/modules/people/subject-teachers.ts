@@ -9,7 +9,8 @@ import { ApiException } from '../../http/api-exception.js';
  * decision 13 and correction 7 of the review of pull request #53): those
  * linked to the branch of the transaction are named by id; those of other
  * branches are a count from `staff_subject_in_use`, never their data. Only
- * people who have not left count. The subject row is locked by the caller,
+ * people who have not left count, and a person who has left with a re-hire
+ * planned counts (`staff_out_for_good`, findings 2 and 3 of code round 1). The subject row is locked by the caller,
  * and a staff save reads it FOR SHARE, so neither change slips past the other.
  */
 export async function teachersOutside(
@@ -24,7 +25,7 @@ export async function teachersOutside(
     left join staff_divisions sd on sd.staff_id = ss.staff_id
       and sd.division_id = (select d.id from divisions d where d.built_in)
     where ss.subject_id = ${change.subjectId}
-      and not staff_out_on(ss.staff_id, ${at})
+      and not staff_out_for_good(ss.staff_id, ${at})
       and (not (ss.grades <@ ${grades}) or sd.department_id is distinct from ${change.departmentId}::uuid)
     order by ss.staff_id
   `.execute(transaction);

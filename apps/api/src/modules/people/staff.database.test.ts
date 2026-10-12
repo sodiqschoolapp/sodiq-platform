@@ -917,11 +917,23 @@ describe('staff records in the database', () => {
           .where('name_en', '=', 'Tutors')
           .executeTakeFirstOrThrow()
       ).id;
+      const academicCount = async () => {
+        const counts = await call([], async (transaction) => {
+          const found = await sql<Record<string, unknown>>`
+            select * from staff_count_by_division(${MOMENT.toISOString()}::timestamptz)
+          `.execute(transaction);
+          return found.rows;
+        });
+        expect(Object.keys(counts[0] ?? {}).sort()).toEqual(['division_id', 'people']);
+        return Number(counts.find((row) => row.division_id === academic)?.people ?? 0);
+      };
+      const before = await academicCount();
       const leaver = await createPerson({
         branch: north,
         department: tutors,
         status: [{ status: 'left', from: '2026-09-01' }],
       });
+      expect(await academicCount()).toBe(before);
       const inDepartment = (department: string) =>
         call([south], async (transaction) => {
           const found = await sql<{ answer: unknown }>`
@@ -930,19 +942,22 @@ describe('staff records in the database', () => {
           return found.rows[0]?.answer;
         });
       expect(await inDepartment(tutors)).toBe(false);
+      // A re-hire planned after the moment counts as in (code round 1 of the
+      // review, finding 2); the count of today does not include it.
+      await database.migrator
+        .updateTable('staff_statuses')
+        .set({ valid_until: '2026-11-01' })
+        .where('staff_id', '=', leaver)
+        .execute();
+      await database.migrator
+        .insertInto('staff_statuses')
+        .values({ staff_id: leaver, status: 'active', valid_from: '2026-11-01' })
+        .execute();
+      expect(await inDepartment(tutors)).toBe(true);
+      expect(await academicCount()).toBe(before);
       await createPerson({ branch: north, department: tutors });
       expect(await inDepartment(tutors)).toBe(true);
-      expect(leaver).toEqual(expect.any(String));
-      const counts = await call([], async (transaction) => {
-        const found = await sql<Record<string, unknown>>`
-          select * from staff_count_by_division(${MOMENT.toISOString()}::timestamptz)
-        `.execute(transaction);
-        return found.rows;
-      });
-      expect(Object.keys(counts[0] ?? {}).sort()).toEqual(['division_id', 'people']);
-      expect(counts.find((row) => row.division_id === academic)?.people).toEqual(
-        expect.any(Number),
-      );
+      expect(await academicCount()).toBe(before + 1);
     });
 
     it('count the people of other branches a subject change would leave outside, and only those', async () => {

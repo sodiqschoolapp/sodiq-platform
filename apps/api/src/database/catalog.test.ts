@@ -140,6 +140,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     "Whether a person of another branch has the same name and birth date or the same phone (the duplicate warning, the owner's answer).",
   'staff_in_division(uuid,uuid,timestamp with time zone)':
     'Whether anybody who has not left is in a division or a department: the school-wide archives.',
+  'staff_out_for_good(uuid,timestamp with time zone)':
+    'Whether one record is out of the school and stays out (no re-hire planned), whichever branch link the request sees.',
   'staff_subject_in_use(uuid,smallint[],uuid,timestamp with time zone)':
     "How many people of other branches a change of a subject's department or grades would leave outside it.",
 };

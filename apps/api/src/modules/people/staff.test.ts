@@ -1166,6 +1166,160 @@ describe('staff records', () => {
       );
       expect(await snapshot()).toEqual(before);
     });
+
+    // Code round 1 of the review of pull request #53. Finding 1: a re-hire
+    // checks the person's divisions and departments as they now are.
+    const status = (id: string, change: { status: string; from: string }) =>
+      t.post(`/api/people/staff/${id}/status`, t.north, change).then((answer) => answer);
+
+    async function leaverIn(division: string, department: string | null) {
+      const person = await create({
+        divisions: [{ divisionId: division, departmentId: department, main: true }],
+      });
+      expect((await status(person.id, { status: 'left', from: '2026-10-10' })).status).toBe(200);
+      return person;
+    }
+
+    it('refuses to re-hire a person whose department was archived while they had left', async () => {
+      const { division, department } = await newDivision();
+      const person = await leaverIn(division, department);
+      expect((await archive(`/api/setup/departments/${department}/archive`)).status).toBe(200);
+      const before = await snapshot();
+      refusedWith(
+        await status(person.id, { status: 'active', from: '2026-10-12' }),
+        409,
+        'department_archived',
+      );
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('refuses to re-hire a person whose division was archived while they had left', async () => {
+      const { division } = await newDivision();
+      const person = await leaverIn(division, null);
+      expect((await archive(`/api/setup/divisions/${division}/archive`)).status).toBe(200);
+      const before = await snapshot();
+      refusedWith(
+        await status(person.id, { status: 'active', from: '2026-10-12' }),
+        409,
+        'division_archived',
+      );
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('the re-hire waits for a division archive at the same moment, then is refused', async () => {
+      const { division } = await newDivision();
+      const person = await leaverIn(division, null);
+      const held = await holdOpen([], async (transaction) => {
+        await transaction
+          .selectFrom('divisions')
+          .select('id')
+          .where('id', '=', division)
+          .forUpdate()
+          .execute();
+        await transaction
+          .updateTable('divisions')
+          .set({ archived_at: new Date('2026-10-10T23:55:00+05:00') })
+          .where('id', '=', division)
+          .execute();
+      });
+      const answer = status(person.id, { status: 'active', from: '2026-10-12' });
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      refusedWith(await answer, 409, 'division_archived');
+    });
+
+    it('the division archive waits for a re-hire planned at the same moment, then is refused', async () => {
+      const { division } = await newDivision();
+      const person = await leaverIn(division, null);
+      const held = await holdOpen([t.north], async (transaction) => {
+        await transaction
+          .selectFrom('divisions')
+          .select('id')
+          .where('id', '=', division)
+          .forShare()
+          .execute();
+        await transaction
+          .updateTable('staff_statuses')
+          .set({ valid_until: '2026-10-12' })
+          .where('staff_id', '=', person.id)
+          .where('status', '=', 'left')
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: person.id, status: 'active', valid_from: '2026-10-12' })
+          .execute();
+      });
+      const answer = archive(`/api/setup/divisions/${division}/archive`);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      refusedWith(await answer, 409, 'archive_refused');
+    });
+
+    // Finding 2: a re-hire planned after today counts as in for the checks
+    // made before its date.
+    it('refuses to archive a division or a department of a leaver whose re-hire is planned', async () => {
+      const { division, department } = await newDivision();
+      const person = await leaverIn(division, department);
+      expect((await status(person.id, { status: 'active', from: '2026-10-12' })).status).toBe(200);
+      refusedWith(
+        await archive(`/api/setup/departments/${department}/archive`),
+        409,
+        'department_has_staff',
+      );
+      refusedWith(
+        await archive(`/api/setup/divisions/${division}/archive`),
+        409,
+        'archive_refused',
+      );
+    });
+
+    it('refuses a subject edit that removes the grade of a leaver whose re-hire is planned', async () => {
+      const subject = await newSubject();
+      const teacher = await create();
+      expect(
+        (
+          await put(`/api/people/staff/${teacher.id}/teaching`, t.north, {
+            subjects: [{ subjectId: subject, grades: [9] }],
+            languages: ['uz'],
+          })
+        ).status,
+      ).toBe(200);
+      expect((await status(teacher.id, { status: 'left', from: '2026-10-10' })).status).toBe(200);
+      expect((await status(teacher.id, { status: 'active', from: '2026-10-12' })).status).toBe(200);
+      refusedWith(
+        await put(`/api/setup/subjects/${subject}`, t.north, subjectBody([8])),
+        409,
+        'subject_has_teachers',
+      );
+    });
+
+    // Finding 3: a leaver whose main branch is another branch is not counted
+    // by the branch side of the subject refusal.
+    it('lets a subject edit pass a leaver of the branch whose main branch is another', async () => {
+      const subject = await newSubject();
+      const teacher = await create();
+      expect(
+        (
+          await put(`/api/people/staff/${teacher.id}/teaching`, t.north, {
+            subjects: [{ subjectId: subject, grades: [9] }],
+            languages: ['uz'],
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await put(`/api/people/staff/${teacher.id}/branches`, t.north, {
+            mainBranchId: t.south,
+            furtherBranchIds: [t.north],
+          })
+        ).status,
+      ).toBe(200);
+      expect((await status(teacher.id, { status: 'left', from: '2026-10-10' })).status).toBe(200);
+      const response = await put(`/api/setup/subjects/${subject}`, t.north, subjectBody([8]));
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+    });
   });
 
   describe('more of the roles of a leaver (correction 4)', () => {

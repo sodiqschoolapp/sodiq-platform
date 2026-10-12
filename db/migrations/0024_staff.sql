@@ -534,6 +534,34 @@ as $$
   )
 $$;
 
+-- Whether a record is out of the school on the date of a moment and stays
+-- out: out on that date (staff_out_on) with no live status row other than
+-- `left` or `closed` starting after it, so a planned re-hire counts as in
+-- (the review of pull request #53, code round 1, finding 2). The checks that
+-- skip a person out of the school use it: a change dated later than today is
+-- checked once, when it is posted, and must not escape the checks made
+-- before its date. SECURITY DEFINER so that it does not depend on seeing the
+-- person's main branch link (finding 3): it answers a boolean about one
+-- record and does not read app_branch_ids().
+create function staff_out_for_good(record_id uuid, at timestamptz) returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select public.staff_out_on(staff_out_for_good.record_id, staff_out_for_good.at)
+    and not exists (
+      select 1
+      from public.staff_statuses st
+      join public.staff_branches b on b.staff_id = st.staff_id and b.is_main
+      join public.branches br on br.id = b.branch_id
+      where st.staff_id = staff_out_for_good.record_id
+        and st.status not in ('left', 'closed')
+        and (st.valid_until is null or st.valid_until > st.valid_from)
+        and st.valid_from > (staff_out_for_good.at at time zone br.time_zone)::date
+    )
+$$;
+
 -- The archives of a division or a department (school-wide routes; 03,
 -- Divisions: "A division can be archived only when no active staff member is
 -- in it"): whether a record that is not out of the school names it. Exactly
@@ -553,7 +581,7 @@ as $$
         or (staff_in_division.department_id is not null
           and sd.department_id = staff_in_division.department_id)
       )
-      and not public.staff_out_on(sd.staff_id, staff_in_division.at)
+      and not public.staff_out_for_good(sd.staff_id, staff_in_division.at)
   )
 $$;
 
@@ -596,7 +624,7 @@ as $$
       select 1 from public.staff_branches b
       where b.staff_id = ss.staff_id and b.branch_id = any (public.app_branch_ids())
     )
-    and not public.staff_out_on(ss.staff_id, staff_subject_in_use.at)
+    and not public.staff_out_for_good(ss.staff_id, staff_subject_in_use.at)
     and (
       not (ss.grades <@ staff_subject_in_use.grades)
       or sd.department_id is distinct from staff_subject_in_use.department_id
@@ -605,11 +633,13 @@ $$;
 
 revoke execute on function staff_duplicate_elsewhere(text, text, date, text) from public;
 revoke execute on function staff_account_blocked(uuid, timestamptz) from public;
+revoke execute on function staff_out_for_good(uuid, timestamptz) from public;
 revoke execute on function staff_in_division(uuid, uuid, timestamptz) from public;
 revoke execute on function staff_count_by_division(timestamptz) from public;
 revoke execute on function staff_subject_in_use(uuid, smallint[], uuid, timestamptz) from public;
 grant execute on function staff_duplicate_elsewhere(text, text, date, text) to sodiq_app;
 grant execute on function staff_account_blocked(uuid, timestamptz) to sodiq_app;
+grant execute on function staff_out_for_good(uuid, timestamptz) to sodiq_app;
 grant execute on function staff_in_division(uuid, uuid, timestamptz) to sodiq_app;
 grant execute on function staff_count_by_division(timestamptz) to sodiq_app;
 grant execute on function staff_subject_in_use(uuid, smallint[], uuid, timestamptz) to sodiq_app;
