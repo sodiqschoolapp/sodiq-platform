@@ -1200,7 +1200,8 @@ export const uz: Texts<'one' | 'other'> = {
         other: 'Boshqa',
       },
       email: 'Elektron pochta',
-      emailLocked: 'Faqat shu hisob parolini tiklashga ruxsati bor administrator oʻzgartiradi.',
+      emailLocked:
+        'Bu elektron pochtani oʻzgartira olmaysiz: unga yangi parol tanlash havolasi yuboriladi.',
       jshshir: 'JSHSHIR',
       admissionDate: 'Ishga qabul sanasi',
       contractType: 'Shartnoma',

@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { createDatabase } from '../../database/database.js';
 import { Transactions } from '../../database/transactions.js';
 import { Assignments } from '../../modules/access/assignments.service.js';
+import { Audit } from '../../modules/audit/audit.service.js';
 import { Accounts } from '../../modules/auth/accounts.service.js';
 import { FirstAccountModule } from '../../modules/auth/first-account.command.js';
 import { insertBranch } from '../branch-filter-sql.js';
@@ -39,6 +40,7 @@ try {
   const transactions = app.get(Transactions, { strict: false });
   const accounts = app.get(Accounts, { strict: false });
   const assignments = app.get(Assignments, { strict: false });
+  const audit = app.get(Audit, { strict: false });
 
   const create = async (firstName: string, lastName: string) =>
     transactions.run([], (transaction) =>
@@ -666,7 +668,7 @@ try {
       givenBy: null,
     }),
   );
-  await migrator.transaction().execute(async (transaction) => {
+  const resetPerson = await migrator.transaction().execute(async (transaction) => {
     const person = await transaction
       .insertInto('staff')
       .values({
@@ -700,7 +702,27 @@ try {
       .insertInto('staff_statuses')
       .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
       .execute();
+    return person.id;
   });
+  // The entry a Super Admin's creation of the record writes: an email that no
+  // entry names opens no account (decision 22 of pull request #66).
+  const adminAssignment = await migrator
+    .selectFrom('assignments')
+    .select('id')
+    .where('account_id', '=', superAdmin.id)
+    .where('role', '=', 'super_admin')
+    .executeTakeFirstOrThrow();
+  await transactions.run([resetBranch], (transaction) =>
+    audit.record(transaction, {
+      branchId: resetBranch,
+      actorId: superAdmin.id,
+      assignmentId: adminAssignment.id,
+      personId: resetPerson,
+      action: 'staff.create',
+      record: { type: 'staff', id: resetPerson },
+      newValue: { email: E2E_RESET_EMAIL },
+    }),
+  );
   seeded.emailReset = { login: emailReset.login, password: emailReset.firstPassword };
 
   console.log(JSON.stringify(seeded));

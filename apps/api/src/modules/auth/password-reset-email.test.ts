@@ -403,6 +403,71 @@ describe('the password reset by email', () => {
       expect(await linksOf(teacher.accountId)).toHaveLength(1);
     });
 
+    // Code round 1 of the review of #66, finding 1: an email the Academic
+    // Vice Principal of North wrote opens no account whose roles are all in
+    // another branch, whether the account came afterwards or moved there.
+    it('makes no link for a teacher of another branch when the email was written by an Academic Vice Principal', async () => {
+      // Path A: the email set on a record without account, the account made in South.
+      count += 1;
+      const lastName = `Rahimova${lettersOf(count)}`;
+      const created = await t.post('/api/people/staff', t.north, recordOf(lastName, ''));
+      expect(created.status).toBe(201);
+      const id = staffDetailSchema.parse(created.body).id;
+      const edit = await t.put(
+        `/api/people/staff/${id}`,
+        t.north,
+        recordOf(lastName, 'vice.before@example.test'),
+        t.vicePrincipal,
+      );
+      expect(edit.status, JSON.stringify(edit.body)).toBe(200);
+      const made = await t.post(`/api/people/staff/${id}/account`, t.north, {
+        login: `d.${lastName.toLowerCase()}`,
+      });
+      const slip = firstPasswordSlipSchema.parse(made.body);
+      const account = await t.database.migrator
+        .selectFrom('accounts')
+        .select('id')
+        .where('login', '=', slip.login)
+        .executeTakeFirstOrThrow();
+      await t.kit.giveRole(account.id, { role: 'teacher', branchId: t.south });
+      expect((await ask(slip.login)).status).toBe(202);
+      expect(await linksOf(account.id)).toHaveLength(0);
+
+      // Path B: a teacher of North whose email the Vice Principal wrote gets a
+      // link; the account then moves to South, and the confirm is refused.
+      const teacher = await person();
+      t.clock.advance(MINUTE);
+      expect(
+        (
+          await t.put(
+            `/api/people/staff/${teacher.id}`,
+            t.north,
+            recordOf(teacher.lastName, 'vice.moved@example.test'),
+            t.vicePrincipal,
+          )
+        ).status,
+      ).toBe(200);
+      const token = await linkFor(teacher);
+      const north = await t.database.migrator
+        .selectFrom('assignments')
+        .select('id')
+        .where('account_id', '=', teacher.accountId)
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      const admin = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('id', '=', t.adminAssignment)
+        .executeTakeFirstOrThrow();
+      await t.kit.endRole(north.id, admin.account_id, t.north);
+      await t.kit.giveRole(teacher.accountId, { role: 'teacher', branchId: t.south });
+      expect(codeOf(await confirm(token))).toBe('reset_link_invalid');
+      expect(await signsIn(teacher.login, CHOSEN)).toBe(false);
+      t.clock.advance(RESET_LINK_INTERVAL_MS);
+      expect((await ask(teacher.login)).status).toBe(202);
+      expect(await linksOf(teacher.accountId)).toHaveLength(1);
+    });
+
     // Must-fix 2: two requests at the same moment meet on the account row.
     it('makes one link when two requests come at the same moment', async () => {
       const made = await person();
@@ -828,16 +893,16 @@ describe('the password reset by email', () => {
         const [link] = await linksOf(made.accountId);
         const chosen = await hashPassword(CHOSEN);
         const [answer] = await t.database.migrator.transaction().execute(async (held) => {
-          // What the confirm does: the link, then the account.
-          await held
-            .updateTable('password_reset_links')
-            .set({ used_at: t.clock.now() })
-            .where('id', '=', link?.id ?? '')
-            .execute();
+          // What the confirm does: the account, then the link.
           await held
             .updateTable('accounts')
             .set({ password_hash: chosen, password_changed_at: t.clock.now() })
             .where('id', '=', made.accountId)
+            .execute();
+          await held
+            .updateTable('password_reset_links')
+            .set({ used_at: t.clock.now() })
+            .where('id', '=', link?.id ?? '')
             .execute();
           const waiting = t
             .post(`/api/people/staff/${made.id}/account/password-reset`, t.north, {})
@@ -881,15 +946,16 @@ describe('the password reset by email', () => {
         await linkFor(made);
         const [link] = await linksOf(made.accountId);
         const [answer] = await t.database.migrator.transaction().execute(async (held) => {
-          await held
-            .updateTable('password_reset_links')
-            .set({ used_at: t.clock.now() })
-            .where('id', '=', link?.id ?? '')
-            .execute();
+          // What the confirm does: the account, then the link.
           await held
             .updateTable('accounts')
             .set({ password_changed_at: t.clock.now() })
             .where('id', '=', made.accountId)
+            .execute();
+          await held
+            .updateTable('password_reset_links')
+            .set({ used_at: t.clock.now() })
+            .where('id', '=', link?.id ?? '')
             .execute();
           const waiting = t
             .post(`/api/people/staff/${made.id}/account/lock`, t.north, { reason: 'Laptop lost' })

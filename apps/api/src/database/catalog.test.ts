@@ -154,7 +154,7 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'password_reset_address(uuid,timestamp with time zone)':
     'The email of the person record of an account while a reset link may be sent, for the mail job only, which runs with no branch (task 2.3c-2, correction 2 of #66).',
   'password_reset_allowed(uuid,timestamp with time zone)':
-    'Whether a reset link may be made for an account (not locked, not inactive or left, an email on record), a yes or no for the public request before any branch is known (task 2.3c-2).',
+    'Whether a reset link may be made for an account (not locked, not inactive or left, an email on record, written last by a Super Admin or by an Academic Vice Principal of a branch of its roles, read from audit_log through last_email_change), a yes or no for the public request before any branch is known (task 2.3c-2).',
   'reset_by_person_name(uuid)':
     'The first and last name of the administrator who reset an account\'s password, shown to that account\'s person while the reset password is in use ("your password was reset by X").',
   'super_admin_active_count(timestamp with time zone)':

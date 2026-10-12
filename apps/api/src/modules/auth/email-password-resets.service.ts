@@ -140,9 +140,11 @@ export class EmailPasswordResets {
     await this.transactions.run([], async (transaction) => {
       const now = await transactionMoment(transaction);
       // The account first, then the link, in statements of their own: the
-      // order of every other writer (the request, a lock, a reset, a password
-      // change, an email change), which lock the account and then close the
-      // links (must-fix 1 of the spec review of the build).
+      // order of the request, a lock, a reset and a password change, which
+      // lock the account and then close the links (must-fix 1 of the spec
+      // review of the build). An email change locks only the staff row, which
+      // this confirm never locks, and then closes the links: one of the two
+      // waits on the link row, and no cycle can form.
       const account = await transaction
         .selectFrom('accounts')
         .select(['login', 'locked_at'])

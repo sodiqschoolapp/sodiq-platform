@@ -447,7 +447,11 @@ export class Staff {
         if (emailChanged && row.account_id !== null) {
           // A link of the reset by email to the old address never works
           // (task 2.3c-2, decisions 6 and 11 of pull request #66).
-          await closeOpenResetLinks(transaction, row.account_id, this.clock.now());
+          await closeOpenResetLinks(
+            transaction,
+            row.account_id,
+            await transactionMoment(transaction),
+          );
         }
         await this.audit.record(transaction, {
           branchId,

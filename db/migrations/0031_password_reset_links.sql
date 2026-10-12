@@ -101,17 +101,22 @@ as $$
 $$;
 
 -- Whether a link may be made for the account now: not locked, its person
--- record not inactive or left on the date of `at`, and an email on the record.
--- A yes or no only, for the public request and the confirm.
+-- record not inactive or left on the date of `at`, an email on the record,
+-- and that email written by somebody who may reset the account. A yes or no
+-- only, for the public request and the confirm.
 --
 -- The email opens the account (decision 4 of #66): the Academic Vice Principal
--- writes emails only of accounts he may reset. An email written before the
--- account held a role outside Teacher, Tutor, Head Teacher and Head Tutor (on
--- a record without account, or before a stronger role was given) would let
--- him reach that account all the same (the permission review of the build).
--- So an account that holds such a role, in force or planned, gets a link only
--- when its email was last written by an account that was Super Admin at that
--- moment.
+-- writes emails only of accounts he may reset. An email he wrote before the
+-- account existed, before a stronger role was given (the permission review of
+-- the build) or before the account moved to another branch (code round 1 of
+-- the review of #66) would let him reach that account all the same. So the
+-- last writer of the email (`last_email_change`) must be either an account
+-- that was Super Admin at that moment, or, for an account whose roles in force
+-- or planned are all Teacher, Tutor, Head Teacher or Head Tutor, an account
+-- that holds an Academic Vice Principal assignment in force at `at` in a
+-- branch where the account holds one of those roles. An email that no entry
+-- names (written by hand in the database) opens nothing until a Super Admin
+-- saves it once (decision 22 of #66).
 create function password_reset_allowed(account_id uuid, at timestamptz) returns boolean
 language sql
 stable
@@ -122,30 +127,47 @@ as $$
     select 1
     from public.accounts a
     join public.staff s on s.account_id = a.id and s.kind = 'person'
+    cross join lateral public.last_email_change(a.id) w
     where a.id = password_reset_allowed.account_id
       and a.locked_at is null
       and s.email is not null
       and s.email <> ''
       and not public.staff_account_blocked(a.id, password_reset_allowed.at)
       and (
-        not exists (
+        exists (
           select 1
-          from public.assignments g
-          where g.account_id = a.id
-            and g.role not in ('teacher', 'tutor', 'head_teacher', 'head_tutor')
-            and (
-              g.valid_until is null
-              or (g.valid_until > password_reset_allowed.at and g.valid_until > g.valid_from)
-            )
-        )
-        or exists (
-          select 1
-          from public.last_email_change(a.id) w
-          join public.assignments sa
-            on sa.account_id = w.actor_id
+          from public.assignments sa
+          where sa.account_id = w.actor_id
             and sa.role = 'super_admin'
             and sa.valid_from <= w.occurred_at
             and (sa.valid_until is null or sa.valid_until > w.occurred_at)
+        )
+        or (
+          not exists (
+            select 1
+            from public.assignments g
+            where g.account_id = a.id
+              and g.role not in ('teacher', 'tutor', 'head_teacher', 'head_tutor')
+              and (
+                g.valid_until is null
+                or (g.valid_until > password_reset_allowed.at and g.valid_until > g.valid_from)
+              )
+          )
+          and exists (
+            select 1
+            from public.assignments v
+            join public.assignments g
+              on g.account_id = a.id
+              and g.branch_id = v.branch_id
+              and (
+                g.valid_until is null
+                or (g.valid_until > password_reset_allowed.at and g.valid_until > g.valid_from)
+              )
+            where v.account_id = w.actor_id
+              and v.role = 'academic_vice_principal'
+              and v.valid_from <= password_reset_allowed.at
+              and (v.valid_until is null or v.valid_until > password_reset_allowed.at)
+          )
         )
       )
   )

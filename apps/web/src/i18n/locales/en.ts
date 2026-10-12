@@ -1187,7 +1187,7 @@ export const en = {
         other: 'Other',
       },
       email: 'Email',
-      emailLocked: 'Changed only by an administrator who may reset this account.',
+      emailLocked: 'You cannot change this email: a link to choose a new password is sent to it.',
       jshshir: 'JSHSHIR',
       admissionDate: 'Admission date',
       contractType: 'Contract',

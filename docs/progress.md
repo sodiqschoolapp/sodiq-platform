@@ -12,6 +12,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 The next sessions must know:
 
 - Every password write calls `closeOpenResetLinks` in its transaction; so does an email change. A new password write must too.
+- An email opens its account only when `last_email_change` names a writer who may reset it (a Super Admin then, or an Academic Vice Principal of a branch of its roles now); an email written by hand in the database opens nothing, and a seed that sets an email writes the Super Admin's `staff.create` entry too.
 - A module that needs the job queue or the mailer stays out of `AuthModule`: the first-account command and the e2e seed build `AuthModule` without them.
 - The next task is 2.4.
 

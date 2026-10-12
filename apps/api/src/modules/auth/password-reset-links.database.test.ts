@@ -122,6 +122,43 @@ describe('password reset links in the database', () => {
       return found.rows[0]?.email ?? null;
     });
 
+  /** Gives a role from a day before `AT`, ended at `until` when given. */
+  const role = (holder: string, name: string, branch: string | null, until?: Date) =>
+    database.migrator
+      .insertInto('assignments')
+      .values({
+        account_id: holder,
+        role: name,
+        branch_id: branch,
+        valid_from: new Date(AT.getTime() - 24 * HOUR),
+        created_at: new Date(AT.getTime() - 24 * HOUR),
+        ...(until === undefined ? {} : { valid_until: until }),
+      })
+      .execute();
+
+  /** The audit entry of a write of the email of a record, in its branch's log. */
+  const emailWritten = (
+    personId: string,
+    actor: string,
+    options: { action?: string; at?: Date; branch?: string } = {},
+  ) =>
+    database.migrator
+      .insertInto('audit_log')
+      .values({
+        occurred_at: options.at ?? new Date(AT.getTime() - 3 * HOUR),
+        branch_id: options.branch ?? north,
+        actor_id: actor,
+        person_id: personId,
+        action: options.action ?? 'staff.edit',
+        record_type: 'staff',
+        record_id: personId,
+        new_value: JSON.stringify({ email: 'x@example.test' }),
+      })
+      .execute();
+
+  /** A Super Admin, in force from a day before `AT`. */
+  let admin: string;
+
   beforeAll(async () => {
     database = await createTestDatabase();
     transactions = new Transactions(database.app, new SystemClock());
@@ -137,6 +174,8 @@ describe('password reset links in the database', () => {
       ).id;
     academic = await id('divisions', 'Academic');
     steam = await id('departments', 'STEAM');
+    admin = await newAccount();
+    await role(admin, 'super_admin', null);
   });
 
   afterAll(async () => {
@@ -251,6 +290,7 @@ describe('password reset links in the database', () => {
     it('answer for a person with an email, while the row filter hides the record itself', async () => {
       const account = await newAccount();
       const id = await personOf(account, { email: 'nilufar.k@example.test', branch: south });
+      await emailWritten(id, admin, { action: 'staff.create', branch: south });
       expect(await allowed(account)).toBe(true);
       expect(await address(account)).toBe('nilufar.k@example.test');
       const own = await asApp(async (transaction) => {
@@ -330,50 +370,80 @@ describe('password reset links in the database', () => {
     it('answer no for an account with a stronger role unless a Super Admin wrote the email last', async () => {
       const account = await newAccount();
       const id = await personOf(account);
-      const admin = await newAccount();
       const vice = await newAccount();
-      const role = (holder: string, name: string, branch: string | null) =>
-        database.migrator
-          .insertInto('assignments')
-          .values({
-            account_id: holder,
-            role: name,
-            branch_id: branch,
-            valid_from: new Date(AT.getTime() - 24 * HOUR),
-            created_at: new Date(AT.getTime() - 24 * HOUR),
-          })
-          .execute();
-      await role(admin, 'super_admin', null);
       await role(vice, 'academic_vice_principal', north);
-      const entry = (action: string, actor: string, at: Date) =>
-        database.migrator
-          .insertInto('audit_log')
-          .values({
-            occurred_at: at,
-            branch_id: north,
-            actor_id: actor,
-            person_id: id,
-            action,
-            record_type: 'staff',
-            record_id: id,
-            new_value: JSON.stringify({ email: 'x@example.test' }),
-          })
-          .execute();
 
-      // A teacher: the email's writer does not matter.
       await role(account, 'teacher', north);
-      expect(await allowed(account)).toBe(true);
-      // A stronger role and no known writer: no link.
       await role(account, 'principal', north);
+      // A stronger role and no known writer: no link.
       expect(await allowed(account)).toBe(false);
       // Written by a Super Admin at its creation: a link.
-      await entry('staff.create', admin, new Date(AT.getTime() - 3 * HOUR));
+      await emailWritten(id, admin, {
+        action: 'staff.create',
+        at: new Date(AT.getTime() - 3 * HOUR),
+      });
       expect(await allowed(account)).toBe(true);
       expect(await address(account)).not.toBeNull();
-      // Written last by an Academic Vice Principal: no link.
-      await entry('staff.edit', vice, new Date(AT.getTime() - 2 * HOUR));
+      // Written last by an Academic Vice Principal of the branch: no link.
+      await emailWritten(id, vice, { at: new Date(AT.getTime() - 2 * HOUR) });
       expect(await allowed(account)).toBe(false);
       expect(await address(account)).toBeNull();
+    });
+
+    // Code round 1 of the review of #66, finding 1, and decision 22: the
+    // writer of the email must still reach the account through a branch of
+    // its roles, and an email that no entry names opens nothing.
+    it('answer for a teacher only when its email was written by a Super Admin or by an Academic Vice Principal of a branch of its roles', async () => {
+      const vice = await newAccount();
+      await role(vice, 'academic_vice_principal', north);
+
+      // No entry names the email (written by hand): no link.
+      const handWritten = await newAccount();
+      await personOf(handWritten);
+      await role(handWritten, 'teacher', north);
+      expect(await allowed(handWritten)).toBe(false);
+
+      // Written by the Academic Vice Principal of the teacher's branch: a link.
+      const own = await newAccount();
+      const ownId = await personOf(own);
+      await role(own, 'teacher', north);
+      await emailWritten(ownId, vice);
+      expect(await allowed(own)).toBe(true);
+      expect(await address(own)).not.toBeNull();
+
+      // The account moved to South: the North Vice Principal reaches it no more.
+      const moved = await newAccount();
+      const movedId = await personOf(moved);
+      await role(moved, 'teacher', north, new Date(AT.getTime() - HOUR));
+      await role(moved, 'teacher', south);
+      await emailWritten(movedId, vice);
+      expect(await allowed(moved)).toBe(false);
+      expect(await address(moved)).toBeNull();
+      // A Super Admin saves the email once: a link again.
+      await emailWritten(movedId, admin, { at: new Date(AT.getTime() - HOUR) });
+      expect(await allowed(moved)).toBe(true);
+
+      // The email set on a record without account, the account made later in South.
+      const before = await personOf(null);
+      await emailWritten(before, vice, { action: 'staff.create' });
+      const later = await newAccount();
+      await database.migrator
+        .updateTable('staff')
+        .set({ account_id: later })
+        .where('id', '=', before)
+        .execute();
+      await role(later, 'teacher', south);
+      expect(await allowed(later)).toBe(false);
+      expect(await address(later)).toBeNull();
+
+      // The writer is no longer Academic Vice Principal at the moment asked.
+      const former = await newAccount();
+      await role(former, 'academic_vice_principal', north, new Date(AT.getTime() - HOUR));
+      const left = await newAccount();
+      const leftId = await personOf(left);
+      await role(left, 'teacher', north);
+      await emailWritten(leftId, former, { at: new Date(AT.getTime() - 2 * HOUR) });
+      expect(await allowed(left)).toBe(false);
     });
   });
 });
