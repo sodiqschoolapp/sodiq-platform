@@ -106,16 +106,28 @@ describe('the student record', () => {
 
   it('refuses a UID in the edit: the UID has a correction route of its own', () => {
     expect(studentRecordSchema.safeParse({ ...record, uid: '2607001' }).success).toBe(false);
-    expect(studentRecordSchema.safeParse({ ...record, startsOn: '2026-09-03' }).success).toBe(false);
+    expect(studentRecordSchema.safeParse({ ...record, startsOn: '2026-09-03' }).success).toBe(
+      false,
+    );
   });
 
   it('takes a UID of seven digits on the create, and the set confirmation', () => {
     expect(
-      studentCreateSchema.safeParse({ ...record, startsOn: '2026-09-02', uid: '2607001', confirmUidSet: false }).success,
+      studentCreateSchema.safeParse({
+        ...record,
+        startsOn: '2026-09-02',
+        uid: '2607001',
+        confirmUidSet: false,
+      }).success,
     ).toBe(true);
     for (const uid of ['', '260700', '26070011', 'SI26070', '26O7001']) {
       expect(
-        studentCreateSchema.safeParse({ ...record, startsOn: '2026-09-02', uid, confirmUidSet: false }).success,
+        studentCreateSchema.safeParse({
+          ...record,
+          startsOn: '2026-09-02',
+          uid,
+          confirmUidSet: false,
+        }).success,
         uid,
       ).toBe(false);
     }

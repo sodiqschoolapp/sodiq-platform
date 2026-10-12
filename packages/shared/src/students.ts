@@ -472,4 +472,3 @@ export type StudentDetail = z.infer<typeof studentDetailSchema>;
 export const studentParamsSchema = z.object({ id: z.uuid() });
 
 export type StudentParams = z.infer<typeof studentParamsSchema>;
-
