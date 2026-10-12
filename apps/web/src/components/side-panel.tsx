@@ -66,8 +66,9 @@ export function SidePanel({ title, recordKey, onClose, children }: SidePanelProp
     <aside
       ref={panel}
       aria-label={title}
-      // A white panel on the canvas (docs/design-system.md, Lists), padding 24.
-      className="w-full min-w-0 rounded-xl bg-card p-6 max-sm:p-4 lg:w-96 lg:shrink-0"
+      // A white panel on the canvas with a 1 px left border in --border
+      // (docs/design-system.md, Patterns, Lists), padding 24.
+      className="w-full min-w-0 rounded-xl border-l bg-card p-6 max-sm:p-4 lg:w-96 lg:shrink-0"
     >
       <div className="mb-3 flex items-start gap-2">
         <h2
