@@ -1,4 +1,5 @@
 import type { Division, ErrorDetail } from '@sodiq/shared';
+import { EXPORT_TEXTS, DIVISION_EXPORT_COLUMNS } from '@sodiq/shared';
 import { QueryClient } from '@tanstack/react-query';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -505,5 +506,24 @@ describe('the division lists of every branch', () => {
     expect(queryClient.getQueryState(divisionsKey(NORTH.id))?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(divisionsKey(SOUTH.id))?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(['setup', 'rooms', NORTH.id])?.isInvalidated).toBe(false);
+  });
+});
+
+/** The headers of the table, without the column of checkboxes. */
+const headingsDrawn = (): string[] =>
+  [...document.querySelectorAll('thead th')]
+    .filter((cell) => cell.querySelector('input') === null)
+    .map((cell) => cell.textContent ?? '');
+
+// Task 2.2c-1: the Export button of the list, for the Principal too (`02`:
+// "Exports are allowed"), and the columns of the file are those of the screen,
+// with the same headings (`EXPORT_TEXTS` of `packages/shared`).
+describe('the export of the divisions list', () => {
+  it('is offered, and the columns of the screen are those of the file, with its headings', async () => {
+    await openList(principal());
+    expect(screen.getByRole('button', { name: en.list.export })).toBeTruthy();
+    expect(headingsDrawn()).toEqual(
+      DIVISION_EXPORT_COLUMNS.map((key) => EXPORT_TEXTS.en.divisions.columns[key]),
+    );
   });
 });

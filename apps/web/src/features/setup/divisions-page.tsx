@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { ListPage, type BulkAction } from '@/components/list/list-page';
+import { useExport } from '@/components/list/use-export';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,8 @@ export function DivisionsPage() {
   const canEdit = role !== null && permits(PERMISSIONS, role, 'divisions', 'edit');
   const canCreate = role !== null && permits(PERMISSIONS, role, 'divisions', 'create');
   const canArchive = role !== null && permits(PERMISSIONS, role, 'divisions', 'archive');
+  const canExport = role !== null && permits(PERMISSIONS, role, 'divisions', 'export');
+  const exporter = useExport<Division>('/api/setup/divisions/export', (row) => row.id);
   const divisions = useQuery(divisionsQuery(branchId));
   const number = useMemo(() => new Intl.NumberFormat(i18n.language), [i18n.language]);
   const language = i18n.language;
@@ -270,6 +273,8 @@ export function DivisionsPage() {
         rowName={(row) => nameOf(row.names, language)}
         columns={columns}
         filters={filters}
+        onExport={canExport ? exporter.onExport : undefined}
+        exportState={exporter.state}
         search={search}
         onSearchChange={open}
         empty={{

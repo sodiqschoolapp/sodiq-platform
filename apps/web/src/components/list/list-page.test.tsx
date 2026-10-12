@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiFailure } from '@/api/failure';
 import { createI18n } from '@/i18n/i18n';
 import { en } from '@/i18n/locales/en';
-import { ListPage, type BulkAction } from './list-page';
+import { ListPage, type BulkAction, type ExportState } from './list-page';
 import type { Column, ListSearch } from './list-state';
 
 // What the sample list cannot show: rows that change under the list, a failed
@@ -40,13 +40,14 @@ interface HarnessProps {
   rows: readonly Room[] | undefined;
   error?: unknown;
   start?: ListSearch;
-  onExport?: (rows: Room[], columnKeys: string[]) => void;
+  onExport?: (rows: Room[], columnKeys: string[], search: ListSearch) => void;
+  exportState?: ExportState;
   actions?: BulkAction<Room>[];
   panel?: (row: Room) => React.ReactNode;
 }
 
 /** A list whose address is a piece of state. */
-function Harness({ rows, error, start = {}, onExport, actions, panel }: HarnessProps) {
+function Harness({ rows, error, start = {}, onExport, exportState, actions, panel }: HarnessProps) {
   const [search, setSearch] = useState(start);
   return (
     <ListPage
@@ -62,6 +63,7 @@ function Harness({ rows, error, start = {}, onExport, actions, panel }: HarnessP
       empty={{ text: 'Rooms are listed here.' }}
       bulkActions={actions ?? [{ key: 'close', label: 'Close the rooms', run: () => undefined }]}
       onExport={onExport}
+      exportState={exportState}
       panel={panel}
     />
   );
@@ -119,13 +121,67 @@ describe('ticked rows of a list whose rows change', () => {
 describe('what the export of a list is handed', () => {
   it('is the matching rows in the order shown, and the keys of the columns shown', () => {
     window.localStorage.setItem('sodiq.list.rooms.hidden', '["seats"]');
-    const onExport = vi.fn<(rows: Room[], columnKeys: string[]) => void>();
+    const onExport = vi.fn<(rows: Room[], columnKeys: string[], search: ListSearch) => void>();
     show({ rows: ROOMS, start: { q: 'room', sort: 'name' }, onExport });
     expect(names()).toEqual(['Room 4', 'Room 12']);
 
     fireEvent.click(screen.getByRole('button', { name: en.list.export }));
 
-    expect(onExport).toHaveBeenCalledExactlyOnceWith([ROOMS[1], ROOMS[0]], ['name']);
+    expect(onExport).toHaveBeenCalledExactlyOnceWith([ROOMS[1], ROOMS[0]], ['name'], {
+      q: 'room',
+      sort: 'name',
+    });
+  });
+
+  // `04`, Student record: "Bulk actions on ticked rows: ... export".
+  it('is the ticked rows when some are ticked, those the search hides too, and names their count', () => {
+    const onExport = vi.fn<(rows: Room[], columnKeys: string[], search: ListSearch) => void>();
+    show({ rows: ROOMS, start: { sort: 'name' }, onExport });
+    fireEvent.click(tick('Room 12'));
+    fireEvent.click(tick('Laboratory'));
+    fireEvent.change(screen.getByRole('searchbox', { name: en.list.search }), {
+      target: { value: 'room' },
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: en.list.exportTicked_other.replace('{{n}}', '2') }),
+    );
+
+    expect(onExport).toHaveBeenCalledExactlyOnceWith([ROOMS[0], ROOMS[2]], ['name', 'seats'], {
+      q: 'room',
+      sort: 'name',
+    });
+  });
+
+  it('is off while no row matches and while a file is being made', () => {
+    const onExport = vi.fn<(rows: Room[], columnKeys: string[], search: ListSearch) => void>();
+    const { unmount } = show({ rows: ROOMS, start: { q: 'nothing like this' }, onExport });
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: en.list.export }).disabled).toBe(
+      true,
+    );
+    unmount();
+
+    show({ rows: ROOMS, onExport, exportState: { pending: true, error: null, leftOut: [] } });
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: en.list.exporting }).disabled,
+    ).toBe(true);
+  });
+
+  it('shows a failed export, and names the columns the server left out by their headers', () => {
+    show({
+      rows: ROOMS,
+      onExport: () => undefined,
+      exportState: {
+        pending: false,
+        error: new ApiFailure('permission_denied'),
+        leftOut: ['seats'],
+      },
+    });
+
+    expect(screen.getByRole('alert').textContent).toBe(en.errors.permission_denied);
+    expect(
+      screen.getByText(en.list.exportColumnsLeftOut.replace('{{columns}}', 'Seats')),
+    ).toBeTruthy();
   });
 });
 

@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { ListPage } from '@/components/list/list-page';
+import { useExport } from '@/components/list/use-export';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState } from '@/components/states';
@@ -43,6 +44,8 @@ export function VacanciesPage() {
   const leave = useLeave();
   const [adding, setAdding] = useState(false);
   const canCreate = role !== null && permits(PERMISSIONS, role, 'vacancies', 'create');
+  const canExport = role !== null && permits(PERMISSIONS, role, 'vacancies', 'export');
+  const exporter = useExport<VacancyListItem>('/api/people/vacancies/export', (row) => row.id);
   const vacancies = useQuery(vacanciesQuery(branchId));
   const divisions = useQuery(divisionsQuery(branchId));
   const subjects = useQuery(subjectsQuery(branchId));
@@ -256,6 +259,8 @@ export function VacanciesPage() {
         rowName={(row) => row.name}
         columns={columns}
         filters={filters}
+        onExport={canExport ? exporter.onExport : undefined}
+        exportState={exporter.state}
         search={search}
         onSearchChange={open}
         empty={{

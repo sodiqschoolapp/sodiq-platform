@@ -52,6 +52,15 @@ export interface BulkAction<Row> {
   confirm?: (rows: Row[]) => Pick<Confirmation, 'title' | 'text' | 'action' | 'destructive'>;
 }
 
+/** Where an export started by the list stands: on the way, refused, or done with columns left out. */
+export interface ExportState {
+  pending: boolean;
+  /** Why the last export failed; shown above the rows. */
+  error: unknown;
+  /** The keys of the columns sent that the server did not write (decision 4 of pull request #58). */
+  leftOut: readonly string[];
+}
+
 interface ListPageProps<Row> {
   /** Names the list in the browser's storage (the hidden columns). */
   listId: string;
@@ -82,11 +91,16 @@ interface ListPageProps<Row> {
   /** With them the rows have checkboxes. */
   bulkActions?: readonly BulkAction<Row>[];
   /**
-   * With it the list has an Export button. It is given the rows that match the
-   * search and filters, in their order, and the keys of the columns shown. The
-   * file itself is made by the server, which decides what the role may see.
+   * With it the list has an Export button. It is given the ticked rows when
+   * some are ticked (`04`: "Bulk actions on ticked rows: ... export"), else
+   * the rows that match the search and filters, in the order shown; the keys
+   * of the columns shown; and the search and filters, which the audit entry
+   * records. The file itself is made by the server, which decides what the
+   * role may see.
    */
-  onExport?: ((rows: Row[], columnKeys: string[]) => void) | undefined;
+  onExport?: ((rows: Row[], columnKeys: string[], search: ListSearch) => void) | undefined;
+  /** The state of the export of `onExport` (`useExport`). */
+  exportState?: ExportState | undefined;
   /** The record of a row, shown in the side panel. Needs a column with `opens`. */
   panel?: ((row: Row) => ReactNode) | undefined;
 }
@@ -120,6 +134,7 @@ export function ListPage<Row>({
   empty,
   bulkActions = NO_ACTIONS,
   onExport,
+  exportState,
   panel,
 }: ListPageProps<Row>) {
   const { t, i18n } = useTranslation();
@@ -211,6 +226,15 @@ export function ListPage<Row>({
   const matchingIds = matching.map(rowId);
   const tickedMatching = matchingIds.filter((id) => ticked.has(id)).length;
   const notShown = ticked.size - tickedMatching;
+  // Ticked rows in the order shown, then those the search and filters hide now.
+  const shownIds = new Set(matchingIds);
+  const exportRows =
+    ticked.size === 0
+      ? matching
+      : [
+          ...matching.filter((row) => ticked.has(rowId(row))),
+          ...tickedRows.filter((row) => !shownIds.has(rowId(row))),
+        ];
 
   const selection =
     bulkActions.length === 0
@@ -390,20 +414,39 @@ export function ListPage<Row>({
             {onExport !== undefined && (
               <Button
                 variant="outline"
-                disabled={matching.length === 0}
+                disabled={exportRows.length === 0 || exportState?.pending === true}
                 onClick={() => {
                   onExport(
-                    matching,
+                    exportRows,
                     shownColumns.map((column) => column.key),
+                    current,
                   );
                 }}
               >
                 <DownloadIcon aria-hidden />
-                {t('list.export')}
+                {exportState?.pending === true
+                  ? t('list.exporting')
+                  : ticked.size > 0
+                    ? t('list.exportTicked', { count: ticked.size, n: number.format(ticked.size) })
+                    : t('list.export')}
               </Button>
             )}
           </div>
         </div>
+
+        {onExport !== undefined &&
+          exportState !== undefined &&
+          exportState.error !== null &&
+          exportState.error !== undefined && <FailureAlert error={exportState.error} />}
+        {onExport !== undefined && exportState !== undefined && exportState.leftOut.length > 0 && (
+          <p role="status" className="text-sm text-muted-foreground">
+            {t('list.exportColumnsLeftOut', {
+              columns: exportState.leftOut
+                .map((key) => columns.find((column) => column.key === key)?.header ?? key)
+                .join(', '),
+            })}
+          </p>
+        )}
 
         {/* Always there, also with nothing ticked: the table does not move
             under the pointer at the first tick. */}

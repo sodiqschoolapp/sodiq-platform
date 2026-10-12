@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { ListPage, type BulkAction } from '@/components/list/list-page';
+import { useExport } from '@/components/list/use-export';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,8 @@ export function BuildingsPage() {
   const canEdit = role !== null && permits(PERMISSIONS, role, 'rooms', 'edit');
   const canCreate = role !== null && permits(PERMISSIONS, role, 'rooms', 'create');
   const canArchive = role !== null && permits(PERMISSIONS, role, 'rooms', 'archive');
+  const canExport = role !== null && permits(PERMISSIONS, role, 'rooms', 'export');
+  const exporter = useExport<Building>('/api/setup/buildings/export', (row) => row.id);
   const buildings = useQuery(buildingsQuery(branchId));
   const number = useMemo(() => new Intl.NumberFormat(i18n.language), [i18n.language]);
 
@@ -253,6 +256,8 @@ export function BuildingsPage() {
         rowName={(row) => row.name}
         columns={columns}
         filters={filters}
+        onExport={canExport ? exporter.onExport : undefined}
+        exportState={exporter.state}
         search={search}
         onSearchChange={open}
         empty={{
