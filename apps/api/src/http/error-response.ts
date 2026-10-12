@@ -105,6 +105,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   account_inactive: 'The staff member is inactive or has left.',
   subject_has_teachers: 'Teachers have this subject with these grades in this department.',
   department_has_staff: 'The department cannot be archived while a staff member is in it.',
+  availability_overlap: 'The hours overlap the hours of another branch on a date.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };

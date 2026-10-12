@@ -107,7 +107,16 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  * - `staff_teaching` (`04`, Academic: subjects with grades, languages of
  *   instruction; task 2.2a): the Super Admin and the Academic Vice Principal,
  *   who "edits a teacher's availability, subjects and grades" (Who can act),
- *   view and edit; the Principal views. Decision 2 of pull request #53.
+ *   view and edit; the Principal views. Decision 2 of pull request #53. Task
+ *   2.2b puts the availability routes here with the same rows (pull request
+ *   #57, decision 1).
+ * - `vacancies` (`04`, Vacancy; task 2.2b): the Academic Vice Principal
+ *   "creates, edits, fills and closes" vacancies (`02`; Who can act) and the
+ *   Super Admin does everything every other role can do (`02`): both view,
+ *   create, edit and archive (close, reopen and the delete of a vacancy that
+ *   never held a load); the Principal views. A new area for new routes,
+ *   decided without the owner on pull request #57 (decision 1), confirmed at
+ *   its review and flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -164,6 +173,11 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view', 'edit'],
     principal: ['view'],
     academic_vice_principal: ['view', 'edit'],
+  }),
+  vacancies: rows({
+    super_admin: ['view', 'create', 'edit', 'archive'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive'],
   }),
   current_period: rows({
     super_admin: ['view'],

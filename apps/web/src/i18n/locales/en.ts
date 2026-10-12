@@ -171,9 +171,11 @@ export const en = {
     account_inactive:
       'Your staff record is inactive or you have left the school, so you cannot sign in. Ask the Super Admin if this is wrong.',
     subject_has_teachers:
-      'Teachers who have not left have this subject with these grades in this department. Change their subjects first, then the subject.',
+      'Teachers who have not left, or open vacancies, have this subject with these grades in this department. Change their subjects first, then the subject.',
     department_has_staff:
-      'Staff members who have not left are in this department. Move them to another department first.',
+      'Staff members who have not left, or open vacancies, are in this department. Move them to another department or close the vacancies first.',
+    availability_overlap:
+      'These hours overlap the hours in another branch on the same weekday. Change the times so that they do not overlap.',
     archive_refused:
       'It cannot be archived while a room in it is in use or under repair. Close the rooms first.',
     floor_archived:
@@ -910,6 +912,44 @@ export const en = {
     none: 'Nothing here for your role yet.',
     staffLink: 'Staff',
     staffLinkText: 'Teachers and other staff',
+    vacanciesLink: 'Vacancies',
+    vacanciesLinkText: 'Teachers not yet hired',
+    sections: 'Sections of the teacher list',
+    availability: {
+      title: 'Availability',
+      change: 'Change from a date',
+      changeOf: 'Availability of {{name}}',
+      from: 'From',
+      placeholder: '08:00–13:00, 14:00–17:00',
+      cancel: 'Cancel',
+      elsewhere: '{{name}}, read only',
+      none: 'No hours in this branch yet.',
+      noHours: 'No hours',
+      inForce: 'In force',
+      planned: 'Planned',
+      ended: 'Ended',
+      fromDate: 'From {{date}}',
+      period: '{{from}} – {{until}}',
+      overlapDays: 'Overlaps on: {{days}}.',
+    },
+    vacancies: {
+      title: 'Vacancies',
+      caption: 'Vacancies of the branch',
+      empty: 'No vacancies in this branch. Add one for a teacher not yet hired.',
+      add: 'Add vacancy',
+      newTitle: 'New vacancy',
+      name: 'Name',
+      department: 'Department',
+      subjects: 'Subjects',
+      recordTitle: 'Vacancy',
+      statusTitle: 'Status',
+      statuses: { open: 'Open', closed: 'Closed' },
+      close: 'Close the vacancy',
+      reopen: 'Reopen the vacancy',
+      delete: 'Delete',
+      deleteTitle: 'Delete the vacancy?',
+      deleteText: 'The vacancy and its hours are removed. The audit log keeps a copy.',
+    },
     staff: {
       title: 'Staff',
       caption: 'Staff of the branch',

@@ -177,9 +177,11 @@ export const uz: Texts<'one' | 'other'> = {
     account_inactive:
       'Xodim kartochkangiz faol emas yoki ishdan ketgansiz, shuning uchun kira olmaysiz. Xato boʻlsa, super administratorga murojaat qiling.',
     subject_has_teachers:
-      'Ishdan ketmagan oʻqituvchilarda bu fan shu sinflar bilan shu kafedrada bor. Avval ularning fanlarini, keyin fanni oʻzgartiring.',
+      'Ishdan ketmagan oʻqituvchilarda yoki ochiq vakansiyalarda bu fan shu sinflar bilan shu kafedrada bor. Avval ularning fanlarini, keyin fanni oʻzgartiring.',
     department_has_staff:
-      'Bu kafedrada ishdan ketmagan xodimlar bor. Avval ularni boshqa kafedraga oʻtkazing.',
+      'Bu kafedrada ishdan ketmagan xodimlar yoki ochiq vakansiyalar bor. Avval ularni boshqa kafedraga oʻtkazing yoki vakansiyalarni yoping.',
+    availability_overlap:
+      'Bu soatlar boshqa filialdagi soatlar bilan haftaning shu kunida ustma-ust tushadi. Ular ustma-ust tushmasligi uchun vaqtni oʻzgartiring.',
     archive_refused:
       'Undagi xona foydalanishda yoki taʼmirda ekan, arxivlab boʻlmaydi. Avval xonalarni yoping.',
     floor_archived:
@@ -916,6 +918,44 @@ export const uz: Texts<'one' | 'other'> = {
     none: 'Rolingiz uchun bu yerda hozircha hech narsa yoʻq.',
     staffLink: 'Xodimlar',
     staffLinkText: 'Oʻqituvchilar va boshqa xodimlar',
+    vacanciesLink: 'Vakansiyalar',
+    vacanciesLinkText: 'Hali ishga olinmagan oʻqituvchilar',
+    sections: 'Oʻqituvchilar roʻyxati boʻlimlari',
+    availability: {
+      title: 'Ish vaqti',
+      change: 'Sanadan boshlab oʻzgartirish',
+      changeOf: '{{name}}: ish vaqti',
+      from: 'Sanadan',
+      placeholder: '08:00–13:00, 14:00–17:00',
+      cancel: 'Bekor qilish',
+      elsewhere: '{{name}}, faqat koʻrish',
+      none: 'Bu filialda hali soatlar yoʻq.',
+      noHours: 'Soatlar yoʻq',
+      inForce: 'Amalda',
+      planned: 'Rejalashtirilgan',
+      ended: 'Tugagan',
+      fromDate: '{{date}} dan',
+      period: '{{from}} – {{until}}',
+      overlapDays: 'Ustma-ust tushadi: {{days}}.',
+    },
+    vacancies: {
+      title: 'Vakansiyalar',
+      caption: 'Filial vakansiyalari',
+      empty: 'Bu filialda vakansiya yoʻq. Hali ishga olinmagan oʻqituvchi uchun qoʻshing.',
+      add: 'Vakansiya qoʻshish',
+      newTitle: 'Yangi vakansiya',
+      name: 'Nomi',
+      department: 'Kafedra',
+      subjects: 'Fanlar',
+      recordTitle: 'Vakansiya',
+      statusTitle: 'Holat',
+      statuses: { open: 'Ochiq', closed: 'Yopilgan' },
+      close: 'Vakansiyani yopish',
+      reopen: 'Vakansiyani qayta ochish',
+      delete: 'Oʻchirish',
+      deleteTitle: 'Vakansiya oʻchirilsinmi?',
+      deleteText: 'Vakansiya va uning soatlari oʻchiriladi. Audit jurnalida nusxasi qoladi.',
+    },
     staff: {
       title: 'Xodimlar',
       caption: 'Filial xodimlari',

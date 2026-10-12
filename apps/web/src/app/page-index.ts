@@ -41,6 +41,7 @@ export const SETUP_PAGES: readonly IndexedPage[] = [
 /** The pages under "People" (task 2.2a), each with the area the role must view. */
 export const PEOPLE_PAGES: readonly (IndexedPage & { area: string })[] = [
   { titleKey: 'people.staff.title', to: '/people/staff', area: 'staff' },
+  { titleKey: 'people.vacancies.title', to: '/people/vacancies', area: 'vacancies' },
 ];
 
 /** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */

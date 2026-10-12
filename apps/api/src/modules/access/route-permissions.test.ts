@@ -194,6 +194,16 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/people/staff/:id/branches': { branch: 'request', roles: STAFF_EDITORS },
   'POST /api/people/staff/:id/status': { branch: 'request', roles: STAFF_EDITORS },
   'POST /api/people/staff/:id/identity': { branch: 'request', roles: STAFF_VIEWERS },
+  // Task 2.2b: availability under `staff_teaching`, vacancies their own area (decision 1).
+  'GET /api/people/staff/:id/availability': { branch: 'request', roles: STAFF_VIEWERS },
+  'PUT /api/people/staff/:id/availability': { branch: 'request', roles: STAFF_EDITORS },
+  'GET /api/people/vacancies': { branch: 'request', roles: STAFF_VIEWERS },
+  'GET /api/people/vacancies/:id': { branch: 'request', roles: STAFF_VIEWERS },
+  'POST /api/people/vacancies': { branch: 'request', roles: STAFF_EDITORS },
+  'PUT /api/people/vacancies/:id': { branch: 'request', roles: STAFF_EDITORS },
+  'POST /api/people/vacancies/:id/close': { branch: 'request', roles: STAFF_EDITORS },
+  'POST /api/people/vacancies/:id/reopen': { branch: 'request', roles: STAFF_EDITORS },
+  'POST /api/people/vacancies/:id/delete': { branch: 'request', roles: STAFF_EDITORS },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

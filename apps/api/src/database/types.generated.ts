@@ -359,6 +359,26 @@ export interface Staff {
   weekly_lessons: number | null;
 }
 
+export interface StaffAvailability {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  staff_id: string;
+  valid_from: string;
+  valid_until: Generated<string>;
+}
+
+export interface StaffAvailabilityRanges {
+  branch_id: string;
+  end_minutes: number;
+  entry_id: string;
+  staff_id: string;
+  start_minutes: number;
+  valid_from: string;
+  valid_until: string;
+  weekday: number;
+}
+
 export interface StaffBranches {
   branch_id: string;
   is_main: boolean;
@@ -483,6 +503,8 @@ export interface DB {
   slot_type_lengths: SlotTypeLengths;
   slot_types: SlotTypes;
   staff: Staff;
+  staff_availability: StaffAvailability;
+  staff_availability_ranges: StaffAvailabilityRanges;
   staff_branches: StaffBranches;
   staff_divisions: StaffDivisions;
   staff_id_counters: StaffIdCounters;

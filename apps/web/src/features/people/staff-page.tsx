@@ -26,6 +26,7 @@ import { useView } from '@/features/access/use-view';
 import { divisionsQuery, nameOf } from '@/features/setup/setup-api';
 import { subjectsQuery } from '@/features/setup/subjects-api';
 import { invalidateStaff, staffQuery } from './people-api';
+import { PeopleTabs } from './people-tabs';
 import { StaffForm } from './staff-form';
 import { StaffPanel } from './staff-panel';
 
@@ -285,6 +286,7 @@ export function StaffPage() {
         ]}
         actions={addButton === false ? undefined : addButton}
       />
+      <PeopleTabs current="staff" />
       {failed !== null && (
         <ErrorState
           error={failed.error}

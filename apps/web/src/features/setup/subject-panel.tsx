@@ -10,7 +10,7 @@ import { SelectField } from '@/components/field';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
-import { staffQuery } from '@/features/people/people-api';
+import { staffQuery, vacanciesQuery } from '@/features/people/people-api';
 import { nameOf, schoolDateText, yearsQuery } from './setup-api';
 import { SubjectChip } from './subject-colour';
 import { SubjectForm, type DepartmentChoice } from './subject-form';
@@ -407,33 +407,48 @@ function TeachersOutside({ error }: { error: unknown }) {
   const { t, i18n } = useTranslation();
   const { branchId } = useView();
   const refused = error instanceof ApiFailure && error.code === 'subject_has_teachers';
-  const staff = useQuery({ ...staffQuery(branchId), enabled: refused && branchId !== null });
+  const details = refused ? (error.details ?? []) : [];
+  const idsOf = (prefix: string) =>
+    details
+      .filter((detail) => detail.path.startsWith(prefix))
+      .map((detail) => detail.path.slice(prefix.length));
+  const ids = idsOf('staff.');
+  // Open vacancies of the branch keep the subject too (task 2.2b, correction 4).
+  const vacancyIds = idsOf('vacancy.');
+  const staff = useQuery({ ...staffQuery(branchId), enabled: ids.length > 0 && branchId !== null });
+  const vacancies = useQuery({
+    ...vacanciesQuery(branchId),
+    enabled: vacancyIds.length > 0 && branchId !== null,
+  });
   if (!refused) {
     return null;
   }
-  const details = error.details ?? [];
-  const ids = details
-    .filter((detail) => detail.path.startsWith('staff.'))
-    .map((detail) => detail.path.slice('staff.'.length));
   const elsewhere = Number(details.find((detail) => detail.path === 'elsewhere')?.code ?? '0');
   const number = new Intl.NumberFormat(i18n.language);
-  if (staff.isError) {
+  const failed = staff.isError ? staff : vacancies.isError ? vacancies : null;
+  if (failed !== null) {
     return (
       <ErrorState
-        error={staff.error}
+        error={failed.error}
         onRetry={() => {
-          void staff.refetch();
+          void failed.refetch();
         }}
       />
     );
   }
-  if (ids.length > 0 && staff.data === undefined) {
+  if (
+    (ids.length > 0 && staff.data === undefined) ||
+    (vacancyIds.length > 0 && vacancies.data === undefined)
+  ) {
     return <LoadingOutline lines={1} />;
   }
-  const names = ids.map((id) => {
-    const person = staff.data?.staff.find((one) => one.id === id);
-    return person === undefined ? '' : `${person.firstName} ${person.lastName}`;
-  });
+  const names = [
+    ...ids.map((id) => {
+      const person = staff.data?.staff.find((one) => one.id === id);
+      return person === undefined ? '' : `${person.firstName} ${person.lastName}`;
+    }),
+    ...vacancyIds.map((id) => vacancies.data?.vacancies.find((one) => one.id === id)?.name ?? ''),
+  ];
   return (
     <div className="grid gap-1 text-sm" role="status">
       {names.length > 0 && <p>{t('setup.subjects.teachersHere', { names: names.join(', ') })}</p>}

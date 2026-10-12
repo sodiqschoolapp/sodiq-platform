@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  nextDay,
   schoolDateOf,
   STAFF_CATEGORY_ROLES,
   STAFF_CONTACT_FIELDS,
@@ -38,6 +39,7 @@ import {
   refusingConstraints,
   refusingDuplicates,
 } from '../setup/setup-refusals.js';
+import { endAvailability } from './availability.service.js';
 import { staffIdOf, takeStaffNumber } from './staff-numbers.js';
 import { planStatusChange, roleEndFor, startOfDate, type StoredStatusRow } from './staff-status.js';
 
@@ -525,6 +527,31 @@ export class Staff {
             .where('staff_id', '=', id)
             .where('branch_id', 'not in', named)
             .execute();
+          // A branch the person no longer works in keeps no hours from
+          // tomorrow in its time zone: they would block the hours of the
+          // others (task 2.2b, pull request #57, decision 11).
+          for (const removed of links.filter((link) => !named.includes(link.branch_id))) {
+            const from = nextDay(await this.todayIn(transaction, removed.branch_id));
+            const ended = await endAvailability(transaction, id, removed.branch_id, from);
+            if (ended.length > 0) {
+              await this.audit.record(transaction, {
+                branchId: removed.branch_id,
+                actorId: access.accountId,
+                assignmentId: superAdmin,
+                personId: id,
+                action: 'staff.availability_end',
+                record: { type: 'staff', id },
+                oldValue: ended.map((entry) => ({
+                  id: entry.id,
+                  from: entry.validFrom,
+                  until: entry.validUntil,
+                })),
+                newValue: ended.map((entry) => ({ id: entry.id, until: entry.ends })),
+                reason: 'branch_removed',
+                requestId,
+              });
+            }
+          }
           for (const branch of named) {
             const main = branch === after.mainBranchId;
             const link = links.find((old) => old.branch_id === branch);
