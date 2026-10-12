@@ -67,10 +67,12 @@ export function sessionOf(fields: Partial<SessionResponse> = {}): SessionRespons
 /**
  * Calls the shell makes on every page for some roles, answered unless a test
  * gives its own: the count of Super Admins of the banner (task 2.3a), two, so
- * that no banner shows.
+ * that no banner shows; the branches without an Academic Vice Principal
+ * (task 2.3b-2), none.
  */
 const SHELL_ANSWERS: Record<string, Handler> = {
   'GET /api/access/super-admins': () => json({ active: 2 }),
+  'GET /api/access/branches-without-vice-principal': () => json({ branches: [] }),
 };
 
 export function fakeApi(handlers: Record<string, Handler>): ApiCall[] {

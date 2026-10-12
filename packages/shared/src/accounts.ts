@@ -220,6 +220,16 @@ export const superAdminSummarySchema = z.object({ active: z.int().nonnegative() 
 
 export type SuperAdminSummary = z.infer<typeof superAdminSummarySchema>;
 
+/**
+ * The branches with no active Academic Vice Principal now, for the Super
+ * Admin's alert (edge cases, Who can act; task 2.3b-2): id and name only.
+ */
+export const branchesWithoutViceSchema = z.strictObject({
+  branches: z.array(z.strictObject({ id: z.uuid(), name: z.string() })),
+});
+
+export type BranchesWithoutVice = z.infer<typeof branchesWithoutViceSchema>;
+
 /** One appointment in the list of a branch (task 2.3b-1, `GET access/head-teachers`). */
 export const appointmentSchema = z.object({
   id: z.uuid(),

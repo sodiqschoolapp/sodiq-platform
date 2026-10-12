@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: task 2.3b-2 Head Teachers list and the Academic Vice Principal alert
+
+- Built: migration 0029 (`branches_without_vice_principal(at)`, `SECURITY DEFINER`, ids and names only); `GET access/branches-without-vice-principal` for the Super Admin; the banner `BranchesWithoutViceBanner` beside the Super Admin banner, each name opening that branch's staff list; the "Head Teachers" section of People (`/people/head-teachers`) on the route of 2.3b-1, with tabs per section the role views and "People" in the menu for Head Teachers and Senior Head Teachers.
+- Tests: `branches-without-vice.database.test.ts` (inactive, left, locked, ended, planned, both ends of the period, main branch's time zone, grants, the archive pin), the route block in `staff-accounts.test.ts` (clock-driven both ways, refusals), `vice-principal-banner.test.tsx`, `head-teachers-page.test.tsx`; the browser test is the fourth step of the divisions test in `setup.spec.ts` (screenshots in `docs/screens/2.3b-2/` with `SCREENSHOTS=1`).
+- Left out: the archived-branch case of the alert (branches cannot be archived yet; a test fails when they can); ended appointments in the list (history in the audit log, 2.6); requests and their passing to the next holder (journal and plans tasks).
+
+The next sessions must know:
+
+- "Can this Academic Vice Principal act now" is `branches_without_vice_principal` / `staff_account_blocked`; a lock (2.3c) refreshes `invalidateBranchesWithoutVice` and `invalidateHeadTeachers` as the status change does.
+- A new section of People is an entry of `SECTIONS` in `people-tabs.tsx`, a link in `people-page.tsx` and, when its area is new, an area of the "People" item in `menu-pages.ts`.
+- The next task is 2.3c.
+
 ## 12 October 2026: task 2.3b-1 Head Teacher appointments and subject scope
 
 - Built: Head Teacher (branch) and Senior Head Teacher (no branch) appointments with subjects, given and changed from a date on the account section; migration 0028 (`assignment_subjects` with the assignment's dates mirrored, one holder per subject per branch and one Senior per subject held by exclusion constraints, `assignments.written_xact`); subject scope (`Access.permitting`, `inSubjectScope`, `subjectsInScope`); `GET access/head-teachers`, area `head_teachers`.

@@ -22,6 +22,7 @@ import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
+import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
 import { refreshSession } from '@/features/auth/session';
 import {
   branchQuery,
@@ -228,8 +229,9 @@ export function BranchPage() {
       answerOf(api.PUT('/api/setup/branch', { params: { header: branchHeader() }, body: record })),
     onSuccess: async (saved) => {
       queryClient.setQueryData(branchQuery(branchId).queryKey, saved);
-      // The switcher shows the names: a renamed branch is renamed there too.
-      await refreshSession(queryClient);
+      // The switcher and the alert of a branch without an Academic Vice
+      // Principal show the names: a renamed branch is renamed there too.
+      await Promise.all([refreshSession(queryClient), invalidateBranchesWithoutVice(queryClient)]);
     },
   });
 
@@ -239,6 +241,8 @@ export function BranchPage() {
     onSuccess: async (created) => {
       await refreshSession(queryClient);
       await queryClient.invalidateQueries({ queryKey: SETUP_KEY });
+      // A new branch has no Academic Vice Principal yet.
+      await invalidateBranchesWithoutVice(queryClient);
       chooseBranch(created.id);
       setAdding(false);
     },

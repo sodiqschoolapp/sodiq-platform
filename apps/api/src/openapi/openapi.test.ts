@@ -37,6 +37,7 @@ describe('OpenAPI document', () => {
       const document = buildOpenApiDocument(app);
 
       expect(Object.keys(document.paths).sort()).toEqual([
+        '/api/access/branches-without-vice-principal',
         '/api/access/head-teachers',
         '/api/access/super-admins',
         '/api/auth/language',

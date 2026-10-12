@@ -215,6 +215,8 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: ['super_admin'],
   },
   'GET /api/access/super-admins': { branch: 'none', roles: ['super_admin'] },
+  // Task 2.3b-2: the alert of a branch with no active Academic Vice Principal.
+  'GET /api/access/branches-without-vice-principal': { branch: 'none', roles: ['super_admin'] },
   // Task 2.3b-1: the subjects of an appointment under `accounts` `edit`; the
   // list of appointments its own area `head_teachers` (decision 8 of #63).
   'POST /api/people/staff/:id/roles/:assignmentId/subjects': {

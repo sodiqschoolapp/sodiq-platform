@@ -36,12 +36,18 @@ import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { SUPER_ADMINS_KEY } from '@/features/access/super-admin-banner';
+import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
 import { useView } from '@/features/access/use-view';
 import { nameOf, schoolDateText } from '@/features/setup/setup-api';
 import { subjectsQuery } from '@/features/setup/subjects-api';
 import { FirstPasswordSlipDialog } from './first-password-slip';
 import { asFormSchema } from './form-schema';
-import { loginSuggestionQuery, staffAccountKey, staffAccountQuery } from './people-api';
+import {
+  invalidateHeadTeachers,
+  loginSuggestionQuery,
+  staffAccountKey,
+  staffAccountQuery,
+} from './people-api';
 
 /** Who gave or ended a role: the name when the server could read it, the login otherwise. */
 const actorText = (actor: Actor): string =>
@@ -65,6 +71,8 @@ export function AccountSection({ staff, label }: { staff: StaffDetail; label: st
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: staffAccountKey(staff.id) }),
       queryClient.invalidateQueries({ queryKey: SUPER_ADMINS_KEY }),
+      invalidateBranchesWithoutVice(queryClient),
+      invalidateHeadTeachers(queryClient),
     ]);
   };
 

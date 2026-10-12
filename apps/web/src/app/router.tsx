@@ -19,6 +19,7 @@ import { BranchPage } from '@/features/setup/branch-page';
 import { BuildingsPage } from '@/features/setup/buildings-page';
 import { DivisionsPage } from '@/features/setup/divisions-page';
 import { SubjectsPage } from '@/features/setup/subjects-page';
+import { HeadTeachersPage } from '@/features/people/head-teachers-page';
 import { PeoplePage } from '@/features/people/people-page';
 import { StaffPage } from '@/features/people/staff-page';
 import { VacanciesPage } from '@/features/people/vacancies-page';
@@ -200,6 +201,14 @@ const vacanciesRoute = createRoute({
   component: VacanciesPage,
 });
 
+/** The Head Teachers of the branch, the third section of People (task 2.3b-2). */
+const headTeachersRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/people/head-teachers',
+  validateSearch: listSearch,
+  component: HeadTeachersPage,
+});
+
 const yearsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/years',
@@ -290,6 +299,7 @@ const routeTree = rootRoute.addChildren([
     peopleRoute,
     staffRoute,
     vacanciesRoute,
+    headTeachersRoute,
     patternsRoute,
   ]),
 ]);

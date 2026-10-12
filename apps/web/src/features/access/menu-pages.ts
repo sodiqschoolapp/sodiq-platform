@@ -56,7 +56,14 @@ export interface MenuPage {
 export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
   home: { titleKey: 'menu.home', to: '/', icon: MENU_ICONS.home },
   setup: { titleKey: 'menu.setup', to: '/setup', icon: MENU_ICONS.setup },
-  people: { titleKey: 'menu.people', to: '/people', icon: MENU_ICONS.people, areas: ['staff'] },
+  people: {
+    titleKey: 'menu.people',
+    to: '/people',
+    icon: MENU_ICONS.people,
+    // Head Teachers and Senior Head Teachers view no staff list, only the
+    // Head Teachers section (task 2.3b-2, decision 7 of #64).
+    areas: ['staff', 'head_teachers'],
+  },
 };
 
 export const BUILT_ITEMS: ReadonlySet<MenuItem> = new Set(

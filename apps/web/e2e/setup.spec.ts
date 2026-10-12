@@ -198,6 +198,9 @@ test('the Super Admin sees Academic as built in, adds a division with a departme
 
   await test.step('appoints a Head Teacher of two subjects and is refused a second one', () =>
     appointHeadTeachers(page));
+
+  await test.step('sees the alert of a branch without an Academic Vice Principal and the Head Teachers list', () =>
+    headTeachersAndAlert(page));
 });
 
 // Task 2.3a, pull request #62: the account section of a staff record. With
@@ -327,6 +330,48 @@ async function appointHeadTeachers(page: Page): Promise<void> {
   await expect(second.section.locator('tr[data-role="head_teacher"]')).toHaveCount(0);
   if (process.env.SCREENSHOTS === '1') {
     await second.section.screenshot({ path: path.join(APPOINTMENT_SCREENS, 'refused.png') });
+  }
+}
+
+// Task 2.3b-2, pull request #64: the Head Teachers section of People and the
+// alert of a branch with no active Academic Vice Principal (edge cases, Who
+// can act). With SCREENSHOTS=1 both are saved under docs/screens/2.3b-2/.
+const HEAD_TEACHER_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.3b-2');
+
+/**
+ * The Super Admin sees the branch of the account test, which has no Academic
+ * Vice Principal, named in the alert; its name opens the staff list of that
+ * branch; People, Head Teachers lists the Head Teacher just appointed with
+ * both subjects. Runs after the appointment, in the same session.
+ */
+async function headTeachersAndAlert(page: Page): Promise<void> {
+  await page.goto('/');
+  const alert = page.locator('[data-banner="vice-principals"]');
+  await expect(alert).toContainText(en.layout.viceBanner);
+  const branch = alert.getByRole('button', { name: 'Accounts browser test branch', exact: true });
+  await expect(branch).toBeVisible();
+  if (process.env.SCREENSHOTS === '1') {
+    mkdirSync(HEAD_TEACHER_SCREENS, { recursive: true });
+    await alert.screenshot({ path: path.join(HEAD_TEACHER_SCREENS, 'alert.png') });
+  }
+  await branch.click();
+  await expect(heading(page, en.people.staff.title)).toBeVisible();
+  await expect(page.getByRole('combobox', { name: en.switcher.branch, exact: true })).toHaveValue(
+    (await page
+      .getByRole('combobox', { name: en.switcher.branch, exact: true })
+      .locator('option', { hasText: 'Accounts browser test branch' })
+      .getAttribute('value')) ?? '',
+  );
+
+  await page.goto('/people');
+  await page.getByRole('link', { name: en.people.headTeachersLink, exact: true }).click();
+  await expect(heading(page, en.people.headTeachers.title)).toBeVisible();
+  const row = page.locator('tbody tr').filter({ hasText: 'Rustam Nazarov' });
+  await expect(row).toContainText('Algebra, Trigonometry');
+  await expect(row).toContainText(en.roles.head_teacher);
+  await expect(row).toContainText(en.people.headTeachers.states.current);
+  if (process.env.SCREENSHOTS === '1') {
+    await page.screenshot({ path: path.join(HEAD_TEACHER_SCREENS, 'head-teachers.png') });
   }
 }
 

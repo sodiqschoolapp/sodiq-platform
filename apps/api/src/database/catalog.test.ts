@@ -141,6 +141,8 @@ function auditSchoolPartitions(): Record<string, string> {
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'assignments_subjects_end()':
     'Writes the end of an assignment on its subject rows, which the application cannot update, so the exclusion constraints of one Head Teacher per subject see every end (task 2.3b-1, decision 2 of pull request #63).',
+  'branches_without_vice_principal(timestamp with time zone)':
+    "The branches (id and name only) where no Academic Vice Principal is active now, for the Super Admin's alert (Who can act); the route is school-wide, where the membership filter hides every staff row.",
   'own_person_name(uuid)':
     "The first and last name of the staff record linked to an account, for the menu of the person's own session (pull request #61, decision 6); sign-in runs before a branch is known.",
   'reset_by_person_name(uuid)':
