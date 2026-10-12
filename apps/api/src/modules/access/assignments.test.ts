@@ -280,7 +280,7 @@ describe('assignments', () => {
 
       it('refuse an unknown or archived subject', async () => {
         const person = await account('Lola', 'Valiyeva');
-        const archived = await insertSubject(database.migrator, 'Latin', START);
+        const archived = await insertSubject(database.migrator, 'Latin', new Date(START));
 
         for (const subject of [archived, '019a0000-0000-7000-8000-0000000000ff']) {
           await expect(

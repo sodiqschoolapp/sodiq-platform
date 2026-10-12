@@ -234,7 +234,7 @@ export class StaffAccounts {
     accountId: string,
     give: RoleGive,
     requestId: string,
-  ): Promise<void> {
+  ): Promise<string> {
     await this.refuseLeft(transaction, person.id);
     if (SCHOOL_WIDE_ROLES.includes(give.role) !== (give.branchId === null)) {
       throw new ApiException('validation_failed', 400, undefined, [
@@ -268,7 +268,7 @@ export class StaffAccounts {
       isAppointment(give.role) && give.from === today
         ? now
         : await startOfDate(transaction, give.from, zone);
-    await this.namingTaken(give.subjectIds ?? [], () =>
+    const given = await this.namingTaken(give.subjectIds ?? [], () =>
       this.assignments.give(transaction, {
         accountId,
         role: give.role,
@@ -292,6 +292,7 @@ export class StaffAccounts {
         requestId,
       });
     }
+    return given.id;
   }
 
   /**
@@ -371,6 +372,12 @@ export class StaffAccounts {
           throw refused('role_from_past');
         }
         const at = change.from === today ? now : await startOfDate(transaction, change.from, zone);
+        // An appointment that ends by then (a change made a moment before, or
+        // an end typed earlier) is not changed from then: its end is not
+        // moved later here.
+        if (assignment.valid_until !== null && assignment.valid_until <= at) {
+          throw refused('assignment_ended');
+        }
         await this.assignments.end(transaction, {
           assignmentId,
           endedBy: access.accountId,
@@ -379,7 +386,7 @@ export class StaffAccounts {
           personId: id,
           requestId,
         });
-        await this.giveTo(
+        const next = await this.giveTo(
           transaction,
           access,
           superAdmin,
@@ -393,6 +400,23 @@ export class StaffAccounts {
           },
           requestId,
         );
+        // A later end of the appointment (typed, or given by a planned
+        // `left`) carries over to the one that follows it.
+        const followed = await transaction
+          .selectFrom('assignments')
+          .select('valid_until')
+          .where('id', '=', next)
+          .executeTakeFirstOrThrow();
+        if (assignment.valid_until !== null && followed.valid_until === null) {
+          await this.assignments.end(transaction, {
+            assignmentId: next,
+            endedBy: access.accountId,
+            at: assignment.valid_until,
+            actingAssignmentId: superAdmin,
+            personId: id,
+            requestId,
+          });
+        }
         return this.sectionOf(transaction, access, person, branchId);
       }),
     );
