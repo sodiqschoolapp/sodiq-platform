@@ -2,6 +2,7 @@ import { statSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
+import { jpegSizeOf, pngOf } from './photos';
 import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
 import { codeNow } from './totp';
 
@@ -158,27 +159,6 @@ test('an Academic Vice Principal adds the photo of a person of the branch', asyn
   // No photo yet: the initials.
   await expect(row.getByRole('cell').first()).toHaveText('SM');
 
-  // A PNG of 1600 by 1200 pixels, drawn by the browser itself.
-  const png = await page.evaluate(async () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1600;
-    canvas.height = 1200;
-    const context = canvas.getContext('2d');
-    if (context !== null) {
-      context.fillStyle = '#1b2a63';
-      context.fillRect(0, 0, 1600, 1200);
-    }
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, 'image/png');
-    });
-    const bytes = new Uint8Array(await (blob ?? new Blob()).arrayBuffer());
-    let text = '';
-    for (const byte of bytes) {
-      text += String.fromCharCode(byte);
-    }
-    return btoa(text);
-  });
-
   await row.getByRole('button', { name: 'Shahzod Mirzayev' }).click();
   const panel = page.getByRole('complementary', { name: 'Shahzod Mirzayev' });
   const sent = page.waitForRequest(
@@ -187,13 +167,15 @@ test('an Academic Vice Principal adds the photo of a person of the branch', asyn
   await panel.getByLabel(en.people.staff.photo.add).setInputFiles({
     name: 'photo.png',
     mimeType: 'image/png',
-    buffer: Buffer.from(png, 'base64'),
+    buffer: pngOf(1600, 1200),
   });
   expect((await sent).headers()['content-type']).toBe('image/jpeg');
   await expect(panel.getByRole('button', { name: en.people.staff.photo.change })).toBeVisible();
 
   const shown = row.getByRole('img', { name: 'Shahzod Mirzayev' });
   await expect(shown).toHaveAttribute('src', /^data:image\/jpeg;base64,/);
-  expect(await shown.evaluate((image: HTMLImageElement) => [image.naturalWidth, image.naturalHeight])).toEqual([800, 600]);
+  const address = (await shown.getAttribute('src')) ?? '';
+  const sentPhoto = Buffer.from(address.slice(address.indexOf(',') + 1), 'base64');
+  expect(jpegSizeOf(sentPhoto)).toEqual({ width: 800, height: 600 });
   await expect(panel.getByRole('alert')).toHaveCount(0);
 });

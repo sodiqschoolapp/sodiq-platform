@@ -40,7 +40,7 @@ export class StaffPhotosController {
   async setPhoto(
     @CurrentAccess() access: Access,
     @ValidParams(staffParamsSchema) params: StaffParams,
-    @ValidFile(STAFF_PHOTO_ROUTE) file: UploadedFile,
+    @ValidFile(STAFF_PHOTO_ROUTE) file: UploadedFile | null,
     @RequestId() requestId: string,
   ): Promise<StaffDetail> {
     await this.photos.setPhoto(access, params.id, file, requestId);

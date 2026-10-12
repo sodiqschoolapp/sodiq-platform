@@ -161,7 +161,6 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
   );
 }
 
-/** What everybody who sees the record reads; birth date and JSHSHIR behind a logged show for the Principal. */
 /**
  * The photo of the record (task 2.2c-2): shown to every reader, set and
  * removed by those who change the record's contact fields, the Super Admin
@@ -278,6 +277,7 @@ function PhotoSection({
   );
 }
 
+/** What everybody who sees the record reads; birth date and JSHSHIR behind a logged show for the Principal. */
 function Overview({ staff, divisions }: { staff: StaffDetail; divisions: DivisionList }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;

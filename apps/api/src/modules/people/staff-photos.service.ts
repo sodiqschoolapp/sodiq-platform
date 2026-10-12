@@ -60,20 +60,29 @@ export class StaffPhotos {
 
   /**
    * Sets a new photo. In this order (correction 3 of the review): the record
-   * (404), the store (`photos_not_configured`), the bytes (`photo_invalid`),
+   * (404), the store (`photos_not_configured`), a body that is no file (415,
+   * `file` is `null`), the bytes (`photo_invalid`),
    * the object put outside any transaction (`photos_unavailable`), then one
    * transaction that locks the record, reads its link to the branch again
    * (`.claude/rules/database.md`: a link removed while the lock was awaited
    * would otherwise pass), writes the photo and its audit entry. An object
    * whose transaction then fails stays as an orphan under a key never reused.
    */
-  async setPhoto(access: Access, id: string, file: UploadedFile, requestId: string): Promise<void> {
+  async setPhoto(
+    access: Access,
+    id: string,
+    file: UploadedFile | null,
+    requestId: string,
+  ): Promise<void> {
     const branchId = branchOf(access);
     await this.transactions.run(access.branchIds, (transaction) =>
       this.readPerson(transaction, id),
     );
     if (!this.store.configured) {
       throw notConfigured();
+    }
+    if (file === null) {
+      throw new ApiException('unsupported_media_type', 415);
     }
     const type: PhotoType = photoTypeSchema.parse(file.type);
     const size = photoSizeOf(file.bytes, type);

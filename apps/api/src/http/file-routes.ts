@@ -102,9 +102,17 @@ function readBody(request: Request, limit: number): Promise<Buffer | null> {
     const onEnd = () => {
       resolve(Buffer.concat(chunks));
     };
+    // A client that goes away before the end: the chunks are let go (permission review).
+    const onClose = () => {
+      if (!request.complete) {
+        chunks.length = 0;
+        reject(new Error('The request was closed before its body ended.'));
+      }
+    };
     request.on('data', onData);
     request.on('end', onEnd);
     request.on('error', reject);
+    request.on('close', onClose);
   });
 }
 

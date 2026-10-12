@@ -327,8 +327,21 @@ describe('staff photos', () => {
         for (const id of ids) {
           refusedWith(await upload(id, JPEG), 404, 'not_found');
           refusedWith(await upload(id, JPEG, { cookie: t.vicePrincipal }), 404, 'not_found');
+          // Correction 3: the record comes before the body, also a body that is no file.
+          refusedWith(
+            await request(t.kit.server)
+              .put(`/api/people/staff/${id}/photo`)
+              .set('Cookie', t.admin)
+              .set(BRANCH_HEADER, t.north)
+              .send({ photo: 'not a file' }),
+            404,
+            'not_found',
+          );
           refusedWith(await remove(id), 404, 'not_found');
+          refusedWith(await remove(id, { cookie: t.vicePrincipal }), 404, 'not_found');
           refusedWith(await photoOf(id), 404, 'not_found');
+          refusedWith(await photoOf(id, { cookie: t.vicePrincipal }), 404, 'not_found');
+          refusedWith(await photoOf(id, { cookie: t.principal }), 404, 'not_found');
         }
         expect(await snapshot()).toEqual(before);
       }
@@ -503,6 +516,76 @@ describe('staff photos', () => {
       refusedWith(await pending, 404, 'not_found');
       expect(await photoColumns(id)).toEqual({ photo_id: null, photo_type: null });
       expect(await t.auditCount()).toBe(before);
+      // The object was put before the lock: an orphan under a key never reused (decision 8).
+      expect(store.memory.keys().filter((key) => key.startsWith(`staff/${id}/`))).toHaveLength(1);
+    });
+
+    it('answers 404 when the branch link is removed while a removal waits for the record', async () => {
+      const id = await twoBranchPerson();
+      await upload(id, JPEG);
+      const before = await t.auditCount();
+      const stored = await photoColumns(id);
+      let pending: Promise<Response> | undefined;
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await transaction
+          .selectFrom('staff')
+          .select('id')
+          .where('id', '=', id)
+          .forUpdate()
+          .execute();
+        await transaction
+          .deleteFrom('staff_branches')
+          .where('staff_id', '=', id)
+          .where('branch_id', '=', t.north)
+          .execute();
+        pending = remove(id, { cookie: t.vicePrincipal }).then((response) => response);
+        await untilSomeoneWaits();
+      });
+      if (pending === undefined) {
+        throw new Error('The removal was not sent.');
+      }
+      refusedWith(await pending, 404, 'not_found');
+      expect(await photoColumns(id)).toEqual(stored);
+      expect(await t.auditCount()).toBe(before);
+    });
+
+    it('makes the branches route wait for a photo being removed', async () => {
+      const id = await twoBranchPerson();
+      await upload(id, JPEG);
+      let pending: Promise<Response> | undefined;
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        // What the removal does in its transaction: the record locked, the link read for share, the photo cleared.
+        await transaction
+          .selectFrom('staff')
+          .select('id')
+          .where('id', '=', id)
+          .forUpdate()
+          .execute();
+        await transaction
+          .selectFrom('staff_branches')
+          .select('staff_id')
+          .where('staff_id', '=', id)
+          .where('branch_id', '=', t.north)
+          .forShare()
+          .execute();
+        await transaction
+          .updateTable('staff')
+          .set({ photo_id: null, photo_type: null })
+          .where('id', '=', id)
+          .execute();
+        pending = request(t.kit.server)
+          .put(`/api/people/staff/${id}/branches`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, t.north)
+          .send({ mainBranchId: t.south, furtherBranchIds: [] })
+          .then((response) => response);
+        await untilSomeoneWaits();
+      });
+      if (pending === undefined) {
+        throw new Error('The change of branches was not sent.');
+      }
+      expect((await pending).status).toBe(200);
+      expect(await photoColumns(id)).toEqual({ photo_id: null, photo_type: null });
     });
 
     it('makes the branches route wait for a photo being set', async () => {

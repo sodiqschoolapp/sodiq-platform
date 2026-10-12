@@ -4,7 +4,6 @@ import {
   createParamDecorator,
   HttpCode,
   Param,
-  UnsupportedMediaTypeException,
   Query,
   SetMetadata,
   UseInterceptors,
@@ -110,9 +109,11 @@ export const TAKES_FILE = Symbol('TAKES_FILE');
 
 /**
  * The file of a declared file route (`FILE_ROUTES` in `file-routes.ts`, task
- * 2.2c-2), as `fileBodyMiddleware` read it. Anything else in the body (JSON,
- * nothing at all) is refused with 415: a route that takes a file reads its
- * body only through this decorator, with its entry of `FILE_ROUTES`.
+ * 2.2c-2), as `fileBodyMiddleware` read it, or `null` when the body is
+ * anything else (JSON, nothing at all). The handler refuses `null` with 415
+ * after its own checks of the record (correction 3 of the review of pull
+ * request #59: the record's 404 comes first). A route that takes a file reads
+ * its body only through this decorator, with its entry of `FILE_ROUTES`.
  *
  *     setPhoto(@ValidFile(STAFF_PHOTO_ROUTE) file: UploadedFile)
  */
@@ -122,12 +123,8 @@ export function ValidFile(route: FileRoute): ParameterDecorator {
       throw new Error('ValidFile belongs on a parameter of a route method.');
     }
     Body({
-      transform: (value: unknown): UploadedFile => {
-        if (value instanceof UploadedFile && route.types.includes(value.type)) {
-          return value;
-        }
-        throw new UnsupportedMediaTypeException();
-      },
+      transform: (value: unknown): UploadedFile | null =>
+        value instanceof UploadedFile && route.types.includes(value.type) ? value : null,
     })(target, key, index);
     onMethod(SetMetadata(TAKES_FILE, route), target, key);
     onMethod(ApiConsumes(...route.types), target, key);
