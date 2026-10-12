@@ -4,6 +4,7 @@ import {
   schoolDateOf,
   type Clock,
   type ExportList,
+  type ExportSelection,
   type ExportTexts,
   type Language,
 } from '@sodiq/shared';
@@ -24,6 +25,7 @@ export interface ExportColumn<Row> {
 export interface ExportRequest<Column extends string> {
   ids: readonly string[];
   columns: readonly Column[];
+  selection: ExportSelection;
   search: string;
   filters: Readonly<Record<string, string>>;
 }
@@ -37,6 +39,12 @@ export interface ExportInput<Row, Column extends string> {
   rows: ReadonlyMap<string, Row>;
   /** Whether this reader may export the column (decision 4: the Principal and the staff phone). */
   allowed: (column: Column) => boolean;
+  /**
+   * The assignment the audit entry names when the columns written need one of
+   * a narrower role than the route (`.claude/rules/api.md`: "the audit entry
+   * names the assignment that allowed that part"); else `access.assignmentId`.
+   */
+  assignmentFor?: (columns: readonly Column[]) => string | undefined;
   columns: Readonly<Record<Column, ExportColumn<Row>>>;
 }
 
@@ -76,6 +84,7 @@ export async function exportList<Row, Column extends string>(
     return row;
   });
   const columns = input.request.columns.filter((column) => input.allowed(column));
+  const leftOut = input.request.columns.filter((column) => !input.allowed(column));
   if (columns.length === 0) {
     throw new ApiException('permission_denied', 403);
   }
@@ -101,13 +110,15 @@ export async function exportList<Row, Column extends string>(
   await audit.record(transaction, {
     branchId,
     actorId: access.accountId,
-    assignmentId: access.assignmentId,
+    assignmentId: input.assignmentFor?.(columns) ?? access.assignmentId,
     action: input.action,
     details: {
       list: input.list,
+      selection: input.request.selection,
       search: input.request.search,
       filters: { ...input.request.filters },
       columns,
+      leftOut,
       rows: rows.length,
     },
     requestId,
@@ -179,8 +190,13 @@ export const nameIn = (
   language: Language,
 ): string => (id === null || id === undefined ? '' : (names.get(id)?.[language] ?? ''));
 
-/** Grades as the lists show them, each once, smallest first: "5, 6, 7". */
-export const gradesOf = (subjects: readonly { grades: readonly number[] }[]): string =>
+/** Grades as the staff and vacancy lists name them, each once, smallest first: "Grade 5, Grade 7". */
+export const gradesOf = (
+  subjects: readonly { grades: readonly number[] }[],
+  texts: ExportTexts,
+): string =>
   joined(
-    [...new Set(subjects.flatMap((subject) => subject.grades))].sort((a, b) => a - b).map(String),
+    [...new Set(subjects.flatMap((subject) => subject.grades))]
+      .sort((a, b) => a - b)
+      .map((grade) => texts.grade.replace('{{grade}}', String(grade))),
   );

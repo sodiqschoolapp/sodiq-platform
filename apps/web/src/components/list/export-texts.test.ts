@@ -1,4 +1,4 @@
-import { EXPORT_TEXTS, type ExportTexts, type Language } from '@sodiq/shared';
+import { EXPORT_TEXTS, type ExportList, type Language } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
@@ -15,7 +15,7 @@ const LOCALES: Record<Language, Texts> = { en, ru, uz };
  * Russian and Uzbek ones too, so the file and the screen cannot drift
  * (task 2.2c-1, pull request #58).
  */
-const SCREEN: { [List in keyof ExportTexts]?: Record<string, (texts: Texts) => string> } = {
+const SCREEN: Record<ExportList, Record<string, (texts: Texts) => string>> = {
   staff: {
     name: (texts) => texts.people.staff.name,
     staffId: (texts) => texts.people.staff.staffId,
@@ -75,10 +75,7 @@ describe('the headings of the export files', () => {
   it('are the headers of the lists on the screen, in the three languages', () => {
     for (const language of ['en', 'ru', 'uz'] as const) {
       for (const [list, columns] of Object.entries(SCREEN)) {
-        const file = EXPORT_TEXTS[language][list as keyof typeof SCREEN].columns as Record<
-          string,
-          string
-        >;
+        const file: Record<string, string> = EXPORT_TEXTS[language][list as ExportList].columns;
         expect(Object.keys(columns).sort(), list).toEqual(Object.keys(file).sort());
         for (const [key, header] of Object.entries(columns)) {
           expect(file[key], `${language} ${list} ${key}`).toBe(header(LOCALES[language]));
@@ -99,6 +96,7 @@ describe('the headings of the export files', () => {
       expect(file.roomStatuses).toEqual(screen.setup.rooms.statuses);
       expect(file.journalTypes).toEqual(screen.setup.subjects.journalTypes);
       expect(file.notStarted).toBe(screen.people.staff.notStarted);
+      expect(file.grade).toBe(screen.setup.subjects.grade);
     }
   });
 });

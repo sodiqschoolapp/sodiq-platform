@@ -40,7 +40,12 @@ interface HarnessProps {
   rows: readonly Room[] | undefined;
   error?: unknown;
   start?: ListSearch;
-  onExport?: (rows: Room[], columnKeys: string[], search: ListSearch) => void;
+  onExport?: (
+    rows: Room[],
+    columnKeys: string[],
+    search: ListSearch,
+    selection: 'ticked' | 'matching',
+  ) => void;
   exportState?: ExportState;
   actions?: BulkAction<Room>[];
   panel?: (row: Room) => React.ReactNode;
@@ -121,21 +126,39 @@ describe('ticked rows of a list whose rows change', () => {
 describe('what the export of a list is handed', () => {
   it('is the matching rows in the order shown, and the keys of the columns shown', () => {
     window.localStorage.setItem('sodiq.list.rooms.hidden', '["seats"]');
-    const onExport = vi.fn<(rows: Room[], columnKeys: string[], search: ListSearch) => void>();
+    const onExport =
+      vi.fn<
+        (
+          rows: Room[],
+          columnKeys: string[],
+          search: ListSearch,
+          selection: 'ticked' | 'matching',
+        ) => void
+      >();
     show({ rows: ROOMS, start: { q: 'room', sort: 'name' }, onExport });
     expect(names()).toEqual(['Room 4', 'Room 12']);
 
     fireEvent.click(screen.getByRole('button', { name: en.list.export }));
 
-    expect(onExport).toHaveBeenCalledExactlyOnceWith([ROOMS[1], ROOMS[0]], ['name'], {
-      q: 'room',
-      sort: 'name',
-    });
+    expect(onExport).toHaveBeenCalledExactlyOnceWith(
+      [ROOMS[1], ROOMS[0]],
+      ['name'],
+      { q: 'room', sort: 'name' },
+      'matching',
+    );
   });
 
   // `04`, Student record: "Bulk actions on ticked rows: ... export".
   it('is the ticked rows when some are ticked, those the search hides too, and names their count', () => {
-    const onExport = vi.fn<(rows: Room[], columnKeys: string[], search: ListSearch) => void>();
+    const onExport =
+      vi.fn<
+        (
+          rows: Room[],
+          columnKeys: string[],
+          search: ListSearch,
+          selection: 'ticked' | 'matching',
+        ) => void
+      >();
     show({ rows: ROOMS, start: { sort: 'name' }, onExport });
     fireEvent.click(tick('Room 12'));
     fireEvent.click(tick('Laboratory'));
@@ -147,14 +170,27 @@ describe('what the export of a list is handed', () => {
       screen.getByRole('button', { name: en.list.exportTicked_other.replace('{{n}}', '2') }),
     );
 
-    expect(onExport).toHaveBeenCalledExactlyOnceWith([ROOMS[0], ROOMS[2]], ['name', 'seats'], {
-      q: 'room',
-      sort: 'name',
-    });
+    expect(onExport).toHaveBeenCalledExactlyOnceWith(
+      [ROOMS[0], ROOMS[2]],
+      ['name', 'seats'],
+      {
+        q: 'room',
+        sort: 'name',
+      },
+      'ticked',
+    );
   });
 
   it('is off while no row matches and while a file is being made', () => {
-    const onExport = vi.fn<(rows: Room[], columnKeys: string[], search: ListSearch) => void>();
+    const onExport =
+      vi.fn<
+        (
+          rows: Room[],
+          columnKeys: string[],
+          search: ListSearch,
+          selection: 'ticked' | 'matching',
+        ) => void
+      >();
     const { unmount } = show({ rows: ROOMS, start: { q: 'nothing like this' }, onExport });
     expect(screen.getByRole<HTMLButtonElement>('button', { name: en.list.export }).disabled).toBe(
       true,

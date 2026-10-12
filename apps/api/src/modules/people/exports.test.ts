@@ -89,6 +89,7 @@ describe('the export of the staff and vacancy lists', () => {
   const send = (ids: string[], columns: string[], extra: Record<string, unknown> = {}) => ({
     ids,
     columns,
+    selection: 'matching',
     search: '',
     filters: {},
     ...extra,
@@ -195,7 +196,7 @@ describe('the export of the staff and vacancy lists', () => {
         send(
           [second.id, first.id],
           ['name', 'staffId', 'department', 'subjects', 'grades', 'languages', 'phone', 'status'],
-          { search: 'ova', filters: { status: 'active' } },
+          { search: 'ova', filters: { status: 'active' }, selection: 'ticked' },
         ),
       );
       expect(response.status, (response.body as Buffer).toString('utf8')).toBe(200);
@@ -225,7 +226,7 @@ describe('the export of the staff and vacancy lists', () => {
           second.staffId,
           'STEAM',
           'Mathematics',
-          '5, 7',
+          'Grade 5, Grade 7',
           'Russian, Uzbek',
           second.phone,
           'Active',
@@ -243,6 +244,7 @@ describe('the export of the staff and vacancy lists', () => {
         request_id: expect.any(String) as unknown,
         details: {
           list: 'staff',
+          selection: 'ticked',
           search: 'ova',
           filters: { status: 'active' },
           columns: [
@@ -305,6 +307,60 @@ describe('the export of the staff and vacancy lists', () => {
         'permission_denied',
       );
       expect(await snapshot()).toEqual(before);
+    });
+
+    // `.claude/rules/api.md`: a part allowed to some roles only is decided
+    // from every current assignment, and the entry names the one that allowed it.
+    it('decides the phone from every assignment, in the branch of the request, and names the one that allowed it', async () => {
+      await speak('en');
+      const someone = await person();
+      const both = await t.kit.completeSession('Lola', 'Hamidova');
+      const principalHeld = await t.kit.giveRole(both.account.id, {
+        role: 'principal',
+        branchId: t.north,
+      });
+      const viceHeld = await t.kit.giveRole(both.account.id, {
+        role: 'academic_vice_principal',
+        branchId: t.north,
+      });
+      const withPhone = await fileOf(
+        await exportOf(
+          '/api/people/staff/export',
+          send([someone.id], ['name', 'phone']),
+          both.cookie,
+        ),
+      );
+      expect(withPhone.sheet.rows).toEqual([[`Malika ${someone.lastName}`, someone.phone]]);
+      expect((await t.entries('staff.export')).at(-1)).toMatchObject({
+        assignment_id: viceHeld.id,
+        details: { columns: ['name', 'phone'], leftOut: [] },
+      });
+      const withoutPhone = await fileOf(
+        await exportOf('/api/people/staff/export', send([someone.id], ['name']), both.cookie),
+      );
+      expect(withoutPhone.columns).toBe('name');
+      expect([principalHeld.id, viceHeld.id]).toContain(
+        (await t.entries('staff.export')).at(-1)?.assignment_id,
+      );
+
+      // A Principal here who is Academic Vice Principal of another branch gets no phone here.
+      const elsewhere = await t.kit.completeSession('Zarina', 'Sobirova');
+      await t.kit.giveRole(elsewhere.account.id, { role: 'principal', branchId: t.north });
+      await t.kit.giveRole(elsewhere.account.id, {
+        role: 'academic_vice_principal',
+        branchId: t.south,
+      });
+      const north = await fileOf(
+        await exportOf(
+          '/api/people/staff/export',
+          send([someone.id], ['name', 'phone']),
+          elsewhere.cookie,
+        ),
+      );
+      expect(north.columns).toBe('name');
+      expect((await t.entries('staff.export')).at(-1)).toMatchObject({
+        details: { columns: ['name'], leftOut: ['phone'] },
+      });
     });
 
     it('writes a planned status with its first day as a date, the same day in any time zone of the server', async () => {
@@ -404,8 +460,8 @@ describe('the export of the staff and vacancy lists', () => {
       expect(file.sheet.name).toBe('Vacancies');
       expect(file.disposition).toContain('filename="vacancies-2026-10-10.xlsx"');
       expect(file.sheet.rows).toEqual([
-        [first.name, 'STEAM', 'Mathematics', '7, 8', 'Russian, Uzbek', 16, 'Open'],
-        [second.name, 'STEAM', 'Mathematics', '7, 8', 'Russian, Uzbek', 16, 'Open'],
+        [first.name, 'STEAM', 'Mathematics', 'Grade 7, Grade 8', 'Russian, Uzbek', 16, 'Open'],
+        [second.name, 'STEAM', 'Mathematics', 'Grade 7, Grade 8', 'Russian, Uzbek', 16, 'Open'],
       ]);
       expect((await t.entries('vacancy.export')).at(-1)).toMatchObject({
         branch_id: t.north,
@@ -466,6 +522,7 @@ describe('the export of the staff and vacancy lists', () => {
       const invalid = await t.post('/api/people/staff/export', t.north, {
         ids: [someone.id, someone.id],
         columns: ['birthDate'],
+        selection: 'matching',
         search: '',
         filters: {},
       });

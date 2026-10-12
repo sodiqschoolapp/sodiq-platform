@@ -102,6 +102,11 @@ export const EXPORT_FILTER_VALUE_MAX_LENGTH = 100;
 /** The header naming the column keys written to the file, in their order, separated by commas. */
 export const EXPORT_COLUMNS_HEADER = 'X-Export-Columns';
 
+/** The rows of an export: the ticked ones (decision 12), or every row that matched. */
+export const EXPORT_SELECTIONS = ['ticked', 'matching'] as const;
+
+export type ExportSelection = (typeof EXPORT_SELECTIONS)[number];
+
 /** A list of distinct items: a repeated one is a mistake of the caller. */
 const distinct = <T>(items: readonly T[]): boolean => new Set(items).size === items.length;
 
@@ -126,6 +131,8 @@ export function exportRequestSchema<const Columns extends readonly [string, ...s
       .min(1)
       .max(columns.length)
       .refine(distinct, { message: 'Each column once.' }),
+    /** Whether the rows are the ticked ones or every row that matched the search and filters. */
+    selection: z.enum(EXPORT_SELECTIONS),
     search: z.string().max(EXPORT_SEARCH_MAX_LENGTH),
     filters: z
       .record(
@@ -186,6 +193,8 @@ export interface ExportTexts {
   journalTypes: Record<JournalType, string>;
   yes: string;
   no: string;
+  /** One grade as the lists name it, with `{{grade}}` for its number. */
+  grade: string;
   /** The parts of the daily distribution, one number column each. */
   weightParts: { attendance: string; classwork: string; homework: string };
   switches: { groupSubject: string; languageRule: string; demanding: string };
@@ -289,6 +298,7 @@ const en: ExportTexts = {
   journalTypes: { graded: 'Graded', attendance_only: 'Attendance only' },
   yes: 'Yes',
   no: 'No',
+  grade: 'Grade {{grade}}',
   weightParts: { attendance: 'Attendance', classwork: 'Classwork', homework: 'Homework' },
   switches: {
     groupSubject: 'Group subject',
@@ -400,6 +410,7 @@ const ru: ExportTexts = {
   journalTypes: { graded: 'С оценками', attendance_only: 'Только посещаемость' },
   yes: 'Да',
   no: 'Нет',
+  grade: '{{grade}} класс',
   weightParts: {
     attendance: 'Посещаемость',
     classwork: 'Классная работа',
@@ -510,6 +521,7 @@ const uz: ExportTexts = {
   journalTypes: { graded: 'Baholanadi', attendance_only: 'Faqat davomat' },
   yes: 'Ha',
   no: 'Yoʻq',
+  grade: '{{grade}}-sinf',
   weightParts: { attendance: 'Davomat', classwork: 'Sinf ishi', homework: 'Uy vazifasi' },
   switches: { groupSubject: 'Guruhli fan', languageRule: 'Til qoidasi', demanding: 'Murakkab fan' },
 };

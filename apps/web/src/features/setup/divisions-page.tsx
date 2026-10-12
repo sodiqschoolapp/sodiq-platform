@@ -64,7 +64,7 @@ export function DivisionsPage() {
   const canCreate = role !== null && permits(PERMISSIONS, role, 'divisions', 'create');
   const canArchive = role !== null && permits(PERMISSIONS, role, 'divisions', 'archive');
   const canExport = role !== null && permits(PERMISSIONS, role, 'divisions', 'export');
-  const exporter = useExport<Division>('/api/setup/divisions/export', (row) => row.id);
+  const exporter = useExport<Division>('divisions', (row) => row.id);
   const divisions = useQuery(divisionsQuery(branchId));
   const number = useMemo(() => new Intl.NumberFormat(i18n.language), [i18n.language]);
   const language = i18n.language;

@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: task 2.2c-1 Exports
+
+- Built: `export` in five areas for the Super Admin, Principal and Academic Vice Principal; six `POST …/export` routes (staff, vacancies, buildings, rooms, divisions, subjects) that read the list's own rows in one transaction, answer 404 for an id the list does not hold, leave the phone out of the Principal's staff file and write one audit entry with search, filters, columns and the row count; ExcelJS 4.4.0 with a uuid override (`pnpm audit --prod` clean); `@ReturnsFile`, `XlsxFile` and `exportList`.
+- Pages: the Export button of the six lists sends the ticked rows (or every matching row), the columns shown and the search and filters, saves the file, and names the columns the server left out; the file's headings come from `EXPORT_TEXTS` of `packages/shared` in uz, ru, en, tied to the screen by tests. 2.2c split in two; plan approved on pull request #58 with five corrections.
+- Left out: photos and the vacancy photo refusal (2.2c-2); the student list export (2.4); journal, timetable and PDF exports (later tasks); the audit log page that reads export entries (2.6).
+
+The next sessions must know:
+
+- A new list export is a route beside its list route that calls `exportList` (`apps/api/src/modules/audit/export-list.ts`) with the list's own read, a column map and the texts of `EXPORT_TEXTS`; the page passes `useExport` to `ListPage`.
+- Browser tests in the cloud still need the 1243-named links to the 1194 headless shell (`PLAYWRIGHT_BROWSERS_PATH`; the report of pull request #25).
+- The next task is 2.2c-2.
+
 ## 12 October 2026: task 2.2b Availability and vacancies
 
 - Built: migration 0025 (`staff_availability` entries from a date and their ranges, both branch tables; an exclusion on person, weekday, minutes and dates across every branch; `staff_record_kind`, `staff_availability_elsewhere`, `vacancy_delete` SECURITY DEFINER; `staff_main_branch_check` skips a deleted record; one branch per vacancy); two availability routes under `staff_teaching` and seven vacancy routes in the new area `vacancies`; a branch removed from a person ends its hours from tomorrow.
@@ -13,7 +25,7 @@ The next sessions must know:
 - Availability ranges compare wall-clock minutes because every branch is in one time zone; the task that makes `branches.time_zone` writable converts to real clock time in the exclusion of 0025 first.
 - An open entry ends at `'infinity'` in the database (so the ranges' foreign key covers the end); the API answers `null`.
 - A vacancy is a `staff` row of kind `vacancy`; the person routes filter `kind = 'person'`, the vacancy routes `kind = 'vacancy'`, and the cross-branch functions of 0024 count both.
-- The next task is 2.2c.
+- The next task is 2.2c (split into 2.2c-1 and 2.2c-2).
 
 ## 12 October 2026: the loop does not wait for decisions until go-live (process change, no task)
 

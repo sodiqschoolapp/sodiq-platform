@@ -278,7 +278,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     exportTicked_many: 'Экспорт отмеченных: {{n}}',
     exportTicked_other: 'Экспорт отмеченных: {{n}}',
     exporting: 'Идёт экспорт…',
-    exportColumnsLeftOut: 'Не вошли в файл, потому что ваша роль не может их экспортировать: {{columns}}.',
+    exportColumnsLeftOut:
+      'Не вошли в файл, потому что ваша роль не может их экспортировать: {{columns}}.',
     selectAll: 'Выбрать все строки, подходящие под поиск и фильтры',
     selectRow: 'Выбрать: {{name}}',
     bulkActions: 'Действия с выбранными строками',

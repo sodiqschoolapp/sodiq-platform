@@ -54,7 +54,7 @@ export function StaffPage() {
   const [adding, setAdding] = useState(false);
   const canCreate = role !== null && permits(PERMISSIONS, role, 'staff', 'create');
   const canExport = role !== null && permits(PERMISSIONS, role, 'staff', 'export');
-  const exporter = useExport<StaffListItem>('/api/people/staff/export', (row) => row.id);
+  const exporter = useExport<StaffListItem>('staff', (row) => row.id);
   const staff = useQuery(staffQuery(branchId));
   const divisions = useQuery(divisionsQuery(branchId));
   const subjects = useQuery(subjectsQuery(branchId));

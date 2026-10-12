@@ -281,7 +281,8 @@ export const uz: Texts<'one' | 'other'> = {
     exportTicked_one: 'Belgilangan {{n}} tasini eksport qilish',
     exportTicked_other: 'Belgilangan {{n}} tasini eksport qilish',
     exporting: 'Eksport qilinmoqda…',
-    exportColumnsLeftOut: 'Faylga kirmadi, chunki rolingiz ularni eksport qila olmaydi: {{columns}}.',
+    exportColumnsLeftOut:
+      'Faylga kirmadi, chunki rolingiz ularni eksport qila olmaydi: {{columns}}.',
     selectAll: 'Qidiruv va filtrlarga mos barcha qatorlarni tanlash',
     selectRow: 'Tanlash: {{name}}',
     bulkActions: 'Tanlangan qatorlar bilan amallar',

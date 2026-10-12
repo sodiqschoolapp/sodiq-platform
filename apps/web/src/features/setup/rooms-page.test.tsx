@@ -413,6 +413,7 @@ describe('the export of the room list', () => {
     expect(calls.find((call) => call.route === 'POST /api/setup/rooms/export')?.body).toEqual({
       ids: [ROOMS[1]?.id],
       columns: [...ROOM_EXPORT_COLUMNS],
+      selection: 'matching',
       search: '',
       filters: { type: 'laboratory' },
     });

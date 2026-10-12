@@ -45,7 +45,7 @@ export function VacanciesPage() {
   const [adding, setAdding] = useState(false);
   const canCreate = role !== null && permits(PERMISSIONS, role, 'vacancies', 'create');
   const canExport = role !== null && permits(PERMISSIONS, role, 'vacancies', 'export');
-  const exporter = useExport<VacancyListItem>('/api/people/vacancies/export', (row) => row.id);
+  const exporter = useExport<VacancyListItem>('vacancies', (row) => row.id);
   const vacancies = useQuery(vacanciesQuery(branchId));
   const divisions = useQuery(divisionsQuery(branchId));
   const subjects = useQuery(subjectsQuery(branchId));

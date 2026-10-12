@@ -18,6 +18,8 @@ describe('the export of the setup lists', () => {
   let academic: string;
   let physics: string;
   let music: string;
+  let tutor: string;
+  let headTeacher: string;
 
   const exportOf = (
     path: string,
@@ -33,7 +35,13 @@ describe('the export of the setup lists', () => {
       .buffer(true)
       .parse(binary);
 
-  const send = (ids: string[], columns: string[]) => ({ ids, columns, search: '', filters: {} });
+  const send = (ids: string[], columns: string[]) => ({
+    ids,
+    columns,
+    selection: 'matching',
+    search: '',
+    filters: {},
+  });
 
   const refusedWith = (response: Response, status: number, code: string) => {
     const text = (response.body as Buffer).toString('utf8');
@@ -129,6 +137,12 @@ describe('the export of the setup lists', () => {
           .returning('id')
           .executeTakeFirstOrThrow()
       ).id;
+    const tutorBrowser = await t.kit.fullSession('Sardor', 'Tursunov');
+    await t.kit.giveRole(tutorBrowser.account.id, { role: 'tutor', branchId: t.north });
+    tutor = tutorBrowser.cookie;
+    const headBrowser = await t.kit.fullSession('Nodira', 'Qodirova');
+    await t.kit.giveRole(headBrowser.account.id, { role: 'head_teacher', branchId: t.north });
+    headTeacher = headBrowser.cookie;
     physics = await subject('Physics', 'Физика', 'Fizika', 'graded');
     music = await subject('Music', 'Музыка', 'Musiqa', 'attendance_only');
     // Each branch has its own daily distribution of the same subject.
@@ -176,7 +190,7 @@ describe('the export of the setup lists', () => {
 
     it('answers 404 for a building of another branch and an unknown id, with nothing changed', async () => {
       const here = await building(t.north, 'Annex');
-      const elsewhere = await building(t.south, 'Annex');
+      const elsewhere = await building(t.south, 'Annex South');
       const before = await snapshot();
       for (const cookie of [t.admin, t.vicePrincipal, t.principal]) {
         for (const id of [elsewhere.id, UNKNOWN]) {
@@ -270,11 +284,17 @@ describe('the export of the setup lists', () => {
 
     it('answers 404 for an unknown id, with nothing changed', async () => {
       const before = await snapshot();
-      refusedWith(
-        await exportOf('/api/setup/divisions/export', send([academic, UNKNOWN], ['name'])),
-        404,
-        'not_found',
-      );
+      for (const cookie of [t.admin, t.vicePrincipal, t.principal]) {
+        refusedWith(
+          await exportOf(
+            '/api/setup/divisions/export',
+            send([academic, UNKNOWN], ['name']),
+            cookie,
+          ),
+          404,
+          'not_found',
+        );
+      }
       expect(await snapshot()).toEqual(before);
     });
   });
@@ -375,16 +395,39 @@ describe('the export of the setup lists', () => {
 
     it('answers 404 for an unknown id, with nothing changed', async () => {
       const before = await snapshot();
-      refusedWith(
-        await exportOf('/api/setup/subjects/export', send([physics, UNKNOWN], ['name'])),
-        404,
-        'not_found',
-      );
+      for (const cookie of [t.admin, t.vicePrincipal, t.principal]) {
+        refusedWith(
+          await exportOf('/api/setup/subjects/export', send([physics, UNKNOWN], ['name']), cookie),
+          404,
+          'not_found',
+        );
+      }
       expect(await snapshot()).toEqual(before);
     });
   });
 
-  it('refuses a Teacher on every route, with nothing logged', async () => {
+  it('makes the file of rooms, divisions and subjects for each of the three roles', async () => {
+    const anyRoom = (
+      await t.database.migrator
+        .selectFrom('rooms')
+        .select('id')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow()
+    ).id;
+    for (const cookie of [t.admin, t.vicePrincipal, t.principal]) {
+      for (const [path, id] of [
+        ['/api/setup/rooms/export', anyRoom],
+        ['/api/setup/divisions/export', academic],
+        ['/api/setup/subjects/export', physics],
+      ] as const) {
+        const response = await exportOf(path, send([id], ['name']), cookie);
+        expect(response.status, path).toBe(200);
+        expect((await fileOf(response)).sheet.rows).toHaveLength(1);
+      }
+    }
+  });
+
+  it('refuses a Teacher, a Tutor and a Head Teacher on every route, with nothing logged', async () => {
     const before = await snapshot();
     for (const [path, id] of [
       ['/api/setup/buildings/export', UNKNOWN],
@@ -392,7 +435,9 @@ describe('the export of the setup lists', () => {
       ['/api/setup/divisions/export', academic],
       ['/api/setup/subjects/export', physics],
     ] as const) {
-      refusedWith(await exportOf(path, send([id], ['name']), t.teacher), 403, 'permission_denied');
+      for (const cookie of [t.teacher, tutor, headTeacher]) {
+        refusedWith(await exportOf(path, send([id], ['name']), cookie), 403, 'permission_denied');
+      }
     }
     expect(await snapshot()).toEqual(before);
   });

@@ -21,6 +21,7 @@ describe('the export request', () => {
   const request = {
     ids: [id(1), id(2)],
     columns: ['name', 'phone'],
+    selection: 'matching',
     search: 'Karimova',
     filters: { status: 'active' },
   };
@@ -70,6 +71,7 @@ describe('the export request', () => {
       }).success,
     ).toBe(false);
     expect(staffExportSchema.safeParse({ ...request, branchId: id(9) }).success).toBe(false);
+    expect(staffExportSchema.safeParse({ ...request, selection: 'all' }).success).toBe(false);
     expect(staffExportSchema.safeParse({ ...request, search: undefined }).success).toBe(false);
   });
 

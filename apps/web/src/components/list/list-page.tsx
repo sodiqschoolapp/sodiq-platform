@@ -98,7 +98,14 @@ interface ListPageProps<Row> {
    * records. The file itself is made by the server, which decides what the
    * role may see.
    */
-  onExport?: ((rows: Row[], columnKeys: string[], search: ListSearch) => void) | undefined;
+  onExport?:
+    | ((
+        rows: Row[],
+        columnKeys: string[],
+        search: ListSearch,
+        selection: 'ticked' | 'matching',
+      ) => void)
+    | undefined;
   /** The state of the export of `onExport` (`useExport`). */
   exportState?: ExportState | undefined;
   /** The record of a row, shown in the side panel. Needs a column with `opens`. */
@@ -420,6 +427,7 @@ export function ListPage<Row>({
                     exportRows,
                     shownColumns.map((column) => column.key),
                     current,
+                    ticked.size === 0 ? 'matching' : 'ticked',
                   );
                 }}
               >

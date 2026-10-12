@@ -56,7 +56,7 @@ export function RoomsPage() {
   const canEdit = role !== null && permits(PERMISSIONS, role, 'rooms', 'edit');
   const canCreate = role !== null && permits(PERMISSIONS, role, 'rooms', 'create');
   const canExport = role !== null && permits(PERMISSIONS, role, 'rooms', 'export');
-  const exporter = useExport<Room>('/api/setup/rooms/export', (row) => row.id);
+  const exporter = useExport<Room>('rooms', (row) => row.id);
   const rooms = useQuery(roomsQuery(branchId));
   const buildings = useQuery(buildingsQuery(branchId));
   const number = useMemo(() => new Intl.NumberFormat(i18n.language), [i18n.language]);

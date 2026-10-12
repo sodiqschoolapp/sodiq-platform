@@ -56,7 +56,7 @@ export function SubjectsPage() {
   const canEdit = role !== null && permits(PERMISSIONS, role, 'subjects', 'edit');
   const canArchive = role !== null && permits(PERMISSIONS, role, 'subjects', 'archive');
   const canExport = role !== null && permits(PERMISSIONS, role, 'subjects', 'export');
-  const exporter = useExport<Subject>('/api/setup/subjects/export', (row) => row.id);
+  const exporter = useExport<Subject>('subjects', (row) => row.id);
   const subjects = useQuery(subjectsQuery(branchId));
   const divisions = useQuery(divisionsQuery(branchId));
   const language = i18n.language;

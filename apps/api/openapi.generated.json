@@ -3105,6 +3105,13 @@
                       ]
                     }
                   },
+                  "selection": {
+                    "type": "string",
+                    "enum": [
+                      "ticked",
+                      "matching"
+                    ]
+                  },
                   "search": {
                     "type": "string",
                     "maxLength": 200
@@ -3120,6 +3127,7 @@
                 "required": [
                   "ids",
                   "columns",
+                  "selection",
                   "search",
                   "filters"
                 ],
@@ -5733,6 +5741,13 @@
                       ]
                     }
                   },
+                  "selection": {
+                    "type": "string",
+                    "enum": [
+                      "ticked",
+                      "matching"
+                    ]
+                  },
                   "search": {
                     "type": "string",
                     "maxLength": 200
@@ -5748,6 +5763,7 @@
                 "required": [
                   "ids",
                   "columns",
+                  "selection",
                   "search",
                   "filters"
                 ],
@@ -6974,6 +6990,13 @@
                       ]
                     }
                   },
+                  "selection": {
+                    "type": "string",
+                    "enum": [
+                      "ticked",
+                      "matching"
+                    ]
+                  },
                   "search": {
                     "type": "string",
                     "maxLength": 200
@@ -6989,6 +7012,7 @@
                 "required": [
                   "ids",
                   "columns",
+                  "selection",
                   "search",
                   "filters"
                 ],
@@ -23142,6 +23166,13 @@
                       ]
                     }
                   },
+                  "selection": {
+                    "type": "string",
+                    "enum": [
+                      "ticked",
+                      "matching"
+                    ]
+                  },
                   "search": {
                     "type": "string",
                     "maxLength": 200
@@ -23157,6 +23188,7 @@
                 "required": [
                   "ids",
                   "columns",
+                  "selection",
                   "search",
                   "filters"
                 ],
@@ -26957,6 +26989,13 @@
                       ]
                     }
                   },
+                  "selection": {
+                    "type": "string",
+                    "enum": [
+                      "ticked",
+                      "matching"
+                    ]
+                  },
                   "search": {
                     "type": "string",
                     "maxLength": 200
@@ -26972,6 +27011,7 @@
                 "required": [
                   "ids",
                   "columns",
+                  "selection",
                   "search",
                   "filters"
                 ],
@@ -32312,6 +32352,13 @@
                       ]
                     }
                   },
+                  "selection": {
+                    "type": "string",
+                    "enum": [
+                      "ticked",
+                      "matching"
+                    ]
+                  },
                   "search": {
                     "type": "string",
                     "maxLength": 200
@@ -32327,6 +32374,7 @@
                 "required": [
                   "ids",
                   "columns",
+                  "selection",
                   "search",
                   "filters"
                 ],

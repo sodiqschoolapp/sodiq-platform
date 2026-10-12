@@ -240,6 +240,11 @@ export class Staff {
         request,
         rows: new Map(items.map((item) => [item.id, item])),
         allowed: (column) => contact || !STAFF_CONTACT_EXPORT_COLUMNS.includes(column),
+        // A file with the phone names the assignment that allowed it.
+        assignmentFor: (columns) =>
+          columns.some((column) => STAFF_CONTACT_EXPORT_COLUMNS.includes(column))
+            ? (superAdminOf(access) ?? viceOf(access))
+            : undefined,
         columns: staffExportColumns(names),
       });
     });
@@ -1392,7 +1397,7 @@ function staffExportColumns(
     ),
     grades: oneCell(
       (texts) => texts.staff.columns.grades,
-      (row) => gradesOf(row.subjects),
+      (row, texts) => gradesOf(row.subjects, texts),
     ),
     languages: oneCell(
       (texts) => texts.staff.columns.languages,

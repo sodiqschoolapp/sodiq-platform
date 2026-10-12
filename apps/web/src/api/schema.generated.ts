@@ -2666,6 +2666,8 @@ export interface operations {
                 "application/json": {
                     ids: string[];
                     columns: ("name" | "floors" | "rooms" | "status")[];
+                    /** @enum {string} */
+                    selection: "ticked" | "matching";
                     search: string;
                     filters: {
                         [key: string]: string;
@@ -3330,6 +3332,8 @@ export interface operations {
                 "application/json": {
                     ids: string[];
                     columns: ("name" | "building" | "floor" | "type" | "capacity" | "status" | "shared")[];
+                    /** @enum {string} */
+                    selection: "ticked" | "matching";
                     search: string;
                     filters: {
                         [key: string]: string;
@@ -3634,6 +3638,8 @@ export interface operations {
                 "application/json": {
                     ids: string[];
                     columns: ("name" | "departments" | "staff" | "status")[];
+                    /** @enum {string} */
+                    selection: "ticked" | "matching";
                     search: string;
                     filters: {
                         [key: string]: string;
@@ -7379,6 +7385,8 @@ export interface operations {
                 "application/json": {
                     ids: string[];
                     columns: ("name" | "department" | "grades" | "journalType" | "ratingExam" | "daily" | "quarterly" | "switches" | "status")[];
+                    /** @enum {string} */
+                    selection: "ticked" | "matching";
                     search: string;
                     filters: {
                         [key: string]: string;
@@ -8270,6 +8278,8 @@ export interface operations {
                 "application/json": {
                     ids: string[];
                     columns: ("name" | "staffId" | "category" | "branches" | "department" | "subjects" | "grades" | "languages" | "phone" | "status")[];
+                    /** @enum {string} */
+                    selection: "ticked" | "matching";
                     search: string;
                     filters: {
                         [key: string]: string;
@@ -9487,6 +9497,8 @@ export interface operations {
                 "application/json": {
                     ids: string[];
                     columns: ("name" | "department" | "subjects" | "grades" | "languages" | "weeklyLessons" | "status")[];
+                    /** @enum {string} */
+                    selection: "ticked" | "matching";
                     search: string;
                     filters: {
                         [key: string]: string;
