@@ -1,7 +1,7 @@
 import { PERMISSIONS, permits, type ChecklistItem, type ChecklistItemKey } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link, type LinkProps } from '@tanstack/react-router';
-import { CheckCircle2, Circle, Info } from 'lucide-react';
+import { CheckCircleIcon, RadioButtonUncheckedIcon, InfoIcon } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { useView } from '@/features/access/use-view';
@@ -23,12 +23,15 @@ const PAGES: Record<ChecklistItemKey, { to: LinkProps['to']; area: string }> = {
 function Mark({ done }: { done: boolean | null }) {
   const { t } = useTranslation();
   if (done === null) {
-    return <Info aria-hidden className="size-4 text-muted-foreground" />;
+    return <InfoIcon aria-hidden className="size-4 text-muted-foreground" />;
   }
   return done ? (
-    <CheckCircle2 aria-label={t('setup.checklist.done')} className="size-4 text-primary" />
+    <CheckCircleIcon aria-label={t('setup.checklist.done')} className="size-4 text-success" />
   ) : (
-    <Circle aria-label={t('setup.checklist.missing')} className="size-4 text-muted-foreground" />
+    <RadioButtonUncheckedIcon
+      aria-label={t('setup.checklist.missing')}
+      className="size-4 text-muted-foreground"
+    />
   );
 }
 

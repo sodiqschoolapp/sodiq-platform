@@ -218,7 +218,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
       {canEdit && (
         <div className="flex flex-wrap items-center gap-3">
           <Button
-            variant="outline"
+            variant={building.archivedAt === null ? 'destructive' : 'secondary'}
             size="sm"
             disabled={archiveBuilding.isPending}
             onClick={() => {
@@ -297,7 +297,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
                     <TableCell className="space-x-2 whitespace-nowrap">
                       {renaming !== floor.id && floor.archivedAt === null && (
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           size="sm"
                           aria-label={t('setup.buildings.renameNamed', { name: floor.name })}
                           onClick={() => {
@@ -309,7 +309,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
                       )}
                       {building.archivedAt === null && (
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           size="sm"
                           disabled={archiveFloor.isPending}
                           aria-label={

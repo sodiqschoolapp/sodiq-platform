@@ -13,6 +13,7 @@ import { ApiFailure, answerOf } from '@/api/failure';
 import { Field } from '@/components/field';
 import { FailureAlert } from '@/components/failure-alert';
 import { Button } from '@/components/ui/button';
+import { CHECKBOX } from '@/components/ui/control';
 import { useWaiting } from './form-helpers';
 
 /** The key in groups of four, as it is typed into the app by hand. */
@@ -130,10 +131,10 @@ export function SecondStepSetUp({
               <li key={recoveryCode}>{recoveryCode}</li>
             ))}
           </ul>
-          <label className="flex items-center gap-2 text-sm font-medium">
+          <label className="flex items-center gap-2 text-sm font-medium max-sm:min-h-11">
             <input
               type="checkbox"
-              className="size-4 accent-primary"
+              className={CHECKBOX}
               checked={saved}
               onChange={(event) => {
                 setSaved(event.target.checked);

@@ -124,7 +124,7 @@ export function CalendarEntryPanel({
       {canArchive && (!started || archived) && !past && (
         <div>
           <Button
-            variant="outline"
+            variant={archived ? 'secondary' : 'destructive'}
             disabled={archive.isPending}
             onClick={() => {
               archive.mutate(archived);

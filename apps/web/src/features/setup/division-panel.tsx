@@ -251,7 +251,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
       {canEdit && !division.builtIn && (
         <div className="flex flex-wrap items-center gap-3">
           <Button
-            variant="outline"
+            variant={division.archivedAt === null ? 'destructive' : 'secondary'}
             size="sm"
             disabled={archiveDivision.isPending}
             onClick={() => {
@@ -332,7 +332,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
                         department.archivedAt === null &&
                         division.archivedAt === null && (
                           <Button
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
                             aria-label={t('setup.divisions.renameNamed', {
                               name: name(department.names),
@@ -346,7 +346,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
                         )}
                       {division.archivedAt === null && (
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           size="sm"
                           disabled={archiveDepartment.isPending}
                           aria-label={

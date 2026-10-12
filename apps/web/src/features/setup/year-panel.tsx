@@ -309,7 +309,7 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
         {canEditYear && year.status === 'planned' && (
           <>
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               disabled={startBlocked !== null || start.isPending}
               onClick={() => {

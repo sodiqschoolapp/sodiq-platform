@@ -1,10 +1,13 @@
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import svgr from 'vite-plugin-svgr';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  // svgr: the icon files of Material Symbols as React components (`?react`,
+  // src/components/icons.tsx), never as a font ligature (docs/design-system.md, Icons).
+  plugins: [react(), tailwindcss(), svgr()],
   // The release of the error reports: the commit Render builds (task 0.10).
   define: {
     'import.meta.env.VITE_RELEASE': JSON.stringify(process.env.RENDER_GIT_COMMIT ?? ''),

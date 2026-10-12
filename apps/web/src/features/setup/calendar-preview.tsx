@@ -162,7 +162,7 @@ export function useCalendarPreview(): {
           {question.preview.changes.length > 0 && <PreviewTable preview={question.preview} />}
           <DialogFooter>
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 answer(false);
               }}

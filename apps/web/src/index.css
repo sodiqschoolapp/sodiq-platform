@@ -1,13 +1,15 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
-@import '@fontsource-variable/geist';
+/* Golos Text from our own files (docs/design-system.md, Type). Bitter, the slab
+   font of the brand moments, is installed and imported from task 2.2d-2. */
+@import '@fontsource-variable/golos-text';
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-sans: 'Golos Text Variable', sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -16,22 +18,31 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-bg: var(--destructive-bg);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-today: var(--today);
+  --color-today-muted-foreground: var(--today-muted-foreground);
+  --color-top-bar: var(--top-bar);
+  --color-link: var(--link);
+  --color-checkbox: var(--checkbox);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-hover: var(--secondary-hover);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
   --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
@@ -51,55 +62,68 @@
   --color-subject-violet: var(--subject-violet);
   --color-subject-pink: var(--subject-pink);
   --color-subject-brown: var(--subject-brown);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* docs/design-system.md, Spacing, corners, elevation: 6 for the inner buttons
+     of a segmented control and for labels, 8 for every control, 12 for panels. */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 0.75rem;
+  --radius-4xl: 0.75rem;
+  /* The one shadow of things that float: menus, popovers, dialogs. */
+  --shadow-float: 0 8px 24px -8px oklch(0.2026 0.0841 266.73 / 20%);
 }
 
+/* The tokens of docs/design-system.md, Colour: the hex brand values as their
+   exact oklch conversion. tooling/contrast.test.ts reads them here. */
 :root {
   /* Native controls and scrollbars follow the theme (apps/web/src/theme). */
   color-scheme: light;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --radius: 0.5rem;
+  --background: oklch(0.9431 0 0);
+  --foreground: oklch(0.2026 0.0841 266.73);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.2026 0.0841 266.73);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  /* 0.54 and not 0.556: 4.64:1 on --muted (task 0.8b-3, WCAG 2.1 AA). */
-  --muted-foreground: oklch(0.54 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  /* 0.53 and not 0.577: 5.01:1 on its 10% tint, 4.57:1 on the 20% tint of the hover. */
-  --destructive: oklch(0.53 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  /* The border of a field is its only sign: 3.23:1 on the background (0.922 was 1.26:1). */
-  --input: oklch(0.65 0 0);
-  /* The focus border: 4.73:1 on the background (0.708 was 2.59:1). */
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  /* Like the ring: 4.53:1 on the sidebar (0.708 was 2.48:1); the menu of 0.8c inherits it. */
-  --sidebar-ring: oklch(0.556 0 0);
+  --popover-foreground: oklch(0.2026 0.0841 266.73);
+  --top-bar: oklch(1 0 0);
+  --primary: oklch(0.7491 0.1706 52.71);
+  --primary-foreground: oklch(0.2026 0.0841 266.73);
+  --primary-hover: oklch(0.6666 0.1552 48.52);
+  --secondary: oklch(0.904 0.0127 271.28);
+  --secondary-hover: oklch(0.8612 0.0171 271.22);
+  --secondary-foreground: oklch(0.2026 0.0841 266.73);
+  --muted: oklch(0.9731 0 0);
+  --muted-foreground: oklch(0.4441 0.0505 272.67);
+  --accent: oklch(0.9431 0 0);
+  --accent-foreground: oklch(0.2026 0.0841 266.73);
+  --destructive: oklch(0.468 0.1662 28.87);
+  --destructive-bg: oklch(0.9448 0.0245 26.92);
+  --success: oklch(0.467 0.1247 148.2);
+  --success-bg: oklch(0.954 0.0199 154.9);
+  --warning: oklch(0.4544 0.0996 68.13);
+  --warning-bg: oklch(0.9599 0.0504 89.76);
+  --info: oklch(0.4486 0.1532 260.94);
+  --info-bg: oklch(0.9407 0.0225 260.72);
+  --today: oklch(0.9725 0.0198 70);
+  --today-muted-foreground: oklch(0.4441 0.0505 272.67);
+  /* Links are navy, weight 600, underlined on hover. */
+  --link: oklch(0.2026 0.0841 266.73);
+  /* Checkboxes: the navy accent colour (decided on pull request #60, decision 4). */
+  --checkbox: oklch(0.2026 0.0841 266.73);
+  --border: oklch(0.8914 0 0);
+  --input: oklch(0.6152 0.0375 270.74);
+  --ring: oklch(0.2026 0.0841 266.73);
+  /* The menu is navy in both themes. */
+  --sidebar: oklch(0.2026 0.0841 266.73);
+  --sidebar-foreground: oklch(0.856 0.0285 272.47);
+  --sidebar-primary: oklch(0.7491 0.1706 52.71);
+  --sidebar-primary-foreground: oklch(0.2026 0.0841 266.73);
+  --sidebar-accent: oklch(0.2475 0.0939 267.72);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(0.2703 0.0841 268.91);
+  --sidebar-ring: oklch(0.7491 0.1706 52.71);
   /* The 12 subject colours (task 2.1, answer 7): a swatch at least 3:1 on the
      background, the name in the normal text on a 15% tint (tooling/contrast.test.ts). */
   --subject-red: oklch(0.56 0.17 25);
@@ -118,39 +142,50 @@
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  /* 0.74 and not 0.708: 4.65:1 as a placeholder on the fill of a field. */
-  --muted-foreground: oklch(0.74 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  /* Lighter and a little less saturated than 0.704 0.191: 4.96:1 on its 10% tint (button.tsx). */
-  --destructive: oklch(0.8 0.17 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: oklch(0.1509 0.0498 267.91);
+  --foreground: oklch(0.9431 0 0);
+  --card: oklch(0.2087 0.0711 268.84);
+  --card-foreground: oklch(0.9431 0 0);
+  --popover: oklch(0.2087 0.0711 268.84);
+  --popover-foreground: oklch(0.9431 0 0);
+  --top-bar: oklch(0.188 0.0631 268.56);
+  --primary: oklch(0.7491 0.1706 52.71);
+  --primary-foreground: oklch(0.2026 0.0841 266.73);
+  --primary-hover: oklch(0.6666 0.1552 48.52);
+  --secondary: oklch(0.2942 0.0845 269.6);
+  --secondary-hover: oklch(0.3441 0.0955 269.85);
+  --secondary-foreground: oklch(0.9431 0 0);
+  --muted: oklch(0.2703 0.0841 268.91);
+  --muted-foreground: oklch(0.7629 0.0397 272.38);
+  --accent: oklch(0.2703 0.0841 268.91);
+  --accent-foreground: oklch(0.9431 0 0);
+  /* The tints of the dark theme: the colour at 16% over the card (#0B1438),
+     mixed in sRGB and written as their oklch value (pull request #60, decision 10). */
+  --destructive: oklch(0.7681 0.137 26.09);
+  --destructive-bg: oklch(0.3009 0.0522 299.93);
+  --success: oklch(0.7806 0.1343 151.86);
+  --success-bg: oklch(0.308 0.0456 245.34);
+  --warning: oklch(0.8847 0.118 82.93);
+  --warning-bg: oklch(0.3253 0.0285 283.69);
+  --info: oklch(0.7953 0.1027 265.79);
+  --info-bg: oklch(0.3159 0.0753 269.17);
+  --today: oklch(0.2416 0.0266 50.81);
+  --today-muted-foreground: oklch(0.8286 0.0359 60.33);
+  --link: oklch(0.8269 0.1149 57.22);
+  /* Navy would not show on the dark card: the foreground (pull request #60, decision 4). */
+  --checkbox: oklch(0.9431 0 0);
+  --border: oklch(0.2942 0.0845 269.6);
+  --input: oklch(0.5176 0.0683 271.6);
+  /* Focus is orange in the dark theme. */
+  --ring: oklch(0.7491 0.1706 52.71);
+  --sidebar: oklch(0.2026 0.0841 266.73);
+  --sidebar-foreground: oklch(0.856 0.0285 272.47);
+  --sidebar-primary: oklch(0.7491 0.1706 52.71);
+  --sidebar-primary-foreground: oklch(0.2026 0.0841 266.73);
+  --sidebar-accent: oklch(0.2475 0.0939 267.72);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(0.2703 0.0841 268.91);
+  --sidebar-ring: oklch(0.7491 0.1706 52.71);
   --subject-red: oklch(0.74 0.15 25);
   --subject-orange: oklch(0.74 0.15 50);
   --subject-amber: oklch(0.74 0.15 75);
@@ -167,12 +202,41 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   body {
-    @apply bg-background text-foreground;
+    /* Body text 15 / 22 (docs/design-system.md, Type). */
+    @apply bg-background text-[0.9375rem]/[1.375rem] text-foreground;
   }
   html {
     @apply font-sans;
+  }
+  /* An icon of components/icons.tsx is 20 px unless its part says otherwise. */
+  [data-icon] {
+    @apply size-5;
+  }
+  /* Every column of numbers uses tabular figures. */
+  td,
+  th,
+  input[inputmode='numeric'] {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Short and quiet; none for people who ask for reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* A record form on a page sits in a white panel (components/ui/control.ts,
+     PANEL); one inside a side panel or a dialog is already on white. */
+  main form[data-slot='record-form']:not(aside *, [role='dialog'] *) {
+    @apply max-w-3xl rounded-xl bg-card p-6 max-sm:p-4;
   }
 }

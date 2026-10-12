@@ -1,5 +1,6 @@
-import { LanguagesIcon } from 'lucide-react';
+import { LanguageIcon } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
+import { Select } from '@/components/ui/select';
 import { languageOf } from '@/i18n/i18n';
 import { isLanguage, LANGUAGE_NAMES, LANGUAGES, type Language } from '@/i18n/languages';
 
@@ -22,10 +23,10 @@ export function LanguageChooser({ onChange }: LanguageChooserProps) {
 
   return (
     <label className="flex items-center gap-1.5 text-sm">
-      <LanguagesIcon aria-hidden className="size-4 text-muted-foreground" />
+      <LanguageIcon className="text-muted-foreground" />
       <span className="sr-only">{t('language.label')}</span>
-      <select
-        className="h-8 rounded-lg border border-input bg-background px-2 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+      <Select
+        className="w-auto"
         value={languageOf(i18n)}
         onChange={(event) => {
           if (isLanguage(event.target.value)) {
@@ -42,7 +43,7 @@ export function LanguageChooser({ onChange }: LanguageChooserProps) {
             {LANGUAGE_NAMES[language]}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }

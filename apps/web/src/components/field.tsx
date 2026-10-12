@@ -1,9 +1,11 @@
-import { ArrowDownIcon, ArrowUpIcon, XIcon } from 'lucide-react';
+import { ArrowDownwardIcon, ArrowUpwardIcon, CloseIcon } from '@/components/icons';
 import { useId, useState, type ComponentProps, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { CHECKBOX } from '@/components/ui/control';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
 interface FieldTexts {
@@ -120,9 +122,6 @@ export function NumberField(props: Omit<FieldProps, 'type' | 'inputMode'>) {
   return <Field {...props} type="text" inputMode="numeric" autoComplete="off" />;
 }
 
-const SELECT =
-  'h-8 w-full rounded-lg border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive';
-
 type SelectFieldProps = FieldTexts &
   Omit<ComponentProps<'select'>, 'id' | 'children'> & {
     options: readonly { value: string; label: string }[];
@@ -133,13 +132,13 @@ export function SelectField({ label, error, note, options, ...select }: SelectFi
   return (
     <Labelled label={label} error={error} note={note}>
       {(control) => (
-        <select className={SELECT} {...control} {...select}>
+        <Select {...control} {...select}>
           {options.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
-        </select>
+        </Select>
       )}
     </Labelled>
   );
@@ -158,8 +157,6 @@ export function TextAreaField({ label, error, note, ...textarea }: TextAreaField
 
 /** What a ticked `CheckboxField` holds; empty when it is not ticked. */
 export const CHECKED = 'on';
-
-const CHECKBOX = 'size-4 accent-primary';
 
 interface Bound {
   name: string;
@@ -187,7 +184,7 @@ export function CheckboxField({
   const { noteId, errorId, describedBy } = described(id, note, error);
   return (
     <div className="grid gap-1.5">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 max-sm:min-h-11">
         <input
           id={id}
           name={name}
@@ -248,7 +245,7 @@ export function CheckboxGroupField({
       <legend className="mb-1.5 text-sm font-medium">{label}</legend>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {options.map((option) => (
-          <label key={option.value} className="flex items-center gap-2 text-sm">
+          <label key={option.value} className="flex items-center gap-2 text-sm max-sm:min-h-11">
             <input
               type="checkbox"
               name={name}
@@ -358,44 +355,44 @@ export function OrderedListField({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon-sm"
               disabled={index === 0}
               aria-label={t('form.moveUp', { name: labelOf(item), place: index + 1 })}
               onClick={() => {
                 move(index, -1);
               }}
             >
-              <ArrowUpIcon aria-hidden="true" />
+              <ArrowUpwardIcon aria-hidden="true" />
             </Button>
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon-sm"
               disabled={index === items.length - 1}
               aria-label={t('form.moveDown', { name: labelOf(item), place: index + 1 })}
               onClick={() => {
                 move(index, 1);
               }}
             >
-              <ArrowDownIcon aria-hidden="true" />
+              <ArrowDownwardIcon aria-hidden="true" />
             </Button>
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon-sm"
               aria-label={t('form.remove', { name: labelOf(item), place: index + 1 })}
               onClick={() => {
                 set(items.filter((_, place) => place !== index));
               }}
             >
-              <XIcon aria-hidden="true" />
+              <CloseIcon aria-hidden="true" />
             </Button>
           </li>
         ))}
       </ol>
       <div className="flex flex-wrap items-end gap-2">
-        <select
-          className={`${SELECT} max-w-xs`}
+        <Select
+          className="max-w-xs"
           aria-label={t('form.addChoice', { label })}
           value={chosen}
           onChange={(event) => {
@@ -408,11 +405,10 @@ export function OrderedListField({
               {option.label}
             </option>
           ))}
-        </select>
+        </Select>
         <Button
           type="button"
-          variant="outline"
-          size="sm"
+          variant="secondary"
           disabled={chosen === '' || offered.length === 0}
           onClick={() => {
             set([...items, chosen]);

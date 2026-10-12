@@ -145,7 +145,7 @@ export function SecondStepSection() {
         {!on && (
           <div>
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={() => {
                 setChanged(null);
                 setMode('turning_on');
@@ -158,7 +158,7 @@ export function SecondStepSection() {
         {on && !required && mode === 'view' && (
           <div>
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={() => {
                 setChanged(null);
                 setMode('turning_off');

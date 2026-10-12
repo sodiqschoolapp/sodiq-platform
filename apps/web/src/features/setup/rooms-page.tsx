@@ -264,7 +264,7 @@ export function RoomsPage() {
   );
 
   const emptyAction = noFloor ? (
-    <Link to="/setup/buildings" className={buttonVariants({ variant: 'outline' })}>
+    <Link to="/setup/buildings" className={buttonVariants({ variant: 'secondary' })}>
       {t('setup.rooms.goToBuildings')}
     </Link>
   ) : addButton === false ? undefined : (

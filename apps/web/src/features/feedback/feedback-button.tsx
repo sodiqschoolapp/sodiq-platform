@@ -1,7 +1,7 @@
 import { useLocation } from '@tanstack/react-router';
 import { FEEDBACK_REPORTS_PER_DAY, feedbackReportSchema, type FeedbackReport } from '@sodiq/shared';
 import { cn } from 'cn';
-import { MessageSquareTextIcon } from 'lucide-react';
+import { FeedbackIcon } from '@/components/icons';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
@@ -50,7 +50,7 @@ export function FeedbackButton() {
       }}
     >
       <DialogTrigger render={<Button variant="ghost" />}>
-        <MessageSquareTextIcon aria-hidden />
+        <FeedbackIcon aria-hidden />
         <span className="sr-only sm:not-sr-only">{t('feedback.button')}</span>
       </DialogTrigger>
       <DialogContent>
@@ -170,7 +170,7 @@ function FeedbackForm({ initialText, focusOnMount, onTyped, onSent }: FeedbackFo
         <FailureAlert error={form.failure} />
       )}
       <DialogFooter>
-        <DialogClose render={<Button variant="outline" />}>{t('confirm.cancel')}</DialogClose>
+        <DialogClose render={<Button variant="ghost" />}>{t('confirm.cancel')}</DialogClose>
         <Button type="submit" disabled={form.status === 'saving'}>
           {t('feedback.send')}
         </Button>

@@ -31,6 +31,8 @@ import {
   weekdayName,
   yearsQuery,
 } from './setup-api';
+import { cn } from 'cn';
+import { PANEL } from '@/components/ui/control';
 
 interface BranchFormProps {
   /** The record as saved; `null` for a new branch. */
@@ -108,7 +110,7 @@ function BranchDetails({ branch }: { branch: Branch }) {
     [t('setup.branch.timeZone'), branch.timeZone],
   ];
   return (
-    <dl className="grid max-w-prose gap-3">
+    <dl className={cn(PANEL, 'grid max-w-prose gap-3')}>
       {rows.map(([term, value]) => (
         <div key={term} className="grid gap-0.5">
           <dt className="text-sm text-muted-foreground">{term}</dt>
@@ -194,8 +196,11 @@ function GoLiveSection({ branch, canEdit }: { branch: Branch; canEdit: boolean }
   }
 
   return (
-    <section aria-label={t('setup.branch.goLiveTitle')} className="grid max-w-prose gap-3">
-      <h2 className="text-lg font-semibold">{t('setup.branch.goLiveTitle')}</h2>
+    <section
+      aria-label={t('setup.branch.goLiveTitle')}
+      className={cn(PANEL, 'grid max-w-prose gap-3')}
+    >
+      <h2 className="text-[1.0625rem]/6 font-bold">{t('setup.branch.goLiveTitle')}</h2>
       {body}
     </section>
   );
@@ -284,7 +289,7 @@ export function BranchPage() {
         actions={
           canCreate && !adding ? (
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={() => {
                 setAdding(true);
               }}
@@ -298,9 +303,9 @@ export function BranchPage() {
         {adding && (
           <section
             aria-label={t('setup.branch.newBranchTitle')}
-            className="grid gap-3 rounded-lg border p-4"
+            className={cn(PANEL, 'grid gap-3')}
           >
-            <h2 className="text-lg font-semibold">{t('setup.branch.newBranchTitle')}</h2>
+            <h2 className="text-[1.0625rem]/6 font-bold">{t('setup.branch.newBranchTitle')}</h2>
             <p className="max-w-prose text-sm text-muted-foreground">
               {t('setup.branch.newBranchText')}
             </p>

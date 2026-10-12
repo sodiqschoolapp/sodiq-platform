@@ -1,5 +1,5 @@
 import { cn } from 'cn';
-import { Columns3Icon, DownloadIcon, SearchIcon } from 'lucide-react';
+import { ViewColumnIcon, DownloadIcon, SearchIcon } from '@/components/icons';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfirm, type Confirmation } from '@/components/confirm-dialog';
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { DataTable, DataTableOutline } from './data-table';
 import {
   addressKey,
@@ -35,9 +36,6 @@ export const ROWS_AT_ONCE = 100;
 
 /** How long after the last key the typed search is written into the address. */
 const SEARCH_TO_ADDRESS_MS = 300;
-
-const SELECT =
-  'h-8 rounded-lg border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50';
 
 export interface BulkAction<Row> {
   key: string;
@@ -348,12 +346,12 @@ export function ListPage<Row>({
             </label>
             <SearchIcon
               aria-hidden
-              className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
             />
             <Input
               id={searchId}
               type="search"
-              className="w-64 pl-8"
+              className="w-64 pl-10 max-sm:w-full"
               placeholder={t('list.search')}
               autoComplete="off"
               value={typed}
@@ -365,8 +363,8 @@ export function ListPage<Row>({
           {filters.map((filter) => (
             <label key={filter.key} className="grid gap-0.5 text-xs text-muted-foreground">
               {filter.label}
-              <select
-                className={`${SELECT} text-foreground`}
+              <Select
+                className="w-auto min-w-40"
                 value={current.f?.[filter.key] ?? ''}
                 onChange={(event) => {
                   const others = Object.fromEntries(
@@ -389,15 +387,30 @@ export function ListPage<Row>({
                     {option.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           ))}
+          {/* A quiet "Reset" in the toolbar (docs/design-system.md, Lists). */}
+          {filtered && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setTyped('');
+                write(listSearch({ ...state, q: undefined, f: undefined }), 'push');
+                focusOn(searchBox);
+              }}
+            >
+              {t('list.clearSearch')}
+            </Button>
+          )}
           <div className="ml-auto flex items-center gap-2">
             {canHide.length > 0 && (
               <DropdownMenu>
-                <DropdownMenuTrigger render={<Button variant="outline" />}>
-                  <Columns3Icon aria-hidden />
-                  {t('list.columns')}
+                {/* The column chooser is an icon button (docs/design-system.md, Lists). */}
+                <DropdownMenuTrigger
+                  render={<Button variant="ghost" size="icon" aria-label={t('list.columns')} />}
+                >
+                  <ViewColumnIcon />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   {canHide.map((column) => (
@@ -420,7 +433,7 @@ export function ListPage<Row>({
             )}
             {onExport !== undefined && (
               <Button
-                variant="outline"
+                variant="secondary"
                 disabled={exportRows.length === 0 || exportState?.pending === true}
                 onClick={() => {
                   onExport(
@@ -464,7 +477,7 @@ export function ListPage<Row>({
           <div
             role="group"
             aria-label={t('list.bulkActions')}
-            className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm"
+            className="flex flex-wrap items-center gap-2 rounded-lg bg-today px-3 py-2 text-sm"
           >
             <p role="status" className={cn(ticked.size > 0 && 'font-medium')}>
               {t('list.selected', { count: ticked.size, n: number.format(ticked.size) })}
@@ -476,7 +489,7 @@ export function ListPage<Row>({
               {bulkActions.map((action) => (
                 <Button
                   key={action.key}
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   disabled={ticked.size === 0}
                   onClick={() => {
@@ -553,25 +566,10 @@ export function ListPage<Row>({
                 })}
               </p>
             </div>
-            {matching.length === 0 && filtered && (
-              <div>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setTyped('');
-                    write(listSearch({ ...state, q: undefined, f: undefined }), 'push');
-                    focusOn(searchBox);
-                  }}
-                >
-                  {t('list.clearSearch')}
-                </Button>
-              </div>
-            )}
             {matching.length > count && (
               <div>
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="secondary"
                   onClick={() => {
                     setDrawn({ key: windowKey, count: count + ROWS_AT_ONCE });
                   }}

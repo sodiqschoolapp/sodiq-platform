@@ -49,7 +49,10 @@ test('the sample list is worked from the keyboard, and its state is in the addre
   await page.keyboard.press('Tab');
   await expect(list.getByRole('combobox', { name: en.sample.language })).toBeFocused();
 
-  // Tab: the column chooser; the choice is kept by the browser.
+  // Tab: the quiet "Reset" of a searched list (docs/design-system.md, Lists;
+  // task 2.2d-1), then the column chooser; the choice is kept by the browser.
+  await page.keyboard.press('Tab');
+  await expect(list.getByRole('button', { name: en.list.clearSearch })).toBeFocused();
   const columns = page.getByRole('button', { name: en.list.columns });
   await page.keyboard.press('Tab');
   await expect(columns).toBeFocused();

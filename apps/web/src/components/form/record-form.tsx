@@ -70,7 +70,14 @@ export function RecordForm<Field extends string>({
   }
 
   return (
-    <form ref={element} aria-label={label} className="grid gap-4" onSubmit={submit} noValidate>
+    <form
+      ref={element}
+      aria-label={label}
+      data-slot="record-form"
+      className="grid gap-4"
+      onSubmit={submit}
+      noValidate
+    >
       {children}
       <FailureAlert error={form.failure} />
       <div className="flex flex-wrap items-center gap-3">

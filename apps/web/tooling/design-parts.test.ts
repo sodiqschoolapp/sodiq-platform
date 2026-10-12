@@ -1,0 +1,124 @@
+// @vitest-environment node
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+// docs/design-system.md (task 2.2d-1, pull request #60): the parts every
+// screen is drawn with. Read from the sources, as contrast.test.ts reads the
+// tokens: every file under src/, not a list, so a new file is checked too.
+const web = path.join(import.meta.dirname, '..');
+const src = path.join(web, 'src');
+
+function sourcesOf(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      return sourcesOf(full);
+    }
+    return /\.(ts|tsx)$/.test(entry.name) ? [full] : [];
+  });
+}
+
+const sources = sourcesOf(src).map((file) => ({
+  file: path.relative(web, file),
+  text: readFileSync(file, 'utf8'),
+}));
+
+/** The files whose text matches, as `file: line` for a readable failure. */
+function matching(pattern: RegExp, files = sources): string[] {
+  return files.flatMap(({ file, text }) =>
+    text
+      .split('\n')
+      .flatMap((line, index) => (pattern.test(line) ? [`${file}:${String(index + 1)}`] : [])),
+  );
+}
+
+const read = (file: string): string => readFileSync(path.join(web, file), 'utf8');
+
+describe('the parts of the design system', () => {
+  // Icons: "one set only" (What we never do, 10); Type: Golos Text, not Geist.
+  it('use no Lucide icon and no Geist font, in the sources or the package', () => {
+    expect(matching(/lucide-react|@fontsource-variable\/geist/)).toEqual([]);
+    expect(read('src/index.css')).not.toMatch(/geist/i);
+    const manifest = JSON.parse(read('package.json')) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    const packages = Object.keys({ ...manifest.dependencies, ...manifest.devDependencies });
+    expect(packages).not.toContain('lucide-react');
+    expect(packages).not.toContain('@fontsource-variable/geist');
+  });
+
+  it('draw every icon through components/icons.tsx', () => {
+    const others = sources.filter(
+      ({ file }) => file !== path.join('src', 'components', 'icons.tsx'),
+    );
+    expect(matching(/@material-symbols|\.svg\?react/, others)).toEqual([]);
+  });
+
+  // Buttons: "There are no `xs` sizes and no `outline` or `link` variants."
+  // Both ways of naming one: a JSX attribute, and a key or a default value in code.
+  it('use no removed kind or size of button', () => {
+    expect(matching(/variant\s*=\s*\{?\s*["'](outline|link)["']/)).toEqual([]);
+    expect(matching(/variant\s*:\s*["'](outline|link)["']/)).toEqual([]);
+    expect(matching(/size\s*=\s*\{?\s*["'](xs|icon-xs)["']/)).toEqual([]);
+    expect(matching(/size\s*:\s*["'](xs|icon-xs)["']/)).toEqual([]);
+  });
+
+  it('offer exactly the three sizes and four kinds in button.tsx', () => {
+    const button = read('src/components/ui/button.tsx');
+    const keysOf = (block: string): string[] => {
+      const start = button.indexOf(`${block}: {`);
+      const end = button.indexOf('\n      },', start);
+      return [...button.slice(start, end).matchAll(/^ {8}'?([\w-]+)'?:/gm)].map(
+        (match) => match[1] ?? '',
+      );
+    };
+    expect(keysOf('variant').sort()).toEqual(['default', 'destructive', 'ghost', 'secondary']);
+    expect(keysOf('size').sort()).toEqual(['default', 'icon', 'icon-lg', 'icon-sm', 'lg', 'sm']);
+  });
+
+  // What we never do: 3, a coloured stripe on the left of a row; 4 and 12, a
+  // pill or a dot for a count.
+  it('draw no stripe on the left and no pill or dot for a count', () => {
+    // The components, not the tests that look for these classes.
+    const drawn = sources.filter(({ file }) => !/\.test\.tsx?$/.test(file));
+    expect(matching(/shadow-\[inset_/, drawn)).toEqual([]);
+    expect(matching(/rounded-full[^'"`]*bg-primary|bg-primary[^'"`]*rounded-full/, drawn)).toEqual(
+      [],
+    );
+  });
+
+  // docs/design-system.md, Logo: the browser and home-screen icons.
+  it('name the browser-tab and app icons in index.html and the manifest', () => {
+    const html = read('index.html');
+    for (const icon of [
+      '/brand/favicon.ico',
+      '/brand/sodiq-mark.svg',
+      '/brand/icon-32.png',
+      '/brand/icon-48.png',
+    ]) {
+      expect(html).toContain(`href="${icon}"`);
+    }
+    expect(html).toContain('<link rel="apple-touch-icon" href="/brand/icon-180.png" />');
+    expect(html).toContain('<link rel="manifest" href="/manifest.webmanifest" />');
+    const manifest = JSON.parse(read('public/manifest.webmanifest')) as {
+      icons: { src: string }[];
+    };
+    expect(manifest.icons.map((icon) => icon.src)).toEqual([
+      '/brand/icon-192.png',
+      '/brand/icon-512.png',
+    ]);
+    for (const file of [
+      'favicon.ico',
+      'sodiq-mark.svg',
+      'icon-32.png',
+      'icon-48.png',
+      'icon-180.png',
+      'icon-192.png',
+      'icon-512.png',
+    ]) {
+      expect(existsSync(path.join(web, 'public', 'brand', file)), file).toBe(true);
+    }
+  });
+});

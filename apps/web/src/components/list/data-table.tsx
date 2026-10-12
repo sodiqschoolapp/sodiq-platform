@@ -1,7 +1,8 @@
 import { cn } from 'cn';
-import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDownIcon } from 'lucide-react';
+import { ArrowDownwardIcon, ArrowUpwardIcon, UnfoldMoreIcon } from '@/components/icons';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CHECKBOX as CHECKBOX_BASE, FOCUS_RING } from '@/components/ui/control';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -14,10 +15,9 @@ import {
 } from '@/components/ui/table';
 import type { Column, Sort } from './list-state';
 
-const CHECKBOX = 'size-4 align-middle accent-primary';
+const CHECKBOX = `${CHECKBOX_BASE} align-middle`;
 
-const FOCUS =
-  'rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring';
+const FOCUS = `rounded-sm ${FOCUS_RING}`;
 
 export interface Selection {
   ticked: ReadonlySet<string>;
@@ -71,8 +71,11 @@ function TickAll({ selection }: { selection: Selection }) {
  * The table scrolls in its own box, and its header stays in view while the
  * rows scroll under it (0.8b-1, settled with the staff list of 2.2a).
  */
-const STICKY_BOX = 'max-h-[calc(100vh-14rem)] overflow-y-auto';
-const STICKY_HEAD = 'sticky top-0 z-10 bg-background';
+// The table sits in a white panel (docs/design-system.md, Lists); the header
+// row stays on top with the fill of a table header.
+const PANEL = 'rounded-xl bg-card';
+const STICKY_BOX = `${PANEL} max-h-[calc(100vh-14rem)] overflow-y-auto`;
+const STICKY_HEAD = 'sticky top-0 z-10 bg-muted';
 
 /**
  * The one table of the platform (docs/spec/12-ux-standards.md, Look and feel:
@@ -106,10 +109,10 @@ export function DataTable<Row>({
             const sorted = sort?.key === column.key ? sort : null;
             const Arrow =
               sorted === null
-                ? ChevronsUpDownIcon
+                ? UnfoldMoreIcon
                 : sorted.descending
-                  ? ArrowDownIcon
-                  : ArrowUpIcon;
+                  ? ArrowDownwardIcon
+                  : ArrowUpwardIcon;
             return (
               <TableHead
                 key={column.key}
@@ -156,8 +159,9 @@ export function DataTable<Row>({
               key={id}
               data-state={ticked ? 'selected' : undefined}
               aria-current={id === openId ? 'true' : undefined}
-              // The open record is marked by a bar at the start of its row, not by colour alone.
-              className="aria-[current=true]:bg-muted aria-[current=true]:shadow-[inset_4px_0_0_var(--foreground)]"
+              // The open record: the fill of what is chosen, and its text in
+              // bold, so it is not marked by colour alone; never a stripe.
+              className="aria-[current=true]:bg-today aria-[current=true]:font-semibold"
             >
               {selection !== undefined && (
                 <TableCell className="w-8">
@@ -226,9 +230,9 @@ export function DataTableOutline<Row>({
   return (
     <div role="status" aria-busy="true">
       <span className="sr-only">{t('app.loading')}</span>
-      <Table>
+      <Table containerClassName={PANEL}>
         <TableCaption className="sr-only">{caption}</TableCaption>
-        <TableHeader>
+        <TableHeader className="bg-muted">
           <TableRow>
             {withSelection && <TableHead scope="col" className="w-8" />}
             {columns.map((column) => (

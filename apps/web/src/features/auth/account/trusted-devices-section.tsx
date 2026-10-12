@@ -103,7 +103,7 @@ export function TrustedDevicesSection() {
                     <span className="text-muted-foreground">{t('account.thisDevice')}</span>
                   )}
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     disabled={remove.isPending}
                     aria-label={t('account.removeNamed', {
