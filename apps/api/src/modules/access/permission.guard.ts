@@ -19,7 +19,7 @@ import { HeaderPipe } from '../../http/validation.js';
 import { owedStepsAllowedOn, sessionOf } from '../auth/session.guard.js';
 import { declarationsOf } from './access.decorators.js';
 import type { CurrentAssignment } from './current-assignments.js';
-import { decide } from './permission-check.js';
+import { permitting } from './permission-check.js';
 import { PERMISSION_TABLE } from './permission-table.token.js';
 
 /** What the guard allowed for a request of a `@Requires` route. */
@@ -39,6 +39,12 @@ export interface Access {
    * "The server allows an action if any current assignment permits it").
    */
   assignments: readonly CurrentAssignment[];
+  /**
+   * The assignments that permit this route in this branch, by id; the first
+   * is `assignmentId`. A route with subject scope takes the one whose
+   * subjects fit (`inSubjectScope`, task 2.3b-1).
+   */
+  permitting: readonly CurrentAssignment[];
 }
 
 /** Not on the request object: nothing else can set it. */
@@ -119,7 +125,8 @@ export class PermissionGuard implements CanActivate {
       access.branch === 'none'
         ? null
         : branchHeader.transform(request.headers[BRANCH_HEADER.toLowerCase()]).toLowerCase();
-    const assignment = decide(access, session.assignments, branchId, this.table);
+    const allowing = permitting(access, session.assignments, branchId, this.table);
+    const [assignment] = allowing;
     if (assignment === undefined) {
       throw new ApiException('permission_denied', 403);
     }
@@ -136,6 +143,7 @@ export class PermissionGuard implements CanActivate {
       branchId,
       branchIds: branchId === null ? [] : [branchId],
       assignments: session.assignments,
+      permitting: allowing,
     });
     return true;
   }

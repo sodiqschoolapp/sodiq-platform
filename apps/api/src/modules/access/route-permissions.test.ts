@@ -215,6 +215,22 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: ['super_admin'],
   },
   'GET /api/access/super-admins': { branch: 'none', roles: ['super_admin'] },
+  // Task 2.3b-1: the subjects of an appointment under `accounts` `edit`; the
+  // list of appointments its own area `head_teachers` (decision 8 of #63).
+  'POST /api/people/staff/:id/roles/:assignmentId/subjects': {
+    branch: 'request',
+    roles: ['super_admin'],
+  },
+  'GET /api/access/head-teachers': {
+    branch: 'request',
+    roles: [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'senior_head_teacher',
+      'head_teacher',
+    ],
+  },
   // Task 2.2c-2: photos under `staff` (decision 2 of pull request #59).
   'PUT /api/people/staff/:id/photo': { branch: 'request', roles: STAFF_EDITORS },
   'DELETE /api/people/staff/:id/photo': { branch: 'request', roles: STAFF_EDITORS },

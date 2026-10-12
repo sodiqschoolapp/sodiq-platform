@@ -30,3 +30,4 @@ paths:
 - After changing a route, run `pnpm api:client` so the web client matches.
 - A test of two changes at the same moment runs the real route on the side whose lock order it proves; only the other side may be a transaction held open that does what its route does. Each pair that meets on a row is tested in both directions (found by the spec review of task 2.2a).
 - No personal data (a name, also one read through a `SECURITY DEFINER` function) is in an answer while a sign-in step is still owed (a password change, a second factor): the answer holds only what the step needs (found by code round 1 of task 2.3a).
+- A change "from a date" that ends a dated record and begins its successor (the subjects of an appointment) keeps the start of a planned record: the successor never begins before the record it replaces would have, and the old one ends at its own start (found by the code review of task 2.3b-1).

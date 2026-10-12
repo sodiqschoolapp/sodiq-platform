@@ -217,6 +217,13 @@ export const uz: Texts<'one' | 'other'> = {
     assignment_ended: 'Bu rol allaqachon tugagan. Qaytarish uchun uni yangidan bering.',
     role_from_past:
       'Rol bugun yoki keyinroq boshlanadi va tugaydi. Bugungi yoki keyingi sanani tanlang.',
+    head_teacher_taken:
+      'Tanlangan fanlardan biri shu vaqtda boshqa xodimga biriktirilgan. Boshqa fanlarni tanlang yoki avval uning tayinlovini tugating.',
+    subject_unknown:
+      'Tanlangan fan endi mavjud emas yoki arxivda. Sahifani yangilang va qaytadan tanlang.',
+    role_not_appointment: 'Fanlar faqat fan rahbari va katta fan rahbari rollarida boʻladi.',
+    appointment_ends_by_then:
+      'Bu tayinlov shu sanada yoki undan oldin tugaydi. Oldingi sanani tanlang yoki keyingi tayinlovning fanlarini oʻzgartiring.',
     internal_error:
       'Serverda xatolik yuz berdi. Birozdan keyin qayta urinib koʻring. Takrorlansa, administratorga xabar bering.',
   },
@@ -1046,6 +1053,14 @@ export const uz: Texts<'one' | 'other'> = {
       endConfirmTitle: '«{{role}}» rolini {{date}} dan tugatasizmi?',
       endConfirmText:
         'Sana kelgach, tugatishni bekor qilib boʻlmaydi. Rolni yangidan berish mumkin.',
+      subjects: 'Fanlar',
+      archivedSubject: '{{name}} (arxivda)',
+      chooseAll: 'Hammasini tanlash',
+      changeSubjects: 'Fanlarni oʻzgartirish',
+      changeSubjectsOf: '«{{role}}» rolining fanlarini oʻzgartirish',
+      subjectsFrom: 'Yangi fanlar boshlanish sanasi',
+      subjectsFailed: 'Fanlarni yuklab boʻlmadi.',
+      retry: 'Qayta urinish',
       states: {
         planned: 'rejalashtirilgan',
         current: 'amalda',

@@ -186,6 +186,28 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 12 October 2026: Head Teacher appointments and subject scope (task 2.3b-1)
+
+Plan approved on pull request #63 with corrections 1 to 4; decisions 1 to 14 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Task 2.3b split into 2.3b-1 (appointments, constraints, subject scope, the scoped list route) and 2.3b-2 (the Head Teachers section of People, the Academic Vice Principal alert) | Decision 1; one migration with three triggers and two exclusion constraints, a guard change and four routes |
+| **Look first.** `assignment_subjects` in `SCHOOL_WIDE_TABLES` and `SCHOOL_WIDE_WITH_BRANCH`; `assignments_subjects_end()` in `SECURITY_DEFINER_FUNCTIONS` | Decision 2; read with the assignments before a branch is known; the mirror writes rows the application cannot update |
+| **Look first.** An appointment is one assignment with a fixed list of subjects in `assignment_subjects`, with its dates mirrored, so exclusion constraints hold one holder per subject | Decision 3; Who can act: "person, role, branch, and where needed subjects ... with dates" |
+| **Look first.** At most one Senior Head Teacher per subject; proposed `/spec-change` of `02`, Senior Head Teacher: "... which can be all subjects. A subject has at most one Senior Head Teacher at a time." | Decision 4; `02` speaks of "the Senior Head Teacher of the subject" |
+| **Look first.** An appointment given from today begins at the moment of the give; a later date at 00:00 (differs from decision 10 of #62 for these two roles) | Decision 5; a subject passes at one moment from one holder to the next |
+| **Look first.** A Senior Head Teacher whose record is in another branch is listed in a branch by login only | Decision 14; the login is made from the name, so it is personal data read across branches (permission review of #63) |
+| "Inserted by this transaction" is `assignments.written_xact` (`xid8 default pg_current_xact_id()`), not `xmin` | Correction 1: `Assignments.give` inserts under a savepoint |
+| A change of subjects ends the appointment and gives the next at one moment, the end first; a planned appointment keeps its start; one that ends by then is refused (`appointment_ends_by_then`); a later end carries over; one entry `assignment.subjects_changed` ties the two beside the end and the give | Decision 6, correction 2; code review of #63 |
+| Subject scope fits nothing by default: Head Teacher and Senior Head Teacher by their subjects; Super Admin, Principal, both Vice Principals and Head Tutor every subject | Decision 7 |
+| Area `head_teachers`, view only: Super Admin, Principal, Academic Vice Principal, Senior Head Teacher and Head Teacher (the last two their subjects); appointing stays in `accounts` `edit` | Decision 8 |
+| "All subjects" is a list chosen with "Choose all"; a later subject is not added by itself | Decision 9 |
+| Bringing back an appointment (a later end, a `left` taken back) over a holder appointed meanwhile is 409 `head_teacher_taken` | Decision 10 |
+| No Teacher role or own subject is needed; a Head Teacher's branch is one of the person's | Decision 11 |
+| An archived subject is not added, kept on existing appointments, marked "archived" on the account section and left out of the change form | Decision 12; code review of #63 |
+| `head_teacher_taken` names the taken subjects by their place in the list sent, read after the exclusion constraint refused (the other holder's rows are then committed), not by a pre-check under advisory locks | Build; the constraint is the guard, and the read after it sees exactly what refused |
+
 ## 12 October 2026: accounts and roles (task 2.3a)
 
 Plan approved on pull request #62 with corrections 1 to 6; decisions 1 to 13 confirmed there. Flagged on issue #42.

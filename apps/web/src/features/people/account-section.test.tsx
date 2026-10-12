@@ -5,6 +5,7 @@ import type {
   Role,
   StaffAccount,
   StaffDetail,
+  Subject,
   StaffListItem,
 } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -84,6 +85,7 @@ const TEACHER: AccountRole = {
   state: 'current',
   givenBy: { login: 'a.karimova', name: { firstName: 'Aziza', lastName: 'Karimova' } },
   endedBy: null,
+  subjects: [],
 };
 
 const ACCOUNT: AccountDetail = {
@@ -92,6 +94,36 @@ const ACCOUNT: AccountDetail = {
   neverUsed: true,
   locked: false,
   roles: [TEACHER],
+};
+
+const subjectOf = (n: number, en: string, uz: string, ru: string, archived = false): Subject => ({
+  id: uid(n),
+  names: { uz, ru, en },
+  departmentId: uid(11),
+  grades: [7, 8],
+  colour: 'blue',
+  journalType: 'graded',
+  ratingExam: false,
+  groupSubject: false,
+  languageRule: true,
+  demanding: false,
+  archivedAt: archived ? '2026-10-01T00:00:00.000Z' : null,
+  daily: null,
+  quarterWeightsMissing: null,
+});
+
+const MATHEMATICS = subjectOf(61, 'Mathematics', 'Matematika', 'Математика');
+const PHYSICS = subjectOf(62, 'Physics', 'Fizika', 'Физика');
+const LATIN = subjectOf(63, 'Latin', 'Lotin tili', 'Латынь', true);
+
+const HEAD_TEACHER: AccountRole = {
+  ...TEACHER,
+  id: uid(52),
+  role: 'head_teacher',
+  subjects: [
+    { id: MATHEMATICS.id, names: MATHEMATICS.names, archived: false },
+    { id: LATIN.id, names: LATIN.names, archived: true },
+  ],
 };
 
 const withAccount = (fields: Partial<StaffAccount> = {}): StaffAccount => ({
@@ -120,7 +152,8 @@ function open(
       }),
     'GET /api/people/staff': () => json({ staff: [LOLA], today: '2026-10-10' }),
     'GET /api/setup/divisions': () => json({ divisions: [ACADEMIC], staffCounts: [] }),
-    'GET /api/setup/subjects': () => json({ subjects: [], mayMoveDepartment: false }),
+    'GET /api/setup/subjects': () =>
+      json({ subjects: [MATHEMATICS, PHYSICS, LATIN], mayMoveDepartment: false }),
     [`GET /api/people/staff/${LOLA.id}`]: () => json(detail),
     [`GET /api/people/staff/${LOLA.id}/availability`]: () =>
       json({ entries: [], elsewhere: [], today: '2026-10-10' }),
@@ -267,6 +300,126 @@ describe('the account section', () => {
         from: '2026-10-11',
       });
     });
+  });
+
+  // Task 2.3b-1: the Head Teacher and the Senior Head Teacher with their subjects.
+  it('gives a Head Teacher with subjects, offering the active ones, and a Senior Head Teacher with all', async () => {
+    const calls = open('super_admin', {
+      [`GET /api/people/staff/${LOLA.id}/account`]: () => json(withAccount()),
+      [`POST /api/people/staff/${LOLA.id}/roles`]: () => json(withAccount(), 201),
+    });
+    const found = await section();
+    const form = within(found).getByRole('form', {
+      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+    });
+    expect(within(form).queryByRole('group', { name: en.people.account.subjects })).toBeNull();
+    fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
+      target: { value: 'head_teacher' },
+    });
+    const subjects = await within(form).findByRole('group', { name: en.people.account.subjects });
+    expect(within(subjects).queryByLabelText('Latin')).toBeNull();
+    fireEvent.click(within(subjects).getByLabelText('Physics'));
+    fireEvent.click(within(subjects).getByLabelText('Mathematics'));
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.filter((call) => call.route.endsWith('/roles')).map((call) => call.body),
+      ).toEqual([
+        {
+          role: 'head_teacher',
+          branchId: NORTH.id,
+          from: '2026-10-10',
+          subjectIds: [MATHEMATICS.id, PHYSICS.id],
+        },
+      ]);
+    });
+
+    fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
+      target: { value: 'senior_head_teacher' },
+    });
+    expect(within(form).queryByLabelText(en.people.account.branch)).toBeNull();
+    fireEvent.click(within(form).getByRole('button', { name: en.people.account.chooseAll }));
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route.endsWith('/roles')).at(-1)?.body).toEqual({
+        role: 'senior_head_teacher',
+        branchId: null,
+        from: '2026-10-10',
+        subjectIds: [MATHEMATICS.id, PHYSICS.id],
+      });
+    });
+  });
+
+  it('shows the subjects of an appointment and changes them from a date', async () => {
+    const calls = open('super_admin', {
+      [`GET /api/people/staff/${LOLA.id}/account`]: () =>
+        json(withAccount({ account: { ...ACCOUNT, roles: [TEACHER, HEAD_TEACHER] } })),
+      [`POST /api/people/staff/${LOLA.id}/roles/${uid(52)}/subjects`]: () => json(withAccount()),
+    });
+    const found = await section();
+    const row = found.querySelector('tr[data-role="head_teacher"]');
+    expect(row?.querySelector('[data-subjects]')?.textContent).toBe(
+      `Mathematics, ${en.people.account.archivedSubject.replace('{{name}}', 'Latin')}`,
+    );
+    expect(
+      within(found).queryByRole('button', {
+        name: en.people.account.changeSubjectsOf.replace('{{role}}', en.roles.teacher),
+      }),
+    ).toBeNull();
+    fireEvent.click(
+      within(found).getByRole('button', {
+        name: en.people.account.changeSubjectsOf.replace('{{role}}', en.roles.head_teacher),
+      }),
+    );
+    const form = within(found).getByRole('form', {
+      name: en.people.account.changeSubjectsOf.replace('{{role}}', en.roles.head_teacher),
+    });
+    const subjects = await within(form).findByRole('group', { name: en.people.account.subjects });
+    expect(within(subjects).getByLabelText<HTMLInputElement>('Mathematics').checked).toBe(true);
+    fireEvent.click(within(subjects).getByLabelText('Physics'));
+    fireEvent.change(within(form).getByLabelText(en.people.account.subjectsFrom), {
+      target: { value: '2026-10-12' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls
+          .filter((call) => call.route.startsWith('POST') && call.route.endsWith('/subjects'))
+          .map((call) => call.body),
+      ).toEqual([{ subjectIds: [MATHEMATICS.id, PHYSICS.id], from: '2026-10-12' }]);
+    });
+  });
+
+  it('says when a chosen subject has another Head Teacher', async () => {
+    open('super_admin', {
+      [`GET /api/people/staff/${LOLA.id}/account`]: () => json(withAccount()),
+      [`POST /api/people/staff/${LOLA.id}/roles`]: () =>
+        json(
+          {
+            error: {
+              code: 'head_teacher_taken',
+              message: 'A subject of the appointment has another holder at that time.',
+              requestId: 'request-1',
+              details: [{ path: 'subjectIds.0', code: 'taken', message: 'taken' }],
+            },
+          },
+          409,
+        ),
+    });
+    const found = await section();
+    const form = within(found).getByRole('form', {
+      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
+      target: { value: 'head_teacher' },
+    });
+    fireEvent.click(
+      within(
+        await within(form).findByRole('group', { name: en.people.account.subjects }),
+      ).getByLabelText('Mathematics'),
+    );
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(await within(form).findByText(en.errors.head_teacher_taken)).toBeDefined();
   });
 
   it('ends a role from a date after asking, naming the person and the role', async () => {

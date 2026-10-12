@@ -2,6 +2,7 @@ import type { Server } from 'node:http';
 import { Controller, Get, type INestApplication } from '@nestjs/common';
 import {
   apiErrorSchema,
+  isAppointment,
   secondStepRecoveryCodesSchema,
   secondStepSetUpSchema,
   type Clock,
@@ -9,7 +10,7 @@ import {
 } from '@sodiq/shared';
 import request, { type Response, type Test } from 'supertest';
 import { CLOCK } from '../clock/clock.module.js';
-import { Transactions } from '../database/transactions.js';
+import { Transactions, type Transaction } from '../database/transactions.js';
 import { DEVICE_COOKIE } from '../http/device-cookie.js';
 import { SESSION_COOKIE } from '../http/session-cookie.js';
 import { AnySignedIn } from '../modules/access/access.decorators.js';
@@ -88,7 +89,15 @@ export interface RoleOfAccount {
   branchId?: string;
   /** The moment the role begins; now when left out. */
   validFrom?: Date;
+  /**
+   * The subjects of a Head Teacher or Senior Head Teacher appointment. Left
+   * out for such a role, the kit makes a subject of its own for it (an
+   * appointment has at least one, db/migrations/0028).
+   */
+  subjectIds?: readonly string[];
 }
+
+let kitSubjects = 0;
 
 export interface SignInKitOptions {
   /**
@@ -105,21 +114,49 @@ export interface SignInKitOptions {
  * What the tests of sign-in need again and again, for an application made with
  * `createTestApp({ database, clock, controllers: [ProbeController] })`.
  */
+/** A subject of the STEAM department for one appointment of the kit, written by the application. */
+async function kitSubject(transaction: Transaction): Promise<string> {
+  kitSubjects += 1;
+  const name = `Kit subject ${String(kitSubjects)} ${String(process.pid)}`;
+  const steam = await transaction
+    .selectFrom('departments')
+    .select('id')
+    .where('name_en', '=', 'STEAM')
+    .executeTakeFirstOrThrow();
+  const inserted = await transaction
+    .insertInto('subjects')
+    .values({
+      name_uz: name,
+      name_ru: name,
+      name_en: name,
+      department_id: steam.id,
+      grades: [7],
+      colour: 'blue',
+      journal_type: 'graded',
+    })
+    .returning('id')
+    .executeTakeFirstOrThrow();
+  return inserted.id;
+}
+
 export function signInKit(app: INestApplication, options: SignInKitOptions = {}) {
   const server = app.getHttpServer() as Server;
 
   /** Gives the account a role from now on, as the server command would: nobody is named as the giver. */
   function giveRole(accountId: string, held: RoleOfAccount): Promise<{ id: string }> {
     const branchId = held.branchId ?? null;
-    return app.get(Transactions).run(branchId === null ? [] : [branchId], (transaction) =>
-      app.get(Assignments).give(transaction, {
+    return app.get(Transactions).run(branchId === null ? [] : [branchId], async (transaction) => {
+      const subjectIds =
+        held.subjectIds ?? (isAppointment(held.role) ? [await kitSubject(transaction)] : undefined);
+      return app.get(Assignments).give(transaction, {
         accountId,
         role: held.role,
         branchId,
         givenBy: null,
         ...(held.validFrom === undefined ? {} : { validFrom: held.validFrom }),
-      }),
-    );
+        ...(subjectIds === undefined ? {} : { subjectIds }),
+      });
+    });
   }
 
   /** Ends an assignment now; `branchId` is the branch of the assignment, if it has one. */

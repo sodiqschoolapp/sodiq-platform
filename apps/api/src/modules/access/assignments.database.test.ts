@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
+import { insertSubject } from '../../testing/subjects-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
@@ -357,13 +358,21 @@ describe('assignments in the database', () => {
 
     it('takes 00:00 in the time zone of the school for a role without a branch', async () => {
       clock.set('2026-10-05T00:30:00+05:00');
-      const found = await sql<{ id: string }>`
-        insert into assignments (account_id, role, branch_id, valid_from, created_at)
-        values (${endsAccount}, 'senior_head_teacher', null, '2026-09-28T09:00:00+05:00',
-          '2026-09-28T09:00:00+05:00')
-        returning id
-      `.execute(database.migrator);
-      const id = found.rows[0]?.id ?? '';
+      const subject = await insertSubject(database.migrator);
+      // A Senior Head Teacher has subjects (db/migrations/0028), written in the same transaction.
+      const id = await database.migrator.transaction().execute(async (transaction) => {
+        const found = await sql<{ id: string }>`
+          insert into assignments (account_id, role, branch_id, valid_from, created_at)
+          values (${endsAccount}, 'senior_head_teacher', null, '2026-09-28T09:00:00+05:00',
+            '2026-09-28T09:00:00+05:00')
+          returning id
+        `.execute(transaction);
+        const given = found.rows[0]?.id ?? '';
+        await sql`insert into assignment_subjects (assignment_id, subject_id) values (${given}, ${subject})`.execute(
+          transaction,
+        );
+        return given;
+      });
 
       await expect(setEnd(id, '2026-10-04T23:59:00+05:00')).rejects.toMatchObject({
         constraint: 'assignment_end_past',

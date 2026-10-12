@@ -1,8 +1,11 @@
 import {
   accountCreateSchema,
   GIVABLE_ROLES,
+  isAppointment,
   roleEndSchema,
   roleGiveSchema,
+  SCHOOL_WIDE_ROLES,
+  subjectsChangeSchema,
   type AccountCreate,
   type AccountRole,
   type Actor,
@@ -11,14 +14,22 @@ import {
   type RoleGive,
   type StaffAccount,
   type StaffDetail,
+  type SubjectsChange,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
-import { DateField, Field, SelectField } from '@/components/field';
+import {
+  CheckboxGroupField,
+  DateField,
+  Field,
+  listValue,
+  listValues,
+  SelectField,
+} from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
@@ -26,7 +37,8 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { SUPER_ADMINS_KEY } from '@/features/access/super-admin-banner';
 import { useView } from '@/features/access/use-view';
-import { schoolDateText } from '@/features/setup/setup-api';
+import { nameOf, schoolDateText } from '@/features/setup/setup-api';
+import { subjectsQuery } from '@/features/setup/subjects-api';
 import { FirstPasswordSlipDialog } from './first-password-slip';
 import { asFormSchema } from './form-schema';
 import { loginSuggestionQuery, staffAccountKey, staffAccountQuery } from './people-api';
@@ -214,6 +226,7 @@ function AccountRoles({
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const [ending, setEnding] = useState<string | null>(null);
+  const [changing, setChanging] = useState<string | null>(null);
   const account = data.account;
   if (account === null) {
     return null;
@@ -251,6 +264,19 @@ function AccountRoles({
               <tr key={role.id} data-role={role.role}>
                 <td className="py-1 pr-3 align-top">
                   {t(`roles.${role.role}`)}
+                  {role.subjects.length > 0 && (
+                    <span className="block text-xs" data-subjects>
+                      {role.subjects
+                        .map((subject) =>
+                          subject.archived
+                            ? t('people.account.archivedSubject', {
+                                name: nameOf(subject.names, language),
+                              })
+                            : nameOf(subject.names, language),
+                        )
+                        .join(', ')}
+                    </span>
+                  )}
                   {role.givenBy !== null && (
                     <span className="block text-xs text-muted-foreground">
                       {t('people.account.givenBy', { name: actorText(role.givenBy) })}
@@ -266,6 +292,21 @@ function AccountRoles({
                   <span className="block text-xs text-muted-foreground">{t(stateText(role))}</span>
                 </td>
                 <td className="py-1 align-top">
+                  {data.canEdit && role.state !== 'ended' && isAppointment(role.role) && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      aria-label={t('people.account.changeSubjectsOf', {
+                        role: t(`roles.${role.role}`),
+                      })}
+                      onClick={() => {
+                        setChanging(role.id);
+                      }}
+                    >
+                      {t('people.account.changeSubjects')}
+                    </Button>
+                  )}
                   {data.canEdit && role.state !== 'ended' && (
                     <Button
                       type="button"
@@ -303,6 +344,23 @@ function AccountRoles({
               }}
             />
           ))}
+      {data.canEdit &&
+        account.roles
+          .filter(
+            (role) => role.id === changing && role.state !== 'ended' && isAppointment(role.role),
+          )
+          .map((role) => (
+            <ChangeSubjectsForm
+              key={role.id}
+              staff={staff}
+              role={role}
+              today={data.today}
+              onChanged={async () => {
+                setChanging(null);
+                await onChange();
+              }}
+            />
+          ))}
       {data.canEdit && !data.left && (
         <GiveRoleForm staff={staff} label={label} today={data.today} onGiven={onChange} />
       )}
@@ -310,7 +368,73 @@ function AccountRoles({
   );
 }
 
-type GiveField = 'role' | 'branchId' | 'from';
+type GiveField = 'role' | 'branchId' | 'from' | 'subjectIds';
+
+/**
+ * The active subjects of the school for an appointment, in the language of the
+ * screen (task 2.3b-1). The list is the same in every branch.
+ */
+function useSubjectOptions() {
+  const { i18n } = useTranslation();
+  const { branchId } = useView();
+  const subjects = useQuery(subjectsQuery(branchId));
+  const options = (subjects.data?.subjects ?? [])
+    .filter((subject) => subject.archivedAt === null)
+    .map((subject) => ({ value: subject.id, label: nameOf(subject.names, i18n.language) }))
+    .sort((a, b) => a.label.localeCompare(b.label, i18n.language));
+  return { subjects, options };
+}
+
+/**
+ * The subjects of an appointment: one switch per active subject, and "Choose
+ * all" for an appointment of every subject (decision 9 of #63). A failed list
+ * says so with a retry.
+ */
+function SubjectsField({
+  bound,
+}: {
+  bound: Omit<ComponentProps<typeof CheckboxGroupField>, 'label' | 'options'>;
+}) {
+  const { t } = useTranslation();
+  const { subjects, options } = useSubjectOptions();
+  if (subjects.isError) {
+    return (
+      <p className="text-sm" role="alert">
+        {t('people.account.subjectsFailed')}{' '}
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            void subjects.refetch();
+          }}
+        >
+          {t('people.account.retry')}
+        </Button>
+      </p>
+    );
+  }
+  if (subjects.data === undefined) {
+    return <LoadingOutline />;
+  }
+  return (
+    <div className="grid gap-2">
+      <CheckboxGroupField label={t('people.account.subjects')} options={options} {...bound} />
+      <div>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            bound.onChange({ target: { value: listValue(options.map((option) => option.value)) } });
+          }}
+        >
+          {t('people.account.chooseAll')}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 /** A role from a date (decision 10): no branch for the Super Admin, one of the person's branches otherwise. */
 function GiveRoleForm({
@@ -337,11 +461,17 @@ function GiveRoleForm({
   const main = staff.branches.find((branch) => branch.main) ?? staff.branches[0];
   const form = useRecordForm<GiveField, RoleGive>({
     schema: asFormSchema<RoleGive>(roleGiveSchema, (path) => [...path]),
-    initial: { role: '', branchId: main?.branchId ?? '', from: today },
+    initial: { role: '', branchId: main?.branchId ?? '', from: today, subjectIds: '' },
     read: (typed) => ({
       role: typed.role,
-      branchId: typed.role === 'super_admin' || typed.branchId === '' ? null : typed.branchId,
+      branchId:
+        SCHOOL_WIDE_ROLES.some((one) => one === typed.role) || typed.branchId === ''
+          ? null
+          : typed.branchId,
       from: typed.from,
+      ...(APPOINTMENT_ROLE_VALUES.includes(typed.role)
+        ? { subjectIds: listValues(typed.subjectIds) }
+        : {}),
     }),
     save: async (role) => {
       await give.mutateAsync(role);
@@ -359,7 +489,7 @@ function GiveRoleForm({
         ]}
         {...role}
       />
-      {role.value !== 'super_admin' && (
+      {!SCHOOL_WIDE_ROLES.some((one) => one === role.value) && (
         <SelectField
           label={t('people.account.branch')}
           options={staff.branches.map((branch) => ({
@@ -369,7 +499,67 @@ function GiveRoleForm({
           {...form.bind('branchId')}
         />
       )}
+      {APPOINTMENT_ROLE_VALUES.includes(role.value) && (
+        <SubjectsField bound={form.bind('subjectIds')} />
+      )}
       <DateField label={t('people.account.from')} min={today} {...form.bind('from')} />
+    </RecordForm>
+  );
+}
+
+const APPOINTMENT_ROLE_VALUES: readonly string[] = GIVABLE_ROLES.filter((one) =>
+  isAppointment(one),
+);
+
+/**
+ * The subjects of a Head Teacher or Senior Head Teacher appointment from a
+ * date (task 2.3b-1, decision 6 of #63): the server ends it and begins a new
+ * one with these subjects at the same moment.
+ */
+function ChangeSubjectsForm({
+  staff,
+  role,
+  today,
+  onChanged,
+}: {
+  staff: StaffDetail;
+  role: AccountRole;
+  today: string;
+  onChanged: () => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const change = useMutation({
+    mutationFn: (changed: SubjectsChange) =>
+      answerOf(
+        api.POST('/api/people/staff/{id}/roles/{assignmentId}/subjects', {
+          params: { header: branchHeader(), path: { id: staff.id, assignmentId: role.id } },
+          body: changed,
+        }),
+      ),
+  });
+  const form = useRecordForm<'subjectIds' | 'from', SubjectsChange>({
+    schema: asFormSchema<SubjectsChange>(subjectsChangeSchema, (path) => [...path]),
+    // An archived subject is kept by the appointment but not offered again
+    // (decision 12 of #63): the change starts from the active ones.
+    initial: {
+      subjectIds: listValue(
+        role.subjects.filter((subject) => !subject.archived).map((subject) => subject.id),
+      ),
+      from: today,
+    },
+    read: (typed) => ({ subjectIds: listValues(typed.subjectIds), from: typed.from }),
+    save: async (changed) => {
+      await change.mutateAsync(changed);
+      await onChanged();
+    },
+  });
+  return (
+    <RecordForm
+      form={form}
+      label={t('people.account.changeSubjectsOf', { role: t(`roles.${role.role}`) })}
+    >
+      <SubjectsField bound={form.bind('subjectIds')} />
+      <DateField label={t('people.account.subjectsFrom')} min={today} {...form.bind('from')} />
     </RecordForm>
   );
 }

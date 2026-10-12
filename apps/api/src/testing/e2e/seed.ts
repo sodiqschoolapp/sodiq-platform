@@ -396,6 +396,67 @@ try {
       .execute();
   });
 
+  // Two people with accounts and two subjects in the same branch, for the
+  // Head Teacher appointments of task 2.3b-1: the divisions test's Super Admin
+  // appoints the first and is refused a second Head Teacher of a subject.
+  for (const [n, first, last, phone] of [
+    [1, 'Rustam', 'Nazarov', '+998935550102'],
+    [2, 'Saida', 'Yusupova', '+998935550103'],
+  ] as const) {
+    const account = await create(first, last);
+    await migrator.transaction().execute(async (transaction) => {
+      const person = await transaction
+        .insertInto('staff')
+        .values({
+          kind: 'person',
+          staff_id: `S-26902${String(n)}`,
+          first_name: first,
+          last_name: last,
+          sex: n === 1 ? 'male' : 'female',
+          birth_date: '1985-05-20',
+          phone,
+          admission_date: '2026-09-01',
+          account_id: account.id,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('staff_branches')
+        .values({ staff_id: person.id, branch_id: accountsBranch, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_divisions')
+        .values({
+          staff_id: person.id,
+          division_id: academic.id,
+          department_id: steam.id,
+          is_main: true,
+        })
+        .execute();
+      await transaction
+        .insertInto('staff_statuses')
+        .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+        .execute();
+    });
+  }
+  for (const [uz, ru, enName] of [
+    ['Algebra', 'Алгебра', 'Algebra'],
+    ['Trigonometriya', 'Тригонометрия', 'Trigonometry'],
+  ] as const) {
+    await migrator
+      .insertInto('subjects')
+      .values({
+        name_uz: uz,
+        name_ru: ru,
+        name_en: enName,
+        department_id: steam.id,
+        grades: [9, 10, 11],
+        colour: 'indigo',
+        journal_type: 'graded',
+      })
+      .execute();
+  }
+
   // A second Academic Vice Principal of that branch exports its staff list
   // (task 2.2c-1); the export reads and changes nothing.
   const staffExport = await create('Kamola', 'Rasulova');

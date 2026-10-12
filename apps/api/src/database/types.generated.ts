@@ -70,6 +70,16 @@ export interface Assignments {
   role: string;
   valid_from: Timestamp;
   valid_until: Timestamp | null;
+  written_xact: Generated<string | null>;
+}
+
+export interface AssignmentSubjects {
+  assignment_id: string;
+  branch_id: string | null;
+  role: string;
+  subject_id: string;
+  valid_from: Timestamp;
+  valid_until: Timestamp | null;
 }
 
 export interface AuditLog {
@@ -478,6 +488,7 @@ export interface DB {
   academic_years: AcademicYears;
   account_second_steps: AccountSecondSteps;
   accounts: Accounts;
+  assignment_subjects: AssignmentSubjects;
   assignments: Assignments;
   audit_log: AuditLog;
   audit_log_school: AuditLogSchool;

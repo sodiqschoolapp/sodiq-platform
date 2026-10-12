@@ -95,6 +95,20 @@ describe('a frozen permission table', () => {
   // Task 2.2c-1, decision 2 of pull request #58: `export` in `rooms` and
   // `divisions` for the three roles that view them (`02`, Rules; `12`,
   // Lists: every list has export), and none in `branches`.
+  // Task 2.3b-1, decision 8 of pull request #63: view only, for the roles that oversee or need the approver of a subject.
+  it('lets five roles view the Head Teacher appointments and nobody change them there', () => {
+    const viewers = [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'senior_head_teacher',
+      'head_teacher',
+    ];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.head_teachers[role], role).toEqual(viewers.includes(role) ? ['view'] : []);
+    }
+  });
+
   it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
     expect(Object.keys(PERMISSIONS).sort()).toEqual([
       'academic_years',
@@ -104,6 +118,7 @@ describe('a frozen permission table', () => {
       'current_period',
       'day_templates',
       'divisions',
+      'head_teachers',
       'quarters',
       'rooms',
       'settings',

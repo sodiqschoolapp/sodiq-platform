@@ -135,6 +135,16 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   active Super Admins asks `create`, so only the Super Admin reads it. A
  *   new area for new routes, decided without the owner on pull request #62
  *   (decision 4), confirmed at its review and flagged on issue #42.
+ * - `head_teachers` (`02`, Head Teachers and Senior Head Teachers; task
+ *   2.3b-1): the Head Teacher and Senior Head Teacher appointments of a
+ *   branch, view only. The Principal "views everything in the branch"; the
+ *   Academic Vice Principal needs the approver of a subject ("Who
+ *   approves"); a Senior Head Teacher "Sees the Head Teachers of those
+ *   subjects", and a Head Teacher the holders of their own subjects, both
+ *   limited to their subjects on the server (`subject-scope.ts`).
+ *   Appointing stays in `accounts` `edit`. A new area for new routes,
+ *   decided without the owner on pull request #63 (decision 8), confirmed at
+ *   its review and flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -200,6 +210,13 @@ export const PERMISSIONS = freezeTable({
   accounts: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],
+  }),
+  head_teachers: rows({
+    super_admin: ['view'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
   }),
   current_period: rows({
     super_admin: ['view'],

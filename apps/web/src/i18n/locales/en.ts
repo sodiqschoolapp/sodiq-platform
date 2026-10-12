@@ -209,6 +209,13 @@ export const en = {
       'This would leave the school without an active Super Admin. Give the Super Admin role to another person first.',
     assignment_ended: 'This role has already ended. To give it again, give it as a new role.',
     role_from_past: 'Roles start and end today or later. Choose today or a later date.',
+    head_teacher_taken:
+      'Another person holds a chosen subject at that time. Choose other subjects, or end that appointment first.',
+    subject_unknown:
+      'A chosen subject no longer exists or is archived. Reload the page and choose again.',
+    role_not_appointment: 'Only a Head Teacher or Senior Head Teacher role has subjects.',
+    appointment_ends_by_then:
+      'This appointment ends on or before that date. Choose an earlier date, or change the subjects of the appointment that follows.',
     internal_error:
       'Something went wrong on the server. Try again in a moment. If it happens again, tell an administrator.',
   } satisfies Record<ErrorCode, string>,
@@ -1035,6 +1042,14 @@ export const en = {
       endConfirmTitle: 'End the role {{role}} from {{date}}?',
       endConfirmText:
         'Once the date has come, the end cannot be taken back. The role can be given again as a new one.',
+      subjects: 'Subjects',
+      archivedSubject: '{{name}} (archived)',
+      chooseAll: 'Choose all',
+      changeSubjects: 'Change subjects',
+      changeSubjectsOf: 'Change the subjects of {{role}}',
+      subjectsFrom: 'New subjects from',
+      subjectsFailed: 'The subjects could not be loaded.',
+      retry: 'Try again',
       states: {
         planned: 'planned',
         current: 'in force',

@@ -30,6 +30,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'Recovery codes of the second step of an account; a row holds an id, a hash and a moment.',
   assignments:
     'The Super Admin and the Senior Head Teacher have no branch, and the roles of an account are read on every request before a branch is known; a row holds ids, a role and moments.',
+  assignment_subjects:
+    'The subjects of a Head Teacher or Senior Head Teacher assignment, read with the assignments on every request before a branch is known; a row holds ids, a role and the moments of its assignment (task 2.3b-1, decision 2 of pull request #63).',
   sign_in_throttle:
     'Failed sign-ins are counted before any branch is known, also for logins that do not exist; a row holds hashes, a count and moments.',
   feedback_reports:
@@ -56,6 +58,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
 const SCHOOL_WIDE_WITH_BRANCH: Record<string, string> = {
   assignments:
     'An assignment names the branch of a role; the rows of the Super Admin and the Senior Head Teacher have none, and the roles of an account are read before a branch is known. Who may act in which branch is decided by the permission guard (task 0.7b).',
+  assignment_subjects:
+    'The subject rows of an assignment carry its branch so that the database holds one Head Teacher per subject per branch; the Senior Head Teacher rows have none. Read with the assignments before a branch is known; a read for anyone but the Super Admin keeps to the branch of the request in code (task 2.3b-1, decision 2 of pull request #63).',
   notifications:
     'A notification belongs to an account and names the branch of its event as a label; a person reads their notifications from every branch at once, before any branch is chosen, and an event of the whole school has none. Every route reads the rows of the account of the session only (task 0.9, decided by the owner).',
 };
@@ -135,6 +139,8 @@ function auditSchoolPartitions(): Record<string, string> {
  * Look first).
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
+  'assignments_subjects_end()':
+    'Writes the end of an assignment on its subject rows, which the application cannot update, so the exclusion constraints of one Head Teacher per subject see every end (task 2.3b-1, decision 2 of pull request #63).',
   'own_person_name(uuid)':
     "The first and last name of the staff record linked to an account, for the menu of the person's own session (pull request #61, decision 6); sign-in runs before a branch is known.",
   'reset_by_person_name(uuid)':
@@ -815,9 +821,14 @@ describe('the catalog checks', () => {
         ...Object.fromEntries(names.map((name) => [name, 'Named for this test.'])),
       });
 
-      // Each name is a decision of the owner: assignments (0.7b), notifications (0.9).
-      it('hold exactly the assignments and the notifications', () => {
-        expect(Object.keys(SCHOOL_WIDE_WITH_BRANCH)).toEqual(['assignments', 'notifications']);
+      // Each name is a decision: assignments (0.7b), notifications (0.9), assignment_subjects
+      // (decision 2 of pull request #63, Look first).
+      it('hold exactly the assignments, their subjects and the notifications', () => {
+        expect(Object.keys(SCHOOL_WIDE_WITH_BRANCH)).toEqual([
+          'assignments',
+          'assignment_subjects',
+          'notifications',
+        ]);
       });
 
       it('accept a named table whose branch_id may be empty and points at a branch', async () => {

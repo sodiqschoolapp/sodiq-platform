@@ -200,10 +200,17 @@ How to read the task lines:
   - Done when: the refusals in the spec are tested, including the last Super Admin rule, and the browser test creates an account, gives a role and signs in with the slip.
   - Split from 2.3 on pull request #62 (decision 1, Look first).
 
-- [ ] **2.3b Head Teacher appointments and subject scope**
-  - Read: `02` (Head Teachers and Senior Head Teachers, Rules), `edge/people-roles-accounts` (Who can act).
-  - Build: Head Teacher appointments to subjects in a branch (at most one per subject per branch, held by a constraint); Senior Head Teacher appointments to subjects across branches; both with dates; subject scope in the permission guard (`decide` with every permitting assignment, the audit entry naming the one whose scope fits); the alert of a branch with no active Academic Vice Principal (Who can act).
+- [x] **2.3b-1 Head Teacher appointments and subject scope** (pull request #63)
+  - Read: `02` (Head Teachers and Senior Head Teachers, Rules), `edge/people-roles-accounts` (Who can act), the plan and review of pull request #63.
+  - Build: Head Teacher appointments to subjects in a branch (at most one per subject per branch, held by a constraint); Senior Head Teacher appointments to subjects across branches (at most one per subject, decision 4 of #63); both with dates, given and changed by the Super Admin on the account section; subject scope in the permission guard (`decide` with every permitting assignment, the audit entry naming the one whose scope fits); the list of the Head Teacher appointments of a branch (route `GET access/head-teachers`, area `head_teachers`), the first route with subject scope.
   - Done when: a second Head Teacher of a subject in a branch is refused by the database and the scope is tested for a teacher of two subjects.
+  - Split from 2.3b on pull request #63 (decision 1, Look first).
+
+- [ ] **2.3b-2 Head Teachers list and the Academic Vice Principal alert**
+  - Read: `02` (Head Teachers and Senior Head Teachers), `edge/people-roles-accounts` (Who can act), the plan of pull request #63 (the parts marked 2.3b-2, decisions 13 and 14).
+  - Build: the "Head Teachers" section of People (`/people/head-teachers`) on the route of 2.3b-1, with a tab per section the role views; the alert of a branch with no active Academic Vice Principal (Who can act): a `SECURITY DEFINER` function `branches_without_vice_principal(at)` (branch ids and names only, archived branches never), the route `GET access/branches-without-vice-principal` for the Super Admin, and a banner beside the Super Admin banner.
+  - Done when: the alert is tested for an Academic Vice Principal who is inactive, locked, ended or planned, and the browser test shows the list and the banner.
+  - Split from 2.3b on pull request #63 (decision 1, Look first).
 
 - [ ] **2.3c Locks, resets and the own account**
   - Read: `02` (Accounts and sign-in: build order), `edge/people-roles-accounts` (Who can act, Staff over time, Accounts and sign-in), `docs/decisions.md` (answer 16).
