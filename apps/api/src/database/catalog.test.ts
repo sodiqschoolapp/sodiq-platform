@@ -129,11 +129,14 @@ function auditSchoolPartitions(): Record<string, string> {
  * with its reason. Each answers a fact that rows of other branches decide and
  * returns a boolean or a count, never row data, reading the branches of the
  * transaction itself (task 2.2a, owner's answer 2 and the review of pull
- * request #53, correction 2 and decision 17).
+ * request #53, correction 2 and decision 17). Three of task 2.2b go beyond
+ * that pattern, each for its reason below (pull request #57, decision 8).
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'staff_account_blocked(uuid,timestamp with time zone)':
     'Whether the staff record of an account is inactive or left today: sign-in and every request run before a branch is known.',
+  'staff_availability_elsewhere(uuid)':
+    "The working hours of the other branches of one record linked to a branch of the transaction, read only (06: the Academic Vice Principal \"sees the others read only\"); rows of hours, nothing personal.",
   'staff_count_by_division(timestamp with time zone)':
     'The number of people per main division for the school-wide list of divisions.',
   'staff_duplicate_elsewhere(text,text,date,text)':
@@ -142,8 +145,12 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'Whether anybody who has not left is in a division or a department: the school-wide archives.',
   'staff_out_for_good(uuid,timestamp with time zone)':
     'Whether one record is out of the school and stays out (no re-hire planned), whichever branch link the request sees.',
+  'staff_record_kind(uuid)':
+    'The kind of one record by id, or null when it does not exist, so that a check never depends on what the membership filter shows; no row data.',
   'staff_subject_in_use(uuid,smallint[],uuid,timestamp with time zone)':
     "How many people of other branches a change of a subject's department or grades would leave outside it.",
+  'vacancy_delete(uuid)':
+    "Deletes one vacancy of a branch of the transaction with every row of it (04: one that never held a load can be deleted); the membership filter hides the record once its link is gone, and sodiq_app keeps no delete right on staff or its history.",
 };
 
 /** The filter of db/migrations/0002, as PostgreSQL writes it back. */
