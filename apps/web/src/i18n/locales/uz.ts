@@ -986,7 +986,7 @@ export const uz: Texts<'one' | 'other'> = {
       caption: 'Filial fan rahbarlari',
       emptyTitle: 'Fan rahbarlari yoʻq',
       empty: 'Bu filialda birorta fan rahbari tayinlanmagan. Uni xodim hisobida tayinlang.',
-      emptyView: 'Bu filialda sizga koʻrinadigan fanlarga fan rahbari tayinlanmagan.',
+      emptyView: 'Bu yerda fan rahbarlari va ular rahbarlik qiladigan fanlar koʻrinadi.',
       toStaff: 'Xodimlar roʻyxatini ochish',
       role: 'Rol',
       person: 'Xodim',

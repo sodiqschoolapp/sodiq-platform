@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
-import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
 const heading = (name: string) => screen.findByRole('heading', { name });
 const ROUTE = 'GET /api/access/branches-without-vice-principal';
@@ -49,6 +49,16 @@ describe('the alert of a branch without an Academic Vice Principal', () => {
     await waitFor(() => {
       expect(calls.some((call) => call.route === ROUTE)).toBe(true);
     });
+    expect(banner()).toBeNull();
+  });
+
+  it('shows a failure as its text', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(superAdmin()),
+      [ROUTE]: () => refusal('internal_error', 500),
+    });
+    renderApp('/');
+    expect(await screen.findByText(en.errors.internal_error)).toBeDefined();
     expect(banner()).toBeNull();
   });
 

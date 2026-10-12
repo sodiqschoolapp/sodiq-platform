@@ -278,6 +278,20 @@ describe('the branches without an active Academic Vice Principal', () => {
     ]);
   });
 
+  it('does not list a branch where one of two Academic Vice Principals is blocked and the other active', async () => {
+    const branch = await branchWith('Two, one inactive', async (account, id) => {
+      await giveVice(account, id);
+      await linkedRecord(account, id, [
+        { status: 'active', from: '2026-09-01', until: '2026-10-05' },
+        { status: 'inactive', from: '2026-10-05' },
+      ]);
+    });
+    const active = await newAccount();
+    await giveVice(active, branch);
+    await linkedRecord(active, branch);
+    expect(await listed([branch])).toEqual([]);
+  });
+
   it('counts an account with no linked staff record as active', async () => {
     const branch = await branchWith('No record', async (account, id) => {
       await giveVice(account, id);

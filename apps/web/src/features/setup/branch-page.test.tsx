@@ -89,6 +89,36 @@ describe('the branch page', () => {
     );
   });
 
+  // Correction 1 of the review of #64: the alert of a branch without an
+  // Academic Vice Principal names the branch, so a rename reads it again.
+  it('reads the alert again after a rename, so that it shows the new name', async () => {
+    let name = 'North';
+    fakeApi({
+      'GET /api/auth/session': () => json(superAdmin()),
+      'GET /api/setup/branch': () => json({ ...BRANCH, name }),
+      'PUT /api/setup/branch': (body) => {
+        name = (body as { name: string }).name;
+        return json({ ...BRANCH, ...(body as object) });
+      },
+      'GET /api/access/branches-without-vice-principal': () =>
+        json({ branches: [{ id: NORTH.id, name }] }),
+    });
+    renderApp(PATH);
+    await screen.findByRole('form', { name: 'North' });
+    const alert = () => document.querySelector('[data-banner="vice-principals"]');
+    await waitFor(() => {
+      expect(alert()?.textContent).toContain('North');
+    });
+
+    const input = field(form(), en.setup.branch.name);
+    type(input, 'North Hill');
+    fireEvent.click(within(form()).getByRole('button', { name: en.form.save }));
+
+    await waitFor(() => {
+      expect(alert()?.textContent).toBe(`${en.layout.viceBanner} North Hill`);
+    });
+  });
+
   it('says what to fix before anything is sent: no weekday, a text that is not an email', async () => {
     const calls = fakeApi({
       'GET /api/auth/session': () => json(superAdmin()),

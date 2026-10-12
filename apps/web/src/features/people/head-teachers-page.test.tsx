@@ -1,9 +1,9 @@
 import type { Appointment, Role } from '@sodiq/shared';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
-import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199d000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -106,6 +106,23 @@ describe('the Head Teachers of the branch', () => {
       expect(rows()).toHaveLength(1);
     });
     expect(cellsOf(rows()[0] ?? document.body)).toContain('b.toshev');
+  });
+
+  it('shows a failed list with a retry that reads it again', async () => {
+    let fail = true;
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'principal', branchId: NORTH.id }] })),
+      [ROUTE]: () => (fail ? refusal('internal_error', 500) : json({ appointments: [HEAD] })),
+    });
+    renderApp('/people/head-teachers');
+    expect(await screen.findByText(en.errors.internal_error)).toBeDefined();
+    fail = false;
+    fireEvent.click(screen.getByRole('button', { name: en.problems.retry }));
+    await waitFor(() => {
+      expect(rows()).toHaveLength(1);
+    });
+    expect(calls.filter((call) => call.route === ROUTE).length).toBeGreaterThan(1);
   });
 
   it('shows the empty page with the first action to the Super Admin', async () => {

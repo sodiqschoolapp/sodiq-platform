@@ -978,7 +978,7 @@ export const en = {
       emptyTitle: 'No Head Teachers',
       empty:
         'No Head Teacher is appointed in this branch. Appoint one on the account of a staff record.',
-      emptyView: 'No Head Teacher is appointed for your view of this branch.',
+      emptyView: 'Head Teachers and the subjects they oversee appear here.',
       toStaff: 'Open the staff list',
       role: 'Role',
       person: 'Person',
