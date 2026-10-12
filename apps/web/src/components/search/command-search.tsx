@@ -49,19 +49,15 @@ interface TitledPage extends IndexedPage {
 
 /**
  * The pages whose title holds every typed word, as the lists compare text: no
- * difference of case, of apostrophes or of composed letters.
+ * difference of case, of apostrophes, of composed letters or of script.
  */
-export function matchingPages(
-  pages: readonly TitledPage[],
-  typed: string,
-  language: string,
-): TitledPage[] {
-  const words = searchWords(typed, language);
+export function matchingPages(pages: readonly TitledPage[], typed: string): TitledPage[] {
+  const words = searchWords(typed);
   if (words === null) {
     return [...pages];
   }
   return pages.filter((page) => {
-    const title = searchKey(page.title, language);
+    const title = searchKey(page.title);
     return words.every((word) => title.includes(word));
   });
 }
@@ -75,7 +71,7 @@ export function matchingPages(
  * signed-in person. The arrows move, Enter opens the page, Escape closes.
  */
 export function CommandSearch() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState('');
@@ -106,7 +102,7 @@ export function CommandSearch() {
       ).map((page) => ({ ...page, title: t(page.titleKey) })),
     [t, menuPages, role],
   );
-  const matching = matchingPages(pages, typed, i18n.language);
+  const matching = matchingPages(pages, typed);
   const activeIndex = Math.min(active, Math.max(0, matching.length - 1));
   const activePage = matching[activeIndex];
   const optionId = (index: number): string => `${listId}-${String(index)}`;

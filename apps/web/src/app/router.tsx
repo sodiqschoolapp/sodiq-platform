@@ -25,6 +25,7 @@ import { HeadTeachersPage } from '@/features/people/head-teachers-page';
 import { NeverUsedPage } from '@/features/people/never-used-page';
 import { PeoplePage } from '@/features/people/people-page';
 import { StaffPage } from '@/features/people/staff-page';
+import { StudentsPage } from '@/features/people/students-page';
 import { VacanciesPage } from '@/features/people/vacancies-page';
 import { YearsPage } from '@/features/setup/years-page';
 import { SlotTypesPage } from '@/features/setup/slot-types-page';
@@ -219,6 +220,14 @@ const staffRoute = createRoute({
   component: StaffPage,
 });
 
+/** The students of the branch (task 2.4a). */
+const studentsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/people/students',
+  validateSearch: listSearch,
+  component: StudentsPage,
+});
+
 /** The vacancies, the second section of the teacher list (task 2.2b). */
 const vacanciesRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -334,6 +343,7 @@ const routeTree = rootRoute.addChildren([
     subjectsRoute,
     peopleRoute,
     staffRoute,
+    studentsRoute,
     vacanciesRoute,
     headTeachersRoute,
     neverUsedRoute,

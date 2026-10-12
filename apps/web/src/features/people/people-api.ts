@@ -7,6 +7,8 @@ import {
   staffAccountSchema,
   staffDetailSchema,
   staffListSchema,
+  studentDetailSchema,
+  studentListSchema,
   vacancyDetailSchema,
   vacancyListSchema,
 } from '@sodiq/shared';
@@ -269,3 +271,36 @@ export const neverUsedQuery = (branchId: string | null) =>
       ),
     enabled: branchId !== null,
   });
+
+/** The students of the branch of the switcher (task 2.4a); a student belongs to one branch. */
+export const studentsKey = (branchId?: string | null) =>
+  branchId === undefined ? [...PEOPLE_KEY, 'students'] : [...PEOPLE_KEY, 'students', branchId];
+
+export const studentsQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: studentsKey(branchId),
+    queryFn: async () =>
+      studentListSchema.parse(
+        await answerOf(api.GET('/api/people/students', { params: { header: branchHeader() } })),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** One student with the groups of fields the account may read. */
+export const studentDetailQuery = (branchId: string | null, id: string) =>
+  queryOptions({
+    queryKey: [...studentsKey(branchId), 'detail', id],
+    queryFn: async () =>
+      studentDetailSchema.parse(
+        await answerOf(
+          api.GET('/api/people/students/{id}', {
+            params: { header: branchHeader(), path: { id } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** After a change of a student: every student list. */
+export const invalidateStudents = (queryClient: QueryClient): Promise<unknown> =>
+  queryClient.invalidateQueries({ queryKey: studentsKey() });

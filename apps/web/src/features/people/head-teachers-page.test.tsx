@@ -147,6 +147,8 @@ describe('the Head Teachers of the branch', () => {
     const nav = within(tabs() ?? document.body);
     expect(nav.getAllByRole('link').map((link) => link.textContent)).toEqual([
       en.people.staff.title,
+      // Task 2.4a: the students, a section of its own.
+      en.people.students.title,
       en.people.vacancies.title,
       en.people.headTeachers.title,
       // Task 2.3c-1: the accounts never used, a fourth section.
@@ -157,12 +159,18 @@ describe('the Head Teachers of the branch', () => {
     ).toBe('page');
   });
 
-  it('shows a Head Teacher the list alone, without tabs', async () => {
+  // Task 2.4a: a Head Teacher also sees the student list (`02`: "Full student
+  // list across classes and groups"), so the two sections are tabs.
+  it('shows a Head Teacher the Head Teachers and the students as tabs', async () => {
     const calls = open('head_teacher', [HEAD]);
     await waitFor(() => {
       expect(rows()).toHaveLength(1);
     });
-    expect(tabs()).toBeNull();
+    expect(
+      within(tabs() ?? document.body)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual([en.people.students.title, en.people.headTeachers.title]);
     expect(calls.some((call) => call.route === ROUTE)).toBe(true);
   });
 
@@ -186,7 +194,7 @@ describe('the Head Teachers of the branch', () => {
 // views the area (decision 7 of #64).
 describe('People for a Head Teacher', () => {
   it.each(['head_teacher', 'senior_head_teacher'] as const)(
-    'shows the item and the one link to a %s',
+    'shows the item and the two links to a %s',
     async (role) => {
       fakeApi({
         'GET /api/auth/session': () =>
@@ -199,7 +207,9 @@ describe('People for a Head Teacher', () => {
       renderApp('/people');
       await screen.findByRole('heading', { name: en.people.title });
       const list = within(screen.getByRole('list', { name: en.people.title }));
+      // Task 2.4a: the students too.
       expect(list.getAllByRole('link').map((link) => link.textContent)).toEqual([
+        en.people.studentsLink,
         en.people.headTeachersLink,
       ]);
       expect(

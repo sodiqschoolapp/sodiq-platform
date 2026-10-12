@@ -61,8 +61,10 @@ export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
     to: '/people',
     icon: MENU_ICONS.people,
     // Head Teachers and Senior Head Teachers view no staff list, only the
-    // Head Teachers section (task 2.3b-2, decision 7 of #64).
-    areas: ['staff', 'head_teachers'],
+    // Head Teachers section (task 2.3b-2, decision 7 of #64); the Vice
+    // Principal for Spiritual and Moral Education, the Head Tutor and the
+    // Tutor only the students (task 2.4a).
+    areas: ['staff', 'head_teachers', 'students'],
   },
 };
 

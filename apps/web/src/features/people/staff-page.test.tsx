@@ -396,6 +396,7 @@ describe('the staff page', () => {
     });
   });
 
+  // Task 2.4a: the Tutor has People for the student list, without the staff.
   it.each([
     ['principal', true],
     ['tutor', false],
@@ -405,9 +406,10 @@ describe('the staff page', () => {
     await screen.findByRole('heading', { name: en.people.title });
     const menu = within(screen.getByRole('navigation', { name: en.layout.menu }));
     expect(menu.queryByRole('link', { name: new RegExp(`^${en.menu.people}`) }) !== null).toBe(
-      shown,
+      true,
     );
     expect(screen.queryByRole('link', { name: en.people.staffLink }) !== null).toBe(shown);
+    expect(screen.queryByRole('link', { name: en.people.studentsLink }) !== null).toBe(true);
   });
 });
 
