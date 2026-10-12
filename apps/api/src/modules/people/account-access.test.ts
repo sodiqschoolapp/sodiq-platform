@@ -90,6 +90,21 @@ describe('the sign-in access of an account', () => {
     return { ...made, slip, accountId: account.id, assignments };
   }
 
+  /** A vacancy of the branch: a staff record with no account (`04`, Vacancy). */
+  async function vacancy(): Promise<string> {
+    count += 1;
+    const response = await t.post('/api/people/vacancies', t.north, {
+      name: `Geometry vacancy ${lettersOf(count)}`,
+      departmentId: steam,
+      subjects: [],
+      languages: [],
+      weeklyLessons: 18,
+      dailyLessons: 4,
+    });
+    expect(response.status, JSON.stringify(response.body)).toBe(201);
+    return (response.body as { id: string }).id;
+  }
+
   const teacherOf = () => withAccount([{ role: 'teacher', branchId: t.north }]);
 
   /** Signs the person in and changes the first password: a session that owes no password step. */
@@ -312,18 +327,7 @@ describe('the sign-in access of an account', () => {
 
     it('answers 404 for another branch’s record, an unknown id and a vacancy', async () => {
       const other = await withAccount([{ role: 'teacher', branchId: t.south }], t.south);
-      const vacancy = await t.post('/api/people/vacancies', t.north, {
-        divisionId: academic,
-        departmentId: steam,
-        subjects: [],
-        languages: [],
-        weeklyLessons: 18,
-      });
-      const ids = [other.id, UNKNOWN];
-      if (vacancy.status === 201) {
-        ids.push((vacancy.body as { id: string }).id);
-      }
-      for (const id of ids) {
+      for (const id of [other.id, UNKNOWN, await vacancy()]) {
         for (const cookie of [t.admin, t.principal, t.vicePrincipal]) {
           refusedWith(await readAccess(id, cookie), 404, 'not_found');
         }
@@ -477,6 +481,13 @@ describe('the sign-in access of an account', () => {
       });
       expect(await throttled()).toEqual([]);
       expect(await openSessions(made.accountId)).toEqual([]);
+      const reasons = await t.database.migrator
+        .selectFrom('sessions')
+        .select('end_reason')
+        .where('account_id', '=', made.accountId)
+        .execute();
+      // The two sessions open at the reset end with the reason of the reset.
+      expect(reasons.filter((row) => row.end_reason === 'password_reset')).toHaveLength(2);
       for (const cookie of [browser.cookie, `${trustedCookie}; ${browser.device}`]) {
         expect((await t.kit.get('/api/auth/session', cookie)).status).toBe(401);
       }
@@ -560,6 +571,15 @@ describe('the sign-in access of an account', () => {
       const signIn = await t.kit.signIn(made.slip.login, slip.password);
       const answer = sessionResponseSchema.parse(signIn.body);
       expect(answer.mustChangePassword).toBe(true);
+      const cookie = `${cookieOf(signIn) ?? ''}; ${cookieOf(signIn, DEVICE_COOKIE) ?? ''}`;
+      expect(
+        (await t.kit.changePassword(cookie, slip.password, 'another-password-91')).status,
+      ).toBe(204);
+      const after = sessionResponseSchema.parse(
+        (await t.kit.get('/api/auth/session', cookie)).body,
+      );
+      expect(after.mustChangePassword).toBe(false);
+      expect(after.secondStep).toBe('set_up_required');
       const second = await entries('audit_log', 'account.second_step_reset', made.accountId);
       const password = await entries('audit_log', 'account.password_reset', made.accountId);
       expect(second).toHaveLength(1);
@@ -623,10 +643,12 @@ describe('the sign-in access of an account', () => {
         const change = CHANGES[name as keyof typeof CHANGES];
         const other = await withAccount([{ role: 'teacher', branchId: t.south }], t.south);
         const bare = await person();
+        const open = await vacancy();
         const before = await snapshot();
         for (const cookie of [t.admin, t.vicePrincipal]) {
           refusedWith(await change(other.id, cookie), 404, 'not_found');
           refusedWith(await change(UNKNOWN, cookie), 404, 'not_found');
+          refusedWith(await change(open, cookie), 404, 'not_found');
           refusedWith(await change(bare.id, cookie), 409, 'account_missing');
         }
         expect(await snapshot()).toEqual(before);
@@ -1042,5 +1064,205 @@ describe('the sign-in access of an account', () => {
       expect((await t.kit.signIn(made.slip.login, password)).status).toBe(200);
       expect(await ids(late.cookie)).not.toContain(made.id);
     });
+  });
+
+  // Decided with the review of #65: an Academic Vice Principal does not undo
+  // a lock made by a Super Admin; the Super Admin undoes any lock.
+  describe('the unlock of another administrator’s lock', () => {
+    it('lets the Super Admin undo the lock of the Academic Vice Principal', async () => {
+      const made = await teacherOf();
+      expect((await lock(made.id, t.vicePrincipal)).status).toBe(200);
+      expect((await accessOf(made.id, t.admin)).can.unlock).toBe(true);
+      expect((await unlock(made.id, t.admin)).status).toBe(200);
+    });
+
+    it('refuses the Academic Vice Principal the undo of a Super Admin’s lock', async () => {
+      const made = await teacherOf();
+      expect((await lock(made.id, t.admin)).status).toBe(200);
+      expect((await accessOf(made.id, t.vicePrincipal)).can.unlock).toBe(false);
+      const before = await snapshot();
+      refusedWith(await unlock(made.id, t.vicePrincipal), 403, 'permission_denied');
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('lets the Academic Vice Principal undo a lock of an Academic Vice Principal', async () => {
+      const made = await teacherOf();
+      const other = await withAccount([{ role: 'academic_vice_principal', branchId: t.north }]);
+      const browser = await signedIn(other);
+      await t.kit.setUpSecondStep(browser.cookie);
+      expect((await lock(made.id, browser.cookie)).status).toBe(200);
+      expect((await accessOf(made.id, t.vicePrincipal)).can.unlock).toBe(true);
+      expect((await unlock(made.id, t.vicePrincipal)).status).toBe(200);
+    });
+  });
+
+  // Decision 3: every role not ended is one of the four and one is in the
+  // branch; the others may be in another branch. Nothing of that branch
+  // reaches the answer or the branch's log.
+  it('lets the Academic Vice Principal act on a Teacher who is a Head Teacher in another branch', async () => {
+    const made = await withAccount([
+      { role: 'teacher', branchId: t.north },
+      { role: 'head_teacher', branchId: t.south },
+    ]);
+    await t.database.migrator
+      .insertInto('staff_branches')
+      .values({ staff_id: made.id, branch_id: t.south, is_main: false })
+      .execute();
+    const read = await readAccess(made.id, t.vicePrincipal);
+    expect(accountAccessSchema.parse(read.body).can).toMatchObject({
+      lock: true,
+      resetPassword: true,
+    });
+    const locked = await lock(made.id, t.vicePrincipal);
+    expect(locked.status).toBe(200);
+    const reset = await resetPassword(made.id, t.vicePrincipal);
+    expect(reset.status).toBe(200);
+    for (const response of [read, locked, reset]) {
+      const body = JSON.stringify(response.body);
+      expect(body).not.toContain(t.south);
+      expect(body).not.toContain('head_teacher');
+      for (const assignment of made.assignments) {
+        expect(body).not.toContain(assignment);
+      }
+    }
+    for (const action of ['account.locked', 'account.password_reset']) {
+      const written = await t.database.migrator
+        .selectFrom('audit_log')
+        .select('branch_id')
+        .where('action', '=', action)
+        .where('record_id', '=', made.accountId)
+        .execute();
+      expect(written).toEqual([{ branch_id: t.north }]);
+      expect(await entries('audit_log_school', action, made.accountId)).toEqual([]);
+    }
+  });
+
+  // `.claude/rules/api.md`: each pair that meets on the account row, in both
+  // directions; the real route runs on the side whose lock order is proved.
+  describe('a change and a sign-in at the same moment', () => {
+    /** Holds the account row as the held side does, runs the real call, and commits once it waits. */
+    async function holdingAccount(
+      accountId: string,
+      held: string,
+      call: () => Promise<Response>,
+    ): Promise<Response> {
+      return t.database.migrator.connection().execute(async (connection) => {
+        await sql`begin`.execute(connection);
+        await sql`select id from accounts where id = ${accountId} for update`.execute(connection);
+        await sql.raw(held).execute(connection);
+        const pending = call().then((response) => response);
+        await untilWaiting('transactionid');
+        await sql`commit`.execute(connection);
+        return pending;
+      });
+    }
+
+    it.each(['password reset', 'second-step reset'])(
+      'refuses a sign-in that waits for a %s holding the account row',
+      async (kind) => {
+        const made = await withAccount([{ role: 'academic_vice_principal', branchId: t.north }]);
+        const browser = await signedIn(made);
+        await t.kit.setUpSecondStep(browser.cookie);
+        const changed = `
+          update accounts set password_hash = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHRzYWx0c2FsdA$aGVsZA',
+            must_change_password = true,
+            password_expires_at = '${new Date(new Date(START).getTime() + 24 * HOUR).toISOString()}',
+            password_reset_by = '${adminAccount}', password_reset_at = '${new Date(START).toISOString()}'
+          where id = '${made.accountId}';
+          ${
+            kind === 'second-step reset'
+              ? `delete from second_step_recovery_codes where account_id = '${made.accountId}';
+                 delete from account_second_steps where account_id = '${made.accountId}';`
+              : ''
+          }
+        `;
+        const answer = await holdingAccount(made.accountId, changed, () =>
+          t.kit.signIn(made.slip.login, NEW_PASSWORD, browser.device),
+        );
+        refusedWith(answer, 401, 'sign_in_failed');
+      },
+    );
+
+    it('ends the session of a sign-in the lock waited for', async () => {
+      const made = await teacherOf();
+      await signedIn(made);
+      const answer = await holdingAccount(
+        made.accountId,
+        `insert into sessions (account_id, token_hash, created_at, last_used_at)
+         values ('${made.accountId}', '${'b'.repeat(64)}', '${new Date(START).toISOString()}',
+           '${new Date(START).toISOString()}')`,
+        () => lock(made.id),
+      );
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect(await openSessions(made.accountId)).toEqual([]);
+    });
+
+    it('refuses a sign-in that waits for a lock holding the account row', async () => {
+      const made = await teacherOf();
+      const browser = await signedIn(made);
+      const answer = await holdingAccount(
+        made.accountId,
+        `update accounts set locked_at = '${new Date(START).toISOString()}',
+           locked_by = '${adminAccount}', lock_reason = 'Held'
+         where id = '${made.accountId}'`,
+        () => t.kit.signIn(made.slip.login, NEW_PASSWORD, browser.device),
+      );
+      refusedWith(answer, 403, 'account_locked');
+      expect(await openSessions(made.accountId)).toHaveLength(1);
+    });
+  });
+
+  // Correction 2 with the permission review of #65: the start of the period
+  // is read in the time zone of the person's main branch, the same for every
+  // reader, also one of a branch that cannot see the main branch link.
+  it('says never used the same way to every reader, in the main branch’s time zone', async () => {
+    const dubai = await t.newBranch();
+    await t.database.migrator
+      .updateTable('branches')
+      .set({ time_zone: 'Asia/Dubai' })
+      .where('id', '=', dubai)
+      .execute();
+    const made = await withAccount([{ role: 'teacher', branchId: t.north }], dubai);
+    await t.database.migrator
+      .insertInto('staff_branches')
+      .values({ staff_id: made.id, branch_id: t.north, is_main: false })
+      .execute();
+    const status = (body: object) => t.post(`/api/people/staff/${made.id}/status`, dubai, body);
+    expect((await status({ status: 'left', from: TODAY })).status).toBe(200);
+    expect((await status({ status: 'active', from: '2026-10-20' })).status).toBe(200);
+    const session = async (at: string) =>
+      t.database.migrator
+        .insertInto('sessions')
+        .values({
+          account_id: made.accountId,
+          token_hash: createHash('sha256').update(at).digest('hex'),
+          created_at: new Date(at),
+          last_used_at: new Date(at),
+          ended_at: new Date(at),
+          end_reason: 'sign_out',
+        })
+        .execute();
+    const answers = async () => {
+      const section = await t.get(`/api/people/staff/${made.id}/account`, dubai);
+      const report = async (cookie: string) =>
+        neverUsedListSchema
+          .parse((await t.get('/api/people/accounts/never-used', t.north, cookie)).body)
+          .accounts.some((row) => row.staffId === made.id);
+      return [
+        (section.body as { account: { neverUsed: boolean } }).account.neverUsed,
+        (await accessOf(made.id, t.admin)).account?.neverUsed,
+        (await accessOf(made.id, t.principal)).account?.neverUsed,
+        (await accessOf(made.id, t.vicePrincipal)).account?.neverUsed,
+        await report(t.admin),
+        await report(t.principal),
+        await report(t.vicePrincipal),
+      ];
+    };
+    // 20 October 00:30 in Tashkent is 19 October 23:30 in Dubai: before the period.
+    await session('2026-10-20T00:30:00+05:00');
+    expect(await answers()).toEqual([true, true, true, true, true, true, true]);
+    // 20 October 00:30 in Dubai: a use of the new period.
+    await session('2026-10-20T00:30:00+04:00');
+    expect(await answers()).toEqual([false, false, false, false, false, false, false]);
   });
 });

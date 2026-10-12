@@ -358,7 +358,7 @@ How to read the task lines:
 
 - [ ] **5.7a Teacher absence**
   - Read: `06` (Changes after publishing, Teachers who work in several branches), `04` (Teacher and staff record), `edge/timetable` (Versions and drafts, After publishing), `edge/people-roles-accounts` (Staff over time), `07` (Closing a quarter, Who can do what), `09` (When something else changes).
-  - Build: an absence entered once for the person, covering every branch; "needs a teacher" and "unresolved" lessons on the Academic Vice Principal's home page; what happens when a teacher goes inactive or leaves, or a room is closed; filling a vacancy publishes a version that changes only the teacher of its rows; an acting teacher named for a vacancy's journal for a period, who owns the plan, adds works and enters the rating exam.
+  - Build: an absence entered once for the person, covering every branch; "needs a teacher" and "unresolved" lessons on the Academic Vice Principal's home page; what happens when a teacher goes inactive or leaves, or a room is closed; a locked teacher's future lessons go to "needs a teacher" (Staff over time: "'Lock now' ... The teacher's future lessons go to 'needs a teacher'"; the lock itself came with 2.3c-1, pull request #65); filling a vacancy publishes a version that changes only the teacher of its rows; an acting teacher named for a vacancy's journal for a period, who owns the plan, adds works and enters the rating exam.
   - Done when: an absence entered in one branch reaches the Academic Vice Principal of the other.
 
 - [ ] **5.7b Substitution**

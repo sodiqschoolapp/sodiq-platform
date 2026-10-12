@@ -9,9 +9,10 @@ import type {
   StaffListItem,
 } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { accountAccessKey } from './people-api';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
 const PATH = '/people/staff';
@@ -428,6 +429,7 @@ describe('the account section', () => {
       [`POST /api/people/staff/${LOLA.id}/roles/${uid(51)}/end`]: () => json(withAccount()),
     });
     const found = await section();
+    const invalidated = vi.spyOn(shell.queryClient, 'invalidateQueries');
     fireEvent.click(
       within(found).getByRole('button', {
         name: en.people.account.endOf.replace('{{role}}', en.roles.teacher),
@@ -445,6 +447,12 @@ describe('the account section', () => {
       expect(calls.find((call) => call.route.endsWith('/end'))?.body).toEqual({
         from: '2026-10-10',
       });
+    });
+    // Task 2.3c-1: what the sign-in access allows follows the roles.
+    await waitFor(() => {
+      expect(invalidated.mock.calls.map(([filters]) => filters?.queryKey)).toContainEqual(
+        accountAccessKey(LOLA.id),
+      );
     });
   });
 

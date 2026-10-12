@@ -163,7 +163,7 @@ export const en = {
       'This account is not locked, so there is nothing to unlock. Reload the page.',
     second_step_off:
       'This account has no second step to reset. Reset only the password if the person cannot sign in.',
-    account_missing: 'This person has no account yet. Create the account first.',
+    account_missing: 'This person has no account yet. Ask the Super Admin to create it.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:

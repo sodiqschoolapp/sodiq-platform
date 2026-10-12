@@ -46,6 +46,8 @@ import {
   invalidateHeadTeachers,
   loginSuggestionQuery,
   staffAccountKey,
+  accountAccessKey,
+  neverUsedKey,
   staffAccountQuery,
 } from './people-api';
 
@@ -70,6 +72,9 @@ export function AccountSection({ staff, label }: { staff: StaffDetail; label: st
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: staffAccountKey(staff.id) }),
+      // What the sign-in access allows follows the roles and the status (task 2.3c-1).
+      queryClient.invalidateQueries({ queryKey: accountAccessKey(staff.id) }),
+      queryClient.invalidateQueries({ queryKey: neverUsedKey() }),
       queryClient.invalidateQueries({ queryKey: SUPER_ADMINS_KEY }),
       invalidateBranchesWithoutVice(queryClient),
       invalidateHeadTeachers(queryClient),

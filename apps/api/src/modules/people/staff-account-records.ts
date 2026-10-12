@@ -1,4 +1,3 @@
-import { DEFAULT_TIME_ZONE, schoolDateOf } from '@sodiq/shared';
 import { sql } from 'kysely';
 import {
   transactionMoment,
@@ -7,7 +6,6 @@ import {
 } from '../../database/transactions.js';
 import type { Access } from '../access/permission.guard.js';
 import { notFound } from '../setup/setup-refusals.js';
-import { startOfDate } from './staff-status.js';
 
 /**
  * What the account routes of a staff record share (task 2.3a; task 2.3c-1
@@ -106,12 +104,10 @@ export async function leftForGood(transaction: Transaction, id: string): Promise
 /**
  * The moment the current employment period of each person began (correction
  * 2 of the review of pull request #65; edge cases, Staff over time:
- * "Re-hiring restores the same record ... with a new employment period"):
- * 00:00, in the time zone of the person's main branch, of the `valid_from` of
- * the first `active` or `inactive` row after the latest `left` that has
- * begun; of the first row when there was no such `left`. A row taken back
- * before it began (`valid_until = valid_from`) was never in force and is not
- * read. Status dates are school dates of the main branch.
+ * "Re-hiring restores the same record ... with a new employment period"),
+ * read through `staff_period_start` (db/migrations/0030): a SECURITY DEFINER
+ * function, so that the time zone of the main branch and the status rows are
+ * the same for every reader, whichever branch link the request sees.
  */
 export async function periodStarts(
   transaction: Transaction,
@@ -121,49 +117,14 @@ export async function periodStarts(
   if (staffIds.length === 0) {
     return starts;
   }
-  const rows = await transaction
-    .selectFrom('staff_statuses')
-    .leftJoin('staff_branches', (join) =>
-      join
-        .onRef('staff_branches.staff_id', '=', 'staff_statuses.staff_id')
-        .on('staff_branches.is_main', '=', true),
-    )
-    .leftJoin('branches', 'branches.id', 'staff_branches.branch_id')
-    .select([
-      'staff_statuses.staff_id',
-      'staff_statuses.status',
-      'staff_statuses.valid_from',
-      'branches.time_zone',
-    ])
-    .where('staff_statuses.staff_id', 'in', [...staffIds])
-    .where((builder) =>
-      builder.or([
-        builder('staff_statuses.valid_until', 'is', null),
-        builder('staff_statuses.valid_until', '<>', builder.ref('staff_statuses.valid_from')),
-      ]),
-    )
-    .orderBy('staff_statuses.staff_id')
-    .orderBy('staff_statuses.valid_from')
-    .execute();
   const now = await transactionMoment(transaction);
-  const byPerson = new Map<string, typeof rows>();
-  for (const row of rows) {
-    byPerson.set(row.staff_id, [...(byPerson.get(row.staff_id) ?? []), row]);
-  }
-  for (const [staffId, statuses] of byPerson) {
-    const zone = statuses[0]?.time_zone ?? DEFAULT_TIME_ZONE;
-    const today = schoolDateOf(now, zone);
-    const lefts = statuses.filter((row) => row.status === 'left' && row.valid_from <= today);
-    const latestLeft = lefts[lefts.length - 1];
-    const start =
-      latestLeft === undefined
-        ? statuses[0]
-        : statuses.find((row) => row.status !== 'left' && row.valid_from > latestLeft.valid_from);
-    // After a `left` with no return yet the period has not begun: its start
-    // is the `left` itself, and no session after it is a use of the period.
-    const date = start?.valid_from ?? latestLeft?.valid_from;
-    if (date !== undefined) {
-      starts.set(staffId, await startOfDate(transaction, date, zone));
+  const found = await sql<{ staff_id: string; start: Date | null }>`
+    select id as staff_id, staff_period_start(id, ${now}) as start
+    from unnest(${[...staffIds]}::uuid[]) as id
+  `.execute(transaction);
+  for (const row of found.rows) {
+    if (row.start !== null) {
+      starts.set(row.staff_id, new Date(row.start));
     }
   }
   return starts;

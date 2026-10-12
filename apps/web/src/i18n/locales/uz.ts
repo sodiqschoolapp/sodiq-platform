@@ -169,7 +169,8 @@ export const uz: Texts<'one' | 'other'> = {
     account_not_locked: 'Bu hisob bloklanmagan, blokdan chiqarish kerak emas. Sahifani yangilang.',
     second_step_off:
       'Bu hisobda tiklanadigan ikkinchi bosqich yoʻq. Xodim kira olmasa, faqat parolni tiklang.',
-    account_missing: 'Bu xodimning hali hisobi yoʻq. Avval hisob yarating.',
+    account_missing:
+      'Bu xodimning hali hisobi yoʻq. Uni yaratishni super administratordan soʻrang.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',

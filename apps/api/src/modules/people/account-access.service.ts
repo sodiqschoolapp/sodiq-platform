@@ -135,8 +135,20 @@ export class AccountAccess {
     });
   }
 
+  /**
+   * The unlock. An Academic Vice Principal does not undo a lock made by a
+   * Super Admin (403, nothing written): the spec gives the Academic Vice
+   * Principal "lock accounts", not the override of the Super Admin's lock
+   * (decided with the review of #65). The Super Admin undoes any lock.
+   */
   async unlock(access: Access, id: string, requestId: string): Promise<AccountAccessAnswer> {
     return this.change(access, id, false, async (transaction, target) => {
+      if (
+        target.acting !== superAdminOf(access) &&
+        (await this.lockedBySuperAdmin(transaction, target.accountId))
+      ) {
+        throw denied();
+      }
       await this.locks.unlock(transaction, {
         accountId: target.accountId,
         unlockedBy: access.accountId,
@@ -335,6 +347,36 @@ export class AccountAccess {
     return reached ? vice : null;
   }
 
+  /**
+   * Whether the lock in force on the account was made by an account that
+   * holds a Super Admin role now. The Super Admin role has no branch, so the
+   * read of `assignments` keeps to the rows with no branch
+   * (`.claude/rules/database.md`).
+   */
+  private async lockedBySuperAdmin(transaction: Transaction, accountId: string): Promise<boolean> {
+    const account = await transaction
+      .selectFrom('accounts')
+      .select('locked_by')
+      .where('id', '=', accountId)
+      .executeTakeFirstOrThrow();
+    if (account.locked_by === null) {
+      return false;
+    }
+    const now = await transactionMoment(transaction);
+    const held = await transaction
+      .selectFrom('assignments')
+      .select('id')
+      .where('account_id', '=', account.locked_by)
+      .where('role', '=', 'super_admin')
+      .where('branch_id', 'is', null)
+      .where('valid_from', '<=', now)
+      .where((builder) =>
+        builder.or([builder('valid_until', 'is', null), builder('valid_until', '>', now)]),
+      )
+      .executeTakeFirst();
+    return held !== undefined;
+  }
+
   /** The password reset of the target, as a slip: the one-time password is stored nowhere. */
   private async passwordSlip(
     transaction: Transaction,
@@ -437,7 +479,11 @@ export class AccountAccess {
       },
       can: {
         lock: acting !== null && !locked,
-        unlock: acting !== null && locked,
+        unlock:
+          acting !== null &&
+          locked &&
+          (acting === superAdminOf(access) ||
+            !(await this.lockedBySuperAdmin(transaction, accountId))),
         resetPassword: acting !== null && !left,
         resetSecondStep: !own && superAdminOf(access) !== undefined && secondStepOn && !left,
       },

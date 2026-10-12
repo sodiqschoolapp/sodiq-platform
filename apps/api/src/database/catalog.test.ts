@@ -161,6 +161,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'Whether anybody who has not left is in a division or a department: the school-wide archives.',
   'staff_out_for_good(uuid,timestamp with time zone)':
     'Whether one record is out of the school and stays out (no re-hire planned), whichever branch link the request sees.',
+  'staff_period_start(uuid,timestamp with time zone)':
+    'The moment the current employment period of one record began, in the time zone of its main branch, so that "never used" (task 2.3c-1, correction 2 of #65) is the same for every reader whichever branch link the request sees; one moment, nothing personal.',
   'staff_record_kind(uuid)':
     'The kind of one record by id, or null when it does not exist, so that a check never depends on what the membership filter shows; no row data.',
   'staff_subject_in_use(uuid,smallint[],uuid,timestamp with time zone)':

@@ -47,6 +47,8 @@ import {
   invalidateStaff,
   removeStaffPhoto,
   staffAccountKey,
+  accountAccessKey,
+  neverUsedKey,
   setStaffPhoto,
   staffDetailQuery,
   staffPhotoQuery,
@@ -116,6 +118,9 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
       // an inactive or left Academic Vice Principal puts the branch in the alert.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: staffAccountKey(id) }),
+        // What the sign-in access allows follows the roles and the status (task 2.3c-1).
+        queryClient.invalidateQueries({ queryKey: accountAccessKey(id) }),
+        queryClient.invalidateQueries({ queryKey: neverUsedKey() }),
         invalidateHeadTeachers(queryClient),
         invalidateBranchesWithoutVice(queryClient),
       ]);

@@ -202,11 +202,13 @@ Plan approved on pull request #65 with corrections 1 to 5; decisions 1 to 14 con
 | No password reset for a person who has left for good (409 `staff_left`); the lock stays possible | Decision 7 |
 | The audit entries keep `account.locked`, `account.unlocked`, `account.password_reset`, `account.second_step_reset`, and name the acting assignment, the person and the branch of the request (so they go to the branch's log) | Decision 8 |
 | The reset answers `firstPasswordSlipSchema`, valid until now + 24 hours, shown under the title "Password reset" | Decision 9; answer 15 |
-| "Never used": no session since 00:00, in the main branch's time zone, of the start of the person's current employment period (the `valid_from` of the first `active` or `inactive` status after the latest `left` that has begun, else the first status); a person who has left for good is not listed; the account section of 2.3a uses the same rule | Decision 10, correction 2; State from stored moments |
+| **Look first.** "Never used": no session since 00:00, in the main branch's time zone, of the start of the person's current employment period (the `valid_from` of the first `active` or `inactive` status after the latest `left` that has begun, else the first status; that `left` while no return follows it), read through `staff_period_start(record_id, at)` (db/migrations/0030, `SECURITY DEFINER`, on `SECURITY_DEFINER_FUNCTIONS`), so that every reader gets the same answer whichever branch link it sees; a person who has left for good is not listed; the account section of 2.3a uses the same rule | Decision 10, correction 2; State from stored moments; the review of the build found the zone read through the row-filtered `staff_branches` |
 | New codes `own_account`, `account_already_locked`, `account_not_locked`, `second_step_off`, `account_missing` (409) | Decision 11; each text true on its path |
 | No request key; a repeated lock answers 409, a repeated reset issues a new password | Decision 12 |
 | The Principal and the Academic Vice Principal see the access state of every account of the branch; buttons only where `can` allows | Decision 13 |
-| No migration | Decision 14 |
+| Decision 14 (no migration) changed by the review of the build: migration 0030 adds `staff_period_start` only | The person-wide moment must not depend on the reader's branch |
+| An Academic Vice Principal does not undo a lock made by an account that holds a Super Admin role now (403 `permission_denied`, nothing written, `can.unlock` false); the Super Admin undoes any lock, and an Academic Vice Principal undoes another Academic Vice Principal's | Decided with the review of the build; the spec gives the Academic Vice Principal "lock accounts", not the override of the Super Admin |
+| `account_missing` says "Ask the Super Admin to create it", true for both administrators who meet it | Review of the build; `.claude/rules/web.md`, a code's text is true on every path |
 
 ## 12 October 2026: Head Teachers list and the Academic Vice Principal alert (task 2.3b-2)
 

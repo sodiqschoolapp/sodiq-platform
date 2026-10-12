@@ -7,9 +7,12 @@ import type {
   StaffListItem,
 } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { SUPER_ADMINS_KEY } from '@/features/access/super-admin-banner';
+import { BRANCHES_WITHOUT_VICE_KEY } from '@/features/access/vice-principal-banner';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { accountAccessKey, headTeachersKey, neverUsedKey, staffAccountKey } from './people-api';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
 const PATH = '/people/staff';
@@ -318,5 +321,60 @@ describe('the sign-in access section', () => {
     );
     const found = await section('ru');
     expect(within(found).getByRole('button', { name: ru.people.access.lock })).toBeDefined();
+  });
+
+  it('refreshes the queries a lock, an unlock and a reset change', async () => {
+    let locked = false;
+    open('super_admin', {
+      [`GET /api/people/staff/${ODIL.id}/account/access`]: () =>
+        json(
+          stateOf({
+            can: { lock: !locked, unlock: locked, resetPassword: true, resetSecondStep: false },
+          }),
+        ),
+      [`POST /api/people/staff/${ODIL.id}/account/lock`]: () => {
+        locked = true;
+        return json(stateOf());
+      },
+      [`POST /api/people/staff/${ODIL.id}/account/unlock`]: () => {
+        locked = false;
+        return json(stateOf());
+      },
+      [`POST /api/people/staff/${ODIL.id}/account/password-reset`]: () => json(SLIP),
+    });
+    const found = await section();
+    const invalidated = vi.spyOn(shell.queryClient, 'invalidateQueries');
+    const refreshed = async () => {
+      await waitFor(() => {
+        const keys = invalidated.mock.calls.map(([filters]) => filters?.queryKey);
+        for (const key of [
+          accountAccessKey(ODIL.id),
+          staffAccountKey(ODIL.id),
+          neverUsedKey(),
+          SUPER_ADMINS_KEY,
+          BRANCHES_WITHOUT_VICE_KEY,
+          headTeachersKey(),
+        ]) {
+          expect(keys).toContainEqual(key);
+        }
+      });
+      invalidated.mockClear();
+    };
+
+    fireEvent.click(within(found).getByRole('button', { name: en.people.access.lock }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(en.people.access.reason), {
+      target: { value: 'Laptop lost' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.access.lock }));
+    await refreshed();
+
+    fireEvent.click(await within(found).findByRole('button', { name: en.people.access.unlock }));
+    await confirmWith(en.people.access.unlock);
+    await refreshed();
+
+    fireEvent.click(within(found).getByRole('button', { name: en.people.access.resetPassword }));
+    await confirmWith(en.people.access.resetPassword);
+    await refreshed();
   });
 });
