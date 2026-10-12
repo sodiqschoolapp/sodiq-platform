@@ -5,6 +5,7 @@ import type { Transaction } from '../../database/transactions.js';
 import { Audit } from '../audit/audit.service.js';
 import { FIRST_PASSWORD_VALID_MS, randomFirstPassword } from './accounts.service.js';
 import { hashPassword } from './password-hash.js';
+import { closeOpenResetLinks } from './reset-links.js';
 import { Sessions } from './sessions.service.js';
 import { SignInThrottle } from './sign-in-throttle.service.js';
 
@@ -132,6 +133,8 @@ export class PasswordResets {
       throw new UnknownAccountError();
     }
     await this.throttle.forget(transaction, changed.login);
+    // A link of the reset by email made before this never works (task 2.3c-2, decision 11).
+    await closeOpenResetLinks(transaction, reset.accountId, now);
     await this.sessions.writeEndsByTime(transaction, reset.accountId);
     const ended = await transaction
       .updateTable('sessions')
@@ -181,6 +184,8 @@ export class PasswordResets {
       throw new UnknownAccountError();
     }
     await this.throttle.forget(transaction, changed.login);
+    // A link of the reset by email made before this never works (task 2.3c-2, decision 11).
+    await closeOpenResetLinks(transaction, rehire.accountId, now);
     await this.sessions.writeEndsByTime(transaction, rehire.accountId);
     const ended = await transaction
       .updateTable('sessions')

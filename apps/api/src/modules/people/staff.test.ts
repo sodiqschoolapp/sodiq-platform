@@ -180,6 +180,7 @@ describe('staff records', () => {
         teaching: true,
         accounts: true,
         accountAccess: true,
+        email: true,
       });
       const [entry] = await t.entries('staff.create', first.id);
       expect(entry).toMatchObject({
@@ -296,6 +297,7 @@ describe('staff records', () => {
         accounts: false,
         // Task 2.3c-1, decision 13: the Academic Vice Principal reads the sign-in access.
         accountAccess: true,
+        email: true,
       });
       const [entry] = await t.entries('staff.edit', created.id);
       expect(entry).toMatchObject({

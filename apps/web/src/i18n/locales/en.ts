@@ -194,6 +194,9 @@ export const en = {
     photo_too_large: 'The photo is larger than 5 MB. Choose a smaller one.',
     photos_not_configured: 'Photos are not configured yet. Ask the administrator.',
     photos_unavailable: 'Photos cannot be reached right now. Try again later.',
+    reset_link_invalid:
+      'This link does not work. Ask for a new link; if no email comes, ask your administrator.',
+    reset_link_expired: 'This link has expired: a link works for one hour. Ask for a new link.',
     availability_overlap:
       'These hours overlap the hours in another branch on the same weekday. Change the times so that they do not overlap.',
     archive_refused:
@@ -236,6 +239,22 @@ export const en = {
     loginMissing: 'Enter your login.',
     passwordMissing: 'Enter your password.',
     sessionEnded: 'Your session has ended. Sign in again.',
+    forgot: 'Forgot your password?',
+    passwordChanged: 'Your password was changed. Sign in with the new one.',
+  },
+  forgot: {
+    title: 'Forgot your password?',
+    login: 'Login',
+    loginMissing: 'Enter your login.',
+    submit: 'Send link',
+    sent: 'If this login has an email address on record, a link to choose a new password is sent to it. A link works for one hour, and no second one is sent while it works.',
+    back: 'Back to sign-in',
+  },
+  reset: {
+    title: 'Choose a new password',
+    submit: 'Save the new password',
+    noToken: 'This link is not complete. Open the link from the email again, or ask for a new one.',
+    askAgain: 'Ask for a new link',
   },
   code: {
     title: 'Second step',
@@ -1168,6 +1187,7 @@ export const en = {
         other: 'Other',
       },
       email: 'Email',
+      emailLocked: 'You cannot change this email: a link to choose a new password is sent to it.',
       jshshir: 'JSHSHIR',
       admissionDate: 'Admission date',
       contractType: 'Contract',
@@ -1291,6 +1311,13 @@ export const en = {
   },
   account: {
     title: 'Account',
+    photoTitle: 'Photo',
+    photoText: 'Shown beside your name to the staff who see your record.',
+    photoAdd: 'Add photo',
+    photoChange: 'Change photo',
+    photoRemove: 'Remove photo',
+    photoRemoveTitle: 'Remove your photo?',
+    photoRemoveText: 'Your initials are shown instead.',
     languageTitle: 'Language',
     languageText: 'The language of the platform for you, on every device you sign in on.',
     passwordTitle: 'Password',

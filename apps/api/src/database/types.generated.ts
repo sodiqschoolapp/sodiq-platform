@@ -257,6 +257,17 @@ export interface Notifications {
   read_at: Timestamp | null;
 }
 
+export interface PasswordResetLinks {
+  account_id: string;
+  closed_at: Timestamp | null;
+  id: Generated<string>;
+  requested_at: Timestamp;
+  sent_at: Timestamp | null;
+  token_hash: string | null;
+  used_at: Timestamp | null;
+  valid_until: Timestamp | null;
+}
+
 export interface Quarters {
   academic_year_id: string;
   branch_id: string;
@@ -506,6 +517,7 @@ export interface DB {
   floors: Floors;
   known_devices: KnownDevices;
   notifications: Notifications;
+  password_reset_links: PasswordResetLinks;
   quarters: Quarters;
   request_keys: RequestKeys;
   rooms: Rooms;

@@ -1097,6 +1097,98 @@
         ]
       }
     },
+    "/api/auth/password-reset": {
+      "post": {
+        "operationId": "PasswordResetEmailController_requestPasswordReset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "login": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "login"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PasswordResetEmail"
+        ]
+      }
+    },
+    "/api/auth/password-reset/confirm": {
+      "post": {
+        "operationId": "PasswordResetEmailController_confirmPasswordReset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 128
+                  }
+                },
+                "required": [
+                  "token",
+                  "newPassword"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PasswordResetEmail"
+        ]
+      }
+    },
     "/api/notifications": {
       "get": {
         "operationId": "NotificationsController_list",
@@ -1555,6 +1647,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -1864,6 +1958,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -2261,6 +2357,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -2591,6 +2689,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -2878,6 +2978,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -3171,6 +3273,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -3452,6 +3556,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -3757,6 +3863,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -4042,6 +4150,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -4327,6 +4437,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -4603,6 +4715,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -4879,6 +4993,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -5135,6 +5251,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -5391,6 +5509,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -5693,6 +5813,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -6044,6 +6166,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -6328,6 +6452,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -6691,6 +6817,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -7046,6 +7174,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -7392,6 +7522,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -7673,6 +7805,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -8032,6 +8166,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -8351,6 +8487,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -8670,6 +8808,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -8973,6 +9113,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -9276,6 +9418,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -9539,6 +9683,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -9802,6 +9948,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -10100,6 +10248,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -10410,6 +10560,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -10732,6 +10884,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -11028,6 +11182,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -11365,6 +11521,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -11694,6 +11852,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -11997,6 +12157,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -12314,6 +12476,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -12629,6 +12793,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -12950,6 +13116,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -13245,6 +13413,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -13540,6 +13710,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -13822,6 +13994,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -14209,6 +14383,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -14582,6 +14758,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -14963,6 +15141,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -15362,6 +15542,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -15725,6 +15907,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -16088,6 +16272,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -16426,6 +16612,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -16842,6 +17030,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -17192,6 +17382,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -17584,6 +17776,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -18449,6 +18643,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -18810,6 +19006,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -19269,6 +19467,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -20105,6 +20305,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -20576,6 +20778,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -20929,6 +21133,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -21282,6 +21488,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -21673,6 +21881,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -21926,6 +22136,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -22199,6 +22411,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -22490,6 +22704,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -22794,6 +23010,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -23091,6 +23309,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -23360,6 +23580,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -23612,6 +23834,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -23888,6 +24112,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -24260,6 +24486,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -24739,6 +24967,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -25025,6 +25255,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -25516,6 +25748,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -25914,6 +26148,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -26280,6 +26516,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -26646,6 +26884,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -26981,6 +27221,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -27355,6 +27597,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -27700,6 +27944,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -28128,6 +28374,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -28665,6 +28913,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -28672,7 +28923,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -28823,6 +29075,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -29110,6 +29364,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -29525,6 +29781,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -29532,7 +29791,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -29683,6 +29943,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -30230,6 +30492,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -30237,7 +30502,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -30388,6 +30654,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -30716,6 +30984,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -31185,6 +31455,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -31192,7 +31465,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -31343,6 +31617,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -31788,6 +32064,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -31795,7 +32074,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -31946,6 +32226,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -32390,6 +32672,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -32397,7 +32682,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -32580,6 +32866,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -32824,6 +33112,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -33279,6 +33569,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -33552,6 +33844,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -33792,6 +34086,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -34298,6 +34594,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -34783,6 +35081,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -35278,6 +35578,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -35496,6 +35798,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -35730,6 +36034,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -36116,6 +36422,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -36522,6 +36830,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -36908,6 +37218,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -37163,6 +37475,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -37418,6 +37732,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -37696,6 +38012,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -38041,6 +38359,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -38473,6 +38793,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -38480,7 +38803,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -38631,6 +38955,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -38850,6 +39176,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -39083,6 +39411,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -39166,6 +39496,105 @@
         },
         "tags": [
           "StaffPhotos"
+        ]
+      }
+    },
+    "/api/auth/photo": {
+      "put": {
+        "operationId": "OwnPhotoController_setPhoto",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OwnPhoto"
+        ]
+      },
+      "delete": {
+        "operationId": "OwnPhotoController_removePhoto",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OwnPhoto"
+        ]
+      },
+      "get": {
+        "operationId": "OwnPhotoController_readPhoto",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OwnPhoto"
         ]
       }
     },
@@ -39550,6 +39979,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -40104,6 +40535,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -40421,6 +40854,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -40843,6 +41278,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -41127,6 +41564,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -41481,6 +41920,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -41913,6 +42354,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -42267,6 +42710,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -42621,6 +43066,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -42842,6 +43289,8 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
                             "account_exists",
                             "login_taken",
                             "no_account",
@@ -43091,6 +43540,8 @@
                   "photo_too_large",
                   "photos_not_configured",
                   "photos_unavailable",
+                  "reset_link_invalid",
+                  "reset_link_expired",
                   "account_exists",
                   "login_taken",
                   "no_account",

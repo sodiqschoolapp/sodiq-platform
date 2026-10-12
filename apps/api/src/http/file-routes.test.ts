@@ -69,9 +69,17 @@ describe('declared file routes', () => {
     const declared = routesOf(app)
       .filter((route) => route.takesFile !== undefined)
       .map((route) => ({ method: route.method, path: route.path, file: route.takesFile }));
-    expect(declared).toEqual(
-      FILE_ROUTES.map((route) => ({ method: route.method, path: route.path, file: route })),
+    const byPath = (a: { path: string }, b: { path: string }) => a.path.localeCompare(b.path);
+    expect(declared.sort(byPath)).toEqual(
+      FILE_ROUTES.map((route) => ({ method: route.method, path: route.path, file: route })).sort(
+        byPath,
+      ),
     );
+    // The staff photo (2.2c-2) and the own photo (2.3c-2, decision 2 of #66).
+    expect(FILE_ROUTES.map((route) => route.path).sort()).toEqual([
+      '/api/auth/photo',
+      '/api/people/staff/:id/photo',
+    ]);
   });
 
   it('read a file before the guards: a small one reaches the sign-in check', async () => {

@@ -338,6 +338,12 @@ export const staffRightsSchema = z.object({
    * comes with the section.
    */
   accountAccess: z.boolean(),
+  /**
+   * The email: `contact`, except on the caller's own record and, for the
+   * Academic Vice Principal, on an account they may not lock and reset (task
+   * 2.3c-2, decision 4 of pull request #66): the email opens the account.
+   */
+  email: z.boolean(),
 });
 
 export type StaffRights = z.infer<typeof staffRightsSchema>;

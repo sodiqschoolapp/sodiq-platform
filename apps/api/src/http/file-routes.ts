@@ -32,7 +32,19 @@ export const STAFF_PHOTO_ROUTE: FileRoute = {
   tooLarge: 'photo_too_large',
 };
 
-export const FILE_ROUTES: readonly FileRoute[] = [STAFF_PHOTO_ROUTE];
+/**
+ * The own photo of the person signed in (task 2.3c-2, decision 2 of pull
+ * request #66, Look first): the same kind, types and size as the staff photo.
+ */
+export const OWN_PHOTO_ROUTE: FileRoute = {
+  method: 'PUT',
+  path: '/api/auth/photo',
+  types: PHOTO_TYPES,
+  maxBytes: PHOTO_MAX_BYTES,
+  tooLarge: 'photo_too_large',
+};
+
+export const FILE_ROUTES: readonly FileRoute[] = [STAFF_PHOTO_ROUTE, OWN_PHOTO_ROUTE];
 
 /**
  * The body of a file route as `fileBodyMiddleware` read it. A class of its

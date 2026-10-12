@@ -2,10 +2,12 @@ import { NestFactory } from '@nestjs/core';
 import { createDatabase } from '../../database/database.js';
 import { Transactions } from '../../database/transactions.js';
 import { Assignments } from '../../modules/access/assignments.service.js';
+import { Audit } from '../../modules/audit/audit.service.js';
 import { Accounts } from '../../modules/auth/accounts.service.js';
 import { FirstAccountModule } from '../../modules/auth/first-account.command.js';
 import { insertBranch } from '../branch-filter-sql.js';
 import { e2eDatabaseUrls } from './database.js';
+import { E2E_RESET_EMAIL } from './mail.js';
 
 // Run by Playwright's global setup after the API of the browser tests has
 // started: creates the accounts the tests sign in with, in `sodiq_e2e` only,
@@ -38,6 +40,7 @@ try {
   const transactions = app.get(Transactions, { strict: false });
   const accounts = app.get(Accounts, { strict: false });
   const assignments = app.get(Assignments, { strict: false });
+  const audit = app.get(Audit, { strict: false });
 
   const create = async (firstName: string, lastName: string) =>
     transactions.run([], (transaction) =>
@@ -651,6 +654,76 @@ try {
     );
   }
   seeded.switchers = { login: switchers.login, password: switchers.firstPassword };
+
+  // A teacher with an email on the record, in a branch of their own, for the
+  // password reset by email and the own photo (task 2.3c-2). The address is
+  // invented; the mail is only written to the outbox of the browser tests.
+  const resetBranch = await insertBranch(migrator, 'Email reset browser test branch');
+  const emailReset = await create('Madina', 'Xolmatova');
+  await transactions.run([resetBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: emailReset.id,
+      role: 'teacher',
+      branchId: resetBranch,
+      givenBy: null,
+    }),
+  );
+  const resetPerson = await migrator.transaction().execute(async (transaction) => {
+    const person = await transaction
+      .insertInto('staff')
+      .values({
+        kind: 'person',
+        staff_id: 'S-269040',
+        first_name: 'Madina',
+        last_name: 'Xolmatova',
+        sex: 'female',
+        birth_date: '1993-03-15',
+        phone: '+998935550140',
+        email: E2E_RESET_EMAIL,
+        admission_date: '2026-09-01',
+        account_id: emailReset.id,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: person.id, branch_id: resetBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: person.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+      .execute();
+    return person.id;
+  });
+  // The entry a Super Admin's creation of the record writes: an email that no
+  // entry names opens no account (decision 22 of pull request #66).
+  const adminAssignment = await migrator
+    .selectFrom('assignments')
+    .select('id')
+    .where('account_id', '=', superAdmin.id)
+    .where('role', '=', 'super_admin')
+    .executeTakeFirstOrThrow();
+  await transactions.run([resetBranch], (transaction) =>
+    audit.record(transaction, {
+      branchId: resetBranch,
+      actorId: superAdmin.id,
+      assignmentId: adminAssignment.id,
+      personId: resetPerson,
+      action: 'staff.create',
+      record: { type: 'staff', id: resetPerson },
+      newValue: { email: E2E_RESET_EMAIL },
+    }),
+  );
+  seeded.emailReset = { login: emailReset.login, password: emailReset.firstPassword };
 
   console.log(JSON.stringify(seeded));
 } finally {

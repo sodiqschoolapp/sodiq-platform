@@ -52,6 +52,20 @@ const environmentSchema = z.object({
   // A laptop and the browser tests' server only (decision 9 of pull request
   // #59): `1` keeps photos in memory, lost on a restart. Never on Render.
   PHOTOS_IN_MEMORY: z.preprocess(emptyAsUnset, z.enum(['0', '1']).default('0')),
+  // The address of the web app, for the links in emails (task 2.3c-2,
+  // decision 15 of #66): never taken from a request's Host or Origin, which
+  // the caller chooses. An origin only: scheme, host and port.
+  WEB_ORIGIN: z.preprocess(
+    emptyAsUnset,
+    z
+      .url({ protocol: /^https?$/ })
+      .refine((value) => new URL(value).origin === value)
+      .default('http://localhost:5173'),
+  ),
+  // The browser tests only (decision 14 of #66): each mail is also written as
+  // a file into this directory, so a test can follow its link. Refused on a
+  // Render service.
+  MAIL_OUTBOX_DIR: z.preprocess(emptyAsUnset, z.string().optional()),
 });
 
 const R2_VARIABLES = [
@@ -83,6 +97,10 @@ const PROBLEM: Record<VariableName, string> = {
   R2_BUCKET: 'R2_BUCKET must be a bucket name, set with the three other R2 variables',
   PHOTOS_IN_MEMORY:
     'PHOTOS_IN_MEMORY must be 0 or 1, and is never set together with the R2 variables',
+  WEB_ORIGIN:
+    'WEB_ORIGIN must be the address of the web app, for example https://app.example.test, with no path',
+  MAIL_OUTBOX_DIR:
+    'MAIL_OUTBOX_DIR is for the browser tests only and is never set on a server (with RENDER_GIT_COMMIT, TRUST_PROXY=1 or WEB_FILES)',
 };
 
 export interface AppConfig {
@@ -99,6 +117,14 @@ export interface AppConfig {
   reporting: ReportingConfig;
   /** Where photos are kept: the R2 bucket, memory (a laptop, the browser tests) or nowhere. */
   photos: PhotosConfig;
+  mail: MailConfig;
+}
+
+export interface MailConfig {
+  /** The origin of the web app, for the links in emails. */
+  webOrigin: string;
+  /** The browser tests only: a directory where each mail is also written as a file. */
+  outboxDir: string | undefined;
 }
 
 export type PhotosConfig =
@@ -142,6 +168,15 @@ export function loadConfig(environment: Record<string, string | undefined>): App
   if (data.PHOTOS_IN_MEMORY === '1' && r2Set.length > 0) {
     wrong.push('PHOTOS_IN_MEMORY');
   }
+  // A marker that a Render service really has (the review of the plan of #66,
+  // must-fix 4): NODE_ENV is set by nobody.
+  const onServer =
+    data.RENDER_GIT_COMMIT !== undefined ||
+    data.TRUST_PROXY === '1' ||
+    data.WEB_FILES !== undefined;
+  if (data.MAIL_OUTBOX_DIR !== undefined && onServer) {
+    wrong.push('MAIL_OUTBOX_DIR');
+  }
   if (wrong.length > 0) {
     const problems = wrong.map((name) => PROBLEM[name]);
     throw new ConfigError(`The configuration is not valid: ${problems.join('; ')}.`);
@@ -159,6 +194,7 @@ export function loadConfig(environment: Record<string, string | undefined>): App
       release: result.data.RENDER_GIT_COMMIT,
     },
     photos: photosOf(data),
+    mail: { webOrigin: data.WEB_ORIGIN, outboxDir: data.MAIL_OUTBOX_DIR },
   };
 }
 

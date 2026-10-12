@@ -110,6 +110,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   photo_too_large: 'The photo is larger than 5 MB.',
   photos_not_configured: 'Photos are not configured on this server.',
   photos_unavailable: 'The photo store did not answer.',
+  reset_link_invalid: 'The link does not work.',
+  reset_link_expired: 'The link has expired.',
   account_exists: 'The staff record has an account already.',
   login_taken: 'The login is given to another account.',
   no_account: 'The staff record has no account.',

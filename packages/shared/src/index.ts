@@ -568,3 +568,15 @@ export {
   photoTypeSchema,
   type PhotoType,
 } from './photos.js';
+export {
+  MAIL_TEXTS,
+  passwordResetConfirmSchema,
+  passwordResetRequestSchema,
+  RESET_LINK_INTERVAL_MS,
+  RESET_LINK_VALID_MS,
+  RESET_TOKEN_FORMAT,
+  type MailTexts,
+  type PasswordResetConfirm,
+  type PasswordResetMailTexts,
+  type PasswordResetRequest,
+} from './password-reset.js';

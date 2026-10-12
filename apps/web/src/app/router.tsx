@@ -11,6 +11,8 @@ import {
 import { HomePage } from '@/features/access/home-page';
 import { AccountPage } from '@/features/auth/account-page';
 import { CodePage } from '@/features/auth/code-page';
+import { ForgotPasswordPage } from '@/features/auth/forgot-password-page';
+import { ResetPasswordPage } from '@/features/auth/reset-password-page';
 import { PasswordPage } from '@/features/auth/password-page';
 import { sessionQuery, STEP_PATH, stepOf, type Step } from '@/features/auth/session';
 import { SetUpPage } from '@/features/auth/set-up-page';
@@ -65,12 +67,35 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sign-in',
-  // `ended`: the session was over when the person tried to go on.
-  validateSearch: (search: Record<string, unknown>): { reason?: 'ended' } =>
-    search.reason === 'ended' ? { reason: 'ended' } : {},
+  // `ended`: the session was over when the person tried to go on;
+  // `password_changed`: a new password was chosen with a reset link (2.3c-2).
+  validateSearch: (search: Record<string, unknown>): { reason?: 'ended' | 'password_changed' } =>
+    search.reason === 'ended' || search.reason === 'password_changed'
+      ? { reason: search.reason }
+      : {},
   beforeLoad: only('sign_in'),
   component: SignInPage,
   pendingComponent: AuthPendingPage,
+});
+
+/** "Forgot your password?" (task 2.3c-2): before sign-in only. */
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/forgot-password',
+  beforeLoad: only('sign_in'),
+  component: ForgotPasswordPage,
+  pendingComponent: AuthPendingPage,
+});
+
+/**
+ * The link of the reset mail (task 2.3c-2). Open in any state: the routes it
+ * calls are public, and a person signed in on this browser may follow a link
+ * for their account all the same.
+ */
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/reset-password',
+  component: ResetPasswordPage,
 });
 
 const codeRoute = createRoute({
@@ -285,6 +310,8 @@ const patternsRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   signInRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
   codeRoute,
   passwordRoute,
   setUpRoute,

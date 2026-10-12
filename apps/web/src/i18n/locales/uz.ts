@@ -202,6 +202,10 @@ export const uz: Texts<'one' | 'other'> = {
     photo_too_large: 'Surat 5 MB dan katta. Kichikroq surat tanlang.',
     photos_not_configured: 'Suratlar hali sozlanmagan. Administratorga murojaat qiling.',
     photos_unavailable: 'Suratlar hozir mavjud emas. Keyinroq qayta urinib koʻring.',
+    reset_link_invalid:
+      'Bu havola ishlamaydi. Yangi havola soʻrang; xat kelmasa, administratorga murojaat qiling.',
+    reset_link_expired:
+      'Havolaning muddati tugagan: havola bir soat ishlaydi. Yangi havola soʻrang.',
     availability_overlap:
       'Bu soatlar boshqa filialdagi soatlar bilan haftaning shu kunida ustma-ust tushadi. Ular ustma-ust tushmasligi uchun vaqtni oʻzgartiring.',
     archive_refused:
@@ -246,6 +250,22 @@ export const uz: Texts<'one' | 'other'> = {
     loginMissing: 'Loginni kiriting.',
     passwordMissing: 'Parolni kiriting.',
     sessionEnded: 'Seansingiz tugadi. Qaytadan kiring.',
+    forgot: 'Parolni unutdingizmi?',
+    passwordChanged: 'Parolingiz oʻzgartirildi. Yangi parol bilan kiring.',
+  },
+  forgot: {
+    title: 'Parolni unutdingizmi?',
+    login: 'Login',
+    loginMissing: 'Loginingizni kiriting.',
+    submit: 'Havola yuborish',
+    sent: 'Agar bu loginda elektron pochta manzili koʻrsatilgan boʻlsa, unga yangi parol tanlash uchun havola yuboriladi. Havola bir soat ishlaydi; u ishlayotgan paytda ikkinchisi yuborilmaydi.',
+    back: 'Kirish sahifasiga qaytish',
+  },
+  reset: {
+    title: 'Yangi parol tanlash',
+    submit: 'Yangi parolni saqlash',
+    noToken: 'Havola toʻliq emas. Xatdagi havolani qayta oching yoki yangisini soʻrang.',
+    askAgain: 'Yangi havola soʻrash',
   },
   code: {
     title: 'Ikkinchi bosqich',
@@ -1180,6 +1200,8 @@ export const uz: Texts<'one' | 'other'> = {
         other: 'Boshqa',
       },
       email: 'Elektron pochta',
+      emailLocked:
+        'Bu elektron pochtani oʻzgartira olmaysiz: unga yangi parol tanlash havolasi yuboriladi.',
       jshshir: 'JSHSHIR',
       admissionDate: 'Ishga qabul sanasi',
       contractType: 'Shartnoma',
@@ -1302,6 +1324,13 @@ export const uz: Texts<'one' | 'other'> = {
   },
   account: {
     title: 'Hisob',
+    photoTitle: 'Surat',
+    photoText: 'Yozuvingizni koʻradigan xodimlarga ismingiz yonida koʻrsatiladi.',
+    photoAdd: 'Surat qoʻshish',
+    photoChange: 'Suratni almashtirish',
+    photoRemove: 'Suratni olib tashlash',
+    photoRemoveTitle: 'Suratingiz olib tashlansinmi?',
+    photoRemoveText: 'Uning oʻrniga ismingizning bosh harflari koʻrsatiladi.',
     languageTitle: 'Til',
     languageText: 'Siz uchun platforma tili, kirgan har bir qurilmangizda.',
     passwordTitle: 'Parol',

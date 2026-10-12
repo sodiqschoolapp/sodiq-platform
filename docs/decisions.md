@@ -186,6 +186,34 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 12 October 2026: password reset by email and the own photo (task 2.3c-2)
+
+Plan approved on pull request #66 with corrections 1 to 3; decisions 1 to 19 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** `PUBLIC_ROUTES` gains `POST /api/auth/password-reset` and `POST /api/auth/password-reset/confirm` | Decision 1; `02`, build order: "later password reset by email" is in the short list |
+| **Look first.** `FILE_ROUTES` gains `PUT /api/auth/photo`, a second upload route for the staff photo kind, with the same types, size and middleware | Decision 2; the build-plan line from 2.2c-2; answer 2 said "one upload route per photo kind" |
+| **Look first.** Four `SECURITY DEFINER` functions: `password_reset_allowed` (yes or no for the public request), `password_reset_address` (named in the mail job only, a test holds it), `own_staff_record` (ids only), `last_email_change` (actor and moment only) | Decision 3, corrections 1 and 2; the request, the job and the confirm run with no branch |
+| **Look first.** Nobody changes the email of their own record; the Academic Vice Principal changes an email only where `reachingAssignment` (the rule of 2.3c-1) allows, or on a record with no account; name and phone stay as 2.2a built them | Decision 4; the email opens the account. Proposed `/spec-change`: "Phone, email and name are changed by the Super Admin or Academic Vice Principal; the Academic Vice Principal changes an email only for the accounts whose passwords he may reset, and nobody changes the email of their own record." |
+| **Look first.** The exception to `.claude/rules/database.md` of 2.3c-1 has a second caller (the email edit) through one function, `account-reach.ts` | Decision 5 |
+| **Look first.** An email change closes the open links; the confirm's entry names the last email change; 6.1's report counts resets by email | Decision 6, correction 1. Proposed `/spec-change` at the end of "An administrator resets a teacher's password ...": "A password reset by email that follows a change of the email by somebody else is listed in the same report." |
+| The request is by login; one answer (202, no body) for every login, no entry when nothing is made; the timing of the allowed path is an accepted risk | Decisions 7 and 8 |
+| A link works one hour from `sent_at`; a job that runs more than an hour after the request makes none; one link per account per 5 minutes; only the newest works; no new link while the newest is still open (unused, not closed, in its hour) | Decisions 9 and 10; the last part from the permission review of the build: a stranger who knows a login could otherwise close a person's link every 5 minutes |
+| A link dies when used, superseded, at any password write (administrator, re-hire, own change, email reset), at an email change and at an account lock (so it does not work again after an unlock), and works only while the account is not locked and the person not inactive or left; the columns are set once (trigger) | Decision 11; the lock from the spec review of the build |
+| **Look first.** An account that holds a role outside Teacher, Tutor, Head Teacher and Head Tutor (in force or planned) gets a reset link only when its email was last written (`staff.create` or `staff.edit`) by an account that was Super Admin at that moment (`password_reset_allowed`) | The permission review of the build, must-fix 1: an email the Academic Vice Principal wrote on a record without account, or before a stronger role was given, would otherwise open that account |
+| **Look first.** Every other account gets a reset link only when its email was last written by an account that was Super Admin at that moment, or by an account that holds an Academic Vice Principal assignment in force at the moment of the request or confirm in a branch where the account holds one of its roles (in force or planned); an email that no entry names (written by hand in the database) opens nothing until a Super Admin saves it once (decision 22) | Code round 1 of the review of #66, finding 1: an email the Academic Vice Principal of one branch wrote, before the account existed or before it moved to another branch, would otherwise open an account he may not reset (edge, Who can act: "... of his branch") |
+| The confirm locks the account, then the link, and reads every condition at the transaction's moment | The spec review of the build, must-fix 1: the other writers lock the account and then close the links; the opposite order could deadlock |
+| The email reset sets the typed password, ends every session and trusted device with `password_reset`, forgets the failed sign-ins, keeps the second step; the 0.6a "differs from the current one" rule does not apply | Decision 12 |
+| The worker makes the token; it is held only in the mail; the token is checked before any Argon2id hash, which runs outside the transaction | Decision 13; must-fix 3 of the plan review |
+| `LogMailer` until go-live; `MAIL_OUTBOX_DIR` for the browser tests, refused with `RENDER_GIT_COMMIT`, `TRUST_PROXY=1` or `WEB_FILES` | Decision 14, answer 16 |
+| `WEB_ORIGIN` from config (default `http://localhost:5173`), `https://app-test.sodiqschool.uz` for the test API and worker in `render.yaml`; the token in the fragment | Decision 15 |
+| `MAIL_TEXTS` in `packages/shared`, the subject tied to the reset page's title | Decision 16 |
+| Bitter on `/forgot-password` and `/reset-password` (the sign-in brand moment) | Decision 17 |
+| `/api/auth/photo`, `@AnySignedIn()`, the entry in the main branch read again under the lock (a moved main branch runs the work again), no assignment, 404 without a record | Decision 18 |
+| Codes `reset_link_invalid` and `reset_link_expired` | Decision 19 |
+| The email reset is a module of its own (`PasswordResetEmailModule`), not part of `AuthModule` | Decided in the build: the first-account command and the e2e seed start `AuthModule` without the job queue and the mailer |
+
 ## 12 October 2026: locks and resets by an administrator (task 2.3c-1)
 
 Plan approved on pull request #65 with corrections 1 to 5; decisions 1 to 14 confirmed there (decision 10 changed by correction 2). Flagged on issue #42.

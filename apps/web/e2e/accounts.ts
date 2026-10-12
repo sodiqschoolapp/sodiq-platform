@@ -33,7 +33,8 @@ export type AccountKey =
   | 'switchers'
   | 'account'
   | 'accountSecondStep'
-  | 'notifications';
+  | 'notifications'
+  | 'emailReset';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

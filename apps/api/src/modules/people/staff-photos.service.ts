@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
+import { sql } from 'kysely';
 import { photoTypeSchema, type PhotoType } from '@sodiq/shared';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -14,11 +15,50 @@ import { PHOTO_STORE, staffPhotoKey, type PhotoStore } from './photo-store.js';
 const notConfigured = () => new ApiException('photos_not_configured', 503);
 const unavailable = () => new ApiException('photos_unavailable', 503);
 
-function branchOf(access: Access): string {
+/** Whose photo is changed, by whom, and in which branch the entry goes. */
+interface PhotoTarget {
+  branchIds: readonly string[];
+  branchId: string;
+  /** The own photo: the link must still be the main one under the lock. */
+  main: boolean;
+  actorId: string;
+  assignmentId?: string;
+  id: string;
+}
+
+class MainBranchMoved extends Error {}
+
+function ownTarget(accountId: string, own: { staffId: string; branchId: string }): PhotoTarget {
+  return {
+    branchIds: [own.branchId],
+    branchId: own.branchId,
+    main: true,
+    actorId: accountId,
+    id: own.staffId,
+  };
+}
+
+function targetOf(access: Access, id: string): PhotoTarget {
   if (access.branchId === null) {
     throw new Error('A staff route works for the branch of the request.');
   }
-  return access.branchId;
+  return {
+    branchIds: access.branchIds,
+    branchId: access.branchId,
+    main: false,
+    actorId: access.accountId,
+    ...(access.assignmentId === undefined ? {} : { assignmentId: access.assignmentId }),
+    id,
+  };
+}
+
+function auditNamesOf(target: PhotoTarget) {
+  return {
+    branchId: target.branchId,
+    actorId: target.actorId,
+    ...(target.assignmentId === undefined ? {} : { assignmentId: target.assignmentId }),
+    personId: target.id,
+  };
 }
 
 /**
@@ -68,14 +108,101 @@ export class StaffPhotos {
    * would otherwise pass), writes the photo and its audit entry. An object
    * whose transaction then fails stays as an orphan under a key never reused.
    */
-  async setPhoto(
+  setPhoto(
     access: Access,
     id: string,
     file: UploadedFile | null,
     requestId: string,
   ): Promise<void> {
-    const branchId = branchOf(access);
-    await this.transactions.run(access.branchIds, (transaction) =>
+    return this.place(targetOf(access, id), file, requestId);
+  }
+
+  /** Removes the photo from the record; the object stays in the store (decision 8). Nothing to remove: no entry. */
+  removePhoto(access: Access, id: string, requestId: string): Promise<void> {
+    return this.clear(targetOf(access, id), requestId);
+  }
+
+  /**
+   * The own photo of the person signed in (task 2.3c-2, decision 18 of pull
+   * request #66; `edge/people-roles-accounts`: "Staff can change their own
+   * ... photo"), the Principal too: the same checks, order and entry as the
+   * staff photo, with the own account as actor, no assignment (no role
+   * allowed it) and the record's main branch, read again under the lock.
+   */
+  async setOwnPhoto(
+    accountId: string,
+    file: UploadedFile | null,
+    requestId: string,
+  ): Promise<void> {
+    const first = ownTarget(accountId, await this.ownRecord(accountId));
+    // The object is put once; only the locked write follows a moved main
+    // branch (should-fix 10 of the spec review of the build).
+    await this.place(first, file, requestId, (write) => this.asOwn(accountId, write, first));
+  }
+
+  removeOwnPhoto(accountId: string, requestId: string): Promise<void> {
+    return this.asOwn(accountId, (target) => this.clear(target, requestId));
+  }
+
+  async readOwnPhoto(accountId: string): Promise<PhotoFile> {
+    const own = await this.ownRecord(accountId);
+    return this.read([own.branchId], own.staffId);
+  }
+
+  /** The record linked to the account and its main branch; 404 when there is none (the first Super Admin). */
+  private async ownRecord(accountId: string): Promise<{ staffId: string; branchId: string }> {
+    const found = await this.transactions.run([], (transaction) =>
+      sql<{ staff_id: string; branch_id: string }>`
+        select staff_id, branch_id from own_staff_record(${accountId}::uuid)
+      `.execute(transaction),
+    );
+    const row = found.rows[0];
+    if (row === undefined) {
+      throw notFound();
+    }
+    return { staffId: row.staff_id, branchId: row.branch_id };
+  }
+
+  /**
+   * Runs the work for the own record in its main branch. When the main branch
+   * moved between the read and the lock (should-fix 12 of the plan review),
+   * the work finds no main link there and is run again from the new one.
+   */
+  private async asOwn(
+    accountId: string,
+    work: (target: PhotoTarget) => Promise<void>,
+    first?: PhotoTarget,
+  ) {
+    for (let tries = 0; ; tries += 1) {
+      const target =
+        tries === 0 && first !== undefined
+          ? first
+          : ownTarget(accountId, await this.ownRecord(accountId));
+      try {
+        await work(target);
+        return;
+      } catch (error) {
+        if (!(error instanceof MainBranchMoved) || tries >= 2) {
+          throw error instanceof MainBranchMoved ? notFound() : error;
+        }
+      }
+    }
+  }
+
+  /**
+   * The checks, the put of the object outside any transaction, then the
+   * locked write, run by `locked` (the own photo runs it again in a moved main
+   * branch; the staff photo once).
+   */
+  private async place(
+    target: PhotoTarget,
+    file: UploadedFile | null,
+    requestId: string,
+    locked: (write: (target: PhotoTarget) => Promise<void>) => Promise<void> = (write) =>
+      write(target),
+  ) {
+    const { id } = target;
+    await this.transactions.run(target.branchIds, (transaction) =>
       this.readPerson(transaction, id),
     );
     if (!this.store.configured) {
@@ -95,70 +222,31 @@ export class StaffPhotos {
     } catch {
       throw unavailable();
     }
-    await this.transactions.run(access.branchIds, async (transaction) => {
-      const row = await transaction
-        .selectFrom('staff')
-        .select(['photo_id'])
-        .where('id', '=', id)
-        .where('kind', '=', 'person')
-        .forUpdate()
-        .executeTakeFirst();
-      const linked = await transaction
-        .selectFrom('staff_branches')
-        .select('staff_id')
-        .where('staff_id', '=', id)
-        .where('branch_id', '=', branchId)
-        .forShare()
-        .executeTakeFirst();
-      if (row === undefined || linked === undefined) {
-        throw notFound();
-      }
-      await transaction
-        .updateTable('staff')
-        .set({ photo_id: photoId, photo_type: type })
-        .where('id', '=', id)
-        .execute();
-      await this.audit.record(transaction, {
-        branchId,
-        actorId: access.accountId,
-        assignmentId: access.assignmentId,
-        personId: id,
-        action: 'staff.photo',
-        record: { type: 'staff', id },
-        oldValue: { photoId: row.photo_id },
-        newValue: {
-          photoId,
-          type,
-          width: size.width,
-          height: size.height,
-          bytes: file.bytes.length,
-        },
-        requestId,
-      });
-    });
+    const bytes = file.bytes.length;
+    await locked((into) =>
+      this.transactions.run(into.branchIds, async (transaction) => {
+        const row = await this.lockLinked(transaction, into);
+        await transaction
+          .updateTable('staff')
+          .set({ photo_id: photoId, photo_type: type })
+          .where('id', '=', id)
+          .execute();
+        await this.audit.record(transaction, {
+          ...auditNamesOf(into),
+          action: 'staff.photo',
+          record: { type: 'staff', id },
+          oldValue: { photoId: row.photo_id },
+          newValue: { photoId, type, width: size.width, height: size.height, bytes },
+          requestId,
+        });
+      }),
+    );
   }
 
-  /** Removes the photo from the record; the object stays in the store (decision 8). Nothing to remove: no entry. */
-  async removePhoto(access: Access, id: string, requestId: string): Promise<void> {
-    const branchId = branchOf(access);
-    await this.transactions.run(access.branchIds, async (transaction) => {
-      const row = await transaction
-        .selectFrom('staff')
-        .select(['photo_id'])
-        .where('id', '=', id)
-        .where('kind', '=', 'person')
-        .forUpdate()
-        .executeTakeFirst();
-      const linked = await transaction
-        .selectFrom('staff_branches')
-        .select('staff_id')
-        .where('staff_id', '=', id)
-        .where('branch_id', '=', branchId)
-        .forShare()
-        .executeTakeFirst();
-      if (row === undefined || linked === undefined) {
-        throw notFound();
-      }
+  private async clear(target: PhotoTarget, requestId: string): Promise<void> {
+    const { id } = target;
+    await this.transactions.run(target.branchIds, async (transaction) => {
+      const row = await this.lockLinked(transaction, target);
       if (row.photo_id === null) {
         return;
       }
@@ -168,10 +256,7 @@ export class StaffPhotos {
         .where('id', '=', id)
         .execute();
       await this.audit.record(transaction, {
-        branchId,
-        actorId: access.accountId,
-        assignmentId: access.assignmentId,
-        personId: id,
+        ...auditNamesOf(target),
         action: 'staff.photo',
         record: { type: 'staff', id },
         oldValue: { photoId: row.photo_id },
@@ -181,9 +266,45 @@ export class StaffPhotos {
     });
   }
 
+  /**
+   * Locks the record, then reads its link to the branch again in a statement
+   * of its own, `for share` (`.claude/rules/database.md`); for the own photo
+   * the link must still be the main one.
+   */
+  private async lockLinked(
+    transaction: Transaction,
+    target: PhotoTarget,
+  ): Promise<{ photo_id: string | null }> {
+    const row = await transaction
+      .selectFrom('staff')
+      .select(['photo_id'])
+      .where('id', '=', target.id)
+      .where('kind', '=', 'person')
+      .forUpdate()
+      .executeTakeFirst();
+    const linked = await transaction
+      .selectFrom('staff_branches')
+      .select(['staff_id', 'is_main'])
+      .where('staff_id', '=', target.id)
+      .where('branch_id', '=', target.branchId)
+      .forShare()
+      .executeTakeFirst();
+    if (target.main && row !== undefined && linked?.is_main !== true) {
+      throw new MainBranchMoved();
+    }
+    if (row === undefined || linked === undefined) {
+      throw notFound();
+    }
+    return row;
+  }
+
   /** The current photo: the record read and its transaction closed, then the store. Not audited (a view). */
-  async readPhoto(access: Access, id: string): Promise<PhotoFile> {
-    const row = await this.transactions.run(access.branchIds, (transaction) =>
+  readPhoto(access: Access, id: string): Promise<PhotoFile> {
+    return this.read(access.branchIds, id);
+  }
+
+  private async read(branchIds: readonly string[], id: string): Promise<PhotoFile> {
+    const row = await this.transactions.run(branchIds, (transaction) =>
       this.readPerson(transaction, id),
     );
     if (row.photo_id === null || row.photo_type === null) {

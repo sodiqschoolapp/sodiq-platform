@@ -543,3 +543,81 @@ describe('the language on the account page', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(ru.errors.internal_error);
   });
 });
+
+// Task 2.3c-2, pull request #66, decision 18: the own photo
+// (`edge/people-roles-accounts`: "Staff can change their own ... photo").
+describe('the own photo on the account page', () => {
+  // A PNG of one pixel; the page shows it as a data: address.
+  const PIXEL = Uint8Array.from(
+    atob(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNoAAAAggCBd81ytgAAAABJRU5ErkJggg==',
+    ),
+    (char) => char.charCodeAt(0),
+  );
+  const photoAnswer = () =>
+    new Response(new Blob([PIXEL], { type: 'image/png' }), {
+      status: 200,
+      headers: { 'Content-Type': 'image/png' },
+    });
+  const named = () => json(sessionOf({ name: { firstName: 'Nodira', lastName: 'Saidova' } }));
+
+  it('shows the initials and "Add photo" while there is no photo', async () => {
+    openAccount({
+      'GET /api/auth/session': named,
+      'GET /api/auth/photo': () => refusal('not_found', 404),
+    });
+    await heading(en.account.title);
+    const photo = section(en.account.photoTitle);
+    expect(await photo.findByRole('button', { name: en.account.photoAdd })).toBeDefined();
+    expect(photo.getByText('NS')).toBeDefined();
+    expect(photo.queryByRole('img')).toBeNull();
+    expect(photo.queryByRole('button', { name: en.account.photoRemove })).toBeNull();
+  });
+
+  it('shows the photo, and removes it after asking', async () => {
+    let removed = false;
+    const { calls } = openAccount({
+      'GET /api/auth/session': named,
+      'GET /api/auth/photo': () => (removed ? refusal('not_found', 404) : photoAnswer()),
+      'DELETE /api/auth/photo': () => {
+        removed = true;
+        return nothing();
+      },
+    });
+    await heading(en.account.title);
+    const photo = section(en.account.photoTitle);
+    const image = await photo.findByRole('img', { name: 'Nodira Saidova' });
+    expect(image.getAttribute('src')).toMatch(/^data:image\/png;base64,/);
+
+    fireEvent.click(photo.getByRole('button', { name: en.account.photoRemove }));
+    await confirmDialog(en.account.photoRemove);
+    expect(await photo.findByRole('button', { name: en.account.photoAdd })).toBeDefined();
+    expect(calls.some((call) => call.route === 'DELETE /api/auth/photo')).toBe(true);
+    expect(photo.queryByRole('img')).toBeNull();
+  });
+
+  it('refuses a file that is not a JPEG or PNG before sending it', async () => {
+    const { calls } = openAccount({
+      'GET /api/auth/session': named,
+      'GET /api/auth/photo': () => refusal('not_found', 404),
+    });
+    await heading(en.account.title);
+    const photo = section(en.account.photoTitle);
+    await photo.findByRole('button', { name: en.account.photoAdd });
+    fireEvent.change(photo.getByLabelText(en.account.photoAdd), {
+      target: { files: [new File(['GIF89a'], 'photo.gif', { type: 'image/gif' })] },
+    });
+    expect(await photo.findByText(en.errors.photo_invalid)).toBeDefined();
+    expect(calls.some((call) => call.route === 'PUT /api/auth/photo')).toBe(false);
+  });
+
+  it('is not shown to an account without a staff record', async () => {
+    const { calls } = openAccount({
+      'GET /api/auth/session': () => json(sessionOf({ name: null })),
+    });
+    await heading(en.account.title);
+    await screen.findByRole('region', { name: en.account.languageTitle });
+    expect(screen.queryByRole('region', { name: en.account.photoTitle })).toBeNull();
+    expect(calls.some((call) => call.route === 'GET /api/auth/photo')).toBe(false);
+  });
+});

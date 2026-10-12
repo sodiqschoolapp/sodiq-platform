@@ -12,6 +12,7 @@ import { createDatabase, type Database } from '../database/database.js';
 import { DATABASE } from '../database/database.module.js';
 import type { JobQueueOptions } from '../jobs/job-queue.js';
 import { JOB_QUEUE_OPTIONS } from '../jobs/jobs.tokens.js';
+import { MAILER, RecordingMailer, type Mailer } from '../mail/mailer.js';
 import { PERMISSION_TABLE } from '../modules/access/permission-table.token.js';
 import { LiveSockets } from '../modules/notifications/live/socket-server.js';
 import { PHOTO_STORE, type PhotoStore } from '../modules/people/photo-store.js';
@@ -49,6 +50,11 @@ export interface TestAppOptions {
   handlerStop?: StopBeforeHandler;
   /** The photo store of the photo routes (`MemoryPhotoStore`, or one that fails). Without it: the configuration's. */
   photoStore?: PhotoStore;
+  /**
+   * The mail service (task 2.3c-2). Without it: a `RecordingMailer` of its own,
+   * so that no test prints a mail.
+   */
+  mailer?: Mailer;
 }
 
 /**
@@ -82,6 +88,7 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
   if (options.config !== undefined) {
     builder.overrideProvider(CONFIG).useValue({ ...loadConfig(process.env), ...options.config });
   }
+  builder.overrideProvider(MAILER).useValue(options.mailer ?? new RecordingMailer());
   if (options.photoStore !== undefined) {
     builder.overrideProvider(PHOTO_STORE).useValue(options.photoStore);
   }

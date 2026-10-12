@@ -12,6 +12,7 @@ import { HeadTeachers } from './head-teachers.service.js';
 import { PHOTO_STORE, photoStoreOf } from './photo-store.js';
 import { StaffAccountsController } from './staff-accounts.controller.js';
 import { StaffAccounts } from './staff-accounts.service.js';
+import { OwnPhotoController } from './own-photo.controller.js';
 import { StaffPhotosController } from './staff-photos.controller.js';
 import { StaffPhotos } from './staff-photos.service.js';
 import { StaffController } from './staff.controller.js';
@@ -33,6 +34,7 @@ import { Vacancies } from './vacancies.service.js';
     AccountAccessController,
     HeadTeachersController,
     StaffPhotosController,
+    OwnPhotoController,
     AvailabilityController,
     VacanciesController,
   ],

@@ -4,9 +4,11 @@ import { ConfigModule } from './config/config.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthController } from './health/health.controller.js';
 import { JobsModule } from './jobs/jobs.module.js';
+import { MailModule } from './mail/mail.module.js';
 import { AccessModule } from './modules/access/access.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { PasswordResetEmailModule } from './modules/auth/password-reset-email.module.js';
 import { ClassesModule } from './modules/classes/classes.module.js';
 import { FeedbackModule } from './modules/feedback/feedback.module.js';
 import { JournalModule } from './modules/journal/journal.module.js';
@@ -26,7 +28,9 @@ export const SHARED_MODULES = [
   ConfigModule,
   ClockModule,
   DatabaseModule,
+  MailModule,
   AuthModule,
+  PasswordResetEmailModule,
   AccessModule,
   AuditModule,
   NotificationsModule,

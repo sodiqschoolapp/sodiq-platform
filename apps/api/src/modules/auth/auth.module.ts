@@ -40,6 +40,7 @@ import { TwoStep } from './two-step.service.js';
   exports: [
     Accounts,
     Sessions,
+    SignInThrottle,
     PasswordResets,
     AccountLocks,
     TwoStep,

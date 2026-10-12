@@ -14,6 +14,10 @@ import { Public } from './session.guard.js';
  */
 const PUBLIC_ROUTES: Record<string, string> = {
   'GET /api/health': 'Uptime monitoring and the deploy smoke test call it without a session.',
+  'POST /api/auth/password-reset':
+    'The person who forgot the password cannot sign in; "later password reset by email" is in the short list (task 2.3c-2, decision 1 of #66).',
+  'POST /api/auth/password-reset/confirm':
+    'The new password is chosen with the link of the mail, without a session (task 2.3c-2, decision 1 of #66).',
   'POST /api/auth/sign-in': 'Sign-in cannot require a session.',
 };
 
@@ -48,11 +52,13 @@ describe('the routes that work without sign-in', () => {
   // The check above is only worth something if it sees every route.
   it('are found among all routes of the application', () => {
     expect(routesOf(app).map((route) => route.name)).toEqual([
+      'DELETE /api/auth/photo',
       'DELETE /api/auth/trusted-devices/:id',
       'DELETE /api/people/staff/:id/photo',
       'GET /api/access/branches-without-vice-principal',
       'GET /api/access/head-teachers',
       'GET /api/access/super-admins',
+      'GET /api/auth/photo',
       'GET /api/auth/second-step',
       'GET /api/auth/session',
       'GET /api/auth/sessions',
@@ -92,6 +98,8 @@ describe('the routes that work without sign-in', () => {
       'PATCH /api/setup/day-templates/:id',
       'PATCH /api/setup/slot-types/:id',
       'POST /api/auth/password',
+      'POST /api/auth/password-reset',
+      'POST /api/auth/password-reset/confirm',
       'POST /api/auth/second-step',
       'POST /api/auth/second-step/confirm',
       'POST /api/auth/second-step/set-up',
@@ -160,6 +168,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/setup/subjects/:id/restore',
       'POST /api/setup/subjects/export',
       'PUT /api/auth/language',
+      'PUT /api/auth/photo',
       'PUT /api/people/staff/:id',
       'PUT /api/people/staff/:id/availability',
       'PUT /api/people/staff/:id/branches',
