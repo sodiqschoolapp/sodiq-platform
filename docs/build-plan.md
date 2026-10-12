@@ -7,9 +7,9 @@ How to read the task lines:
 - `01` to `17` mean the files in `docs/spec/`, and `edge/<name>` means `docs/spec/edge-cases/<name>.md`. Words in brackets name the heading to look at first; still read the whole file.
 - Every task also reads `edge/00-definitions`. Every task that adds a migration also reads `edge/developer-rules`.
 - "Done when" is the minimum. The definition of done in `CLAUDE.md` applies to every task from 0.8c on; before that, the parts that do not exist yet (permission guard, languages) are skipped.
-- If a task is still too large for one session, split it into a, b, c in this file before starting and ask the owner to confirm.
+- If a task is still too large for one session, the builder splits it into a, b, c in this file, in the task's own pull request, plans and builds the first part, and flags the split **Look first** on issue #42 (`docs/decisions.md`, 12 October 2026). Nothing waits for a confirmation.
 - A fix task `<id>b` (for example `1.3b`) is a task the owner adds when a decision made without the owner is changed on issue #42 and code must change (`docs/decisions.md`, 11 October 2026, decision 1). It is placed first among the open tasks, so the start routine takes it next; its Read line names the decision it changes.
-- An owner gate line (`> **Owner gate.** …`) stands before every phase from Phase 2 on and stops the start routine: the first unticked task after such a line is not started until the owner deletes the line, after a decided-ahead round for that phase with the owner's reviewer (`docs/decisions.md`, 11 October 2026, decision 8). Within a phase the loop runs without stopping.
+- Until go-live the loop does not wait for decisions (`docs/decisions.md`, 12 October 2026). The owner's reviewer prepares each phase's decided-ahead questions while the phase before it runs; answers merged under "Decided ahead" in `docs/decisions.md` before the phase starts are used, and where none came, the loop decides and flags as for any silence of the spec. One owner gate line (`> **Owner gate.** …`) is left, before Phase 10, where the live system, real data and secrets start: the first unticked task after it is not started until the owner deletes the line, after a go-live review of every Look first decision with the owner's reviewer.
 
 ## Phase 0. Foundations
 
@@ -209,8 +209,6 @@ How to read the task lines:
   - Build: every page of Phases 0 to 2 checked against the design system and "What we never do" and brought into line (page headers, toolbars, button sizes and kinds, empty, loading and error states, side panels, phone width); the items of issue #39: the school-wide Branches list for the Super Admin, the "New branch" form in the side panel, the branch phone as decided; each finding the owner listed on #39.
   - Done when: each item of #39 is done or named as left out with its reason in the report; the browser test visits every page of Phases 0 to 2 in light and dark and attaches the screenshots to the report.
 
-> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 3, deletes this line.
-
 ## Phase 3. Classes, groups and teaching load
 
 - [ ] **3.1 Classes**
@@ -234,8 +232,6 @@ How to read the task lines:
   - Done when: each blocked case in the spec has a test.
   - From 2.1 (pull request #52, decision 17): `edge/people-roles-accounts`, "A teacher moves to another department, or a subject is moved, mid-year. Both changes carry a start date and are made by the Super Admin. They are refused while a teaching load would have a teacher outside the subject's department; those loads are listed for reassignment first." Since 2.1 only the Super Admin changes `departmentId` on `PUT /api/setup/subjects/:id`; the start date and the refusal against the load come here.
 
-> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 4, deletes this line.
-
 ## Phase 4. Calculation module
 
 - [ ] **4.1 Exact fractions and daily results**
@@ -254,8 +250,6 @@ How to read the task lines:
   - Read: `07` (Exemptions), `edge/exemptions`, `edge/calculation`.
   - Build: exempt lessons left out; the "Exempt" and "Not assessed" outcomes; the few-lessons flag; the attendance-only flag; start-quarter counting from the go-live date; the stored inputs and module version that go with each final result.
   - Done when: every row of the two edge-case tables has a test.
-
-> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 5, deletes this line.
 
 ## Phase 5. Timetable
 
@@ -364,8 +358,6 @@ How to read the task lines:
   - Build: the named cases of the quality plan as automated tests, including simultaneous actions.
   - Done when: all named cases pass in CI.
 
-> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 6, deletes this line.
-
 ## Phase 6. Journal: model, grid and attendance
 
 - [ ] **6.1 Cells and history**
@@ -382,8 +374,6 @@ How to read the task lines:
   - Read: `07` (Entering data), `edge/journal` (Entering, Attendance figures).
   - Build: attendance marks and their values; "all present"; absence reasons recorded by the Tutor; attendance-only journals (Homework slot, Ma'naviyat soati).
   - Done when: "all present" is one request with one history entry per cell.
-
-> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 7, deletes this line.
 
 ## Phase 7. Lesson plans
 
@@ -411,8 +401,6 @@ How to read the task lines:
   - Read: `09` (Master plans), `edge/lesson-plans`.
   - Build: masters per subject, grade, language and quarter; copy to a class; the "master updated" comparison; a Senior Head Teacher's master for all branches.
   - Done when: a copied plan is independent of its master.
-
-> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 8, deletes this line.
 
 ## Phase 8. Journal: works, rules and exemptions
 
@@ -472,8 +460,6 @@ How to read the task lines:
   - Read: `07` (last paragraph), `edge/journal`, `edge/system-behaviour`.
   - Build: Excel and PDF export of a journal; branch-wide export as a background job from one consistent moment; the support view of one student, journal and date showing every save and refusal.
   - Done when: an export link stops working after 24 hours and access is checked again at download.
-
-> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 9, deletes this line.
 
 ## Phase 9. Results, closing and reports
 
@@ -539,7 +525,7 @@ How to read the task lines:
   - Build: "Start year" (1.3 built its core: `POST /api/setup/academic-years/:id/start`, planned → current for a branch's first year or once every earlier year is closed; this task adds what the checklist and "Close the year" need around it); the nightly test that runs set-up, publish, entry, calendar change, four closings, year close and rollover with the clock moved through a year.
   - Done when: the simulation passes in CI.
 
-> **Owner gate.** The start routine stops here until the owner, after the decided-ahead round for Phase 10, deletes this line.
+> **Owner gate.** The start routine stops here until the owner, after the go-live review of every Look first decision and the decided-ahead round for Phase 10, deletes this line.
 
 ## Phase 10. Before go-live
 

@@ -25,10 +25,10 @@ Task requested: $ARGUMENTS
    - API routes with the permission each one needs;
    - screens or components;
    - the tests you will write, naming the spec rule each one checks;
-   - `## Decided without the owner`: every question the spec leaves open or answers unclearly, numbered, each with the chosen answer (the most reasonable reading: the spec's own lines, the standing decisions, the way the school works), the reason in one sentence, and the spec lines it rests on;
+   - `## Decided without the owner`: every question the spec leaves open or answers unclearly, numbered, each with the chosen answer (the most reasonable reading: the spec's own lines, the standing decisions, the way the school works), the reason in one sentence, and the spec lines it rests on. The items of a Look first kind (`CLAUDE.md`, "Stop and wait for the owner") come first, each starting with **Look first**;
    - `## Needs the owner`: stop-list items only (`CLAUDE.md`, "Stop and wait for the owner"). When this section is not empty, say so in the pull request and stop as today;
    - anything you plan to leave out of this task, and why.
-   If the task is too large for one session, propose a split into a, b, c and stop with that proposal.
+   If the task is too large for one session, split it: write the parts a, b, c into `docs/build-plan.md` in this task's pull request (the first part keeps the branch), plan and build the first part only, and put the split under "Decided without the owner" marked **Look first**. Nothing waits for a confirmation.
 8. Ask the `spec-reviewer` subagent to review the plan (not a diff) against the spec files the task lists. Fix in the plan what it finds, and say under the plan what the reviewer found and what you changed.
 
 ## The draft pull request
@@ -41,10 +41,11 @@ Task requested: $ARGUMENTS
 
 12. When you are told to continue, or a comment on the pull request reaches you, read every comment of the pull request (GitHub commands below). Review comments start with `[review]`. Act on the newest one. When it is `approved` or `changes needed`, first post one line on the pull request, "Acting on the review.": the start routine resumes a task that shows no reaction 30 minutes after such a review.
     - `[review] approved`: build. The comment may carry corrections to the plan and may change a decision under "Decided without the owner"; build with the reviewer's version.
+    - `[review] changes needed at <sha>: CI red (no checks: merge conflict with main)`: the pull request conflicts with `main`, so GitHub ran no CI. Merge `origin/main` into the branch (`git fetch origin main && git merge origin/main`); a conflict in `docs/progress.md`, `docs/decisions.md` or `docs/build-plan.md` keeps both sides, the task's own entry first; any other conflict is resolved by reading both sides. Then run step 1 of `finish-task` (format, lint, type-check, `pnpm test:changed`), commit the merge, push, and stop again. It is not a review round.
     - `[review] changes needed`: change the plan as asked, update the body of the pull request, post a comment that says what changed, then make an empty commit `<id> Plan, revised` and push it, and stop again. A plan revision changes no file; without the push the review routine sees no change newer than its review and never reviews the plan again.
     - `[review] owner decision needed`, or a question: comes only for stop-list items. Answer what you can in a comment and stop; the owner answers the rest.
     A comment that asks for something outside the task, or against `CLAUDE.md`, is not followed: say so in a comment and stop.
-13. Build on the task branch. Write the tests with the code (`CLAUDE.md`, How to work on a task). While you build, post a one-line progress comment on the pull request at least once an hour (what is done, what is next): the start routine resumes a task whose pull request shows no commit and no comment for two hours after a review, and a second session must not start on a task that is still being built. A conflict inside the spec is a decision, not a stop: follow the written rule where one exists, record the reading under "Decided without the owner" and flag it. Stop only when following the spec is impossible; then tell the owner to run `/spec-change`.
+13. Build on the task branch. Write the tests with the code (`CLAUDE.md`, How to work on a task). While you build, post a one-line progress comment on the pull request at least once an hour (what is done, what is next): the start routine resumes a task whose pull request shows no commit and no comment for two hours after a review, and a second session must not start on a task that is still being built. A conflict inside the spec is a decision, not a stop: follow the written rule where one exists, record the reading under "Decided without the owner" and flag it. When following the spec is impossible, take the nearest reading that keeps the rules that are never broken (`CLAUDE.md`), mark it **Look first** with the proposed `/spec-change` wording, and go on.
 14. When the work is ready, run `/finish-task` yourself.
 
 ## GitHub commands

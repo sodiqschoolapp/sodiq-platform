@@ -6,7 +6,7 @@ A school management web platform for Sodiq School (Uzbekistan): three branches, 
 
 1. The timetable and the journal must be correct. A wrong mark or a double-booked teacher is the worst possible bug. When speed of delivery and correctness pull apart, choose correctness.
 2. The spec in `docs/spec/` is the source of truth. Read the files a task names before planning. Do not work from memory of the spec and do not invent rules. If the spec is silent or unclear, take the most reasonable reading (the spec's own lines, the standing decisions, the way the school works), write it in the plan under "Decided without the owner" with the reason, and go on; the reviewer confirms or changes it when it approves the plan, and the owner confirms or changes it afterwards on issue #42. Only the things under "Stop and wait for the owner" stop a task.
-3. Never change files under `docs/spec/` on your own. If a rule should change, stop and tell the owner; the owner runs the `/spec-change` skill.
+3. Never change files under `docs/spec/` on your own. If a rule should change, or two rules contradict each other, it does not stop the task: follow the most reasonable reading, flag it **Look first** on issue #42 with the wording a `/spec-change` should give, and go on; the owner runs the `/spec-change` skill when they agree.
 
 ## Rules that are never broken
 
@@ -27,7 +27,7 @@ A school management web platform for Sodiq School (Uzbekistan): three branches, 
 
 ## Stack
 
-TypeScript (strict) everywhere. Web: React, Vite, TanStack Router, TanStack Query, Tailwind CSS, shadcn/ui, AG Grid Community (journal), Pragmatic drag and drop (timetable board), i18next, Dexie (offline queue). Server: Node.js LTS, NestJS, REST described in OpenAPI with a generated client, Socket.IO, own sign-in module (Argon2id, cookie sessions, TOTP). Data: PostgreSQL, hand-written SQL migrations, Kysely with generated types, pg-boss for jobs. Solver: Timefold Solver Community Edition in Kotlin, a separate service. Tests: Vitest, Playwright, fast-check. Details and reasons: `docs/spec/13-technology.md`. Do not add or swap a library without asking.
+TypeScript (strict) everywhere. Web: React, Vite, TanStack Router, TanStack Query, Tailwind CSS, shadcn/ui, AG Grid Community (journal), Pragmatic drag and drop (timetable board), i18next, Dexie (offline queue). Server: Node.js LTS, NestJS, REST described in OpenAPI with a generated client, Socket.IO, own sign-in module (Argon2id, cookie sessions, TOTP). Data: PostgreSQL, hand-written SQL migrations, Kysely with generated types, pg-boss for jobs. Solver: Timefold Solver Community Edition in Kotlin, a separate service. Tests: Vitest, Playwright, fast-check. Details and reasons: `docs/spec/13-technology.md`. Adding or swapping a library is a **Look first** decision ("Stop and wait for the owner", below), not a stop.
 
 ## Repository layout
 
@@ -77,7 +77,7 @@ pnpm auth:first-account -- --first-name <name> --last-name <name>
 2. Read the task, the spec files it lists, `docs/progress.md` and the standing decisions in `docs/decisions.md`. Look at the existing code before proposing anything.
 3. Write a plan first: files to change, database changes, tests to add, the decisions made without the owner and what needs the owner. Have the `spec-reviewer` agent check it, then open a draft pull request with the plan and stop. Build only after a `[review] approved` comment on the pull request; follow its corrections. `[review] owner decision needed` is for the stop list only ("Stop and wait for the owner") and waits for the owner.
 4. Write the tests with the code. For `packages/calc`, `packages/timetable-rules`, permissions and database constraints, write the failing test first.
-5. Run `pnpm lint`, `pnpm typecheck` and `pnpm test:changed` and fix every failure. CI runs the whole suite on the pull request and is the gate; a red CI is fixed before a review is asked for. Never skip, delete or weaken a test to get to green. If a test is wrong, say so and ask.
+5. Run `pnpm lint`, `pnpm typecheck` and `pnpm test:changed` and fix every failure. CI runs the whole suite on the pull request and is the gate; a red CI is fixed before a review is asked for. Never skip, delete or weaken a test to get to green. If a test is wrong because a requirement or a decision changed, fix it, give the reason in the report and flag it **Look first**.
 6. When the work is ready, run `/finish-task`: independent review, update of the plan and progress files, push, pull request marked ready with the report (what to look at, what the browser test proved, the decisions made without the owner). Then stop and wait for the `[review]` comment: fix what `changes needed` lists; `ready to merge`: the reviewer merges; nothing is left for you.
 
 The whole loop, the review routine and the cloud environment are described in `docs/cloud-loop.md`. A reviewer uses `/review-pr`.
@@ -108,14 +108,21 @@ Before task 0.8c some of these do not exist yet (permission guard, languages); s
 
 ## Stop and wait for the owner, even when nobody is watching
 
-Five things stop a task. For these the session posts `[review] owner decision needed` (or says what it needs in the pull request) and stops:
+Until go-live (task 10.4) nothing the loop builds is used by real people, holds real data or spends money, so every mistake can be corrected afterwards (owner, 12 October 2026). Only two things stop a task. For these the session posts `[review] owner decision needed` (or says what it needs in the pull request) and stops:
 
-1. Secrets or deployment.
-2. Deleting or weakening a test, a constraint, an index, a trigger or a migration.
-3. Any text under `docs/spec/`.
-4. A rule in `packages/calc` or the exact-arithmetic rule.
-5. A new dependency.
+1. Secrets, accounts with a provider, anything that costs money, and production (the live system, its data, its address).
+2. A task pull request that changes the loop's own rules beyond the added check lines `review-pr` allows.
 
-Widening what an existing role may already do in an existing permission area also stops; a new permission area for new routes is decided and flagged like any other decision.
+Two brakes are failures, not decisions, and stay: three review rounds without agreement, and three red CI runs in a row.
 
-Everything else that used to need asking (a new permission area for new routes, a schema detail the task needs, a name, a default, a UI choice) is decided, written under "Decided without the owner" in the plan and the report, and flagged on issue #42.
+Everything else (a new permission area for new routes, a schema detail, a name, a default, a UI choice, and the kinds below) is decided, written under "Decided without the owner" in the plan and the report, confirmed or changed by the reviewer, and posted on issue #42. The weightiest decisions carry the mark **Look first** and come first in the task's #42 comment:
+
+- a test, constraint, index or trigger deleted or weakened, or a pinned list widened: only when a requirement or a decision changed, never to make failing code pass, with the reason named; a merged migration is still never edited;
+- a reading of a `packages/calc` or journal calculation rule (the exact-arithmetic rule is never broken);
+- a new dependency: free licence, maintained, no audit finding, all three checked by the reviewer;
+- widening what an existing role may already do;
+- personal data readable across branches;
+- a spec contradiction, or a spec text that should change, with the proposed `/spec-change` wording;
+- a task split into a, b, c.
+
+Before go-live the owner and the owner's reviewer go through every Look first decision again, and the owner tightens this list for the live system.
