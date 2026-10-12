@@ -211,7 +211,10 @@ describe('a record form whose save was refused', () => {
     type('90');
     pressSave();
     expect((await screen.findByRole('alert')).textContent).toBe(en.problems.noAnswer);
-    expect(unsent()).toBe('failed');
+    // The entry reaches the top bar in an effect, which can land a render after the alert.
+    await waitFor(() => {
+      expect(unsent()).toBe('failed');
+    });
 
     type('77');
 
