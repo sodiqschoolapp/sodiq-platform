@@ -47,14 +47,15 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   owner, pull request #37, answer 5).
  * - `rooms` (`03`, Building, floor, room; task 1.1): the same three roles; the
  *   Super Admin alone creates, edits and archives buildings, floors and rooms,
- *   and the rooms are an input of the timetable (`06`, step 4). No `export`
- *   until the export route of the lists exists (task 2.2).
+ *   and the rooms are an input of the timetable (`06`, step 4). The three
+ *   export the lists of buildings and rooms (task 2.2c-1).
  * - `divisions` (`03`, Division and Department; task 1.2): the Super Admin
  *   alone adds, renames and archives divisions and their departments ("Only
  *   this role creates ... divisions", `02`). The Principal views everything;
  *   the Academic Vice Principal reads the list because the department is a
  *   column of the teacher list (`04`) and a filter of the timetable board
- *   (`06`); approved by the owner, pull request #40, answer 5.
+ *   (`06`); approved by the owner, pull request #40, answer 5. The three
+ *   export the list (task 2.2c-1).
  * - `academic_years` (`03`, Academic year; task 1.3): the Super Admin creates
  *   a year, edits its dates and runs "Start year" (`edge/academic-year`); the
  *   Principal and the Academic Vice Principal view (owner's answer 3,
@@ -86,8 +87,8 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   the school-wide subject list and the weights of the branch. The Super
  *   Admin and every Academic Vice Principal view, create, edit and archive
  *   subjects (owner's answer 4; `02`: the Academic Vice Principal has "Full
- *   edit of ... subjects and their weights"); the Principal views. No
- *   `export` until the export of the lists exists (task 2.2). A new area for
+ *   edit of ... subjects and their weights"); the Principal views. The three
+ *   export the list (task 2.2c-1). A new area for
  *   new routes, decided without the owner on pull request #52 (decision 1),
  *   flagged on issue #42.
  * - `staff` (`04`, Teacher and staff record; task 2.2a): the staff records
@@ -96,8 +97,9 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   act); the Academic Vice Principal "sees the teacher list" (`04`) and
  *   edits name, phone and email ("Phone, email and name are changed by the
  *   Super Admin or Academic Vice Principal", Accounts and sign-in), which the
- *   server decides from every current assignment; the Principal views. No
- *   `export` until the export of the lists exists (task 2.2c). A new area
+ *   server decides from every current assignment; the Principal views. The
+ *   three export the list; the Principal's file leaves out the phone (task
+ *   2.2c-1, decision 4 of pull request #58). A new area
  *   for new routes, decided without the owner on pull request #53
  *   (decision 2), confirmed at its review and flagged on issue #42. Its
  *   `edit` covers more than one role may do: the branches and the status
@@ -116,7 +118,14 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   create, edit and archive (close, reopen and the delete of a vacancy that
  *   never held a load); the Principal views. A new area for new routes,
  *   decided without the owner on pull request #57 (decision 1), confirmed at
- *   its review and flagged on issue #42.
+ *   its review and flagged on issue #42. The three export the list.
+ * - `export` in `rooms`, `divisions`, `subjects`, `staff` and `vacancies`
+ *   (task 2.2c-1): `02`, Rules ("columns are actions (view, create, edit,
+ *   archive, export)"); `12`, Lists ("Every list ... export"); edge cases,
+ *   Who can act: the Principal's "Exports are allowed ... and are logged".
+ *   Only the three roles that view these areas gain it. Widening existing
+ *   roles, decided without the owner on pull request #58 (decision 2),
+ *   confirmed at its review and flagged Look first on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -125,14 +134,14 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['view'],
   }),
   rooms: rows({
-    super_admin: ['view', 'create', 'edit', 'archive'],
-    principal: ['view'],
-    academic_vice_principal: ['view'],
+    super_admin: ['view', 'create', 'edit', 'archive', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'export'],
   }),
   divisions: rows({
-    super_admin: ['view', 'create', 'edit', 'archive'],
-    principal: ['view'],
-    academic_vice_principal: ['view'],
+    super_admin: ['view', 'create', 'edit', 'archive', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'export'],
   }),
   academic_years: rows({
     super_admin: ['view', 'create', 'edit'],
@@ -160,14 +169,14 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['view', 'edit'],
   }),
   subjects: rows({
-    super_admin: ['view', 'create', 'edit', 'archive'],
-    principal: ['view'],
-    academic_vice_principal: ['view', 'create', 'edit', 'archive'],
+    super_admin: ['view', 'create', 'edit', 'archive', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive', 'export'],
   }),
   staff: rows({
-    super_admin: ['view', 'create', 'edit'],
-    principal: ['view'],
-    academic_vice_principal: ['view', 'edit'],
+    super_admin: ['view', 'create', 'edit', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'edit', 'export'],
   }),
   staff_teaching: rows({
     super_admin: ['view', 'edit'],
@@ -175,9 +184,9 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['view', 'edit'],
   }),
   vacancies: rows({
-    super_admin: ['view', 'create', 'edit', 'archive'],
-    principal: ['view'],
-    academic_vice_principal: ['view', 'create', 'edit', 'archive'],
+    super_admin: ['view', 'create', 'edit', 'archive', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive', 'export'],
   }),
   current_period: rows({
     super_admin: ['view'],

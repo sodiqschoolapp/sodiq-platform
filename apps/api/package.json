@@ -30,6 +30,7 @@
     "@sentry/node": "11.5.0",
     "@sodiq/shared": "workspace:*",
     "@sodiq/timetable-rules": "workspace:*",
+    "exceljs": "4.4.0",
     "kysely": "^0.29.6",
     "pg": "^8.23.1",
     "pg-boss": "12.36.0",
