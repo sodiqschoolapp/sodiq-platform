@@ -39,7 +39,7 @@ describe('the segmented control', () => {
     expect(radio('Week').checked).toBe(false);
   });
 
-  it('moves the choice with the keys of a radio group: its items share one name', () => {
+  it('is one radio group: its items share one name, so a browser moves the choice with the arrows', () => {
     render(<Sample />);
     const names = new Set(screen.getAllByRole<HTMLInputElement>('radio').map((r) => r.name));
     expect(names.size).toBe(1);

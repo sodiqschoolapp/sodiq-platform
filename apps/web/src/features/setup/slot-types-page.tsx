@@ -200,7 +200,7 @@ export function SlotTypesPage() {
       {adding && (
         <section
           aria-label={t('setup.slotTypes.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-lg border p-4"
+          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
         >
           <h2 className="text-lg font-semibold">{t('setup.slotTypes.newTitle')}</h2>
           <SlotTypeForm

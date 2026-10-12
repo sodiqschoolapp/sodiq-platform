@@ -128,7 +128,10 @@ export function SetupPage() {
         <ul aria-label={t('setup.title')} className="grid max-w-3xl gap-3">
           {links.map((link) => (
             <li key={link.key} className={PANEL}>
-              <Link to={link.to} className="font-medium underline-offset-4 hover:underline">
+              <Link
+                to={link.to}
+                className="font-semibold text-link underline-offset-4 hover:underline"
+              >
                 {link.title}
               </Link>
               <p className="mt-1 text-sm text-muted-foreground">{link.text}</p>

@@ -60,6 +60,9 @@ describe('the parts of the design system', () => {
   // Both ways of naming one: a JSX attribute, and a key or a default value in code.
   it('use no removed kind or size of button', () => {
     expect(matching(/variant\s*=\s*\{?\s*["'](outline|link)["']/)).toEqual([]);
+    // A value chosen inside braces: `variant={archived ? 'secondary' : 'destructive'}`.
+    expect(matching(/variant\s*=\s*\{[^}]*["'](outline|link)["']/)).toEqual([]);
+    expect(matching(/size\s*=\s*\{[^}]*["'](xs|icon-xs)["']/)).toEqual([]);
     expect(matching(/variant\s*:\s*["'](outline|link)["']/)).toEqual([]);
     expect(matching(/size\s*=\s*\{?\s*["'](xs|icon-xs)["']/)).toEqual([]);
     expect(matching(/size\s*:\s*["'](xs|icon-xs)["']/)).toEqual([]);

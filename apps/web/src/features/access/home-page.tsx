@@ -2,6 +2,7 @@ import { HOME_KIND } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
 import { useView } from './use-view';
 import { cn } from 'cn';
+import { PageHeader } from '@/components/page-header';
 import { PANEL } from '@/components/ui/control';
 
 /**
@@ -14,9 +15,7 @@ export function HomePage() {
   const { role } = useView();
   return (
     <section>
-      <h1 className="mb-6 text-[1.75rem]/[2.125rem] font-bold tracking-[-0.01em]">
-        {t('home.title')}
-      </h1>
+      <PageHeader title={t('home.title')} />
       <p className={cn(PANEL, 'max-w-prose text-muted-foreground')}>
         {role === null ? t('home.empty') : t(`home.${HOME_KIND[role]}`)}
       </p>

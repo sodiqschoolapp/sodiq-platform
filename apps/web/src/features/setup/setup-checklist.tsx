@@ -101,7 +101,10 @@ export function SetupChecklist() {
             <li key={item.key} data-item={item.key} className="flex flex-wrap items-center gap-2">
               <Mark done={item.done} />
               {linked ? (
-                <Link to={page.to} className="underline-offset-4 hover:underline">
+                <Link
+                  to={page.to}
+                  className="font-semibold text-link underline-offset-4 hover:underline"
+                >
                   {name}
                 </Link>
               ) : (
@@ -116,7 +119,10 @@ export function SetupChecklist() {
   }
 
   return (
-    <section aria-label={title} className="mb-6 grid max-w-3xl gap-3 rounded-lg border p-4">
+    <section
+      aria-label={title}
+      className="mb-6 grid max-w-3xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+    >
       <h2 className="text-lg font-semibold">{title}</h2>
       {body}
     </section>

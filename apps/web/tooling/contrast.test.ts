@@ -104,6 +104,8 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
     text('accent-foreground', 'accent (quiet button hovered)', fill('accent')),
     text('destructive', 'card', card),
     text('destructive', 'background', background),
+    // The warning icon of a failed save on the secondary button of unsent-changes.tsx.
+    text('destructive', 'secondary', fill('secondary')),
     text(
       'destructive',
       'destructive-bg (danger button hovered, danger alert)',
@@ -131,6 +133,13 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
     control('ring', 'today', fill('today')),
     control('ring', 'secondary', fill('secondary')),
     control('ring', 'top-bar', fill('top-bar')),
+    // Focus 2 px outside a segment lands on the track; outside an alert's
+    // action, on the alert's tint.
+    control('ring', 'accent', fill('accent')),
+    control('ring', 'info-bg', fill('info-bg')),
+    control('ring', 'success-bg', fill('success-bg')),
+    control('ring', 'warning-bg', fill('warning-bg')),
+    control('ring', 'destructive-bg', fill('destructive-bg')),
     control('sidebar-ring', 'sidebar', sidebar),
     // The 12 subject colours (task 2.1, answer 7; `subject-colour.tsx`): the
     // swatch is a graphic that tells subjects apart, 3:1 on the background

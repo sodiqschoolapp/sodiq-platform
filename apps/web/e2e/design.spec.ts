@@ -82,7 +82,10 @@ test('the staff list and its side panel are drawn with the design system in ligh
   await expect(body).toHaveCSS('background-color', /0\.9431/);
   await screenshot(page, 'staff-list-light');
 
-  await theme.getByText(en.theme.dark, { exact: true }).click();
+  // The segmented control is a radio group: the arrows move the choice.
+  await theme.getByRole('radio', { name: en.theme.light }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(theme.getByRole('radio', { name: en.theme.dark })).toBeChecked();
   await expect(page.locator('html')).toHaveClass(/dark/);
   // The dark navy #040920.
   await expect(body).toHaveCSS('background-color', /0\.1509/);

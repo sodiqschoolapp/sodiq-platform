@@ -360,7 +360,7 @@ export function TemplateSettingsPage() {
       {canEdit && tomorrow !== null && templates.isError && (
         <section
           aria-label={t('setup.templateSettings.setTitle')}
-          className="mb-8 grid max-w-xl gap-3 rounded-lg border p-4"
+          className="mb-8 grid max-w-xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
         >
           <h2 className="text-lg font-semibold">{t('setup.templateSettings.setTitle')}</h2>
           <ErrorState
@@ -374,7 +374,7 @@ export function TemplateSettingsPage() {
       {canEdit && tomorrow !== null && activeTemplates !== undefined && (
         <section
           aria-label={t('setup.templateSettings.setTitle')}
-          className="mb-8 grid max-w-xl gap-3 rounded-lg border p-4"
+          className="mb-8 grid max-w-xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
         >
           <h2 className="text-lg font-semibold">{t('setup.templateSettings.setTitle')}</h2>
           {activeTemplates.length === 0 ? (
