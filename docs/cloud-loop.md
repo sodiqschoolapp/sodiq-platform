@@ -155,7 +155,8 @@ red (no checks: merge conflict with main), naming the conflicting files when
 they can be found, which is no code round, and review no code. Otherwise wait for
 CI on the head commit (every 30 seconds, up to 15 minutes); when checks or e2e
 failed, post only [review] changes needed at <sha>: CI red (<check>), which is
-no code round, and review no code. Then review the code. On a pull request with a task id, any change under .claude/, CLAUDE.md,
+no code round, and review no code. Then review the code. On a pull request
+with a task id, any change under .claude/, CLAUDE.md,
 .github/, scripts/hooks/ or docs/cloud-loop.md is [review] owner decision needed:
 the loop may not loosen its own rules. The two exceptions: added lines in
 .claude/agents/*.md or .claude/rules/*.md that add a check or a fact (an added
