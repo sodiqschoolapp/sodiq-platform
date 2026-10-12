@@ -291,9 +291,10 @@ export function holdsData(
 }
 
 /**
- * The next change after the status shown (the row in force today, else the
- * first one after today), when it begins after today (decision of the plan
- * review, finding 9).
+ * The next change of status after the status shown (the row in force today,
+ * else the first one after today), when it begins after today (finding 9 of
+ * the spec review of the plan). An adjacent row of the same status (the fill
+ * of a cancel or an undo) is no change.
  */
 export function plannedAfter(
   rows: readonly StoredStudentStatus[],
@@ -301,7 +302,8 @@ export function plannedAfter(
 ): { status: StudentStatus; from: SchoolDate } | null {
   const live = liveRows(rows);
   const shown = live.findIndex((row) => row.validUntil === null || row.validUntil > today);
-  const next = shown === -1 ? undefined : live[shown + 1];
+  const status = live[shown]?.status;
+  const next = shown === -1 ? undefined : live.slice(shown + 1).find((row) => row.status !== status);
   return next !== undefined && next.validFrom > today
     ? { status: next.status, from: next.validFrom }
     : null;

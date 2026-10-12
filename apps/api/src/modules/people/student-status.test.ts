@@ -346,4 +346,13 @@ describe('plannedAfter (the "leaves on" badge)', () => {
     expect(plannedAfter(started('2026-11-01'), TODAY)).toBeNull();
     expect(plannedAfter(started(), TODAY)).toBeNull();
   });
+
+  it('shows no badge for the fill of a cancelled leaving', () => {
+    const cancelled = [
+      row('a', 'active', '2026-09-02', '2026-10-11', 'start'),
+      row('b', 'inactive', '2026-10-11', '2026-10-11', 'leaving'),
+      row('c', 'active', '2026-10-11', null, 'cancel'),
+    ];
+    expect(plannedAfter(cancelled, TODAY)).toBeNull();
+  });
 });

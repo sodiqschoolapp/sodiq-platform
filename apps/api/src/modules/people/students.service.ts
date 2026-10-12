@@ -790,7 +790,7 @@ export class Students {
       sex: row.sex as Sex,
       grade: row.grade,
       startsOn: row.starts_on,
-      status: (now?.status ?? null) as StudentStatus | null,
+      status: (now?.status ?? null),
       contact: contact ? { phone: row.phone, email: row.email } : null,
       identity: identity ? identityOf(row) : null,
       identityHidden: !identity && principalOf(access) !== undefined,
