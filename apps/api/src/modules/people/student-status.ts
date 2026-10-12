@@ -1,4 +1,10 @@
-import type { ErrorCode, SchoolDate, StatusCause, StudentStatus } from '@sodiq/shared';
+import {
+  nextDay,
+  type ErrorCode,
+  type SchoolDate,
+  type StatusCause,
+  type StudentStatus,
+} from '@sodiq/shared';
 
 /** A status row of a student as it is stored: in force over `[validFrom, validUntil)`. */
 export interface StoredStudentStatus {
@@ -30,15 +36,6 @@ export interface StudentStatusPlan {
 }
 
 export type StudentStatusOutcome = StudentStatusPlan | { readonly refusal: ErrorCode };
-
-/** The day after a school date. Calendar arithmetic only; no clock is read. */
-export function dayAfter(date: SchoolDate): SchoolDate {
-  const [year, month, day] = date.split('-').map(Number);
-  if (year === undefined || month === undefined || day === undefined) {
-    throw new Error('Not a school date.');
-  }
-  return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
-}
 
 /** A row taken back before it took effect: an empty range. */
 const isWithdrawn = (row: StoredStudentStatus): boolean => row.validUntil === row.validFrom;
@@ -112,7 +109,7 @@ export function planLeaving(
   if (end.validUntil !== null && cuts.length === 0) {
     return { refusal: 'student_not_active' };
   }
-  const leaves = dayAfter(lastDay);
+  const leaves = nextDay(lastDay);
   const neverStarted = first === live[0] && first.cause === 'start';
   if (leaves < first.validFrom || (leaves === first.validFrom && !neverStarted)) {
     return { refusal: 'leaving_before_start' };

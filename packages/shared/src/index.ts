@@ -147,6 +147,7 @@ export {
   levelHasWeekday,
   minutesOf,
   nextDay,
+  previousDay,
   SLOT_KINDS,
   SLOT_LENGTH_MAX_MINUTES,
   SLOT_LENGTH_MIN_MINUTES,

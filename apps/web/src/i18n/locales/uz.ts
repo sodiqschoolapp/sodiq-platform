@@ -178,9 +178,9 @@ export const uz: Texts<'one' | 'other'> = {
     account_missing:
       'Bu xodimning hali hisobi yoʻq. Uni yaratishni super administratordan soʻrang.',
     student_not_active:
-      'Bu kuni oʻquvchi faol emas. Joriy holatni koʻrish uchun sahifani yangilang.',
+      'Bu kuni oʻquvchi faol emas yoki ketish allaqachon kuchga kirgan. Avval ketishni bekor qiling yoki sahifani yangilang.',
     leaving_before_start:
-      'Oxirgi kun oʻqish boshlanishidan oldin. Keyinroq kunni tanlang yoki xato yaratilgan oʻquvchini oʻchiring.',
+      'Oxirgi kun oʻquvchining joriy oʻqish davri boshlanishidan oldin. Keyinroq kunni tanlang.',
     leaving_not_planned: 'Bu oʻquvchining rejalashtirilgan ketishi yoʻq. Sahifani yangilang.',
     leaving_in_force:
       'Ketish allaqachon kuchga kirgan. Sabab bilan «Ketishni bekor qilish»dan foydalaning.',
@@ -188,14 +188,14 @@ export const uz: Texts<'one' | 'other'> = {
       'Oʻquvchi hozir nofaol emas. Joriy holatni koʻrish uchun sahifani yangilang.',
     undo_not_leaving: 'Bu holat ketishdan kelib chiqmagan, uni bu yerda bekor qilib boʻlmaydi.',
     return_too_early:
-      'Yoʻq boʻlgan birinchi kuni qaytish ketishni bekor qilish bilan barobar. «Ketishni bekor qilish»dan foydalaning.',
+      'Qaytish kuni yoʻq boʻlgan birinchi kundan keyin boʻlishi kerak. Xato kiritilgan ketishni olib tashlash uchun «Ketishni bekor qilish»dan foydalaning.',
     status_date_future: 'Bugungi yoki oldingi kunni tanlang.',
     student_not_graduated:
       'Oʻquvchi hozir bitiruvchi emas. Joriy holatni koʻrish uchun sahifani yangilang.',
     restore_before_graduation: 'Bitirgan kun yoki undan keyingi kunni tanlang.',
     date_in_closed_year: 'Bu kun yopilgan oʻquv yilida. Ochiq yildagi kunni tanlang.',
     student_has_data:
-      'Oʻquvchida maʼlumotlar bor (stipendiya, ketish, bitirish yoki ikkinchi shartnoma). Uning oʻrniga ketishni qayd eting.',
+      'Oʻquvchida maʼlumotlar bor (stipendiya, ketish, bitirish yoki ikkinchi shartnoma), uni oʻchirib boʻlmaydi. Bitta oʻquvchining maʼlumotli ikki yozuvini Super Admin birlashtiradi.',
     student_changed: 'Oʻquvchini boshqa kishi oʻzgartirdi. Sahifani yangilang va qayta urining.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
@@ -1160,6 +1160,10 @@ export const uz: Texts<'one' | 'other'> = {
       returnFrom: 'Qaytgandan keyingi birinchi kun',
       restoreTitle: 'Faol holatga tiklash',
       restoreFrom: 'Faol boʻlgan sana',
+      returnConfirmTitle: 'Bu oʻquvchini qaytarasizmi?',
+      returnConfirmText: 'Yangi shartnoma doim saqlanadi, uning raqami boshqa berilmaydi.',
+      restoreConfirmTitle: 'Bitiruvchini faol holatga tiklaysizmi?',
+      restoreConfirmText: 'Oʻquvchi tanlangan kundan yana faol boʻladi.',
       deleteTitle: 'Ikki marta yaratilgan oʻquvchini oʻchirish',
       deleteConfirmTitle: 'Bu oʻquvchi oʻchirilsinmi?',
       deleteConfirmText:

@@ -1,6 +1,6 @@
+import { nextDay as dayAfter } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import {
-  dayAfter,
   holdsData,
   planCancelLeaving,
   planLeaving,
@@ -79,15 +79,6 @@ function expectSound(
     }
   }
 }
-
-describe('dayAfter', () => {
-  it('counts across a month, a year and a leap day', () => {
-    expect(dayAfter('2026-10-10')).toBe('2026-10-11');
-    expect(dayAfter('2026-10-31')).toBe('2026-11-01');
-    expect(dayAfter('2026-12-31')).toBe('2027-01-01');
-    expect(dayAfter('2028-02-28')).toBe('2028-02-29');
-  });
-});
 
 describe('planLeaving (edge: "The leave date is the last day as a student")', () => {
   it('makes the student inactive from the day after the last day, past or future', () => {
@@ -240,6 +231,14 @@ describe('planUndoLeaving (edge: "A leaving entered by mistake")', () => {
       },
     ]);
     expectSound(left, applied(left, plan));
+  });
+
+  it('refuses an inactive row that no leaving wrote (decision 8)', () => {
+    const other = [
+      row('a', 'active', '2026-09-02', '2026-10-01', 'start'),
+      row('b', 'inactive', '2026-10-01', null, 'return'),
+    ];
+    expect(planUndoLeaving(other, 'Why', TODAY)).toEqual({ refusal: 'undo_not_leaving' });
   });
 
   it('refuses a scheduled leaving, an active student and a graduation', () => {

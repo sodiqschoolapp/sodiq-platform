@@ -519,6 +519,25 @@ describe('leaving, return and delete in the database', () => {
       ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
     });
 
+    it('lets nobody insert a UID that is already released (0034)', async () => {
+      const { id } = await createStudent(north);
+      for (const values of [
+        { uid: '2607801', student_id: id, released_at: new Date(MOMENT) },
+        { uid: '2607802', student_id: null, released_at: new Date(MOMENT) },
+        { uid: '2607803', student_id: null, released_at: null },
+      ]) {
+        await expect(
+          inBranch(north, (transaction) =>
+            transaction
+              .insertInto('student_uids')
+              .values({ ...values, branch_id: north, held_from: new Date(MOMENT) })
+              .execute(),
+          ),
+          values.uid,
+        ).rejects.toMatchObject({ constraint: 'student_uids_insert_held' });
+      }
+    });
+
     it('releases a UID only through the delete of its student, with the moment of the transaction', async () => {
       const { id, uid } = await createStudent(north);
       // The migrator has no `app.now`: nothing is released without it.

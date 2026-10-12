@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
+import { FailureAlert } from '@/components/failure-alert';
 import { DateField, Field } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { SaveCancelled } from '@/components/form/save-cancelled';
@@ -55,10 +56,11 @@ const BULK_REFUSALS: ReadonlySet<string> = new Set([
   'not_found',
 ]);
 
-/** What a bulk leaving did: how many went through, and the names of those refused. */
+/** What a bulk leaving did: how many went through, the names of those refused, and a failure that stopped it. */
 interface Outcome {
   done: number;
   refused: string[];
+  failure: unknown;
 }
 
 /**
@@ -92,9 +94,12 @@ export function StudentsPage() {
     const found = byId.get(id);
     return found === undefined ? null : `${fullName(found)} (${found.uid})`;
   };
+  // A graduated holder is offered only to a reader who may restore one (the Super Admin).
+  const canRestoreGraduated =
+    role !== null && permits(PERMISSIONS, role, 'student_graduates', 'edit');
   const holderRestorable = (id: string): boolean => {
     const status = byId.get(id)?.status;
-    return status === 'inactive' || status === 'graduated';
+    return status === 'inactive' || (status === 'graduated' && canRestoreGraduated);
   };
   const canArchive = students.data?.canArchive === true;
 
@@ -105,7 +110,7 @@ export function StudentsPage() {
    */
   const leaveMany = useMutation({
     mutationFn: async ({ rows, input }: { rows: StudentListItem[]; input: BulkLeaving }) => {
-      const result: Outcome = { done: 0, refused: [] };
+      const result: Outcome = { done: 0, refused: [], failure: null };
       for (const row of rows) {
         try {
           await answerOf(
@@ -117,7 +122,9 @@ export function StudentsPage() {
           result.done += 1;
         } catch (error) {
           if (!(error instanceof ApiFailure) || !BULK_REFUSALS.has(error.code)) {
-            throw error;
+            // Anything else stops the rest; what was done is still said.
+            result.failure = error;
+            break;
           }
           result.refused.push(fullName(row));
         }
@@ -405,11 +412,16 @@ export function StudentsPage() {
           )}
         </p>
       )}
+      {outcome !== null && outcome.failure !== null && (
+        <div className="mb-3">
+          <FailureAlert error={outcome.failure} />
+        </div>
+      )}
       <ListPage
         listId="students"
         caption={t('people.students.caption')}
         rows={students.data?.students}
-        error={students.error ?? leaveMany.error ?? undefined}
+        error={students.error ?? undefined}
         onRetry={() => {
           void students.refetch();
         }}

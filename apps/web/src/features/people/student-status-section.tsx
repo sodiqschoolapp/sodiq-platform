@@ -1,4 +1,5 @@
 import {
+  previousDay,
   studentDeleteSchema,
   studentLeavingSchema,
   studentRestoreSchema,
@@ -34,12 +35,6 @@ const fieldOf = (path: readonly PropertyKey[]): PropertyKey[] => {
   }
   return [...path];
 };
-
-/** The day before a school date. Calendar arithmetic only; no clock is read. */
-function dayBefore(date: string): string {
-  const [year, month, day] = date.split('-').map(Number);
-  return new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, (day ?? 1) - 1)).toISOString().slice(0, 10);
-}
 
 const LEAVING_SCHEMA = asFormSchema<StudentLeaving>(studentLeavingSchema, fieldOf);
 const UNDO_SCHEMA = asFormSchema<StudentUndoLeaving>(studentUndoLeavingSchema, fieldOf);
@@ -132,7 +127,7 @@ export function StatusSection({
                     status: t(`people.students.statuses.${row.status}`),
                     from: schoolDateText(row.from, language),
                     // A row ends before `until`: the text names its last day.
-                    until: schoolDateText(dayBefore(row.until), language),
+                    until: schoolDateText(previousDay(row.until), language),
                   })}
             </span>
             <span className="text-muted-foreground">
@@ -314,11 +309,13 @@ type ReturnField = 'from' | 'grade' | 'contractNumber' | 'contractSignedOn' | 'r
 /** Coming back from the Inactive list: the first day back, the grade and a new contract. */
 function ReturnForm({
   student,
+  label,
   onChanged,
   onStale,
   holderText,
 }: ChangeFormProps & { holderText: (id: string) => string | null }) {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const form = useRecordForm<ReturnField, StudentReturn>({
     schema: RETURN_SCHEMA,
     initial: {
@@ -336,6 +333,16 @@ function ReturnForm({
       version: student.version,
     }),
     save: async (input) => {
+      const go = await confirm({
+        title: t('people.students.returnConfirmTitle'),
+        text: t('people.students.returnConfirmText'),
+        names: [label],
+        action: t('people.students.returnTitle'),
+        destructive: false,
+      });
+      if (!go) {
+        throw new SaveCancelled();
+      }
       await onChanged(
         await sending(
           () =>
@@ -385,13 +392,24 @@ function ReturnForm({
 }
 
 /** The Super Admin's restore of a graduated student, from a date with a reason. */
-function RestoreForm({ student, onChanged, onStale }: ChangeFormProps) {
+function RestoreForm({ student, label, onChanged, onStale }: ChangeFormProps) {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const form = useRecordForm<'from' | 'reason', StudentRestore>({
     schema: RESTORE_SCHEMA,
     initial: { from: student.statuses.at(-1)?.from ?? '', reason: '' },
     read: (typed) => ({ ...typed, version: student.version }),
     save: async (input) => {
+      const go = await confirm({
+        title: t('people.students.restoreConfirmTitle'),
+        text: t('people.students.restoreConfirmText'),
+        names: [label],
+        action: t('people.students.restoreTitle'),
+        destructive: false,
+      });
+      if (!go) {
+        throw new SaveCancelled();
+      }
       await onChanged(
         await sending(
           () =>

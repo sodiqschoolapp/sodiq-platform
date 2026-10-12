@@ -245,9 +245,9 @@ export const ERROR_CODES = [
   'student_value_taken',
   /** The start date is in no academic year of the branch and no year begins after it (task 2.4a, decision 5). */
   'no_academic_year',
-  /** The student is not active on the last day asked for, or a leaving is already in force (`04`, Movements; task 2.4b-1). */
+  /** The student is not active on the last day asked for, or a leaving or graduation is in force after it (`04`, Movements; task 2.4b-1). */
   'student_not_active',
-  /** The last day of a leaving is before the student's time as active began (task 2.4b-1, decision 5). */
+  /** The last day of a leaving is before the student's current active time began, a return included (task 2.4b-1, decision 5). */
   'leaving_before_start',
   /** No leaving is scheduled after today, so there is nothing to cancel (task 2.4b-1). */
   'leaving_not_planned',
@@ -257,13 +257,13 @@ export const ERROR_CODES = [
   'student_not_inactive',
   /** The inactive status was not written by a leaving, so it is not undone (task 2.4b-1, decision 8). */
   'undo_not_leaving',
-  /** A return on the first inactive day is an undo of the leaving (task 2.4b-1, decision 5). */
+  /** A return is dated on or before the first inactive day; on that day it would be an undo (task 2.4b-1, decision 5). */
   'return_too_early',
-  /** A return or a restore is dated today or earlier (task 2.4b-1, decision 5). */
+  /** A return or a restore is dated after today; both are dated today or earlier (task 2.4b-1, decision 5). */
   'status_date_future',
   /** The student is not graduated today, or has a later status (task 2.4b-1). */
   'student_not_graduated',
-  /** A restore is dated on or after the first day of the graduation (task 2.4b-1). */
+  /** A restore is dated before the first day of the graduation (task 2.4b-1). */
   'restore_before_graduation',
   /** The date falls in a closed academic year of the branch (edge/students-classes-groups; db/migrations/0033; task 2.4b-1). */
   'date_in_closed_year',

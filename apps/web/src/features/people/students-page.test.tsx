@@ -530,6 +530,13 @@ describe('leaving, return and delete', () => {
     type(en.people.students.contractNumber, 'SQ-2026/120');
     type(en.people.students.contractSignedOn, '2026-10-05');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    // A return cannot be undone: it asks first, naming the student.
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.students.returnConfirmTitle,
+    });
+    expect(calls.some((call) => call.route.endsWith('/return'))).toBe(false);
+    expect(within(dialog).getByText('Lola Karimova')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.returnTitle }));
     await waitFor(() => {
       expect(calls.some((call) => call.route.endsWith('/return'))).toBe(true);
     });
@@ -663,6 +670,52 @@ describe('leaving, return and delete', () => {
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: en.unsent.leave }),
     );
     expect(await screen.findByRole('complementary', { name: 'Lola Karimova' })).toBeDefined();
+  });
+
+  it('offers no "Restore this student" for an active holder of the document', async () => {
+    openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/students': () =>
+        Response.json(
+          {
+            error: {
+              code: 'student_value_taken',
+              message: 'x',
+              requestId: 'r',
+              details: [
+                { path: 'jshshir', code: 'already_exists', message: 'x', recordId: OTKIR.id },
+              ],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
+    const form = await screen.findByRole('form', { name: en.people.students.newTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.students.uid, '2607045');
+    type(en.people.students.lastName, 'Rahimov');
+    type(en.people.students.firstName, 'Aziz');
+    type(en.people.students.sex, 'male');
+    type(en.people.students.birthDate, '2014-03-02');
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2026-09-02');
+    type(en.people.students.jshshir, '31403141234567');
+    type(en.people.students.contractNumber, 'SQ-2026/132');
+    type(en.people.students.contractSignedOn, '2026-08-20');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(
+      await within(form).findByText(
+        en.people.students.takenHere.replace('{{student}}', 'Oʻtkir Rahimov (2607001)'),
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: en.people.students.restoreThis })).toBeNull();
   });
 
   it('says that a UID of a deleted student is never given again', async () => {

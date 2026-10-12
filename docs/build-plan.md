@@ -251,6 +251,7 @@ How to read the task lines:
   - Read: `edge/people-roles-accounts` (Personal data and the audit log), `13` (Security).
   - Build: the audit log screen with search by person, record and date, and the reading rights per role; each user's own sign-in history; the personal data report per person; export rules (limited by role, every export logged).
   - Done when: a Principal sees only the branch's log and every export leaves a log entry.
+  - From 2.4b-1 (pull request #68): the audit entries `student.create`, `student.edit` and `student.delete` hold the identity fields of the student; a reader without the Identity group (the Principal) sees them hidden, with a logged show, as on the record.
 
 - [ ] **2.7 Polish of Phases 1 and 2**
   - Read: `docs/design-system.md`, `.claude/rules/web.md`, issue #39 (the owner's polish list; the owner adds the findings of the hand tests there before this task starts), `03` (the Branches list, spec change of 12 October 2026), `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7").
