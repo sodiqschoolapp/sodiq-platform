@@ -41,7 +41,7 @@ describe('accounts', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, clock);
   });
 
   afterAll(async () => {
@@ -204,7 +204,7 @@ describe('the first-account command', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    const transactions = new Transactions(database.app);
+    const transactions = new Transactions(database.app, clock);
     const audit = new Audit(clock);
     firstAccount = new FirstAccount(
       transactions,

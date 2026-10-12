@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { branchIdSchema } from '@sodiq/shared';
+import { branchIdSchema, type Clock } from '@sodiq/shared';
 import { sql, type Transaction as KyselyTransaction } from 'kysely';
 import type { Database } from './database.js';
+import { CLOCK } from '../clock/clock.module.js';
 import { DATABASE } from './database.tokens.js';
 import type { DB } from './types.generated.js';
 
@@ -9,6 +10,14 @@ export type Transaction = KyselyTransaction<DB>;
 
 /** The transaction setting that the row policies read (db/migrations/0002). */
 export const BRANCH_SETTING = 'app.branch_ids';
+
+/**
+ * The transaction setting with the moment of the injected clock at the start
+ * of the transaction. A rule the database holds against time reads it
+ * (`assignments_end_guard`, db/migrations/0027), so the database follows the
+ * clock of the application and of its tests, never its own.
+ */
+export const MOMENT_SETTING = 'app.now';
 
 /**
  * The value of `app.branch_ids` for a list of branch ids: a PostgreSQL array
@@ -34,7 +43,10 @@ export class Transactions {
   /** True once the user of this connection was seen to be subject to the branch filter. */
   private filtered = false;
 
-  constructor(@Inject(DATABASE) private readonly database: Database) {}
+  constructor(
+    @Inject(DATABASE) private readonly database: Database,
+    @Inject(CLOCK) private readonly clock: Clock,
+  ) {}
 
   /**
    * The row policies do nothing for a superuser, a user with BYPASSRLS, or the
@@ -60,7 +72,8 @@ export class Transactions {
    * Runs `work` in one transaction that sees and writes only rows of
    * `branchIds`: normally one branch, several for a person who works across
    * branches, none (`[]`) for work on school-wide tables only. Commits when
-   * `work` returns and rolls back when it throws.
+   * `work` returns and rolls back when it throws. The moment of the clock is
+   * set for the transaction too (`MOMENT_SETTING`).
    */
   async run<T>(
     branchIds: readonly string[],
@@ -71,7 +84,10 @@ export class Transactions {
       if (!this.filtered) {
         await this.assertFiltered(transaction);
       }
-      await sql`select set_config(${BRANCH_SETTING}, ${filter}, true)`.execute(transaction);
+      await sql`
+        select set_config(${BRANCH_SETTING}, ${filter}, true),
+          set_config(${MOMENT_SETTING}, ${this.clock.now().toISOString()}, true)
+      `.execute(transaction);
       return work(transaction);
     });
   }

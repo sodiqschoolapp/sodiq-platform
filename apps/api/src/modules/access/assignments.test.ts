@@ -101,7 +101,7 @@ describe('assignments', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, clock);
     const audit = new Audit(clock);
     assignments = new Assignments(clock, audit);
     accounts = new Accounts(clock, audit);
@@ -554,7 +554,7 @@ describe('the Super Admin role', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, clock);
     const audit = new Audit(clock);
     assignments = new Assignments(clock, audit);
     accounts = new Accounts(clock, audit);

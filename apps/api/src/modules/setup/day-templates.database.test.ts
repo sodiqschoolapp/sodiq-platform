@@ -15,6 +15,7 @@ import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { ApiException } from '../../http/api-exception.js';
 import { assignmentRefusals, refusingConstraints } from './setup-refusals.js';
+import { SystemClock } from '../../clock/system-clock.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
 const CHECK_VIOLATION = '23514';
@@ -181,7 +182,7 @@ describe('slot types and day templates in the database', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, new SystemClock());
   });
 
   afterAll(async () => {

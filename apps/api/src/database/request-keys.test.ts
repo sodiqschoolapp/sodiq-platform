@@ -37,7 +37,7 @@ describe('request keys', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, clock);
     author = await insertAccount('z.tursunova');
     stranger = await insertAccount('b.yusupov');
     await sql`create table scratch_entries (label text not null)`.execute(database.migrator);

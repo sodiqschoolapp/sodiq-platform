@@ -3,6 +3,7 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { SystemClock } from '../../clock/system-clock.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
 const CHECK_VIOLATION = '23514';
@@ -49,7 +50,7 @@ describe('feedback reports in the database', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, new SystemClock());
     const inserted = await transactions.run([], (transaction) =>
       transaction
         .insertInto('accounts')

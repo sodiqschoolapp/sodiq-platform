@@ -3,6 +3,7 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
@@ -28,6 +29,7 @@ describe('assignments in the database', () => {
   let colleagueId: string;
   let north: string;
   let south: string;
+  const clock = new FixedClock(MONDAY);
 
   /** Runs one statement as the application user, in a school-wide transaction. */
   function asApp(statement: string): Promise<unknown> {
@@ -67,7 +69,7 @@ describe('assignments in the database', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, clock);
     accountId = await newAccount('a.karimov');
     colleagueId = await newAccount('b.karimova');
     north = await insertBranch(database.migrator, 'North');
@@ -217,6 +219,158 @@ describe('assignments in the database', () => {
         select valid_until, ended_by from assignments where role = 'super_admin'
       `.execute(database.migrator);
       expect(found.rows).toEqual([{ valid_until: new Date(WEDNESDAY), ended_by: colleagueId }]);
+    });
+  });
+
+  // The owner's rule of 0.7a, held by `assignments_end_guard` (db/migrations/0027;
+  // decision 3 and correction 5 of pull request #62): an end that has passed is
+  // final, an end still ahead may be moved or emptied, and no new end lies
+  // before 00:00 of the day of the injected clock (`app.now`).
+  describe('keep an end that has passed', () => {
+    let endsAccount: string;
+    const MONDAY_START = '2026-10-05T00:00:00+05:00';
+
+    /** A Teacher assignment of the account in North from last week, with the end given, written by the migrator. */
+    async function given(until: string | null): Promise<string> {
+      const found = await sql<{ id: string }>`
+        insert into assignments (account_id, role, branch_id, valid_from, valid_until, created_at)
+        values (${endsAccount}, 'teacher', ${north}, '2026-09-28T09:00:00+05:00',
+          ${until}, '2026-09-28T09:00:00+05:00')
+        returning id
+      `.execute(database.migrator);
+      const row = found.rows[0];
+      if (row === undefined) {
+        throw new Error('No assignment was written.');
+      }
+      return row.id;
+    }
+
+    /** Ends of earlier tests are closed, so the next one does not overlap. */
+    async function clear(): Promise<void> {
+      await sql`
+        update assignments set valid_until = valid_from where account_id = ${endsAccount}
+      `.execute(database.migrator);
+    }
+
+    function setEnd(id: string, until: string | null): Promise<unknown> {
+      return transactions.run([], (transaction) =>
+        transaction
+          .updateTable('assignments')
+          .set({ valid_until: until === null ? null : new Date(until) })
+          .where('id', '=', id)
+          .execute(),
+      );
+    }
+
+    const until = async (id: string): Promise<Date | null> => {
+      const found = await sql<{ valid_until: Date | null }>`
+        select valid_until from assignments where id = ${id}
+      `.execute(database.migrator);
+      return found.rows[0]?.valid_until ?? null;
+    };
+
+    beforeAll(async () => {
+      endsAccount = await newAccount('e.ends');
+    });
+
+    it('runs as the invoker, not with the rights of its owner', async () => {
+      const found = await sql<{ prosecdef: boolean }>`
+        select prosecdef from pg_proc where proname = 'assignments_end_guard'
+      `.execute(database.migrator);
+
+      expect(found.rows).toEqual([{ prosecdef: false }]);
+    });
+
+    it('refuses the application user an end without the moment of the transaction', async () => {
+      await clear();
+      const id = await given(null);
+
+      await expect(
+        sql`update assignments set valid_until = ${WEDNESDAY} where id = ${id}`.execute(
+          database.app,
+        ),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'assignment_end_needs_moment' });
+      expect(await until(id)).toBeNull();
+    });
+
+    it('lets the migrator write an end without it', async () => {
+      await clear();
+      const id = await given(null);
+
+      await sql`update assignments set valid_until = ${WEDNESDAY} where id = ${id}`.execute(
+        database.migrator,
+      );
+
+      expect(await until(id)).toEqual(new Date(WEDNESDAY));
+    });
+
+    it('writes an end now, and one at 00:00 of today (a person who leaves today)', async () => {
+      clock.set(MONDAY);
+      await clear();
+      const now = await given(null);
+      await setEnd(now, MONDAY);
+      expect(await until(now)).toEqual(new Date(MONDAY));
+
+      await clear();
+      const today = await given(null);
+      await setEnd(today, MONDAY_START);
+      expect(await until(today)).toEqual(new Date(MONDAY_START));
+    });
+
+    it('refuses a new end before 00:00 of today', async () => {
+      clock.set(MONDAY);
+      await clear();
+      const id = await given(null);
+
+      await expect(setEnd(id, '2026-10-04T23:59:00+05:00')).rejects.toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'assignment_end_past',
+      });
+      expect(await until(id)).toBeNull();
+    });
+
+    it('moves and empties an end that is still ahead', async () => {
+      clock.set(MONDAY);
+      await clear();
+      const id = await given(WEDNESDAY);
+
+      await setEnd(id, TUESDAY);
+      expect(await until(id)).toEqual(new Date(TUESDAY));
+      await setEnd(id, null);
+      expect(await until(id)).toBeNull();
+    });
+
+    it.each([
+      ['moved later', WEDNESDAY],
+      ['emptied', null],
+    ])('refuses an end that has passed to be %s', async (_name, value) => {
+      clock.set(MONDAY);
+      await clear();
+      const id = await given('2026-10-05T08:00:00+05:00');
+
+      await expect(setEnd(id, value)).rejects.toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'assignment_end_final',
+      });
+      expect(await until(id)).toEqual(new Date('2026-10-05T08:00:00+05:00'));
+    });
+
+    it('takes 00:00 in the time zone of the school for a role without a branch', async () => {
+      clock.set('2026-10-05T00:30:00+05:00');
+      const found = await sql<{ id: string }>`
+        insert into assignments (account_id, role, branch_id, valid_from, created_at)
+        values (${endsAccount}, 'senior_head_teacher', null, '2026-09-28T09:00:00+05:00',
+          '2026-09-28T09:00:00+05:00')
+        returning id
+      `.execute(database.migrator);
+      const id = found.rows[0]?.id ?? '';
+
+      await expect(setEnd(id, '2026-10-04T23:59:00+05:00')).rejects.toMatchObject({
+        constraint: 'assignment_end_past',
+      });
+      await setEnd(id, MONDAY_START);
+      expect(await until(id)).toEqual(new Date(MONDAY_START));
+      clock.set(MONDAY);
     });
   });
 });
