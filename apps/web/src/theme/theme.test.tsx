@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, refusal, renderApp, sessionOf } from '@/testing/render-app';
@@ -137,7 +137,13 @@ describe('the theme of the page', () => {
 });
 
 describe('the theme switch', () => {
-  const chooser = () => screen.getByRole<HTMLSelectElement>('combobox', { name: en.theme.label });
+  // The segmented control of docs/design-system.md: a radio group (pull request #60).
+  const chooser = () => screen.getByRole('radiogroup', { name: en.theme.label });
+  const choice = (name: string) => within(chooser()).getByRole<HTMLInputElement>('radio', { name });
+  const chosen = () =>
+    within(chooser())
+      .getAllByRole<HTMLInputElement>('radio')
+      .find((radio) => radio.checked)?.value;
 
   it('offers the three choices, changes the page and stores the choice', async () => {
     fakeDevice(false);
@@ -145,19 +151,19 @@ describe('the theme switch', () => {
     renderApp('/', 'en', newStore());
     await screen.findByRole('heading', { name: en.home.title });
 
-    expect([...chooser().options].map((option) => option.textContent)).toEqual([
-      en.theme.device,
-      en.theme.light,
-      en.theme.dark,
-    ]);
-    expect(chooser().value).toBe('device');
+    expect(
+      within(chooser())
+        .getAllByRole('radio')
+        .map((radio) => radio.closest('label')?.textContent),
+    ).toEqual([en.theme.device, en.theme.light, en.theme.dark]);
+    expect(chosen()).toBe('device');
 
-    fireEvent.change(chooser(), { target: { value: 'dark' } });
+    fireEvent.click(choice(en.theme.dark));
     expect(isPageDark()).toBe(true);
-    expect(chooser().value).toBe('dark');
+    expect(chosen()).toBe('dark');
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
 
-    fireEvent.change(chooser(), { target: { value: 'light' } });
+    fireEvent.click(choice(en.theme.light));
     expect(isPageDark()).toBe(false);
   });
 
@@ -170,7 +176,7 @@ describe('the theme switch', () => {
 
     expect(isPageDark()).toBe(true);
     expect(screen.getByRole('combobox', { name: en.language.label })).toBeDefined();
-    fireEvent.change(chooser(), { target: { value: 'light' } });
+    fireEvent.click(choice(en.theme.light));
     expect(isPageDark()).toBe(false);
   });
 });

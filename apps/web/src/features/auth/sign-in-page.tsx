@@ -8,6 +8,7 @@ import { answerOf } from '@/api/failure';
 import { Field } from '@/components/field';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { CHECKBOX } from '@/components/ui/control';
 import { AuthPage } from './auth-page';
 import { FailureAlert } from '@/components/failure-alert';
 import { useWaiting } from './form-helpers';
@@ -93,10 +94,10 @@ export function SignInPage() {
           }}
         />
         <div className="grid gap-1">
-          <label className="flex items-center gap-2 text-sm font-medium">
+          <label className="flex items-center gap-2 text-sm font-medium max-sm:min-h-11">
             <input
               type="checkbox"
-              className="size-4 accent-primary"
+              className={CHECKBOX}
               checked={trust}
               aria-describedby={trustId}
               onChange={(event) => {

@@ -171,7 +171,7 @@ export function usePreview(): {
           />
           <DialogFooter>
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 answer(false);
               }}

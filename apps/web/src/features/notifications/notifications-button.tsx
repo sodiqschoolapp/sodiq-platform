@@ -1,7 +1,7 @@
 import type { Notification } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
-import { BellIcon } from 'lucide-react';
+import { NotificationsIcon } from '@/components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
@@ -76,7 +76,6 @@ export function NotificationsButton() {
         render={
           <Button
             variant="ghost"
-            className="relative"
             aria-label={
               unread > 0
                 ? t('notifications.buttonUnread', { count: unread, n: formatted })
@@ -85,12 +84,11 @@ export function NotificationsButton() {
           />
         }
       >
-        <BellIcon aria-hidden />
+        <NotificationsIcon />
+        {/* The count is a plain number beside the icon, never a badge or a dot
+            (docs/design-system.md, What we never do 4 and 12). */}
         {unread > 0 && (
-          <span
-            aria-hidden
-            className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] leading-4 font-medium text-primary-foreground"
-          >
+          <span aria-hidden data-unread-count="" className="tabular-nums">
             {formatted}
           </span>
         )}
@@ -131,18 +129,10 @@ export function NotificationsButton() {
                       unreadItem ? 'hover:bg-muted' : 'text-muted-foreground',
                     )}
                   >
-                    <span className="flex items-start gap-2">
-                      {/* The unread mark: a dot and a word, not a colour alone (`12`, Look and feel). */}
-                      <span
-                        aria-hidden
-                        className={cn(
-                          'mt-1.5 size-2 shrink-0 rounded-full',
-                          unreadItem ? 'bg-primary' : 'bg-transparent',
-                        )}
-                      />
-                      <span className={cn(unreadItem && 'font-medium')}>{textOf(item)}</span>
-                    </span>
-                    <span className="pl-4 text-xs text-muted-foreground">
+                    {/* Unread: the text in bold and the word "Unread", never a dot
+                        (docs/design-system.md, What we never do 12). */}
+                    <span className={cn(unreadItem && 'font-semibold')}>{textOf(item)}</span>
+                    <span className="text-xs text-muted-foreground">
                       {where}
                       {unreadItem && (
                         <>
@@ -159,7 +149,7 @@ export function NotificationsButton() {
         )}
         <FailureAlert error={markRead.error ?? markAllRead.error} />
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>
+          <DialogClose render={<Button variant="secondary" />}>
             {t('notifications.close')}
           </DialogClose>
           <Button

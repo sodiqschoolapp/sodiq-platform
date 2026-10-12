@@ -12,13 +12,14 @@ test('the theme is kept, Ctrl+K and the search button open the pages, and a repo
 }) => {
   const account = accountOf('shellTools');
   const html = page.locator('html');
-  const theme = page.getByRole('combobox', { name: en.theme.label, exact: true });
+  // The segmented control of docs/design-system.md: a radio group (pull request #60).
+  const theme = page.getByRole('radiogroup', { name: en.theme.label, exact: true });
 
   // The theme is chosen before sign-in and kept by the browser.
   await page.goto('/sign-in');
   await languageChooser(page).selectOption('en');
   await expect(html).not.toHaveClass(/dark/);
-  await theme.selectOption('dark');
+  await theme.getByText(en.theme.dark, { exact: true }).click();
   await expect(html).toHaveClass(/dark/);
 
   await signIn(page, en, account.login, account.password);
@@ -28,7 +29,7 @@ test('the theme is kept, Ctrl+K and the search button open the pages, and a repo
   await page.reload();
   await expect(heading(page, en.home.title)).toBeVisible();
   await expect(html).toHaveClass(/dark/);
-  await theme.selectOption('light');
+  await theme.getByText(en.theme.light, { exact: true }).click();
   await expect(html).not.toHaveClass(/dark/);
 
   // Ctrl+K: the box has the focus; typing narrows the pages; Enter opens one.

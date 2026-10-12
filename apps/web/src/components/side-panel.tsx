@@ -1,4 +1,4 @@
-import { XIcon } from 'lucide-react';
+import { CloseIcon } from '@/components/icons';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -66,18 +66,20 @@ export function SidePanel({ title, recordKey, onClose, children }: SidePanelProp
     <aside
       ref={panel}
       aria-label={title}
-      className="w-full min-w-0 rounded-lg border p-4 lg:w-96 lg:shrink-0"
+      // A white panel on the canvas with a 1 px left border in --border
+      // (docs/design-system.md, Patterns, Lists), padding 24.
+      className="w-full min-w-0 rounded-xl border-l bg-card p-6 max-sm:p-4 lg:w-96 lg:shrink-0"
     >
       <div className="mb-3 flex items-start gap-2">
         <h2
           ref={heading}
           tabIndex={-1}
-          className="min-w-0 flex-1 text-lg font-semibold outline-none"
+          className="min-w-0 flex-1 text-[1.0625rem]/6 font-bold outline-none"
         >
           {title}
         </h2>
         <Button variant="ghost" size="icon-sm" aria-label={t('list.closePanel')} onClick={onClose}>
-          <XIcon aria-hidden />
+          <CloseIcon aria-hidden />
         </Button>
       </div>
       {children}

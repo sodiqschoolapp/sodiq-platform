@@ -15,6 +15,8 @@ import { useWaiting } from './form-helpers';
 import { refreshSession, sessionQuery, STEP_PATH, stepOf } from './session';
 import { rememberTrustAsked } from './trust-asked';
 import { useSignOut } from './use-sign-out';
+import { cn } from 'cn';
+import { PANEL } from '@/components/ui/control';
 
 /** The frame of the change by choice: inside the layout, under the account page (task 0.8d). */
 function OwnPasswordFrame({
@@ -125,7 +127,7 @@ export function PasswordPage() {
           </AlertDescription>
         </Alert>
       )}
-      <form className="grid gap-4" onSubmit={submit} noValidate>
+      <form className={cn(PANEL, 'grid max-w-md gap-4')} onSubmit={submit} noValidate>
         <Field
           label={forced ? t('password.currentOneTime') : t('password.current')}
           name="current-password"

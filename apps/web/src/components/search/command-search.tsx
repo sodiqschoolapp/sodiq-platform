@@ -1,7 +1,7 @@
 import { PERMISSIONS, permits } from '@sodiq/shared';
 import { useNavigate } from '@tanstack/react-router';
 import { cn } from 'cn';
-import { ChevronRightIcon, SearchIcon, XIcon } from 'lucide-react';
+import { ChevronRightIcon, SearchIcon, CloseIcon } from '@/components/icons';
 import {
   useEffect,
   useId,
@@ -171,7 +171,7 @@ export function CommandSearch() {
           <DialogClose
             render={<Button variant="ghost" size="icon-sm" aria-label={t('layout.dismiss')} />}
           >
-            <XIcon aria-hidden />
+            <CloseIcon aria-hidden />
           </DialogClose>
         </div>
         <ul id={listId} role="listbox" aria-label={t('search.pages')} className="grid gap-0.5">

@@ -9,7 +9,7 @@ export function PasswordSection() {
   return (
     <AccountSection title={t('account.passwordTitle')} text={t('account.passwordText')}>
       <div>
-        <Link to="/account/password" className={buttonVariants({ variant: 'outline' })}>
+        <Link to="/account/password" className={buttonVariants({ variant: 'secondary' })}>
           {t('layout.changePassword')}
         </Link>
       </div>

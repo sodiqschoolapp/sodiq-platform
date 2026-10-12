@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-svgr/client" />
 
 /** The variables of the build (task 0.10). All optional: a laptop and CI set none. */
 interface ImportMetaEnv {

@@ -208,7 +208,7 @@ export function DayTemplatePanel({
       {canArchive && (
         <div>
           <Button
-            variant="outline"
+            variant={archived ? 'secondary' : 'destructive'}
             disabled={archive.isPending}
             onClick={() => {
               void askArchive();

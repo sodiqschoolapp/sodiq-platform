@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
-import { CircleUserRoundIcon, XIcon } from 'lucide-react';
+import { AccountCircleIcon, CloseIcon } from '@/components/icons';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { setBranchInUse } from '@/api/branch-in-use';
@@ -66,7 +66,7 @@ function NotTrustedNote({ trusted }: { trusted: boolean }) {
             setDismissed(true);
           }}
         >
-          <XIcon aria-hidden />
+          <CloseIcon aria-hidden />
         </Button>
       </AlertAction>
     </Alert>
@@ -121,7 +121,7 @@ export function AppLayout() {
             <DropdownMenuTrigger
               render={<Button variant="ghost" aria-label={t('layout.account')} />}
             >
-              <CircleUserRoundIcon aria-hidden />
+              <AccountCircleIcon aria-hidden />
               {/* On a phone the icon alone: the login would not fit in the row. */}
               <span className="hidden max-w-40 truncate sm:inline">{session?.login}</span>
             </DropdownMenuTrigger>
@@ -162,7 +162,7 @@ export function AppLayout() {
       </header>
       <div className="flex flex-1">
         <SideMenu />
-        <main className="min-w-0 flex-1 p-6">
+        <main className="min-w-0 flex-1 p-8 max-sm:p-4">
           <NotTrustedNote trusted={session?.trustedUntil != null} />
           <FailureAlert error={signOut.error ?? accountLanguage.error} />
           <Outlet />

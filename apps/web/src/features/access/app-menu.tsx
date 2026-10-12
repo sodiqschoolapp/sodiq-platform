@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
-import { ChevronRightIcon, MenuIcon } from 'lucide-react';
+import { ChevronRightIcon, MenuIcon } from '@/components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -87,7 +87,7 @@ export function PhoneMenu() {
             }}
           />
         </nav>
-        <DialogClose render={<Button variant="outline" />}>{t('menu.close')}</DialogClose>
+        <DialogClose render={<Button variant="secondary" />}>{t('menu.close')}</DialogClose>
       </DialogContent>
     </Dialog>
   );

@@ -371,6 +371,19 @@ try {
   );
   seeded.staffExport = { login: staffExport.login, password: staffExport.firstPassword };
 
+  // A third one opens the staff list in both themes for the design screenshots
+  // (task 2.2d-1, pull request #60); it reads and changes nothing but the theme.
+  const design = await create('Shahlo', 'Usmonova');
+  await transactions.run([staffBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: design.id,
+      role: 'academic_vice_principal',
+      branchId: staffBranch,
+      givenBy: null,
+    }),
+  );
+  seeded.design = { login: design.login, password: design.firstPassword };
+
   // A branch of its own with an Academic Vice Principal who adds the photo of
   // a person of the branch (task 2.2c-2, decision 2); the photos of the
   // browser tests live in memory (PHOTOS_IN_MEMORY of server.ts).

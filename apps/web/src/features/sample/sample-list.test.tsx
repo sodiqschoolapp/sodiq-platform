@@ -179,7 +179,8 @@ describe('the search of a list', () => {
 
     expect(searchBox().value).toBe('');
     expect(drawnNames()).toHaveLength(ROWS_AT_ONCE);
-    // The button went away with its click: the keyboard goes on from the search box.
+    // The quiet Reset of the toolbar (task 2.2d-1) went away with its click:
+    // the keyboard goes on from the search box.
     expect(document.activeElement).toBe(searchBox());
     await waitFor(() => {
       expect(router.state.location.search).toEqual({});

@@ -47,7 +47,8 @@ export function SubjectSwatch({
   return (
     <span
       aria-hidden
-      className={cn('inline-block size-3 shrink-0 rounded-full', SWATCH[colour], className)}
+      // A 10 px square of the full colour (docs/design-system.md, This app).
+      className={cn('inline-block size-2.5 shrink-0', SWATCH[colour], className)}
     />
   );
 }
@@ -60,7 +61,7 @@ export function SubjectSwatch({
  */
 export function SubjectChip({ colour, name }: { colour: SubjectColour; name: string }) {
   return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-md px-2 py-0.5', TINT[colour])}>
+    <span className={cn('inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5', TINT[colour])}>
       <SubjectSwatch colour={colour} />
       {name}
     </span>

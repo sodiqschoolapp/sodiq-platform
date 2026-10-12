@@ -136,6 +136,22 @@ describe('the notifications of the top bar', () => {
     expect(buttons[1]?.hasAttribute('disabled')).toBe(true);
   });
 
+  // docs/design-system.md, What we never do 4 and 12: a count is a plain
+  // number, and an unread item has its word, never a dot (pull request #60).
+  it('show the count as a plain number and mark an unread item by its word, without a dot or a badge', async () => {
+    open();
+
+    const button = await bell('en', 1);
+    const count = button.querySelector('[data-unread-count]');
+    expect(count?.textContent).toBe('1');
+    expect(count?.className).not.toMatch(/rounded-full|bg-primary/);
+
+    const dialog = await openDialog('en', 1);
+    const unreadItem = within(dialog).getAllByRole('listitem')[0];
+    expect(unreadItem?.textContent).toContain(en.notifications.unread);
+    expect(unreadItem?.querySelector('.rounded-full')).toBeNull();
+  });
+
   it('speak the language of the tab', async () => {
     open({}, 'ru');
 

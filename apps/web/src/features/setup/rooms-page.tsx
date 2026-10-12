@@ -264,7 +264,7 @@ export function RoomsPage() {
   );
 
   const emptyAction = noFloor ? (
-    <Link to="/setup/buildings" className={buttonVariants({ variant: 'outline' })}>
+    <Link to="/setup/buildings" className={buttonVariants({ variant: 'secondary' })}>
       {t('setup.rooms.goToBuildings')}
     </Link>
   ) : addButton === false ? undefined : (
@@ -284,7 +284,7 @@ export function RoomsPage() {
       {adding && (
         <section
           aria-label={t('setup.rooms.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-lg border p-4"
+          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
         >
           <h2 className="text-lg font-semibold">{t('setup.rooms.newTitle')}</h2>
           <RoomForm

@@ -1,5 +1,5 @@
 import { useBlocker } from '@tanstack/react-router';
-import { TriangleAlertIcon } from 'lucide-react';
+import { WarningIcon } from '@/components/icons';
 import {
   createContext,
   useContext,
@@ -227,17 +227,14 @@ export function UnsentBanner() {
     <div role="status" className="min-w-0">
       {first !== undefined && (
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           className="max-w-full"
           onClick={() => {
             first.focus();
           }}
         >
-          <TriangleAlertIcon
-            aria-hidden
-            className={failed === undefined ? '' : 'text-destructive'}
-          />
+          <WarningIcon aria-hidden className={failed === undefined ? '' : 'text-destructive'} />
           <span className="truncate">
             {failed === undefined ? t('unsent.typed') : t('unsent.failed')}
           </span>

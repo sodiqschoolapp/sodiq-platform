@@ -31,25 +31,27 @@ interface Pair {
 }
 
 /**
- * Every pair the components draw, with the alpha its class list gives it.
- * Read the class lists, not only the tokens: `button.tsx` draws the default
- * button hovered as `bg-primary/90`, the secondary one hovered as its colour
- * mixed with 5% of the foreground, the ghost and outline ones hovered as
- * `bg-muted text-foreground`, the link one as `text-primary`, and the
- * destructive one as `bg-destructive/10 text-destructive` with the hover `/20`
- * in the light theme and, in the dark theme, the tint kept at `/10` and a
- * border `border-destructive/60` on hover; every variant's focus border is
- * the base `focus-visible:border-ring`. `app-menu.tsx` draws a menu link hovered or current as `bg-muted` with the
- * normal text. `alert.tsx` draws the destructive
- * alert's text in `text-destructive`; `input.tsx` and `textarea.tsx` fill a
- * field with `dark:bg-input/30` and write the placeholder in
- * `text-muted-foreground`.
- * `border` is not here: dividers and card edges are decorative, and a button is
- * identified by its text. Nor is the 50% halo of `ring-ring/50`: the solid
- * `focus-visible:border-ring` is the focus indicator.
+ * Every pair the components draw, with the alpha its class list gives it, in
+ * the classes of docs/design-system.md (task 2.2d-1, pull request #60):
+ * `button.tsx` draws the primary button as `bg-primary` hovered
+ * `bg-primary-hover`, the secondary as `bg-secondary` hovered
+ * `bg-secondary-hover`, the quiet one hovered `bg-accent`, and the danger
+ * one as `text-destructive` with no fill until `hover:bg-destructive-bg`;
+ * `control.ts` draws fields and selects on `bg-card` with a `border-input`,
+ * placeholders in `text-muted-foreground`, checkboxes in `accent-checkbox`
+ * and the focus outline in `outline-ring`; `alert.tsx` draws the state
+ * colours on their tints and a notice in the normal text on `bg-info-bg`;
+ * `segmented.tsx` draws the chosen item `bg-card text-foreground` and the
+ * others `text-muted-foreground` on `bg-accent`; `list-page.tsx` draws the
+ * selection bar and `data-table.tsx` the open row on `bg-today`, the table
+ * header and hovered rows on `bg-muted` inside a `bg-card` panel;
+ * `page-header.tsx` writes breadcrumbs in `text-link`; `app-menu.tsx`
+ * draws a menu link hovered or current as `bg-muted` with the normal text
+ * (until task 2.2d-2); the top bar takes `--top-bar`. `border` is not here:
+ * dividers and panel edges are decorative, and a button is identified by its
+ * text. Every name is checked in both themes.
  */
 function pairsOf(theme: ':root' | '.dark'): Pair[] {
-  const dark = theme === '.dark';
   const tokens = tokensOf(css, theme);
   const token = (name: string): Rgb => {
     const value = tokens[name];
@@ -60,175 +62,102 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
   };
   const background = over(token('background'), token('background'));
   const card = over(token('card'), background);
-  const destructive = token('destructive');
-  const input = token('input');
-  // A field: the page behind it in the light theme, a faint fill in the dark one.
-  const fieldFill = dark ? over(input, background, input.alpha * 0.3) : background;
-  const buttonTint = 0.1;
-  const hoverTint = dark ? 0.1 : 0.2;
-  const percent = (alpha: number): string => `${String(Math.round(alpha * 100))}%`;
+  const fill = (name: string): Rgb => over(token(name), card);
+  const text = (fg: string, bg: string, on: Rgb): Pair => ({
+    name: `${fg} on ${bg}`,
+    fg: token(fg),
+    bg: on,
+    min: TEXT,
+  });
+  const control = (fg: string, bg: string, on: Rgb): Pair => ({
+    name: `${fg} (a control's boundary or focus) on ${bg}`,
+    fg: token(fg),
+    bg: on,
+    min: CONTROL,
+  });
+  const sidebar = over(token('sidebar'), background);
 
   return [
-    { name: 'foreground on background', fg: token('foreground'), bg: background, min: TEXT },
-    {
-      name: 'muted-foreground on background',
-      fg: token('muted-foreground'),
-      bg: background,
-      min: TEXT,
-    },
-    {
-      name: 'muted-foreground on muted',
-      fg: token('muted-foreground'),
-      bg: over(token('muted'), background),
-      min: TEXT,
-    },
-    { name: 'muted-foreground on card', fg: token('muted-foreground'), bg: card, min: TEXT },
-    { name: 'card-foreground on card', fg: token('card-foreground'), bg: card, min: TEXT },
-    {
-      name: 'popover-foreground on popover',
-      fg: token('popover-foreground'),
-      bg: over(token('popover'), background),
-      min: TEXT,
-    },
-    {
-      name: 'primary-foreground on primary',
-      fg: token('primary-foreground'),
-      bg: over(token('primary'), background),
-      min: TEXT,
-    },
-    {
-      name: 'default button hovered: primary-foreground on primary at 90% over background',
-      fg: token('primary-foreground'),
-      bg: over(token('primary'), background, 0.9),
-      min: TEXT,
-    },
-    {
-      name: 'secondary button hovered: secondary-foreground on secondary mixed with 5% foreground',
-      fg: token('secondary-foreground'),
-      bg: over(token('foreground'), over(token('secondary'), background), 0.05),
-      min: TEXT,
-    },
-    {
-      name: 'ghost and outline buttons hovered: foreground on muted',
-      fg: token('foreground'),
-      bg: over(token('muted'), background),
-      min: TEXT,
-    },
-    {
-      name: 'menu links hovered and current: foreground on muted',
-      fg: token('foreground'),
-      bg: over(token('muted'), background),
-      min: TEXT,
-    },
-    { name: 'link button: primary on background', fg: token('primary'), bg: background, min: TEXT },
-    {
-      name: 'secondary-foreground on secondary',
-      fg: token('secondary-foreground'),
-      bg: over(token('secondary'), background),
-      min: TEXT,
-    },
-    {
-      name: 'accent-foreground on accent',
-      fg: token('accent-foreground'),
-      bg: over(token('accent'), background),
-      min: TEXT,
-    },
-    {
-      name: 'sidebar-foreground on sidebar',
-      fg: token('sidebar-foreground'),
-      bg: over(token('sidebar'), background),
-      min: TEXT,
-    },
-    {
-      name: 'sidebar-primary-foreground on sidebar-primary',
-      fg: token('sidebar-primary-foreground'),
-      bg: over(token('sidebar-primary'), background),
-      min: TEXT,
-    },
-    {
-      name: 'destructive text on background (field messages)',
-      fg: destructive,
-      bg: background,
-      min: TEXT,
-    },
-    {
-      name: 'destructive text on card (field messages in a dialog, the destructive alert)',
-      fg: destructive,
-      bg: card,
-      min: TEXT,
-    },
-    {
-      name: `destructive button: text on its tint of ${percent(buttonTint)} over background`,
-      fg: destructive,
-      bg: over(destructive, background, buttonTint),
-      min: TEXT,
-    },
-    {
-      name: `destructive button: text on its tint of ${percent(buttonTint)} over card`,
-      fg: destructive,
-      bg: over(destructive, card, buttonTint),
-      min: TEXT,
-    },
-    {
-      name: `destructive button hovered: text on its tint of ${percent(hoverTint)} over background`,
-      fg: destructive,
-      bg: over(destructive, background, hoverTint),
-      min: TEXT,
-    },
-    ...(dark
-      ? [
-          {
-            name: 'destructive button hovered: its border at 60% on background',
-            fg: over(destructive, background, 0.6),
-            bg: background,
-            min: CONTROL,
-          },
-        ]
-      : []),
-    {
-      name: 'placeholder (muted-foreground) on the fill of a field',
-      fg: token('muted-foreground'),
-      bg: fieldFill,
-      min: TEXT,
-    },
-    {
-      name: 'foreground on the fill of a field',
-      fg: token('foreground'),
-      bg: fieldFill,
-      min: TEXT,
-    },
-    {
-      name: 'input border on background',
-      fg: over(input, background),
-      bg: background,
-      min: CONTROL,
-    },
-    {
-      name: 'ring (focus border) on background',
-      fg: over(token('ring'), background),
-      bg: background,
-      min: CONTROL,
-    },
-    {
-      name: 'sidebar-ring (focus border of the menu) on sidebar',
-      fg: over(token('sidebar-ring'), over(token('sidebar'), background)),
-      bg: over(token('sidebar'), background),
-      min: CONTROL,
-    },
+    // The text of the page, of panels and of their quiet fills.
+    text('foreground', 'background', background),
+    text('foreground', 'card', card),
+    text('foreground', 'muted (table header, hovered row, menu link until 2.2d-2)', fill('muted')),
+    text('foreground', 'today (selection bar, open row)', fill('today')),
+    text('foreground', 'top-bar', fill('top-bar')),
+    text('foreground', 'info-bg (a notice)', fill('info-bg')),
+    text('card-foreground', 'card', card),
+    text('popover-foreground', 'popover', fill('popover')),
+    text('muted-foreground', 'background', background),
+    text('muted-foreground', 'card (second lines, placeholders)', card),
+    text('muted-foreground', 'muted', fill('muted')),
+    text('muted-foreground', 'accent (segmented control, other items)', fill('accent')),
+    text('muted-foreground', 'today', fill('today')),
+    text('muted-foreground', 'top-bar', fill('top-bar')),
+    text('today-muted-foreground', 'today', fill('today')),
+    text('link', 'card', card),
+    text('link', 'background', background),
+    // Buttons.
+    text('primary-foreground', 'primary', fill('primary')),
+    text('primary-foreground', 'primary-hover', fill('primary-hover')),
+    text('secondary-foreground', 'secondary', fill('secondary')),
+    text('secondary-foreground', 'secondary-hover', fill('secondary-hover')),
+    text('accent-foreground', 'accent (quiet button hovered)', fill('accent')),
+    text('destructive', 'card', card),
+    text('destructive', 'background', background),
+    // The warning icon of a failed save on the secondary button of unsent-changes.tsx.
+    text('destructive', 'secondary', fill('secondary')),
+    text(
+      'destructive',
+      'destructive-bg (danger button hovered, danger alert)',
+      fill('destructive-bg'),
+    ),
+    // Status in plain words, on the page and on their tints.
+    ...(['success', 'warning', 'info'] as const).flatMap((state) => [
+      text(state, 'card', card),
+      text(state, 'background', background),
+      text(state, `${state}-bg`, fill(`${state}-bg`)),
+    ]),
+    // The menu, navy in both themes.
+    text('sidebar-foreground', 'sidebar', sidebar),
+    text('sidebar-foreground', 'sidebar-accent', over(token('sidebar-accent'), sidebar)),
+    text('sidebar-accent-foreground', 'sidebar-accent', over(token('sidebar-accent'), sidebar)),
+    text('sidebar-primary-foreground', 'sidebar-primary', over(token('sidebar-primary'), sidebar)),
+    // Controls: the border of a field, the checkbox, the focus outline.
+    control('input', 'card', card),
+    control('input', 'background', background),
+    control('checkbox', 'card', card),
+    control('checkbox', 'background', background),
+    control('ring', 'card', card),
+    control('ring', 'background', background),
+    control('ring', 'muted', fill('muted')),
+    control('ring', 'today', fill('today')),
+    control('ring', 'secondary', fill('secondary')),
+    control('ring', 'top-bar', fill('top-bar')),
+    // Focus 2 px outside a segment lands on the track; outside an alert's
+    // action, on the alert's tint.
+    control('ring', 'accent', fill('accent')),
+    control('ring', 'info-bg', fill('info-bg')),
+    control('ring', 'success-bg', fill('success-bg')),
+    control('ring', 'warning-bg', fill('warning-bg')),
+    control('ring', 'destructive-bg', fill('destructive-bg')),
+    control('sidebar-ring', 'sidebar', sidebar),
     // The 12 subject colours (task 2.1, answer 7; `subject-colour.tsx`): the
     // swatch is a graphic that tells subjects apart, 3:1 on the background
-    // (1.4.11); the chip writes the name in the normal text on a 15% tint.
+    // and on a panel (1.4.11); the chip writes the name in the normal text on
+    // a 15% tint.
     ...SUBJECT_COLOURS.flatMap((colour): Pair[] => [
-      {
-        name: `subject ${colour}: swatch on background`,
-        fg: token(`subject-${colour}`),
-        bg: background,
-        min: CONTROL,
-      },
+      control(`subject-${colour}`, 'background', background),
+      control(`subject-${colour}`, 'card', card),
       {
         name: `subject ${colour}: foreground on its 15% tint over background`,
         fg: token('foreground'),
         bg: over(token(`subject-${colour}`), background, SUBJECT_TINT),
+        min: TEXT,
+      },
+      {
+        name: `subject ${colour}: foreground on its 15% tint over card`,
+        fg: token('foreground'),
+        bg: over(token(`subject-${colour}`), card, SUBJECT_TINT),
         min: TEXT,
       },
     ]),
@@ -253,12 +182,21 @@ describe('the colour tokens of index.css', () => {
     expect(/\.dark \{[^}]*color-scheme: dark;/.test(css)).toBe(true);
   });
 
-  it('are checked by the same pairs in both themes, plus the hover border of the dark one', () => {
-    const light = pairsOf(':root').map((pair) => pair.name);
-    const darkOnes = pairsOf('.dark').map((pair) => pair.name);
-    // The hover tint differs by theme, so its name does; every other name is shared.
-    expect(darkOnes.filter((name) => light.includes(name))).toHaveLength(light.length - 1);
-    expect(darkOnes).toHaveLength(light.length + 1);
+  // Since task 2.2d-1 every token exists in both themes and the class lists
+  // are the same, so every pair is checked in both (pull request #60, decision 5).
+  it('are checked by the same pairs in both themes', () => {
+    expect(pairsOf('.dark').map((pair) => pair.name)).toEqual(
+      pairsOf(':root').map((pair) => pair.name),
+    );
+  });
+
+  // docs/design-system.md: the menu does not change between themes.
+  it('keep the menu the same in both themes', () => {
+    const light = tokensOf(css, ':root');
+    const dark = tokensOf(css, '.dark');
+    for (const name of Object.keys(light).filter((key) => key.startsWith('sidebar'))) {
+      expect(dark[name], name).toBe(light[name]);
+    }
   });
 });
 

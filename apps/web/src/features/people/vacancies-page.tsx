@@ -219,7 +219,7 @@ export function VacanciesPage() {
       {adding && divisions.data !== undefined && subjects.data !== undefined && (
         <section
           aria-label={t('people.vacancies.newTitle')}
-          className="mb-6 grid max-w-2xl gap-3 rounded-lg border p-4"
+          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
         >
           <h2 className="text-lg font-semibold">{t('people.vacancies.newTitle')}</h2>
           <VacancyForm

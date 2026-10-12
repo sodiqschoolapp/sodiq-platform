@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/states';
 import { useView } from '@/features/access/use-view';
 import { SetupChecklist } from './setup-checklist';
+import { PANEL } from '@/components/ui/control';
 
 interface SetupLink {
   key: string;
@@ -126,8 +127,11 @@ export function SetupPage() {
       ) : (
         <ul aria-label={t('setup.title')} className="grid max-w-3xl gap-3">
           {links.map((link) => (
-            <li key={link.key} className="rounded-lg border p-4">
-              <Link to={link.to} className="font-medium underline-offset-4 hover:underline">
+            <li key={link.key} className={PANEL}>
+              <Link
+                to={link.to}
+                className="font-semibold text-link underline-offset-4 hover:underline"
+              >
                 {link.title}
               </Link>
               <p className="mt-1 text-sm text-muted-foreground">{link.text}</p>

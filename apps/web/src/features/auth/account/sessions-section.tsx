@@ -137,7 +137,7 @@ export function SessionsSection() {
       )}
       <div>
         <Button
-          variant="outline"
+          variant="secondary"
           disabled={sessions.data === undefined || signOutEverywhere.isPending}
           onClick={() => {
             void ask();

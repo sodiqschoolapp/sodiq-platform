@@ -1,7 +1,7 @@
 import { PERMISSIONS, permits, type ChecklistItem, type ChecklistItemKey } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link, type LinkProps } from '@tanstack/react-router';
-import { CheckCircle2, Circle, Info } from 'lucide-react';
+import { CheckCircleIcon, RadioButtonUncheckedIcon, InfoIcon } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { useView } from '@/features/access/use-view';
@@ -23,12 +23,15 @@ const PAGES: Record<ChecklistItemKey, { to: LinkProps['to']; area: string }> = {
 function Mark({ done }: { done: boolean | null }) {
   const { t } = useTranslation();
   if (done === null) {
-    return <Info aria-hidden className="size-4 text-muted-foreground" />;
+    return <InfoIcon aria-hidden className="size-4 text-muted-foreground" />;
   }
   return done ? (
-    <CheckCircle2 aria-label={t('setup.checklist.done')} className="size-4 text-primary" />
+    <CheckCircleIcon aria-label={t('setup.checklist.done')} className="size-4 text-success" />
   ) : (
-    <Circle aria-label={t('setup.checklist.missing')} className="size-4 text-muted-foreground" />
+    <RadioButtonUncheckedIcon
+      aria-label={t('setup.checklist.missing')}
+      className="size-4 text-muted-foreground"
+    />
   );
 }
 
@@ -98,7 +101,10 @@ export function SetupChecklist() {
             <li key={item.key} data-item={item.key} className="flex flex-wrap items-center gap-2">
               <Mark done={item.done} />
               {linked ? (
-                <Link to={page.to} className="underline-offset-4 hover:underline">
+                <Link
+                  to={page.to}
+                  className="font-semibold text-link underline-offset-4 hover:underline"
+                >
                   {name}
                 </Link>
               ) : (
@@ -113,7 +119,10 @@ export function SetupChecklist() {
   }
 
   return (
-    <section aria-label={title} className="mb-6 grid max-w-3xl gap-3 rounded-lg border p-4">
+    <section
+      aria-label={title}
+      className="mb-6 grid max-w-3xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+    >
       <h2 className="text-lg font-semibold">{title}</h2>
       {body}
     </section>

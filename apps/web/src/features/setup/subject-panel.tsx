@@ -191,7 +191,7 @@ export function SubjectPanel({
       {canArchive && (
         <div className="flex flex-wrap items-center gap-3">
           <Button
-            variant="outline"
+            variant={active ? 'destructive' : 'secondary'}
             size="sm"
             disabled={archive.isPending}
             onClick={() => {
@@ -354,7 +354,7 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
         {canEdit && !frozen && (
           <div className="flex flex-wrap items-center gap-3">
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               disabled={copy.isPending || !(rows[0]?.fits ?? false)}
               onClick={() => {

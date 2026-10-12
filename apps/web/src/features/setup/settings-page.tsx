@@ -36,14 +36,16 @@ import {
 import { useView } from '@/features/access/use-view';
 import { schoolDateText } from './setup-api';
 import { attendanceValuesQuery, invalidateSettings, settingsQuery } from './settings-api';
+import { cn } from 'cn';
+import { PANEL } from '@/components/ui/control';
 
 /** The four grade bands of `03`, Grade bands, in the order the page lists them. */
 const GRADE_BANDS = ['two', 'three', 'four', 'five'] as const;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section aria-label={title} className="grid max-w-prose gap-3">
-      <h2 className="text-lg font-semibold">{title}</h2>
+    <section aria-label={title} className={cn(PANEL, 'grid max-w-prose gap-3')}>
+      <h2 className="text-[1.0625rem]/6 font-bold">{title}</h2>
       {children}
     </section>
   );

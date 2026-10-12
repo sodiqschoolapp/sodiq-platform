@@ -3,15 +3,17 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from 'cn';
 
 const alertVariants = cva(
-  "group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
+  "group/alert relative grid w-full gap-0.5 rounded-lg px-3 py-2.5 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-5",
   {
     variants: {
       variant: {
-        default: 'bg-card text-card-foreground',
+        // The state tints of docs/design-system.md, Colour; never a stripe on the left.
+        // A notice: the normal text on the info tint.
+        default: 'bg-info-bg text-foreground *:[svg]:text-info',
+        success: 'bg-success-bg text-success *:data-[slot=alert-description]:text-success',
+        warning: 'bg-warning-bg text-warning *:data-[slot=alert-description]:text-warning',
         destructive:
-          // The description at full strength: at 90% it was 3.46:1 on a card in the
-          // light theme, under the 4.5:1 of WCAG 2.1 AA (task 0.8b-3).
-          'bg-card text-destructive *:data-[slot=alert-description]:text-destructive *:[svg]:text-current',
+          'bg-destructive-bg text-destructive *:data-[slot=alert-description]:text-destructive',
       },
     },
     defaultVariants: {
