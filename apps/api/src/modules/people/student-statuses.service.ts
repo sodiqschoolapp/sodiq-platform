@@ -159,6 +159,9 @@ export class StudentStatuses {
         newValue: { from: input.from, grade: input.grade, contract: input.contract },
         reason: input.reason,
         also: async (transaction) => {
+          // The grade of a return is part of the return (`04`, Movements), under
+          // `archive`; the Super Admin and the Academic Vice Principal hold both
+          // `archive` and `edit` of `students`, and a test pins it.
           await transaction
             .updateTable('students')
             .set({ grade: input.grade })
@@ -256,7 +259,7 @@ export class StudentStatuses {
     const branchId = branchOf(access);
     return guarded(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        await this.students.lockStudent(transaction, id);
+        const student = await this.students.lockStudent(transaction, id);
         const rows = (await this.students.statusRowsOf(transaction, id)).get(id) ?? [];
         if (rows.length !== change.version) {
           throw new ApiException('student_changed', 409);
@@ -274,7 +277,8 @@ export class StudentStatuses {
           assignmentId: access.assignmentId,
           action: change.action,
           record: { type: 'student', id },
-          oldValue: asJson({ statuses: rows }),
+          // The grade too: a return writes it (permission review of the build).
+          oldValue: asJson({ statuses: rows, grade: student.grade }),
           newValue: asJson({ ...change.newValue, cuts: outcome.cuts, writes: outcome.writes }),
           reason: change.reason ?? undefined,
           requestId,

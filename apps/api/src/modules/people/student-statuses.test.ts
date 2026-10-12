@@ -383,6 +383,17 @@ describe('leaving, return and delete of a student', () => {
         version: 2,
       });
       expect(list.canArchive).toBe(true);
+      for (const viewer of [t.principal, headTutor]) {
+        const theirs = studentListSchema.parse(
+          (await t.get('/api/people/students', t.north, viewer)).body,
+        );
+        expect(theirs.canArchive).toBe(false);
+      }
+      expect(await detail(student.id, t.principal)).toMatchObject({
+        canArchive: false,
+        canRestoreGraduated: false,
+        deletable: false,
+      });
       const [entry] = await t.entries('student.leave', student.id);
       expect(entry).toMatchObject({
         branch_id: t.north,
@@ -501,6 +512,34 @@ describe('leaving, return and delete of a student', () => {
       expect(entry?.reason).toBe('Entered for the wrong student.');
     });
 
+    it('lets the Academic Vice Principal cancel and undo, naming the assignment', async () => {
+      const one = accepted(await leave(await create(), '2026-10-20', t.vicePrincipal));
+      accepted(
+        await t.post(
+          `/api/people/students/${one.id}/leaving/cancel`,
+          t.north,
+          { version: one.version },
+          t.vicePrincipal,
+        ),
+      );
+      expect((await t.entries('student.leave_cancelled', one.id))[0]).toMatchObject({
+        assignment_id: t.viceAssignment,
+      });
+      const two = accepted(await leave(await create(), '2026-10-01', t.vicePrincipal));
+      accepted(
+        await t.post(
+          `/api/people/students/${two.id}/leaving/undo`,
+          t.north,
+          { reason: 'Entered by mistake.', version: two.version },
+          t.vicePrincipal,
+        ),
+      );
+      expect((await t.entries('student.leave_undone', two.id))[0]).toMatchObject({
+        assignment_id: t.viceAssignment,
+        reason: 'Entered by mistake.',
+      });
+    });
+
     it('refuses a cancel with nothing scheduled and an undo of a scheduled leaving or a graduation', async () => {
       const student = await create();
       refusedWith(
@@ -559,6 +598,8 @@ describe('leaving, return and delete of a student', () => {
       expect(uids).toEqual([{ uid: student.uid }]);
       const [entry] = await t.entries('student.return', student.id);
       expect(entry).toMatchObject({ assignment_id: t.viceAssignment });
+      expect(entry?.old_value).toMatchObject({ grade: 7 });
+      expect(entry?.new_value).toMatchObject({ grade: 8 });
 
       // An edit after the return corrects the return's contract (finding 14).
       const edited = await t.put(`/api/people/students/${student.id}`, t.north, {
