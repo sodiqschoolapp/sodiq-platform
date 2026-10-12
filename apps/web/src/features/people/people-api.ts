@@ -1,5 +1,7 @@
 import {
   availabilitySchema,
+  loginSuggestionSchema,
+  staffAccountSchema,
   staffDetailSchema,
   staffListSchema,
   vacancyDetailSchema,
@@ -51,6 +53,45 @@ export const invalidateStaff = (queryClient: QueryClient): Promise<unknown> =>
     queryClient.invalidateQueries({ queryKey: staffKey() }),
     queryClient.invalidateQueries({ queryKey: divisionsKey() }),
   ]);
+
+/**
+ * The account section of a record (task 2.3a): its account and roles, or
+ * none yet. Never holds a first password: the slip lives only in the dialog
+ * that shows it (correction 4 of the review of pull request #62).
+ */
+export const staffAccountKey = (id?: string) =>
+  id === undefined ? [...PEOPLE_KEY, 'account'] : [...PEOPLE_KEY, 'account', id];
+
+export const staffAccountQuery = (branchId: string | null, id: string) =>
+  queryOptions({
+    queryKey: [...staffAccountKey(id), branchId],
+    queryFn: async () =>
+      staffAccountSchema.parse(
+        await answerOf(
+          api.GET('/api/people/staff/{id}/account', {
+            params: { header: branchHeader(), path: { id } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** The first free login of the owner's answer 14, read when the create form opens. */
+export const loginSuggestionQuery = (branchId: string | null, id: string) =>
+  queryOptions({
+    queryKey: [...staffAccountKey(id), 'suggestion', branchId],
+    queryFn: async () =>
+      loginSuggestionSchema.parse(
+        await answerOf(
+          api.GET('/api/people/staff/{id}/account/suggestion', {
+            params: { header: branchHeader(), path: { id } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+    staleTime: 0,
+    gcTime: 0,
+  });
 
 /** The hours of a record in the branch of the switcher, and the others read only (task 2.2b). */
 export const availabilityQuery = (branchId: string | null, id: string) =>

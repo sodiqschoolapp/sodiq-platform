@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
 import { CONFIG } from '../../config/config.module.js';
 import type { AppConfig } from '../../config/config.js';
+import { AccessModule } from '../access/access.module.js';
+import { AuthModule } from '../auth/auth.module.js';
 import { AvailabilityController } from './availability.controller.js';
 import { StaffAvailability } from './availability.service.js';
 import { PHOTO_STORE, photoStoreOf } from './photo-store.js';
+import { StaffAccountsController } from './staff-accounts.controller.js';
+import { StaffAccounts } from './staff-accounts.service.js';
 import { StaffPhotosController } from './staff-photos.controller.js';
 import { StaffPhotos } from './staff-photos.service.js';
 import { StaffController } from './staff.controller.js';
@@ -13,17 +17,21 @@ import { Vacancies } from './vacancies.service.js';
 
 /**
  * People (docs/spec/04-people.md): staff records and their status (task
- * 2.2a), availability and vacancies (task 2.2b), staff photos (task 2.2c-2).
+ * 2.2a), availability and vacancies (task 2.2b), staff photos (task 2.2c-2),
+ * the account section of a record (task 2.3a).
  */
 @Module({
+  imports: [AccessModule, AuthModule],
   controllers: [
     StaffController,
+    StaffAccountsController,
     StaffPhotosController,
     AvailabilityController,
     VacanciesController,
   ],
   providers: [
     Staff,
+    StaffAccounts,
     StaffPhotos,
     StaffAvailability,
     Vacancies,

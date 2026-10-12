@@ -1,12 +1,12 @@
 import { randomInt } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { DEFAULT_LANGUAGE, type Clock } from '@sodiq/shared';
+import { DEFAULT_LANGUAGE, LOGIN_MAX_LENGTH, type Clock } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import type { Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { Audit } from '../audit/audit.service.js';
-import { loginBase } from './login.js';
+import { loginBase, loginForms, LoginNameError } from './login.js';
 import { hashPassword } from './password-hash.js';
 
 /** Edge cases, "Accounts and sign-in": first passwords are valid for 7 days. */
@@ -26,15 +26,32 @@ export function randomFirstPassword(): string {
   return password;
 }
 
+/** The chosen login is given to another account; logins are never reused. */
+export class LoginTakenError extends Error {
+  constructor() {
+    super('The login is given to another account.');
+  }
+}
+
 export interface NewAccount {
   /** Used for the login only; an account stores no name. */
   firstName: string;
   lastName: string;
+  /**
+   * The login the Super Admin chose (task 2.3a): the suggestion or a typed
+   * one, already checked against its form. Left out, the login is made from
+   * the name (the first-account command).
+   */
+  login?: string;
   /** The account of the administrator who creates this one; `null` for the server command. */
   createdBy: string | null;
   /** For the audit entry, for example which command acted. */
   details?: JsonValue;
   requestId?: string;
+  /** For the audit entry: the assignment that allowed the administrator to act (task 2.3a). */
+  actingAssignmentId?: string;
+  /** For the audit entry: the staff record of the person (task 2.3a). */
+  personId?: string;
 }
 
 export interface CreatedAccount {
@@ -62,7 +79,7 @@ export class Accounts {
    * `LoginNameError` for a name that cannot give a login.
    */
   async create(transaction: Transaction, account: NewAccount): Promise<CreatedAccount> {
-    const base = loginBase(account.firstName, account.lastName);
+    const base = account.login ?? loginBase(account.firstName, account.lastName);
     const firstPassword = randomFirstPassword();
     const passwordHash = await hashPassword(firstPassword);
     const now = this.clock.now();
@@ -71,7 +88,7 @@ export class Accounts {
     // between the read and the insert, the insert adds nothing and the next
     // round reads again.
     for (let attempt = 0; attempt < 10; attempt += 1) {
-      const login = await this.nextLogin(transaction, base);
+      const login = account.login ?? (await this.nextLogin(transaction, base));
       const inserted = await transaction
         .insertInto('accounts')
         .values({
@@ -96,11 +113,62 @@ export class Accounts {
           newValue: { login },
           ...(account.details === undefined ? {} : { details: account.details }),
           ...(account.requestId === undefined ? {} : { requestId: account.requestId }),
+          ...(account.actingAssignmentId === undefined
+            ? {}
+            : { assignmentId: account.actingAssignmentId }),
+          ...(account.personId === undefined ? {} : { personId: account.personId }),
         });
         return { id: inserted.id, login, firstPassword };
       }
+      if (account.login !== undefined) {
+        // A chosen login is not changed: somebody has it.
+        throw new LoginTakenError();
+      }
     }
     throw new Error('No free login was found for a new account.');
+  }
+
+  /**
+   * The first free login of the owner's answer 14 for a person (task 2.3a):
+   * `a.karimov`, `akmal.karimov`, `akmal.b.karimov` (without a father's
+   * name, not this one), then `akmal.karimov2`, 3, ... A form longer than
+   * `LOGIN_MAX_LENGTH` is skipped, a number too. `null` when no form fits
+   * or the name gives no login: the Super Admin types one.
+   */
+  async suggest(
+    transaction: Transaction,
+    name: { firstName: string; lastName: string; fatherName: string | null },
+  ): Promise<string | null> {
+    let forms: string[];
+    try {
+      forms = loginForms(name.firstName, name.lastName, name.fatherName);
+    } catch (error) {
+      if (error instanceof LoginNameError) {
+        return null;
+      }
+      throw error;
+    }
+    for (const form of forms) {
+      if (form.length > LOGIN_MAX_LENGTH) {
+        continue;
+      }
+      const taken = await transaction
+        .selectFrom('accounts')
+        .select('id')
+        .where('login', '=', form)
+        .executeTakeFirst();
+      if (taken === undefined) {
+        return form;
+      }
+    }
+    // The whole first name and the surname, also when it is the first form
+    // (a one-letter first name), never the form with the father's initial.
+    const numbered = loginForms(name.firstName, name.lastName, null).at(-1);
+    if (numbered === undefined) {
+      return null;
+    }
+    const next = await this.nextLogin(transaction, numbered);
+    return next.length > LOGIN_MAX_LENGTH ? null : next;
   }
 
   /**
@@ -109,8 +177,8 @@ export class Accounts {
    * login is never given twice.
    */
   private async nextLogin(transaction: Transaction, base: string): Promise<string> {
-    // The base holds letters and one dot only (`loginBase`).
-    const pattern = `^${base.replace('.', '\\.')}[0-9]*$`;
+    // The base holds letters and dots only (`loginBase`, `loginForms`).
+    const pattern = `^${base.replaceAll('.', '\\.')}[0-9]*$`;
     const found = await transaction
       .selectFrom('accounts')
       .select('login')

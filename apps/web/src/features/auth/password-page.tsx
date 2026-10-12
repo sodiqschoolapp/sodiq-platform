@@ -123,7 +123,7 @@ export function PasswordPage() {
       {session?.passwordResetBy != null && (
         <Alert className="mb-4">
           <AlertDescription>
-            {t('password.resetBy', { login: session.passwordResetBy })}
+            {t('password.resetBy', { name: session.passwordResetBy })}
           </AlertDescription>
         </Alert>
       )}

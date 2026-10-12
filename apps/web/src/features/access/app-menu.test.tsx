@@ -70,6 +70,66 @@ describe('the person at the foot of the menu', () => {
     expect(person.textContent).toContain(en.roles.teacher);
     expect(screen.getByRole('button', { name: en.layout.signOut })).toBeDefined();
   });
+
+  // Task 2.3a: the person's name (from the staff record) replaces the login.
+  it('shows the name of the person, with its initials, and not the login', async () => {
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(
+          sessionOf({ login: 'n.saidova', name: { firstName: 'Nargiza', lastName: 'Saidova' } }),
+        ),
+    });
+    renderApp('/');
+    await heading(en.home.title);
+
+    const person = screen.getByRole('button', { name: en.layout.account });
+    expect(person.textContent).toContain('Nargiza Saidova');
+    expect(person.textContent).toContain('NS');
+    expect(person.textContent).not.toContain('n.saidova');
+
+    // The same name at the top of "More" on a phone.
+    fireEvent.click(
+      within(screen.getByRole('navigation', { name: en.menu.tabs })).getByRole('button', {
+        name: en.menu.more,
+      }),
+    );
+    const more = await screen.findByRole('dialog', { name: en.menu.more });
+    expect(more.querySelector('[data-person]')?.textContent).toBe('NSNargiza Saidova');
+  });
+});
+
+// Edge cases, Accounts and sign-in: "A banner shows while fewer than two
+// exist" (task 2.3a).
+describe('the Super Admin banner', () => {
+  const superAdmin = () =>
+    sessionOf({ assignments: [{ role: 'super_admin', branchId: null }], branches: [NORTH, SOUTH] });
+
+  it('shows to a Super Admin while fewer than two are active', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(superAdmin()),
+      'GET /api/access/super-admins': () => json({ active: 1 }),
+    });
+    renderApp('/');
+    expect(await screen.findByText(en.layout.superAdminBanner)).toBeDefined();
+  });
+
+  it('is not there with two', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(superAdmin()),
+      'GET /api/access/super-admins': () => json({ active: 2 }),
+    });
+    renderApp('/');
+    await heading(en.home.title);
+    expect(calls.some((call) => call.route === 'GET /api/access/super-admins')).toBe(true);
+    expect(screen.queryByText(en.layout.superAdminBanner)).toBeNull();
+  });
+
+  it('is never asked for by a Teacher', async () => {
+    const calls = fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });
+    renderApp('/');
+    await heading(en.home.title);
+    expect(calls.some((call) => call.route === 'GET /api/access/super-admins')).toBe(false);
+  });
 });
 
 // docs/design-system.md, Layout shell, Menu: "It can collapse to a 72-wide

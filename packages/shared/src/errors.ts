@@ -195,6 +195,28 @@ export const ERROR_CODES = [
   'photos_not_configured',
   /** The photo store did not answer in time or refused; only photos fail (`edge/system-behaviour`; task 2.2c-2). */
   'photos_unavailable',
+  /** The staff record has an account already; an account is linked once (task 2.3a). */
+  'account_exists',
+  /** The login is given to another account; logins are never reused (`edge/people-roles-accounts`, Accounts and sign-in; task 2.3a). `details` names `login`. */
+  'login_taken',
+  /** The staff record has no account yet: roles are given to an account (task 2.3a). */
+  'no_account',
+  /** The person has left: no account and no role is given (`edge/people-roles-accounts`, Staff over time: "Left: all roles ended"; task 2.3a). */
+  'staff_left',
+  /** A role is given in one of the branches of the person (task 2.3a, decision 10). */
+  'role_branch_not_person',
+  /** The account holds this role in this branch already at some moment from that date (db/migrations/0009; task 2.3a). */
+  'role_overlap',
+  /** At most 3 accounts are Super Admin (`02`, Super Admin; task 2.3a). */
+  'too_many_super_admins',
+  /** Nobody removes their own Super Admin role (`edge/people-roles-accounts`, Accounts and sign-in; task 2.3a). */
+  'own_super_admin_role',
+  /** The change would leave no active Super Admin (`edge/people-roles-accounts`, Accounts and sign-in; task 2.3a, decision 5). */
+  'last_super_admin',
+  /** The role has already ended; an end that has passed is final (0.7a; task 2.3a). */
+  'assignment_ended',
+  /** A role is given or ended from today or later (task 2.3a, decision 10). */
+  'role_from_past',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

@@ -126,6 +126,15 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   Only the three roles that view these areas gain it. Widening existing
  *   roles, decided without the owner on pull request #58 (decision 2),
  *   confirmed at its review and flagged Look first on issue #42.
+ * - `accounts` (`edge/people-roles-accounts`, Who can act: "The Super Admin
+ *   creates staff accounts and gives all roles"; `02`: "Only this role
+ *   creates ... roles"; task 2.3a): the account section of a staff record.
+ *   The Super Admin views, creates an account (`create`) and gives and ends
+ *   roles (`edit`); the Principal, who "views everything in the branch"
+ *   (`02`), views the section of a record of the branch. The count of
+ *   active Super Admins asks `create`, so only the Super Admin reads it. A
+ *   new area for new routes, decided without the owner on pull request #62
+ *   (decision 4), confirmed at its review and flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -187,6 +196,10 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view', 'create', 'edit', 'archive', 'export'],
     principal: ['view', 'export'],
     academic_vice_principal: ['view', 'create', 'edit', 'archive', 'export'],
+  }),
+  accounts: rows({
+    super_admin: ['view', 'create', 'edit'],
+    principal: ['view'],
   }),
   current_period: rows({
     super_admin: ['view'],

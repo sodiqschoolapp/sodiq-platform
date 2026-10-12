@@ -9,6 +9,7 @@ import {
   staffListSchema,
   staffParamsSchema,
   staffRecordSchema,
+  staffStatusAnswerSchema,
   staffStatusChangeSchema,
   staffTeachingSchema,
   type StaffBranches,
@@ -20,6 +21,7 @@ import {
   type StaffList,
   type StaffParams,
   type StaffRecord,
+  type StaffStatusAnswer,
   type StaffStatusChange,
   type StaffTeaching,
 } from '@sodiq/shared';
@@ -135,13 +137,13 @@ export class StaffController {
   @Post('staff/:id/status')
   @HttpCode(200)
   @Requires('staff', 'edit')
-  @Returns(staffDetailSchema)
+  @Returns(staffStatusAnswerSchema)
   status(
     @CurrentAccess() access: Access,
     @ValidParams(staffParamsSchema) params: StaffParams,
     @ValidBody(staffStatusChangeSchema) change: StaffStatusChange,
     @RequestId() requestId: string,
-  ): Promise<StaffDetail> {
+  ): Promise<StaffStatusAnswer> {
     return this.staff.setStatus(access, params.id, change, requestId);
   }
 

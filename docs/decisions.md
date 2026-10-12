@@ -186,6 +186,30 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 12 October 2026: accounts and roles (task 2.3a)
+
+Plan approved on pull request #62 with corrections 1 to 6; decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Task 2.3 split into 2.3a (accounts and roles), 2.3b (Head Teacher appointments and subject scope), 2.3c (locks, resets, email reset, own photo); the 48-hour report after a reset moved to 6.1 | Decision 1; eleven pieces of work over four modules; the report needs journal entries |
+| **Look first.** The login check of `accounts` widened in 0027 to `^[a-z]+(\.[a-z]+){1,2}[0-9]*$`, at most 64 characters; unique and unchangeable as before | Decision 2; the owner's answer 14 changed the requirement |
+| **Look first.** The end of an assignment is held by `assignments_end_guard`: for `sodiq_app`, an end at or before `app.now` is final, a new end is not before 00:00 of that day (branch time zone, the school's without a branch), and a write without `app.now` is refused; `Transactions.run` sets `app.now` from the injected clock; the migrator is not checked | Decision 3, correction 5; the owner's rule of 0.7a with the injected clock |
+| **Look first.** The session answer carries the person's own name and the name of the administrator who reset the password, through `own_person_name` and `reset_by_person_name` (`SECURITY DEFINER`, a first and last name only); the own name only once no sign-in step is owed | Decision 9; pull request #61, decision 6; the resetter's name is the one cross-branch read; code round 1, finding 6 |
+| **Look first.** The slip carries no role; proposed `/spec-change` of `docs/design-system.md` (This app, Printouts): "name, the roles held when it is printed (none at a first issue), the three steps …" | Build decision 13: no role exists when a first password is issued |
+| **Look first.** One slip per page for one account; proposed `/spec-change` of the same line: "one slip per page for one account; four per A4 page with cut lines when several accounts are printed at once (a staff import)" | The owner's answer 15 ("one slip per person"); the four-per-page sheet needs several accounts at once, which comes with a staff import |
+| Who gave or ended a role is named when the actor's staff record is in a branch the request may read, by login otherwise; no function for it | Correction 1 |
+| Area `accounts`: the Super Admin views, creates, edits; the Principal views; the Super Admin count asks `create` | Decision 4 |
+| The last active Super Admin: a Super Admin assignment begun and without end, an account not locked, a record not inactive or left today or planned; a role end or status change that takes the count from one or more to none is refused (`last_super_admin`); `SUPER_ADMIN_COUNT_LOCK` is taken before any row lock | Decision 5; finding 4 of the plan review |
+| Roles given in 2.3a: Super Admin, Principal, both Vice Principals, Head Tutor, Tutor, Teacher | Decision 6 |
+| A re-hire (the first change after `left` to `active` or `inactive`, from a date when the record has left, after planned changes are taken back) sets a new first password valid 7 days from the later of now and the re-hire date, answered once as a slip; the return from that leave is no second re-hire; taken back, the password stays; no role comes back. A person still on leave when it runs out gets a reset (2.3c) | Decisions 7 and 8; code round 1, finding 7 |
+| "Left: all roles ended" for roles given later too: a role that would begin while a `left` row is in force (a return planned or not) is refused (`staff_left`); one that begins before a planned `left` ends at 00:00 of its date through `Staff.endRoles`, comes back when the `left` is taken back, and its end is not moved past it (`staff_left`) | Decision 12; code round 1, finding 1 |
+| The account section shows a reader other than the Super Admin the roles of the branches of the request and the two without a branch (the Super Admin role included); the Super Admin sees every role | Branch on every row; code round 1, finding 2: `assignments` has no row policy |
+| An unknown branch id in the body of a role give is refused as one the person is not linked to (409 `role_branch_not_person`), as another branch's | Code round 1, finding 3; one answer for both, so the code tells nothing about which branches exist |
+| A role is given in one of the person's branches, from today or later, at 00:00 of that day; "end today" ends it now, a later date at 00:00 of that day; given again the same day it overlaps and is refused | Decisions 10 and 13 |
+| The account lives in a section of the staff side panel; the slip is a dialog, printed alone through `body[data-printing='slip']`; the slip carries name, the three steps, login, password, issue date and end, and no role (none is given yet when it is printed) | Decision 11; build |
+| The browser test's account flow is the second half of the divisions Super Admin's test | Build: the seed holds at most three Super Admins, all used by the setup tests |
+
 ## 12 October 2026: layout shell and brand moments (task 2.2d-2)
 
 Plan approved on pull request #61 with corrections 1 to 4; decisions 1 to 17 confirmed there. Flagged on issue #42.

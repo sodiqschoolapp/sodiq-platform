@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: task 2.3a Accounts and roles
+
+- Built: the account section of a staff record (create with the login suggestion of answer 14, the first-password slip, give and end roles from a date), the last active Super Admin rule on role ends and status changes with its banner, the re-hire password and slip, the person's name in the menu, "More" and `passwordResetBy`; migration 0027 (login forms, `assignments_end_guard` on `app.now`, three name and count functions).
+- Tests: `staff-accounts.test.ts` (routes, refusals, 404s, race and lock-order tests), the end guard in `assignments.database.test.ts`, the functions in `staff.database.test.ts`, login forms, `account-section.test.tsx`, the menu name and banner; the browser test is the second half of the divisions test in `setup.spec.ts` (screenshots in `docs/screens/2.3a/`).
+- Left out: Head Teacher appointments and subject scope (2.3b); locks, resets, email reset, never-used report, own photo (2.3c); the 48-hour report after a reset (6.1); several slips on one page (a staff import, later).
+
+The next sessions must know:
+
+- `Transactions.run` sets `app.now` from the injected clock; a rule the database compares with it reads `transactionMoment(transaction)` in code, never a later `clock.now()`. A test that writes `assignments.valid_until` as the application goes through `Transactions.run`; set-up through the migrator.
+- `assignments` has no row policy: a read for someone other than the Super Admin keeps to `access.branchIds` and the roles without a branch in code. A role give checks the `left` rows (`leaveAfter`) and ends at a planned `left` through `Staff.endRoles`.
+- Every change that can remove a Super Admin takes `lockSuperAdmins` first, then counts with `activeSuperAdmins` before and after (`keepingASuperAdmin`); 2.3c's lock uses the same.
+- A first password lives only in the slip dialog's state (`.claude/rules/web.md`, the new secret rule).
+- The next task is 2.3b.
+
 ## 12 October 2026: task 2.2d-2 Layout shell and brand moments
 
 - Built: the navy menu (on-dark logo, Material icons, the current item orange, the rail under `sodiq.menu`, the person and sign-out at its foot with the theme and language in the person menu), the phone tab bar (four items and "More"), the 64-high top bar (branch, year and quarter, search with Ctrl+K, notifications, feedback, role); the sign-in frame with the slogan panel for sign-in and its steps; empty pages (`EmptyState` with a title) and full-page errors as brand moments with Bitter and the hexagon drawing; two pending outlines; the print letterhead (`components/print/letterhead.tsx`).

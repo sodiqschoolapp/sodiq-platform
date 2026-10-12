@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { branchIdSchema } from './branches.js';
+import { personNameSchema } from './accounts.js';
 import { languageSchema } from './language.js';
 import { roleSchema } from './roles.js';
 
@@ -46,11 +47,20 @@ export type SecondStepState = z.infer<typeof secondStepStateSchema>;
 /** Who is signed in, and what must be done before anything else. */
 export const sessionResponseSchema = z.object({
   login: z.string(),
+  /**
+   * The first and last name of the staff record linked to the account, for
+   * the menu (pull request #61, decision 6); `null` for an account with no
+   * record, such as the first Super Admin, which shows its login. `null` too
+   * while a step of sign-in is owed (task 2.3a, code round 1, finding 6).
+   */
+  name: personNameSchema.nullable(),
   secondStep: secondStepStateSchema,
   mustChangePassword: z.boolean(),
   /**
-   * The login of the administrator who reset the password, while the reset
-   * password is in use ("your password was reset by X"); otherwise `null`.
+   * The administrator who reset the password, while the reset password is in
+   * use ("your password was reset by X"): the first and last name of their
+   * staff record, their login when they have none (task 2.3a, decision 9);
+   * otherwise `null`.
    */
   passwordResetBy: z.string().nullable(),
   /**

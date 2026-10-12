@@ -90,6 +90,28 @@ export function planStatusChange(
   return { cuts, writes, withdrawn };
 }
 
+/**
+ * Whether a valid change re-hires the person: it is the first change after a
+ * `left` to a status that is not `left`, `active` or `inactive` (re-hired
+ * on leave), so that the row in force on its date, once the changes planned
+ * after today are taken back as `planStatusChange` takes them back, is
+ * `left` (task 2.3a, decision 7; code round 1 of #62, finding 7). A `left`
+ * planned after today is taken back by the change, so the person never left.
+ */
+export function rehires(
+  rows: readonly StoredStatusRow[],
+  change: StaffStatusChange,
+  today: SchoolDate,
+): boolean {
+  if (change.status === 'left') {
+    return false;
+  }
+  const live = rows.filter((row) => !isWithdrawn(row));
+  const first = live[0];
+  const kept = live.filter((row) => row === first || row.validFrom <= today);
+  return kept.filter((row) => row.validFrom <= change.from).at(-1)?.status === 'left';
+}
+
 /** 00:00 of a school date in a time zone: the moment the roles end on the date of a `left` row. */
 export async function startOfDate(
   transaction: Transaction,

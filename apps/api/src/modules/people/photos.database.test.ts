@@ -7,6 +7,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { staffIdOf } from './staff-numbers.js';
+import { SystemClock } from '../../clock/system-clock.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
 const CHECK_VIOLATION = '23514';
@@ -96,7 +97,7 @@ describe('staff photos in the database', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, new SystemClock());
     north = await insertBranch(database.migrator, 'North');
     academic = (
       await database.migrator

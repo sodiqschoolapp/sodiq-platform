@@ -48,6 +48,7 @@ let renderedLanguage: Language = 'en';
 export function sessionOf(fields: Partial<SessionResponse> = {}): SessionResponse {
   return {
     login: 'm.ergasheva',
+    name: null,
     secondStep: 'not_needed',
     mustChangePassword: false,
     passwordResetBy: null,
@@ -63,6 +64,15 @@ export function sessionOf(fields: Partial<SessionResponse> = {}): SessionRespons
  * Replaces the browser's fetch with the given routes and records every call.
  * A route that is not named fails like a lost connection.
  */
+/**
+ * Calls the shell makes on every page for some roles, answered unless a test
+ * gives its own: the count of Super Admins of the banner (task 2.3a), two, so
+ * that no banner shows.
+ */
+const SHELL_ANSWERS: Record<string, Handler> = {
+  'GET /api/access/super-admins': () => json({ active: 2 }),
+};
+
 export function fakeApi(handlers: Record<string, Handler>): ApiCall[] {
   const calls: ApiCall[] = [];
   vi.stubGlobal(
@@ -82,7 +92,7 @@ export function fakeApi(handlers: Record<string, Handler>): ApiCall[] {
         body = text === '' ? undefined : JSON.parse(text);
       }
       calls.push({ route, body });
-      const handler = handlers[route];
+      const handler = handlers[route] ?? SHELL_ANSWERS[route];
       if (handler === undefined) {
         throw new TypeError('Failed to fetch');
       }

@@ -78,7 +78,7 @@ const AKMAL_DETAIL: StaffDetail = {
   weeklyLessons: null,
   dailyLessons: null,
   statuses: [{ id: uid(41), status: 'active', from: '2026-09-01', until: null }],
-  rights: { all: false, contact: true, teaching: true },
+  rights: { all: false, contact: true, teaching: true, accounts: false },
   today: '2026-10-10',
 };
 

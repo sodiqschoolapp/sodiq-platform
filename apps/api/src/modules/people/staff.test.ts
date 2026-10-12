@@ -174,7 +174,7 @@ describe('staff records', () => {
       ]);
       expect(first.status).toBe('active');
       expect(first.branches).toEqual([{ branchId: t.north, name: 'North', main: true }]);
-      expect(first.rights).toEqual({ all: true, contact: true, teaching: true });
+      expect(first.rights).toEqual({ all: true, contact: true, teaching: true, accounts: true });
       const [entry] = await t.entries('staff.create', first.id);
       expect(entry).toMatchObject({
         branch_id: t.north,
@@ -283,7 +283,12 @@ describe('staff records', () => {
       expect(response.status, JSON.stringify(response.body)).toBe(200);
       const changed = staffDetailSchema.parse(response.body);
       expect([changed.phone, changed.email]).toEqual(['+998910000001', 'teacher@school.uz']);
-      expect(changed.rights).toEqual({ all: false, contact: true, teaching: true });
+      expect(changed.rights).toEqual({
+        all: false,
+        contact: true,
+        teaching: true,
+        accounts: false,
+      });
       const [entry] = await t.entries('staff.edit', created.id);
       expect(entry).toMatchObject({
         assignment_id: t.viceAssignment,

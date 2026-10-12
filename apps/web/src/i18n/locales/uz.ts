@@ -200,6 +200,23 @@ export const uz: Texts<'one' | 'other'> = {
     floor_archived:
       'Qavat arxivlangan. Arxivlangan qavatdagi xonani faqat koʻchirish mumkin: faol qavatni tanlang yoki avval qavatni tiklang.',
     archived_record: 'U yoki u joylashgan bino arxivlangan. Avval tiklang, keyin oʻzgartiring.',
+    account_exists: 'Bu xodimning hisobi allaqachon bor. Uni koʻrish uchun sahifani yangilang.',
+    login_taken: 'Bu login band. Loginlar ikki marta berilmaydi: boshqasini tanlang.',
+    no_account: 'Bu xodimda hali hisob yoʻq. Avval hisob yarating, keyin rollar bering.',
+    staff_left: 'Bu xodim ishdan ketgan. Avval holatini faolga qaytaring.',
+    role_branch_not_person:
+      'Bu xodim shu filialda ishlamaydi. Avval filialni kartochkaga qoʻshing yoki uning filiallaridan birini tanlang.',
+    role_overlap:
+      'Bu xodimda shu sanada shu filialda bu rol allaqachon bor. Keyinroq sanani tanlang yoki avval amaldagi rolni tugating.',
+    too_many_super_admins:
+      'Super administratorlar uchtadan oshmaydi. Avval boshqa super administrator rolini tugating.',
+    own_super_admin_role:
+      'Oʻz super administrator rolingizni tugata olmaysiz. Boshqa super administratorga murojaat qiling.',
+    last_super_admin:
+      'Shundan keyin maktabda faol super administrator qolmaydi. Avval super administrator rolini boshqa xodimga bering.',
+    assignment_ended: 'Bu rol allaqachon tugagan. Qaytarish uchun uni yangidan bering.',
+    role_from_past:
+      'Rol bugun yoki keyinroq boshlanadi va tugaydi. Bugungi yoki keyingi sanani tanlang.',
     internal_error:
       'Serverda xatolik yuz berdi. Birozdan keyin qayta urinib koʻring. Takrorlansa, administratorga xabar bering.',
   },
@@ -226,7 +243,7 @@ export const uz: Texts<'one' | 'other'> = {
     titleOwn: 'Parolni oʻzgartirish',
     textForced:
       'Siz bir martalik parol bilan kirdingiz. Davom etishdan oldin oʻz parolingizni oʻrnating.',
-    resetBy: 'Parolingizni {{login}} tikladi.',
+    resetBy: 'Parolingizni {{name}} tikladi.',
     current: 'Joriy parol',
     currentOneTime: 'Bir martalik parol',
     new: 'Yangi parol',
@@ -259,6 +276,8 @@ export const uz: Texts<'one' | 'other'> = {
     continue: 'Davom etish',
   },
   layout: {
+    superAdminBanner:
+      'Faol super administratorlar ikkitadan kam. Maktab super administratorsiz qolmasligi uchun rolni ikkinchi xodimga bering.',
     topBar: 'Yuqori panel',
     breadcrumbs: 'Siz shu yerdasiz',
     menu: 'Asosiy menyu',
@@ -988,6 +1007,50 @@ export const uz: Texts<'one' | 'other'> = {
       delete: 'Oʻchirish',
       deleteTitle: 'Vakansiya oʻchirilsinmi?',
       deleteText: 'Vakansiya va uning soatlari oʻchiriladi. Audit jurnalida nusxasi qoladi.',
+    },
+    account: {
+      title: 'Hisob va rollar',
+      none: 'Hisob hali yoʻq.',
+      login: 'Login',
+      password: 'Parol',
+      issued: 'Berilgan sana',
+      validUntil: 'Amal qilish muddati',
+      slipTitle: 'Birinchi parol',
+      slipOnce:
+        'Parol faqat hozir koʻrsatiladi. Yopishdan oldin varaqni chop eting yoki parolni yozib oling.',
+      slipStepOpen: '{{address}} manzilini oching.',
+      slipStepSignIn: 'Quyidagi login va parol bilan kiring.',
+      slipStepChange: 'Kamida 10 belgidan iborat oʻz parolingizni tanlang.',
+      print: 'Chop etish',
+      closeSlip: 'Yopish',
+      loginFormat:
+        'Kichik lotin harflari va nuqtalardan foydalaning, masalan a.karimov yoki akmal.b.karimov.',
+      createOf: '{{name}} hisobi',
+      neverUsed: 'hali ishlatilmagan',
+      locked: 'bloklangan',
+      noRoles: 'Rollar hali yoʻq.',
+      rolesTitle: 'Rollar',
+      role: 'Rol',
+      branch: 'Filial',
+      dates: 'Sanalar',
+      actions: 'Amallar',
+      givenBy: '{{name}} bergan',
+      allBranches: 'Barcha filiallar',
+      end: 'Rolni tugatish',
+      endOf: '«{{role}}» rolini tugatish',
+      giveOf: '{{name}}ga rol berish',
+      newRole: 'Yangi rol',
+      choose: 'Tanlang',
+      from: 'Boshlanish sanasi',
+      endFrom: 'Tugash sanasi',
+      endConfirmTitle: '«{{role}}» rolini {{date}} dan tugatasizmi?',
+      endConfirmText:
+        'Sana kelgach, tugatishni bekor qilib boʻlmaydi. Rolni yangidan berish mumkin.',
+      states: {
+        planned: 'rejalashtirilgan',
+        current: 'amalda',
+        ended: 'tugagan',
+      },
     },
     staff: {
       emptyTitle: 'Xodimlar hali yoʻq',

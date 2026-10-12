@@ -98,6 +98,7 @@ describe('a frozen permission table', () => {
   it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
     expect(Object.keys(PERMISSIONS).sort()).toEqual([
       'academic_years',
+      'accounts',
       'branches',
       'calendar',
       'current_period',
@@ -237,6 +238,23 @@ describe('a frozen permission table', () => {
             ['super_admin', 'principal', 'academic_vice_principal'].includes(role),
         );
         expect(permits(PERMISSIONS, role, area, 'archive')).toBe(false);
+      }
+    }
+  });
+
+  // Task 2.3a, decision 4 of pull request #62: `accounts` — the Super Admin
+  // views, creates accounts and gives and ends roles ("The Super Admin creates
+  // staff accounts and gives all roles", Who can act); the Principal views.
+  // Nobody else, the Academic Vice Principal included.
+  it('gives the accounts to the Super Admin, and their view to the Principal', () => {
+    expect(PERMISSIONS.accounts.super_admin).toEqual(['view', 'create', 'edit']);
+    expect(PERMISSIONS.accounts.principal).toEqual(['view']);
+    for (const role of ROLES) {
+      if (!['super_admin', 'principal'].includes(role)) {
+        expect(PERMISSIONS.accounts[role], role).toEqual([]);
+      }
+      for (const action of ['create', 'edit'] as const) {
+        expect(permits(PERMISSIONS, role, 'accounts', action)).toBe(role === 'super_admin');
       }
     }
   });

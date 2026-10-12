@@ -10,6 +10,7 @@ import { createTestDatabase, type TestDatabase } from '../../testing/test-databa
 import { SecondStepKeyCheck, SecondStepKeyError } from './second-step-key-check.js';
 import { SecondStepRule } from './second-step-rule.js';
 import { SecondStepSecrets } from './second-step-secrets.js';
+import { SystemClock } from '../../clock/system-clock.js';
 
 // Invented for the tests.
 const KEY = Buffer.alloc(32, 7).toString('base64');
@@ -43,7 +44,7 @@ describe('the check of the key of the second step at start', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, new SystemClock());
   });
 
   beforeEach(async () => {

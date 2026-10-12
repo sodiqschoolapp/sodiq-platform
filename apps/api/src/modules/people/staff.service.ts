@@ -9,6 +9,7 @@ import {
   type ContractType,
   type EducationLevel,
   type ErrorCode,
+  type FirstPasswordSlip,
   type InstructionLanguage,
   type Role,
   type SchoolDate,
@@ -26,17 +27,20 @@ import {
   type StaffRecord,
   type StaffRights,
   type StaffStatus,
+  type StaffStatusAnswer,
   type StaffStatusChange,
   type StaffTeaching,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import { currentAssignments } from '../access/current-assignments.js';
+import { activeSuperAdmins, lockSuperAdmins } from '../access/super-admins.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import { PasswordResets } from '../auth/password-resets.service.js';
 import {
   exportList,
   gradesOf,
@@ -55,7 +59,13 @@ import {
 } from '../setup/setup-refusals.js';
 import { endAvailability } from './availability.service.js';
 import { staffIdOf, takeStaffNumber } from './staff-numbers.js';
-import { planStatusChange, roleEndFor, startOfDate, type StoredStatusRow } from './staff-status.js';
+import {
+  planStatusChange,
+  rehires,
+  roleEndFor,
+  startOfDate,
+  type StoredStatusRow,
+} from './staff-status.js';
 
 /** The refusals of the database for staff records (db/migrations/0024), by the name of the constraint. */
 const STAFF_REFUSALS: Readonly<Record<string, ErrorCode>> = {
@@ -148,6 +158,12 @@ const sortDivisions = (divisions: StaffDivisions): StaffDivisions =>
 const superAdminOf = (access: Access): string | undefined =>
   access.assignments.find((assignment) => assignment.role === 'super_admin')?.id;
 
+/** A current Principal assignment of the account in the branch of the request. */
+const principalOf = (access: Access): string | undefined =>
+  access.assignments.find(
+    (assignment) => assignment.role === 'principal' && assignment.branchId === access.branchId,
+  )?.id;
+
 /** A current Academic Vice Principal assignment of the account in the branch of the request. */
 const viceOf = (access: Access): string | undefined =>
   access.assignments.find(
@@ -185,6 +201,7 @@ export class Staff {
     private readonly transactions: Transactions,
     private readonly audit: Audit,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly passwordResets: PasswordResets,
   ) {}
 
   /** The branches a read of this account works with: every branch for a Super Admin, else the branch of the request. */
@@ -652,7 +669,7 @@ export class Staff {
     id: string,
     change: StaffStatusChange,
     requestId: string,
-  ): Promise<StaffDetail> {
+  ): Promise<StaffStatusAnswer> {
     const branchId = branchOf(access);
     const superAdmin = superAdminOf(access);
     if (superAdmin === undefined) {
@@ -661,6 +678,10 @@ export class Staff {
     return this.refusing(async () => {
       const every = await this.readingBranches(access);
       return this.transactions.run(every, async (transaction) => {
+        // The Super Admin count first, then the record (task 2.3a, finding 4
+        // of the plan review): the role end of the account section takes them
+        // in the same order.
+        await lockSuperAdmins(transaction);
         const row = await this.lockLinked(transaction, id, branchId);
         if (row.account_id === access.accountId && change.status !== 'active') {
           throw refused('own_status');
@@ -672,7 +693,10 @@ export class Staff {
           .where('staff_branches.staff_id', '=', id)
           .where('staff_branches.is_main', '=', true)
           .executeTakeFirstOrThrow();
-        const today = schoolDateOf(this.clock.now(), main.time_zone);
+        // One moment for the code and for `assignments_end_guard` (code round
+        // 1 of #62, finding 5).
+        const now = await transactionMoment(transaction);
+        const today = schoolDateOf(now, main.time_zone);
         const rows: StoredStatusRow[] = (
           await transaction
             .selectFrom('staff_statuses')
@@ -692,6 +716,9 @@ export class Staff {
         if ('refusal' in plan) {
           throw refused(plan.refusal);
         }
+        // A re-hire (task 2.3a, decision 7).
+        const rehire = rehires(rows, change, today);
+        const before = await activeSuperAdmins(transaction, now);
         // A person who stays or becomes employed keeps a profile that fits the
         // subjects as they are now: a subject's department or grades may have
         // changed while the person had left, which the subject edit does not
@@ -743,6 +770,34 @@ export class Staff {
             requestId,
           });
         }
+        // "The system refuses to ... remove the last active Super Admin": a
+        // status that leaves none is refused (task 2.3a, decision 5).
+        if (before > 0 && (await activeSuperAdmins(transaction, now)) === 0) {
+          throw refused('last_super_admin');
+        }
+        let slip: FirstPasswordSlip | null = null;
+        if (rehire && row.account_id !== null) {
+          const password = await this.passwordResets.forRehire(transaction, {
+            accountId: row.account_id,
+            by: access.accountId,
+            validFrom: await startOfDate(transaction, change.from, main.time_zone),
+            actingAssignmentId: superAdmin,
+            personId: id,
+            requestId,
+          });
+          const account = await transaction
+            .selectFrom('accounts')
+            .select('login')
+            .where('id', '=', row.account_id)
+            .executeTakeFirstOrThrow();
+          slip = {
+            firstName: text(row.first_name),
+            lastName: text(row.last_name),
+            login: account.login,
+            password: password.password,
+            validUntil: password.validUntil.toISOString(),
+          };
+        }
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
@@ -759,7 +814,7 @@ export class Staff {
           },
           requestId,
         });
-        return this.readDetail(transaction, access, id);
+        return { ...(await this.readDetail(transaction, access, id)), slip };
       });
     });
   }
@@ -1018,9 +1073,11 @@ export class Staff {
   /**
    * Ends the roles of the account at `end`, each at its own start when that is
    * later; an assignment that already ends earlier keeps its end
-   * (correction 4). The end each had is kept to put it back.
+   * (correction 4). The end each had is kept to put it back. The role give
+   * of the account section calls it too, for a role given before a planned
+   * `left` (code round 1 of #62, finding 1).
    */
-  private async endRoles(
+  async endRoles(
     transaction: Transaction,
     access: Access,
     superAdmin: string,
@@ -1032,15 +1089,16 @@ export class Staff {
       requestId: string;
     },
   ): Promise<void> {
+    // An end at or before now has passed and is final (0.7a;
+    // `assignments_end_guard`, db/migrations/0027): such a role keeps it.
+    const now = await transactionMoment(transaction);
+    const after = left.dateStart > now ? left.dateStart : now;
     const assignments = await transaction
       .selectFrom('assignments')
       .select(['id', 'valid_from', 'valid_until', 'ended_by', 'branch_id'])
       .where('account_id', '=', left.accountId)
       .where((builder) =>
-        builder.or([
-          builder('valid_until', 'is', null),
-          builder('valid_until', '>', left.dateStart),
-        ]),
+        builder.or([builder('valid_until', 'is', null), builder('valid_until', '>', after)]),
       )
       .orderBy('id')
       .forUpdate()
@@ -1109,9 +1167,13 @@ export class Staff {
       .forUpdate('assignments')
       .execute();
     for (const end of ends) {
-      // Only an end this row wrote and nobody changed since.
+      // Only an end this row wrote and nobody changed since, and only while
+      // it is still ahead: an end that has passed is final (0.7a; task 2.3a).
       const written = roleEndFor(end.valid_from, taken.dateStart);
-      if (end.valid_until?.getTime() !== written.getTime()) {
+      if (
+        end.valid_until?.getTime() !== written.getTime() ||
+        written <= (await transactionMoment(transaction))
+      ) {
         continue;
       }
       await transaction
@@ -1297,6 +1359,9 @@ export class Staff {
       all: superAdminOf(access) !== undefined,
       contact: superAdminOf(access) !== undefined || viceOf(access) !== undefined,
       teaching: superAdminOf(access) !== undefined || viceOf(access) !== undefined,
+      // The account section (task 2.3a, decision 4): the Super Admin, and the
+      // Principal of the branch of the request.
+      accounts: superAdminOf(access) !== undefined || principalOf(access) !== undefined,
     };
     // Identity fields: the Super Admin and the Academic Vice Principal; hidden
     // for the Principal, who has a logged show (decision 9).

@@ -3,7 +3,7 @@ import type { Clock } from '@sodiq/shared';
 import { CLOCK } from '../../clock/clock.module.js';
 import type { Transaction } from '../../database/transactions.js';
 import { Audit } from '../audit/audit.service.js';
-import { randomFirstPassword } from './accounts.service.js';
+import { FIRST_PASSWORD_VALID_MS, randomFirstPassword } from './accounts.service.js';
 import { hashPassword } from './password-hash.js';
 import { Sessions } from './sessions.service.js';
 import { SignInThrottle } from './sign-in-throttle.service.js';
@@ -35,6 +35,25 @@ export interface PasswordReset {
   requestId?: string;
 }
 
+export interface RehirePassword {
+  /** The account of the person hired again. */
+  accountId: string;
+  /** The account of the Super Admin who changed the status. */
+  by: string;
+  /** 00:00 of the re-hire date: the password is valid for 7 days from it, or from now when that is later. */
+  validFrom: Date;
+  /** For the audit entry. */
+  actingAssignmentId: string;
+  personId: string;
+  requestId: string;
+}
+
+export interface FirstPassword {
+  /** Shown once to the administrator and stored nowhere. */
+  password: string;
+  validUntil: Date;
+}
+
 export interface ResetPassword {
   /** Shown once to the administrator and stored nowhere. */
   oneTimePassword: string;
@@ -47,9 +66,8 @@ export interface ResetPassword {
  * Y"; the session answer names X until the password is changed. The count of
  * failed sign-ins of the login starts again, so the person need not wait.
  *
- * Until the screens of task 2.3 this service has no route: who may reset whom
- * is a question of roles, which arrive with the permission guard of task 0.7b.
- * Only tests call it.
+ * The reset by an administrator gets its route in task 2.3c; the re-hire of
+ * task 2.3a calls `forRehire`.
  */
 @Injectable()
 export class PasswordResets {
@@ -102,5 +120,57 @@ export class PasswordResets {
       ...(reset.requestId === undefined ? {} : { requestId: reset.requestId }),
     });
     return { oneTimePassword };
+  }
+
+  /**
+   * A re-hire "restores the same record, staff ID and login with a new
+   * employment period and a forced password change" (edge cases, Staff over
+   * time; task 2.3a, decision 7): a new first password, valid for 7 days from
+   * the later of now and the re-hire date, changed at the first sign-in. Open
+   * sessions end and the failed sign-ins of the login are forgotten. The audit
+   * entry holds no password (correction 4 of the review of pull request #62).
+   */
+  async forRehire(transaction: Transaction, rehire: RehirePassword): Promise<FirstPassword> {
+    const password = randomFirstPassword();
+    const passwordHash = await hashPassword(password);
+    const now = this.clock.now();
+    const start = rehire.validFrom > now ? rehire.validFrom : now;
+    const validUntil = new Date(start.getTime() + FIRST_PASSWORD_VALID_MS);
+    const changed = await transaction
+      .updateTable('accounts')
+      .set({
+        password_hash: passwordHash,
+        must_change_password: true,
+        password_expires_at: validUntil,
+        password_reset_by: null,
+        password_reset_at: null,
+      })
+      .where('id', '=', rehire.accountId)
+      .returning('login')
+      .executeTakeFirst();
+    if (changed === undefined) {
+      throw new UnknownAccountError();
+    }
+    await this.throttle.forget(transaction, changed.login);
+    await this.sessions.writeEndsByTime(transaction, rehire.accountId);
+    const ended = await transaction
+      .updateTable('sessions')
+      .set({ ended_at: now, end_reason: 'password_reset' })
+      .where('account_id', '=', rehire.accountId)
+      .where('ended_at', 'is', null)
+      .returning('id')
+      .execute();
+    await this.audit.record(transaction, {
+      branchId: null,
+      actorId: rehire.by,
+      assignmentId: rehire.actingAssignmentId,
+      personId: rehire.personId,
+      action: 'account.rehire_password',
+      record: { type: 'account', id: rehire.accountId },
+      newValue: { passwordValidUntil: validUntil.toISOString() },
+      details: { endedSessions: ended.length },
+      requestId: rehire.requestId,
+    });
+    return { password, validUntil };
   }
 }

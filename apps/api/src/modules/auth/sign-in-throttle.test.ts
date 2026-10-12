@@ -48,7 +48,7 @@ describe('the count of failed attempts', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    throttle = new SignInThrottle(new Transactions(database.app), clock);
+    throttle = new SignInThrottle(new Transactions(database.app, clock), clock);
   });
 
   afterAll(async () => {
@@ -127,7 +127,7 @@ describe('the count of failed attempts', () => {
   // cannot be forced, so many attempts and removals run against each other.
   it('never ends as a fault when counts are removed while attempts are counted', async () => {
     clock.set('2026-10-05T09:00:00+05:00');
-    const transactions = new Transactions(database.app);
+    const transactions = new Transactions(database.app, clock);
     const key = keyOf('9');
 
     for (let round = 1; round <= 15; round += 1) {

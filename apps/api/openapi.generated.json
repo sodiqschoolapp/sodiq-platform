@@ -88,6 +88,23 @@
                     "login": {
                       "type": "string"
                     },
+                    "name": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "firstName": {
+                          "type": "string"
+                        },
+                        "lastName": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "firstName",
+                        "lastName"
+                      ],
+                      "additionalProperties": false
+                    },
                     "secondStep": {
                       "type": "string",
                       "enum": [
@@ -181,6 +198,7 @@
                   },
                   "required": [
                     "login",
+                    "name",
                     "secondStep",
                     "mustChangePassword",
                     "passwordResetBy",
@@ -225,6 +243,23 @@
                     "login": {
                       "type": "string"
                     },
+                    "name": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "firstName": {
+                          "type": "string"
+                        },
+                        "lastName": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "firstName",
+                        "lastName"
+                      ],
+                      "additionalProperties": false
+                    },
                     "secondStep": {
                       "type": "string",
                       "enum": [
@@ -318,6 +353,7 @@
                   },
                   "required": [
                     "login",
+                    "name",
                     "secondStep",
                     "mustChangePassword",
                     "passwordResetBy",
@@ -606,6 +642,23 @@
                     "login": {
                       "type": "string"
                     },
+                    "name": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "firstName": {
+                          "type": "string"
+                        },
+                        "lastName": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "firstName",
+                        "lastName"
+                      ],
+                      "additionalProperties": false
+                    },
                     "secondStep": {
                       "type": "string",
                       "enum": [
@@ -699,6 +752,7 @@
                   },
                   "required": [
                     "login",
+                    "name",
                     "secondStep",
                     "mustChangePassword",
                     "passwordResetBy",
@@ -1501,6 +1555,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -1790,6 +1855,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2167,6 +2243,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2477,6 +2564,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2744,6 +2842,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3017,6 +3126,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3278,6 +3398,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3563,6 +3694,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3828,6 +3970,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4093,6 +4246,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4349,6 +4513,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4605,6 +4780,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4841,6 +5027,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5077,6 +5274,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5359,6 +5567,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5690,6 +5909,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5954,6 +6184,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6297,6 +6538,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6632,6 +6884,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6958,6 +7221,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -7219,6 +7493,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -7558,6 +7843,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -7857,6 +8153,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8156,6 +8463,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8439,6 +8757,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8722,6 +9051,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8965,6 +9305,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -9208,6 +9559,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -9486,6 +9848,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -9776,6 +10149,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10078,6 +10462,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10354,6 +10749,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10671,6 +11077,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10980,6 +11397,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -11263,6 +11691,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -11560,6 +11999,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -11855,6 +12305,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12156,6 +12617,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12431,6 +12903,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12706,6 +13189,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12968,6 +13462,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -13335,6 +13840,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -13688,6 +14204,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -14049,6 +14576,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -14428,6 +14966,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -14771,6 +15320,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15114,6 +15674,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15432,6 +16003,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15828,6 +16410,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -16158,6 +16751,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -16530,6 +17134,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -17375,6 +17990,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -17716,6 +18342,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18155,6 +18792,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18971,6 +19619,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19422,6 +20081,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19755,6 +20425,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -20088,6 +20769,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -20459,6 +21151,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -20692,6 +21395,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -20945,6 +21659,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -21216,6 +21941,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -21500,6 +22236,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -21777,6 +22524,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -22026,6 +22784,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -22258,6 +23027,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -22514,6 +23294,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -22866,6 +23657,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -23325,6 +24127,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -23591,6 +24404,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -24062,6 +24886,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -24440,6 +25275,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -24786,6 +25632,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -25132,6 +25989,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -25447,6 +26315,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -25801,6 +26680,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -26126,6 +27016,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -26534,6 +27435,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -27045,12 +27957,16 @@
                         },
                         "teaching": {
                           "type": "boolean"
+                        },
+                        "accounts": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "all",
                         "contact",
-                        "teaching"
+                        "teaching",
+                        "accounts"
                       ],
                       "additionalProperties": false
                     },
@@ -27201,6 +28117,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -27468,6 +28395,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -27857,12 +28795,16 @@
                         },
                         "teaching": {
                           "type": "boolean"
+                        },
+                        "accounts": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "all",
                         "contact",
-                        "teaching"
+                        "teaching",
+                        "accounts"
                       ],
                       "additionalProperties": false
                     },
@@ -28013,6 +28955,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -28534,12 +29487,16 @@
                         },
                         "teaching": {
                           "type": "boolean"
+                        },
+                        "accounts": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "all",
                         "contact",
-                        "teaching"
+                        "teaching",
+                        "accounts"
                       ],
                       "additionalProperties": false
                     },
@@ -28690,6 +29647,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -28998,6 +29966,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -29441,12 +30420,16 @@
                         },
                         "teaching": {
                           "type": "boolean"
+                        },
+                        "accounts": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "all",
                         "contact",
-                        "teaching"
+                        "teaching",
+                        "accounts"
                       ],
                       "additionalProperties": false
                     },
@@ -29597,6 +30580,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -30016,12 +31010,16 @@
                         },
                         "teaching": {
                           "type": "boolean"
+                        },
+                        "accounts": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "all",
                         "contact",
-                        "teaching"
+                        "teaching",
+                        "accounts"
                       ],
                       "additionalProperties": false
                     },
@@ -30172,6 +31170,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -30590,12 +31599,16 @@
                         },
                         "teaching": {
                           "type": "boolean"
+                        },
+                        "accounts": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "all",
                         "contact",
-                        "teaching"
+                        "teaching",
+                        "accounts"
                       ],
                       "additionalProperties": false
                     },
@@ -30603,6 +31616,37 @@
                       "type": "string",
                       "format": "date",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    "slip": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "firstName": {
+                          "type": "string"
+                        },
+                        "lastName": {
+                          "type": "string"
+                        },
+                        "login": {
+                          "type": "string"
+                        },
+                        "password": {
+                          "type": "string"
+                        },
+                        "validUntil": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "firstName",
+                        "lastName",
+                        "login",
+                        "password",
+                        "validUntil"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -30633,7 +31677,8 @@
                     "dailyLessons",
                     "statuses",
                     "rights",
-                    "today"
+                    "today",
+                    "slip"
                   ],
                   "additionalProperties": false
                 }
@@ -30746,6 +31791,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -30970,6 +32026,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -31033,6 +32100,1989 @@
         },
         "tags": [
           "Staff"
+        ]
+      }
+    },
+    "/api/people/staff/{id}/account": {
+      "get": {
+        "operationId": "StaffAccountsController_read",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "login": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "neverUsed": {
+                          "type": "boolean"
+                        },
+                        "locked": {
+                          "type": "boolean"
+                        },
+                        "roles": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "super_admin",
+                                  "principal",
+                                  "academic_vice_principal",
+                                  "spiritual_vice_principal",
+                                  "head_tutor",
+                                  "tutor",
+                                  "senior_head_teacher",
+                                  "head_teacher",
+                                  "teacher",
+                                  "student",
+                                  "parent",
+                                  "hr",
+                                  "nurse",
+                                  "psychologist",
+                                  "librarian"
+                                ]
+                              },
+                              "branchId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "branchName": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "from": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "until": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "planned",
+                                  "current",
+                                  "ended"
+                                ]
+                              },
+                              "givenBy": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "login": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "firstName": {
+                                        "type": "string"
+                                      },
+                                      "lastName": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "firstName",
+                                      "lastName"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "login",
+                                  "name"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "endedBy": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "login": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "firstName": {
+                                        "type": "string"
+                                      },
+                                      "lastName": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "firstName",
+                                      "lastName"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "login",
+                                  "name"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "role",
+                              "branchId",
+                              "branchName",
+                              "from",
+                              "until",
+                              "state",
+                              "givenBy",
+                              "endedBy"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "login",
+                        "createdAt",
+                        "neverUsed",
+                        "locked",
+                        "roles"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "canEdit": {
+                      "type": "boolean"
+                    },
+                    "left": {
+                      "type": "boolean"
+                    },
+                    "today": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    }
+                  },
+                  "required": [
+                    "account",
+                    "canEdit",
+                    "left",
+                    "today"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "subject_department_archived",
+                            "subject_move_super_admin",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "staff_id_exhausted",
+                            "staff_department_required",
+                            "subject_outside_department",
+                            "grade_not_in_subject",
+                            "languages_required",
+                            "division_archived",
+                            "status_from_past",
+                            "status_before_admission",
+                            "status_unchanged",
+                            "own_status",
+                            "account_inactive",
+                            "subject_has_teachers",
+                            "department_has_staff",
+                            "availability_overlap",
+                            "photo_invalid",
+                            "photo_too_large",
+                            "photos_not_configured",
+                            "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StaffAccounts"
+        ]
+      },
+      "post": {
+        "operationId": "StaffAccountsController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "login": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "pattern": "^[a-z]+(\\.[a-z]+){1,2}[0-9]*$"
+                  }
+                },
+                "required": [
+                  "login"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "firstName": {
+                      "type": "string"
+                    },
+                    "lastName": {
+                      "type": "string"
+                    },
+                    "login": {
+                      "type": "string"
+                    },
+                    "password": {
+                      "type": "string"
+                    },
+                    "validUntil": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "firstName",
+                    "lastName",
+                    "login",
+                    "password",
+                    "validUntil"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "subject_department_archived",
+                            "subject_move_super_admin",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "staff_id_exhausted",
+                            "staff_department_required",
+                            "subject_outside_department",
+                            "grade_not_in_subject",
+                            "languages_required",
+                            "division_archived",
+                            "status_from_past",
+                            "status_before_admission",
+                            "status_unchanged",
+                            "own_status",
+                            "account_inactive",
+                            "subject_has_teachers",
+                            "department_has_staff",
+                            "availability_overlap",
+                            "photo_invalid",
+                            "photo_too_large",
+                            "photos_not_configured",
+                            "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StaffAccounts"
+        ]
+      }
+    },
+    "/api/people/staff/{id}/account/suggestion": {
+      "get": {
+        "operationId": "StaffAccountsController_suggestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "login": {
+                      "nullable": true,
+                      "type": "string",
+                      "maxLength": 64,
+                      "pattern": "^[a-z]+(\\.[a-z]+){1,2}[0-9]*$"
+                    }
+                  },
+                  "required": [
+                    "login"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "subject_department_archived",
+                            "subject_move_super_admin",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "staff_id_exhausted",
+                            "staff_department_required",
+                            "subject_outside_department",
+                            "grade_not_in_subject",
+                            "languages_required",
+                            "division_archived",
+                            "status_from_past",
+                            "status_before_admission",
+                            "status_unchanged",
+                            "own_status",
+                            "account_inactive",
+                            "subject_has_teachers",
+                            "department_has_staff",
+                            "availability_overlap",
+                            "photo_invalid",
+                            "photo_too_large",
+                            "photos_not_configured",
+                            "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StaffAccounts"
+        ]
+      }
+    },
+    "/api/people/staff/{id}/roles": {
+      "post": {
+        "operationId": "StaffAccountsController_give",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "super_admin",
+                      "principal",
+                      "academic_vice_principal",
+                      "spiritual_vice_principal",
+                      "head_tutor",
+                      "tutor",
+                      "teacher"
+                    ]
+                  },
+                  "branchId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "from": {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  }
+                },
+                "required": [
+                  "role",
+                  "branchId",
+                  "from"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "login": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "neverUsed": {
+                          "type": "boolean"
+                        },
+                        "locked": {
+                          "type": "boolean"
+                        },
+                        "roles": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "super_admin",
+                                  "principal",
+                                  "academic_vice_principal",
+                                  "spiritual_vice_principal",
+                                  "head_tutor",
+                                  "tutor",
+                                  "senior_head_teacher",
+                                  "head_teacher",
+                                  "teacher",
+                                  "student",
+                                  "parent",
+                                  "hr",
+                                  "nurse",
+                                  "psychologist",
+                                  "librarian"
+                                ]
+                              },
+                              "branchId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "branchName": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "from": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "until": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "planned",
+                                  "current",
+                                  "ended"
+                                ]
+                              },
+                              "givenBy": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "login": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "firstName": {
+                                        "type": "string"
+                                      },
+                                      "lastName": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "firstName",
+                                      "lastName"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "login",
+                                  "name"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "endedBy": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "login": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "firstName": {
+                                        "type": "string"
+                                      },
+                                      "lastName": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "firstName",
+                                      "lastName"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "login",
+                                  "name"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "role",
+                              "branchId",
+                              "branchName",
+                              "from",
+                              "until",
+                              "state",
+                              "givenBy",
+                              "endedBy"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "login",
+                        "createdAt",
+                        "neverUsed",
+                        "locked",
+                        "roles"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "canEdit": {
+                      "type": "boolean"
+                    },
+                    "left": {
+                      "type": "boolean"
+                    },
+                    "today": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    }
+                  },
+                  "required": [
+                    "account",
+                    "canEdit",
+                    "left",
+                    "today"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "subject_department_archived",
+                            "subject_move_super_admin",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "staff_id_exhausted",
+                            "staff_department_required",
+                            "subject_outside_department",
+                            "grade_not_in_subject",
+                            "languages_required",
+                            "division_archived",
+                            "status_from_past",
+                            "status_before_admission",
+                            "status_unchanged",
+                            "own_status",
+                            "account_inactive",
+                            "subject_has_teachers",
+                            "department_has_staff",
+                            "availability_overlap",
+                            "photo_invalid",
+                            "photo_too_large",
+                            "photos_not_configured",
+                            "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StaffAccounts"
+        ]
+      }
+    },
+    "/api/people/staff/{id}/roles/{assignmentId}/end": {
+      "post": {
+        "operationId": "StaffAccountsController_end",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "assignmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  }
+                },
+                "required": [
+                  "from"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "login": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "neverUsed": {
+                          "type": "boolean"
+                        },
+                        "locked": {
+                          "type": "boolean"
+                        },
+                        "roles": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "super_admin",
+                                  "principal",
+                                  "academic_vice_principal",
+                                  "spiritual_vice_principal",
+                                  "head_tutor",
+                                  "tutor",
+                                  "senior_head_teacher",
+                                  "head_teacher",
+                                  "teacher",
+                                  "student",
+                                  "parent",
+                                  "hr",
+                                  "nurse",
+                                  "psychologist",
+                                  "librarian"
+                                ]
+                              },
+                              "branchId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "branchName": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "from": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "until": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "planned",
+                                  "current",
+                                  "ended"
+                                ]
+                              },
+                              "givenBy": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "login": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "firstName": {
+                                        "type": "string"
+                                      },
+                                      "lastName": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "firstName",
+                                      "lastName"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "login",
+                                  "name"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "endedBy": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "login": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "firstName": {
+                                        "type": "string"
+                                      },
+                                      "lastName": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "firstName",
+                                      "lastName"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "login",
+                                  "name"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "role",
+                              "branchId",
+                              "branchName",
+                              "from",
+                              "until",
+                              "state",
+                              "givenBy",
+                              "endedBy"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "login",
+                        "createdAt",
+                        "neverUsed",
+                        "locked",
+                        "roles"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "canEdit": {
+                      "type": "boolean"
+                    },
+                    "left": {
+                      "type": "boolean"
+                    },
+                    "today": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    }
+                  },
+                  "required": [
+                    "account",
+                    "canEdit",
+                    "left",
+                    "today"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "subject_department_archived",
+                            "subject_move_super_admin",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "staff_id_exhausted",
+                            "staff_department_required",
+                            "subject_outside_department",
+                            "grade_not_in_subject",
+                            "languages_required",
+                            "division_archived",
+                            "status_from_past",
+                            "status_before_admission",
+                            "status_unchanged",
+                            "own_status",
+                            "account_inactive",
+                            "subject_has_teachers",
+                            "department_has_staff",
+                            "availability_overlap",
+                            "photo_invalid",
+                            "photo_too_large",
+                            "photos_not_configured",
+                            "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StaffAccounts"
+        ]
+      }
+    },
+    "/api/access/super-admins": {
+      "get": {
+        "operationId": "StaffAccountsController_superAdmins",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "active": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "active"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "subject_department_archived",
+                            "subject_move_super_admin",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "staff_id_exhausted",
+                            "staff_department_required",
+                            "subject_outside_department",
+                            "grade_not_in_subject",
+                            "languages_required",
+                            "division_archived",
+                            "status_from_past",
+                            "status_before_admission",
+                            "status_unchanged",
+                            "own_status",
+                            "account_inactive",
+                            "subject_has_teachers",
+                            "department_has_staff",
+                            "availability_overlap",
+                            "photo_invalid",
+                            "photo_too_large",
+                            "photos_not_configured",
+                            "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StaffAccounts"
         ]
       }
     },
@@ -31376,12 +34426,16 @@
                         },
                         "teaching": {
                           "type": "boolean"
+                        },
+                        "accounts": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "all",
                         "contact",
-                        "teaching"
+                        "teaching",
+                        "accounts"
                       ],
                       "additionalProperties": false
                     },
@@ -31532,6 +34586,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -31731,6 +34796,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -31944,6 +35020,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -32391,6 +35478,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -32925,6 +36023,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -33222,6 +36331,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -33624,6 +36744,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -33888,6 +37019,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -34222,6 +37364,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -34634,6 +37787,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -34968,6 +38132,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -35302,6 +38477,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -35503,6 +38689,17 @@
                             "photo_too_large",
                             "photos_not_configured",
                             "photos_unavailable",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
                             "request_refused",
                             "internal_error"
                           ]
@@ -35732,6 +38929,17 @@
                   "photo_too_large",
                   "photos_not_configured",
                   "photos_unavailable",
+                  "account_exists",
+                  "login_taken",
+                  "no_account",
+                  "staff_left",
+                  "role_branch_not_person",
+                  "role_overlap",
+                  "too_many_super_admins",
+                  "own_super_admin_role",
+                  "last_super_admin",
+                  "assignment_ended",
+                  "role_from_past",
                   "request_refused",
                   "internal_error"
                 ]

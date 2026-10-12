@@ -42,7 +42,7 @@ describe('the audit log', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, clock);
     north = await insertBranch(database.migrator, 'North');
     south = await insertBranch(database.migrator, 'South');
   });

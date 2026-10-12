@@ -4,6 +4,7 @@ import { addBranchFilter, insertBranch } from '../testing/branch-filter-sql.js';
 import { createTestDatabase, type TestDatabase } from '../testing/test-database.js';
 import { createDatabase } from './database.js';
 import { branchFilterValue, Transactions, type Transaction } from './transactions.js';
+import { SystemClock } from '../clock/system-clock.js';
 
 const ROW_SECURITY_VIOLATION = '42501';
 const INVALID_TEXT = '22P02';
@@ -21,7 +22,7 @@ describe('branch filter', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, new SystemClock());
     north = await insertBranch(database.migrator, 'North');
     south = await insertBranch(database.migrator, 'South');
     east = await insertBranch(database.migrator, 'East');
@@ -140,13 +141,16 @@ describe('branch filter', () => {
       try {
         let inside: string[] = [];
         let pidInside: number | undefined;
-        const run = new Transactions(single).run([north], async (transaction) => {
-          inside = await labels(transaction);
-          pidInside = await pid(transaction);
-          if (end === 'rollback') {
-            throw new Error('rolled back by the test');
-          }
-        });
+        const run = new Transactions(single, new SystemClock()).run(
+          [north],
+          async (transaction) => {
+            inside = await labels(transaction);
+            pidInside = await pid(transaction);
+            if (end === 'rollback') {
+              throw new Error('rolled back by the test');
+            }
+          },
+        );
         if (end === 'rollback') {
           await expect(run).rejects.toThrow('rolled back by the test');
         } else {
@@ -234,7 +238,7 @@ describe('branch filter', () => {
     // A superuser, a user with BYPASSRLS and the owner of the tables are not
     // filtered at all. The application must never run as one of them.
     it('gives no transaction to a database user that is not subject to the filter', async () => {
-      const asOwner = new Transactions(database.migrator);
+      const asOwner = new Transactions(database.migrator, new SystemClock());
 
       await expect(asOwner.run([north], labels)).rejects.toThrow(
         'not subject to the branch filter',

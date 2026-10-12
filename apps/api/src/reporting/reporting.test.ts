@@ -211,7 +211,7 @@ describe('the reports of the server', () => {
 
     beforeAll(async () => {
       database = await createTestDatabase();
-      transactions = new Transactions(database.app);
+      transactions = new Transactions(database.app, clock);
       north = await insertBranch(database.migrator, 'North');
       await createScratchNotes(database.migrator);
       queue = new JobQueue(

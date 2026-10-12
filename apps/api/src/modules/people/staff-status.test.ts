@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planStatusChange, roleEndFor, type StoredStatusRow } from './staff-status.js';
+import { planStatusChange, rehires, roleEndFor, type StoredStatusRow } from './staff-status.js';
 
 const row = (
   id: string,
@@ -105,5 +105,45 @@ describe('a status change', () => {
     expect(roleEndFor(new Date('2026-09-01T00:00:00+05:00'), date)).toEqual(date);
     const later = new Date('2026-10-25T00:00:00+05:00');
     expect(roleEndFor(later, date)).toEqual(later);
+  });
+});
+
+// Task 2.3a, decision 7: "Re-hiring restores the same record, staff ID and
+// login with a new employment period and a forced password change".
+describe('a re-hire', () => {
+  it('is active from a date on which the person has left', () => {
+    const rows = [
+      row('a', 'active', '2026-09-01', '2026-10-05'),
+      row('b', 'left', '2026-10-05', null),
+    ];
+    expect(rehires(rows, { status: 'active', from: '2026-10-20' }, TODAY)).toBe(true);
+    // Re-hired on leave: the first change after the `left` (code round 1, finding 7).
+    expect(rehires(rows, { status: 'inactive', from: '2026-10-20' }, TODAY)).toBe(true);
+  });
+
+  it('is not the return from a leave that followed a re-hire', () => {
+    const rows = [
+      row('a', 'active', '2026-09-01', '2026-10-05'),
+      row('b', 'left', '2026-10-05', '2026-10-08'),
+      row('c', 'inactive', '2026-10-08', null),
+    ];
+    expect(rehires(rows, { status: 'active', from: '2026-10-20' }, TODAY)).toBe(false);
+  });
+
+  it('is not the return after a left planned after today, which the change takes back', () => {
+    const rows = [
+      row('a', 'active', '2026-09-01', '2026-10-11'),
+      row('b', 'left', '2026-10-11', null),
+    ];
+    expect(rehires(rows, { status: 'active', from: '2026-10-20' }, TODAY)).toBe(false);
+  });
+
+  it('is not the return from inactive, and skips rows already taken back', () => {
+    const rows = [
+      row('a', 'active', '2026-09-01', '2026-10-01'),
+      row('x', 'left', '2026-10-01', '2026-10-01'),
+      row('b', 'inactive', '2026-10-01', null),
+    ];
+    expect(rehires(rows, { status: 'active', from: '2026-10-20' }, TODAY)).toBe(false);
   });
 });

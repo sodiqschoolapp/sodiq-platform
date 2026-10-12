@@ -131,8 +131,16 @@ function auditSchoolPartitions(): Record<string, string> {
  * transaction itself (task 2.2a, owner's answer 2 and the review of pull
  * request #53, correction 2 and decision 17). Three of task 2.2b go beyond
  * that pattern, each for its reason below (pull request #57, decision 8).
+ * Two of task 2.3a answer a first and last name (pull request #62, decision 9,
+ * Look first).
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
+  'own_person_name(uuid)':
+    "The first and last name of the staff record linked to an account, for the menu of the person's own session (pull request #61, decision 6); sign-in runs before a branch is known.",
+  'reset_by_person_name(uuid)':
+    'The first and last name of the administrator who reset an account\'s password, shown to that account\'s person while the reset password is in use ("your password was reset by X").',
+  'super_admin_active_count(timestamp with time zone)':
+    "The number of active Super Admins (the last Super Admin rule and its banner); a Super Admin's record may be in any branch.",
   'staff_account_blocked(uuid,timestamp with time zone)':
     'Whether the staff record of an account is inactive or left today: sign-in and every request run before a branch is known.',
   'staff_availability_elsewhere(uuid)':

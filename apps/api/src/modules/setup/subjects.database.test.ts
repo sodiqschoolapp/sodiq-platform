@@ -5,6 +5,7 @@ import type { Database } from '../../database/database.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { SystemClock } from '../../clock/system-clock.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
 const CHECK_VIOLATION = '23514';
@@ -141,7 +142,7 @@ describe('subjects in the database', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, new SystemClock());
     north = await insertBranch(database.migrator, 'North');
     south = await insertBranch(database.migrator, 'South');
     const departmentId = async (en: string) =>

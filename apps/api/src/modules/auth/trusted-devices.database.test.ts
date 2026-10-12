@@ -2,6 +2,7 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { SystemClock } from '../../clock/system-clock.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
 const CHECK_VIOLATION = '23514';
@@ -54,7 +55,7 @@ describe('trusted devices and the account lock in the database', () => {
 
   beforeAll(async () => {
     database = await createTestDatabase();
-    transactions = new Transactions(database.app);
+    transactions = new Transactions(database.app, new SystemClock());
     accountId = await newAccount('a.karimov');
     administratorId = await newAccount('b.tursunov');
   });

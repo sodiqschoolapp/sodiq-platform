@@ -68,7 +68,7 @@ export function tabBarSplit<T>(pages: readonly T[]): { tabs: T[]; more: T[] } {
   return { tabs: pages.slice(0, 4), more: pages.slice(4) };
 }
 
-/** Up to two letters for the avatar, from the parts of a login ("d.karimova" → "DK"). */
+/** Up to two letters for the avatar, from the parts of a name or a login ("Dilnoza Karimova", "d.karimova" → "DK"). */
 export function initialsOf(login: string): string {
   const parts = login.split(/[^\p{L}\p{N}]+/u).filter((part) => part !== '');
   const letters =
@@ -128,31 +128,40 @@ function MenuLink({
   );
 }
 
+/**
+ * How the person is named in the menu and in "More": the first and last name
+ * of the staff record, the login for an account with none (task 2.3a).
+ */
+function useShownName(): string {
+  const { data: session } = useQuery(sessionQuery);
+  const name = session?.name ?? null;
+  return name === null ? (session?.login ?? '') : `${name.firstName} ${name.lastName}`;
+}
+
 /** The round avatar with initials, the one round shape of the menu. */
-function Avatar({ login }: { login: string }) {
+function Avatar({ shown }: { shown: string }) {
   return (
     <span
       aria-hidden
       className="grid size-8 shrink-0 place-items-center rounded-full bg-sidebar-avatar text-xs font-semibold text-sidebar-accent-foreground"
     >
-      {initialsOf(login)}
+      {initialsOf(shown)}
     </span>
   );
 }
 
 /**
  * The person at the foot of the menu (docs/design-system.md, Layout shell,
- * Menu): the avatar, the login and the role on display (pull request #61,
- * decision 6). It opens the person's own entries: the own account, the
+ * Menu): the avatar, the person's name and the role on display (pull request
+ * #61, decision 6); the login for an account with no staff record (task 2.3a). It opens the person's own entries: the own account, the
  * password, the theme and the language (decision 3).
  */
 function PersonMenu({ rail, actions }: { rail: boolean; actions: PersonActions }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { data: session } = useQuery(sessionQuery);
   const { role } = useView();
   const { theme, setTheme } = useTheme();
-  const login = session?.login ?? '';
+  const shown = useShownName();
 
   return (
     <DropdownMenu>
@@ -169,11 +178,11 @@ function PersonMenu({ rail, actions }: { rail: boolean; actions: PersonActions }
           />
         }
       >
-        <Avatar login={login} />
+        <Avatar shown={shown} />
         {!rail && (
           <span className="grid min-w-0">
             <span className="truncate text-sm font-semibold text-sidebar-accent-foreground">
-              {login}
+              {shown}
             </span>
             {role !== null && <span className="truncate text-xs">{t(`roles.${role}`)}</span>}
           </span>
@@ -343,6 +352,7 @@ export function PhoneTabBar({ actions }: { actions: PersonActions }) {
   const close = () => {
     setOpen(false);
   };
+  const shown = useShownName();
 
   return (
     <nav
@@ -388,6 +398,15 @@ export function PhoneTabBar({ actions }: { actions: PersonActions }) {
         <DialogContent>
           <DialogTitle>{t('menu.more')}</DialogTitle>
           <DialogDescription className="sr-only">{t('layout.menu')}</DialogDescription>
+          <p data-person="" className="flex items-center gap-3 text-sm font-semibold">
+            <span
+              aria-hidden
+              className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground"
+            >
+              {initialsOf(shown)}
+            </span>
+            {shown}
+          </p>
           {more.length > 0 && (
             <nav aria-label={t('menu.moreItems')}>
               <ul className="grid gap-1">
