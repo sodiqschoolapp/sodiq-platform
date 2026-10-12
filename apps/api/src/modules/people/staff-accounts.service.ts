@@ -44,6 +44,11 @@ const superAdminOf = (access: Access): string | undefined =>
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
 
+/**
+ * The branch of the request. Every route of a record is declared without
+ * `branch: 'none'`, so the guard has always named a branch: a fault of the
+ * code, never a request, reaches the throw.
+ */
 function branchOf(access: Access): string {
   if (access.branchId === null) {
     throw new Error('An account route works for the branch of the request.');

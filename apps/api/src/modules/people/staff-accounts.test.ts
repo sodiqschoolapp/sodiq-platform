@@ -112,8 +112,22 @@ describe('the account section of a staff record', () => {
 
   /** Every row the routes may write, and the audit count: what a refusal leaves as it was. */
   async function snapshot(): Promise<Record<string, unknown>> {
-    const rows: Record<string, unknown> = { audit: await t.auditCount() };
-    for (const table of ['accounts', 'assignments', 'staff', 'sessions'] as const) {
+    const newest = await sql<{ id: string }>`
+      select id from audit_log union all select id from audit_log_school order by id desc limit 1
+    `.execute(t.database.migrator);
+    const rows: Record<string, unknown> = {
+      audit: await t.auditCount(),
+      newest: newest.rows[0]?.id ?? null,
+    };
+    for (const table of [
+      'accounts',
+      'assignments',
+      'staff',
+      'sessions',
+      'staff_statuses',
+      'staff_branches',
+      'staff_status_role_ends',
+    ] as const) {
       rows[table] = await sql`select * from ${sql.table(table)} order by 1`.execute(
         t.database.migrator,
       );
@@ -329,8 +343,15 @@ describe('the account section of a staff record', () => {
     });
 
     it('answers 404 for a record of another branch and an unknown one', async () => {
-      const south = await person({}, t.south);
+      const south = await withAccount(undefined, t.south);
+      const southRole = staffAccountSchema.parse(
+        (await give(south.id, { role: 'teacher', branchId: t.south, from: TODAY }, t.south)).body,
+      );
+      const southAssignment = roleOf(southRole, 'teacher').id;
+      const northern = await withAccount();
       const before = await snapshot();
+      // A record of North with the role of a person of South.
+      refusedWith(await end(northern.id, southAssignment, TODAY), 404, 'not_found');
       for (const id of [south.id, UNKNOWN]) {
         refusedWith(
           await t.post(`/api/people/staff/${id}/account`, t.north, { login: 'n.nobody' }),
@@ -348,6 +369,7 @@ describe('the account section of a staff record', () => {
           404,
           'not_found',
         );
+        refusedWith(await end(id, southAssignment, TODAY), 404, 'not_found');
       }
       expect(await snapshot()).toEqual(before);
     });
@@ -367,6 +389,12 @@ describe('the account section of a staff record', () => {
           'permission_denied',
         );
         refusedWith(await end(made.id, UNKNOWN, TODAY, cookie), 403, 'permission_denied');
+        refusedWith(
+          await t.get(`/api/people/staff/${made.id}/account/suggestion`, t.north, cookie),
+          403,
+          'permission_denied',
+        );
+        refusedWith(await t.kit.get('/api/access/super-admins', cookie), 403, 'permission_denied');
       }
       expect(await snapshot()).toEqual(before);
     });
@@ -643,17 +671,6 @@ describe('the account section of a staff record', () => {
       const other = await secondSuperAdmin();
       await adminEndsNextWeek();
       try {
-        console.log(
-          'DEBUG count',
-          await count(),
-          JSON.stringify(
-            (
-              await sql`select a.account_id, a.valid_from, a.valid_until, super_admin_active_count(${new Date(START)}) c from assignments a where role='super_admin'`.execute(
-                t.database.migrator,
-              )
-            ).rows,
-          ),
-        );
         const before = await snapshot();
         refusedWith(await end(other.id, other.assignmentId, TODAY), 409, 'last_super_admin');
         refusedWith(await end(other.id, other.assignmentId, '2026-10-30'), 409, 'last_super_admin');
