@@ -3,8 +3,10 @@ import {
   staffBranchesSchema,
   staffDetailSchema,
   staffIdentitySchema,
+  staffStatusAnswerSchema,
   staffStatusChangeSchema,
   staffTeachingSchema,
+  type FirstPasswordSlip,
   type DivisionList,
   type InstructionLanguage,
   type StaffBranches,
@@ -36,9 +38,12 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { nameOf, schoolDateText } from '@/features/setup/setup-api';
+import { AccountSection } from './account-section';
+import { FirstPasswordSlipDialog } from './first-password-slip';
 import {
   invalidateStaff,
   removeStaffPhoto,
+  staffAccountKey,
   setStaffPhoto,
   staffDetailQuery,
   staffPhotoQuery,
@@ -91,10 +96,19 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
       answerOf(api.PUT('/api/people/staff/{id}/branches', { params: where(), body: record })),
     onSuccess: refresh,
   });
+  // The slip of a re-hire (task 2.3a, decision 7): shown once, kept nowhere
+  // but here; the record is stored without it.
+  const [slip, setSlip] = useState<FirstPasswordSlip | null>(null);
   const status = useMutation({
     mutationFn: (change: StaffStatusChange) =>
       answerOf(api.POST('/api/people/staff/{id}/status', { params: where(), body: change })),
-    onSuccess: refresh,
+    onSuccess: async (answer) => {
+      const parsed = staffStatusAnswerSchema.parse(answer);
+      setSlip(parsed.slip);
+      await refresh(answer);
+      // A `left` ends the roles of the account.
+      await queryClient.invalidateQueries({ queryKey: staffAccountKey(id) });
+    },
   });
 
   if (detail.isError) {
@@ -157,6 +171,16 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
           await status.mutateAsync(change);
         }}
       />
+      {staff.rights.accounts && <AccountSection staff={staff} label={name} />}
+      {slip !== null && (
+        <FirstPasswordSlipDialog
+          slip={slip}
+          issued={staff.today}
+          onClose={() => {
+            setSlip(null);
+          }}
+        />
+      )}
     </div>
   );
 }

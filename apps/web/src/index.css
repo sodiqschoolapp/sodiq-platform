@@ -267,4 +267,12 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+  /* A first-password slip prints alone (task 2.3a): the page and the dialog
+     that shows it are left out, and the copy of the slip beside them is shown. */
+  body[data-printing='slip'] > :not([data-slip-sheet]) {
+    display: none !important;
+  }
+  body[data-printing='slip'] > [data-slip-sheet] {
+    display: block !important;
+  }
 }
