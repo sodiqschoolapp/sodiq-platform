@@ -193,7 +193,8 @@ test('the Super Admin sees Academic as built in, adds a division with a departme
     en.setup.divisions.archived,
   );
 
-  await createAccountAndSignIn(page);
+  await test.step('creates an account, gives a role and signs in with the slip', () =>
+    createAccountAndSignIn(page));
 });
 
 // Task 2.3a, pull request #62: the account section of a staff record. With

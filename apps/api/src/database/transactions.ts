@@ -20,6 +20,23 @@ export const BRANCH_SETTING = 'app.branch_ids';
 export const MOMENT_SETTING = 'app.now';
 
 /**
+ * The moment `Transactions.run` set for this transaction (`MOMENT_SETTING`):
+ * what a rule compares with when the database compares with it too
+ * (`assignments_end_guard`), so that the code and the trigger never see two
+ * moments (task 2.3a, finding 6 of the spec review).
+ */
+export async function transactionMoment(transaction: Transaction): Promise<Date> {
+  const found = await sql<{ moment: string | null }>`
+    select current_setting(${MOMENT_SETTING}, true) as moment
+  `.execute(transaction);
+  const moment = found.rows[0]?.moment;
+  if (moment == null || moment === '') {
+    throw new Error('The transaction has no moment: it was not opened by Transactions.run.');
+  }
+  return new Date(moment);
+}
+
+/**
  * The value of `app.branch_ids` for a list of branch ids: a PostgreSQL array
  * of uuids. Each id is checked first, so nothing else can reach the setting.
  */

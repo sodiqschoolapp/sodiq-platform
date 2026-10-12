@@ -702,6 +702,65 @@ describe('the account section of a staff record', () => {
       expect((await end(other.id, other.assignmentId, TODAY)).status).toBe(200);
     });
 
+    // Finding 1 of the spec review of the build: of two changes at the same
+    // moment that each remove one of the last two Super Admins, the second
+    // waits for the first, sees it and is refused. The held side does what
+    // its route does, under the same lock; the real route runs on the other.
+    it.each([
+      ['a role end', 'a role end', 'end', 'end'],
+      ['a role end', 'a status change', 'end', 'status'],
+      ['a status change', 'a role end', 'status', 'end'],
+    ])('refuses %s that waits for %s at the same moment', async (_route, _held, route, held) => {
+      const first = await secondSuperAdmin();
+      const second = await secondSuperAdmin();
+      await adminEndsNextWeek();
+      try {
+        const answer = await t.database.migrator.connection().execute(async (connection) => {
+          await sql`begin`.execute(connection);
+          await sql`select pg_advisory_xact_lock(60701)`.execute(connection);
+          if (held === 'end') {
+            await sql`
+                update assignments set valid_until = ${new Date(START)}
+                where id = ${second.assignmentId}
+              `.execute(connection);
+          } else {
+            await sql`
+                update staff_statuses set valid_until = '2026-12-01'
+                where staff_id = ${second.id} and status = 'active'
+              `.execute(connection);
+            await sql`
+                insert into staff_statuses (staff_id, status, valid_from)
+                values (${second.id}, 'left', '2026-12-01')
+              `.execute(connection);
+          }
+          const call =
+            route === 'end'
+              ? end(first.id, first.assignmentId, TODAY).then((response) => response)
+              : t
+                  .post(`/api/people/staff/${first.id}/status`, t.north, {
+                    status: 'left',
+                    from: '2026-12-01',
+                  })
+                  .then((response) => response);
+          for (let tries = 0; tries < 100; tries += 1) {
+            const waiting = await sql<{ waiting: number }>`
+                select count(*)::int as waiting from pg_locks
+                where locktype = 'advisory' and not granted
+              `.execute(t.database.migrator);
+            if ((waiting.rows[0]?.waiting ?? 0) > 0) {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 20));
+          }
+          await sql`commit`.execute(connection);
+          return call;
+        });
+        refusedWith(answer, 409, 'last_super_admin');
+      } finally {
+        await adminStays();
+      }
+    });
+
     // Finding 4 of the plan review: the Super Admin count is locked first,
     // before the record, on the role end and on the status route.
     it.each([

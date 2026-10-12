@@ -161,7 +161,9 @@ export class Accounts {
         return form;
       }
     }
-    const numbered = forms[1] ?? forms[0];
+    // The whole first name and the surname, also when it is the first form
+    // (a one-letter first name), never the form with the father's initial.
+    const numbered = loginForms(name.firstName, name.lastName, null).at(-1);
     if (numbered === undefined) {
       return null;
     }

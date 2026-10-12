@@ -1055,6 +1055,13 @@ describe('staff records in the database', () => {
         .set({ password_reset_by: resetterAccount, password_reset_at: AT })
         .where('id', '=', person)
         .execute();
+      expect(await nameOf('reset_by_person_name', person)).toEqual([]);
+      // While the reset password is in use only.
+      await database.migrator
+        .updateTable('accounts')
+        .set({ must_change_password: true, password_expires_at: AT })
+        .where('id', '=', person)
+        .execute();
       expect(await nameOf('reset_by_person_name', person)).toEqual([
         { first_name: 'Rustam', last_name: 'Qodirov' },
       ]);

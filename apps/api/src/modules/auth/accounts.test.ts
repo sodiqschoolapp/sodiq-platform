@@ -128,6 +128,12 @@ describe('accounts', () => {
       expect(await suggest('Akmal', 'Saidov', 'Botir')).toBe('akmal.saidov8');
     });
 
+    it('numbers the first form for a one-letter first name, not the father’s one', async () => {
+      await chosen('b.yuldashev');
+      await chosen('b.t.yuldashev');
+      expect(await suggest('B', 'Yuldashev', 'Temur')).toBe('b.yuldashev2');
+    });
+
     it('answers no suggestion for a name that gives no login', async () => {
       expect(await suggest('Азиз', 'Каримов', null)).toBeNull();
     });

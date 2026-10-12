@@ -157,8 +157,10 @@ function CreateAccountForm({
 }) {
   const { t } = useTranslation();
   const create = useMutation({
-    // Not through the offline queue and into no query cache: the answer holds
-    // the first password (correction 4).
+    // Not through the offline queue and into no cache: the answer holds the
+    // first password (correction 4), so the mutation keeps nothing once the
+    // slip is handed to its dialog.
+    gcTime: 0,
     mutationFn: (account: AccountCreate) =>
       answerOf(
         api.POST('/api/people/staff/{id}/account', {
@@ -172,6 +174,7 @@ function CreateAccountForm({
     initial: { login: suggested },
     save: async (account) => {
       const answer = await create.mutateAsync(account);
+      create.reset();
       await onCreated(answer);
     },
     message: (field) => (field === 'login' ? t('people.account.loginFormat') : undefined),

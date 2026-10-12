@@ -128,8 +128,10 @@ function open(
   });
 }
 
+let shell: ReturnType<typeof renderApp>;
+
 async function section(language: 'en' | 'ru' = 'en') {
-  renderApp(PATH, language);
+  shell = renderApp(PATH, language);
   const texts = language === 'en' ? en : ru;
   fireEvent.click(await screen.findByText('Lola Tursunova', { selector: 'button' }));
   const panel = await screen.findByRole('complementary', { name: 'Lola Tursunova' });
@@ -171,6 +173,25 @@ describe('the account section', () => {
     await waitFor(() => {
       expect(document.body.textContent).not.toContain(PASSWORD);
     });
+    // Correction 4: nothing keeps the password, neither a query nor a mutation.
+    await waitFor(() => {
+      expect(
+        JSON.stringify(
+          shell.queryClient
+            .getMutationCache()
+            .getAll()
+            .map((one) => one.state.data),
+        ),
+      ).not.toContain(PASSWORD);
+    });
+    expect(
+      JSON.stringify(
+        shell.queryClient
+          .getQueryCache()
+          .getAll()
+          .map((one) => one.state.data),
+      ),
+    ).not.toContain(PASSWORD);
     expect(document.querySelector('[data-slip-sheet]')).toBeNull();
     await within(found).findByText(en.people.account.noRoles);
   });
@@ -329,7 +350,7 @@ describe('the account section', () => {
           slip: { ...SLIP, validUntil: '2026-10-26T19:00:00.000Z' },
         }),
     });
-    renderApp(PATH);
+    shell = renderApp(PATH);
     fireEvent.click(await screen.findByText('Lola Tursunova', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Lola Tursunova' });
     const status = await within(panel).findByRole('form', {
@@ -353,5 +374,24 @@ describe('the account section', () => {
     await waitFor(() => {
       expect(document.body.textContent).not.toContain(PASSWORD);
     });
+    // Correction 4: nothing keeps the password, neither a query nor a mutation.
+    await waitFor(() => {
+      expect(
+        JSON.stringify(
+          shell.queryClient
+            .getMutationCache()
+            .getAll()
+            .map((one) => one.state.data),
+        ),
+      ).not.toContain(PASSWORD);
+    });
+    expect(
+      JSON.stringify(
+        shell.queryClient
+          .getQueryCache()
+          .getAll()
+          .map((one) => one.state.data),
+      ),
+    ).not.toContain(PASSWORD);
   });
 });

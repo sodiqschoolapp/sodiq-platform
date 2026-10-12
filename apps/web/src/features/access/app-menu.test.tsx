@@ -86,6 +86,15 @@ describe('the person at the foot of the menu', () => {
     expect(person.textContent).toContain('Nargiza Saidova');
     expect(person.textContent).toContain('NS');
     expect(person.textContent).not.toContain('n.saidova');
+
+    // The same name at the top of "More" on a phone.
+    fireEvent.click(
+      within(screen.getByRole('navigation', { name: en.menu.tabs })).getByRole('button', {
+        name: en.menu.more,
+      }),
+    );
+    const more = await screen.findByRole('dialog', { name: en.menu.more });
+    expect(more.querySelector('[data-person]')?.textContent).toBe('NSNargiza Saidova');
   });
 });
 

@@ -33,7 +33,7 @@ import {
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import { currentAssignments } from '../access/current-assignments.js';
@@ -1087,7 +1087,7 @@ export class Staff {
   ): Promise<void> {
     // An end at or before now has passed and is final (0.7a;
     // `assignments_end_guard`, db/migrations/0027): such a role keeps it.
-    const now = this.clock.now();
+    const now = await transactionMoment(transaction);
     const after = left.dateStart > now ? left.dateStart : now;
     const assignments = await transaction
       .selectFrom('assignments')
@@ -1166,7 +1166,10 @@ export class Staff {
       // Only an end this row wrote and nobody changed since, and only while
       // it is still ahead: an end that has passed is final (0.7a; task 2.3a).
       const written = roleEndFor(end.valid_from, taken.dateStart);
-      if (end.valid_until?.getTime() !== written.getTime() || written <= this.clock.now()) {
+      if (
+        end.valid_until?.getTime() !== written.getTime() ||
+        written <= (await transactionMoment(transaction))
+      ) {
         continue;
       }
       await transaction

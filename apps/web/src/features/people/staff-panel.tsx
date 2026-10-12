@@ -100,6 +100,9 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
   // but here; the record is stored without it.
   const [slip, setSlip] = useState<FirstPasswordSlip | null>(null);
   const status = useMutation({
+    // The answer of a re-hire holds a first password: the mutation keeps
+    // nothing once the slip is handed to its dialog (correction 4).
+    gcTime: 0,
     mutationFn: (change: StaffStatusChange) =>
       answerOf(api.POST('/api/people/staff/{id}/status', { params: where(), body: change })),
     onSuccess: async (answer) => {
@@ -169,6 +172,7 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
         label={name}
         onSave={async (change) => {
           await status.mutateAsync(change);
+          status.reset();
         }}
       />
       {staff.rights.accounts && <AccountSection staff={staff} label={name} />}

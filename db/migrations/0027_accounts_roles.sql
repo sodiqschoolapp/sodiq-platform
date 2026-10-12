@@ -106,7 +106,7 @@ as $$
   select s.first_name, s.last_name
   from public.accounts a
   join public.staff s on s.account_id = a.password_reset_by and s.kind = 'person'
-  where a.id = reset_by_person_name.account_id
+  where a.id = reset_by_person_name.account_id and a.must_change_password
 $$;
 
 -- The number of active Super Admins at a moment (decision 5 of #62): an
