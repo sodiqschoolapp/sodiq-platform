@@ -106,6 +106,7 @@ describe('a frozen permission table', () => {
       'staff',
       'staff_teaching',
       'subjects',
+      'vacancies',
     ]);
     expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);
     expect(PERMISSIONS.rooms.super_admin).toEqual(['view', 'create', 'edit', 'archive']);
@@ -217,6 +218,22 @@ describe('a frozen permission table', () => {
         expect(permits(PERMISSIONS, role, area, 'export')).toBe(false);
         expect(permits(PERMISSIONS, role, area, 'archive')).toBe(false);
       }
+    }
+  });
+
+  // Task 2.2b, decision 1 of pull request #57: `vacancies` — the Super Admin
+  // and the Academic Vice Principal view, create, edit and archive (close,
+  // reopen, delete); the Principal views; no export until 2.2c. Nobody else.
+  it('gives the vacancies to the Super Admin, the Academic Vice Principal and the Principal', () => {
+    const all = ['view', 'create', 'edit', 'archive'];
+    expect(PERMISSIONS.vacancies.super_admin).toEqual(all);
+    expect(PERMISSIONS.vacancies.academic_vice_principal).toEqual(all);
+    expect(PERMISSIONS.vacancies.principal).toEqual(['view']);
+    for (const role of ROLES) {
+      if (!['super_admin', 'principal', 'academic_vice_principal'].includes(role)) {
+        expect(PERMISSIONS.vacancies[role], role).toEqual([]);
+      }
+      expect(permits(PERMISSIONS, role, 'vacancies', 'export')).toBe(false);
     }
   });
 
