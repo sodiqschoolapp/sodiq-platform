@@ -37,6 +37,7 @@ describe('OpenAPI document', () => {
       const document = buildOpenApiDocument(app);
 
       expect(Object.keys(document.paths).sort()).toEqual([
+        '/api/access/head-teachers',
         '/api/access/super-admins',
         '/api/auth/language',
         '/api/auth/password',
@@ -68,6 +69,7 @@ describe('OpenAPI document', () => {
         '/api/people/staff/{id}/photo',
         '/api/people/staff/{id}/roles',
         '/api/people/staff/{id}/roles/{assignmentId}/end',
+        '/api/people/staff/{id}/roles/{assignmentId}/subjects',
         '/api/people/staff/{id}/status',
         '/api/people/staff/{id}/teaching',
         '/api/people/vacancies',

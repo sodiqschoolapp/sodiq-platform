@@ -123,6 +123,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   role_from_past: 'A role is given or ended from today or later.',
   head_teacher_taken: 'A subject of the appointment has another holder at that time.',
   subject_unknown: 'A subject of the appointment does not exist or is archived.',
+  appointment_ends_by_then: 'The appointment ends on or before that date.',
   role_not_appointment:
     'Only the subjects of a Head Teacher or Senior Head Teacher appointment are changed.',
   request_refused: 'The request was refused.',

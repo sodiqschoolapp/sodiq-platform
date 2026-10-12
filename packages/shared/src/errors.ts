@@ -223,6 +223,8 @@ export const ERROR_CODES = [
   'subject_unknown',
   /** Only the subjects of a Head Teacher or Senior Head Teacher appointment are changed (task 2.3b-1). */
   'role_not_appointment',
+  /** The appointment ends on or before the date of a change of its subjects; its end is not moved later by the change (task 2.3b-1). */
+  'appointment_ends_by_then',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

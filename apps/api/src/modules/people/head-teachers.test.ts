@@ -380,7 +380,7 @@ describe('Head Teacher appointments', () => {
       refusedWith(
         await change(made.id, made.assignmentId, { subjectIds: [ceramics], from: '2026-12-01' }),
         409,
-        'assignment_ended',
+        'appointment_ends_by_then',
       );
       const response = await change(made.id, made.assignmentId, {
         subjectIds: [ceramics, await subject('Weaving')],
@@ -495,9 +495,10 @@ describe('Head Teacher appointments', () => {
       ]);
 
       expect(answers.map((answer) => answer.status).sort()).toEqual([200, 409]);
+      // The first ends it from tomorrow: the second finds it ending by then.
       expect(
         answers.filter((answer) => answer.status === 409).map((answer) => errorCode(answer)),
-      ).toEqual(['assignment_ended']);
+      ).toEqual(['appointment_ends_by_then']);
     });
 
     it('waits for an end held open on the appointment, then refuses', async () => {

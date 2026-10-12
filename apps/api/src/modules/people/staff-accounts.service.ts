@@ -372,11 +372,17 @@ export class StaffAccounts {
           throw refused('role_from_past');
         }
         const at = change.from === today ? now : await startOfDate(transaction, change.from, zone);
+        if (
+          assignment.valid_until !== null &&
+          (assignment.valid_until <= now || assignment.valid_until <= assignment.valid_from)
+        ) {
+          throw refused('assignment_ended');
+        }
         // An appointment that ends by then (a change made a moment before, or
         // an end typed earlier) is not changed from then: its end is not
         // moved later here.
         if (assignment.valid_until !== null && assignment.valid_until <= at) {
-          throw refused('assignment_ended');
+          throw refused('appointment_ends_by_then');
         }
         await this.assignments.end(transaction, {
           assignmentId,
