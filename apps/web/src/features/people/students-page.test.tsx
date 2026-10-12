@@ -290,7 +290,7 @@ describe('adding a student', () => {
         Response.json(
           {
             error: {
-              code: 'already_exists',
+              code: 'student_value_taken',
               message: 'x',
               requestId: 'r',
               details: [

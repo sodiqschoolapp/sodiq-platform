@@ -310,7 +310,7 @@ describe('student records', () => {
       const holder = await create();
       const before = await snapshot();
       const response = await t.post('/api/people/students', t.north, body({ uid: holder.uid }));
-      refusedWith(response, 409, 'already_exists');
+      refusedWith(response, 409, 'student_value_taken');
       expect(detailsOf(response)).toEqual([
         expect.objectContaining({ path: 'uid', code: 'already_exists', recordId: holder.id }),
       ]);
@@ -341,7 +341,7 @@ describe('student records', () => {
       expect((await t.post('/api/people/students', t.south, held)).status).toBe(201);
       const before = await snapshot();
       const response = await t.post('/api/people/students', t.north, body(of(held)));
-      refusedWith(response, 409, 'already_exists');
+      refusedWith(response, 409, 'student_value_taken');
       const details = detailsOf(response);
       expect(details).toEqual([
         { path, code: 'held_elsewhere', message: 'A student of another branch holds it.' },
@@ -361,7 +361,7 @@ describe('student records', () => {
         ['contract.number', { contract: held.contract }],
       ] as const) {
         const response = await t.post('/api/people/students', t.north, body(overrides));
-        refusedWith(response, 409, 'already_exists');
+        refusedWith(response, 409, 'student_value_taken');
         expect(detailsOf(response), path).toEqual([
           expect.objectContaining({ path, recordId: holder.id }),
         ]);
@@ -457,7 +457,7 @@ describe('student records', () => {
         held.release();
         await held.done;
         const response = await save;
-        refusedWith(response, 409, 'already_exists');
+        refusedWith(response, 409, 'student_value_taken');
         expect(detailsOf(response)[0]?.path).toBe(path);
       },
     );
@@ -479,7 +479,7 @@ describe('student records', () => {
       held.release();
       await held.done;
       const response = await correction;
-      refusedWith(response, 409, 'already_exists');
+      refusedWith(response, 409, 'student_value_taken');
       expect(detailsOf(response)[0]).toMatchObject({ path: 'uid', code: 'held_elsewhere' });
       expect((await detail(student.id)).uid).toBe(student.uid);
     });
@@ -845,7 +845,7 @@ describe('student records', () => {
         t.north,
         editBody(student, { jshshir: holder.identity?.jshshir }),
       );
-      refusedWith(response, 409, 'already_exists');
+      refusedWith(response, 409, 'student_value_taken');
       expect(detailsOf(response)).toEqual([
         expect.objectContaining({ path: 'jshshir', recordId: holder.id }),
       ]);
@@ -872,7 +872,7 @@ describe('student records', () => {
         assignment_id: t.viceAssignment,
       });
       const taken = await t.post('/api/people/students', t.south, body({ uid: student.uid }));
-      refusedWith(taken, 409, 'already_exists');
+      refusedWith(taken, 409, 'student_value_taken');
       // The old UID is the student's for good; it can be taken back.
       const back = await t.put(`/api/people/students/${student.id}/uid`, t.north, {
         uid: student.uid,
@@ -894,10 +894,10 @@ describe('student records', () => {
       refusedWith(await correct('2607993', ''), 400, 'validation_failed');
       refusedWith(await correct('2606993'), 409, 'uid_set_mismatch');
       const here = await correct(holder.uid);
-      refusedWith(here, 409, 'already_exists');
+      refusedWith(here, 409, 'student_value_taken');
       expect(detailsOf(here)[0]).toMatchObject({ path: 'uid', recordId: holder.id });
       const there = await correct(String(elsewhere.uid));
-      refusedWith(there, 409, 'already_exists');
+      refusedWith(there, 409, 'student_value_taken');
       expect(detailsOf(there)[0]).toMatchObject({ path: 'uid', code: 'held_elsewhere' });
       expect(await snapshot()).toEqual(before);
       expect((await correct('2606994', 'Repeated grade 6.', true)).status).toBe(200);

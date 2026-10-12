@@ -63,7 +63,7 @@ function fieldOf(path: readonly PropertyKey[]): PropertyKey[] {
   return [...path];
 }
 
-/** The field a refusal of the server names (`details` of 409 `already_exists`). */
+/** The field a refusal of the server names (`details` of 409 `student_value_taken`). */
 const FIELD_OF_DETAIL: Readonly<Record<string, StudentField>> = {
   uid: 'uid',
   jshshir: 'jshshir',
@@ -73,7 +73,7 @@ const FIELD_OF_DETAIL: Readonly<Record<string, StudentField>> = {
 
 /** A value refused as taken: the field, and the student of this branch who holds it when named. */
 export function takenOf(failure: unknown): { field: StudentField; holderId: string | null } | null {
-  if (!(failure instanceof ApiFailure) || failure.code !== 'already_exists') {
+  if (!(failure instanceof ApiFailure) || failure.code !== 'student_value_taken') {
     return null;
   }
   const detail = failure.details?.find((one) => FIELD_OF_DETAIL[one.path] !== undefined);

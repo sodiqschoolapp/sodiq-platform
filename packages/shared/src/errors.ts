@@ -241,6 +241,8 @@ export const ERROR_CODES = [
   'account_missing',
   /** The first four digits of the UID are not the set of the student's grade; the save may be repeated with the confirmation (`04`, UID sets, Release 1; task 2.4a, decision 5). */
   'uid_set_mismatch',
+  /** A UID, JSHSHIR, document number or contract number is already given to another student, in any branch, inactive and graduated ones too (edge/students-classes-groups; task 2.4a). `details` names the field, and the holder when the reader may open it. */
+  'student_value_taken',
   /** The start date is in no academic year of the branch and no year begins after it (task 2.4a, decision 5). */
   'no_academic_year',
   /** Any other refusal that has no code of its own yet. */

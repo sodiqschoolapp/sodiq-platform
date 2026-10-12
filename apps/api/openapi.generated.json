@@ -1670,6 +1670,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -1988,6 +1989,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -2394,6 +2396,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -2733,6 +2736,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -3029,6 +3033,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -3331,6 +3336,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -3621,6 +3627,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -3935,6 +3942,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -4229,6 +4237,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -4523,6 +4532,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -4808,6 +4818,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -5093,6 +5104,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -5358,6 +5370,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -5623,6 +5636,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -5934,6 +5948,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -6294,6 +6309,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -6587,6 +6603,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -6959,6 +6976,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -7323,6 +7341,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -7678,6 +7697,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -7968,6 +7988,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -8336,6 +8357,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -8664,6 +8686,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -8992,6 +9015,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -9304,6 +9328,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -9616,6 +9641,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -9888,6 +9914,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -10160,6 +10187,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -10467,6 +10495,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -10786,6 +10815,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -11117,6 +11147,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -11422,6 +11453,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -11768,6 +11800,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -12106,6 +12139,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -12418,6 +12452,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -12744,6 +12779,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -13068,6 +13104,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -13398,6 +13435,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -13702,6 +13740,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -14006,6 +14045,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -14297,6 +14337,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -14693,6 +14734,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -15075,6 +15117,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -15465,6 +15508,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -15873,6 +15917,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -16245,6 +16290,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -16617,6 +16663,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -16964,6 +17011,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -17389,6 +17437,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -17748,6 +17797,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -18149,6 +18199,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -19023,6 +19074,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -19393,6 +19445,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -19861,6 +19914,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -20706,6 +20760,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -21186,6 +21241,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -21548,6 +21604,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -21910,6 +21967,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -22310,6 +22368,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -22572,6 +22631,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -22854,6 +22914,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -23154,6 +23215,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -23467,6 +23529,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -23773,6 +23836,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -24051,6 +24115,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -24312,6 +24377,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -24597,6 +24663,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -24978,6 +25045,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -25466,6 +25534,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -25761,6 +25830,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -26261,6 +26331,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -26668,6 +26739,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -27043,6 +27115,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -27418,6 +27491,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -27762,6 +27836,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -28145,6 +28220,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -28499,6 +28575,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -28936,6 +29013,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -29644,6 +29722,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -29940,6 +30019,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -30526,6 +30606,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -31244,6 +31325,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -31581,6 +31663,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -32221,6 +32304,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -32837,6 +32921,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -33484,6 +33569,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -33737,6 +33823,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -34201,6 +34288,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -34483,6 +34571,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -34732,6 +34821,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -35247,6 +35337,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -35741,6 +35832,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -36245,6 +36337,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -36472,6 +36565,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -36715,6 +36809,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -37110,6 +37205,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -37525,6 +37621,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -37920,6 +38017,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -38184,6 +38282,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -38448,6 +38547,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -38735,6 +38835,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -39089,6 +39190,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -39692,6 +39794,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -39920,6 +40023,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -40162,6 +40266,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -40737,6 +40842,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -41300,6 +41406,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -41626,6 +41733,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -42057,6 +42165,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -42350,6 +42459,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -42713,6 +42823,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -43154,6 +43265,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -43517,6 +43629,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -43880,6 +43993,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -44110,6 +44224,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -44413,6 +44528,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -45110,6 +45226,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -45422,6 +45539,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -45940,6 +46058,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -46632,6 +46751,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -47180,6 +47300,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -47475,6 +47596,7 @@
                             "second_step_off",
                             "account_missing",
                             "uid_set_mismatch",
+                            "student_value_taken",
                             "no_academic_year",
                             "request_refused",
                             "internal_error"
@@ -47733,6 +47855,7 @@
                   "second_step_off",
                   "account_missing",
                   "uid_set_mismatch",
+                  "student_value_taken",
                   "no_academic_year",
                   "request_refused",
                   "internal_error"

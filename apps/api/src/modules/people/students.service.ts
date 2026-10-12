@@ -606,7 +606,7 @@ export class Students {
   }
 
   /**
-   * Turns a taken value into 409 `already_exists` naming the field. The holder
+   * Turns a taken value into 409 `student_value_taken` naming the field. The holder
    * is looked up in a new transaction through the branch filter (correction
    * 6 of #67): a student of this branch is named by id (the screen opens it);
    * one of another branch is only said to exist (`held_elsewhere`, decision 3).
@@ -629,7 +629,7 @@ export class Students {
         holder === undefined
           ? { path, code: 'held_elsewhere', message: 'A student of another branch holds it.' }
           : { path, code: 'already_exists', message: 'A student holds it.', recordId: holder };
-      throw new ApiException('already_exists', 409, undefined, [detail]);
+      throw new ApiException('student_value_taken', 409, undefined, [detail]);
     }
   }
 

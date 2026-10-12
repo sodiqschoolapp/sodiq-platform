@@ -163,6 +163,8 @@ export const en = {
       'This account is not locked, so there is nothing to unlock. Reload the page.',
     second_step_off:
       'This account has no second step to reset. Reset only the password if the person cannot sign in.',
+    student_value_taken:
+      'This value is already given to another student. Correct the marked field.',
     uid_set_mismatch:
       "This UID is not in the set of the student's grade. Check it, or confirm it if the student keeps a UID from another grade.",
     no_academic_year:

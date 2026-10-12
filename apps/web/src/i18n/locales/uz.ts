@@ -169,6 +169,8 @@ export const uz: Texts<'one' | 'other'> = {
     account_not_locked: 'Bu hisob bloklanmagan, blokdan chiqarish kerak emas. Sahifani yangilang.',
     second_step_off:
       'Bu hisobda tiklanadigan ikkinchi bosqich yoʻq. Xodim kira olmasa, faqat parolni tiklang.',
+    student_value_taken:
+      'Bu qiymat allaqachon boshqa oʻquvchiga berilgan. Belgilangan maydonni tuzating.',
     uid_set_mismatch:
       'Bu UID oʻquvchi sinfining toʻplamiga kirmaydi. Tekshiring yoki oʻquvchi boshqa sinf UIDsini saqlasa, tasdiqlang.',
     no_academic_year:
