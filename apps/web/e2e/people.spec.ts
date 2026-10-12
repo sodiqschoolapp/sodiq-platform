@@ -454,6 +454,10 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   await back.getByLabel(texts.contractNumber, { exact: true }).fill('E2E-LEAVE-1R');
   await back.getByLabel(texts.contractSignedOn, { exact: true }).fill(daysAgo(3));
   await back.getByRole('button', { name: en.form.save, exact: true }).click();
+  await page
+    .getByRole('alertdialog', { name: texts.returnConfirmTitle })
+    .getByRole('button', { name: texts.returnTitle, exact: true })
+    .click();
   await expect(row).toContainText(texts.statuses.active);
   await expect(row).toContainText('9998001');
   await expect(panel.getByText(texts.causes.return, { exact: true })).toBeVisible();
