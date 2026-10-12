@@ -480,6 +480,7 @@ describe('the subjects page', () => {
                 phone: '+998901112233',
                 status: 'active',
                 planned: null,
+                photoId: null,
               },
             ],
           }),

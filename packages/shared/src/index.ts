@@ -499,3 +499,10 @@ export {
   type VacancyExport,
   type VacancyExportColumn,
 } from './exports.js';
+export {
+  PHOTO_MAX_BYTES,
+  PHOTO_MAX_SIDE,
+  PHOTO_TYPES,
+  photoTypeSchema,
+  type PhotoType,
+} from './photos.js';

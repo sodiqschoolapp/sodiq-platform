@@ -371,6 +371,54 @@ try {
   );
   seeded.staffExport = { login: staffExport.login, password: staffExport.firstPassword };
 
+  // A branch of its own with an Academic Vice Principal who adds the photo of
+  // a person of the branch (task 2.2c-2, decision 2); the photos of the
+  // browser tests live in memory (PHOTOS_IN_MEMORY of server.ts).
+  const photoBranch = await insertBranch(migrator, 'Photo browser test branch');
+  const staffPhoto = await create('Malika', 'Tursunova');
+  await transactions.run([photoBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: staffPhoto.id,
+      role: 'academic_vice_principal',
+      branchId: photoBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const person = await transaction
+      .insertInto('staff')
+      .values({
+        kind: 'person',
+        staff_id: 'S-269002',
+        first_name: 'Shahzod',
+        last_name: 'Mirzayev',
+        sex: 'male',
+        birth_date: '1989-11-03',
+        phone: '+998935550022',
+        admission_date: '2026-09-01',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: person.id, branch_id: photoBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: person.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+      .execute();
+  });
+  seeded.staffPhoto = { login: staffPhoto.login, password: staffPhoto.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');

@@ -9,5 +9,7 @@ const { appUrl } = await rebuildE2eDatabase();
 // Variables that are set win over the `.env` that main.ts loads.
 process.env.DATABASE_URL = appUrl;
 process.env.PORT = process.env.E2E_API_PORT ?? '3001';
+// Photos in memory (task 2.2c-2, decision 9): the browser tests never reach R2.
+process.env.PHOTOS_IN_MEMORY = '1';
 await import('../../main.js');
 await import('../../worker.js');

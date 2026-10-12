@@ -14,6 +14,7 @@ import type { JobQueueOptions } from '../jobs/job-queue.js';
 import { JOB_QUEUE_OPTIONS } from '../jobs/jobs.tokens.js';
 import { PERMISSION_TABLE } from '../modules/access/permission-table.token.js';
 import { LiveSockets } from '../modules/notifications/live/socket-server.js';
+import { PHOTO_STORE, type PhotoStore } from '../modules/people/photo-store.js';
 import type { StopBeforeHandler } from './route-harness.js';
 import { withDatabaseName } from './test-database.js';
 
@@ -46,6 +47,8 @@ export interface TestAppOptions {
    * passes the guards is answered before its handler runs.
    */
   handlerStop?: StopBeforeHandler;
+  /** The photo store of the photo routes (`MemoryPhotoStore`, or one that fails). Without it: the configuration's. */
+  photoStore?: PhotoStore;
 }
 
 /**
@@ -78,6 +81,9 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
   }
   if (options.config !== undefined) {
     builder.overrideProvider(CONFIG).useValue({ ...loadConfig(process.env), ...options.config });
+  }
+  if (options.photoStore !== undefined) {
+    builder.overrideProvider(PHOTO_STORE).useValue(options.photoStore);
   }
   if (options.permissionTable !== undefined) {
     builder.overrideProvider(PERMISSION_TABLE).useValue(options.permissionTable);

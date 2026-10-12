@@ -425,7 +425,9 @@ export function ListPage<Row>({
                 onClick={() => {
                   onExport(
                     exportRows,
-                    shownColumns.map((column) => column.key),
+                    shownColumns
+                      .filter((column) => column.exported !== false)
+                      .map((column) => column.key),
                     current,
                     ticked.size === 0 ? 'matching' : 'ticked',
                   );

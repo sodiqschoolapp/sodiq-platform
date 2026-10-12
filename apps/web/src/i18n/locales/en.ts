@@ -174,6 +174,11 @@ export const en = {
       'Teachers who have not left, or open vacancies, have this subject with these grades in this department. Change their subjects first, then the subject.',
     department_has_staff:
       'Staff members who have not left, or open vacancies, are in this department. Move them to another department or close the vacancies first.',
+    photo_invalid:
+      'This file is not a JPEG or PNG photo of at most 800 pixels a side. Choose another photo.',
+    photo_too_large: 'The photo is larger than 5 MB. Choose a smaller one.',
+    photos_not_configured: 'Photos are not configured yet. Ask the administrator.',
+    photos_unavailable: 'Photos cannot be reached right now. Try again later.',
     availability_overlap:
       'These hours overlap the hours in another branch on the same weekday. Change the times so that they do not overlap.',
     archive_refused:
@@ -1010,6 +1015,15 @@ export const en = {
       hidden: 'Hidden',
       mainBranch: '{{name}} (main)',
       mainDivisionText: '{{name}} (main)',
+      photo: {
+        title: 'Photo',
+        add: 'Add photo',
+        change: 'Change photo',
+        remove: 'Remove photo',
+        removeTitle: 'Remove the photo?',
+        removeText: 'The record keeps no photo; initials are shown instead.',
+        column: 'Photo',
+      },
       showIdentity: 'Show date of birth and JSHSHIR',
       needsAcademic: 'Subjects need a department in the Academic division.',
       gradesOf: 'Grades of {{subject}}',

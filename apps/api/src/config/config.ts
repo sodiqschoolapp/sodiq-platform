@@ -30,7 +30,36 @@ const environmentSchema = z.object({
   SENTRY_ENVIRONMENT: z.preprocess(emptyAsUnset, z.string().default('development')),
   // Set by Render at build and start: the commit of the running version.
   RENDER_GIT_COMMIT: z.preprocess(emptyAsUnset, z.string().optional()),
+  // The R2 bucket of the photos (task 2.2c-2; the owner's answer 2, these
+  // exact names). All four or none; the owner enters them in Render. None:
+  // the photo routes answer `photos_not_configured` and everything else works.
+  R2_ACCOUNT_ID: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .regex(/^[0-9a-f]{32}$/)
+      .optional(),
+  ),
+  R2_ACCESS_KEY_ID: z.preprocess(emptyAsUnset, z.string().min(1).optional()),
+  R2_SECRET_ACCESS_KEY: z.preprocess(emptyAsUnset, z.string().min(1).optional()),
+  R2_BUCKET: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/)
+      .optional(),
+  ),
+  // A laptop and the browser tests' server only (decision 9 of pull request
+  // #59): `1` keeps photos in memory, lost on a restart. Never on Render.
+  PHOTOS_IN_MEMORY: z.preprocess(emptyAsUnset, z.enum(['0', '1']).default('0')),
 });
+
+const R2_VARIABLES = [
+  'R2_ACCOUNT_ID',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+  'R2_BUCKET',
+] as const;
 
 type VariableName = keyof z.infer<typeof environmentSchema>;
 
@@ -47,6 +76,13 @@ const PROBLEM: Record<VariableName, string> = {
   SENTRY_DSN: 'SENTRY_DSN must be an https:// address, or unset',
   SENTRY_ENVIRONMENT: 'SENTRY_ENVIRONMENT must be a name',
   RENDER_GIT_COMMIT: 'RENDER_GIT_COMMIT must be a commit',
+  R2_ACCOUNT_ID:
+    'R2_ACCOUNT_ID must be the 32-letter account id of Cloudflare, set with the three other R2 variables',
+  R2_ACCESS_KEY_ID: 'R2_ACCESS_KEY_ID must be set with the three other R2 variables',
+  R2_SECRET_ACCESS_KEY: 'R2_SECRET_ACCESS_KEY must be set with the three other R2 variables',
+  R2_BUCKET: 'R2_BUCKET must be a bucket name, set with the three other R2 variables',
+  PHOTOS_IN_MEMORY:
+    'PHOTOS_IN_MEMORY must be 0 or 1, and is never set together with the R2 variables',
 };
 
 export interface AppConfig {
@@ -61,7 +97,21 @@ export interface AppConfig {
   webFiles: string | undefined;
   /** Where error reports go, or nowhere. */
   reporting: ReportingConfig;
+  /** Where photos are kept: the R2 bucket, memory (a laptop, the browser tests) or nowhere. */
+  photos: PhotosConfig;
 }
+
+export type PhotosConfig =
+  | { store: 'none' }
+  | { store: 'memory' }
+  | {
+      store: 'r2';
+      accountId: string;
+      accessKeyId: string;
+      /** Only `R2PhotoStore` reads it. */
+      secretAccessKey: string;
+      bucket: string;
+    };
 
 export interface ReportingConfig {
   dsn: string | undefined;
@@ -83,6 +133,19 @@ export function loadConfig(environment: Record<string, string | undefined>): App
     const problems = [...names].map((name) => PROBLEM[name]);
     throw new ConfigError(`The configuration is not valid: ${problems.join('; ')}.`);
   }
+  const data = result.data;
+  const r2Set = R2_VARIABLES.filter((name) => data[name] !== undefined);
+  const wrong: VariableName[] = [];
+  if (r2Set.length > 0 && r2Set.length < R2_VARIABLES.length) {
+    wrong.push(...R2_VARIABLES.filter((name) => data[name] === undefined));
+  }
+  if (data.PHOTOS_IN_MEMORY === '1' && r2Set.length > 0) {
+    wrong.push('PHOTOS_IN_MEMORY');
+  }
+  if (wrong.length > 0) {
+    const problems = wrong.map((name) => PROBLEM[name]);
+    throw new ConfigError(`The configuration is not valid: ${problems.join('; ')}.`);
+  }
   return {
     host: result.data.HOST,
     port: result.data.PORT,
@@ -95,5 +158,25 @@ export function loadConfig(environment: Record<string, string | undefined>): App
       environment: result.data.SENTRY_ENVIRONMENT,
       release: result.data.RENDER_GIT_COMMIT,
     },
+    photos: photosOf(data),
   };
+}
+
+function photosOf(data: z.infer<typeof environmentSchema>): PhotosConfig {
+  const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET } = data;
+  if (
+    R2_ACCOUNT_ID !== undefined &&
+    R2_ACCESS_KEY_ID !== undefined &&
+    R2_SECRET_ACCESS_KEY !== undefined &&
+    R2_BUCKET !== undefined
+  ) {
+    return {
+      store: 'r2',
+      accountId: R2_ACCOUNT_ID,
+      accessKeyId: R2_ACCESS_KEY_ID,
+      secretAccessKey: R2_SECRET_ACCESS_KEY,
+      bucket: R2_BUCKET,
+    };
+  }
+  return data.PHOTOS_IN_MEMORY === '1' ? { store: 'memory' } : { store: 'none' };
 }

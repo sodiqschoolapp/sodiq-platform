@@ -49,6 +49,7 @@ describe('the routes that work without sign-in', () => {
   it('are found among all routes of the application', () => {
     expect(routesOf(app).map((route) => route.name)).toEqual([
       'DELETE /api/auth/trusted-devices/:id',
+      'DELETE /api/people/staff/:id/photo',
       'GET /api/auth/second-step',
       'GET /api/auth/session',
       'GET /api/auth/sessions',
@@ -58,6 +59,7 @@ describe('the routes that work without sign-in', () => {
       'GET /api/people/staff',
       'GET /api/people/staff/:id',
       'GET /api/people/staff/:id/availability',
+      'GET /api/people/staff/:id/photo',
       'GET /api/people/vacancies',
       'GET /api/people/vacancies/:id',
       'GET /api/setup/academic-years',
@@ -146,6 +148,7 @@ describe('the routes that work without sign-in', () => {
       'PUT /api/people/staff/:id',
       'PUT /api/people/staff/:id/availability',
       'PUT /api/people/staff/:id/branches',
+      'PUT /api/people/staff/:id/photo',
       'PUT /api/people/staff/:id/teaching',
       'PUT /api/people/vacancies/:id',
       'PUT /api/setup/academic-years/:id',

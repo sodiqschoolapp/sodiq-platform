@@ -178,7 +178,7 @@ How to read the task lines:
   - Build: Excel export (ExcelJS, answer 1) of the staff list, of the vacancies and of the lists that waited for it (buildings, rooms, divisions, subjects): the route gets the ids (ticked rows, or every matching row), the column keys, the search and the filters, the server decides what the role may see, vacancies only from their own list, every export logged with its filters and row count.
   - Done when: an export contains only what the role may see and leaves an audit entry.
 
-- [ ] **2.2c-2 Photos**
+- [x] **2.2c-2 Photos** (pull request #59)
   - Read: `04` (Student record, Teacher and staff record, Vacancy), `edge/people-roles-accounts` (Personal data and the audit log), `13`.
   - Build: staff photos in the R2 bucket (answer 2), uploaded through a declared exception of `json-only.ts`, shrunk in the browser, served through the API; the photo column of the staff list.
   - From 2.2b (pull request #57, correction 2): `04` Vacancy, "nothing personal": a vacancy's photo is refused by the database (the photo column joins `staff_vacancy_check`) and the upload route answers 404 for a vacancy's id.
@@ -192,6 +192,7 @@ How to read the task lines:
 - [ ] **2.3 Accounts and role assignment screens**
   - Read: `02` (Head Teachers and Senior Head Teachers, Rules), `edge/people-roles-accounts` (Who can act, Accounts and sign-in).
   - Build: Super Admin screens to create accounts and give roles per branch; Head Teacher appointments to subjects in a branch (at most one per subject per branch); Senior Head Teacher appointments to subjects across branches; subject scope in the permission guard; lock and unlock; the refusal to lock the last active Super Admin, and to set the staff record linked to the last active Super Admin's account to inactive or left (the status route of 2.2a, pull request #53, correction 5); the route for the password reset by an administrator (the service exists since 0.6b) with who may reset whom; the route for the second-step reset by a Super Admin (the service exists since 0.6c); password reset by email through a mail service that only logs locally, with the address taken from the staff record (moved from 0.6b; its routes are public and go into `PUBLIC_ROUTES`).
+  - From 2.2c-2 (pull request #59): the own photo on the own account page (`edge/people-roles-accounts`: "Staff can change their own ... photo"): a route of the own account (`@AnySignedIn()`) on the staff record linked to the session's account, with the same store, byte check and audit entry as `StaffPhotos`; the Principal too.
   - From 2.2a (pull request #53): an account is created from a staff record and writes `staff.account_id` once (grant `update (account_id)` on `staff`; the trigger `staff_account_link_guard` keeps it); a re-hire forces a password change; `passwordResetBy` of the session answer becomes a name; decide whether the Academic Vice Principal may change the email of their own record or a Super Admin's (the edit of 2.2a allows name, phone and email of any record of the branch).
   - Done when: the refusals in the spec are tested, including the last Super Admin rule, and tests cover each rule of the email reset with the injected clock.
 

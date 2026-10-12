@@ -353,6 +353,8 @@ export interface Staff {
   kind: string;
   last_name: string | null;
   phone: string | null;
+  photo_id: string | null;
+  photo_type: string | null;
   sex: string | null;
   staff_id: string | null;
   vacancy_name: string | null;

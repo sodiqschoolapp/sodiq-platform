@@ -180,6 +180,11 @@ export const uz: Texts<'one' | 'other'> = {
       'Ishdan ketmagan oʻqituvchilarda yoki ochiq vakansiyalarda bu fan shu sinflar bilan shu kafedrada bor. Avval ularning fanlarini, keyin fanni oʻzgartiring.',
     department_has_staff:
       'Bu kafedrada ishdan ketmagan xodimlar yoki ochiq vakansiyalar bor. Avval ularni boshqa kafedraga oʻtkazing yoki vakansiyalarni yoping.',
+    photo_invalid:
+      'Bu fayl tomoni 800 pikseldan oshmaydigan JPEG yoki PNG surat emas. Boshqa surat tanlang.',
+    photo_too_large: 'Surat 5 MB dan katta. Kichikroq surat tanlang.',
+    photos_not_configured: 'Suratlar hali sozlanmagan. Administratorga murojaat qiling.',
+    photos_unavailable: 'Suratlar hozir mavjud emas. Keyinroq qayta urinib koʻring.',
     availability_overlap:
       'Bu soatlar boshqa filialdagi soatlar bilan haftaning shu kunida ustma-ust tushadi. Ular ustma-ust tushmasligi uchun vaqtni oʻzgartiring.',
     archive_refused:
@@ -1017,6 +1022,15 @@ export const uz: Texts<'one' | 'other'> = {
       hidden: 'Yashirilgan',
       mainBranch: '{{name}} (asosiy)',
       mainDivisionText: '{{name}} (asosiy)',
+      photo: {
+        title: 'Surat',
+        add: 'Surat qoʻshish',
+        change: 'Suratni almashtirish',
+        remove: 'Suratni olib tashlash',
+        removeTitle: 'Surat olib tashlansinmi?',
+        removeText: 'Yozuvda surat qolmaydi; uning oʻrnida bosh harflar koʻrsatiladi.',
+        column: 'Surat',
+      },
       showIdentity: 'Tugʻilgan sana va JSHSHIRni koʻrsatish',
       needsAcademic: 'Fanlar uchun oʻquv boʻlimida kafedra kerak.',
       gradesOf: '{{subject}}: sinflar',

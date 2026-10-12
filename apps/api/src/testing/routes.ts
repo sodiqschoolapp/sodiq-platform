@@ -3,7 +3,8 @@ import { ModulesContainer } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { API_PREFIX } from '../app.setup.js';
 import { RESPONSE_SCHEMA } from '../http/response-schema.interceptor.js';
-import { RETURNS_FILE } from '../http/schemas.js';
+import type { FileRoute } from '../http/file-routes.js';
+import { RETURNS_FILE, TAKES_FILE } from '../http/schemas.js';
 import { declarationsOf, type RouteAccess } from '../modules/access/access.decorators.js';
 import { owedStepsAllowedOn } from '../modules/auth/session.guard.js';
 
@@ -18,6 +19,8 @@ export interface Route {
   allowedBefore: string[];
   /** Whether the handler says what it answers: `@Returns(schema)`, `@ReturnsNothing()` or `@ReturnsFile()`. */
   describesAnswer: boolean;
+  /** The declared file route the handler reads its body from (`@ValidFile`), if any. */
+  takesFile: FileRoute | undefined;
 }
 
 /** The method in the name of a route that answers every method (`@All()`). */
@@ -87,6 +90,7 @@ export function routesOf(app: INestApplication): Route[] {
                 Reflect.getMetadata(RESPONSE_SCHEMA, handler) !== undefined ||
                 Reflect.getMetadata(RETURNS_FILE, handler) === true ||
                 Reflect.getMetadata(HTTP_CODE, handler) === 204,
+              takesFile: Reflect.getMetadata(TAKES_FILE, handler) as FileRoute | undefined,
             });
           }
         }
