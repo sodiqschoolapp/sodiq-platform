@@ -288,7 +288,13 @@ describe('the staff page', () => {
       },
       'en',
       {
-        rights: { all: false, contact: false, teaching: false, accounts: false, accountAccess: false },
+        rights: {
+          all: false,
+          contact: false,
+          teaching: false,
+          accounts: false,
+          accountAccess: false,
+        },
         identityHidden: true,
         birthDate: null,
         jshshir: null,
@@ -501,7 +507,13 @@ describe('staff photos', () => {
 
   it('gives the Principal no photo buttons', async () => {
     openWith('principal', {}, 'en', {
-      rights: { all: false, contact: false, teaching: false, accounts: false, accountAccess: false },
+      rights: {
+        all: false,
+        contact: false,
+        teaching: false,
+        accounts: false,
+        accountAccess: false,
+      },
     });
     renderApp(PATH);
     const panel = await openPanel();
@@ -520,7 +532,13 @@ describe('staff photos', () => {
       [`GET /api/people/staff/${AKMAL.id}`]: () =>
         json(
           detailOf(removed ? AKMAL : WITH_PHOTO, {
-            rights: { all: false, contact: true, teaching: true, accounts: false, accountAccess: false },
+            rights: {
+              all: false,
+              contact: true,
+              teaching: true,
+              accounts: false,
+              accountAccess: false,
+            },
           }),
         ),
     });

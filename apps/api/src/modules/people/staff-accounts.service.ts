@@ -91,20 +91,26 @@ export class StaffAccounts {
   /** The section of the record of the branch of the request. */
   async read(access: Access, id: string): Promise<StaffAccount> {
     const branchId = branchOf(access);
-    return this.transactions.run(await readingBranches(this.transactions, access), async (transaction) => {
-      const person = await findPerson(transaction, id, branchId, false);
-      return this.sectionOf(transaction, access, person, branchId);
-    });
+    return this.transactions.run(
+      await readingBranches(this.transactions, access),
+      async (transaction) => {
+        const person = await findPerson(transaction, id, branchId, false);
+        return this.sectionOf(transaction, access, person, branchId);
+      },
+    );
   }
 
   /** The first free login of the owner's answer 14 for the person. */
   async suggest(access: Access, id: string): Promise<LoginSuggestion> {
     const branchId = branchOf(access);
     this.actingAs(access);
-    return this.transactions.run(await readingBranches(this.transactions, access), async (transaction) => {
-      const person = await findPerson(transaction, id, branchId, false);
-      return { login: await this.accounts.suggest(transaction, person) };
-    });
+    return this.transactions.run(
+      await readingBranches(this.transactions, access),
+      async (transaction) => {
+        const person = await findPerson(transaction, id, branchId, false);
+        return { login: await this.accounts.suggest(transaction, person) };
+      },
+    );
   }
 
   /**
@@ -120,52 +126,55 @@ export class StaffAccounts {
   ): Promise<FirstPasswordSlip> {
     const branchId = branchOf(access);
     const superAdmin = this.actingAs(access);
-    return this.transactions.run(await readingBranches(this.transactions, access), async (transaction) => {
-      const person = await findPerson(transaction, id, branchId, true);
-      if (person.accountId !== null) {
-        throw refused('account_exists');
-      }
-      await this.refuseLeft(transaction, id);
-      let created;
-      try {
-        created = await this.accounts.create(transaction, {
+    return this.transactions.run(
+      await readingBranches(this.transactions, access),
+      async (transaction) => {
+        const person = await findPerson(transaction, id, branchId, true);
+        if (person.accountId !== null) {
+          throw refused('account_exists');
+        }
+        await this.refuseLeft(transaction, id);
+        let created;
+        try {
+          created = await this.accounts.create(transaction, {
+            firstName: person.firstName,
+            lastName: person.lastName,
+            login,
+            createdBy: access.accountId,
+            actingAssignmentId: superAdmin,
+            personId: id,
+            requestId,
+          });
+        } catch (error) {
+          if (error instanceof LoginTakenError) {
+            throw new ApiException('login_taken', 409, undefined, [
+              { path: 'login', code: 'taken', message: 'The login is given to another account.' },
+            ]);
+          }
+          throw error;
+        }
+        await transaction
+          .updateTable('staff')
+          .set({ account_id: created.id })
+          .where('id', '=', id)
+          .execute();
+        const account = await transaction
+          .selectFrom('accounts')
+          .select('password_expires_at')
+          .where('id', '=', created.id)
+          .executeTakeFirstOrThrow();
+        if (account.password_expires_at === null) {
+          throw new Error('A first password always has an end.');
+        }
+        return {
           firstName: person.firstName,
           lastName: person.lastName,
-          login,
-          createdBy: access.accountId,
-          actingAssignmentId: superAdmin,
-          personId: id,
-          requestId,
-        });
-      } catch (error) {
-        if (error instanceof LoginTakenError) {
-          throw new ApiException('login_taken', 409, undefined, [
-            { path: 'login', code: 'taken', message: 'The login is given to another account.' },
-          ]);
-        }
-        throw error;
-      }
-      await transaction
-        .updateTable('staff')
-        .set({ account_id: created.id })
-        .where('id', '=', id)
-        .execute();
-      const account = await transaction
-        .selectFrom('accounts')
-        .select('password_expires_at')
-        .where('id', '=', created.id)
-        .executeTakeFirstOrThrow();
-      if (account.password_expires_at === null) {
-        throw new Error('A first password always has an end.');
-      }
-      return {
-        firstName: person.firstName,
-        lastName: person.lastName,
-        login: created.login,
-        password: created.firstPassword,
-        validUntil: account.password_expires_at.toISOString(),
-      };
-    });
+          login: created.login,
+          password: created.firstPassword,
+          validUntil: account.password_expires_at.toISOString(),
+        };
+      },
+    );
   }
 
   /**
@@ -177,23 +186,26 @@ export class StaffAccounts {
     const branchId = branchOf(access);
     const superAdmin = this.actingAs(access);
     return this.refusing(async () =>
-      this.transactions.run(await readingBranches(this.transactions, access), async (transaction) => {
-        await lockSuperAdmins(transaction);
-        const person = await findPerson(transaction, id, branchId, true);
-        if (person.accountId === null) {
-          throw refused('no_account');
-        }
-        await this.giveTo(
-          transaction,
-          access,
-          superAdmin,
-          person,
-          person.accountId,
-          give,
-          requestId,
-        );
-        return this.sectionOf(transaction, access, person, branchId);
-      }),
+      this.transactions.run(
+        await readingBranches(this.transactions, access),
+        async (transaction) => {
+          await lockSuperAdmins(transaction);
+          const person = await findPerson(transaction, id, branchId, true);
+          if (person.accountId === null) {
+            throw refused('no_account');
+          }
+          await this.giveTo(
+            transaction,
+            access,
+            superAdmin,
+            person,
+            person.accountId,
+            give,
+            requestId,
+          );
+          return this.sectionOf(transaction, access, person, branchId);
+        },
+      ),
     );
   }
 
@@ -327,107 +339,111 @@ export class StaffAccounts {
     const branchId = branchOf(access);
     const superAdmin = this.actingAs(access);
     return this.refusing(async () =>
-      this.transactions.run(await readingBranches(this.transactions, access), async (transaction) => {
-        await lockSuperAdmins(transaction);
-        const person = await findPerson(transaction, id, branchId, true);
-        if (person.accountId === null) {
-          throw refused('no_account');
-        }
-        const assignment = await transaction
-          .selectFrom('assignments')
-          .select(['id', 'role', 'branch_id', 'valid_from', 'valid_until'])
-          .where('id', '=', assignmentId)
-          .where('account_id', '=', person.accountId)
-          .forUpdate()
-          .executeTakeFirst();
-        if (assignment === undefined) {
-          throw notFound();
-        }
-        if (!isAppointment(assignment.role as AccountRole['role'])) {
-          throw refused('role_not_appointment');
-        }
-        const now = await transactionMoment(transaction);
-        const zone = await this.zoneOf(transaction, assignment.branch_id);
-        const today = schoolDateOf(now, zone);
-        if (change.from < today) {
-          throw refused('role_from_past');
-        }
-        const at = change.from === today ? now : await startOfDate(transaction, change.from, zone);
-        if (
-          assignment.valid_until !== null &&
-          (assignment.valid_until <= now || assignment.valid_until <= assignment.valid_from)
-        ) {
-          throw refused('assignment_ended');
-        }
-        // An appointment that ends by then (a change made a moment before, or
-        // an end typed earlier) is not changed from then: its end is not
-        // moved later here.
-        if (assignment.valid_until !== null && assignment.valid_until <= at) {
-          throw refused('appointment_ends_by_then');
-        }
-        await this.assignments.end(transaction, {
-          assignmentId,
-          endedBy: access.accountId,
-          at,
-          actingAssignmentId: superAdmin,
-          personId: id,
-          requestId,
-        });
-        const next = await this.giveTo(
-          transaction,
-          access,
-          superAdmin,
-          person,
-          person.accountId,
-          {
-            role: assignment.role as RoleGive['role'],
-            branchId: assignment.branch_id,
-            from: change.from,
-            subjectIds: change.subjectIds,
-          },
-          requestId,
-          // A planned appointment keeps its start: the change never begins
-          // the role earlier than it was appointed (code review of #63).
-          assignment.valid_from > at ? assignment.valid_from : at,
-        );
-        // A later end of the appointment (typed, or given by a planned
-        // `left`) carries over to the one that follows it.
-        const followed = await transaction
-          .selectFrom('assignments')
-          .select('valid_until')
-          .where('id', '=', next)
-          .executeTakeFirstOrThrow();
-        if (assignment.valid_until !== null && followed.valid_until === null) {
+      this.transactions.run(
+        await readingBranches(this.transactions, access),
+        async (transaction) => {
+          await lockSuperAdmins(transaction);
+          const person = await findPerson(transaction, id, branchId, true);
+          if (person.accountId === null) {
+            throw refused('no_account');
+          }
+          const assignment = await transaction
+            .selectFrom('assignments')
+            .select(['id', 'role', 'branch_id', 'valid_from', 'valid_until'])
+            .where('id', '=', assignmentId)
+            .where('account_id', '=', person.accountId)
+            .forUpdate()
+            .executeTakeFirst();
+          if (assignment === undefined) {
+            throw notFound();
+          }
+          if (!isAppointment(assignment.role as AccountRole['role'])) {
+            throw refused('role_not_appointment');
+          }
+          const now = await transactionMoment(transaction);
+          const zone = await this.zoneOf(transaction, assignment.branch_id);
+          const today = schoolDateOf(now, zone);
+          if (change.from < today) {
+            throw refused('role_from_past');
+          }
+          const at =
+            change.from === today ? now : await startOfDate(transaction, change.from, zone);
+          if (
+            assignment.valid_until !== null &&
+            (assignment.valid_until <= now || assignment.valid_until <= assignment.valid_from)
+          ) {
+            throw refused('assignment_ended');
+          }
+          // An appointment that ends by then (a change made a moment before, or
+          // an end typed earlier) is not changed from then: its end is not
+          // moved later here.
+          if (assignment.valid_until !== null && assignment.valid_until <= at) {
+            throw refused('appointment_ends_by_then');
+          }
           await this.assignments.end(transaction, {
-            assignmentId: next,
+            assignmentId,
             endedBy: access.accountId,
-            at: assignment.valid_until,
+            at,
             actingAssignmentId: superAdmin,
             personId: id,
             requestId,
           });
-        }
-        // One entry that ties the two together (plan of #63); the end and the
-        // give keep their own entries, as every other end and give.
-        await this.audit.record(transaction, {
-          branchId: assignment.branch_id,
-          actorId: access.accountId,
-          assignmentId: superAdmin,
-          personId: id,
-          action: 'assignment.subjects_changed',
-          record: { type: 'assignment', id: next },
-          oldValue: {
-            assignmentId,
-            subjectIds: await this.subjectIdsOf(transaction, assignmentId),
-          },
-          newValue: {
-            assignmentId: next,
-            subjectIds: [...change.subjectIds].map((one) => one.toLowerCase()).sort(),
-          },
-          requestId,
-        });
-        return this.sectionOf(transaction, access, person, branchId);
-      }),
+          const next = await this.giveTo(
+            transaction,
+            access,
+            superAdmin,
+            person,
+            person.accountId,
+            {
+              role: assignment.role as RoleGive['role'],
+              branchId: assignment.branch_id,
+              from: change.from,
+              subjectIds: change.subjectIds,
+            },
+            requestId,
+            // A planned appointment keeps its start: the change never begins
+            // the role earlier than it was appointed (code review of #63).
+            assignment.valid_from > at ? assignment.valid_from : at,
+          );
+          // A later end of the appointment (typed, or given by a planned
+          // `left`) carries over to the one that follows it.
+          const followed = await transaction
+            .selectFrom('assignments')
+            .select('valid_until')
+            .where('id', '=', next)
+            .executeTakeFirstOrThrow();
+          if (assignment.valid_until !== null && followed.valid_until === null) {
+            await this.assignments.end(transaction, {
+              assignmentId: next,
+              endedBy: access.accountId,
+              at: assignment.valid_until,
+              actingAssignmentId: superAdmin,
+              personId: id,
+              requestId,
+            });
+          }
+          // One entry that ties the two together (plan of #63); the end and the
+          // give keep their own entries, as every other end and give.
+          await this.audit.record(transaction, {
+            branchId: assignment.branch_id,
+            actorId: access.accountId,
+            assignmentId: superAdmin,
+            personId: id,
+            action: 'assignment.subjects_changed',
+            record: { type: 'assignment', id: next },
+            oldValue: {
+              assignmentId,
+              subjectIds: await this.subjectIdsOf(transaction, assignmentId),
+            },
+            newValue: {
+              assignmentId: next,
+              subjectIds: [...change.subjectIds].map((one) => one.toLowerCase()).sort(),
+            },
+            requestId,
+          });
+          return this.sectionOf(transaction, access, person, branchId);
+        },
+      ),
     );
   }
 
@@ -456,49 +472,52 @@ export class StaffAccounts {
     const branchId = branchOf(access);
     const superAdmin = this.actingAs(access);
     return this.refusing(async () =>
-      this.transactions.run(await readingBranches(this.transactions, access), async (transaction) => {
-        await lockSuperAdmins(transaction);
-        const person = await findPerson(transaction, id, branchId, true);
-        if (person.accountId === null) {
-          throw refused('no_account');
-        }
-        const assignment = await transaction
-          .selectFrom('assignments')
-          .select(['id', 'branch_id', 'valid_until'])
-          .where('id', '=', assignmentId)
-          .where('account_id', '=', person.accountId)
-          .executeTakeFirst();
-        if (assignment === undefined) {
-          throw notFound();
-        }
-        // The moment `assignments_end_guard` compares with (code round 1, finding 5).
-        const now = await transactionMoment(transaction);
-        const zone = await this.zoneOf(transaction, assignment.branch_id);
-        const today = schoolDateOf(now, zone);
-        if (end.from < today) {
-          throw refused('role_from_past');
-        }
-        const at = end.from === today ? now : await startOfDate(transaction, end.from, zone);
-        if (
-          assignment.valid_until !== null &&
-          at > assignment.valid_until &&
-          (await this.endedByLeave(transaction, assignmentId))
-        ) {
-          // An end a `left` gave is not moved past it (finding 1).
-          throw refused('staff_left');
-        }
-        await keepingASuperAdmin(transaction, now, () =>
-          this.assignments.end(transaction, {
-            assignmentId,
-            endedBy: access.accountId,
-            at,
-            actingAssignmentId: superAdmin,
-            personId: id,
-            requestId,
-          }),
-        );
-        return this.sectionOf(transaction, access, person, branchId);
-      }),
+      this.transactions.run(
+        await readingBranches(this.transactions, access),
+        async (transaction) => {
+          await lockSuperAdmins(transaction);
+          const person = await findPerson(transaction, id, branchId, true);
+          if (person.accountId === null) {
+            throw refused('no_account');
+          }
+          const assignment = await transaction
+            .selectFrom('assignments')
+            .select(['id', 'branch_id', 'valid_until'])
+            .where('id', '=', assignmentId)
+            .where('account_id', '=', person.accountId)
+            .executeTakeFirst();
+          if (assignment === undefined) {
+            throw notFound();
+          }
+          // The moment `assignments_end_guard` compares with (code round 1, finding 5).
+          const now = await transactionMoment(transaction);
+          const zone = await this.zoneOf(transaction, assignment.branch_id);
+          const today = schoolDateOf(now, zone);
+          if (end.from < today) {
+            throw refused('role_from_past');
+          }
+          const at = end.from === today ? now : await startOfDate(transaction, end.from, zone);
+          if (
+            assignment.valid_until !== null &&
+            at > assignment.valid_until &&
+            (await this.endedByLeave(transaction, assignmentId))
+          ) {
+            // An end a `left` gave is not moved past it (finding 1).
+            throw refused('staff_left');
+          }
+          await keepingASuperAdmin(transaction, now, () =>
+            this.assignments.end(transaction, {
+              assignmentId,
+              endedBy: access.accountId,
+              at,
+              actingAssignmentId: superAdmin,
+              personId: id,
+              requestId,
+            }),
+          );
+          return this.sectionOf(transaction, access, person, branchId);
+        },
+      ),
     );
   }
 
