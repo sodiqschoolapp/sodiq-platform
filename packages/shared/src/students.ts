@@ -294,7 +294,6 @@ const studentFields = {
   sex: sexSchema,
   birthDate: schoolDateSchema,
   grade: studentGradeSchema,
-  startsOn: schoolDateSchema,
   documentType: documentTypeSchema.nullable(),
   documentNumber: documentNumberSchema,
   jshshir: jshshirSchema,
@@ -321,7 +320,9 @@ const DOCUMENT_PAIR = {
 
 /**
  * What is typed for a student, as the edit takes it: every field but the UID
- * (strict: a `uid` is refused; the UID has a correction route of its own).
+ * (strict: a `uid` is refused; the UID has a correction route of its own) and
+ * the start date, where the first status row begins (fixed at the create;
+ * decided in the build of task 2.4a).
  */
 export const studentRecordSchema = z
   .strictObject(studentFields)
@@ -329,9 +330,14 @@ export const studentRecordSchema = z
 
 export type StudentRecord = z.infer<typeof studentRecordSchema>;
 
-/** The create: the record, the UID and the confirmation of a UID outside the grade's set. */
+/** The create: the record, the start date, the UID and the confirmation of a UID outside the grade's set. */
 export const studentCreateSchema = z
-  .strictObject({ ...studentFields, uid: studentUidSchema, confirmUidSet: z.boolean() })
+  .strictObject({
+    ...studentFields,
+    startsOn: schoolDateSchema,
+    uid: studentUidSchema,
+    confirmUidSet: z.boolean(),
+  })
   .refine(documentPair, DOCUMENT_PAIR);
 
 export type StudentCreate = z.infer<typeof studentCreateSchema>;
