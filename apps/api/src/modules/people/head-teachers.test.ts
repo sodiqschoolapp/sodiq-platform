@@ -322,9 +322,9 @@ describe('Head Teacher appointments', () => {
       const answers = await Promise.all([give(first.id, body), give(second.id, body)]);
 
       expect(answers.map((answer) => answer.status).sort()).toEqual([201, 409]);
-      expect(answers.filter((answer) => answer.status === 409).map((answer) => errorCode(answer))).toEqual([
-        'head_teacher_taken',
-      ]);
+      expect(
+        answers.filter((answer) => answer.status === 409).map((answer) => errorCode(answer)),
+      ).toEqual(['head_teacher_taken']);
       expect(
         await t.database.migrator
           .selectFrom('assignment_subjects')
@@ -495,9 +495,9 @@ describe('Head Teacher appointments', () => {
       ]);
 
       expect(answers.map((answer) => answer.status).sort()).toEqual([200, 409]);
-      expect(answers.filter((answer) => answer.status === 409).map((answer) => errorCode(answer))).toEqual([
-        'assignment_ended',
-      ]);
+      expect(
+        answers.filter((answer) => answer.status === 409).map((answer) => errorCode(answer)),
+      ).toEqual(['assignment_ended']);
     });
 
     it('waits for an end held open on the appointment, then refuses', async () => {
