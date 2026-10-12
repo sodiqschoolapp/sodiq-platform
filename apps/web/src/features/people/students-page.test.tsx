@@ -318,3 +318,38 @@ describe('adding a student', () => {
     expect(await within(form).findByText(en.people.students.takenElsewhere)).toBeDefined();
   });
 });
+
+describe('editing a student', () => {
+  it('says "another student of this branch" for a holder the list does not hold, and reads the list again', async () => {
+    const calls = openList('academic_vice_principal', {
+      [`PUT /api/people/students/${OTKIR.id}`]: () =>
+        Response.json(
+          {
+            error: {
+              code: 'student_value_taken',
+              message: 'x',
+              requestId: 'r',
+              details: [
+                { path: 'jshshir', code: 'already_exists', message: 'x', recordId: uid(5) },
+              ],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const form = await within(panel).findByRole('form', { name: 'Oʻtkir Rahimov' });
+    const lists = () => calls.filter((call) => call.route === 'GET /api/people/students').length;
+    const before = lists();
+    fireEvent.change(within(form).getByLabelText(en.people.students.jshshir), {
+      target: { value: '31403141234568' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(await within(form).findByText(en.people.students.takenHereUnknown)).toBeDefined();
+    await waitFor(() => {
+      expect(lists()).toBeGreaterThan(before);
+    });
+  });
+});

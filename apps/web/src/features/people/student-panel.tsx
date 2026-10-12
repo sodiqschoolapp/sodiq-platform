@@ -58,10 +58,18 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     );
     await invalidateStudents(queryClient);
   };
+  // A holder saved after the list was read: the list is read again, so the
+  // refusal can name them (spec review of the build).
+  const rereadOnTaken = async (error: Error) => {
+    if (error instanceof ApiFailure && error.code === 'student_value_taken') {
+      await invalidateStudents(queryClient);
+    }
+  };
   const edit = useMutation({
     mutationFn: (record: StudentRecord) =>
       answerOf(api.PUT('/api/people/students/{id}', { params: where(), body: record })),
     onSuccess: refresh,
+    onError: rereadOnTaken,
   });
   const correct = useMutation({
     mutationFn: async (input: StudentUidCorrection) => {
@@ -92,13 +100,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
       }
     },
     onSuccess: refresh,
-    // A holder saved after the list was read: the list is read again, so the
-    // refusal can name them (spec review of the build).
-    onError: async (error) => {
-      if (error instanceof ApiFailure && error.code === 'student_value_taken') {
-        await invalidateStudents(queryClient);
-      }
-    },
+    onError: rereadOnTaken,
   });
 
   if (detail.isError) {

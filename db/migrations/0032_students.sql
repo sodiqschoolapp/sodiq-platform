@@ -144,8 +144,11 @@ grant insert (
   previous_school, diagnostic_score, scholarship_type, scholarship_coverage, scholarship_amount,
   consent_signed_on, created_by
 ) on students to sodiq_app;
+-- No starts_on and no branch_id: the start date is fixed at the create, where
+-- the first status row starts (decisions, 2.4a); the move to another branch
+-- comes with 3.3.
 grant update (
-  uid, first_name, last_name, paternal_name, name_key, sex, birth_date, grade, starts_on,
+  uid, first_name, last_name, paternal_name, name_key, sex, birth_date, grade,
   document_type, document_number, jshshir, phone, email, address, region, previous_school,
   diagnostic_score, scholarship_type, scholarship_coverage, scholarship_amount,
   consent_signed_on

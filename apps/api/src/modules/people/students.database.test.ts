@@ -231,6 +231,28 @@ describe('student records in the database', () => {
       expect(other).not.toBe(id);
     });
 
+    it('keeps the start date and the branch: no update of either', async () => {
+      const id = await createStudent({ branch: north, uid: '2607045' });
+      await expect(
+        inBranch(north, (transaction) =>
+          transaction
+            .updateTable('students')
+            .set({ starts_on: '2026-09-15' })
+            .where('id', '=', id)
+            .execute(),
+        ),
+      ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+      await expect(
+        inBranch(north, (transaction) =>
+          transaction
+            .updateTable('students')
+            .set({ branch_id: south })
+            .where('id', '=', id)
+            .execute(),
+        ),
+      ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+    });
+
     it('keeps a reserved UID: no update and no delete of student_uids', async () => {
       await createStudent({ branch: north, uid: '2607040' });
       await expect(
