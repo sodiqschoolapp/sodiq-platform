@@ -5,7 +5,8 @@ import {
   staffDetailSchema,
   type StaffAccount,
 } from '@sodiq/shared';
-import { sql } from 'kysely';
+import { sql, type Transaction as KyselyTransaction } from 'kysely';
+import type { DB } from '../../database/types.generated.js';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -145,6 +146,71 @@ describe('Head Teacher appointments', () => {
   }
 
   const subject = (name: string) => insertSubject(t.database.migrator, name);
+
+  /**
+   * A transaction of the migrator held open after `work`, as the other side
+   * of a race (`.claude/rules/api.md`): it commits or rolls back when
+   * `finish` is called.
+   */
+  async function holdOpen(work: (transaction: KyselyTransaction<DB>) => Promise<void>) {
+    let decide: (commit: boolean) => void = () => undefined;
+    const decided = new Promise<boolean>((resolve) => {
+      decide = resolve;
+    });
+    let ready: () => void = () => undefined;
+    const started = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const done = t.database.migrator
+      .transaction()
+      .execute(async (transaction) => {
+        await work(transaction);
+        ready();
+        if (!(await decided)) {
+          throw new Error('Rolled back by the test.');
+        }
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof Error && error.message === 'Rolled back by the test.')) {
+          throw error;
+        }
+      });
+    await started;
+    return {
+      finish: async (commit: boolean) => {
+        decide(commit);
+        await done;
+      },
+    };
+  }
+
+  /** What a give of a Head Teacher writes, in the held transaction. */
+  async function insertHeadTeacher(
+    transaction: KyselyTransaction<DB>,
+    accountId: string,
+    from: string,
+    subjectIds: readonly string[],
+  ): Promise<string> {
+    const given = await transaction
+      .insertInto('assignments')
+      .values({
+        account_id: accountId,
+        role: 'head_teacher',
+        branch_id: t.north,
+        valid_from: new Date(from),
+        created_at: new Date(START),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    for (const subjectId of subjectIds) {
+      await sql`insert into assignment_subjects (assignment_id, subject_id) values (${given.id}, ${subjectId})`.execute(
+        transaction,
+      );
+    }
+    return given.id;
+  }
+
+  const pause = () => new Promise((resolve) => setTimeout(resolve, 300));
 
   beforeAll(async () => {
     t = await dayTemplatesKit();
@@ -312,6 +378,41 @@ describe('Head Teacher appointments', () => {
       }
       expect(await snapshot()).toEqual(before);
     });
+
+    it.each([
+      ['commits', true],
+      ['rolls back', false],
+    ])(
+      'waits for another give of a subject held open, and is refused naming it when that %s',
+      async (_name, commit) => {
+        const pottery = await subject('Pottery');
+        const sculpture = await subject('Sculpture');
+        const other = await withAccount();
+        const made = await withAccount();
+        const held = await holdOpen(async (transaction) => {
+          await insertHeadTeacher(transaction, other.accountId, START, [sculpture]);
+        });
+
+        const waiting = give(made.id, {
+          role: 'head_teacher',
+          branchId: t.north,
+          from: TOMORROW,
+          subjectIds: [pottery, sculpture],
+        });
+        await pause();
+        await held.finish(commit);
+        const answer = await waiting;
+
+        if (commit) {
+          refusedWith(answer, 409, 'head_teacher_taken');
+          expect(answer.body).toMatchObject({
+            error: { details: [{ path: 'subjectIds.1', code: 'taken' }] },
+          });
+        } else {
+          expect(answer.status, JSON.stringify(answer.body)).toBe(201);
+        }
+      },
+    );
 
     it('meets a second give of the same subject at the same moment with one refusal', async () => {
       const music = await subject('Music');
@@ -501,6 +602,111 @@ describe('Head Teacher appointments', () => {
       ).toEqual(['appointment_ends_by_then']);
     });
 
+    it.each([
+      ['commits', true],
+      ['rolls back', false],
+    ])('waits for another change of the appointment held open, which %s', async (_name, commit) => {
+      const harmony = await subject('Harmony');
+      const made = await appoint([harmony]);
+      const tomorrowStart = '2026-10-11T00:00:00+05:00';
+      const held = await holdOpen(async (transaction) => {
+        // What the change route does: lock, end from tomorrow, give the next.
+        await sql`select id from assignments where id = ${made.assignmentId} for update`.execute(
+          transaction,
+        );
+        await transaction
+          .updateTable('assignments')
+          .set({ valid_until: new Date(tomorrowStart) })
+          .where('id', '=', made.assignmentId)
+          .execute();
+        await insertHeadTeacher(transaction, made.accountId, tomorrowStart, [harmony]);
+      });
+
+      const waiting = change(made.id, made.assignmentId, {
+        subjectIds: [harmony, await subject('Counterpoint')],
+        from: TOMORROW,
+      });
+      await pause();
+      await held.finish(commit);
+      const answer = await waiting;
+
+      if (commit) {
+        refusedWith(answer, 409, 'appointment_ends_by_then');
+      } else {
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      }
+    });
+
+    it('keeps the start of a planned appointment whose subjects change from an earlier date', async () => {
+      const glass = await subject('Glasswork');
+      const made = await appoint([glass], { from: '2026-11-01' });
+
+      const response = await change(made.id, made.assignmentId, {
+        subjectIds: [glass, await subject('Mosaic')],
+        from: TOMORROW,
+      });
+
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const held = appointmentOf(staffAccountSchema.parse(response.body), 'head_teacher');
+      expect(held).toMatchObject({ from: '2026-11-01', state: 'planned' });
+      const rows = await t.database.migrator
+        .selectFrom('assignments')
+        .select(['valid_from', 'valid_until'])
+        .where('id', '=', made.assignmentId)
+        .executeTakeFirstOrThrow();
+      // The old one was never in force: its end is its start.
+      expect(rows.valid_until).toEqual(rows.valid_from);
+    });
+
+    it('writes one entry that ties the old appointment to the new one', async () => {
+      const lace = await subject('Lacework');
+      const made = await appoint([lace]);
+
+      const response = await change(made.id, made.assignmentId, {
+        subjectIds: [lace],
+        from: TOMORROW,
+      });
+
+      const next = appointmentOf(staffAccountSchema.parse(response.body), 'head_teacher');
+      expect(await t.entries('assignment.subjects_changed', next.id)).toMatchObject([
+        {
+          assignment_id: t.adminAssignment,
+          person_id: made.id,
+          old_value: { assignmentId: made.assignmentId, subjectIds: [lace] },
+          new_value: { assignmentId: next.id, subjectIds: [lace] },
+        },
+      ]);
+    });
+
+    it('ends the next appointment at a planned leave, and reopens it when the leave is taken back', async () => {
+      const knots = await subject('Knots');
+      const made = await appoint([knots]);
+      const left = await t.post(`/api/people/staff/${made.id}/status`, t.north, {
+        status: 'left',
+        from: '2026-12-01',
+      });
+      expect(left.status, JSON.stringify(left.body)).toBe(200);
+
+      const response = await change(made.id, made.assignmentId, {
+        subjectIds: [knots, await subject('Sails')],
+        from: TOMORROW,
+      });
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const next = appointmentOf(staffAccountSchema.parse(response.body), 'head_teacher');
+      expect(next.until).toBe('2026-12-01');
+
+      const back = await t.post(`/api/people/staff/${made.id}/status`, t.north, {
+        status: 'active',
+        from: TODAY,
+      });
+      expect(back.status, JSON.stringify(back.body)).toBe(200);
+      const after = await t.get(`/api/people/staff/${made.id}/account`, t.north);
+      const roles = staffAccountSchema.parse(after.body).account?.roles ?? [];
+      // The old one stays ended from tomorrow by the change; the next one is open again.
+      expect(roles.find((role) => role.id === made.assignmentId)?.until).toBe(TOMORROW);
+      expect(roles.find((role) => role.id === next.id)?.until).toBeNull();
+    });
+
     it('waits for an end held open on the appointment, then refuses', async () => {
       const acoustics = await subject('Acoustics');
       const made = await appoint([acoustics]);
@@ -632,6 +838,46 @@ describe('Head Teacher appointments', () => {
           expect([calculus, astronomy]).toContain(one.id);
         }
       }
+    });
+
+    it('shows a Head Teacher alone neither another subject nor its Senior Head Teacher', async () => {
+      const chess = await subject('Chess');
+      const draughts = await subject('Draughts');
+      const seniorOfOther = await appoint([draughts], { role: 'senior_head_teacher' });
+      const browser = await t.kit.fullSession('Ulugbek', 'Usmonov');
+      const own = await t.kit.giveRole(browser.account.id, {
+        role: 'head_teacher',
+        branchId: t.north,
+        subjectIds: [chess],
+      });
+
+      const ids = appointmentListSchema
+        .parse((await list(t.north, browser.cookie)).body)
+        .appointments.map((appointment) => appointment.id);
+
+      expect(ids).toEqual([own.id]);
+      expect(ids).not.toContain(seniorOfOther.assignmentId);
+    });
+
+    it('shows a Senior Head Teacher alone the holders of their subjects in a branch of no own role', async () => {
+      const opera = await subject('Opera');
+      const southern = await appoint([opera], { branch: t.south });
+      const other = await appoint([await subject('Ballet')], { branch: t.south });
+      const browser = await t.kit.fullSession('Vali', 'Usmonov');
+      const senior = await t.kit.giveRole(browser.account.id, {
+        role: 'senior_head_teacher',
+        subjectIds: [opera],
+      });
+
+      const response = await list(t.south, browser.cookie);
+
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const ids = appointmentListSchema
+        .parse(response.body)
+        .appointments.map((appointment) => appointment.id);
+      expect(ids).toContain(southern.assignmentId);
+      expect(ids).toContain(senior.id);
+      expect(ids).not.toContain(other.assignmentId);
     });
 
     it('refuses a Teacher, and names a holder of another branch by login only (decision 14)', async () => {

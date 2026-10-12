@@ -36,6 +36,7 @@ import {
   LastSuperAdminError,
   lockSuperAdmins,
 } from '../access/super-admins.js';
+import { Audit } from '../audit/audit.service.js';
 import { Accounts, LoginTakenError } from '../auth/accounts.service.js';
 import { appointedSubjects } from '../access/appointment-subjects.js';
 import { actorsOf } from './actors.js';
@@ -87,6 +88,7 @@ export class StaffAccounts {
     private readonly accounts: Accounts,
     private readonly assignments: Assignments,
     private readonly staff: Staff,
+    private readonly audit: Audit,
   ) {}
 
   /** Every branch for a Super Admin, else the branch of the request. */
@@ -234,6 +236,8 @@ export class StaffAccounts {
     accountId: string,
     give: RoleGive,
     requestId: string,
+    /** The moment it begins when the caller knows it (a change of subjects); from the date otherwise. */
+    startsAt?: Date,
   ): Promise<string> {
     await this.refuseLeft(transaction, person.id);
     if (SCHOOL_WIDE_ROLES.includes(give.role) !== (give.branchId === null)) {
@@ -265,9 +269,10 @@ export class StaffAccounts {
     }
     const leave = await this.leaveAfter(transaction, person.id, give.from);
     const validFrom =
-      isAppointment(give.role) && give.from === today
+      startsAt ??
+      (isAppointment(give.role) && give.from === today
         ? now
-        : await startOfDate(transaction, give.from, zone);
+        : await startOfDate(transaction, give.from, zone));
     const given = await this.namingTaken(give.subjectIds ?? [], () =>
       this.assignments.give(transaction, {
         accountId,
@@ -405,6 +410,9 @@ export class StaffAccounts {
             subjectIds: change.subjectIds,
           },
           requestId,
+          // A planned appointment keeps its start: the change never begins
+          // the role earlier than it was appointed (code review of #63).
+          assignment.valid_from > at ? assignment.valid_from : at,
         );
         // A later end of the appointment (typed, or given by a planned
         // `left`) carries over to the one that follows it.
@@ -423,9 +431,38 @@ export class StaffAccounts {
             requestId,
           });
         }
+        // One entry that ties the two together (plan of #63); the end and the
+        // give keep their own entries, as every other end and give.
+        await this.audit.record(transaction, {
+          branchId: assignment.branch_id,
+          actorId: access.accountId,
+          assignmentId: superAdmin,
+          personId: id,
+          action: 'assignment.subjects_changed',
+          record: { type: 'assignment', id: next },
+          oldValue: {
+            assignmentId,
+            subjectIds: await this.subjectIdsOf(transaction, assignmentId),
+          },
+          newValue: {
+            assignmentId: next,
+            subjectIds: [...change.subjectIds].map((one) => one.toLowerCase()).sort(),
+          },
+          requestId,
+        });
         return this.sectionOf(transaction, access, person, branchId);
       }),
     );
+  }
+
+  private async subjectIdsOf(transaction: Transaction, assignmentId: string): Promise<string[]> {
+    const rows = await transaction
+      .selectFrom('assignment_subjects')
+      .select('subject_id')
+      .where('assignment_id', '=', assignmentId)
+      .orderBy('subject_id')
+      .execute();
+    return rows.map((row) => row.subject_id);
   }
 
   /**

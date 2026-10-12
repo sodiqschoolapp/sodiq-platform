@@ -1043,6 +1043,7 @@ export const en = {
       endConfirmText:
         'Once the date has come, the end cannot be taken back. The role can be given again as a new one.',
       subjects: 'Subjects',
+      archivedSubject: '{{name}} (archived)',
       chooseAll: 'Choose all',
       changeSubjects: 'Change subjects',
       changeSubjectsOf: 'Change the subjects of {{role}}',

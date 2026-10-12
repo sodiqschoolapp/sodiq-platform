@@ -1054,6 +1054,7 @@ export const uz: Texts<'one' | 'other'> = {
       endConfirmText:
         'Sana kelgach, tugatishni bekor qilib boʻlmaydi. Rolni yangidan berish mumkin.',
       subjects: 'Fanlar',
+      archivedSubject: '{{name}} (arxivda)',
       chooseAll: 'Hammasini tanlash',
       changeSubjects: 'Fanlarni oʻzgartirish',
       changeSubjectsOf: '«{{role}}» rolining fanlarini oʻzgartirish',

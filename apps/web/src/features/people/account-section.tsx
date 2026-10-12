@@ -266,7 +266,15 @@ function AccountRoles({
                   {t(`roles.${role.role}`)}
                   {role.subjects.length > 0 && (
                     <span className="block text-xs" data-subjects>
-                      {role.subjects.map((subject) => nameOf(subject.names, language)).join(', ')}
+                      {role.subjects
+                        .map((subject) =>
+                          subject.archived
+                            ? t('people.account.archivedSubject', {
+                                name: nameOf(subject.names, language),
+                              })
+                            : nameOf(subject.names, language),
+                        )
+                        .join(', ')}
                     </span>
                   )}
                   {role.givenBy !== null && (
@@ -531,7 +539,14 @@ function ChangeSubjectsForm({
   });
   const form = useRecordForm<'subjectIds' | 'from', SubjectsChange>({
     schema: asFormSchema<SubjectsChange>(subjectsChangeSchema, (path) => [...path]),
-    initial: { subjectIds: listValue(role.subjects.map((subject) => subject.id)), from: today },
+    // An archived subject is kept by the appointment but not offered again
+    // (decision 12 of #63): the change starts from the active ones.
+    initial: {
+      subjectIds: listValue(
+        role.subjects.filter((subject) => !subject.archived).map((subject) => subject.id),
+      ),
+      from: today,
+    },
     read: (typed) => ({ subjectIds: listValues(typed.subjectIds), from: typed.from }),
     save: async (changed) => {
       await change.mutateAsync(changed);

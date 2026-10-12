@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: task 2.3b-1 Head Teacher appointments and subject scope
+
+- Built: Head Teacher (branch) and Senior Head Teacher (no branch) appointments with subjects, given and changed from a date on the account section; migration 0028 (`assignment_subjects` with the assignment's dates mirrored, one holder per subject per branch and one Senior per subject held by exclusion constraints, `assignments.written_xact`); subject scope (`Access.permitting`, `inSubjectScope`, `subjectsInScope`); `GET access/head-teachers`, area `head_teachers`.
+- Tests: `assignment-subjects.database.test.ts`, `subject-scope.test.ts`, `subject-scope.guard.test.ts`, `head-teachers.test.ts` (gives, changes, races held both ways, take-backs, list scope), the web account section; the browser test is the third step of the divisions test in `setup.spec.ts` (screenshots in `docs/screens/2.3b-1/`).
+- Left out: the Head Teachers section of People and the Academic Vice Principal alert (2.3b-2); requests, approvals and their passing to the next holder (journal and plans tasks); locks, resets and the own account (2.3c).
+
+The next sessions must know:
+
+- A route with subject scope takes `inSubjectScope(access, subjectId)` and names that assignment in its audit entry; a list takes `subjectsInScope(access)`. Nothing fits by default; the branch-wide roles are pinned in `subject-scope.test.ts`.
+- The subjects of an appointment are fixed: a change ends it and gives the next one at the same moment (`assignment.subjects_changed` ties them). Insert subject rows only with `insertAppointmentSubjects` in the transaction that gave the assignment.
+- `signInKit.giveRole` makes a subject for a Head Teacher or Senior Head Teacher given without one (`assignments_subjects_needed` at commit).
+- The next task is 2.3b-2.
+
 ## 12 October 2026: task 2.3a Accounts and roles
 
 - Built: the account section of a staff record (create with the login suggestion of answer 14, the first-password slip, give and end roles from a date), the last active Super Admin rule on role ends and status changes with its banner, the re-hire password and slip, the person's name in the menu, "More" and `passwordResetBy`; migration 0027 (login forms, `assignments_end_guard` on `app.now`, three name and count functions).

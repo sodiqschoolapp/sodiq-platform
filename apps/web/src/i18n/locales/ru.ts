@@ -1114,6 +1114,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       endConfirmText:
         'Когда дата наступит, отменить завершение нельзя. Роль можно назначить заново.',
       subjects: 'Предметы',
+      archivedSubject: '{{name}} (в архиве)',
       chooseAll: 'Выбрать все',
       changeSubjects: 'Изменить предметы',
       changeSubjectsOf: 'Изменить предметы роли «{{role}}»',

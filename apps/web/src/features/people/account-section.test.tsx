@@ -120,7 +120,10 @@ const HEAD_TEACHER: AccountRole = {
   ...TEACHER,
   id: uid(52),
   role: 'head_teacher',
-  subjects: [{ id: MATHEMATICS.id, names: MATHEMATICS.names, archived: false }],
+  subjects: [
+    { id: MATHEMATICS.id, names: MATHEMATICS.names, archived: false },
+    { id: LATIN.id, names: LATIN.names, archived: true },
+  ],
 };
 
 const withAccount = (fields: Partial<StaffAccount> = {}): StaffAccount => ({
@@ -355,7 +358,9 @@ describe('the account section', () => {
     });
     const found = await section();
     const row = found.querySelector('tr[data-role="head_teacher"]');
-    expect(row?.querySelector('[data-subjects]')?.textContent).toBe('Mathematics');
+    expect(row?.querySelector('[data-subjects]')?.textContent).toBe(
+      `Mathematics, ${en.people.account.archivedSubject.replace('{{name}}', 'Latin')}`,
+    );
     expect(
       within(found).queryByRole('button', {
         name: en.people.account.changeSubjectsOf.replace('{{role}}', en.roles.teacher),

@@ -5,9 +5,11 @@ import type { Access } from './permission.guard.js';
 /**
  * The roles whose limit is the branch, not a list of subjects (`02`, Rules):
  * they fit every subject of the branch, and the permission table still
- * decides each area (decision 7 of pull request #63).
+ * decides each area (decision 7 of pull request #63). A route with subject
+ * scope that gives one of them an action gives it every subject of the
+ * branch; `subject-scope.test.ts` pins the list.
  */
-const BRANCH_WIDE_ROLES: readonly Role[] = [
+export const BRANCH_WIDE_ROLES: readonly Role[] = [
   'super_admin',
   'principal',
   'academic_vice_principal',

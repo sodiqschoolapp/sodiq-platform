@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { CurrentAssignment } from './current-assignments.js';
 import { permitting, type Requirement } from './permission-check.js';
 import type { Access } from './permission.guard.js';
-import { inSubjectScope, subjectsInScope } from './subject-scope.js';
+import { BRANCH_WIDE_ROLES, inSubjectScope, subjectsInScope } from './subject-scope.js';
 
 const NORTH = '0199b1c0-0000-7000-8000-00000000000a';
 const SOUTH = '0199b1c0-0000-7000-8000-00000000000b';
@@ -110,6 +110,17 @@ describe('subject scope', () => {
     },
   );
 
+  it.each(['spiritual_vice_principal', 'head_tutor'] as const)(
+    'fits every subject for the %s on a route that gives it the action',
+    (role) => {
+      const assignment = held(role, NORTH);
+      const access: Access = { ...accessIn(NORTH, []), permitting: [assignment] };
+
+      expect(inSubjectScope(access, MATHEMATICS)).toBe(assignment);
+      expect(subjectsInScope(access)).toBe('all');
+    },
+  );
+
   // Decision 7 of #63: nothing fits by default.
   it.each(['teacher', 'tutor', 'librarian'] as const)('fits no subject for the %s', (role) => {
     const assignment = held(role, NORTH);
@@ -117,6 +128,17 @@ describe('subject scope', () => {
 
     expect(inSubjectScope(access, MATHEMATICS)).toBeUndefined();
     expect(subjectsInScope(access)).toEqual(new Set());
+  });
+
+  // Permission review of #63: a role added here sees every subject of a scoped route.
+  it('names exactly the roles whose limit is the branch', () => {
+    expect(BRANCH_WIDE_ROLES).toEqual([
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'spiritual_vice_principal',
+      'head_tutor',
+    ]);
   });
 
   it('compares subject ids without regard to case', () => {

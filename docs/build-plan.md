@@ -200,7 +200,7 @@ How to read the task lines:
   - Done when: the refusals in the spec are tested, including the last Super Admin rule, and the browser test creates an account, gives a role and signs in with the slip.
   - Split from 2.3 on pull request #62 (decision 1, Look first).
 
-- [ ] **2.3b-1 Head Teacher appointments and subject scope**
+- [x] **2.3b-1 Head Teacher appointments and subject scope** (pull request #63)
   - Read: `02` (Head Teachers and Senior Head Teachers, Rules), `edge/people-roles-accounts` (Who can act), the plan and review of pull request #63.
   - Build: Head Teacher appointments to subjects in a branch (at most one per subject per branch, held by a constraint); Senior Head Teacher appointments to subjects across branches (at most one per subject, decision 4 of #63); both with dates, given and changed by the Super Admin on the account section; subject scope in the permission guard (`decide` with every permitting assignment, the audit entry naming the one whose scope fits); the list of the Head Teacher appointments of a branch (route `GET access/head-teachers`, area `head_teachers`), the first route with subject scope.
   - Done when: a second Head Teacher of a subject in a branch is refused by the database and the scope is tested for a teacher of two subjects.
