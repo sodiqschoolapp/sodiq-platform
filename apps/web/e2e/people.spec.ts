@@ -332,8 +332,8 @@ test('an Academic Vice Principal adds a student and is refused a second with the
 
   await page.getByRole('button', { name: 'Oʻtkir Rahimov', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Oʻtkir Rahimov' });
-  await expect(panel.getByRole('tab', { name: texts.tabs.overview })).toBeVisible();
-  await panel.getByRole('tab', { name: texts.tabs.contract }).click();
+  await expect(panel.getByRole('radio', { name: texts.tabs.overview })).toBeVisible();
+  await panel.getByText(texts.tabs.contract, { exact: true }).click();
   await expect(panel.getByText(/E2E-STUDENT-1/)).toBeVisible();
   await studentScreenshot(page, 'profile');
   await panel.getByRole('button', { name: en.list.closePanel }).click();

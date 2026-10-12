@@ -1106,6 +1106,8 @@ export const uz: Texts<'one' | 'other'> = {
       hidden: 'Yashirin',
       showIdentity: 'Hujjatlar va tugʻilgan sanani koʻrsatish',
       takenHere: 'Allaqachon {{student}} ga berilgan.',
+      takenHereUnknown: 'Allaqachon shu filialning boshqa oʻquvchisiga berilgan.',
+      gradeNoClass: '{{grade}}, sinfsiz',
       takenElsewhere: 'Allaqachon boshqa filial oʻquvchisiga berilgan.',
       duplicateTitle: 'Bu oʻquvchi allaqachon boʻlishi mumkin',
       duplicateHere:

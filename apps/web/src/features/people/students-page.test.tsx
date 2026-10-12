@@ -101,19 +101,17 @@ describe('the student list', () => {
       [
         '2607001',
         'Oʻtkir Rahimov',
-        en.people.students.noClass,
+        en.people.students.gradeNoClass.replace('{{grade}}', grade(7)),
         '—',
         '—',
-        grade(7),
         en.people.students.statuses.active,
       ],
       [
         '2507014',
         'Zarina Saidova',
-        en.people.students.noClass,
+        en.people.students.gradeNoClass.replace('{{grade}}', grade(8)),
         '—',
         '—',
-        grade(8),
         en.people.students.notStarted,
       ],
     ]);
@@ -148,8 +146,13 @@ describe('the student list', () => {
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(2);
     });
-    expect(rowsDrawn()[0]?.[2]).toBe(ru.people.students.noClass);
-    expect(rowsDrawn()[0]?.[6]).toBe(ru.people.students.statuses.active);
+    expect(rowsDrawn()[0]?.[2]).toBe(
+      ru.people.students.gradeNoClass.replace(
+        '{{grade}}',
+        ru.setup.subjects.grade.replace('{{grade}}', '7'),
+      ),
+    );
+    expect(rowsDrawn()[0]?.[5]).toBe(ru.people.students.statuses.active);
   });
 
   it('offers the add button to the Academic Vice Principal and not to the Principal', async () => {
@@ -191,7 +194,7 @@ describe('the profile of a student', () => {
     expect(await within(panel).findByText('31403141234567')).toBeDefined();
     expect(calls.filter((call) => call.route.endsWith('/identity'))).toHaveLength(1);
 
-    fireEvent.click(within(panel).getByRole('tab', { name: en.people.students.tabs.contract }));
+    fireEvent.click(within(panel).getByRole('radio', { name: en.people.students.tabs.contract }));
     expect(await within(panel).findByText(/SQ-2026\/017/)).toBeDefined();
     expect(within(panel).getByText(en.people.students.noConsent)).toBeDefined();
   });
@@ -206,11 +209,8 @@ describe('the profile of a student', () => {
     fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     expect(await within(panel).findByText('+998901234567')).toBeDefined();
-    expect(
-      within(panel)
-        .getAllByRole('tab')
-        .map((tab) => tab.textContent),
-    ).toEqual([en.people.students.tabs.overview]);
+    // One tab draws no control: the Overview alone.
+    expect(within(panel).queryByRole('radiogroup')).toBeNull();
     expect(within(panel).queryByText(en.people.students.birthDate)).toBeNull();
     expect(
       within(panel).queryByRole('button', { name: en.people.students.showIdentity }),

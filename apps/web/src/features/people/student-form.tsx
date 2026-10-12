@@ -83,6 +83,27 @@ export function takenOf(failure: unknown): { field: StudentField; holderId: stri
     : { field, holderId: detail.recordId ?? null };
 }
 
+/**
+ * The text under a field refused as taken: the holder of the branch by name
+ * and UID, while the list holds them; "another student of this branch" until
+ * the list is read again; "a student of another branch" otherwise.
+ */
+export function takenText(
+  holderId: string | null,
+  holderText: (id: string) => string | null,
+):
+  | ['people.students.takenElsewhere']
+  | ['people.students.takenHereUnknown']
+  | ['people.students.takenHere', { student: string }] {
+  if (holderId === null) {
+    return ['people.students.takenElsewhere'];
+  }
+  const student = holderText(holderId);
+  return student === null
+    ? ['people.students.takenHereUnknown']
+    : ['people.students.takenHere', { student }];
+}
+
 const CREATE_SCHEMA = asFormSchema<StudentCreate>(studentCreateSchema, fieldOf);
 const EDIT_SCHEMA = asFormSchema<StudentRecord>(studentRecordSchema, fieldOf);
 
@@ -188,17 +209,12 @@ export function StudentForm({ student, label, holderText, onCreate, onEdit }: St
   });
 
   const taken = takenOf(form.failure);
-  const takenText =
-    taken === null
-      ? null
-      : taken.holderId === null
-        ? t('people.students.takenElsewhere')
-        : t('people.students.takenHere', { student: holderText(taken.holderId) ?? '' });
+  const refusal = taken === null ? null : t(...takenText(taken.holderId, holderText));
   const bind = (field: StudentField) => {
     const bound = form.bind(field);
     return {
       ...bound,
-      error: bound.error ?? (taken?.field === field ? (takenText ?? undefined) : undefined),
+      error: bound.error ?? (taken?.field === field ? (refusal ?? undefined) : undefined),
     };
   };
   const option = (value: string, text: string) => ({ value, label: text });

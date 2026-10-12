@@ -262,9 +262,11 @@ describe('student records', () => {
       expect(read.financial?.scholarship).toEqual({ type: 'none', coverage: null, amount: null });
     });
 
-    it('shows a start date after today as no status yet', async () => {
+    it('shows a student whose start date is after today as active (edge: enrolled in August)', async () => {
       const student = await create({ startsOn: '2026-11-02' });
-      expect(student.status).toBeNull();
+      expect(student.status).toBe('active');
+      const list = studentListSchema.parse((await t.get('/api/people/students', t.north)).body);
+      expect(list.students.find((row) => row.id === student.id)?.status).toBe('active');
     });
   });
 
@@ -461,6 +463,29 @@ describe('student records', () => {
         expect(detailsOf(response)[0]?.path).toBe(path);
       },
     );
+
+    it('answers 409 to a create that waited for a UID correction to the same UID', async () => {
+      const other = studentDetailSchema.parse(
+        (await t.post('/api/people/students', t.south, body())).body,
+      );
+      const input = body();
+      const uid = String(input.uid);
+      // What the correction does, in its order: the current UID, then its reservation.
+      const held = await holdOpen(t.south, async (transaction) => {
+        await transaction.updateTable('students').set({ uid }).where('id', '=', other.id).execute();
+        await transaction
+          .insertInto('student_uids')
+          .values({ uid, student_id: other.id, branch_id: t.south, held_from: MOMENT })
+          .execute();
+      });
+      const save = t.post('/api/people/students', t.north, input).then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      const response = await save;
+      refusedWith(response, 409, 'student_value_taken');
+      expect(detailsOf(response)[0]).toMatchObject({ path: 'uid', code: 'held_elsewhere' });
+    });
 
     it('answers 409 to a UID correction that waited for a create of the same UID', async () => {
       const student = await create();

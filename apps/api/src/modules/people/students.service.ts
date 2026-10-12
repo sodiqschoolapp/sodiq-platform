@@ -180,6 +180,23 @@ const readerOf = (access: Access, area: string): string | undefined =>
     PERMISSIONS,
   )?.id;
 
+/**
+ * The status of a student on a date: the row in force, or before the start
+ * date the first row, which is `active` (edge/students-classes-groups, "A
+ * student is enrolled in August before classes are formed": an active student
+ * before their start date; spec review of the build). A withdrawn row (empty
+ * range) never counts.
+ */
+const statusOn = (date: SchoolDate) =>
+  sql<string | null>`(
+    select ss.status from student_statuses ss
+    where ss.student_id = students.id
+      and coalesce(ss.valid_until, 'infinity'::date) > ${date}::date
+      and ss.valid_from < coalesce(ss.valid_until, 'infinity'::date)
+    order by ss.valid_from
+    limit 1
+  )`.as('status');
+
 /** A current Principal assignment of the account in the branch of the request. */
 const principalOf = (access: Access): string | undefined =>
   access.assignments.find(
@@ -220,17 +237,6 @@ export class Students {
       const today = await this.todayIn(transaction, branchId);
       const rows = await transaction
         .selectFrom('students')
-        .leftJoin('student_statuses', (join) =>
-          join
-            .onRef('student_statuses.student_id', '=', 'students.id')
-            .on('student_statuses.valid_from', '<=', today)
-            .on((builder) =>
-              builder.or([
-                builder('student_statuses.valid_until', 'is', null),
-                builder('student_statuses.valid_until', '>', today),
-              ]),
-            ),
-        )
         .select([
           'students.id',
           'students.uid',
@@ -240,7 +246,7 @@ export class Students {
           'students.sex',
           'students.grade',
           'students.starts_on',
-          'student_statuses.status',
+          statusOn(today),
         ])
         .where('students.branch_id', '=', branchId)
         .orderBy('students.last_name')
@@ -275,23 +281,12 @@ export class Students {
       const today = await this.todayIn(transaction, branchId);
       let query = transaction
         .selectFrom('students')
-        .leftJoin('student_statuses', (join) =>
-          join
-            .onRef('student_statuses.student_id', '=', 'students.id')
-            .on('student_statuses.valid_from', '<=', today)
-            .on((builder) =>
-              builder.or([
-                builder('student_statuses.valid_until', 'is', null),
-                builder('student_statuses.valid_until', '>', today),
-              ]),
-            ),
-        )
         .select([
           'students.id',
           'students.uid',
           'students.first_name',
           'students.last_name',
-          'student_statuses.status',
+          statusOn(today),
         ])
         .where('students.name_key', '=', nameKey)
         .where('students.birth_date', '=', input.birthDate);
@@ -478,6 +473,18 @@ export class Students {
           return this.readDetail(transaction, access, id);
         }
         await this.checkSet(transaction, branchId, input.uid, row.grade, row.starts_on, input);
+        // The current UID first, then its reservation: the order of the create,
+        // so that a correction and a create of one UID meet first on
+        // `students_uid_idx` and the second waits and is refused, never a
+        // deadlock (spec review of the build). The key of the current UID to
+        // its reservation is checked at the commit.
+        await this.inserting({ uid: input.uid }, () =>
+          transaction
+            .updateTable('students')
+            .set({ uid: input.uid })
+            .where('id', '=', id)
+            .execute(),
+        );
         const held = await transaction
           .selectFrom('student_uids')
           .select('uid')
@@ -493,13 +500,6 @@ export class Students {
               .execute(),
           );
         }
-        await this.inserting({ uid: input.uid }, () =>
-          transaction
-            .updateTable('students')
-            .set({ uid: input.uid })
-            .where('id', '=', id)
-            .execute(),
-        );
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
@@ -621,12 +621,13 @@ export class Students {
         throw error;
       }
       const { path, value } = error.taken;
-      const holder =
-        value === ''
-          ? undefined
-          : await this.transactions.run(access.branchIds, (transaction) =>
-              this.holderOf(transaction, path, value),
-            );
+      if (value === '') {
+        // An index refused a value the write did not name: no claim about its holder.
+        throw new ApiException('request_refused', 409);
+      }
+      const holder = await this.transactions.run(access.branchIds, (transaction) =>
+        this.holderOf(transaction, path, value),
+      );
       const detail: ErrorDetail =
         holder === undefined
           ? { path, code: 'held_elsewhere', message: 'A student of another branch holds it.' }
@@ -732,9 +733,9 @@ export class Students {
       .whereRef('valid_from', '<', sql`coalesce(valid_until, 'infinity'::date)`)
       .orderBy('valid_from')
       .execute();
+    // As `statusOn`: the row in force today, else the first one after today.
     const now = statuses.find(
-      (status) =>
-        status.valid_from <= today && (status.valid_until === null || status.valid_until > today),
+      (status) => status.valid_until === null || status.valid_until > today,
     );
     const contact = readerOf(access, 'student_contact') !== undefined;
     const identity = readerOf(access, 'student_identity') !== undefined;

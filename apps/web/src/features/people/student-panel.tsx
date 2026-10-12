@@ -20,11 +20,12 @@ import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
+import { Segmented } from '@/components/ui/segmented';
 import { useView } from '@/features/access/use-view';
 import { schoolDateText } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import { invalidateStudents, studentDetailQuery } from './people-api';
-import { StudentForm, takenOf } from './student-form';
+import { StudentForm, takenOf, takenText } from './student-form';
 
 type Tab = 'overview' | 'contract';
 
@@ -91,6 +92,13 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
       }
     },
     onSuccess: refresh,
+    // A holder saved after the list was read: the list is read again, so the
+    // refusal can name them (spec review of the build).
+    onError: async (error) => {
+      if (error instanceof ApiFailure && error.code === 'student_value_taken') {
+        await invalidateStudents(queryClient);
+      }
+    },
   });
 
   if (detail.isError) {
@@ -107,6 +115,8 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     return <LoadingOutline />;
   }
   const student = detail.data;
+  // The profile tabs that have data so far (`04`, "Profile tabs"), as the
+  // segmented control of the design system; one tab draws no control.
   const tabs: { key: Tab; title: string }[] = [
     { key: 'overview', title: t('people.students.tabs.overview') },
     ...(student.financial === null
@@ -117,30 +127,14 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
 
   return (
     <div className="grid gap-6">
-      <div
-        role="tablist"
-        aria-label={t('people.students.tabs.label')}
-        className="flex gap-6 border-b"
-      >
-        {tabs.map((one) => (
-          <button
-            key={one.key}
-            type="button"
-            role="tab"
-            aria-selected={shownTab === one.key}
-            className={
-              shownTab === one.key
-                ? 'border-b-2 border-foreground px-1 pb-2 font-semibold'
-                : 'border-b-2 border-transparent px-1 pb-2 text-muted-foreground hover:text-foreground'
-            }
-            onClick={() => {
-              setTab(one.key);
-            }}
-          >
-            {one.title}
-          </button>
-        ))}
-      </div>
+      {tabs.length > 1 && (
+        <Segmented
+          label={t('people.students.tabs.label')}
+          options={tabs.map((one) => ({ value: one.key, label: one.title }))}
+          value={shownTab}
+          onChange={setTab}
+        />
+      )}
       {shownTab === 'overview' ? <Overview student={student} /> : <ContractTab student={student} />}
       {student.canEdit && (
         <>
@@ -251,7 +245,6 @@ function Overview({ student }: { student: StudentDetail }) {
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="secondary"
-            size="sm"
             disabled={show.isPending}
             onClick={() => {
               show.mutate();
@@ -358,12 +351,7 @@ function UidCorrection({
           inputMode="numeric"
           {...uid}
           error={
-            uid.error ??
-            (taken === null
-              ? undefined
-              : taken.holderId === null
-                ? t('people.students.takenElsewhere')
-                : t('people.students.takenHere', { student: holderText(taken.holderId) ?? '' }))
+            uid.error ?? (taken === null ? undefined : t(...takenText(taken.holderId, holderText)))
           }
         />
         <Field label={t('people.students.reason')} {...form.bind('reason')} />

@@ -1166,6 +1166,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       hidden: 'Скрыто',
       showIdentity: 'Показать документы и дату рождения',
       takenHere: 'Уже присвоен ученику {{student}}.',
+      takenHereUnknown: 'Уже присвоен другому ученику этого филиала.',
+      gradeNoClass: '{{grade}}, без класса',
       takenElsewhere: 'Уже присвоен ученику другого филиала.',
       duplicateTitle: 'Возможно, этот ученик уже есть',
       duplicateHere:

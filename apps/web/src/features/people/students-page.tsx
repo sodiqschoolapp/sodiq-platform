@@ -124,6 +124,13 @@ export function StudentsPage() {
       setAdding(false);
       await invalidateStudents(queryClient);
     },
+    // A holder saved after the list was read: the list is read again, so the
+    // refusal can name them (spec review of the build).
+    onError: async (error) => {
+      if (error instanceof ApiFailure && error.code === 'student_value_taken') {
+        await invalidateStudents(queryClient);
+      }
+    },
   });
 
   const columns = useMemo(
@@ -144,9 +151,16 @@ export function StudentsPage() {
         opens: true,
       },
       {
+        // `04`: "class (grade and name, for example 7 Oxford)". No class
+        // exists before task 3.1, so the cell shows the grade the student
+        // joins and "No class" (answer 17; spec review of the build).
         key: 'class',
         header: t('people.students.class'),
-        cell: () => t('people.students.noClass'),
+        cell: (row) =>
+          t('people.students.gradeNoClass', {
+            grade: t('setup.subjects.grade', { grade: row.grade }),
+          }),
+        sortValue: (row) => row.grade,
       },
       {
         key: 'groups',
@@ -157,12 +171,6 @@ export function StudentsPage() {
         key: 'tutor',
         header: t('people.students.tutor'),
         cell: () => '—',
-      },
-      {
-        key: 'grade',
-        header: t('people.students.grade'),
-        cell: (row) => t('setup.subjects.grade', { grade: row.grade }),
-        sortValue: (row) => row.grade,
       },
       {
         key: 'status',

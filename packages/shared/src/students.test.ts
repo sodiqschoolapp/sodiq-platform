@@ -43,13 +43,19 @@ describe('spellingKey (answer 18)', () => {
   it('writes Cyrillic in Latin, with the Uzbek letters', () => {
     expect(spellingKey('Ғулом')).toBe(spellingKey('Gʻulom'));
     expect(spellingKey('Қодиров')).toBe('qodirov');
-    expect(spellingKey('Ҳамид')).toBe('hamid');
-    expect(spellingKey('Шоҳруҳ')).toBe('shohruh');
+    expect(spellingKey('Ҳамид')).toBe(spellingKey('Hamid'));
+    expect(spellingKey('Шоҳруҳ')).toBe('shoxrux');
+    // Russian writes Uzbek h and x both as х.
+    expect(spellingKey('Рахимов')).toBe(spellingKey('Rahimov'));
+    expect(spellingKey('Хасан')).toBe(spellingKey('Hasan'));
+    expect(spellingKey('Чори')).toBe('chori');
     expect(spellingKey('Хуршид')).toBe(spellingKey('Khurshid'));
   });
 
   it('keeps names apart that differ in more than spelling', () => {
     expect(spellingKey('Otabek')).not.toBe(spellingKey('Otkir'));
+    // The Russian у of an Uzbek ў is not folded (decided in the build).
+    expect(spellingKey('Уткир')).not.toBe(spellingKey('Ўткир'));
   });
 
   it('makes the stored key of the surname and first name', () => {

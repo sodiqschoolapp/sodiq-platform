@@ -158,8 +158,10 @@ const CYRILLIC_TO_LATIN: Readonly<Record<string, string>> = {
  * A text with its spelling differences removed (answer 18: "Search and the
  * duplicate check treat look-alike spellings as the same (Oʻtkir, O'tkir,
  * Ўткир)"): lower case, Cyrillic written in Latin, every apostrophe and the
- * hard and soft signs dropped (so oʻ is o and gʻ is g), "kh" written x, runs of
- * spaces made one. The one folding of the platform: the list search and the
+ * hard and soft signs dropped (so oʻ is o and gʻ is g), "kh" and every h not
+ * after s or c written x (Russian writes Uzbek x and h both as х: Рахимов is
+ * Rahimov), runs of spaces made one. The Russian у of an Uzbek ў (Уткир for
+ * Ўткир) is not folded: u and o stay apart (decided in the build of 2.4a). The one folding of the platform: the list search and the
  * stored `name_key` of the duplicate check use it; a change to it comes with a
  * migration that rewrites `students.name_key`.
  */
@@ -169,7 +171,12 @@ export function spellingKey(text: string): string {
   for (const letter of lower) {
     latin += CYRILLIC_TO_LATIN[letter] ?? letter;
   }
-  return latin.replace(APOSTROPHES, '').replace(/kh/g, 'x').replace(/\s+/g, ' ').trim();
+  return latin
+    .replace(APOSTROPHES, '')
+    .replace(/kh/g, 'x')
+    .replace(/(?<![sc])h/g, 'x')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /** The folded surname and first name, as `students.name_key` stores it. */

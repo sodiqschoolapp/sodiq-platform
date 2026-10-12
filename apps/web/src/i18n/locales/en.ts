@@ -1094,6 +1094,8 @@ export const en = {
       hidden: 'Hidden',
       showIdentity: 'Show documents and date of birth',
       takenHere: 'Already given to {{student}}.',
+      takenHereUnknown: 'Already given to another student of this branch.',
+      gradeNoClass: '{{grade}}, no class',
       takenElsewhere: 'Already given to a student of another branch.',
       duplicateTitle: 'This student may already exist',
       duplicateHere:
