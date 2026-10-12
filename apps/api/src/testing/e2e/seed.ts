@@ -358,6 +358,44 @@ try {
   });
   seeded.staff = { login: staff.login, password: staff.firstPassword };
 
+  // A person with no account, in a branch of its own, for the account test
+  // (task 2.3a): the Super Admin of the divisions test creates the account
+  // and gives a role, since no fourth Super Admin can be seeded.
+  const accountsBranch = await insertBranch(migrator, 'Accounts browser test branch');
+  await migrator.transaction().execute(async (transaction) => {
+    const person = await transaction
+      .insertInto('staff')
+      .values({
+        kind: 'person',
+        staff_id: 'S-269010',
+        first_name: 'Feruza',
+        last_name: 'Aminova',
+        sex: 'female',
+        birth_date: '1991-02-14',
+        phone: '+998935550101',
+        admission_date: '2026-09-01',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: person.id, branch_id: accountsBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: person.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+      .execute();
+  });
+
   // A second Academic Vice Principal of that branch exports its staff list
   // (task 2.2c-1); the export reads and changes nothing.
   const staffExport = await create('Kamola', 'Rasulova');

@@ -1,3 +1,5 @@
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf, type AccountKey } from './accounts';
@@ -135,10 +137,10 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
 // "Other divisions are data. The Super Admin adds, renames and archives them";
 // departments archived with their division (decided by the owner, pull
 // request #40, answer 4).
-test('the Super Admin sees Academic as built in, adds a division with a department, renames the department and archives the division with it', async ({
+test('the Super Admin sees Academic as built in, adds a division with a department, renames the department and archives the division with it, then creates an account and gives a role', async ({
   page,
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   await signInAsSuperAdmin(page, 'divisions');
 
   await openSetupPage(page, en.setup.divisionsLink, en.setup.divisions.title);
@@ -190,7 +192,79 @@ test('the Super Admin sees Academic as built in, adds a division with a departme
   await expect(page.getByRole('row').filter({ hasText: 'Sports' })).toContainText(
     en.setup.divisions.archived,
   );
+
+  await createAccountAndSignIn(page);
 });
+
+// Task 2.3a, pull request #62: the account section of a staff record. With
+// SCREENSHOTS=1 the slip is saved for the report under docs/screens/2.3a/.
+const SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.3a');
+
+/**
+ * The Super Admin creates the account of a person with the suggested login,
+ * reads the first-password slip once and gives the Teacher role; the person
+ * signs in with the slip, changes the password and sees their name in the
+ * menu. The seed holds at most three Super Admins, all taken by the setup
+ * tests, so this runs as the second half of the divisions test's session.
+ */
+async function createAccountAndSignIn(page: Page): Promise<void> {
+  await page.goto('/people/staff');
+  await page
+    .getByRole('combobox', { name: en.switcher.branch, exact: true })
+    .selectOption({ label: 'Accounts browser test branch' });
+  await expect(heading(page, en.people.staff.title)).toBeVisible();
+  await page.getByRole('button', { name: 'Feruza Aminova', exact: true }).click();
+  const panel = page.getByRole('complementary', { name: 'Feruza Aminova' });
+  const section = panel.getByRole('region', { name: en.people.account.title });
+  const create = section.getByRole('form', {
+    name: en.people.account.createOf.replace('{{name}}', 'Feruza Aminova'),
+  });
+  await expect(create.getByLabel(en.people.account.login, { exact: true })).toHaveValue(
+    'f.aminova',
+  );
+  await create.getByRole('button', { name: en.form.save, exact: true }).click();
+
+  const slip = page.getByRole('dialog', { name: en.people.account.slipTitle });
+  await expect(slip.getByText('f.aminova', { exact: true })).toBeVisible();
+  const password = await slip.locator('dd').nth(1).innerText();
+  expect(password).toMatch(/^[A-Za-z0-9]{16}$/);
+  if (process.env.SCREENSHOTS === '1') {
+    mkdirSync(SCREENS, { recursive: true });
+    await page.waitForTimeout(400);
+    await slip.screenshot({ path: path.join(SCREENS, 'slip.png') });
+  }
+  await slip.getByRole('button', { name: en.people.account.closeSlip, exact: true }).click();
+  await expect(slip).toBeHidden();
+  await expect(page.getByText(password)).toHaveCount(0);
+
+  const give = section.getByRole('form', {
+    name: en.people.account.giveOf.replace('{{name}}', 'Feruza Aminova'),
+  });
+  await give.getByLabel(en.people.account.newRole, { exact: true }).selectOption('teacher');
+  await give.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(section.locator('tr[data-role="teacher"]')).toContainText(
+    en.people.account.states.current,
+  );
+  if (process.env.SCREENSHOTS === '1') {
+    await section.screenshot({ path: path.join(SCREENS, 'account-section.png') });
+  }
+
+  // The person signs in with the slip, in a browser of their own.
+  const other = await page.context().browser()?.newContext();
+  if (other === undefined) {
+    throw new Error('No second browser context.');
+  }
+  const person = await other.newPage();
+  await person.goto('/sign-in');
+  await languageChooser(person).selectOption('en');
+  await signIn(person, en, 'f.aminova', password);
+  await changeFirstPassword(person, en, { login: 'f.aminova', password });
+  await expect(heading(person, en.home.title)).toBeVisible();
+  await expect(person.getByRole('button', { name: en.layout.account, exact: true })).toContainText(
+    'Feruza Aminova',
+  );
+  await other.close();
+}
 
 /** A school date `days` from today in the branch's time zone (`edge/00-definitions`, Branch time). */
 function schoolDay(days: number): string {
