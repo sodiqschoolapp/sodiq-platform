@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
@@ -96,4 +97,37 @@ test('an Academic Vice Principal gives a teacher of the branch a subject', async
   const vacancyPanel = page.getByRole('complementary', { name: 'Geometry vacancy 1' });
   await vacancyPanel.getByRole('button', { name: vacancies.close, exact: true }).click();
   await expect(vacancyRow).toContainText(vacancies.statuses.closed);
+});
+
+// Task 2.2c-1: the Export button of the staff list. The Academic Vice
+// Principal searches the list and exports it; the browser saves an Excel file
+// named with the list and today. What the file holds, and what each role may
+// export, is proved by the API tests, which read the file back. All names are
+// invented.
+test('an Academic Vice Principal exports the staff list of the branch', async ({ page }) => {
+  const account = accountOf('staffExport');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/people/staff');
+  await expect(heading(page, en.people.staff.title)).toBeVisible();
+  await page.getByRole('searchbox', { name: en.list.search }).fill('Qoʻchqorov');
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: en.list.export, exact: true }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^Staff-\d{4}-\d{2}-\d{2}\.xlsx$/);
+  expect(statSync(await file.path()).size).toBeGreaterThan(0);
+  await expect(page.getByRole('alert')).toHaveCount(0);
 });

@@ -358,6 +358,19 @@ try {
   });
   seeded.staff = { login: staff.login, password: staff.firstPassword };
 
+  // A second Academic Vice Principal of that branch exports its staff list
+  // (task 2.2c-1); the export reads and changes nothing.
+  const staffExport = await create('Kamola', 'Rasulova');
+  await transactions.run([staffBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: staffExport.id,
+      role: 'academic_vice_principal',
+      branchId: staffBranch,
+      givenBy: null,
+    }),
+  );
+  seeded.staffExport = { login: staffExport.login, password: staffExport.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');
