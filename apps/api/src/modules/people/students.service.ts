@@ -296,6 +296,8 @@ export class Students {
         .where('students.name_key', '=', nameKey)
         .where('students.birth_date', '=', input.birthDate);
       if (input.studentId !== null) {
+        // The record being edited is one of this branch (`.claude/rules/api.md`, ids in the body).
+        await this.readStudent(transaction, input.studentId);
         query = query.where('students.id', '<>', input.studentId);
       }
       const rows = await query.orderBy('students.uid').execute();

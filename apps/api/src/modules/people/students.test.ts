@@ -486,6 +486,24 @@ describe('student records', () => {
   });
 
   describe('the duplicate warning (edge: a matching name and date of birth)', () => {
+    it('answers 404 for a record of another branch or an unknown one in the body', async () => {
+      const south = studentDetailSchema.parse(
+        (await t.post('/api/people/students', t.south, body())).body,
+      );
+      for (const studentId of [south.id, UNKNOWN]) {
+        refusedWith(
+          await t.post('/api/people/students/check', t.north, {
+            firstName: 'Ali',
+            lastName: 'Valiyev',
+            birthDate: '2014-01-01',
+            studentId,
+          }),
+          404,
+          'not_found',
+        );
+      }
+    });
+
     it('finds a look-alike spelling here and says only whether one exists elsewhere', async () => {
       const here = await create({
         firstName: 'Ўткир',
@@ -631,6 +649,117 @@ describe('student records', () => {
         );
       }
       expect(await t.auditCount()).toBe(before);
+      // The Tutor is refused here because no Principal assignment exists, not by
+      // the Tutor-only refusal of the record; the class scope of 3.1 changes
+      // neither.
+    });
+  });
+
+  // .claude/rules/api.md: a part allowed to one role only is decided from
+  // every current assignment, and the audit entry names the assignment that
+  // allowed it (permission review of the build).
+  describe('accounts with several roles', () => {
+    let student: StudentDetail;
+
+    async function holding(
+      first: string,
+      last: string,
+      held: readonly { role: string; branchId: string }[],
+    ): Promise<{ cookie: string; assignments: string[] }> {
+      // The Academic Vice Principal must have a second step (0.6c).
+      const browser = held.some((one) => one.role === 'academic_vice_principal')
+        ? await t.kit.completeSession(first, last)
+        : await t.kit.fullSession(first, last);
+      const assignments: string[] = [];
+      for (const one of held) {
+        assignments.push(
+          (
+            await t.kit.giveRole(browser.account.id, {
+              role: one.role as never,
+              branchId: one.branchId,
+            })
+          ).id,
+        );
+      }
+      return { cookie: browser.cookie, assignments };
+    }
+
+    beforeAll(async () => {
+      student = await create();
+    });
+
+    it('opens the record with Contact to a Tutor who is also the Head Tutor', async () => {
+      const { cookie } = await holding('Kamola', 'Ergasheva', [
+        { role: 'tutor', branchId: t.north },
+        { role: 'head_tutor', branchId: t.north },
+      ]);
+      const read = await detail(student.id, cookie);
+      expect(read.contact).not.toBeNull();
+      expect(read.identity).toBeNull();
+    });
+
+    it('names the Principal assignment on a show by a Head Teacher who is also the Principal', async () => {
+      const { cookie, assignments } = await holding('Rustam', 'Karimov', [
+        { role: 'head_teacher', branchId: t.north },
+        { role: 'principal', branchId: t.north },
+      ]);
+      const response = await t.post(
+        `/api/people/students/${student.id}/identity`,
+        t.north,
+        {},
+        cookie,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const entries = await t.entries('student.identity_shown', student.id);
+      expect(entries.at(-1)).toMatchObject({ assignment_id: assignments[1] });
+    });
+
+    it('reads another branch with only the roles held there', async () => {
+      const { cookie } = await holding('Shahlo', 'Mirzayeva', [
+        { role: 'principal', branchId: t.south },
+        { role: 'head_teacher', branchId: t.north },
+      ]);
+      const read = await detail(student.id, cookie);
+      expect(read).toMatchObject({
+        contact: null,
+        identity: null,
+        financial: null,
+        identityHidden: false,
+        canEdit: false,
+      });
+      refusedWith(
+        await t.post(`/api/people/students/${student.id}/identity`, t.north, {}, cookie),
+        403,
+        'permission_denied',
+      );
+    });
+
+    it('shows the identity, and refuses the show, to a Principal who is also the Academic VP', async () => {
+      const { cookie } = await holding('Bahodir', 'Sobirov', [
+        { role: 'principal', branchId: t.north },
+        { role: 'academic_vice_principal', branchId: t.north },
+      ]);
+      const read = await detail(student.id, cookie);
+      expect(read.identity).not.toBeNull();
+      expect(read.identityHidden).toBe(false);
+      refusedWith(
+        await t.post(`/api/people/students/${student.id}/identity`, t.north, {}, cookie),
+        403,
+        'permission_denied',
+      );
+    });
+
+    it('opens a student of either branch to a Senior Head Teacher, each in its own branch', async () => {
+      const south = studentDetailSchema.parse(
+        (await t.post('/api/people/students', t.south, body())).body,
+      );
+      const read = await detail(south.id, seniorHeadTeacher, t.south);
+      expect(read).toMatchObject({ contact: null, identity: null, financial: null });
+      refusedWith(
+        await t.get(`/api/people/students/${south.id}`, t.north, seniorHeadTeacher),
+        404,
+        'not_found',
+      );
     });
   });
 
