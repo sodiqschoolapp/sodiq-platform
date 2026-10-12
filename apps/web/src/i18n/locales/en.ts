@@ -163,6 +163,10 @@ export const en = {
       'This account is not locked, so there is nothing to unlock. Reload the page.',
     second_step_off:
       'This account has no second step to reset. Reset only the password if the person cannot sign in.',
+    uid_set_mismatch:
+      'This UID is not in the set of the student\'s grade. Check it, or confirm it if the student keeps a UID from another grade.',
+    no_academic_year:
+      'The start date is in no academic year of this branch. Ask the Super Admin to create the year, or change the date.',
     account_missing: 'This person has no account yet. Ask the Super Admin to create it.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
