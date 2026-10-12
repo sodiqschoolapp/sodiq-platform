@@ -206,7 +206,7 @@ How to read the task lines:
   - Done when: a second Head Teacher of a subject in a branch is refused by the database and the scope is tested for a teacher of two subjects.
   - Split from 2.3b on pull request #63 (decision 1, Look first).
 
-- [ ] **2.3b-2 Head Teachers list and the Academic Vice Principal alert**
+- [x] **2.3b-2 Head Teachers list and the Academic Vice Principal alert** (pull request #64)
   - Read: `02` (Head Teachers and Senior Head Teachers), `edge/people-roles-accounts` (Who can act), the plan of pull request #63 (the parts marked 2.3b-2, decisions 13 and 14).
   - Build: the "Head Teachers" section of People (`/people/head-teachers`) on the route of 2.3b-1, with a tab per section the role views; the alert of a branch with no active Academic Vice Principal (Who can act): a `SECURITY DEFINER` function `branches_without_vice_principal(at)` (branch ids and names only, archived branches never), the route `GET access/branches-without-vice-principal` for the Super Admin, and a banner beside the Super Admin banner.
   - Done when: the alert is tested for an Academic Vice Principal who is inactive, locked, ended or planned, and the browser test shows the list and the banner.

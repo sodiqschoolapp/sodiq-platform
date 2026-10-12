@@ -186,6 +186,21 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 12 October 2026: Head Teachers list and the Academic Vice Principal alert (task 2.3b-2)
+
+Plan approved on pull request #64 with corrections 1 to 3; decisions 1 to 9 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** `branches_without_vice_principal(at)` (`SECURITY DEFINER`, branch ids and names only) on `SECURITY_DEFINER_FUNCTIONS` | Decision 1; the alert's route is school-wide, where the membership filter hides every `staff` row |
+| "Active now" for the alert: the Academic Vice Principal assignment of the branch has begun and not ended (a planned end keeps it), the account is not locked, and the linked record is not inactive or left today by `staff_account_blocked` (the check of sign-in, main branch's time zone); statuses planned later do not count yet; an account with no linked record counts as active | Decisions 2 and 3; Who can act: "is ill for three weeks ... or the post is vacant"; the alert and the server never disagree |
+| Branches cannot be archived yet; a database test fails when `branches.archived_at` appears, naming the function | Decision 4; the build-plan's "archived branches never" for when the archive comes |
+| The Head Teachers list has no side panel; appointing stays on the account section | Decision 5 |
+| The tabs of People show when the role views two or more sections | Decision 6 |
+| "People" in the menu lists the areas `staff` and `head_teachers`, so Head Teachers and Senior Head Teachers see it | Decision 7; display only, no route permission changes |
+| Each branch name in the alert chooses that branch and opens its staff list; the names are drawn in the alert's own foreground, underlined, so no new colour pair | Decision 8; plan review, finding 7 |
+| The alert's query is refreshed by role changes, status changes, a branch create and a branch rename; the list's by appointment changes and status changes | Corrections 1 of #64 and findings 5 and 6 of its plan review |
+
 ## 12 October 2026: Head Teacher appointments and subject scope (task 2.3b-1)
 
 Plan approved on pull request #63 with corrections 1 to 4; decisions 1 to 14 confirmed there. Flagged on issue #42.
