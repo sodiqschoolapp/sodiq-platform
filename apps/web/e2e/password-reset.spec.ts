@@ -13,7 +13,7 @@ import { heading, languageChooser, openPersonMenu, signIn } from './steps';
 // each mail is one JSON file there.
 const OUTBOX = path.join(tmpdir(), 'sodiq-e2e-mail');
 // The invented address on the seeded teacher's record (the same file).
-const ADDRESS = 'madina.xolmatova@example.uz';
+const ADDRESS = 'madina.xolmatova@example.test';
 const CHOSEN = 'a chosen new password 7';
 
 // With SCREENSHOTS=1 the pages are saved for the report under docs/screens/2.3c-2/.

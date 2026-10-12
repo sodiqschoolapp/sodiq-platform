@@ -1,7 +1,12 @@
 import { firstPasswordSlipSchema, staffDetailSchema, type Role } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import {
+  dayTemplatesKit,
+  START,
+  TODAY,
+  type DayTemplatesKit,
+} from '../../testing/day-templates-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -61,7 +66,7 @@ describe('who changes the email of a staff record', () => {
     const created = await t.post(
       '/api/people/staff',
       t.north,
-      recordOf(lastName, `s.${lastName.toLowerCase()}@example.uz`, phone),
+      recordOf(lastName, `s.${lastName.toLowerCase()}@example.test`, phone),
     );
     expect(created.status, JSON.stringify(created.body)).toBe(201);
     const id = staffDetailSchema.parse(created.body).id;
@@ -128,7 +133,7 @@ describe('who changes the email of a staff record', () => {
       .where('id', '=', made.id)
       .executeTakeFirstOrThrow();
     const entries = (await t.entries('staff.edit', made.id)).length;
-    const response = await changeEmail(made, 'taken.over@example.uz', cookie);
+    const response = await changeEmail(made, 'taken.over@example.test', cookie);
     expect(response.status, JSON.stringify(response.body)).toBe(403);
     expect(errorCode(response)).toBe('permission_denied');
     // Only the yes or no leaves the server (decision 5).
@@ -143,6 +148,21 @@ describe('who changes the email of a staff record', () => {
     ).toEqual(before);
     expect(await t.entries('staff.edit', made.id)).toHaveLength(entries);
     expect((await rightsOf(made, cookie)).email).toBe(false);
+  }
+
+  /** Waits until a request waits for a lock held by the test; fails when it never does. */
+  async function untilWaiting(): Promise<void> {
+    for (let tries = 0; tries < 150; tries += 1) {
+      const found = await sql<{ waiting: number }>`
+        select count(*)::int as waiting from pg_locks
+        where locktype in ('transactionid', 'tuple') and not granted
+      `.execute(t.database.migrator);
+      if ((found.rows[0]?.waiting ?? 0) > 0) {
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    throw new Error('The request never waited.');
   }
 
   beforeAll(async () => {
@@ -182,7 +202,7 @@ describe('who changes the email of a staff record', () => {
       expect((await rightsOf(made, t.vicePrincipal)).email).toBe(true);
       const response = await changeEmail(
         made,
-        `new.${made.lastName.toLowerCase()}@example.uz`,
+        `new.${made.lastName.toLowerCase()}@example.test`,
         t.vicePrincipal,
       );
       expect(response.status, JSON.stringify(response.body)).toBe(200);
@@ -218,7 +238,11 @@ describe('who changes the email of a staff record', () => {
       `/api/people/staff/${made.id}`,
       t.north,
       {
-        ...recordOf(made.lastName, `s.${made.lastName.toLowerCase()}@example.uz`, '+998970000999'),
+        ...recordOf(
+          made.lastName,
+          `s.${made.lastName.toLowerCase()}@example.test`,
+          '+998970000999',
+        ),
         firstName: 'Sevara',
       },
       t.vicePrincipal,
@@ -234,7 +258,7 @@ describe('who changes the email of a staff record', () => {
     await refused(await recordFor(adminAccount), t.admin);
     const other = await person([{ role: 'super_admin', branchId: null }]);
     expect((await rightsOf(other, t.admin)).email).toBe(true);
-    expect((await changeEmail(other, 'other.admin@example.uz', t.admin)).status).toBe(200);
+    expect((await changeEmail(other, 'other.admin@example.test', t.admin)).status).toBe(200);
   });
 
   // A role given at the same moment locks the record first, as the edit does.
@@ -253,23 +277,75 @@ describe('who changes the email of a staff record', () => {
           created_at: t.clock.now(),
         })
         .execute();
-      const waiting = changeEmail(made, 'taken.over@example.uz', t.vicePrincipal).then(
+      const waiting = changeEmail(made, 'taken.over@example.test', t.vicePrincipal).then(
         (response) => response,
       );
-      for (let tries = 0; tries < 150; tries += 1) {
-        const found = await sql<{ waiting: number }>`
-          select count(*)::int as waiting from pg_locks
-          where locktype in ('transactionid', 'tuple') and not granted
-        `.execute(t.database.migrator);
-        if ((found.rows[0]?.waiting ?? 0) > 0) {
-          break;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
+      await untilWaiting();
       return [waiting] as const;
     });
     const response = await answer;
     expect(response.status, JSON.stringify(response.body)).toBe(403);
     expect(errorCode(response)).toBe('permission_denied');
+  });
+
+  it('is refused across branches: the Academic Vice Principal of another branch, and a person whose role is in another branch', async () => {
+    const southVice = await t.kit.completeSession('Lola', 'Hamidova');
+    await t.kit.giveRole(southVice.account.id, {
+      role: 'academic_vice_principal',
+      branchId: t.south,
+    });
+    const made = await person([{ role: 'teacher' }]);
+    const before = (await t.entries('staff.edit', made.id)).length;
+    const asNorth = await changeEmail(made, 'south.vice@example.test', southVice.cookie);
+    expect(asNorth.status).toBe(403);
+    expect(errorCode(asNorth)).toBe('permission_denied');
+    const asSouth = await t.put(
+      `/api/people/staff/${made.id}`,
+      t.south,
+      recordOf(made.lastName, 'south.vice@example.test', made.phone),
+      southVice.cookie,
+    );
+    expect(asSouth.status).toBe(404);
+    expect(await t.entries('staff.edit', made.id)).toHaveLength(before);
+
+    // A record of North and South whose only role is Teacher in South: the
+    // North Academic Vice Principal may not reset it, so not its email either.
+    const elsewhere = await person([{ role: 'teacher', branchId: t.south }]);
+    await t.database.migrator
+      .insertInto('staff_branches')
+      .values({ staff_id: elsewhere.id, branch_id: t.south, is_main: false })
+      .execute();
+    await refused(elsewhere, t.vicePrincipal);
+  });
+
+  it('gives the Principal no email right', async () => {
+    const made = await person([{ role: 'teacher' }]);
+    expect((await rightsOf(made, t.principal)).email).toBe(false);
+  });
+
+  // The other direction of the race above: the email edit holds the record,
+  // and a role given at that moment waits for it.
+  it('makes a role given at the same moment as an email edit wait for the record', async () => {
+    const made = await person([{ role: 'teacher' }]);
+    const [answer] = await t.database.migrator.transaction().execute(async (held) => {
+      await held.selectFrom('staff').select('id').where('id', '=', made.id).forUpdate().execute();
+      await held
+        .updateTable('staff')
+        .set({ email: 'held.edit@example.test' })
+        .where('id', '=', made.id)
+        .execute();
+      const waiting = t
+        .post(`/api/people/staff/${made.id}/roles`, t.north, {
+          role: 'academic_vice_principal',
+          branchId: t.north,
+          from: TODAY,
+        })
+        .then((response) => response);
+      await untilWaiting();
+      return [waiting] as const;
+    });
+    const given = await answer;
+    expect(given.status, JSON.stringify(given.body)).toBeLessThan(300);
+    expect((await rightsOf(made, t.vicePrincipal)).email).toBe(false);
   });
 });

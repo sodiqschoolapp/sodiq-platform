@@ -203,7 +203,7 @@ export const uz: Texts<'one' | 'other'> = {
     photos_not_configured: 'Suratlar hali sozlanmagan. Administratorga murojaat qiling.',
     photos_unavailable: 'Suratlar hozir mavjud emas. Keyinroq qayta urinib koʻring.',
     reset_link_invalid:
-      'Bu havola endi ishlamaydi: u ishlatilgan, yangisi yuborilgan yoki parol oʻzgartirilgan. Yangi havola soʻrang.',
+      'Bu havola ishlamaydi. Yangi havola soʻrang; xat kelmasa, administratorga murojaat qiling.',
     reset_link_expired:
       'Havolaning muddati tugagan: havola bir soat ishlaydi. Yangi havola soʻrang.',
     availability_overlap:
@@ -1200,8 +1200,7 @@ export const uz: Texts<'one' | 'other'> = {
         other: 'Boshqa',
       },
       email: 'Elektron pochta',
-      emailLocked:
-        'Pochta orqali parolni tiklash mumkin, shuning uchun uni faqat shu hisob parolini tiklashga ruxsati bor administrator oʻzgartiradi, oʻz yozuvida esa hech kim oʻzgartirmaydi.',
+      emailLocked: 'Faqat shu hisob parolini tiklashga ruxsati bor administrator oʻzgartiradi.',
       jshshir: 'JSHSHIR',
       admissionDate: 'Ishga qabul sanasi',
       contractType: 'Shartnoma',

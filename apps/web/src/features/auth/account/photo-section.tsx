@@ -5,6 +5,7 @@ import { api } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
+import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { photoRefusalOf, shrinkPhoto } from '@/features/people/shrink-photo';
 import { sessionQuery } from '../session';
@@ -164,7 +165,15 @@ export function PhotoSection() {
           )}
         </div>
       </div>
-      <FailureAlert error={upload.error ?? remove.error ?? (photo.isError ? photo.error : null)} />
+      {photo.isError && (
+        <ErrorState
+          error={photo.error}
+          onRetry={() => {
+            void photo.refetch();
+          }}
+        />
+      )}
+      <FailureAlert error={upload.error ?? remove.error} />
     </AccountSection>
   );
 }

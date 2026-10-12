@@ -9,4 +9,4 @@ import { join } from 'node:path';
 export const E2E_MAIL_OUTBOX = join(tmpdir(), 'sodiq-e2e-mail');
 
 /** The invented address of the seeded teacher of the reset test. */
-export const E2E_RESET_EMAIL = 'madina.xolmatova@example.uz';
+export const E2E_RESET_EMAIL = 'madina.xolmatova@example.test';

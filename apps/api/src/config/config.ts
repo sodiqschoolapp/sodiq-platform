@@ -98,7 +98,7 @@ const PROBLEM: Record<VariableName, string> = {
   PHOTOS_IN_MEMORY:
     'PHOTOS_IN_MEMORY must be 0 or 1, and is never set together with the R2 variables',
   WEB_ORIGIN:
-    'WEB_ORIGIN must be the address of the web app, for example https://app.example.uz, with no path',
+    'WEB_ORIGIN must be the address of the web app, for example https://app.example.test, with no path',
   MAIL_OUTBOX_DIR:
     'MAIL_OUTBOX_DIR is for the browser tests only and is never set on a server (with RENDER_GIT_COMMIT, TRUST_PROXY=1 or WEB_FILES)',
 };

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { LogMailer, RecordingMailer } from './mailer.js';
 
 const MAIL = {
-  to: 'invented.person@example.uz',
+  to: 'invented.person@example.test',
   subject: 'Choose a new password',
   text: 'Choose the new password with this link: http://localhost:5173/reset-password#token=x',
 };

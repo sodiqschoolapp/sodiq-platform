@@ -1,8 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { MAIL_TEXTS, RESET_LINK_VALID_MS, isLanguage, type Clock } from '@sodiq/shared';
+import { MAIL_TEXTS, RESET_LINK_VALID_MS, isLanguage } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { CLOCK } from '../../clock/clock.module.js';
 import { CONFIG } from '../../config/config.module.js';
 import type { AppConfig } from '../../config/config.js';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
@@ -41,7 +40,6 @@ export type PasswordResetMail = z.infer<typeof passwordResetMailJob.data>;
 @Injectable()
 export class PasswordResetMailer {
   constructor(
-    @Inject(CLOCK) private readonly clock: Clock,
     @Inject(CONFIG) private readonly config: AppConfig,
     @Inject(MAILER) private readonly mailer: Mailer,
     private readonly audit: Audit,
@@ -57,7 +55,7 @@ export class PasswordResetMailer {
     if (link === undefined || link.sent_at !== null || link.closed_at !== null) {
       return;
     }
-    const now = this.clock.now();
+    const now = await transactionMoment(transaction);
     if (now.getTime() - link.requested_at.getTime() > RESET_LINK_VALID_MS) {
       return;
     }
@@ -70,9 +68,8 @@ export class PasswordResetMailer {
     if (newer !== undefined) {
       return;
     }
-    const at = await transactionMoment(transaction);
     const address = await sql<{ email: string | null }>`
-      select password_reset_address(${link.account_id}::uuid, ${at}::timestamptz) as email
+      select password_reset_address(${link.account_id}::uuid, ${now}::timestamptz) as email
     `.execute(transaction);
     const to = address.rows[0]?.email ?? null;
     if (to === null) {
@@ -93,6 +90,15 @@ export class PasswordResetMailer {
     const texts = MAIL_TEXTS[isLanguage(account.language) ? account.language : 'uz'].passwordReset;
     // The token in the fragment: it reaches no server log and no Referer (decision 15).
     const url = `${this.config.mail.webOrigin}/reset-password#token=${token}`;
+    // The entry first: after the send only the commit follows (should-fix 2 of
+    // the spec review of the build).
+    await this.audit.record(transaction, {
+      branchId: null,
+      actorId: null,
+      action: 'auth.password_reset_mail_sent',
+      record: { type: 'account', id: link.account_id },
+      newValue: { validUntil: validUntil.toISOString() },
+    });
     await this.mailer.send({
       to,
       subject: texts.subject,
@@ -102,13 +108,6 @@ export class PasswordResetMailer {
         texts.validity.replace('{minutes}', String(RESET_LINK_VALID_MS / 60_000)),
         texts.ignore,
       ].join('\n\n'),
-    });
-    await this.audit.record(transaction, {
-      branchId: null,
-      actorId: null,
-      action: 'auth.password_reset_mail_sent',
-      record: { type: 'account', id: link.account_id },
-      newValue: { validUntil: validUntil.toISOString() },
     });
   }
 }

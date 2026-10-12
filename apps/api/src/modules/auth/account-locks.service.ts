@@ -4,6 +4,7 @@ import { CLOCK } from '../../clock/clock.module.js';
 import type { Transaction } from '../../database/transactions.js';
 import { Audit } from '../audit/audit.service.js';
 import { auditOf, UnknownAccountError, type AuditNames } from './password-resets.service.js';
+import { closeOpenResetLinks } from './reset-links.js';
 import { Sessions } from './sessions.service.js';
 
 /** The reason of a lock is kept with it and in the audit log; longer texts are refused (the bound of `lockSchema`). */
@@ -87,6 +88,9 @@ export class AccountLocks {
       .set({ locked_at: now, locked_by: lock.lockedBy, lock_reason: reason })
       .where('id', '=', lock.accountId)
       .execute();
+    // A link of the reset by email made before the lock never works, also
+    // after an unlock (task 2.3c-2, should-fix 3 of the spec review of the build).
+    await closeOpenResetLinks(transaction, lock.accountId, now);
     await this.sessions.writeEndsByTime(transaction, lock.accountId);
     const ended = await transaction
       .updateTable('sessions')

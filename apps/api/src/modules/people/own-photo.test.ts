@@ -1,4 +1,4 @@
-import { PHOTO_MAX_BYTES, staffDetailSchema, type PhotoType } from '@sodiq/shared';
+import { BRANCH_HEADER, PHOTO_MAX_BYTES, staffDetailSchema, type PhotoType } from '@sodiq/shared';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
@@ -252,15 +252,19 @@ describe('the own photo', () => {
     const [answer] = await t.database.migrator.transaction().execute(async (held) => {
       await held.selectFrom('staff').select('id').where('id', '=', id).forUpdate().execute();
       const waiting = upload(teacher.cookie, JPEG).then((response) => response);
-      for (let tries = 0; tries < 150; tries += 1) {
+      let waited = false;
+      for (let tries = 0; tries < 150 && !waited; tries += 1) {
         const found = await sql<{ waiting: number }>`
           select count(*)::int as waiting from pg_locks
           where locktype in ('transactionid', 'tuple') and not granted
         `.execute(t.database.migrator);
-        if ((found.rows[0]?.waiting ?? 0) > 0) {
-          break;
+        waited = (found.rows[0]?.waiting ?? 0) > 0;
+        if (!waited) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
         }
-        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      if (!waited) {
+        throw new Error('The request never waited.');
       }
       await held
         .updateTable('staff_branches')
@@ -279,5 +283,42 @@ describe('the own photo', () => {
     expect((await answer).status).toBe(204);
     const entries = await photoEntries(id);
     expect(entries.map((entry) => entry.branch_id)).toEqual([t.south]);
+  });
+
+  // The permission review of the build, should-fix 4: the routes take no id;
+  // a colleague's photo and entries stay as they were, and a branch named in
+  // the request changes nothing.
+  it('touches only the record of the session, whatever branch the request names', async () => {
+    const colleague = await t.kit.fullSession('Shirin', 'Ahmedova');
+    const colleagueRecord = await recordFor(colleague.account.id);
+    expect((await upload(colleague.cookie, pngOf(300, 200), 'image/png')).status).toBe(204);
+    const colleagueBefore = await t.database.migrator
+      .selectFrom('staff')
+      .select(['photo_id', 'photo_type'])
+      .where('id', '=', colleagueRecord)
+      .executeTakeFirstOrThrow();
+
+    const teacher = await t.kit.fullSession('Ilhom', 'Yoqubov');
+    const id = await recordFor(teacher.account.id);
+    const named = await request(t.kit.server)
+      .put('/api/auth/photo')
+      .set('Cookie', teacher.cookie)
+      .set(BRANCH_HEADER, t.south)
+      .set('Content-Type', 'image/jpeg')
+      .send(JPEG);
+    expect(named.status).toBe(204);
+    const own = await photoOf(teacher.cookie);
+    expect(Buffer.compare(own.body as Buffer, JPEG)).toBe(0);
+    expect((await remove(teacher.cookie)).status).toBe(204);
+
+    expect(
+      await t.database.migrator
+        .selectFrom('staff')
+        .select(['photo_id', 'photo_type'])
+        .where('id', '=', colleagueRecord)
+        .executeTakeFirstOrThrow(),
+    ).toEqual(colleagueBefore);
+    expect(await photoEntries(colleagueRecord)).toHaveLength(1);
+    expect((await photoEntries(id)).map((entry) => entry.branch_id)).toEqual([t.north, t.north]);
   });
 });

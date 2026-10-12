@@ -42,11 +42,19 @@ export function ResetPasswordPage() {
   const [next, setNext] = useState('');
   const [repeat, setRepeat] = useState('');
   const [checked, setChecked] = useState(false);
+  // A refusal is kept here and the mutation reset, so that its variables (the
+  // token and the typed password) do not stay in the mutation cache
+  // (should-fix 8 of the spec review of the build).
+  const [refusal, setRefusal] = useState<Error | null>(null);
 
   const confirm = useMutation({
     mutationFn: (input: PasswordResetConfirm) =>
       answerOf(api.POST('/api/auth/password-reset/confirm', { body: input })),
     gcTime: 0,
+    onError: (error) => {
+      setRefusal(error);
+      confirm.reset();
+    },
     onSuccess: () => {
       void navigate({ to: '/sign-in', search: { reason: 'password_changed' } });
     },
@@ -71,12 +79,13 @@ export function ResetPasswordPage() {
       next.length <= PASSWORD_MAX_LENGTH &&
       repeat === next
     ) {
+      setRefusal(null);
       confirm.mutate({ token, newPassword: next });
     }
   }
 
   const linkRefused =
-    token === '' || (confirm.error instanceof ApiFailure && LINK_REFUSALS.has(confirm.error.code));
+    token === '' || (refusal instanceof ApiFailure && LINK_REFUSALS.has(refusal.code));
 
   return (
     <AuthPage title={t('reset.title')}>
@@ -111,7 +120,7 @@ export function ResetPasswordPage() {
               setRepeat(event.target.value);
             }}
           />
-          <FailureAlert error={confirm.error} />
+          <FailureAlert error={refusal} />
           <Button type="submit" size="lg" disabled={confirm.isPending || linkRefused}>
             {t('reset.submit')}
           </Button>

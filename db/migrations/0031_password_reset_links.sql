@@ -77,9 +77,41 @@ create trigger password_reset_links_set_once
 -- hides every staff row (decision 3 of #66, Look first). Each function answers
 -- about one account and does not read app_branch_ids().
 
+-- Who wrote the email of the account's person record last, and when: the
+-- actor's account id and the moment, nothing else (decision 6 and correction 1
+-- of the review of #66), from the entry `staff.create` or `staff.edit` that
+-- named the email. These entries live in a branch's log, which the public
+-- confirm cannot see.
+create function last_email_change(account_id uuid)
+returns table (actor_id uuid, occurred_at timestamptz)
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select l.actor_id, l.occurred_at
+  from public.staff s
+  join public.audit_log l on l.person_id = s.id
+  where s.account_id = last_email_change.account_id
+    and s.kind = 'person'
+    and l.action in ('staff.create', 'staff.edit')
+    and l.new_value ? 'email'
+  order by l.occurred_at desc, l.id desc
+  limit 1
+$$;
+
 -- Whether a link may be made for the account now: not locked, its person
 -- record not inactive or left on the date of `at`, and an email on the record.
--- A yes or no only, for the public request.
+-- A yes or no only, for the public request and the confirm.
+--
+-- The email opens the account (decision 4 of #66): the Academic Vice Principal
+-- writes emails only of accounts he may reset. An email written before the
+-- account held a role outside Teacher, Tutor, Head Teacher and Head Tutor (on
+-- a record without account, or before a stronger role was given) would let
+-- him reach that account all the same (the permission review of the build).
+-- So an account that holds such a role, in force or planned, gets a link only
+-- when its email was last written by an account that was Super Admin at that
+-- moment.
 create function password_reset_allowed(account_id uuid, at timestamptz) returns boolean
 language sql
 stable
@@ -95,11 +127,33 @@ as $$
       and s.email is not null
       and s.email <> ''
       and not public.staff_account_blocked(a.id, password_reset_allowed.at)
+      and (
+        not exists (
+          select 1
+          from public.assignments g
+          where g.account_id = a.id
+            and g.role not in ('teacher', 'tutor', 'head_teacher', 'head_tutor')
+            and (
+              g.valid_until is null
+              or (g.valid_until > password_reset_allowed.at and g.valid_until > g.valid_from)
+            )
+        )
+        or exists (
+          select 1
+          from public.last_email_change(a.id) w
+          join public.assignments sa
+            on sa.account_id = w.actor_id
+            and sa.role = 'super_admin'
+            and sa.valid_from <= w.occurred_at
+            and (sa.valid_until is null or sa.valid_until > w.occurred_at)
+        )
+      )
   )
 $$;
 
--- The email of the account's person record under the same conditions; nothing
--- otherwise. For the mail job only (correction 2 of the review of #66).
+-- The email of the account's person record when a link may be made for it
+-- (`password_reset_allowed`); nothing otherwise. For the mail job only
+-- (correction 2 of the review of #66).
 create function password_reset_address(account_id uuid, at timestamptz) returns text
 language sql
 stable
@@ -107,13 +161,10 @@ security definer
 set search_path = pg_catalog, public
 as $$
   select s.email
-  from public.accounts a
-  join public.staff s on s.account_id = a.id and s.kind = 'person'
-  where a.id = password_reset_address.account_id
-    and a.locked_at is null
-    and s.email is not null
-    and s.email <> ''
-    and not public.staff_account_blocked(a.id, password_reset_address.at)
+  from public.staff s
+  where s.account_id = password_reset_address.account_id
+    and s.kind = 'person'
+    and public.password_reset_allowed(password_reset_address.account_id, password_reset_address.at)
 $$;
 
 -- The person record linked to an account and the branch of its main link:
@@ -130,28 +181,6 @@ as $$
   from public.staff s
   join public.staff_branches b on b.staff_id = s.id and b.is_main
   where s.account_id = own_staff_record.account_id and s.kind = 'person'
-$$;
-
--- Who changed the email of the account's person record last, and when: the
--- actor's account id and the moment, nothing else (decision 6 and correction 1
--- of the review of #66). The entry `staff.edit` lives in a branch's log, which
--- the public confirm cannot see.
-create function last_email_change(account_id uuid)
-returns table (actor_id uuid, occurred_at timestamptz)
-language sql
-stable
-security definer
-set search_path = pg_catalog, public
-as $$
-  select l.actor_id, l.occurred_at
-  from public.staff s
-  join public.audit_log l on l.person_id = s.id
-  where s.account_id = last_email_change.account_id
-    and s.kind = 'person'
-    and l.action = 'staff.edit'
-    and l.new_value ? 'email'
-  order by l.occurred_at desc
-  limit 1
 $$;
 
 revoke all on function password_reset_allowed(uuid, timestamptz) from public;

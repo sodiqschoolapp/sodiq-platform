@@ -41,10 +41,10 @@ describe('loadConfig', () => {
         webOrigin: 'https://app-test.sodiqschool.uz',
         outboxDir: undefined,
       });
-      expect(problemOf({ ...VALID, WEB_ORIGIN: 'https://app.example.uz/sign-in' })).toContain(
+      expect(problemOf({ ...VALID, WEB_ORIGIN: 'https://app.example.test/sign-in' })).toContain(
         'WEB_ORIGIN must',
       );
-      expect(problemOf({ ...VALID, WEB_ORIGIN: 'ftp://app.example.uz' })).toContain(
+      expect(problemOf({ ...VALID, WEB_ORIGIN: 'ftp://app.example.test' })).toContain(
         'WEB_ORIGIN must',
       );
     });

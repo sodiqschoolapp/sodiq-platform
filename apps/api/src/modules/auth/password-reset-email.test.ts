@@ -75,7 +75,7 @@ describe('the password reset by email', () => {
   ) {
     count += 1;
     const lastName = `Rahimova${lettersOf(count)}`;
-    const address = email === 'given' ? `d.${lastName.toLowerCase()}@example.uz` : (email ?? '');
+    const address = email === 'given' ? `d.${lastName.toLowerCase()}@example.test` : (email ?? '');
     const created = await t.post('/api/people/staff', t.north, recordOf(lastName, address));
     expect(created.status, JSON.stringify(created.body)).toBe(201);
     const id = staffDetailSchema.parse(created.body).id;
@@ -303,20 +303,104 @@ describe('the password reset by email', () => {
     });
 
     // Decision 10: at most one link per account per 5 minutes, from the stored moment.
-    it('makes no new link within 5 minutes of the last one, and one after them that closes the old', async () => {
+    // Decision 10 and should-fix 3 of the permission review of the build: no
+    // new link while the newest still works, so a stranger who knows a login
+    // cannot close a person's link again and again; at most one in 5 minutes.
+    it('makes no new link while the newest is open, and one after its hour that closes it', async () => {
       const made = await person();
+      const token = await linkFor(made);
+      t.clock.advance(RESET_LINK_INTERVAL_MS);
       expect((await ask(made.login)).status).toBe(202);
-      t.clock.advance(RESET_LINK_INTERVAL_MS - 1);
+      t.clock.set(new Date(new Date(START).getTime() + RESET_LINK_VALID_MS - 1));
       expect((await ask(made.login)).status).toBe(202);
       expect(await linksOf(made.accountId)).toHaveLength(1);
+      expect((await confirm(token)).status).toBe(204);
 
-      t.clock.advance(1);
-      expect((await ask(made.login)).status).toBe(202);
-      const links = await linksOf(made.accountId);
+      t.clock.set(START);
+      const late = await person();
+      await linkFor(late);
+      t.clock.advance(RESET_LINK_VALID_MS);
+      expect((await ask(late.login)).status).toBe(202);
+      const links = await linksOf(late.accountId);
       expect(links).toHaveLength(2);
       expect(links[0]?.closed_at).toEqual(t.clock.now());
       expect(links[1]?.closed_at).toBeNull();
-      expect(await jobsOf(made.accountId)).toHaveLength(2);
+      expect(await jobsOf(late.accountId)).toHaveLength(2);
+    });
+
+    it('makes no new link within 5 minutes of a used one, and one after them', async () => {
+      const made = await person();
+      expect((await confirm(await linkFor(made))).status).toBe(204);
+      t.clock.advance(RESET_LINK_INTERVAL_MS - 1);
+      expect((await ask(made.login)).status).toBe(202);
+      expect(await linksOf(made.accountId)).toHaveLength(1);
+      t.clock.advance(1);
+      expect((await ask(made.login)).status).toBe(202);
+      expect(await linksOf(made.accountId)).toHaveLength(2);
+    });
+
+    // The permission review of the build, must-fix 1: an email the Academic
+    // Vice Principal wrote opens no account he may not reset, also when the
+    // account or the stronger role came afterwards.
+    it('makes no link for a stronger role when the email was last written by an Academic Vice Principal', async () => {
+      count += 1;
+      const lastName = `Rahimova${lettersOf(count)}`;
+      const created = await t.post('/api/people/staff', t.north, recordOf(lastName, ''));
+      expect(created.status).toBe(201);
+      const id = staffDetailSchema.parse(created.body).id;
+      const edit = await t.put(
+        `/api/people/staff/${id}`,
+        t.north,
+        recordOf(lastName, 'vice.mailbox@example.test'),
+        t.vicePrincipal,
+      );
+      expect(edit.status, JSON.stringify(edit.body)).toBe(200);
+      const made = await t.post(`/api/people/staff/${id}/account`, t.north, {
+        login: `d.${lastName.toLowerCase()}`,
+      });
+      const slip = firstPasswordSlipSchema.parse(made.body);
+      const account = await t.database.migrator
+        .selectFrom('accounts')
+        .select('id')
+        .where('login', '=', slip.login)
+        .executeTakeFirstOrThrow();
+      await t.kit.giveRole(account.id, { role: 'principal', branchId: t.north });
+      expect((await ask(slip.login)).status).toBe(202);
+      expect(await linksOf(account.id)).toHaveLength(0);
+
+      // Path B: a teacher's email by the Academic Vice Principal, then a stronger role.
+      const teacher = await person();
+      t.clock.advance(MINUTE);
+      expect(
+        (
+          await t.put(
+            `/api/people/staff/${teacher.id}`,
+            t.north,
+            recordOf(teacher.lastName, 'vice.other@example.test'),
+            t.vicePrincipal,
+          )
+        ).status,
+      ).toBe(200);
+      await t.kit.giveRole(teacher.accountId, {
+        role: 'academic_vice_principal',
+        branchId: t.north,
+      });
+      expect((await ask(teacher.login)).status).toBe(202);
+      expect(await linksOf(teacher.accountId)).toHaveLength(0);
+
+      // The Super Admin writes the email again: the link is made.
+      t.clock.advance(MINUTE);
+      expect(
+        (
+          await t.put(
+            `/api/people/staff/${teacher.id}`,
+            t.north,
+            recordOf(teacher.lastName, 'checked.by.admin@example.test'),
+          )
+        ).status,
+      ).toBe(200);
+      expect((await ask(teacher.login)).status).toBe(202);
+      expect(await linksOf(teacher.accountId)).toHaveLength(1);
     });
 
     // Must-fix 2: two requests at the same moment meet on the account row.
@@ -387,7 +471,7 @@ describe('the password reset by email', () => {
 
       const superseded = await person();
       expect((await ask(superseded.login)).status).toBe(202);
-      t.clock.advance(RESET_LINK_INTERVAL_MS);
+      t.clock.advance(RESET_LINK_VALID_MS);
       expect((await ask(superseded.login)).status).toBe(202);
       const [old] = await linksOf(superseded.accountId);
       expect(await deliver(old?.id ?? '')).toHaveLength(0);
@@ -523,7 +607,7 @@ describe('the password reset by email', () => {
     it('refuses a link after a newer one, a password change, an administrator reset, a re-hire, an email change and a lock', async () => {
       const newer = await person();
       const oldToken = await linkFor(newer);
-      t.clock.advance(RESET_LINK_INTERVAL_MS);
+      t.clock.advance(RESET_LINK_VALID_MS);
       const newToken = await linkFor(newer);
       expect(codeOf(await confirm(oldToken))).toBe('reset_link_invalid');
       expect((await confirm(newToken)).status).toBe(204);
@@ -572,7 +656,7 @@ describe('the password reset by email', () => {
       const edit = await t.put(
         `/api/people/staff/${moved.id}`,
         t.north,
-        recordOf(moved.lastName, 'new.address@example.uz'),
+        recordOf(moved.lastName, 'new.address@example.test'),
       );
       expect(edit.status, JSON.stringify(edit.body)).toBe(200);
       expect(codeOf(await confirm(movedToken))).toBe('reset_link_invalid');
@@ -588,6 +672,12 @@ describe('the password reset by email', () => {
       ).toBe(200);
       expect(codeOf(await confirm(lockedToken))).toBe('reset_link_invalid');
       expect(await signsIn(locked.login, CHOSEN)).toBe(false);
+      // Should-fix 3 of the spec review of the build: the lock closed the link,
+      // so it does not work again after an unlock.
+      expect(
+        (await t.post(`/api/people/staff/${locked.id}/account/unlock`, t.north, {})).status,
+      ).toBe(200);
+      expect(codeOf(await confirm(lockedToken))).toBe('reset_link_invalid');
     });
 
     // Correction 1 of the review of #66: the entry names the last email change,
@@ -598,7 +688,7 @@ describe('the password reset by email', () => {
       const edit = await t.put(
         `/api/people/staff/${made.id}`,
         t.north,
-        recordOf(made.lastName, 'changed.by.vice@example.uz'),
+        recordOf(made.lastName, 'changed.by.vice@example.test'),
         t.vicePrincipal,
       );
       expect(edit.status, JSON.stringify(edit.body)).toBe(200);
@@ -610,7 +700,7 @@ describe('the password reset by email', () => {
       t.clock.advance(MINUTE);
       const token = await linkFor(made);
       expect((await linksOf(made.accountId)).length).toBe(1);
-      expect(mailer.sent.at(-1)?.to).toBe('changed.by.vice@example.uz');
+      expect(mailer.sent.at(-1)?.to).toBe('changed.by.vice@example.test');
 
       expect((await confirm(token)).status).toBe(204);
       const [entry] = await schoolEntries('auth.password_reset_by_email', made.accountId);
@@ -647,6 +737,57 @@ describe('the password reset by email', () => {
 
     // Must-fix 1: each pair that meets on the account is tested both ways.
     describe('at the same moment as', () => {
+      // Must-fix 1 of the spec review of the build: the confirm locks the
+      // account first, as every writer that closes the links does; a writer
+      // holding only the account makes the confirm wait, never deadlock.
+      it('a writer that holds the account and then closes the links: no deadlock, the confirm is refused', async () => {
+        const made = await person();
+        const token = await linkFor(made);
+        const [answer] = await t.database.migrator.transaction().execute(async (held) => {
+          await held
+            .selectFrom('accounts')
+            .select('id')
+            .where('id', '=', made.accountId)
+            .forUpdate()
+            .execute();
+          const waiting = confirm(token).then((response) => response);
+          await untilWaiting();
+          await held
+            .updateTable('password_reset_links')
+            .set({ closed_at: t.clock.now() })
+            .where('account_id', '=', made.accountId)
+            .where('used_at', 'is', null)
+            .where('closed_at', 'is', null)
+            .execute();
+          return [waiting] as const;
+        });
+        expect(codeOf(await answer)).toBe('reset_link_invalid');
+      });
+
+      it('a confirm held open: a request waits and makes no new link', async () => {
+        const made = await person();
+        await linkFor(made);
+        const [link] = await linksOf(made.accountId);
+        const [answer] = await t.database.migrator.transaction().execute(async (held) => {
+          await held
+            .selectFrom('accounts')
+            .select('id')
+            .where('id', '=', made.accountId)
+            .forUpdate()
+            .execute();
+          await held
+            .updateTable('password_reset_links')
+            .set({ used_at: t.clock.now() })
+            .where('id', '=', link?.id ?? '')
+            .execute();
+          const waiting = ask(made.login).then((response) => response);
+          await untilWaiting();
+          return [waiting] as const;
+        });
+        expect((await answer).status).toBe(202);
+        expect(await linksOf(made.accountId)).toHaveLength(1);
+      });
+
       it('an administrator reset held open: the confirm waits and is refused', async () => {
         const made = await person();
         const token = await linkFor(made);

@@ -195,7 +195,7 @@ export const en = {
     photos_not_configured: 'Photos are not configured yet. Ask the administrator.',
     photos_unavailable: 'Photos cannot be reached right now. Try again later.',
     reset_link_invalid:
-      'This link does not work any more: it was used, a newer one was sent, or the password was changed. Ask for a new link.',
+      'This link does not work. Ask for a new link; if no email comes, ask your administrator.',
     reset_link_expired: 'This link has expired: a link works for one hour. Ask for a new link.',
     availability_overlap:
       'These hours overlap the hours in another branch on the same weekday. Change the times so that they do not overlap.',
@@ -1187,8 +1187,7 @@ export const en = {
         other: 'Other',
       },
       email: 'Email',
-      emailLocked:
-        'The email opens the account by a password reset, so it is changed only by an administrator who may reset this account, and never on your own record.',
+      emailLocked: 'Changed only by an administrator who may reset this account.',
       jshshir: 'JSHSHIR',
       admissionDate: 'Admission date',
       contractType: 'Contract',

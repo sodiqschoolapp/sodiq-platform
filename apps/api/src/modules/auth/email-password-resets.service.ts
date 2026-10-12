@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   LOGIN_FORMAT,
   RESET_LINK_INTERVAL_MS,
+  RESET_LINK_VALID_MS,
   RESET_TOKEN_FORMAT,
   type Clock,
 } from '@sodiq/shared';
@@ -77,18 +78,15 @@ export class EmailPasswordResets {
       if (!(await resetAllowed(transaction, account.id))) {
         return;
       }
-      const now = this.clock.now();
+      const now = await transactionMoment(transaction);
       const newest = await transaction
         .selectFrom('password_reset_links')
-        .select('requested_at')
+        .select(['requested_at', 'valid_until', 'used_at', 'closed_at'])
         .where('account_id', '=', account.id)
         .orderBy('requested_at', 'desc')
         .limit(1)
         .executeTakeFirst();
-      if (
-        newest !== undefined &&
-        now.getTime() - newest.requested_at.getTime() < RESET_LINK_INTERVAL_MS
-      ) {
+      if (newest !== undefined && (tooSoon(newest, now) || stillOpen(newest, now))) {
         return;
       }
       await closeOpenResetLinks(transaction, account.id, now);
@@ -116,9 +114,9 @@ export class EmailPasswordResets {
    * Sets the new password with a link. The token is checked before anything
    * is hashed, without a lock, so an unsigned caller cannot make the server
    * compute Argon2id (must-fix 3 of the plan review); the hash is made outside
-   * any transaction; then the link and the account are locked, in this order
-   * and in statements of their own, and every condition is read again
-   * (must-fix 1): an administrator's reset, a lock or another confirm at the
+   * any transaction; then the account and the link are locked, in this order
+   * and in statements of their own, and every condition is read again at one
+   * moment (must-fix 1): an administrator's reset, a lock or another confirm at the
    * same moment either waits for this one or makes it fail.
    */
   async confirm(token: string, newPassword: string, requestId: string): Promise<void> {
@@ -129,38 +127,38 @@ export class EmailPasswordResets {
     const first = await this.transactions.run([], (transaction) =>
       transaction
         .selectFrom('password_reset_links')
-        .select(['valid_until', 'used_at', 'closed_at'])
+        .select(['account_id', 'valid_until', 'used_at', 'closed_at'])
         .where('token_hash', '=', hash)
         .executeTakeFirst(),
     );
-    this.checkLink(first);
+    checkLink(first, this.clock.now());
+    if (first === undefined) {
+      throw invalid();
+    }
     const passwordHash = await hashPassword(newPassword);
 
     await this.transactions.run([], async (transaction) => {
-      const link = await transaction
-        .selectFrom('password_reset_links')
-        .select([
-          'id',
-          'account_id',
-          'requested_at',
-          'sent_at',
-          'valid_until',
-          'used_at',
-          'closed_at',
-        ])
-        .where('token_hash', '=', hash)
-        .forUpdate()
-        .executeTakeFirst();
-      this.checkLink(link);
-      if (link === undefined) {
-        throw invalid();
-      }
+      const now = await transactionMoment(transaction);
+      // The account first, then the link, in statements of their own: the
+      // order of every other writer (the request, a lock, a reset, a password
+      // change, an email change), which lock the account and then close the
+      // links (must-fix 1 of the spec review of the build).
       const account = await transaction
         .selectFrom('accounts')
         .select(['login', 'locked_at'])
-        .where('id', '=', link.account_id)
+        .where('id', '=', first.account_id)
         .forUpdate()
         .executeTakeFirstOrThrow();
+      const link = await transaction
+        .selectFrom('password_reset_links')
+        .select(['id', 'account_id', 'requested_at', 'valid_until', 'used_at', 'closed_at'])
+        .where('token_hash', '=', hash)
+        .forUpdate()
+        .executeTakeFirst();
+      checkLink(link, now);
+      if (link === undefined || link.account_id !== first.account_id) {
+        throw invalid();
+      }
       const newer = await transaction
         .selectFrom('password_reset_links')
         .select('id')
@@ -174,7 +172,6 @@ export class EmailPasswordResets {
       ) {
         throw invalid();
       }
-      const now = this.clock.now();
       await transaction
         .updateTable('accounts')
         .set({
@@ -213,7 +210,7 @@ export class EmailPasswordResets {
         record: { type: 'account', id: link.account_id },
         details: {
           endedSessions: ended.length,
-          // Decision 6 and correction 1 of #66: who changed the email last, and
+          // Decision 6 and correction 1 of #66: who wrote the email last, and
           // when, for the report of entries after a reset (6.1).
           lastEmailChange:
             change === undefined
@@ -224,21 +221,43 @@ export class EmailPasswordResets {
       });
     });
   }
+}
 
-  /** Unknown, used or closed: invalid; past its hour: expired. */
-  private checkLink(
-    link: { valid_until: Date | null; used_at: Date | null; closed_at: Date | null } | undefined,
-  ): void {
-    if (
-      link === undefined ||
-      link.valid_until === null ||
-      link.used_at !== null ||
-      link.closed_at !== null
-    ) {
-      throw invalid();
-    }
-    if (link.valid_until.getTime() <= this.clock.now().getTime()) {
-      throw expired();
-    }
+interface LinkMoments {
+  valid_until: Date | null;
+  used_at: Date | null;
+  closed_at: Date | null;
+}
+
+/** Unknown, used or closed: invalid; past its hour at `now`: expired. */
+function checkLink(link: LinkMoments | undefined, now: Date): void {
+  if (
+    link === undefined ||
+    link.valid_until === null ||
+    link.used_at !== null ||
+    link.closed_at !== null
+  ) {
+    throw invalid();
   }
+  if (link.valid_until.getTime() <= now.getTime()) {
+    throw expired();
+  }
+}
+
+/** Decision 10: a new link at most once in 5 minutes. */
+function tooSoon(newest: { requested_at: Date }, now: Date): boolean {
+  return now.getTime() - newest.requested_at.getTime() < RESET_LINK_INTERVAL_MS;
+}
+
+/**
+ * The newest link still works, or its mail may still be made: a new request
+ * makes nothing, so that nobody who only knows a login can close a person's
+ * link again and again (should-fix 3 of the permission review of the build).
+ */
+function stillOpen(newest: LinkMoments & { requested_at: Date }, now: Date): boolean {
+  if (newest.used_at !== null || newest.closed_at !== null) {
+    return false;
+  }
+  const until = newest.valid_until ?? new Date(newest.requested_at.getTime() + RESET_LINK_VALID_MS);
+  return until.getTime() > now.getTime();
 }

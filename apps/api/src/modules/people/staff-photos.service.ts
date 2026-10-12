@@ -28,6 +28,16 @@ interface PhotoTarget {
 
 class MainBranchMoved extends Error {}
 
+function ownTarget(accountId: string, own: { staffId: string; branchId: string }): PhotoTarget {
+  return {
+    branchIds: [own.branchId],
+    branchId: own.branchId,
+    main: true,
+    actorId: accountId,
+    id: own.staffId,
+  };
+}
+
 function targetOf(access: Access, id: string): PhotoTarget {
   if (access.branchId === null) {
     throw new Error('A staff route works for the branch of the request.');
@@ -119,8 +129,15 @@ export class StaffPhotos {
    * staff photo, with the own account as actor, no assignment (no role
    * allowed it) and the record's main branch, read again under the lock.
    */
-  setOwnPhoto(accountId: string, file: UploadedFile | null, requestId: string): Promise<void> {
-    return this.asOwn(accountId, (target) => this.place(target, file, requestId));
+  async setOwnPhoto(
+    accountId: string,
+    file: UploadedFile | null,
+    requestId: string,
+  ): Promise<void> {
+    const first = ownTarget(accountId, await this.ownRecord(accountId));
+    // The object is put once; only the locked write follows a moved main
+    // branch (should-fix 10 of the spec review of the build).
+    await this.place(first, file, requestId, (write) => this.asOwn(accountId, write, first));
   }
 
   removeOwnPhoto(accountId: string, requestId: string): Promise<void> {
@@ -151,17 +168,18 @@ export class StaffPhotos {
    * moved between the read and the lock (should-fix 12 of the plan review),
    * the work finds no main link there and is run again from the new one.
    */
-  private async asOwn(accountId: string, work: (target: PhotoTarget) => Promise<void>) {
+  private async asOwn(
+    accountId: string,
+    work: (target: PhotoTarget) => Promise<void>,
+    first?: PhotoTarget,
+  ) {
     for (let tries = 0; ; tries += 1) {
-      const own = await this.ownRecord(accountId);
+      const target =
+        tries === 0 && first !== undefined
+          ? first
+          : ownTarget(accountId, await this.ownRecord(accountId));
       try {
-        await work({
-          branchIds: [own.branchId],
-          branchId: own.branchId,
-          main: true,
-          actorId: accountId,
-          id: own.staffId,
-        });
+        await work(target);
         return;
       } catch (error) {
         if (!(error instanceof MainBranchMoved) || tries >= 2) {
@@ -171,7 +189,18 @@ export class StaffPhotos {
     }
   }
 
-  private async place(target: PhotoTarget, file: UploadedFile | null, requestId: string) {
+  /**
+   * The checks, the put of the object outside any transaction, then the
+   * locked write, run by `locked` (the own photo runs it again in a moved main
+   * branch; the staff photo once).
+   */
+  private async place(
+    target: PhotoTarget,
+    file: UploadedFile | null,
+    requestId: string,
+    locked: (write: (target: PhotoTarget) => Promise<void>) => Promise<void> = (write) =>
+      write(target),
+  ) {
     const { id } = target;
     await this.transactions.run(target.branchIds, (transaction) =>
       this.readPerson(transaction, id),
@@ -193,28 +222,25 @@ export class StaffPhotos {
     } catch {
       throw unavailable();
     }
-    await this.transactions.run(target.branchIds, async (transaction) => {
-      const row = await this.lockLinked(transaction, target);
-      await transaction
-        .updateTable('staff')
-        .set({ photo_id: photoId, photo_type: type })
-        .where('id', '=', id)
-        .execute();
-      await this.audit.record(transaction, {
-        ...auditNamesOf(target),
-        action: 'staff.photo',
-        record: { type: 'staff', id },
-        oldValue: { photoId: row.photo_id },
-        newValue: {
-          photoId,
-          type,
-          width: size.width,
-          height: size.height,
-          bytes: file.bytes.length,
-        },
-        requestId,
-      });
-    });
+    const bytes = file.bytes.length;
+    await locked((into) =>
+      this.transactions.run(into.branchIds, async (transaction) => {
+        const row = await this.lockLinked(transaction, into);
+        await transaction
+          .updateTable('staff')
+          .set({ photo_id: photoId, photo_type: type })
+          .where('id', '=', id)
+          .execute();
+        await this.audit.record(transaction, {
+          ...auditNamesOf(into),
+          action: 'staff.photo',
+          record: { type: 'staff', id },
+          oldValue: { photoId: row.photo_id },
+          newValue: { photoId, type, width: size.width, height: size.height, bytes },
+          requestId,
+        });
+      }),
+    );
   }
 
   private async clear(target: PhotoTarget, requestId: string): Promise<void> {

@@ -127,7 +127,7 @@ describe('the page of the reset link', () => {
         'GET /api/auth/session': signedOut,
         'POST /api/auth/password-reset/confirm': () => refusal(code, 400),
       });
-      renderApp(`/reset-password#token=${TOKEN}`);
+      const shell = renderApp(`/reset-password#token=${TOKEN}`);
       await heading(en.reset.title);
       type(en.password.new, CHOSEN);
       type(en.password.repeat, CHOSEN);
@@ -140,6 +140,17 @@ describe('the page of the reset link', () => {
       expect(
         screen.getByRole<HTMLButtonElement>('button', { name: en.reset.submit }).disabled,
       ).toBe(true);
+      // The refusal is kept by the page; no cache keeps the token or the password.
+      await waitFor(() => {
+        const kept = JSON.stringify(
+          shell.queryClient
+            .getMutationCache()
+            .getAll()
+            .map((one) => [one.state.data, one.state.variables]),
+        );
+        expect(kept).not.toContain(TOKEN);
+        expect(kept).not.toContain(CHOSEN);
+      });
     },
   );
 

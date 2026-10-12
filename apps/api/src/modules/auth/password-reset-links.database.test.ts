@@ -64,7 +64,7 @@ describe('password reset links in the database', () => {
           sex: 'female',
           birth_date: '1990-01-02',
           phone: `+9989300${String(count).padStart(5, '0')}`,
-          email: options.email === undefined ? `n${String(count)}@example.uz` : options.email,
+          email: options.email === undefined ? `n${String(count)}@example.test` : options.email,
           admission_date: '2026-09-01',
           account_id: accountId,
         })
@@ -250,9 +250,9 @@ describe('password reset links in the database', () => {
   describe('the functions, read with no branch', () => {
     it('answer for a person with an email, while the row filter hides the record itself', async () => {
       const account = await newAccount();
-      const id = await personOf(account, { email: 'nilufar.k@example.uz', branch: south });
+      const id = await personOf(account, { email: 'nilufar.k@example.test', branch: south });
       expect(await allowed(account)).toBe(true);
-      expect(await address(account)).toBe('nilufar.k@example.uz');
+      expect(await address(account)).toBe('nilufar.k@example.test');
       const own = await asApp(async (transaction) => {
         const found = await sql<{ staff_id: string; branch_id: string }>`
           select staff_id, branch_id from own_staff_record(${account}::uuid)
@@ -313,8 +313,8 @@ describe('password reset links in the database', () => {
             new_value: JSON.stringify(newValue),
           })
           .execute();
-      await entry(new Date(AT.getTime() - 2 * HOUR), { email: 'first@example.uz' });
-      await entry(new Date(AT.getTime() - HOUR), { email: 'second@example.uz' });
+      await entry(new Date(AT.getTime() - 2 * HOUR), { email: 'first@example.test' });
+      await entry(new Date(AT.getTime() - HOUR), { email: 'second@example.test' });
       await entry(AT, { phone: '+998930000000' });
 
       const found = await asApp(async (transaction) => {
@@ -324,6 +324,56 @@ describe('password reset links in the database', () => {
         return rows.rows;
       });
       expect(found).toEqual([{ actor_id: actor, occurred_at: new Date(AT.getTime() - HOUR) }]);
+    });
+
+    // The permission review of the build, must-fix 1.
+    it('answer no for an account with a stronger role unless a Super Admin wrote the email last', async () => {
+      const account = await newAccount();
+      const id = await personOf(account);
+      const admin = await newAccount();
+      const vice = await newAccount();
+      const role = (holder: string, name: string, branch: string | null) =>
+        database.migrator
+          .insertInto('assignments')
+          .values({
+            account_id: holder,
+            role: name,
+            branch_id: branch,
+            valid_from: new Date(AT.getTime() - 24 * HOUR),
+            created_at: new Date(AT.getTime() - 24 * HOUR),
+          })
+          .execute();
+      await role(admin, 'super_admin', null);
+      await role(vice, 'academic_vice_principal', north);
+      const entry = (action: string, actor: string, at: Date) =>
+        database.migrator
+          .insertInto('audit_log')
+          .values({
+            occurred_at: at,
+            branch_id: north,
+            actor_id: actor,
+            person_id: id,
+            action,
+            record_type: 'staff',
+            record_id: id,
+            new_value: JSON.stringify({ email: 'x@example.test' }),
+          })
+          .execute();
+
+      // A teacher: the email's writer does not matter.
+      await role(account, 'teacher', north);
+      expect(await allowed(account)).toBe(true);
+      // A stronger role and no known writer: no link.
+      await role(account, 'principal', north);
+      expect(await allowed(account)).toBe(false);
+      // Written by a Super Admin at its creation: a link.
+      await entry('staff.create', admin, new Date(AT.getTime() - 3 * HOUR));
+      expect(await allowed(account)).toBe(true);
+      expect(await address(account)).not.toBeNull();
+      // Written last by an Academic Vice Principal: no link.
+      await entry('staff.edit', vice, new Date(AT.getTime() - 2 * HOUR));
+      expect(await allowed(account)).toBe(false);
+      expect(await address(account)).toBeNull();
     });
   });
 });
