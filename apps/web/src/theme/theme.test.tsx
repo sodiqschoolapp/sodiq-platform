@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, refusal, renderApp, sessionOf } from '@/testing/render-app';
@@ -136,39 +136,38 @@ describe('the theme of the page', () => {
   });
 });
 
-describe('the theme switch', () => {
-  // The segmented control of docs/design-system.md: a radio group (pull request #60).
-  const chooser = () => screen.getByRole('radiogroup', { name: en.theme.label });
-  const choice = (name: string) => within(chooser()).getByRole<HTMLInputElement>('radio', { name });
-  const chosen = () =>
-    within(chooser())
-      .getAllByRole<HTMLInputElement>('radio')
-      .find((radio) => radio.checked)?.value;
-
-  it('offers the three choices, changes the page and stores the choice', async () => {
+describe('the theme choice', () => {
+  // In the app the three choices are in the person menu at the foot of the
+  // navy menu (docs/design-system.md, Layout shell; pull request #61, decision 3).
+  it('offers the three choices in the person menu, changes the page and stores the choice', async () => {
     fakeDevice(false);
     fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });
     renderApp('/', 'en', newStore());
     await screen.findByRole('heading', { name: en.home.title });
+    const open = () => {
+      fireEvent.click(screen.getByRole('button', { name: en.layout.account }));
+    };
+    const item = (name: string) => screen.findByRole('menuitemradio', { name });
 
-    expect(
-      within(chooser())
-        .getAllByRole('radio')
-        .map((radio) => radio.closest('label')?.textContent),
-    ).toEqual([en.theme.device, en.theme.light, en.theme.dark]);
-    expect(chosen()).toBe('device');
+    open();
+    expect((await item(en.theme.device)).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('menuitemradio', { name: en.theme.light })).toBeDefined();
 
-    fireEvent.click(choice(en.theme.dark));
+    fireEvent.click(await item(en.theme.dark));
     expect(isPageDark()).toBe(true);
-    expect(chosen()).toBe('dark');
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
 
-    fireEvent.click(choice(en.theme.light));
+    if (screen.queryByRole('menuitemradio', { name: en.theme.light }) === null) {
+      open();
+    }
+    fireEvent.click(await item(en.theme.light));
     expect(isPageDark()).toBe(false);
   });
 
-  // "These rules apply to every page" (12): before sign-in too.
-  it('is on the sign-in page as well, beside the language chooser', async () => {
+  // "These rules apply to every page" (12): before sign-in too, as the theme
+  // button of the sign-in page (docs/design-system.md, Brand moments, Sign-in;
+  // pull request #61, decision 2).
+  it('is a button on the sign-in page, beside the language chooser, that sets the other theme', async () => {
     fakeDevice(true);
     fakeApi({ 'GET /api/auth/session': () => refusal('not_signed_in', 401) });
     renderApp('/sign-in', 'en', newStore());
@@ -176,7 +175,10 @@ describe('the theme switch', () => {
 
     expect(isPageDark()).toBe(true);
     expect(screen.getByRole('combobox', { name: en.language.label })).toBeDefined();
-    fireEvent.click(choice(en.theme.light));
+    fireEvent.click(screen.getByRole('button', { name: en.theme.toLight }));
     expect(isPageDark()).toBe(false);
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
+    fireEvent.click(screen.getByRole('button', { name: en.theme.toDark }));
+    expect(isPageDark()).toBe(true);
   });
 });

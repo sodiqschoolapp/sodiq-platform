@@ -4,15 +4,21 @@ import { en } from '../src/i18n/locales/en';
 import { ru } from '../src/i18n/locales/ru';
 import { uz } from '../src/i18n/locales/uz';
 import { accountOf, NEW_PASSWORD } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn, type PageTexts } from './steps';
+import {
+  changeFirstPassword,
+  heading,
+  languageChooser,
+  signIn,
+  signOutFromMenu,
+  type PageTexts,
+} from './steps';
 import { codeNow } from './totp';
 
 const TEXTS = { uz, ru, en };
 
 async function signOut(page: Page, t: PageTexts): Promise<void> {
-  await page.getByRole('button', { name: t.layout.account, exact: true }).click();
-  await page.getByRole('menuitem', { name: t.layout.signOut, exact: true }).click();
-  await expect(heading(page, t.signIn.title)).toBeVisible();
+  // The sign-out button at the foot of the menu (docs/design-system.md, Layout shell).
+  await signOutFromMenu(page, t);
 }
 
 // docs/build-plan.md, task 0.8a: Playwright signs in and out in each language.
@@ -148,7 +154,7 @@ test('keeps the session in a cookie scripts cannot read, and says when a device 
   // What a script of the page can read of the cookies.
   expect(await page.evaluate<string>('document.cookie')).not.toContain('sodiq_session');
 
-  // The password change by choice, from the account menu.
+  // The password change by choice, from the person menu at the foot of the menu.
   await page.getByRole('button', { name: en.layout.account, exact: true }).click();
   await page.getByRole('menuitem', { name: en.layout.changePassword, exact: true }).click();
   await expect(heading(page, en.password.titleOwn)).toBeVisible();

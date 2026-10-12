@@ -110,8 +110,11 @@ export const ThemeContext = createContext<ThemeStore | null>(null);
 const subscribeToNothing = (): (() => void) => () => undefined;
 const defaultTheme = (): Theme => DEFAULT_THEME;
 
-/** The chosen theme and a way to change it. The default outside the app (a piece drawn alone in a test). */
-export function useTheme(): { theme: Theme; setTheme: (theme: Theme) => void } {
+/**
+ * The chosen theme, whether the page is drawn dark now, and a way to change
+ * the theme. The default outside the app (a piece drawn alone in a test).
+ */
+export function useTheme(): { theme: Theme; dark: boolean; setTheme: (theme: Theme) => void } {
   const store = useContext(ThemeContext);
   const theme = useSyncExternalStore(
     store?.subscribe ?? subscribeToNothing,
@@ -119,6 +122,7 @@ export function useTheme(): { theme: Theme; setTheme: (theme: Theme) => void } {
   );
   return {
     theme,
+    dark: store?.dark ?? false,
     setTheme: (next) => {
       store?.set(next);
     },

@@ -360,23 +360,26 @@ describe('leaving a record form with typed changes', () => {
   it('asks before sign-out, and sends nothing when the person stays', async () => {
     const { panel, calls } = await openForm();
     type(field(panel, en.sample.score), '90');
-    const signOut = async (): Promise<void> => {
-      fireEvent.click(screen.getByRole('button', { name: en.layout.account }));
-      fireEvent.click(await screen.findByRole('menuitem', { name: en.layout.signOut }));
+    const signOut = (): void => {
+      // The sign-out button at the foot of the menu (docs/design-system.md,
+      // Layout shell), focused by the click as in a browser.
+      const button = screen.getByRole('button', { name: en.layout.signOut });
+      button.focus();
+      fireEvent.click(button);
     };
     const sent = () => calls.filter((call) => call.route === 'POST /api/auth/sign-out');
 
-    await signOut();
+    signOut();
     fireEvent.click(within(await leaveDialog()).getByRole('button', { name: en.unsent.stay }));
     await noDialog();
     expect(sent()).toHaveLength(0);
     expect(field(panel, en.sample.score).value).toBe('90');
-    // The menu item is gone with its menu: the keyboard goes on from the menu's button.
+    // The keyboard goes on from the sign-out button.
     await waitFor(() => {
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: en.layout.account }));
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: en.layout.signOut }));
     });
 
-    await signOut();
+    signOut();
     fireEvent.click(within(await leaveDialog()).getByRole('button', { name: en.unsent.leave }));
 
     expect(await screen.findByRole('heading', { name: en.signIn.title })).toBeDefined();

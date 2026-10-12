@@ -369,6 +369,7 @@ export function SubjectsPage() {
         search={search}
         onSearchChange={open}
         empty={{
+          title: t('setup.subjects.emptyTitle'),
           text: t('setup.subjects.empty'),
           action: addButton === false ? undefined : addButton,
         }}

@@ -15,6 +15,7 @@ import { useMenuPages } from '@/features/access/use-menu';
 import { useView } from '@/features/access/use-view';
 import { searchKey, searchWords } from '@/components/list/list-state';
 import { Button } from '@/components/ui/button';
+import { FOCUS_RING, QUICK } from '@/components/ui/control';
 import {
   Dialog,
   DialogClose,
@@ -138,15 +139,26 @@ export function CommandSearch() {
 
   return (
     <Dialog open={open} onOpenChange={change}>
-      <DialogTrigger render={<Button variant="ghost" />}>
+      {/* docs/design-system.md, Layout shell, Top bar: the search field with "Ctrl K"
+          as plain text at its right; at phone width the search button. */}
+      <DialogTrigger
+        render={
+          <button
+            type="button"
+            className={cn(
+              'flex h-10 items-center gap-2 rounded-lg border border-input bg-card px-3 text-sm text-muted-foreground sm:w-64',
+              'max-sm:size-11 max-sm:justify-center max-sm:border-0 max-sm:bg-transparent max-sm:px-0 max-sm:text-foreground max-sm:hover:bg-accent',
+              QUICK,
+              FOCUS_RING,
+            )}
+          />
+        }
+      >
         <SearchIcon aria-hidden />
-        <span className="sr-only sm:not-sr-only">{t('search.label')}</span>
-        <kbd
-          aria-hidden
-          className="hidden rounded border px-1 font-sans text-xs text-muted-foreground md:inline"
-        >
+        <span className="max-sm:sr-only">{t('search.label')}</span>
+        <span aria-hidden className="ml-auto text-xs max-sm:hidden">
           {t(onMac() ? 'search.shortcutMac' : 'search.shortcut')}
-        </kbd>
+        </span>
       </DialogTrigger>
       <DialogContent className="top-[15%] translate-y-0 gap-3 sm:max-w-md">
         <DialogTitle className="sr-only">{t('search.label')}</DialogTitle>

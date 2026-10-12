@@ -27,6 +27,7 @@ export type AccountKey =
   | 'staffExport'
   | 'staffPhoto'
   | 'design'
+  | 'brand'
   | 'shellTools'
   | 'switchers'
   | 'account'

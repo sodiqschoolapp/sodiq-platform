@@ -337,6 +337,7 @@ export function RoomsPage() {
         search={search}
         onSearchChange={open}
         empty={{
+          title: t('setup.rooms.emptyTitle'),
           text: noFloor ? t('setup.rooms.emptyNoFloor') : t('setup.rooms.empty'),
           action: emptyAction,
         }}

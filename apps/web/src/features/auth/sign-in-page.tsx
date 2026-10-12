@@ -68,6 +68,7 @@ export function SignInPage() {
       )}
       <form className="grid gap-4" onSubmit={submit} noValidate>
         <Field
+          large
           label={t('signIn.login')}
           name="login"
           autoComplete="username"
@@ -83,6 +84,7 @@ export function SignInPage() {
           }}
         />
         <Field
+          large
           label={t('signIn.password')}
           name="password"
           type="password"

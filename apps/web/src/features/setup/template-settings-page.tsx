@@ -410,7 +410,10 @@ export function TemplateSettingsPage() {
         filters={filters}
         search={search}
         onSearchChange={open}
-        empty={{ text: t('setup.templateSettings.empty') }}
+        empty={{
+          title: t('setup.templateSettings.emptyTitle'),
+          text: t('setup.templateSettings.empty'),
+        }}
         panel={(row) =>
           tomorrow === null ? null : (
             <AssignmentPanel

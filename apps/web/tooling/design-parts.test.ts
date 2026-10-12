@@ -92,6 +92,65 @@ describe('the parts of the design system', () => {
     );
   });
 
+  // docs/design-system.md, Type: "Bitter ... for brand moments only: the
+  // sign-in title and slogan, the title of an empty page and of a full-page
+  // error. Never in tables, forms, menus or page titles of working screens."
+  // Task 2.2d-2: the sign-in frame and the brand moment of states.tsx (which
+  // the full-page errors of app/pages.tsx draw); the font is named in
+  // index.css only.
+  it('draw the slab font in the brand moments only', () => {
+    const drawn = sources.filter(({ file }) => !/\.test\.tsx?$/.test(file));
+    const files = new Set(matching(/font-brand/, drawn).map((line) => line.split(':')[0] ?? ''));
+    expect([...files].sort()).toEqual(
+      [
+        path.join('src', 'components', 'states.tsx'),
+        path.join('src', 'features', 'auth', 'auth-page.tsx'),
+      ].sort(),
+    );
+    // The family itself, by name in a string.
+    expect(matching(/['"]Bitter/, drawn)).toEqual([]);
+    expect(read('src/index.css')).toContain("@import '@fontsource-variable/bitter';");
+  });
+
+  // The hexagons and the line ornament are drawings, not icons (pull request
+  // #61, decision 10): an <svg> is written by hand in components/brand/ only;
+  // every icon comes from components/icons.tsx.
+  it('write an svg by hand only in the brand drawings', () => {
+    const drawn = sources.filter(
+      ({ file }) =>
+        !/\.test\.tsx?$/.test(file) && !file.startsWith(path.join('src', 'components', 'brand')),
+    );
+    expect(matching(/<svg[\s>]/, drawn)).toEqual([]);
+  });
+
+  // What we never do 9: "Orange text". The one orange text is the slogan on
+  // the navy panel of the sign-in page (Brand moments; pull request #61,
+  // decision 16).
+  it('write orange text only in the slogan of the sign-in page', () => {
+    const drawn = sources.filter(({ file }) => !/\.test\.tsx?$/.test(file));
+    expect(matching(/\btext-primary(?!-)/, drawn)).toEqual([
+      expect.stringMatching(
+        new RegExp(
+          `^${path.join('src', 'features', 'auth', 'auth-page.tsx').replaceAll('/', '\\/')}:`,
+        ),
+      ),
+    ]);
+  });
+
+  // .claude/rules/web.md: "The theme is useTheme() and ThemeSwitch; nothing
+  // else reads or writes sodiq.theme"; the menu's shape the same way (pull
+  // request #61, correction 1).
+  it('keep the theme and the menu shape each in its one file', () => {
+    const drawn = sources.filter(({ file }) => !/\.test\.tsx?$/.test(file));
+    const filesOf = (pattern: RegExp): string[] => [
+      ...new Set(matching(pattern, drawn).map((line) => line.split(':')[0] ?? '')),
+    ];
+    expect(filesOf(/sodiq\.theme/)).toEqual([path.join('src', 'theme', 'theme.ts')]);
+    expect(filesOf(/sodiq\.menu/)).toEqual([
+      path.join('src', 'features', 'access', 'menu-state.ts'),
+    ]);
+  });
+
   // docs/design-system.md, Logo: the browser and home-screen icons.
   it('name the browser-tab and app icons in index.html and the manifest', () => {
     const html = read('index.html');

@@ -198,6 +198,7 @@ export function DayTemplatesPage() {
         search={search}
         onSearchChange={open}
         empty={{
+          title: t('setup.dayTemplates.emptyTitle'),
           text: t('setup.dayTemplates.empty'),
           action: addButton === false ? undefined : addButton,
         }}

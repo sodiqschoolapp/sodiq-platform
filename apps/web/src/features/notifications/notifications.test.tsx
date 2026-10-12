@@ -331,8 +331,8 @@ describe('the notifications of the top bar', () => {
       expect(live.connections).toHaveLength(1);
       expect(live.last().closed).toBe(false);
 
-      fireEvent.click(screen.getByRole('button', { name: en.layout.account }));
-      fireEvent.click(await screen.findByRole('menuitem', { name: en.layout.signOut }));
+      // The sign-out button at the foot of the menu (docs/design-system.md, Layout shell).
+      fireEvent.click(screen.getByRole('button', { name: en.layout.signOut }));
 
       await screen.findByRole('heading', { name: en.signIn.title });
       expect(live.last().closed).toBe(true);

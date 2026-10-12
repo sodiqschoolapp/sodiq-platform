@@ -34,7 +34,7 @@ import { SetupPage } from '@/features/setup/setup-page';
 import { listSearch } from '@/components/list/list-state';
 import { SignInPage } from '@/features/auth/sign-in-page';
 import { AppLayout } from './app-layout';
-import { ErrorPage, NotFoundPage, PendingPage } from './pages';
+import { AuthPendingPage, ErrorPage, NotFoundPage, PendingPage } from './pages';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -68,6 +68,7 @@ const signInRoute = createRoute({
     search.reason === 'ended' ? { reason: 'ended' } : {},
   beforeLoad: only('sign_in'),
   component: SignInPage,
+  pendingComponent: AuthPendingPage,
 });
 
 const codeRoute = createRoute({
@@ -75,6 +76,7 @@ const codeRoute = createRoute({
   path: '/sign-in/code',
   beforeLoad: only('code'),
   component: CodePage,
+  pendingComponent: AuthPendingPage,
 });
 
 const passwordRoute = createRoute({
@@ -95,6 +97,7 @@ const passwordRoute = createRoute({
     }
   },
   component: PasswordPage,
+  pendingComponent: AuthPendingPage,
 });
 
 const setUpRoute = createRoute({
@@ -102,6 +105,7 @@ const setUpRoute = createRoute({
   path: '/second-step/set-up',
   beforeLoad: only('set_up'),
   component: SetUpPage,
+  pendingComponent: AuthPendingPage,
 });
 
 /** Every page inside the app layout needs a session that owes no step. */

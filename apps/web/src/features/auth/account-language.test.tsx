@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
+import { LANGUAGE_NAMES } from '@/i18n/languages';
 import { fakeApi, json, nothing, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const heading = (name: string) => screen.findByRole('heading', { name });
@@ -15,6 +16,29 @@ const press = (name: string) => {
 const chooseLanguage = (label: string, language: string) => {
   fireEvent.change(screen.getByLabelText(label), { target: { value: language } });
 };
+/**
+ * Inside the app the language is chosen in the person menu at the foot of the
+ * navy menu (docs/design-system.md, Layout shell; pull request #61, decision 3).
+ */
+const openPersonMenu = (texts: { layout: { account: string } }) => {
+  fireEvent.click(screen.getByRole('button', { name: texts.layout.account }));
+};
+async function languageInMenu(texts: { layout: { account: string } }): Promise<string | null> {
+  openPersonMenu(texts);
+  const items = await screen.findAllByRole('menuitemradio');
+  return (
+    items
+      .find((item) => item.hasAttribute('lang') && item.getAttribute('aria-checked') === 'true')
+      ?.getAttribute('lang') ?? null
+  );
+}
+async function chooseInMenu(
+  texts: { layout: { account: string } },
+  language: keyof typeof LANGUAGE_NAMES,
+) {
+  openPersonMenu(texts);
+  fireEvent.click(await screen.findByRole('menuitemradio', { name: LANGUAGE_NAMES[language] }));
+}
 const signedOut = () => refusal('not_signed_in', 401);
 const MARK = 'sodiq.languageChosen';
 
@@ -41,7 +65,7 @@ describe('the language of the account', () => {
     signInAs();
 
     expect(await heading(ru.home.title)).toBeDefined();
-    expect(screen.getByLabelText<HTMLSelectElement>(ru.language.label).value).toBe('ru');
+    expect(await languageInMenu(ru)).toBe('ru');
     // Nothing was chosen in this tab: nothing is saved to the account.
     expect(calls.map((call) => call.route)).not.toContain('PUT /api/auth/language');
   });
@@ -52,7 +76,7 @@ describe('the language of the account', () => {
     renderApp('/');
 
     expect(await heading(uz.home.title)).toBeDefined();
-    expect(screen.getByLabelText<HTMLSelectElement>(uz.language.label).value).toBe('uz');
+    expect(await languageInMenu(uz)).toBe('uz');
   });
 
   it('is not applied while a step is owed: the code page stays in the language of the browser', async () => {
@@ -78,7 +102,7 @@ describe('the language of the account', () => {
     press(en.code.submit);
 
     expect(await heading(ru.home.title)).toBeDefined();
-    expect(screen.getByLabelText<HTMLSelectElement>(ru.language.label).value).toBe('ru');
+    expect(await languageInMenu(ru)).toBe('ru');
   });
 
   it('is saved from a choice made on the sign-in page, once the sign-in is complete', async () => {
@@ -108,7 +132,7 @@ describe('the language of the account', () => {
       ]);
     });
     expect(window.sessionStorage.getItem(MARK)).toBeNull();
-    expect(screen.getByLabelText<HTMLSelectElement>(uz.language.label).value).toBe('uz');
+    expect(await languageInMenu(uz)).toBe('uz');
   });
 
   it('is saved from a choice made at the forced password change, after the change', async () => {
@@ -242,8 +266,7 @@ describe('the language of the account', () => {
     await heading(en.home.title);
     window.sessionStorage.setItem(MARK, 'uz');
 
-    fireEvent.click(screen.getByRole('button', { name: en.layout.account }));
-    fireEvent.click(await screen.findByRole('menuitem', { name: en.layout.signOut }));
+    fireEvent.click(screen.getByRole('button', { name: en.layout.signOut }));
 
     await heading(en.signIn.title);
     expect(window.sessionStorage.getItem(MARK)).toBeNull();
@@ -254,7 +277,7 @@ describe('the language of the account', () => {
     expect(calls.map((call) => call.route)).not.toContain('PUT /api/auth/language');
   });
 
-  it('is saved by the chooser of the top bar, which switches the page at once', async () => {
+  it('is saved by the chooser of the person menu, which switches the page at once', async () => {
     const calls = fakeApi({
       'GET /api/auth/session': () => json(sessionOf()),
       'PUT /api/auth/language': nothing,
@@ -262,7 +285,7 @@ describe('the language of the account', () => {
     renderApp('/');
     await heading(en.home.title);
 
-    chooseLanguage(en.language.label, 'ru');
+    await chooseInMenu(en, 'ru');
 
     expect(await heading(ru.home.title)).toBeDefined();
     await waitFor(() => {
@@ -281,7 +304,7 @@ describe('the language of the account', () => {
     renderApp('/');
     await heading(en.home.title);
 
-    chooseLanguage(en.language.label, 'ru');
+    await chooseInMenu(en, 'ru');
 
     expect((await screen.findByRole('alert')).textContent).toBe(ru.errors.internal_error);
   });

@@ -1,15 +1,18 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
-/* Golos Text from our own files (docs/design-system.md, Type). Bitter, the slab
-   font of the brand moments, is installed and imported from task 2.2d-2. */
+/* Golos Text from our own files (docs/design-system.md, Type), and Bitter, the
+   slab font of the brand moments only (the class font-brand). */
 @import '@fontsource-variable/golos-text';
+@import '@fontsource-variable/bitter';
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: 'Golos Text Variable', sans-serif;
+  --font-brand: 'Bitter Variable', serif;
+  --color-sidebar-avatar: var(--sidebar-avatar);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -124,6 +127,8 @@
   --sidebar-accent-foreground: oklch(1 0 0);
   --sidebar-border: oklch(0.2703 0.0841 268.91);
   --sidebar-ring: oklch(0.7491 0.1706 52.71);
+  /* The round avatar of the person at the foot of the menu (#1B2A63). */
+  --sidebar-avatar: oklch(0.309 0.1025 268.61);
   /* The 12 subject colours (task 2.1, answer 7): a swatch at least 3:1 on the
      background, the name in the normal text on a 15% tint (tooling/contrast.test.ts). */
   --subject-red: oklch(0.56 0.17 25);
@@ -186,6 +191,8 @@
   --sidebar-accent-foreground: oklch(1 0 0);
   --sidebar-border: oklch(0.2703 0.0841 268.91);
   --sidebar-ring: oklch(0.7491 0.1706 52.71);
+  /* The round avatar of the person at the foot of the menu (#1B2A63). */
+  --sidebar-avatar: oklch(0.309 0.1025 268.61);
   --subject-red: oklch(0.74 0.15 25);
   --subject-orange: oklch(0.74 0.15 50);
   --subject-amber: oklch(0.74 0.15 75);
@@ -238,5 +245,26 @@
      PANEL); one inside a panel, a side panel or a dialog is already on white. */
   main form[data-slot='record-form']:not(aside *, [role='dialog'] *, .bg-card *) {
     @apply max-w-3xl rounded-xl bg-card p-6 max-sm:p-4;
+  }
+}
+
+/* docs/design-system.md, Brand moments, Printouts: A4, white, Golos Text, navy
+   text. The shell is not printed; the letterhead keeps its navy and orange. */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: white;
+    color: oklch(0.2026 0.0841 266.73);
+  }
+  [data-print='hide'] {
+    display: none !important;
+  }
+  [data-print='colours'] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }

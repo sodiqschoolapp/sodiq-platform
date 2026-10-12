@@ -19,12 +19,21 @@ import {
 import { BRANCH_STORAGE_KEY, ROLE_STORAGE_KEY } from './view-store';
 
 // Every page is built here, so that the menu shows the whole row of the table.
-vi.mock('./menu-pages', async () => {
+vi.mock('./menu-pages', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./menu-pages')>();
   const { MENU_ITEMS } = await import('@sodiq/shared');
   const pages = Object.fromEntries(
-    MENU_ITEMS.map((item) => [item, { titleKey: `menu.${item}`, to: '/' }]),
+    MENU_ITEMS.map((item) => [
+      item,
+      // Home at its own address, the others elsewhere, so one item is the current page.
+      {
+        titleKey: `menu.${item}`,
+        to: item === 'home' ? '/' : '/setup',
+        icon: actual.MENU_ICONS[item],
+      },
+    ]),
   );
-  return { BUILT_PAGES: pages, BUILT_ITEMS: new Set(MENU_ITEMS) };
+  return { ...actual, BUILT_PAGES: pages, BUILT_ITEMS: new Set(MENU_ITEMS) };
 });
 
 const heading = (name: string) => screen.findByRole('heading', { name });
@@ -46,11 +55,16 @@ describe('the menu and the home page of each role', () => {
     renderApp('/');
 
     await heading(en.home.title);
-    const shown = side()
-      .getAllByRole('link')
-      .map((link) => link.textContent.replace(en.menu.current, ''));
-    // The own account page is the entry every role has (task 0.8d).
-    expect(shown).toEqual([...MENU[role].map((item) => en.menu[item]), en.account.title]);
+    const links = side().getAllByRole('link');
+    expect(links.map((link) => link.textContent)).toEqual(MENU[role].map((item) => en.menu[item]));
+    // The current page is marked for a screen reader as well as by its fill
+    // (docs/design-system.md, Layout shell, Menu; pull request #61, decision 9).
+    expect(links.filter((link) => link.getAttribute('aria-current') === 'page')).toEqual([
+      links[0],
+    ]);
+    // The own account page (task 0.8d) is reached from the person at the foot of the menu
+    // (pull request #61, decision 7).
+    expect(screen.getByRole('button', { name: en.layout.account })).toBeDefined();
     expect(screen.getByText(en.home[HOME_KIND[role]])).toBeDefined();
     expect(screen.queryByLabelText(en.switcher.role)).toBeNull();
   });
@@ -183,8 +197,7 @@ describe('sign-out', () => {
     renderApp('/');
     await heading(en.home.title);
 
-    fireEvent.click(screen.getByRole('button', { name: en.layout.account }));
-    fireEvent.click(await screen.findByRole('menuitem', { name: en.layout.signOut }));
+    fireEvent.click(screen.getByRole('button', { name: en.layout.signOut }));
 
     await heading(en.signIn.title);
     expect(window.sessionStorage.getItem(ROLE_STORAGE_KEY)).toBeNull();
@@ -253,21 +266,30 @@ describe('a session found to be over', () => {
   });
 });
 
-describe('the menu on a phone', () => {
-  it('opens from a button, names the current page and closes after a choice', async () => {
-    fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });
+// docs/design-system.md, Layout shell, Phone width; This app, Phone tab bar:
+// "The role's first four menu items and \"More\"".
+describe('the tab bar on a phone', () => {
+  it('shows the first four items and "More" with the rest, the own entries and sign-out', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionOf({ assignments: [held('principal')] })),
+    });
     renderApp('/');
     await heading(en.home.title);
 
-    fireEvent.click(screen.getByRole('button', { name: en.menu.open }));
+    const bar = within(screen.getByRole('navigation', { name: en.menu.tabs }));
+    const items = MENU.principal.map((item) => en.menu[item]);
+    expect(bar.getAllByRole('link').map((link) => link.textContent)).toEqual(items.slice(0, 4));
+    expect(bar.getAllByRole('link')[0]?.getAttribute('aria-current')).toBe('page');
 
-    const dialog = await screen.findByRole('dialog', { name: en.menu.title });
-    const links = within(dialog).getAllByRole('link');
-    expect(links.length).toBeGreaterThan(1);
-    expect(within(dialog).getAllByText(en.menu.current).length).toBeGreaterThan(0);
+    fireEvent.click(bar.getByRole('button', { name: en.menu.more }));
+
+    const dialog = await screen.findByRole('dialog', { name: en.menu.more });
+    const rest = within(within(dialog).getByRole('navigation', { name: en.menu.moreItems }));
+    expect(rest.getAllByRole('link').map((link) => link.textContent)).toEqual(items.slice(4));
+    expect(within(dialog).getByRole('button', { name: en.layout.signOut })).toBeDefined();
     fireEvent.click(within(dialog).getByRole('link', { name: en.account.title }));
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: en.menu.title })).toBeNull();
+      expect(screen.queryByRole('dialog', { name: en.menu.more })).toBeNull();
     });
   });
 });

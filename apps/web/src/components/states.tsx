@@ -3,21 +3,75 @@ import { useTranslation } from 'react-i18next';
 import { failureText } from '@/api/failure-text';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PANEL } from '@/components/ui/control';
+import { HexagonDrawing } from '@/components/brand/hexagons';
 
 interface EmptyStateProps {
+  /**
+   * What is missing, for an empty page: with a title the empty state is the
+   * brand moment. Without one it is a quiet line in a part of a page (a
+   * popover, a section; pull request #61, decision 1).
+   */
+  title?: string | undefined;
   /** What the page is for. */
   text: string;
-  /** The first action, for a person who may take it. */
+  /** The first action, for a person who may take it: a primary button. */
   action?: ReactNode;
+  /** At most one quiet second action. */
+  secondAction?: ReactNode;
+}
+
+/**
+ * The brand moment of an empty page or a full-page error
+ * (docs/design-system.md, Brand moments, Empty page): in a white panel, a
+ * Bitter title, one short line, the actions, and the hexagon drawing at the
+ * right, hidden at phone width.
+ */
+export function BrandMoment({
+  title,
+  text,
+  action,
+  secondAction,
+  heading = 'h2',
+  alert = false,
+}: Required<Pick<EmptyStateProps, 'title' | 'text'>> &
+  Pick<EmptyStateProps, 'action' | 'secondAction'> & {
+    heading?: 'h1' | 'h2';
+    /** The line says what went wrong: read out as an alert. */
+    alert?: boolean;
+  }) {
+  const Heading = heading;
+  return (
+    <div className={`flex items-center justify-between gap-8 ${PANEL}`}>
+      <div className="grid max-w-prose justify-items-start gap-3">
+        <Heading className="font-brand text-[1.75rem]/[2.125rem] font-bold sm:text-[2.5rem]/[2.75rem]">
+          {title}
+        </Heading>
+        <p {...(alert ? { role: 'alert' } : {})} className="text-muted-foreground">
+          {text}
+        </p>
+        {(action !== undefined || secondAction !== undefined) && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {action}
+            {secondAction}
+          </div>
+        )}
+      </div>
+      <HexagonDrawing className="max-sm:hidden" />
+    </div>
+  );
 }
 
 /**
  * docs/spec/12-ux-standards.md, Look and feel: "Empty pages say what the page
  * is for and offer the first action."
  */
-export function EmptyState({ text, action }: EmptyStateProps) {
+export function EmptyState({ title, text, action, secondAction }: EmptyStateProps) {
+  if (title !== undefined) {
+    return <BrandMoment title={title} text={text} action={action} secondAction={secondAction} />;
+  }
   return (
-    <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-6">
+    <div className="grid justify-items-start gap-3">
       <p className="max-w-prose text-muted-foreground">{text}</p>
       {action}
     </div>

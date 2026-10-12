@@ -294,6 +294,7 @@ export function CalendarPage() {
         search={search}
         onSearchChange={open}
         empty={{
+          title: t('setup.calendar.emptyTitle'),
           text: t('setup.calendar.empty'),
           action: addButton === false ? undefined : addButton,
         }}
