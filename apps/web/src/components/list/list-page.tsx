@@ -85,7 +85,7 @@ interface ListPageProps<Row> {
   /** Writes the list state into the address: a new entry of the history, or in place. */
   onSearchChange: (next: ListSearch, how: 'push' | 'replace') => void;
   /** Shown when the list has no row at all: what the page is for and the first action. */
-  empty: { text: string; action?: ReactNode };
+  empty: { title: string; text: string; action?: ReactNode };
   /** With them the rows have checkboxes. */
   bulkActions?: readonly BulkAction<Row>[];
   /**
@@ -536,7 +536,7 @@ export function ListPage<Row>({
         ) : rows.length === 0 ? (
           <>
             {failed && <FailureAlert error={error} />}
-            <EmptyState text={empty.text} action={empty.action} />
+            <EmptyState title={empty.title} text={empty.text} action={empty.action} />
           </>
         ) : (
           <>

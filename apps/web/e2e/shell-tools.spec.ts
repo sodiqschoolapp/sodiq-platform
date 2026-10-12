@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { changeFirstPassword, chooseTheme, heading, languageChooser, signIn } from './steps';
 
 // docs/build-plan.md, task 0.8b-3: the shell tools. docs/spec/12-ux-standards.md:
 // "Light and dark themes" on every page; "Ctrl+K opens a search across ... pages";
@@ -12,14 +12,13 @@ test('the theme is kept, Ctrl+K and the search button open the pages, and a repo
 }) => {
   const account = accountOf('shellTools');
   const html = page.locator('html');
-  // The segmented control of docs/design-system.md: a radio group (pull request #60).
-  const theme = page.getByRole('radiogroup', { name: en.theme.label, exact: true });
 
-  // The theme is chosen before sign-in and kept by the browser.
+  // The theme is chosen before sign-in, with the theme button of the sign-in
+  // page (pull request #61, decision 2), and kept by the browser.
   await page.goto('/sign-in');
   await languageChooser(page).selectOption('en');
   await expect(html).not.toHaveClass(/dark/);
-  await theme.getByText(en.theme.dark, { exact: true }).click();
+  await page.getByRole('button', { name: en.theme.toDark, exact: true }).click();
   await expect(html).toHaveClass(/dark/);
 
   await signIn(page, en, account.login, account.password);
@@ -29,7 +28,8 @@ test('the theme is kept, Ctrl+K and the search button open the pages, and a repo
   await page.reload();
   await expect(heading(page, en.home.title)).toBeVisible();
   await expect(html).toHaveClass(/dark/);
-  await theme.getByText(en.theme.light, { exact: true }).click();
+  // In the app, the person menu at the foot of the navy menu (decision 3).
+  await chooseTheme(page, en, 'light');
   await expect(html).not.toHaveClass(/dark/);
 
   // Ctrl+K: the box has the focus; typing narrows the pages; Enter opens one.

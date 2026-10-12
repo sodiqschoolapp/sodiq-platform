@@ -3,7 +3,7 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { changeFirstPassword, chooseTheme, heading, languageChooser, signIn } from './steps';
 import { codeNow } from './totp';
 
 // docs/design-system.md (task 2.2d-1, pull request #60): the tokens, the font
@@ -73,20 +73,31 @@ test('the staff list and its side panel are drawn with the design system in ligh
   await row.getByRole('button', { name: 'Oybek Qoʻchqorov' }).click();
   await expect(page.getByRole('complementary', { name: 'Oybek Qoʻchqorov' })).toBeVisible();
 
-  const theme = page.getByRole('radiogroup', { name: en.theme.label, exact: true });
   const body = page.locator('body');
 
-  await theme.getByText(en.theme.light, { exact: true }).click();
+  // The theme is chosen in the person menu since task 2.2d-2 (pull request #61, decision 3).
+  await chooseTheme(page, en, 'light');
   await expect(page.locator('html')).not.toHaveClass(/dark/);
   // The brand grey #ECECEC.
   await expect(body).toHaveCSS('background-color', /0\.9431/);
   await screenshot(page, 'staff-list-light');
 
-  // The segmented control is a radio group: the arrows move the choice.
+  // The segmented control is a radio group: the arrows move the choice. Since
+  // task 2.2d-2 it is the theme choice of "More" at phone width.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByRole('navigation', { name: en.menu.tabs })
+    .getByRole('button', { name: en.menu.more, exact: true })
+    .click();
+  const more = page.getByRole('dialog', { name: en.menu.more });
+  const theme = more.getByRole('radiogroup', { name: en.theme.label, exact: true });
   await theme.getByRole('radio', { name: en.theme.light }).focus();
   await page.keyboard.press('ArrowRight');
   await expect(theme.getByRole('radio', { name: en.theme.dark })).toBeChecked();
   await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.keyboard.press('Escape');
+  await expect(more).toBeHidden();
+  await page.setViewportSize({ width: 1280, height: 720 });
   // The dark navy #040920.
   await expect(body).toHaveCSS('background-color', /0\.1509/);
   await screenshot(page, 'staff-list-dark');
@@ -102,7 +113,7 @@ test('the staff list and its side panel are drawn with the design system in ligh
   await expect(page.locator('tbody tr').nth(2).getByRole('checkbox')).not.toBeChecked();
   await expect(page.locator('html')).toHaveClass(/dark/);
   await screenshot(page, 'sample-list-dark');
-  await theme.getByText(en.theme.light, { exact: true }).click();
+  await chooseTheme(page, en, 'light');
   await screenshot(page, 'sample-list-light');
 
   expect(fontHosts).toEqual([]);

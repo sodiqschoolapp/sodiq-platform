@@ -46,7 +46,7 @@ export function PeoplePage() {
     <>
       <PageHeader title={t('people.title')} breadcrumbs={[{ label: t('home.title'), to: '/' }]} />
       {links.length === 0 ? (
-        <EmptyState text={t('people.none')} />
+        <EmptyState title={t('people.noneTitle')} text={t('people.none')} />
       ) : (
         <ul aria-label={t('people.title')} className="grid max-w-3xl gap-3">
           {links.map((link) => (

@@ -6,16 +6,24 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     name: 'Sodiq School',
     loading: 'Загрузка…',
   },
+  brand: {
+    slogan: 'Образование начинается с воспитания',
+  },
   language: {
     label: 'Язык',
   },
   theme: {
+    toLight: 'Светлая тема',
+    toDark: 'Тёмная тема',
     label: 'Тема',
     device: 'Как на устройстве',
     light: 'Светлая',
     dark: 'Тёмная',
   },
   problems: {
+    noAccessText:
+      'Ваша роль не может открыть эту страницу. Перейдите на главную или, если она нужна, обратитесь к администратору.',
+    noAccessTitle: 'Нет доступа',
     noAnswer: 'Сервер не ответил. Проверьте подключение к интернету и попробуйте ещё раз.',
     unexpected:
       'В приложении произошла ошибка. Обновите страницу. Если она повторится, сообщите администратору.',
@@ -244,6 +252,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     continue: 'Продолжить',
   },
   layout: {
+    topBar: 'Верхняя панель',
     breadcrumbs: 'Вы находитесь здесь',
     menu: 'Главное меню',
     account: 'Учётная запись',
@@ -344,6 +353,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     stay: 'Остаться',
   },
   sample: {
+    letterhead: 'Бланк печатных документов',
+    emptyTitle: 'Учеников пока нет',
     title: 'Образцы',
     intro:
       'Список и форма, собранные только из общих компонентов. Для разработки; не часть платформы.',
@@ -374,6 +385,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     showRows: 'Показать примеры',
   },
   setup: {
+    noneTitle: 'Страниц настройки нет',
     title: 'Настройка школы',
     intro:
       'Структура текущего филиала. Настройка выполняется один раз для каждого филиала и служит основой для всех остальных страниц.',
@@ -423,6 +435,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       cancel: 'Отмена',
     },
     buildings: {
+      emptyTitle: 'Зданий пока нет',
       title: 'Здания и этажи',
       caption: 'Здания',
       name: 'Название',
@@ -480,6 +493,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       restoreBuilding: 'Восстановить здание',
     },
     divisions: {
+      emptyTitle: 'Отделов пока нет',
       title: 'Отделы и кафедры',
       caption: 'Отделы',
       name: 'Название',
@@ -545,6 +559,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       restoreDivision: 'Восстановить отдел',
     },
     slotTypes: {
+      emptyTitle: 'Уроков и перемен пока нет',
       title: 'Типы слотов',
       caption: 'Типы слотов',
       name: 'Название',
@@ -573,6 +588,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       archiveText: 'Его больше нельзя добавить в шаблон дня. Прошедшие дни сохраняют своё время.',
     },
     dayTemplates: {
+      emptyTitle: 'Учебных дней пока нет',
       title: 'Шаблоны дня',
       caption: 'Шаблоны дня',
       name: 'Название',
@@ -658,6 +674,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       },
     },
     subjects: {
+      emptyTitle: 'Предметов пока нет',
       title: 'Предметы',
       caption: 'Предметы',
       name: 'Название',
@@ -799,6 +816,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       subjectsMissing_other: '{{count}} оцениваемого предмета без ежедневного распределения здесь',
     },
     calendar: {
+      emptyTitle: 'Выходных пока нет',
       title: 'Календарь',
       caption: 'Выходные и особые дни',
       name: 'Название',
@@ -859,6 +877,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       dayColumn: 'День',
     },
     templateSettings: {
+      emptyTitle: 'Шаблон ещё не назначен',
       title: 'Где действуют шаблоны',
       setTitle: 'Назначить шаблон с даты',
       level: 'Для чего',
@@ -885,6 +904,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       endFrom: 'Первый день без этого назначения',
     },
     years: {
+      emptyTitle: 'Учебных лет пока нет',
       title: 'Учебные годы',
       caption: 'Учебные годы',
       name: 'Год',
@@ -922,6 +942,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       tooLong: 'Меньше чем через год после начала.',
     },
     rooms: {
+      emptyTitle: 'Кабинетов пока нет',
       title: 'Кабинеты',
       caption: 'Кабинеты',
       name: 'Название или номер',
@@ -981,6 +1002,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
   },
   people: {
+    noneTitle: 'Пока ничего нет',
     title: 'Люди',
     none: 'Для вашей роли здесь пока ничего нет.',
     staffLink: 'Сотрудники',
@@ -1006,6 +1028,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       overlapDays: 'Пересечение: {{days}}.',
     },
     vacancies: {
+      emptyTitle: 'Вакансий нет',
       title: 'Вакансии',
       caption: 'Вакансии филиала',
       empty: 'В этом филиале нет вакансий. Добавьте вакансию для учителя, которого ещё не приняли.',
@@ -1024,6 +1047,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       deleteText: 'Вакансия и её часы удаляются. Журнал аудита сохраняет копию.',
     },
     staff: {
+      emptyTitle: 'Сотрудников пока нет',
       title: 'Сотрудники',
       caption: 'Сотрудники филиала',
       empty: 'В этом филиале пока нет сотрудников. Добавьте первого.',
@@ -1162,10 +1186,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     librarian: 'Библиотекарь',
   },
   menu: {
-    open: 'Меню',
-    title: 'Меню',
+    moreItems: 'Другие разделы',
+    tabs: 'Основные разделы',
+    more: 'Ещё',
+    expand: 'Развернуть меню',
+    collapse: 'Свернуть меню',
     close: 'Закрыть',
-    current: 'текущая страница',
     home: 'Главная',
     setup: 'Настройка школы',
     people: 'Люди',

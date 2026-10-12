@@ -77,7 +77,7 @@ describe('the page a session is sent to', () => {
 });
 
 describe('the app layout', () => {
-  it('shows who is signed in, the language chooser and the main menu', async () => {
+  it('shows who is signed in, the main menu, and the language and theme in the person menu', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionOf({ login: 'n.saidova' })) });
 
     renderApp('/');
@@ -87,7 +87,11 @@ describe('the app layout', () => {
       'n.saidova',
     );
     expect(screen.getByRole('navigation', { name: en.layout.menu })).toBeDefined();
-    expect(screen.getByLabelText(en.language.label)).toBeDefined();
+    // docs/design-system.md, Layout shell: the person at the foot of the menu
+    // holds the language and the theme (pull request #61, decision 3).
+    fireEvent.click(screen.getByRole('button', { name: en.layout.account }));
+    expect(await screen.findByRole('menuitemradio', { name: 'English' })).toBeDefined();
+    expect(screen.getByRole('menuitemradio', { name: en.theme.dark })).toBeDefined();
     // docs/spec/12-ux-standards.md, Look and feel: an empty page says what it is for.
     expect(screen.getByText(en.home.teaching)).toBeDefined();
   });

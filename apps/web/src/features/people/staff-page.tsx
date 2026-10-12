@@ -361,6 +361,7 @@ export function StaffPage() {
         search={search}
         onSearchChange={open}
         empty={{
+          title: t('people.staff.emptyTitle'),
           text: t('people.staff.empty'),
           action: addButton === false ? undefined : addButton,
         }}

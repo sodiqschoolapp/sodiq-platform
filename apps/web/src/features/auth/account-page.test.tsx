@@ -120,13 +120,23 @@ describe('the account page', () => {
     ).toBeDefined();
   });
 
-  it('is the entry every role has in the menu, and opens from the account menu of the top bar', async () => {
-    openAccount();
-    await heading(en.account.title);
+  // The entry every role has, in the person menu at the foot of the navy menu
+  // (docs/design-system.md, Layout shell; pull request #61, decision 7).
+  it('is the entry every role has, and opens from the person menu at the foot of the menu', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionOf()),
+      'GET /api/auth/sessions': () => json({ sessions: [LAPTOP] }),
+      'GET /api/auth/trusted-devices': () => json({ devices: [] }),
+      'GET /api/auth/second-step': () => json(OFF),
+    });
+    renderApp('/');
+    await heading(en.home.title);
 
-    const menu = within(screen.getByRole('navigation', { name: en.layout.menu }));
-    expect(menu.getByRole('link', { name: new RegExp(en.account.title) })).toBeDefined();
-    expect(menu.queryByRole('link', { name: en.layout.changePassword })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: en.layout.account }));
+    expect(await screen.findByRole('menuitem', { name: en.layout.changePassword })).toBeDefined();
+    fireEvent.click(screen.getByRole('menuitem', { name: en.account.title }));
+
+    await heading(en.account.title);
   });
 
   // "Sign out everywhere" keeps this session (owner); its trust ends (spec).

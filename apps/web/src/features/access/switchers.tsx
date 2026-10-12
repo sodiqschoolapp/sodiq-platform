@@ -38,15 +38,26 @@ export function RoleSwitcher() {
 }
 
 /**
- * The branch switcher, beside the role switcher (`edge/people-roles-accounts`:
- * "one person works in two branches"). Shown with more than one branch to
- * choose. Every request names its one branch and is checked against it.
+ * The branch switcher, at the left of the top bar (`edge/people-roles-accounts`:
+ * "one person works in two branches"; `12`, Context: the branch in use is
+ * always shown). A select with more than one branch to choose, the branch's
+ * name as text with one. Every request names its one branch and is checked
+ * against it.
  */
 export function BranchSwitcher() {
   const { t } = useTranslation();
   const { branches, branchId, chooseBranch } = useView();
-  if (branches.length < 2 || branchId === null) {
+  if (branchId === null) {
     return null;
+  }
+  if (branches.length < 2) {
+    const branch = branches.find((option) => option.id === branchId);
+    return branch === undefined ? null : (
+      <span title={t('switcher.branch')} className="min-w-0 truncate text-sm font-semibold">
+        <span className="sr-only">{t('switcher.branch')} </span>
+        {branch.name}
+      </span>
+    );
   }
   return (
     <label className="flex items-center gap-1.5 text-sm">

@@ -1,3 +1,4 @@
+import { cn } from 'cn';
 import { ArrowDownwardIcon, ArrowUpwardIcon, CloseIcon } from '@/components/icons';
 import { useId, useState, type ComponentProps, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -87,17 +88,23 @@ function Labelled({
   );
 }
 
-type FieldProps = FieldTexts & Omit<ComponentProps<'input'>, 'id'>;
+type FieldProps = FieldTexts &
+  Omit<ComponentProps<'input'>, 'id'> & {
+    /** 48 high, on the sign-in page only (docs/design-system.md, Fields and switches). */
+    large?: boolean;
+  };
 
 /**
  * A labelled text field with its message (docs/spec/12-ux-standards.md, No
  * lost work: forms check each field as it is typed and say what to fix). In a
  * record form it takes `form.bind(name)` of `useRecordForm`.
  */
-export function Field({ label, error, note, ...input }: FieldProps) {
+export function Field({ label, error, note, large = false, className, ...input }: FieldProps) {
   return (
     <Labelled label={label} error={error} note={note}>
-      {(control) => <Input {...control} {...input} />}
+      {(control) => (
+        <Input {...control} {...input} className={cn(large && 'h-12 max-sm:h-12', className)} />
+      )}
     </Labelled>
   );
 }

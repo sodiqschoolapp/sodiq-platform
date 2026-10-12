@@ -261,6 +261,7 @@ export function BuildingsPage() {
         search={search}
         onSearchChange={open}
         empty={{
+          title: t('setup.buildings.emptyTitle'),
           text: t('setup.buildings.empty'),
           action: addButton === false ? undefined : addButton,
         }}

@@ -13,16 +13,24 @@ export const en = {
     name: 'Sodiq School',
     loading: 'Loading…',
   },
+  brand: {
+    slogan: 'Education begins with upbringing',
+  },
   language: {
     label: 'Language',
   },
   theme: {
+    toLight: 'Light theme',
+    toDark: 'Dark theme',
     label: 'Theme',
     device: 'As the device',
     light: 'Light',
     dark: 'Dark',
   },
   problems: {
+    noAccessText:
+      'Your role may not open this page. Go to the home page, or ask an administrator if you need it.',
+    noAccessTitle: 'No access',
     noAnswer: 'The server did not answer. Check the internet connection and try again.',
     unexpected:
       'Something went wrong in the app. Reload the page. If it happens again, tell an administrator.',
@@ -244,6 +252,7 @@ export const en = {
     continue: 'Continue',
   },
   layout: {
+    topBar: 'Top bar',
     breadcrumbs: 'You are here',
     menu: 'Main menu',
     account: 'Account',
@@ -331,6 +340,8 @@ export const en = {
     stay: 'Stay',
   },
   sample: {
+    letterhead: 'Letterhead of printouts',
+    emptyTitle: 'No students yet',
     title: 'Patterns',
     intro:
       'A list and a form built only from the shared pieces. For development; not a part of the platform.',
@@ -357,6 +368,7 @@ export const en = {
     showRows: 'Show the sample rows',
   },
   setup: {
+    noneTitle: 'No setup pages',
     title: 'School setup',
     intro:
       'The structure of the branch in use. Setup is done once per branch and drives every other screen.',
@@ -407,6 +419,7 @@ export const en = {
       cancel: 'Cancel',
     },
     buildings: {
+      emptyTitle: 'No buildings yet',
       title: 'Buildings and floors',
       caption: 'Buildings',
       name: 'Name',
@@ -455,6 +468,7 @@ export const en = {
       restoreBuilding: 'Restore building',
     },
     divisions: {
+      emptyTitle: 'No divisions yet',
       title: 'Divisions and departments',
       caption: 'Divisions',
       name: 'Name',
@@ -510,6 +524,7 @@ export const en = {
       restoreDivision: 'Restore division',
     },
     slotTypes: {
+      emptyTitle: 'No lessons or breaks yet',
       title: 'Slot types',
       caption: 'Slot types',
       name: 'Name',
@@ -538,6 +553,7 @@ export const en = {
       archiveText: 'It can no longer be added to a day template. Past days keep their times.',
     },
     dayTemplates: {
+      emptyTitle: 'No school days yet',
       title: 'Day templates',
       caption: 'Day templates',
       name: 'Name',
@@ -621,6 +637,7 @@ export const en = {
       },
     },
     subjects: {
+      emptyTitle: 'No subjects yet',
       title: 'Subjects',
       caption: 'Subjects',
       name: 'Name',
@@ -745,6 +762,7 @@ export const en = {
       subjectsMissing_other: '{{count}} graded subjects without their daily distribution here',
     },
     calendar: {
+      emptyTitle: 'No days off yet',
       title: 'Calendar',
       caption: 'Days off and special days',
       name: 'Name',
@@ -803,6 +821,7 @@ export const en = {
       dayColumn: 'The day',
     },
     templateSettings: {
+      emptyTitle: 'No template set yet',
       title: 'Where templates apply',
       setTitle: 'Set a template from a date',
       level: 'Applies to',
@@ -829,6 +848,7 @@ export const en = {
       endFrom: 'First day without this setting',
     },
     years: {
+      emptyTitle: 'No academic years yet',
       title: 'Academic years',
       caption: 'Academic years',
       name: 'Year',
@@ -864,6 +884,7 @@ export const en = {
       tooLong: 'Less than a year after the start.',
     },
     rooms: {
+      emptyTitle: 'No rooms yet',
       title: 'Rooms',
       caption: 'Rooms',
       name: 'Name or number',
@@ -917,6 +938,7 @@ export const en = {
     },
   },
   people: {
+    noneTitle: 'Nothing here yet',
     title: 'People',
     none: 'Nothing here for your role yet.',
     staffLink: 'Staff',
@@ -942,6 +964,7 @@ export const en = {
       overlapDays: 'Overlaps on: {{days}}.',
     },
     vacancies: {
+      emptyTitle: 'No vacancies',
       title: 'Vacancies',
       caption: 'Vacancies of the branch',
       empty: 'No vacancies in this branch. Add one for a teacher not yet hired.',
@@ -960,6 +983,7 @@ export const en = {
       deleteText: 'The vacancy and its hours are removed. The audit log keeps a copy.',
     },
     staff: {
+      emptyTitle: 'No staff yet',
       title: 'Staff',
       caption: 'Staff of the branch',
       empty: 'No staff in this branch yet. Add the first person.',
@@ -1099,10 +1123,12 @@ export const en = {
     librarian: 'Librarian',
   },
   menu: {
-    open: 'Menu',
-    title: 'Menu',
+    moreItems: 'Other sections',
+    tabs: 'Main sections',
+    more: 'More',
+    expand: 'Expand the menu',
+    collapse: 'Collapse the menu',
     close: 'Close',
-    current: 'current page',
     home: 'Home',
     setup: 'School setup',
     people: 'People',

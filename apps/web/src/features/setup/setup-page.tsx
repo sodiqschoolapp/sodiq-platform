@@ -123,7 +123,7 @@ export function SetupPage() {
       <p className="mb-4 max-w-prose text-sm text-muted-foreground">{t('setup.intro')}</p>
       {showsChecklist && <SetupChecklist />}
       {links.length === 0 ? (
-        <EmptyState text={t('setup.none')} />
+        <EmptyState title={t('setup.noneTitle')} text={t('setup.none')} />
       ) : (
         <ul aria-label={t('setup.title')} className="grid max-w-3xl gap-3">
           {links.map((link) => (

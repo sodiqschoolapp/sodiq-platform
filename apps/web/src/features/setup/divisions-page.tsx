@@ -278,6 +278,7 @@ export function DivisionsPage() {
         search={search}
         onSearchChange={open}
         empty={{
+          title: t('setup.divisions.emptyTitle'),
           text: t('setup.divisions.empty'),
           action: addButton === false ? undefined : addButton,
         }}

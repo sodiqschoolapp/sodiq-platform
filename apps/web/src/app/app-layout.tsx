@@ -1,26 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, Outlet, useNavigate } from '@tanstack/react-router';
-import { AccountCircleIcon, CloseIcon } from '@/components/icons';
+import { Link, Outlet } from '@tanstack/react-router';
+import { CloseIcon } from '@/components/icons';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { setBranchInUse } from '@/api/branch-in-use';
-import { PhoneMenu, SideMenu } from '@/features/access/app-menu';
+import { PhoneTabBar, SideMenu, type PersonActions } from '@/features/access/app-menu';
+import { Logo } from '@/components/brand/logo';
 import { BranchSwitcher, RoleSwitcher } from '@/features/access/switchers';
 import { useView } from '@/features/access/use-view';
-import { LanguageChooser } from '@/components/language-chooser';
 import { CommandSearch } from '@/components/search/command-search';
-import { ThemeSwitch } from '@/components/theme-switch';
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useDismissQuestionsOnLeave } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { UnsentBanner, UnsentGuard, useLeave } from '@/components/unsent/unsent-changes';
@@ -75,14 +65,14 @@ function NotTrustedNote({ trusted }: { trusted: boolean }) {
 
 /**
  * The frame of every page after sign-in (docs/spec/12-ux-standards.md, One
- * pattern everywhere): the top bar with the search, the notifications (task
- * 0.9), the feedback button, the theme and the language, the role and branch
- * switchers (task 0.8c), the academic year and quarter of the branch (task
- * 1.3) and the left menu of the active role.
+ * pattern everywhere; docs/design-system.md, Layout shell): the navy menu of
+ * the active role at the left (the tab bar below 640 px) with the person at
+ * its foot, and the top bar: the branch, the academic year and quarter (task
+ * 1.3), the search (Ctrl K), the notifications (task 0.9), the feedback button
+ * and the role switch (task 0.8c).
  */
 export function AppLayout() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { data: session } = useQuery(sessionQuery);
   const signOut = useSignOut();
   const accountLanguage = useAccountLanguage();
@@ -98,76 +88,56 @@ export function AppLayout() {
     };
   }, [branchId]);
 
+  const actions: PersonActions = {
+    signOut: () => {
+      // Sign-out takes a form with typed changes away: ask first.
+      void leave().then((leaves) => {
+        if (leaves) {
+          signOut.mutate();
+        }
+      });
+    },
+    chooseLanguage: accountLanguage.mutate,
+  };
+
   return (
-    <div className="flex min-h-svh flex-col">
+    <div className="flex min-h-svh">
       <UnsentGuard />
-      {/* On a phone the tools do not fit beside the name: they wrap onto a second row. */}
-      <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-1">
-        <PhoneMenu />
-        <Link to="/" className="shrink-0 font-semibold">
-          {t('app.name')}
-        </Link>
-        <CurrentPeriod />
-        <UnsentBanner />
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-1 sm:gap-2">
-          <RoleSwitcher />
-          <BranchSwitcher />
-          <CommandSearch />
-          <NotificationsButton />
-          <FeedbackButton />
-          <ThemeSwitch />
-          <LanguageChooser onChange={accountLanguage.mutate} />
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={<Button variant="ghost" aria-label={t('layout.account')} />}
-            >
-              <AccountCircleIcon aria-hidden />
-              {/* On a phone the icon alone: the login would not fit in the row. */}
-              <span className="hidden max-w-40 truncate sm:inline">{session?.login}</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>{t('layout.account')}</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => {
-                    void navigate({ to: '/account' });
-                  }}
-                >
-                  {t('account.title')}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    void navigate({ to: '/account/password' });
-                  }}
-                >
-                  {t('layout.changePassword')}
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => {
-                  // Sign-out takes a form with typed changes away: ask first.
-                  void leave().then((leaves) => {
-                    if (leaves) {
-                      signOut.mutate();
-                    }
-                  });
-                }}
-              >
-                {t('layout.signOut')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
-      <div className="flex flex-1">
-        <SideMenu />
-        <main className="min-w-0 flex-1 p-8 max-sm:p-4">
+      <SideMenu actions={actions} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* 64 high, white (dark: the top bar navy), a bottom border. On a phone the
+            year and quarter wrap under the other tools. */}
+        <header
+          aria-label={t('layout.topBar')}
+          data-print="hide"
+          className="sticky top-0 z-30 flex min-h-16 shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b bg-top-bar px-8 py-3 max-sm:px-4 max-sm:py-2"
+        >
+          <Link to="/" className="shrink-0 rounded-lg sm:hidden">
+            {/* The colour shield on white, the on-dark one on the dark top bar (Logo). */}
+            <Logo variant="mark" className="h-8 dark:hidden" />
+            <Logo variant="mark-on-dark" className="hidden h-8 dark:block" />
+          </Link>
+          <div className="flex min-w-0 items-center gap-x-4 gap-y-1 max-sm:order-last max-sm:basis-full">
+            <BranchSwitcher />
+            <CurrentPeriod />
+          </div>
+          <UnsentBanner />
+          <div className="ml-auto flex items-center gap-2">
+            <CommandSearch />
+            <NotificationsButton />
+            <div className="max-sm:hidden">
+              <FeedbackButton />
+            </div>
+            <RoleSwitcher />
+          </div>
+        </header>
+        <main className="min-w-0 flex-1 p-8 max-sm:p-4 max-sm:pb-24">
           <NotTrustedNote trusted={session?.trustedUntil != null} />
           <FailureAlert error={signOut.error ?? accountLanguage.error} />
           <Outlet />
         </main>
       </div>
+      <PhoneTabBar actions={actions} />
     </div>
   );
 }

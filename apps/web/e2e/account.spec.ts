@@ -2,21 +2,27 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { ru } from '../src/i18n/locales/ru';
 import { accountOf, NEW_PASSWORD, type Credentials } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn, type PageTexts } from './steps';
+import { LANGUAGE_NAMES } from '../src/i18n/languages';
+import {
+  changeFirstPassword,
+  heading,
+  languageChooser,
+  openPersonMenu,
+  signIn,
+  signOutFromMenu,
+  type PageTexts,
+} from './steps';
 import { codeNow } from './totp';
 
 async function signOut(page: Page, t: PageTexts): Promise<void> {
-  await page.getByRole('button', { name: t.layout.account, exact: true }).click();
-  await page.getByRole('menuitem', { name: t.layout.signOut, exact: true }).click();
-  await expect(heading(page, t.signIn.title)).toBeVisible();
+  // The sign-out button at the foot of the menu (docs/design-system.md, Layout shell).
+  await signOutFromMenu(page, t);
 }
 
-/** The account page from the menu, in the language the page is in. */
+/** The account page from the person menu, in the language the page is in. */
 async function openAccount(page: Page, t: PageTexts): Promise<void> {
-  await page
-    .getByRole('navigation', { name: t.layout.menu })
-    .getByRole('link', { name: new RegExp(t.account.title) })
-    .click();
+  await openPersonMenu(page, t);
+  await page.getByRole('menuitem', { name: t.account.title, exact: true }).click();
   await expect(heading(page, t.account.title)).toBeVisible();
 }
 
@@ -56,7 +62,7 @@ test('removes a trusted device, signs out everywhere, and the language follows t
   await signIn(laptop, en, account.login, NEW_PASSWORD);
   await expect(heading(laptop, en.home.title)).toBeVisible();
 
-  // The phone: signs in and chooses Russian in the top bar, which the account keeps.
+  // The phone: signs in and chooses Russian in the person menu, which the account keeps.
   const phone = await newBrowser(browser);
   await phone.goto('/sign-in');
   await languageChooser(phone).selectOption('en');
@@ -65,7 +71,8 @@ test('removes a trusted device, signs out everywhere, and the language follows t
   const saved = phone.waitForResponse(
     (response) => response.url().endsWith('/api/auth/language') && response.status() === 204,
   );
-  await languageChooser(phone, en).selectOption('ru');
+  await openPersonMenu(phone, en);
+  await phone.getByRole('menuitemradio', { name: LANGUAGE_NAMES.ru, exact: true }).click();
   await expect(heading(phone, ru.home.title)).toBeVisible();
   await saved;
 

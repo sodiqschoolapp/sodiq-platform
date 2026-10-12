@@ -432,6 +432,55 @@ try {
   });
   seeded.staffPhoto = { login: staffPhoto.login, password: staffPhoto.firstPassword };
 
+  // A branch of its own with an Academic Vice Principal for the brand moments
+  // (task 2.2d-2): one person of the branch for a list with its side panel,
+  // and no vacancy, so the vacancies page is an empty page. Nothing else
+  // writes to this branch.
+  const brandBranch = await insertBranch(migrator, 'Brand browser test branch');
+  const brand = await create('Feruza', 'Abdullayeva');
+  await transactions.run([brandBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: brand.id,
+      role: 'academic_vice_principal',
+      branchId: brandBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const person = await transaction
+      .insertInto('staff')
+      .values({
+        kind: 'person',
+        staff_id: 'S-269003',
+        first_name: 'Gʻayrat',
+        last_name: 'Oʻrinboyev',
+        sex: 'male',
+        birth_date: '1990-02-21',
+        phone: '+998935550033',
+        admission_date: '2026-09-01',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: person.id, branch_id: brandBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: person.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+      .execute();
+  });
+  seeded.brand = { login: brand.login, password: brand.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');

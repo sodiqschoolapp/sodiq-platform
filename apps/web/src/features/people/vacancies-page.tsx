@@ -264,6 +264,7 @@ export function VacanciesPage() {
         search={search}
         onSearchChange={open}
         empty={{
+          title: t('people.vacancies.emptyTitle'),
           text: t('people.vacancies.empty'),
           action: addButton === false ? undefined : addButton,
         }}

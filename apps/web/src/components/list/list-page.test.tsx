@@ -65,7 +65,7 @@ function Harness({ rows, error, start = {}, onExport, exportState, actions, pane
       columns={COLUMNS}
       search={search}
       onSearchChange={setSearch}
-      empty={{ text: 'Rooms are listed here.' }}
+      empty={{ title: 'No rooms yet', text: 'Rooms are listed here.' }}
       bulkActions={actions ?? [{ key: 'close', label: 'Close the rooms', run: () => undefined }]}
       onExport={onExport}
       exportState={exportState}

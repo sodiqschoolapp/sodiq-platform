@@ -186,6 +186,7 @@ export function YearsPage() {
         search={search}
         onSearchChange={open}
         empty={{
+          title: t('setup.years.emptyTitle'),
           text: t('setup.years.empty'),
           action: addButton === false ? undefined : addButton,
         }}

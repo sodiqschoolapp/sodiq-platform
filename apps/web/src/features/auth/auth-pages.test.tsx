@@ -682,3 +682,55 @@ describe('a password change on a trusted device', () => {
     expect(screen.queryByText(en.layout.notTrusted)).toBeNull();
   });
 });
+
+// docs/design-system.md, Brand moments, Sign-in: "the form on the left
+// (horizontal colour logo, the language select and the theme button at the
+// top; a Bitter title, two fields 48 high, a large primary button the full
+// width of the form); on the right a navy panel with the slogan in Bitter,
+// uppercase, orange ... At phone width the navy panel is hidden."
+describe('the sign-in page as a brand moment', () => {
+  it.each([
+    ['uz', uz],
+    ['ru', ru],
+    ['en', en],
+  ] as const)(
+    'draws the logo, the Bitter title, tall fields and the slogan in %s',
+    async (language, texts) => {
+      fakeApi({ 'GET /api/auth/session': signedOut });
+      renderApp('/sign-in', language);
+
+      const title = await heading(texts.signIn.title);
+      expect(title.className).toContain('font-brand');
+      // The colour logo, and the on-dark one for the dark theme (each hidden in the other).
+      const logos = screen.getAllByRole('img', { name: texts.app.name });
+      expect(logos.map((logo) => [logo.getAttribute('src'), logo.className])).toEqual([
+        ['/brand/sodiq-logo-horizontal.svg', expect.stringContaining('dark:hidden')],
+        ['/brand/sodiq-logo-horizontal-on-dark.svg', expect.stringContaining('dark:block')],
+      ]);
+      expect(screen.getByLabelText(texts.signIn.login).className).toContain('h-12');
+      expect(screen.getByLabelText(texts.signIn.password).className).toContain('h-12');
+      expect(button(texts.signIn.submit).className).toContain('h-12');
+
+      const slogan = screen.getByText(texts.brand.slogan);
+      expect(slogan.className).toContain('font-brand');
+      expect(slogan.className).toContain('uppercase');
+      expect(slogan.className).toContain('text-primary');
+      // The navy panel is hidden at phone width.
+      const panel = slogan.closest('.bg-sidebar');
+      expect(panel?.className).toContain('hidden');
+      expect(panel?.className).toContain('sm:flex');
+    },
+  );
+
+  it('frames the steps of sign-in the same way, with their line under the title', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionOf({ secondStep: 'pending' })),
+    });
+    renderApp('/sign-in/code');
+
+    const title = await heading(en.code.title);
+    expect(title.className).toContain('font-brand');
+    expect(screen.getByText(en.code.text)).toBeDefined();
+    expect(screen.getByText(en.brand.slogan)).toBeDefined();
+  });
+});

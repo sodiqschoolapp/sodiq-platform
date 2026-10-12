@@ -239,6 +239,7 @@ export function SlotTypesPage() {
         search={search}
         onSearchChange={open}
         empty={{
+          title: t('setup.slotTypes.emptyTitle'),
           text: t('setup.slotTypes.empty'),
           action: addButton === false ? undefined : addButton,
         }}

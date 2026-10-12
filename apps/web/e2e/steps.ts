@@ -37,3 +37,28 @@ export async function changeFirstPassword(
   await page.getByLabel(t.password.repeat, { exact: true }).fill(NEW_PASSWORD);
   await page.getByRole('button', { name: t.password.submit, exact: true }).click();
 }
+
+/**
+ * The person at the foot of the navy menu (docs/design-system.md, Layout
+ * shell; pull request #61, decision 3): the own account, the password, the
+ * theme and the language. From 640 px up.
+ */
+export async function openPersonMenu(page: Page, t: PageTexts = en): Promise<void> {
+  await page.getByRole('button', { name: t.layout.account, exact: true }).click();
+}
+
+/** Sign-out from the foot of the menu, back to the sign-in page. */
+export async function signOutFromMenu(page: Page, t: PageTexts = en): Promise<void> {
+  await page.getByRole('button', { name: t.layout.signOut, exact: true }).click();
+  await expect(heading(page, t.signIn.title)).toBeVisible();
+}
+
+/** A theme chosen in the person menu. */
+export async function chooseTheme(
+  page: Page,
+  t: PageTexts,
+  theme: 'device' | 'light' | 'dark',
+): Promise<void> {
+  await openPersonMenu(page, t);
+  await page.getByRole('menuitemradio', { name: t.theme[theme], exact: true }).click();
+}

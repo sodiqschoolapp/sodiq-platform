@@ -10,16 +10,24 @@ export const uz: Texts<'one' | 'other'> = {
     name: 'Sodiq School',
     loading: 'Yuklanmoqda…',
   },
+  brand: {
+    slogan: 'Taʼlim tarbiyadan boshlanadi',
+  },
   language: {
     label: 'Til',
   },
   theme: {
+    toLight: 'Yorugʻ koʻrinish',
+    toDark: 'Qorongʻi koʻrinish',
     label: 'Koʻrinish',
     device: 'Qurilma boʻyicha',
     light: 'Yorugʻ',
     dark: 'Qorongʻi',
   },
   problems: {
+    noAccessText:
+      'Rolingiz bu sahifani ochishga ruxsat bermaydi. Bosh sahifaga oʻting yoki kerak boʻlsa, administratordan soʻrang.',
+    noAccessTitle: 'Ruxsat yoʻq',
     noAnswer: 'Server javob bermadi. Internet aloqasini tekshirib, qayta urinib koʻring.',
     unexpected:
       'Ilovada xatolik yuz berdi. Sahifani yangilang. Takrorlansa, administratorga xabar bering.',
@@ -251,6 +259,7 @@ export const uz: Texts<'one' | 'other'> = {
     continue: 'Davom etish',
   },
   layout: {
+    topBar: 'Yuqori panel',
     breadcrumbs: 'Siz shu yerdasiz',
     menu: 'Asosiy menyu',
     account: 'Hisob',
@@ -339,6 +348,8 @@ export const uz: Texts<'one' | 'other'> = {
     stay: 'Qolish',
   },
   sample: {
+    letterhead: 'Chop etiladigan hujjatlar blanki',
+    emptyTitle: 'Oʻquvchilar hali yoʻq',
     title: 'Namunalar',
     intro:
       'Faqat umumiy qismlardan yigʻilgan roʻyxat va forma. Ishlab chiqish uchun; platformaning qismi emas.',
@@ -365,6 +376,7 @@ export const uz: Texts<'one' | 'other'> = {
     showRows: 'Namunalarni koʻrsatish',
   },
   setup: {
+    noneTitle: 'Sozlamalar sahifalari yoʻq',
     title: 'Maktab sozlamalari',
     intro:
       'Joriy filialning tuzilmasi. Sozlash har bir filial uchun bir marta qilinadi va boshqa barcha sahifalarga asos boʻladi.',
@@ -415,6 +427,7 @@ export const uz: Texts<'one' | 'other'> = {
       cancel: 'Bekor qilish',
     },
     buildings: {
+      emptyTitle: 'Binolar hali yoʻq',
       title: 'Binolar va qavatlar',
       caption: 'Binolar',
       name: 'Nomi',
@@ -462,6 +475,7 @@ export const uz: Texts<'one' | 'other'> = {
       restoreBuilding: 'Binoni tiklash',
     },
     divisions: {
+      emptyTitle: 'Boʻlimlar hali yoʻq',
       title: 'Boʻlimlar va kafedralar',
       caption: 'Boʻlimlar',
       name: 'Nomi',
@@ -516,6 +530,7 @@ export const uz: Texts<'one' | 'other'> = {
       restoreDivision: 'Boʻlimni tiklash',
     },
     slotTypes: {
+      emptyTitle: 'Darslar va tanaffuslar hali yoʻq',
       title: 'Slot turlari',
       caption: 'Slot turlari',
       name: 'Nomi',
@@ -544,6 +559,7 @@ export const uz: Texts<'one' | 'other'> = {
       archiveText: 'Uni endi kun shabloniga qoʻshib boʻlmaydi. Oʻtgan kunlar oʻz vaqtini saqlaydi.',
     },
     dayTemplates: {
+      emptyTitle: 'Oʻquv kunlari hali yoʻq',
       title: 'Kun shablonlari',
       caption: 'Kun shablonlari',
       name: 'Nomi',
@@ -628,6 +644,7 @@ export const uz: Texts<'one' | 'other'> = {
       },
     },
     subjects: {
+      emptyTitle: 'Fanlar hali yoʻq',
       title: 'Fanlar',
       caption: 'Fanlar',
       name: 'Nomi',
@@ -752,6 +769,7 @@ export const uz: Texts<'one' | 'other'> = {
       subjectsMissing_other: 'Bu yerda kunlik taqsimoti yoʻq {{count}} ta baholanadigan fan',
     },
     calendar: {
+      emptyTitle: 'Dam olish kunlari hali yoʻq',
       title: 'Taqvim',
       caption: 'Dam olish va maxsus kunlar',
       name: 'Nomi',
@@ -810,6 +828,7 @@ export const uz: Texts<'one' | 'other'> = {
       dayColumn: 'Kun',
     },
     templateSettings: {
+      emptyTitle: 'Shablon hali belgilanmagan',
       title: 'Shablonlar qayerda amal qiladi',
       setTitle: 'Sanadan boshlab shablon belgilash',
       level: 'Nimaga',
@@ -836,6 +855,7 @@ export const uz: Texts<'one' | 'other'> = {
       endFrom: 'Ushbu belgilashsiz birinchi kun',
     },
     years: {
+      emptyTitle: 'Oʻquv yillari hali yoʻq',
       title: 'Oʻquv yillari',
       caption: 'Oʻquv yillari',
       name: 'Yil',
@@ -871,6 +891,7 @@ export const uz: Texts<'one' | 'other'> = {
       tooLong: 'Boshlanishidan bir yil oʻtmasdan.',
     },
     rooms: {
+      emptyTitle: 'Xonalar hali yoʻq',
       title: 'Xonalar',
       caption: 'Xonalar',
       name: 'Nomi yoki raqami',
@@ -924,6 +945,7 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   people: {
+    noneTitle: 'Hozircha hech narsa yoʻq',
     title: 'Odamlar',
     none: 'Rolingiz uchun bu yerda hozircha hech narsa yoʻq.',
     staffLink: 'Xodimlar',
@@ -949,6 +971,7 @@ export const uz: Texts<'one' | 'other'> = {
       overlapDays: 'Ustma-ust tushadi: {{days}}.',
     },
     vacancies: {
+      emptyTitle: 'Vakansiyalar yoʻq',
       title: 'Vakansiyalar',
       caption: 'Filial vakansiyalari',
       empty: 'Bu filialda vakansiya yoʻq. Hali ishga olinmagan oʻqituvchi uchun qoʻshing.',
@@ -967,6 +990,7 @@ export const uz: Texts<'one' | 'other'> = {
       deleteText: 'Vakansiya va uning soatlari oʻchiriladi. Audit jurnalida nusxasi qoladi.',
     },
     staff: {
+      emptyTitle: 'Xodimlar hali yoʻq',
       title: 'Xodimlar',
       caption: 'Filial xodimlari',
       empty: 'Bu filialda hali xodim yoʻq. Birinchisini qoʻshing.',
@@ -1105,10 +1129,12 @@ export const uz: Texts<'one' | 'other'> = {
     librarian: 'Kutubxonachi',
   },
   menu: {
-    open: 'Menyu',
-    title: 'Menyu',
+    moreItems: 'Boshqa boʻlimlar',
+    tabs: 'Asosiy boʻlimlar',
+    more: 'Yana',
+    expand: 'Menyuni yoyish',
+    collapse: 'Menyuni yigʻish',
     close: 'Yopish',
-    current: 'joriy sahifa',
     home: 'Bosh sahifa',
     setup: 'Maktab sozlamalari',
     people: 'Odamlar',

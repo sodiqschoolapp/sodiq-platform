@@ -46,8 +46,16 @@ interface Pair {
  * selection bar and `data-table.tsx` the open row on `bg-today`, the table
  * header and hovered rows on `bg-muted` inside a `bg-card` panel;
  * `page-header.tsx` writes breadcrumbs in `text-link`; `app-menu.tsx`
- * draws a menu link hovered or current as `bg-muted` with the normal text
- * (until task 2.2d-2); the top bar takes `--top-bar`. `border` is not here:
+ * (task 2.2d-2) draws the navy menu and the tab bar: items in
+ * `text-sidebar-foreground`, hovered on `bg-sidebar-accent`, the current
+ * one `text-sidebar-primary-foreground` on `bg-sidebar-primary`, the login
+ * and the avatar's initials in `text-sidebar-accent-foreground` (on the
+ * navy and on `bg-sidebar-avatar`), focus in `outline-sidebar-ring` 2 px out
+ * over the navy; the top bar takes `--top-bar` with the search field's
+ * `border-input`; `auth-page.tsx` writes the slogan in `text-primary` on
+ * the navy panel; `hexagons.tsx` draws the empty page's outlines in the
+ * text colour on the panel (pull request #61, decision 14). The sign-in
+ * panel's orange hexagons on white are decoration, not a control. `border` is not here:
  * dividers and panel edges are decorative, and a button is identified by its
  * text. Every name is checked in both themes.
  */
@@ -81,7 +89,7 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
     // The text of the page, of panels and of their quiet fills.
     text('foreground', 'background', background),
     text('foreground', 'card', card),
-    text('foreground', 'muted (table header, hovered row, menu link until 2.2d-2)', fill('muted')),
+    text('foreground', 'muted (table header, hovered row)', fill('muted')),
     text('foreground', 'today (selection bar, open row)', fill('today')),
     text('foreground', 'top-bar', fill('top-bar')),
     text('foreground', 'info-bg (a notice)', fill('info-bg')),
@@ -122,9 +130,20 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
     text('sidebar-foreground', 'sidebar-accent', over(token('sidebar-accent'), sidebar)),
     text('sidebar-accent-foreground', 'sidebar-accent', over(token('sidebar-accent'), sidebar)),
     text('sidebar-primary-foreground', 'sidebar-primary', over(token('sidebar-primary'), sidebar)),
+    text('sidebar-accent-foreground', 'sidebar (the login at the foot of the menu)', sidebar),
+    text(
+      'sidebar-accent-foreground',
+      'sidebar-avatar (the initials)',
+      over(token('sidebar-avatar'), sidebar),
+    ),
+    // The sign-in slogan, the one orange text (pull request #61, decision 16).
+    text('primary', 'sidebar (the sign-in slogan)', sidebar),
+    // The brand drawing of an empty page and a full-page error (decision 14).
+    control('foreground', 'card (the hexagon outlines of an empty page)', card),
     // Controls: the border of a field, the checkbox, the focus outline.
     control('input', 'card', card),
     control('input', 'background', background),
+    control('input', 'top-bar (the search field)', fill('top-bar')),
     control('checkbox', 'card', card),
     control('checkbox', 'background', background),
     control('ring', 'card', card),

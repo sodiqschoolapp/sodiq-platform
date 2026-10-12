@@ -140,7 +140,7 @@ test('the sample list is worked from the keyboard, and its state is in the addre
   await expect(panel).toBeVisible();
   await expect(search).toBeHidden();
   await expect(rows.first()).toBeHidden();
-  await expect(page.getByRole('button', { name: en.layout.account })).toBeVisible();
+  await expect(page.getByRole('banner', { name: en.layout.topBar })).toBeVisible();
   await page.keyboard.press('Tab');
   await expect(panel.getByRole('button', { name: en.list.closePanel })).toBeFocused();
   await page.keyboard.press('Enter');
