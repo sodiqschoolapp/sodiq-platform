@@ -15,6 +15,10 @@ The next sessions must know:
 - A vacancy is a `staff` row of kind `vacancy`; the person routes filter `kind = 'person'`, the vacancy routes `kind = 'vacancy'`, and the cross-branch functions of 0024 count both.
 - The next task is 2.2c.
 
+## 12 October 2026: the loop does not wait for decisions until go-live (process change, no task)
+
+- Owner: only two things stop a task (secrets, provider accounts, money and production; a task pull request that changes the loop's rules); the weightiest decisions are marked Look first and come first on #42; a too-large task is split by the builder; the gates before Phases 3 to 9 are gone, the one before Phase 10 stays; a merge conflict with `main` now wakes the builder (`docs/decisions.md`, 12 October 2026).
+
 ## 12 October 2026: task 2.2a Staff record and status
 
 - Built: migration 0024 (`staff` one record per person filtered by membership, `staff_branches` a branch table, the person's divisions, subjects, languages and dated statuses; the staff ID counter; the role ends a "left" wrote; five SECURITY DEFINER functions answering with a boolean or a count); nine routes under `/api/people/staff` (areas `staff`, `staff_teaching`); sign-in and every request refused for an inactive or left person; division and department archives refused while somebody who has not left is in them; a subject's department or grades kept while a teacher has them.
