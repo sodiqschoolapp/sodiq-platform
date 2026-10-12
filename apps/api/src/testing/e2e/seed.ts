@@ -580,6 +580,64 @@ try {
   });
   seeded.brand = { login: brand.login, password: brand.firstPassword };
 
+  // A branch of its own with an Academic Vice Principal who locks, unlocks
+  // and resets the password of a Teacher of the branch (task 2.3c-1). The
+  // Teacher's account is linked to the record and nobody signs in with it.
+  const accessBranch = await insertBranch(migrator, 'Access browser test branch');
+  const accessVice = await create('Zarina', 'Qosimova');
+  await transactions.run([accessBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: accessVice.id,
+      role: 'academic_vice_principal',
+      branchId: accessBranch,
+      givenBy: null,
+    }),
+  );
+  const accessTeacher = await create('Sherzod', 'Valiyev');
+  await transactions.run([accessBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: accessTeacher.id,
+      role: 'teacher',
+      branchId: accessBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const person = await transaction
+      .insertInto('staff')
+      .values({
+        kind: 'person',
+        staff_id: 'S-269004',
+        first_name: 'Sherzod',
+        last_name: 'Valiyev',
+        sex: 'male',
+        birth_date: '1991-07-14',
+        phone: '+998935550044',
+        admission_date: '2026-09-01',
+        account_id: accessTeacher.id,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: person.id, branch_id: accessBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: person.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+      .execute();
+  });
+  seeded.accountAccess = { login: accessVice.login, password: accessVice.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');

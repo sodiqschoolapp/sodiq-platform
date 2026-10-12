@@ -1,5 +1,6 @@
-import { statSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { mkdirSync, statSync } from 'node:fs';
+import path from 'node:path';
+import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
 import { jpegSizeOf, pngOf } from './photos';
@@ -177,5 +178,81 @@ test('an Academic Vice Principal adds the photo of a person of the branch', asyn
   const address = (await shown.getAttribute('src')) ?? '';
   const sentPhoto = Buffer.from(address.slice(address.indexOf(',') + 1), 'base64');
   expect(jpegSizeOf(sentPhoto)).toEqual({ width: 800, height: 600 });
+  await expect(panel.getByRole('alert')).toHaveCount(0);
+});
+
+// Task 2.3c-1, pull request #65: an Academic Vice Principal locks a Teacher
+// of the branch with a reason, unlocks the account and resets its password;
+// the one-time password is shown once on the slip. Who may do what to whom
+// is proved by the API tests. With SCREENSHOTS=1 the section and the slip are
+// saved for the report under docs/screens/2.3c-1/. All names are invented.
+const ACCESS_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.3c-1');
+
+async function accessScreenshot(page: Page, name: string): Promise<void> {
+  if (process.env.SCREENSHOTS !== '1') {
+    return;
+  }
+  await page.waitForTimeout(400);
+  mkdirSync(ACCESS_SCREENS, { recursive: true });
+  await page.screenshot({ path: path.join(ACCESS_SCREENS, `${name}.png`) });
+}
+
+test('an Academic Vice Principal locks, unlocks and resets a teacher’s password', async ({
+  page,
+}) => {
+  const account = accountOf('accountAccess');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  // The teacher has never signed in: listed among the accounts never used.
+  await page.goto('/people/never-used');
+  await expect(heading(page, en.people.neverUsed.title)).toBeVisible();
+  await page.getByRole('link', { name: 'Sherzod Valiyev', exact: true }).click();
+  await expect(heading(page, en.people.staff.title)).toBeVisible();
+
+  const panel = page.getByRole('complementary', { name: 'Sherzod Valiyev' });
+  const access = panel.getByRole('region', { name: en.people.access.title });
+  await expect(access.getByText(en.people.access.neverUsed, { exact: true })).toBeVisible();
+
+  const texts = en.people.access;
+  await access.getByRole('button', { name: texts.lock, exact: true }).click();
+  const lock = page.getByRole('dialog', {
+    name: texts.lockTitle.replace('{{name}}', 'Sherzod Valiyev'),
+  });
+  await lock.getByLabel(texts.reason, { exact: true }).fill('Laptop lost on the bus');
+  await lock.getByRole('button', { name: texts.lock, exact: true }).click();
+  await expect(access.getByText(/Laptop lost on the bus/)).toBeVisible();
+  await accessScreenshot(page, 'locked');
+
+  await access.getByRole('button', { name: texts.unlock, exact: true }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: texts.unlock, exact: true })
+    .click();
+  await expect(access.getByText(/Laptop lost on the bus/)).toHaveCount(0);
+  await expect(access.getByRole('button', { name: texts.lock, exact: true })).toBeVisible();
+
+  await access.getByRole('button', { name: texts.resetPassword, exact: true }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: texts.resetPassword, exact: true })
+    .click();
+  const slip = page.getByRole('dialog', { name: texts.slipTitle });
+  await expect(slip.getByText('Sherzod Valiyev')).toBeVisible();
+  await expect(slip.locator('dd.font-mono').nth(1)).toHaveText(/^[A-Za-z0-9]{16}$/);
+  await accessScreenshot(page, 'slip');
+  await slip.getByRole('button', { name: en.people.account.closeSlip, exact: true }).click();
+  await expect(slip).toHaveCount(0);
+  await expect(access.getByText(/Password reset by/)).toBeVisible();
   await expect(panel.getByRole('alert')).toHaveCount(0);
 });
