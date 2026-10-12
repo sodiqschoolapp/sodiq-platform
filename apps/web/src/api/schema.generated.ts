@@ -1716,6 +1716,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OwnPhotoController_readPhoto"];
+        put: operations["OwnPhotoController_setPhoto"];
+        post?: never;
+        delete: operations["OwnPhotoController_removePhoto"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/people/staff/{id}/availability": {
         parameters: {
             query?: never;
@@ -8582,6 +8598,7 @@ export interface operations {
                             teaching: boolean;
                             accounts: boolean;
                             accountAccess: boolean;
+                            email: boolean;
                         };
                         /** Format: date */
                         today: string;
@@ -8771,6 +8788,7 @@ export interface operations {
                             teaching: boolean;
                             accounts: boolean;
                             accountAccess: boolean;
+                            email: boolean;
                         };
                         /** Format: date */
                         today: string;
@@ -8929,6 +8947,7 @@ export interface operations {
                             teaching: boolean;
                             accounts: boolean;
                             accountAccess: boolean;
+                            email: boolean;
                         };
                         /** Format: date */
                         today: string;
@@ -9144,6 +9163,7 @@ export interface operations {
                             teaching: boolean;
                             accounts: boolean;
                             accountAccess: boolean;
+                            email: boolean;
                         };
                         /** Format: date */
                         today: string;
@@ -9278,6 +9298,7 @@ export interface operations {
                             teaching: boolean;
                             accounts: boolean;
                             accountAccess: boolean;
+                            email: boolean;
                         };
                         /** Format: date */
                         today: string;
@@ -9413,6 +9434,7 @@ export interface operations {
                             teaching: boolean;
                             accounts: boolean;
                             accountAccess: boolean;
+                            email: boolean;
                         };
                         /** Format: date */
                         today: string;
@@ -10861,6 +10883,7 @@ export interface operations {
                             teaching: boolean;
                             accounts: boolean;
                             accountAccess: boolean;
+                            email: boolean;
                         };
                         /** Format: date */
                         today: string;
@@ -10936,6 +10959,92 @@ export interface operations {
                         };
                     };
                 };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    OwnPhotoController_readPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                    "image/png": string;
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    OwnPhotoController_setPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "image/jpeg": string;
+                "image/png": string;
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    OwnPhotoController_removePhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Any error */
             default: {

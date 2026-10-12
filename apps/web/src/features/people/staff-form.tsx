@@ -163,6 +163,7 @@ export function StaffForm({ staff, divisions, contactOnly, label, onSave }: Staf
   const locked = (field: StaffField) =>
     contactOnly && !(STAFF_CONTACT_FIELDS as readonly string[]).includes(field);
   const bind = (field: StaffField) => ({ ...form.bind(field), disabled: locked(field) });
+  const emailLocked = staff !== null && !staff.rights.email;
   const mainDivision = divisions.divisions.find(
     (division) => division.id === form.bind('mainDivision').value,
   );
@@ -206,7 +207,15 @@ export function StaffForm({ staff, divisions, contactOnly, label, onSave }: Staf
         {...bind('educationLevel')}
       />
       <Field label={t('people.staff.phone')} type="tel" autoComplete="off" {...bind('phone')} />
-      <Field label={t('people.staff.email')} type="email" autoComplete="off" {...bind('email')} />
+      <Field
+        label={t('people.staff.email')}
+        type="email"
+        autoComplete="off"
+        {...bind('email')}
+        // Task 2.3c-2, decision 4 of pull request #66: the email opens the
+        // account through the reset by email; the server decides (`rights.email`).
+        {...(emailLocked ? { disabled: true, note: t('people.staff.emailLocked') } : {})}
+      />
       <Field label={t('people.staff.jshshir')} inputMode="numeric" {...bind('jshshir')} />
       <DateField label={t('people.staff.admissionDate')} {...bind('admissionDate')} />
       <SelectField

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/page-header';
 import { LanguageSection } from './account/language-section';
 import { PasswordSection } from './account/password-section';
+import { PhotoSection } from './account/photo-section';
 import { SecondStepSection } from './account/second-step-section';
 import { SessionsSection } from './account/sessions-section';
 import { TrustedDevicesSection } from './account/trusted-devices-section';
@@ -11,8 +12,8 @@ import { TrustedDevicesSection } from './account/trusted-devices-section';
  * the profile lists the sessions with "sign out everywhere" and the trusted
  * devices, each removable; `02`, Rules: the second step is optional for most
  * roles; `12`, Language: the choice is remembered). Decided by the owner: at
- * `/account`, in every role's menu as "Account"; notification settings, the
- * photo, phone, email and name are not here.
+ * `/account`, in every role's menu as "Account"; notification settings,
+ * phone, email and name are not here. The own photo since task 2.3c-2.
  */
 export function AccountPage() {
   const { t } = useTranslation();
@@ -20,6 +21,7 @@ export function AccountPage() {
     <>
       <PageHeader title={t('account.title')} />
       <div className="grid gap-10">
+        <PhotoSection />
         <LanguageSection />
         <PasswordSection />
         <SessionsSection />

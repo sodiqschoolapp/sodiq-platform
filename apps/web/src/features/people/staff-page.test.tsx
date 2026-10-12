@@ -259,6 +259,34 @@ describe('the staff page', () => {
     });
   });
 
+  // Task 2.3c-2, decision 4 of pull request #66: the email opens the account
+  // through the reset by email; where the server says no, the field is off.
+  it('keeps the email field off, with its reason, where the server gives no email right', async () => {
+    openList('academic_vice_principal', {}, 'en', {
+      rights: {
+        all: false,
+        contact: true,
+        teaching: true,
+        accounts: false,
+        accountAccess: false,
+        email: false,
+      },
+    });
+    renderApp(PATH);
+    await screen.findByRole('heading', { name: en.people.staff.title });
+    fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const record = await within(panel).findByRole('form', { name: 'Akmal Karimov' });
+
+    const email = within(record).getByLabelText<HTMLInputElement>(en.people.staff.email);
+    expect(email.disabled).toBe(true);
+    expect(email.getAttribute('aria-describedby')).toBeTruthy();
+    expect(within(record).getByText(en.people.staff.emailLocked)).toBeDefined();
+    expect(within(record).getByLabelText<HTMLInputElement>(en.people.staff.phone).disabled).toBe(
+      false,
+    );
+  });
+
   it('lets the Academic Vice Principal change only name, phone and email of the record', async () => {
     openList('academic_vice_principal', {}, 'en', {
       rights: {

@@ -28913,6 +28913,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -28920,7 +28923,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -29777,6 +29781,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -29784,7 +29791,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -30484,6 +30492,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -30491,7 +30502,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -31443,6 +31455,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -31450,7 +31465,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -32048,6 +32064,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -32055,7 +32074,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -32652,6 +32672,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -32659,7 +32682,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -38769,6 +38793,9 @@
                         },
                         "accountAccess": {
                           "type": "boolean"
+                        },
+                        "email": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -38776,7 +38803,8 @@
                         "contact",
                         "teaching",
                         "accounts",
-                        "accountAccess"
+                        "accountAccess",
+                        "email"
                       ],
                       "additionalProperties": false
                     },
@@ -39468,6 +39496,105 @@
         },
         "tags": [
           "StaffPhotos"
+        ]
+      }
+    },
+    "/api/auth/photo": {
+      "put": {
+        "operationId": "OwnPhotoController_setPhoto",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OwnPhoto"
+        ]
+      },
+      "delete": {
+        "operationId": "OwnPhotoController_removePhoto",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OwnPhoto"
+        ]
+      },
+      "get": {
+        "operationId": "OwnPhotoController_readPhoto",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OwnPhoto"
         ]
       }
     },

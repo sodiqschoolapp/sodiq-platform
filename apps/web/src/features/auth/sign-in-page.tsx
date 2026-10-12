@@ -1,6 +1,6 @@
 import type { SignIn } from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useId, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
@@ -66,6 +66,11 @@ export function SignInPage() {
           <AlertDescription>{t('signIn.sessionEnded')}</AlertDescription>
         </Alert>
       )}
+      {reason === 'password_changed' && signIn.error === null && (
+        <Alert variant="success" role="status">
+          <AlertDescription>{t('signIn.passwordChanged')}</AlertDescription>
+        </Alert>
+      )}
       <form className="grid gap-4" onSubmit={submit} noValidate>
         <Field
           large
@@ -117,6 +122,10 @@ export function SignInPage() {
           {t('signIn.submit')}
         </Button>
       </form>
+      {/* docs/design-system.md, This app, Sign-in: under the large button (task 2.3c-2). */}
+      <Link to="/forgot-password" className="text-link justify-self-start">
+        {t('signIn.forgot')}
+      </Link>
     </AuthPage>
   );
 }
