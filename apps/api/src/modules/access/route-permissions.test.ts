@@ -69,6 +69,9 @@ const EXPORTERS = SETUP_VIEWERS;
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
+  // The password reset by email (task 2.3c-2, decision 1 of pull request #66).
+  'POST /api/auth/password-reset': 'public',
+  'POST /api/auth/password-reset/confirm': 'public',
   // The own sign-in, and a feedback report about the app: open to every
   // signed-in account, the Principal included (docs/decisions.md, tasks 0.7b and
   // 0.8b-3). Each acts on the account of the session only.
@@ -495,7 +498,7 @@ describe('the harness', () => {
 
     expect(declarationProblems(app, listed)).toEqual([
       'GET /api/permission-faults/early: open to a session that owes a step of sign-in (second_step), which only a route of the own account may be',
-      'GET /api/permission-faults/no-answer-schema: no @Returns, @ReturnsNothing or @ReturnsFile',
+      'GET /api/permission-faults/no-answer-schema: no @Returns, @ReturnsNothing, @AcceptedNothing or @ReturnsFile',
       'GET /api/permission-faults/no-answer-schema: not in the list of who may call it',
       'GET /api/permission-faults/twice: 2 access declarations, it needs exactly one',
       'GET /api/permission-faults/undeclared: 0 access declarations, it needs exactly one',

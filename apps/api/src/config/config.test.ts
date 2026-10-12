@@ -30,6 +30,40 @@ describe('loadConfig', () => {
       webFiles: undefined,
       reporting: { dsn: undefined, environment: 'development', release: undefined },
       photos: { store: 'none' },
+      mail: { webOrigin: 'http://localhost:5173', outboxDir: undefined },
+    });
+  });
+
+  // Task 2.3c-2, decisions 14 and 15 of pull request #66.
+  describe('the mail', () => {
+    it('takes the origin of the web app, with no path', () => {
+      expect(loadConfig({ ...VALID, WEB_ORIGIN: 'https://app-test.sodiqschool.uz' }).mail).toEqual({
+        webOrigin: 'https://app-test.sodiqschool.uz',
+        outboxDir: undefined,
+      });
+      expect(problemOf({ ...VALID, WEB_ORIGIN: 'https://app.example.uz/sign-in' })).toContain(
+        'WEB_ORIGIN must',
+      );
+      expect(problemOf({ ...VALID, WEB_ORIGIN: 'ftp://app.example.uz' })).toContain(
+        'WEB_ORIGIN must',
+      );
+    });
+
+    it('takes an outbox directory on a laptop or in the browser tests', () => {
+      expect(loadConfig({ ...VALID, MAIL_OUTBOX_DIR: '/tmp/outbox' }).mail.outboxDir).toBe(
+        '/tmp/outbox',
+      );
+    });
+
+    it.each([
+      ['RENDER_GIT_COMMIT', 'abc123'],
+      ['TRUST_PROXY', '1'],
+      ['WEB_FILES', '/srv/web'],
+    ])('refuses the outbox directory on a server (%s)', (name, value) => {
+      expect(problemOf({ ...VALID, MAIL_OUTBOX_DIR: '/tmp/outbox', [name]: value })).toContain(
+        'MAIL_OUTBOX_DIR is for the browser tests only',
+      );
+      expect(loadConfig({ ...VALID, [name]: value }).mail.outboxDir).toBeUndefined();
     });
   });
 

@@ -195,6 +195,10 @@ export const ERROR_CODES = [
   'photos_not_configured',
   /** The photo store did not answer in time or refused; only photos fail (`edge/system-behaviour`; task 2.2c-2). */
   'photos_unavailable',
+  /** The link to choose a new password is unknown, used, closed by a newer link or a password change, or its account may not use it now (task 2.3c-2, decision 19). */
+  'reset_link_invalid',
+  /** The link to choose a new password is older than its hour (task 2.3c-2, decisions 9 and 19). */
+  'reset_link_expired',
   /** The staff record has an account already; an account is linked once (task 2.3a). */
   'account_exists',
   /** The login is given to another account; logins are never reused (`edge/people-roles-accounts`, Accounts and sign-in; task 2.3a). `details` names `login`. */

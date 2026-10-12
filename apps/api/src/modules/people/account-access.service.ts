@@ -5,7 +5,6 @@ import type {
   ErrorCode,
   FirstPasswordSlip,
   NeverUsedList,
-  Role,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
@@ -24,6 +23,7 @@ import {
 } from '../auth/account-locks.service.js';
 import { OwnPasswordResetError, PasswordResets } from '../auth/password-resets.service.js';
 import { OwnSecondStepResetError, SecondStepOffError, TwoStep } from '../auth/two-step.service.js';
+import { reachingAssignment } from './account-reach.js';
 import { actorsOf } from './actors.js';
 import {
   branchOf,
@@ -33,13 +33,6 @@ import {
   readingBranches,
   type Person,
 } from './staff-account-records.js';
-
-/**
- * The roles of an account the Academic Vice Principal may lock and reset
- * (edge cases, Who can act: "He may reset passwords and lock accounts only for
- * Teachers, Tutors, Head Teachers and the Head Tutor of his branch").
- */
-const VICE_REACHES: readonly Role[] = ['teacher', 'tutor', 'head_teacher', 'head_tutor'];
 
 const NOTHING: AccessActions = {
   lock: false,
@@ -55,13 +48,6 @@ const denied = (): ApiException => new ApiException('permission_denied', 403);
 /** The current Super Admin assignment of the account (`.claude/rules/api.md`: from every assignment). */
 const superAdminOf = (access: Access): string | undefined =>
   access.assignments.find((assignment) => assignment.role === 'super_admin')?.id;
-
-/** A current Academic Vice Principal assignment of the account in the branch of the request. */
-const viceOf = (access: Access, branchId: string): string | undefined =>
-  access.assignments.find(
-    (assignment) =>
-      assignment.role === 'academic_vice_principal' && assignment.branchId === branchId,
-  )?.id;
 
 /** The account of a record, locked for the change, and who acts on it. */
 interface Target {
@@ -294,57 +280,14 @@ export class AccountAccess {
     );
   }
 
-  /**
-   * The assignment that allows the caller to lock, unlock or reset the
-   * password of an account (decisions 3 and 4 of #65), or `null`: a Super
-   * Admin assignment for every account; otherwise an Academic Vice Principal
-   * assignment of the branch of the request when every role of the account
-   * that has not ended (current or planned) is Teacher, Tutor, Head Teacher or
-   * Head Tutor and at least one of them is in that branch.
-   *
-   * An exception to `.claude/rules/database.md` (a read of `assignments` keeps
-   * to `access.branchIds`), recorded in `docs/decisions.md` (task 2.3c-1,
-   * decision 3, correction 4 of the review of #65): the check reads the
-   * target's roles in every branch, because one account serves every branch
-   * and a lock or a reset acts on all of them; a role outside the four, in any
-   * branch, stays with the Super Admin. Only the yes or no leaves the server
-   * (403, or `can` false), never another branch's role, branch or assignment.
-   */
-  private async actingAssignment(
+  /** The shared rule of `account-reach.ts` (one copy for the lock, the resets and the email edit). */
+  private actingAssignment(
     transaction: Transaction,
     access: Access,
     accountId: string,
     branchId: string,
   ): Promise<string | null> {
-    const superAdmin = superAdminOf(access);
-    if (superAdmin !== undefined) {
-      return superAdmin;
-    }
-    const vice = viceOf(access, branchId);
-    if (vice === undefined) {
-      return null;
-    }
-    const now = await transactionMoment(transaction);
-    const roles = await transaction
-      .selectFrom('assignments')
-      .select(['role', 'branch_id'])
-      .where('account_id', '=', accountId)
-      // Not ended, and not taken back before it began.
-      .where((builder) =>
-        builder.or([
-          builder('valid_until', 'is', null),
-          builder.and([
-            builder('valid_until', '>', now),
-            builder('valid_until', '>', builder.ref('valid_from')),
-          ]),
-        ]),
-      )
-      .execute();
-    const reached =
-      roles.length > 0 &&
-      roles.every((held) => VICE_REACHES.includes(held.role as Role)) &&
-      roles.some((held) => held.branch_id === branchId);
-    return reached ? vice : null;
+    return reachingAssignment(transaction, access, accountId, branchId);
   }
 
   /**

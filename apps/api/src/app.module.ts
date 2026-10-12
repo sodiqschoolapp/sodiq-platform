@@ -4,6 +4,7 @@ import { ConfigModule } from './config/config.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthController } from './health/health.controller.js';
 import { JobsModule } from './jobs/jobs.module.js';
+import { MailModule } from './mail/mail.module.js';
 import { AccessModule } from './modules/access/access.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -26,6 +27,7 @@ export const SHARED_MODULES = [
   ConfigModule,
   ClockModule,
   DatabaseModule,
+  MailModule,
   AuthModule,
   AccessModule,
   AuditModule,

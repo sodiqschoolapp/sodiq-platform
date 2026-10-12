@@ -23,6 +23,7 @@ import { staffAccountBlocked } from '../people/staff-account.js';
 import { idleLimitMs } from './idle-limit.js';
 import { isLogin } from './login.js';
 import { hashPassword, verifyPassword } from './password-hash.js';
+import { closeOpenResetLinks } from './reset-links.js';
 import { SecondStepRule } from './second-step-rule.js';
 import { answerOf, owesAStep } from './session-answer.js';
 import {
@@ -865,6 +866,8 @@ export class Sessions {
       if (changed === undefined) {
         throw new ApiException('current_password_wrong', 403);
       }
+      // A link of the reset by email made before this never works (task 2.3c-2, decision 11).
+      await closeOpenResetLinks(transaction, session.accountId, now);
       await this.writeEndsByTime(transaction, session.accountId);
       // The session may have ended since the guard read it: an account lock,
       // "sign out everywhere" or the removal of this device at the same moment.

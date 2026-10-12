@@ -46,6 +46,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'One counter of staff IDs per year of first hire for the whole school (docs/spec/edge-cases/developer-rules.md, Identifiers: "one school-wide counter per year"); a row holds a year and a number, nothing personal (task 2.2a, confirmed at the review of pull request #53).',
   subjects:
     'One subject list for the whole school (owner, answer 3 of "Decided ahead for tasks 2.1 to 2.6"); its weights are per branch in subject_daily_weights and subject_quarter_weights. A row holds names, a department id, grades, a colour, switches and moments (task 2.1).',
+  password_reset_links:
+    'A link of the password reset by email belongs to an account, which has no branch, and is asked for before any branch is known; a row holds ids, a token hash and moments (task 2.3c-2, pull request #66).',
 };
 
 /**
@@ -143,8 +145,16 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'Writes the end of an assignment on its subject rows, which the application cannot update, so the exclusion constraints of one Head Teacher per subject see every end (task 2.3b-1, decision 2 of pull request #63).',
   'branches_without_vice_principal(timestamp with time zone)':
     "The branches (id and name only) where no Academic Vice Principal is active now, for the Super Admin's alert (Who can act); the route is school-wide, where the membership filter hides every staff row.",
+  'last_email_change(uuid)':
+    'Who changed the email of the person record of an account last, and when (actor id and moment only), for the entry of the public password reset by email, which sees no branch log (task 2.3c-2, correction 1 of #66).',
+  'own_staff_record(uuid)':
+    'The id of the person record of an account and the branch of its main link, ids only, for the own photo (task 2.3c-2); the person may see none of their branch links through the session.',
   'own_person_name(uuid)':
     "The first and last name of the staff record linked to an account, for the menu of the person's own session (pull request #61, decision 6); sign-in runs before a branch is known.",
+  'password_reset_address(uuid,timestamp with time zone)':
+    'The email of the person record of an account while a reset link may be sent, for the mail job only, which runs with no branch (task 2.3c-2, correction 2 of #66).',
+  'password_reset_allowed(uuid,timestamp with time zone)':
+    'Whether a reset link may be made for an account (not locked, not inactive or left, an email on record), a yes or no for the public request before any branch is known (task 2.3c-2).',
   'reset_by_person_name(uuid)':
     'The first and last name of the administrator who reset an account\'s password, shown to that account\'s person while the reset password is in use ("your password was reset by X").',
   'super_admin_active_count(timestamp with time zone)':

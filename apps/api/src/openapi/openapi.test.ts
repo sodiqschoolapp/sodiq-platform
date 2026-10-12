@@ -42,6 +42,8 @@ describe('OpenAPI document', () => {
         '/api/access/super-admins',
         '/api/auth/language',
         '/api/auth/password',
+        '/api/auth/password-reset',
+        '/api/auth/password-reset/confirm',
         '/api/auth/second-step',
         '/api/auth/second-step/confirm',
         '/api/auth/second-step/set-up',

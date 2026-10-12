@@ -17,7 +17,7 @@ export interface Route {
   access: RouteAccess[];
   /** The owed steps of sign-in the handler may be reached with (`@AllowedBefore...`). */
   allowedBefore: string[];
-  /** Whether the handler says what it answers: `@Returns(schema)`, `@ReturnsNothing()` or `@ReturnsFile()`. */
+  /** Whether the handler says what it answers: `@Returns(schema)`, `@ReturnsNothing()`, `@AcceptedNothing()` or `@ReturnsFile()`. */
   describesAnswer: boolean;
   /** The declared file route the handler reads its body from (`@ValidFile`), if any. */
   takesFile: FileRoute | undefined;
@@ -89,7 +89,8 @@ export function routesOf(app: INestApplication): Route[] {
               describesAnswer:
                 Reflect.getMetadata(RESPONSE_SCHEMA, handler) !== undefined ||
                 Reflect.getMetadata(RETURNS_FILE, handler) === true ||
-                Reflect.getMetadata(HTTP_CODE, handler) === 204,
+                Reflect.getMetadata(HTTP_CODE, handler) === 204 ||
+                Reflect.getMetadata(HTTP_CODE, handler) === 202,
               takesFile: Reflect.getMetadata(TAKES_FILE, handler) as FileRoute | undefined,
             });
           }

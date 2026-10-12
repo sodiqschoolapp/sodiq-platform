@@ -62,7 +62,14 @@ const detail: StaffDetail = {
   weeklyLessons: 18,
   dailyLessons: 5,
   statuses: [{ id: uid(41), status: 'active', from: '2026-09-01', until: null }],
-  rights: { all: false, contact: false, teaching: false, accounts: true, accountAccess: false },
+  rights: {
+    all: false,
+    contact: false,
+    teaching: false,
+    accounts: true,
+    accountAccess: false,
+    email: false,
+  },
   today: '2026-10-10',
 };
 

@@ -1,11 +1,15 @@
 import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
   changePasswordSchema,
+  passwordResetConfirmSchema,
+  passwordResetRequestSchema,
   sessionListSchema,
   sessionResponseSchema,
   setLanguageSchema,
   signInSchema,
   type ChangePassword,
+  type PasswordResetConfirm,
+  type PasswordResetRequest,
   type SessionList,
   type SessionResponse,
   type SetLanguage,
@@ -13,7 +17,7 @@ import {
 } from '@sodiq/shared';
 import { DeviceCookie, UserAgent, type DeviceCookieJar } from '../../http/device-cookie.js';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ReturnsNothing, ValidBody } from '../../http/schemas.js';
+import { AcceptedNothing, Returns, ReturnsNothing, ValidBody } from '../../http/schemas.js';
 import { SessionCookie, type SessionCookieJar } from '../../http/session-cookie.js';
 import { AnySignedIn } from '../access/access.decorators.js';
 import {
@@ -23,6 +27,7 @@ import {
   CurrentSession,
   Public,
 } from './session.guard.js';
+import { EmailPasswordResets } from './email-password-resets.service.js';
 import { Sessions, type ActiveSession } from './sessions.service.js';
 
 /**
@@ -31,7 +36,10 @@ import { Sessions, type ActiveSession } from './sessions.service.js';
  */
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly sessions: Sessions) {}
+  constructor(
+    private readonly sessions: Sessions,
+    private readonly emailResets: EmailPasswordResets,
+  ) {}
 
   @Post('sign-in')
   @Public()
@@ -53,6 +61,31 @@ export class AuthController {
     cookie.set(token, session.trustedUntil);
     device.set(deviceToken);
     return this.sessions.answerOf(session);
+  }
+
+  /**
+   * "Forgot your password?" (task 2.3c-2): the same answer for every login
+   * (decision 8 of pull request #66). Public: it is in `PUBLIC_ROUTES`.
+   */
+  @Post('password-reset')
+  @Public()
+  @AcceptedNothing()
+  async requestPasswordReset(
+    @ValidBody(passwordResetRequestSchema) body: PasswordResetRequest,
+    @RequestId() requestId: string,
+  ): Promise<void> {
+    await this.emailResets.request(body.login, requestId);
+  }
+
+  /** The new password chosen with a link of the reset by email (task 2.3c-2). Public. */
+  @Post('password-reset/confirm')
+  @Public()
+  @ReturnsNothing()
+  async confirmPasswordReset(
+    @ValidBody(passwordResetConfirmSchema) body: PasswordResetConfirm,
+    @RequestId() requestId: string,
+  ): Promise<void> {
+    await this.emailResets.confirm(body.token, body.newPassword, requestId);
   }
 
   @Get('session')

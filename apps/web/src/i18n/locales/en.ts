@@ -194,6 +194,9 @@ export const en = {
     photo_too_large: 'The photo is larger than 5 MB. Choose a smaller one.',
     photos_not_configured: 'Photos are not configured yet. Ask the administrator.',
     photos_unavailable: 'Photos cannot be reached right now. Try again later.',
+    reset_link_invalid:
+      'This link does not work any more: it was used, a newer one was sent, or the password was changed. Ask for a new link.',
+    reset_link_expired: 'This link has expired: a link works for one hour. Ask for a new link.',
     availability_overlap:
       'These hours overlap the hours in another branch on the same weekday. Change the times so that they do not overlap.',
     archive_refused:

@@ -57,6 +57,8 @@ import {
   refusingConstraints,
   refusingDuplicates,
 } from '../setup/setup-refusals.js';
+import { closeOpenResetLinks } from '../auth/reset-links.js';
+import { reachingAssignment } from './account-reach.js';
 import { endAvailability } from './availability.service.js';
 import { staffIdOf, takeStaffNumber } from './staff-numbers.js';
 import {
@@ -423,6 +425,10 @@ export class Staff {
         if (assignmentId === undefined) {
           throw new ApiException('permission_denied', 403);
         }
+        const emailChanged = 'email' in changes.newValue;
+        if (emailChanged && !(await this.mayChangeEmail(transaction, access, row.account_id))) {
+          throw new ApiException('permission_denied', 403);
+        }
         const added = record.divisions.filter(
           (division) =>
             !divisions.some(
@@ -438,6 +444,11 @@ export class Staff {
           .where('id', '=', id)
           .execute();
         await this.writeDivisions(transaction, id, divisions, record.divisions);
+        if (emailChanged && row.account_id !== null) {
+          // A link of the reset by email to the old address never works
+          // (task 2.3c-2, decisions 6 and 11 of pull request #66).
+          await closeOpenResetLinks(transaction, row.account_id, this.clock.now());
+        }
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
@@ -452,6 +463,30 @@ export class Staff {
         return this.readDetail(transaction, access, id);
       }),
     );
+  }
+
+  /**
+   * Whether the caller may change the email of a record (task 2.3c-2,
+   * decision 4 of pull request #66, Look first): since the email opens the
+   * account through the reset by email, nobody changes the email of their own
+   * record, and the Academic Vice Principal changes it only on a record
+   * whose account they may lock and reset (`reachingAssignment`, the rule of
+   * 2.3c-1), or that has no account. The record is locked first, so a role
+   * given at the same moment (which locks the record too) is seen or waits.
+   * Only the yes or no leaves the server.
+   */
+  private async mayChangeEmail(
+    transaction: Transaction,
+    access: Access,
+    accountId: string | null,
+  ): Promise<boolean> {
+    if (accountId === null) {
+      return true;
+    }
+    if (accountId === access.accountId) {
+      return false;
+    }
+    return (await reachingAssignment(transaction, access, accountId, branchOf(access))) !== null;
   }
 
   /** Subjects with the grades taught and the languages of instruction (`04`; edge, Who can act). */
@@ -1360,9 +1395,10 @@ export class Staff {
       .whereRef('valid_until', 'is distinct from', 'valid_from')
       .orderBy('valid_from')
       .execute();
+    const contact = superAdminOf(access) !== undefined || viceOf(access) !== undefined;
     const rights: StaffRights = {
       all: superAdminOf(access) !== undefined,
-      contact: superAdminOf(access) !== undefined || viceOf(access) !== undefined,
+      contact,
       teaching: superAdminOf(access) !== undefined || viceOf(access) !== undefined,
       // The account section (task 2.3a, decision 4): the Super Admin, and the
       // Principal of the branch of the request.
@@ -1373,6 +1409,7 @@ export class Staff {
         superAdminOf(access) !== undefined ||
         principalOf(access) !== undefined ||
         viceOf(access) !== undefined,
+      email: contact && (await this.mayChangeEmail(transaction, access, row.account_id)),
     };
     // Identity fields: the Super Admin and the Academic Vice Principal; hidden
     // for the Principal, who has a logged show (decision 9).

@@ -47,6 +47,7 @@ export interface DayTemplatesKit {
   get(path: string, branch: string, cookie?: string): Test;
   post(path: string, branch: string, body?: object, cookie?: string): Test;
   patch(path: string, branch: string, body: object, cookie?: string): Test;
+  put(path: string, branch: string, body: object, cookie?: string): Test;
   /** The audit entries of an action, oldest first, of one record when named. */
   entries(action: string, recordId?: string): Promise<Record<string, unknown>[]>;
   auditCount(): Promise<number>;
@@ -81,13 +82,22 @@ export interface DayTemplatesKit {
 }
 
 export async function dayTemplatesKit(
-  options: Pick<TestAppOptions, 'photoStore'> = {},
+  options: Pick<TestAppOptions, 'photoStore' | 'mailer'> & {
+    /** For a test whose routes enqueue jobs: the job queue of the test database. */
+    jobs?: boolean;
+  } = {},
 ): Promise<DayTemplatesKit> {
   const database = await createTestDatabase();
   const clock = new FixedClock(START);
   const north = await insertBranch(database.migrator, 'North');
   const south = await insertBranch(database.migrator, 'South');
-  const app = await createTestApp({ database: database.app, clock, ...options });
+  const { jobs, ...rest } = options;
+  const app = await createTestApp({
+    database: database.app,
+    clock,
+    ...rest,
+    ...(jobs === true ? { jobsDatabaseUrl: database.appUrl } : {}),
+  });
   const kit = signInKit(app);
   const adminBrowser = await kit.completeSession('Aziza', 'Karimova');
   await kit.giveRole(adminBrowser.account.id, { role: 'super_admin' });
@@ -113,6 +123,9 @@ export async function dayTemplatesKit(
     kit.post(path, cookie).set(BRANCH_HEADER, branch).send(body);
   const patch = (path: string, branch: string, body: object, cookie = admin) =>
     request(kit.server).patch(path).set('Cookie', cookie).set(BRANCH_HEADER, branch).send(body);
+
+  const put = (path: string, branch: string, body: object, cookie = admin) =>
+    request(kit.server).put(path).set('Cookie', cookie).set(BRANCH_HEADER, branch).send(body);
 
   const created = (response: Response, what: string): void => {
     expect(response.status, `${what}: ${JSON.stringify(response.body)}`).toBe(201);
@@ -143,6 +156,7 @@ export async function dayTemplatesKit(
     get,
     post,
     patch,
+    put,
     async entries(action, recordId) {
       let query = database.migrator
         .selectFrom('audit_log')

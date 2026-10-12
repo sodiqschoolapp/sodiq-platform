@@ -202,6 +202,10 @@ export const uz: Texts<'one' | 'other'> = {
     photo_too_large: 'Surat 5 MB dan katta. Kichikroq surat tanlang.',
     photos_not_configured: 'Suratlar hali sozlanmagan. Administratorga murojaat qiling.',
     photos_unavailable: 'Suratlar hozir mavjud emas. Keyinroq qayta urinib koʻring.',
+    reset_link_invalid:
+      'Bu havola endi ishlamaydi: u ishlatilgan, yangisi yuborilgan yoki parol oʻzgartirilgan. Yangi havola soʻrang.',
+    reset_link_expired:
+      'Havolaning muddati tugagan: havola bir soat ishlaydi. Yangi havola soʻrang.',
     availability_overlap:
       'Bu soatlar boshqa filialdagi soatlar bilan haftaning shu kunida ustma-ust tushadi. Ular ustma-ust tushmasligi uchun vaqtni oʻzgartiring.',
     archive_refused:

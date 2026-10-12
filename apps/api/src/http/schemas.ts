@@ -184,6 +184,14 @@ export function ReturnsNothing(): MethodDecorator {
   return applyDecorators(HttpCode(204), ApiResponse({ status: 204 }));
 }
 
+/**
+ * For a route that takes a request and answers with no body whatever happens
+ * (the password reset by email, task 2.3c-2): status 202, in the document too.
+ */
+export function AcceptedNothing(): MethodDecorator {
+  return applyDecorators(HttpCode(202), ApiResponse({ status: 202 }));
+}
+
 /** Metadata key under which `@ReturnsFile` marks a route that answers a file. */
 export const RETURNS_FILE = Symbol('RETURNS_FILE');
 
