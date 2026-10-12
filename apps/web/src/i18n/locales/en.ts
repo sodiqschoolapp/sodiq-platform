@@ -247,7 +247,7 @@ export const en = {
     login: 'Login',
     loginMissing: 'Enter your login.',
     submit: 'Send link',
-    sent: 'If this login has an email address on record, a link to choose a new password is on its way. It works for one hour.',
+    sent: 'If this login has an email address on record, a link to choose a new password is sent to it. A link works for one hour, and no second one is sent while it works.',
     back: 'Back to sign-in',
   },
   reset: {

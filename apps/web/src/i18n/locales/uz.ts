@@ -258,7 +258,7 @@ export const uz: Texts<'one' | 'other'> = {
     login: 'Login',
     loginMissing: 'Loginingizni kiriting.',
     submit: 'Havola yuborish',
-    sent: 'Agar bu loginda elektron pochta manzili koʻrsatilgan boʻlsa, yangi parol tanlash uchun havola yuborildi. U bir soat ishlaydi.',
+    sent: 'Agar bu loginda elektron pochta manzili koʻrsatilgan boʻlsa, unga yangi parol tanlash uchun havola yuboriladi. Havola bir soat ishlaydi; u ishlayotgan paytda ikkinchisi yuborilmaydi.',
     back: 'Kirish sahifasiga qaytish',
   },
   reset: {
