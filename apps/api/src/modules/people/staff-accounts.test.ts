@@ -910,8 +910,6 @@ describe('the account section of a staff record', () => {
     });
   });
 
-  // Decision 7: a re-hire gives a new first password and its slip; the login
-  // and staff ID stay; no role comes back (decision 8).
   // Task 2.3b-2: the alert of a branch with no active Academic Vice Principal
   // (edge cases, Who can act), for the Super Admin alone. The injected clock
   // decides the answer on each request (decisions 1 to 3 of #64).
@@ -985,6 +983,8 @@ describe('the account section of a staff record', () => {
     });
   });
 
+  // Decision 7: a re-hire gives a new first password and its slip; the login
+  // and staff ID stay; no role comes back (decision 8).
   describe('a re-hire', () => {
     it('forces a password change with a new first password, valid 7 days from the re-hire', async () => {
       const made = await withAccount();
