@@ -2,6 +2,10 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: the loop does not wait for decisions until go-live (process change, no task)
+
+- Owner: only two things stop a task (secrets, provider accounts, money and production; a task pull request that changes the loop's rules); the weightiest decisions are marked Look first and come first on #42; a too-large task is split by the builder; the gates before Phases 3 to 9 are gone, the one before Phase 10 stays; a merge conflict with `main` now wakes the builder (`docs/decisions.md`, 12 October 2026).
+
 ## 12 October 2026: one design for both apps (process change, no task)
 
 - Owner: `docs/design-system.md` is now the text shared word for word with the procurement app above its last section, "This app"; the bottom tab bar at phone width is added to 2.2d; one sign-in for both apps is planned after both are live (`docs/decisions.md`, 12 October 2026).
