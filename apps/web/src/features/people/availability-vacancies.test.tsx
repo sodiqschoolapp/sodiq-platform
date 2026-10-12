@@ -212,7 +212,7 @@ describe('availability', () => {
     const form = await within(panel).findByRole('form', {
       name: en.people.availability.changeOf.replace('{{name}}', 'Akmal Karimov'),
     });
-    expect((within(form).getByLabelText('Monday') as HTMLInputElement).value).toBe('08:00–13:00');
+    expect(within(form).getByLabelText<HTMLInputElement>('Monday').value).toBe('08:00–13:00');
     fireEvent.change(within(form).getByLabelText('Tuesday'), {
       target: { value: '09:00-12:00, 13:00–15:00' },
     });
