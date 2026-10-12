@@ -345,3 +345,132 @@ test('an Academic Vice Principal adds a student and is refused a second with the
   await form.getByLabel(texts.uid, { exact: true }).scrollIntoViewIfNeeded();
   await studentScreenshot(page, 'uid-taken');
 });
+
+// Task 2.4b-1 (docs/spec/04-people.md, Movements; edge/students-classes-groups):
+// an Academic Vice Principal schedules a leaving for today (the list shows the
+// badge), cancels it, records a leaving in the past, undoes it with a reason,
+// records it again and brings the student back with a new contract, the UID
+// unchanged in the list; then deletes a student created twice. With
+// SCREENSHOTS=1 the screens are saved under docs/screens/2.4b-1/. All names
+// are invented.
+const LEAVING_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.4b-1');
+
+async function leavingScreenshot(page: Page, name: string): Promise<void> {
+  if (process.env.SCREENSHOTS !== '1') {
+    return;
+  }
+  await page.waitForTimeout(400);
+  mkdirSync(LEAVING_SCREENS, { recursive: true });
+  await page.screenshot({ path: path.join(LEAVING_SCREENS, `${name}.png`) });
+}
+
+test('an Academic Vice Principal records a leaving, undoes it, brings the student back and deletes a duplicate', async ({
+  page,
+}) => {
+  const account = accountOf('leaving');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+  await page.goto('/people/students');
+  await expect(heading(page, en.people.students.title)).toBeVisible();
+
+  const texts = en.people.students;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(Date.now());
+  const daysAgo = (days: number): string => {
+    const [year, month, day] = today.split('-').map(Number);
+    return new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, (day ?? 1) - days))
+      .toISOString()
+      .slice(0, 10);
+  };
+  async function add(uid: string, lastName: string, contract: string) {
+    await page.getByRole('button', { name: texts.add, exact: true }).first().click();
+    const form = page.getByRole('form', { name: texts.newTitle });
+    await form.getByLabel(texts.uid, { exact: true }).fill(uid);
+    await form.getByLabel(texts.lastName, { exact: true }).fill(lastName);
+    await form.getByLabel(texts.firstName, { exact: true }).fill('Madina');
+    await form.getByLabel(texts.sex, { exact: true }).selectOption('female');
+    await form.getByLabel(texts.birthDate, { exact: true }).fill('2013-06-12');
+    await form.getByLabel(texts.grade, { exact: true }).selectOption('8');
+    await form.getByLabel(texts.startsOn, { exact: true }).fill(daysAgo(60));
+    await form.getByLabel(texts.contractNumber, { exact: true }).fill(contract);
+    await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(daysAgo(61));
+    await form.getByRole('button', { name: en.form.save, exact: true }).click();
+    const question = page.getByRole('alertdialog', { name: texts.setTitle });
+    await expect(question).toBeVisible();
+    await question.getByRole('button', { name: texts.saveAnyway, exact: true }).click();
+    await expect(page.getByRole('form', { name: texts.newTitle })).toHaveCount(0);
+  }
+
+  await add('9998001', 'Yoqubova', 'E2E-LEAVE-1');
+  await page.getByRole('button', { name: 'Madina Yoqubova', exact: true }).click();
+  const panel = page.getByRole('complementary', { name: 'Madina Yoqubova' });
+
+  async function leave(lastDay: string) {
+    const form = panel.getByRole('form', { name: texts.leaveTitle });
+    await form.getByLabel(texts.lastDay, { exact: true }).fill(lastDay);
+    await form.getByLabel(texts.reason, { exact: true }).fill('The family moved to Samarkand.');
+    await form.getByRole('button', { name: en.form.save, exact: true }).click();
+    const question = page.getByRole('alertdialog', { name: texts.leaveConfirmTitle });
+    await question.getByRole('button', { name: texts.leaveAction, exact: true }).click();
+  }
+
+  // Scheduled: the last day is today, so the student is inactive from tomorrow.
+  await leave(today);
+  const row = page.locator('tbody tr').filter({ hasText: '9998001' });
+  await expect(row).toContainText(texts.statuses.active);
+  await expect(row).toContainText(texts.inactiveFrom.replace('{{date}}', '').trim());
+  await leavingScreenshot(page, 'scheduled');
+  await panel.getByRole('button', { name: texts.cancelLeaving, exact: true }).click();
+  await page
+    .getByRole('alertdialog', { name: texts.cancelConfirmTitle })
+    .getByRole('button', { name: texts.cancelLeaving, exact: true })
+    .click();
+  await expect(panel.getByRole('form', { name: texts.leaveTitle })).toBeVisible();
+  await expect(row).not.toContainText(texts.inactiveFrom.replace('{{date}}', '').trim());
+
+  // In the past: inactive now; undone with a reason.
+  await leave(daysAgo(10));
+  await expect(row).toContainText(texts.statuses.inactive);
+  const undo = panel.getByRole('form', { name: texts.undoTitle });
+  await undo.getByLabel(texts.reason, { exact: true }).fill('Entered for the wrong student.');
+  await undo.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(row).toContainText(texts.statuses.active);
+
+  // Again, then back with a new contract: the same UID, every row kept.
+  await leave(daysAgo(10));
+  await expect(row).toContainText(texts.statuses.inactive);
+  const back = panel.getByRole('form', { name: texts.returnTitle });
+  await back.getByLabel(texts.returnFrom, { exact: true }).fill(daysAgo(3));
+  await back.getByLabel(texts.contractNumber, { exact: true }).fill('E2E-LEAVE-1R');
+  await back.getByLabel(texts.contractSignedOn, { exact: true }).fill(daysAgo(3));
+  await back.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(row).toContainText(texts.statuses.active);
+  await expect(row).toContainText('9998001');
+  await expect(panel.getByText(texts.causes.return, { exact: true })).toBeVisible();
+  await leavingScreenshot(page, 'returned');
+  await panel.getByRole('button', { name: en.list.closePanel }).click();
+
+  // A student created twice by mistake, deleted with a reason.
+  await add('9998002', 'Yoqubovaa', 'E2E-LEAVE-2');
+  await page.getByRole('button', { name: 'Madina Yoqubovaa', exact: true }).click();
+  const twice = page.getByRole('complementary', { name: 'Madina Yoqubovaa' });
+  const remove = twice.getByRole('form', { name: texts.deleteTitle });
+  await remove.getByLabel(texts.reason, { exact: true }).fill('Created twice by mistake.');
+  await remove.getByRole('button', { name: en.form.save, exact: true }).click();
+  await page
+    .getByRole('alertdialog', { name: texts.deleteConfirmTitle })
+    .getByRole('button', { name: texts.deleteAction, exact: true })
+    .click();
+  await expect(twice.getByText(texts.deleted, { exact: true })).toBeVisible();
+  await expect(page.locator('tbody tr').filter({ hasText: '9998002' })).toHaveCount(0);
+  await leavingScreenshot(page, 'deleted');
+});

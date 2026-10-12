@@ -20,6 +20,8 @@ const OTKIR: StudentListItem = {
   grade: 7,
   startsOn: '2026-09-02',
   status: 'active',
+  planned: null,
+  version: 1,
 };
 
 const ZARINA: StudentListItem = {
@@ -32,6 +34,23 @@ const ZARINA: StudentListItem = {
   grade: 8,
   startsOn: '2026-11-02',
   status: null,
+  planned: null,
+  version: 1,
+};
+
+// Task 2.4b-1: an inactive student, who left on 30 September.
+const LOLA: StudentListItem = {
+  id: uid(3),
+  uid: '2607030',
+  firstName: 'Lola',
+  lastName: 'Karimova',
+  paternalName: null,
+  sex: 'female',
+  grade: 7,
+  startsOn: '2026-09-02',
+  status: 'inactive',
+  planned: null,
+  version: 2,
 };
 
 const detailOf = (row: StudentListItem, fields: Partial<StudentDetail> = {}): StudentDetail => ({
@@ -53,8 +72,11 @@ const detailOf = (row: StudentListItem, fields: Partial<StudentDetail> = {}): St
     diagnosticScore: 74,
     consentSignedOn: null,
   },
-  statuses: [{ status: 'active', from: '2026-09-02', until: null }],
+  statuses: [{ status: 'active', from: '2026-09-02', until: null, cause: 'start', reason: null }],
   canEdit: true,
+  canArchive: false,
+  canRestoreGraduated: false,
+  deletable: false,
   today: '2026-10-10',
   ...fields,
 });
@@ -67,9 +89,12 @@ const sessionAs = (role: Role, language: 'en' | 'ru' = 'en') => ({
   language,
 });
 
+/** The cells of each row, without the checkbox column of the bulk actions (task 2.4b-1). */
 const rowsDrawn = (): string[][] =>
   [...document.querySelectorAll('tbody tr')].map((row) =>
-    [...row.querySelectorAll('td')].map((cell) => cell.textContent ?? ''),
+    [...row.querySelectorAll('td')]
+      .filter((cell) => cell.querySelector('input[type="checkbox"]') === null)
+      .map((cell) => cell.textContent ?? ''),
   );
 
 function openList(
@@ -80,7 +105,12 @@ function openList(
 ) {
   return fakeApi({
     'GET /api/auth/session': () => json(sessionAs(role, language)),
-    'GET /api/people/students': () => json({ students: [OTKIR, ZARINA], today: '2026-10-10' }),
+    'GET /api/people/students': () =>
+      json({
+        students: [OTKIR, ZARINA],
+        canArchive: role === 'academic_vice_principal' || role === 'super_admin',
+        today: '2026-10-10',
+      }),
     [`GET /api/people/students/${OTKIR.id}`]: () => json(detailOf(OTKIR, detail)),
     ...extra,
   });
@@ -350,6 +380,350 @@ describe('editing a student', () => {
     expect(await within(form).findByText(en.people.students.takenHereUnknown)).toBeDefined();
     await waitFor(() => {
       expect(lists()).toBeGreaterThan(before);
+    });
+  });
+});
+
+// Task 2.4b-1, pull request #68: docs/spec/04-people.md, Movements;
+// docs/spec/edge-cases/students-classes-groups.md.
+describe('leaving, return and delete', () => {
+  const LEFT_DETAIL = (fields: Partial<StudentDetail> = {}) =>
+    detailOf(OTKIR, {
+      status: 'active',
+      planned: { status: 'inactive', from: '2026-10-21' },
+      version: 2,
+      statuses: [
+        { status: 'active', from: '2026-09-02', until: '2026-10-21', cause: 'start', reason: null },
+        {
+          status: 'inactive',
+          from: '2026-10-21',
+          until: null,
+          cause: 'leaving',
+          reason: 'Moved to another city',
+        },
+      ],
+      canArchive: true,
+      ...fields,
+    });
+
+  it('records a leaving after a confirmation naming the student, with the version read', async () => {
+    let left = false;
+    const calls = openList('academic_vice_principal', {
+      [`GET /api/people/students/${OTKIR.id}`]: () =>
+        json(left ? LEFT_DETAIL() : detailOf(OTKIR, { canArchive: true, deletable: true })),
+      [`POST /api/people/students/${OTKIR.id}/leaving`]: () => {
+        left = true;
+        return json(LEFT_DETAIL());
+      },
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const form = await within(panel).findByRole('form', { name: en.people.students.leaveTitle });
+    fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
+      target: { value: '2026-10-20' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Moved to another city' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.students.leaveConfirmTitle,
+    });
+    expect(within(dialog).getByText('Oʻtkir Rahimov')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.leaveAction }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route.endsWith('/leaving'))).toBe(true);
+    });
+    expect(calls.find((call) => call.route.endsWith('/leaving'))?.body).toEqual({
+      lastDay: '2026-10-20',
+      reason: 'Moved to another city',
+      version: 1,
+    });
+    expect(
+      await within(panel).findByRole('button', { name: en.people.students.cancelLeaving }),
+    ).toBeDefined();
+    expect(within(panel).getByText(/Moved to another city/)).toBeDefined();
+  });
+
+  it('shows no change to a reader without the archive right, and the cause without a reason', async () => {
+    openList('head_tutor', {}, 'en', {
+      ...LEFT_DETAIL({ canArchive: false }),
+      identity: null,
+      financial: null,
+      canEdit: false,
+      statuses: [
+        { status: 'active', from: '2026-09-02', until: '2026-10-21', cause: 'start', reason: null },
+        { status: 'inactive', from: '2026-10-21', until: null, cause: 'leaving', reason: null },
+      ],
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    expect(await within(panel).findByText(en.people.students.causes.leaving)).toBeDefined();
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(
+      within(panel).queryByRole('button', { name: en.people.students.cancelLeaving }),
+    ).toBeNull();
+  });
+
+  it('marks a scheduled leaving in the list, in Russian too', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal', 'ru')),
+      'GET /api/people/students': () =>
+        json({
+          students: [{ ...OTKIR, planned: { status: 'inactive', from: '2026-10-21' }, version: 2 }],
+          canArchive: true,
+          today: '2026-10-10',
+        }),
+    });
+    renderApp(PATH, 'ru');
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+    expect(rowsDrawn()[0]?.[5]).toContain(ru.people.students.statuses.active);
+    expect(rowsDrawn()[0]?.[5]).toContain(ru.people.students.inactiveFrom.split(' ')[0] ?? '');
+  });
+
+  it('brings an inactive student back with a new contract', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/people/students': () =>
+        json({ students: [LOLA], canArchive: true, today: '2026-10-10' }),
+      [`GET /api/people/students/${LOLA.id}`]: () =>
+        json(
+          detailOf(LOLA, {
+            canArchive: true,
+            statuses: [
+              {
+                status: 'active',
+                from: '2026-09-02',
+                until: '2026-10-01',
+                cause: 'start',
+                reason: null,
+              },
+              {
+                status: 'inactive',
+                from: '2026-10-01',
+                until: null,
+                cause: 'leaving',
+                reason: 'Moved',
+              },
+            ],
+          }),
+        ),
+      [`POST /api/people/students/${LOLA.id}/return`]: () =>
+        json(detailOf({ ...LOLA, status: 'active', version: 3 }, { canArchive: true })),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Lola Karimova', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
+    expect(
+      await within(panel).findByRole('form', { name: en.people.students.undoTitle }),
+    ).toBeDefined();
+    const form = within(panel).getByRole('form', { name: en.people.students.returnTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.students.returnFrom, '2026-10-05');
+    type(en.people.students.grade, '8');
+    type(en.people.students.contractNumber, 'SQ-2026/120');
+    type(en.people.students.contractSignedOn, '2026-10-05');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route.endsWith('/return'))).toBe(true);
+    });
+    expect(calls.find((call) => call.route.endsWith('/return'))?.body).toEqual({
+      from: '2026-10-05',
+      grade: 8,
+      contract: { number: 'SQ-2026/120', signedOn: '2026-10-05' },
+      reason: null,
+      version: 2,
+    });
+  });
+
+  it('reads the student again when someone else changed it (edge: "student changed, reload")', async () => {
+    let reads = 0;
+    openList('academic_vice_principal', {
+      [`GET /api/people/students/${OTKIR.id}`]: () => {
+        reads += 1;
+        return json(detailOf(OTKIR, { canArchive: true }));
+      },
+      [`POST /api/people/students/${OTKIR.id}/leaving`]: () =>
+        Response.json(
+          { error: { code: 'student_changed', message: 'x', requestId: 'r' } },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const form = await within(panel).findByRole('form', { name: en.people.students.leaveTitle });
+    fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
+      target: { value: '2026-10-20' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Moved' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: en.people.students.leaveAction,
+      }),
+    );
+    await waitFor(() => {
+      expect(reads).toBeGreaterThan(1);
+    });
+    expect(await screen.findByText(en.errors.student_changed)).toBeDefined();
+  });
+
+  it('records a leaving for ticked rows and names the refused ones', async () => {
+    const calls = openList('academic_vice_principal', {
+      [`POST /api/people/students/${OTKIR.id}/leaving`]: () => json(LEFT_DETAIL()),
+      [`POST /api/people/students/${ZARINA.id}/leaving`]: () =>
+        Response.json(
+          { error: { code: 'leaving_before_start', message: 'x', requestId: 'r' } },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    for (const box of screen.getAllByRole('checkbox').slice(1)) {
+      fireEvent.click(box);
+    }
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.bulkLeave }));
+    const title = en.people.students.bulkLeaveTitle_other.replace('{{n}}', '2');
+    const form = await screen.findByRole('form', { name: title });
+    fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
+      target: { value: '2026-10-20' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Moved' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Zarina Saidova')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.leaveAction }));
+    expect(
+      await screen.findByText(
+        en.people.students.bulkRefused.replace('{{names}}', 'Zarina Saidova'),
+        { exact: false },
+      ),
+    ).toBeDefined();
+    expect(calls.filter((call) => call.route.endsWith('/leaving'))).toHaveLength(2);
+  });
+
+  it('offers "Restore this student" for an inactive holder of the document, and opens them', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/people/students': () =>
+        json({ students: [OTKIR, LOLA], canArchive: true, today: '2026-10-10' }),
+      [`GET /api/people/students/${LOLA.id}`]: () => json(detailOf(LOLA, { canArchive: true })),
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/students': () =>
+        Response.json(
+          {
+            error: {
+              code: 'student_value_taken',
+              message: 'x',
+              requestId: 'r',
+              details: [
+                { path: 'jshshir', code: 'already_exists', message: 'x', recordId: LOLA.id },
+              ],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
+    const form = await screen.findByRole('form', { name: en.people.students.newTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.students.uid, '2607044');
+    type(en.people.students.lastName, 'Karimova');
+    type(en.people.students.firstName, 'Lola');
+    type(en.people.students.sex, 'female');
+    type(en.people.students.birthDate, '2014-03-02');
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2026-09-02');
+    type(en.people.students.jshshir, '31403141234567');
+    type(en.people.students.contractNumber, 'SQ-2026/130');
+    type(en.people.students.contractSignedOn, '2026-08-20');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.restoreThis }));
+    // The refused new student is not saved: leaving it asks first.
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: en.unsent.leave }),
+    );
+    expect(await screen.findByRole('complementary', { name: 'Lola Karimova' })).toBeDefined();
+  });
+
+  it('says that a UID of a deleted student is never given again', async () => {
+    openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/students': () =>
+        Response.json(
+          {
+            error: {
+              code: 'student_value_taken',
+              message: 'x',
+              requestId: 'r',
+              details: [{ path: 'uid', code: 'uid_released', message: 'x' }],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
+    const form = await screen.findByRole('form', { name: en.people.students.newTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.students.uid, '2607044');
+    type(en.people.students.lastName, 'Rahimov');
+    type(en.people.students.firstName, 'Aziz');
+    type(en.people.students.sex, 'male');
+    type(en.people.students.birthDate, '2014-03-02');
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2026-09-02');
+    type(en.people.students.contractNumber, 'SQ-2026/131');
+    type(en.people.students.contractSignedOn, '2026-08-20');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(await within(form).findByText(en.people.students.uidReleased)).toBeDefined();
+  });
+
+  it('deletes a student created twice after a confirmation, and says so in the panel', async () => {
+    const calls = openList(
+      'academic_vice_principal',
+      {
+        [`POST /api/people/students/${OTKIR.id}/delete`]: () => new Response(null, { status: 204 }),
+      },
+      'en',
+      { canArchive: true, deletable: true },
+    );
+    renderApp(`${PATH}?open=${OTKIR.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const form = await within(panel).findByRole('form', { name: en.people.students.deleteTitle });
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Created twice' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.students.deleteConfirmTitle,
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.deleteAction }));
+    expect(await within(panel).findByText(en.people.students.deleted)).toBeDefined();
+    expect(calls.find((call) => call.route.endsWith('/delete'))?.body).toEqual({
+      reason: 'Created twice',
+      version: 1,
     });
   });
 });
