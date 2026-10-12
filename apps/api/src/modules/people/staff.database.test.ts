@@ -982,4 +982,151 @@ describe('staff records in the database', () => {
       expect(await inUse([], [8, 9], languages)).toBe(2);
     });
   });
+
+  // Task 2.3a, pull request #62: the three SECURITY DEFINER functions of
+  // db/migrations/0027 (decisions 5 and 9, correction 2 of the review).
+  describe('answer names and the count of Super Admins through functions', () => {
+    const HASH = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHRzYWx0c2FsdA$aGFzaA';
+    const AT = new Date('2026-10-10T12:00:00+05:00');
+
+    async function account(login: string): Promise<string> {
+      const inserted = await database.migrator
+        .insertInto('accounts')
+        .values({
+          login,
+          password_hash: HASH,
+          must_change_password: false,
+          created_at: new Date('2026-09-01T09:00:00+05:00'),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      return inserted.id;
+    }
+
+    async function link(personId: string, accountId: string): Promise<void> {
+      await database.migrator
+        .updateTable('staff')
+        .set({ account_id: accountId })
+        .where('id', '=', personId)
+        .execute();
+    }
+
+    /** Calls a name function as the application user, in a transaction of one branch. */
+    const nameOf = (fn: 'own_person_name' | 'reset_by_person_name', accountId: string) =>
+      transactions.run([north], async (transaction) => {
+        const found = await sql<Record<string, unknown>>`
+          select * from ${sql.raw(fn)}(${accountId}::uuid)
+        `.execute(transaction);
+        return found.rows;
+      });
+
+    it.each(['own_person_name', 'reset_by_person_name'])(
+      'define %s as a first and last name only, with the rights of its owner',
+      async (fn) => {
+        const found = await sql<{ prosecdef: boolean; result: string }>`
+          select prosecdef, pg_get_function_result(oid) as result from pg_proc
+          where proname = ${fn}
+        `.execute(database.migrator);
+        expect(found.rows).toEqual([
+          { prosecdef: true, result: 'TABLE(first_name text, last_name text)' },
+        ]);
+      },
+    );
+
+    it('answer the own name from any branch, and nothing for an account without a record', async () => {
+      const southern = await createPerson({ branch: south, first: 'Malika', last: 'Yusupova' });
+      const linked = await account('m.yusupova');
+      await link(southern, linked);
+      // The record is in South; the transaction works for North.
+      expect(await nameOf('own_person_name', linked)).toEqual([
+        { first_name: 'Malika', last_name: 'Yusupova' },
+      ]);
+      expect(await nameOf('own_person_name', await account('n.norecord'))).toEqual([]);
+    });
+
+    it('answer the name of who reset the password, and nothing without a reset or a record', async () => {
+      const resetter = await createPerson({ branch: south, first: 'Rustam', last: 'Qodirov' });
+      const resetterAccount = await account('r.qodirov');
+      await link(resetter, resetterAccount);
+      const person = await account('p.person');
+      expect(await nameOf('reset_by_person_name', person)).toEqual([]);
+      await database.migrator
+        .updateTable('accounts')
+        .set({ password_reset_by: resetterAccount, password_reset_at: AT })
+        .where('id', '=', person)
+        .execute();
+      expect(await nameOf('reset_by_person_name', person)).toEqual([
+        { first_name: 'Rustam', last_name: 'Qodirov' },
+      ]);
+      await database.migrator
+        .updateTable('accounts')
+        .set({ password_reset_by: await account('b.bare') })
+        .where('id', '=', person)
+        .execute();
+      expect(await nameOf('reset_by_person_name', person)).toEqual([]);
+    });
+
+    it('count a Super Admin that has begun, has no end, is not locked and stays in the school', async () => {
+      const count = () =>
+        transactions.run([], async (transaction) => {
+          const found = await sql<{ active: number }>`
+            select super_admin_active_count(${AT}) as active
+          `.execute(transaction);
+          return found.rows[0]?.active;
+        });
+      const give = async (accountId: string, from: string, until: string | null = null) =>
+        database.migrator
+          .insertInto('assignments')
+          .values({
+            account_id: accountId,
+            role: 'super_admin',
+            branch_id: null,
+            valid_from: new Date(from),
+            valid_until: until === null ? null : new Date(until),
+            created_at: new Date(from),
+          })
+          .execute();
+      const before = await count();
+      const plain = await account('s.plain');
+      await give(plain, '2026-09-01T00:00:00+05:00');
+      expect(await count()).toBe((before ?? 0) + 1);
+      // Begins later, ends later, locked: none counts.
+      await give(await account('s.later'), '2026-10-20T00:00:00+05:00');
+      await give(
+        await account('s.ending'),
+        '2026-09-01T00:00:00+05:00',
+        '2026-10-20T00:00:00+05:00',
+      );
+      const locked = await account('s.locked');
+      await give(locked, '2026-09-01T00:00:00+05:00');
+      const admin = await account('s.admin');
+      await database.migrator
+        .updateTable('accounts')
+        .set({ locked_at: AT, locked_by: admin, lock_reason: 'test' })
+        .where('id', '=', locked)
+        .execute();
+      expect(await count()).toBe((before ?? 0) + 1);
+      // A record that leaves later, in another branch, counts out; taken back, in again.
+      const record = await createPerson({ branch: south, first: 'Sardor', last: 'Olimov' });
+      await link(record, plain);
+      await database.migrator
+        .updateTable('staff_statuses')
+        .set({ valid_until: '2026-12-01' })
+        .where('staff_id', '=', record)
+        .where('status', '=', 'active')
+        .execute();
+      const left = await database.migrator
+        .insertInto('staff_statuses')
+        .values({ staff_id: record, status: 'left', valid_from: '2026-12-01' })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      expect(await count()).toBe(before);
+      await database.migrator
+        .updateTable('staff_statuses')
+        .set({ valid_until: '2026-12-01' })
+        .where('id', '=', left.id)
+        .execute();
+      expect(await count()).toBe((before ?? 0) + 1);
+    });
+  });
 });

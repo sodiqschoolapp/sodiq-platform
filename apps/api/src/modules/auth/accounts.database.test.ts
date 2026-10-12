@@ -1,4 +1,4 @@
-import { LANGUAGES } from '@sodiq/shared';
+import { LANGUAGES, LOGIN_FORMAT, LOGIN_MAX_LENGTH } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
@@ -359,6 +359,40 @@ describe('accounts and sessions in the database', () => {
         'password_reset_at',
         'password_reset_by',
       ]);
+    });
+  });
+
+  // The owner's answer 14 and decision 2 of pull request #62 (db/migrations/
+  // 0027): the forms the database accepts are those of `LOGIN_FORMAT`.
+  describe('keep the login forms of the code', () => {
+    const insert = (login: string) =>
+      asApp(
+        `insert into accounts (login, password_hash, must_change_password, created_at)
+         values ('${login}', '${HASH}', false, '2026-10-05T09:00:00+05:00')`,
+      );
+
+    it.each([
+      'b.forms',
+      'bekzod.forms',
+      'bekzod.t.forms',
+      'bekzod.forms2',
+      `b.${'f'.repeat(LOGIN_MAX_LENGTH - 2)}`,
+    ])('accept %s', async (login) => {
+      expect(LOGIN_FORMAT.test(login)).toBe(true);
+      await insert(login);
+    });
+
+    it.each([
+      'forms',
+      'b.forms.',
+      'b..forms',
+      'b.t.u.forms',
+      'B.forms',
+      'b.2forms',
+      `b.${'f'.repeat(LOGIN_MAX_LENGTH - 1)}`,
+    ])('refuse %s', async (login) => {
+      expect(LOGIN_FORMAT.test(login) && login.length <= LOGIN_MAX_LENGTH).toBe(false);
+      await expect(insert(login)).rejects.toMatchObject({ code: CHECK_VIOLATION });
     });
   });
 });

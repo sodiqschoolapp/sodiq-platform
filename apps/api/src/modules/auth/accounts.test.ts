@@ -5,7 +5,7 @@ import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { Assignments } from '../access/assignments.service.js';
 import { Audit } from '../audit/audit.service.js';
-import { Accounts, FIRST_PASSWORD_LENGTH } from './accounts.service.js';
+import { Accounts, FIRST_PASSWORD_LENGTH, LoginTakenError } from './accounts.service.js';
 import { FirstAccount, SuperAdminExistsError } from './first-account.service.js';
 import { LoginNameError } from './login.js';
 import { verifyPassword } from './password-hash.js';
@@ -95,6 +95,46 @@ describe('accounts', () => {
       await expect(create('Азиз', 'Каримов')).rejects.toBeInstanceOf(LoginNameError);
 
       expect(await count()).toBe(before);
+    });
+  });
+
+  // The owner's answer 14 (task 2.3a): the suggestion and a chosen login.
+  describe('suggest a login and take a chosen one', () => {
+    const suggest = (firstName: string, lastName: string, fatherName: string | null) =>
+      transactions.run([], (transaction) =>
+        accounts.suggest(transaction, { firstName, lastName, fatherName }),
+      );
+    const chosen = (login: string) =>
+      transactions.run([], (transaction) =>
+        accounts.create(transaction, {
+          firstName: 'Any',
+          lastName: 'Name',
+          login,
+          createdBy: null,
+        }),
+      );
+
+    it('numbers the whole first name once the three forms are taken, also the three-part one', async () => {
+      expect(await suggest('Akmal', 'Saidov', 'Botir')).toBe('a.saidov');
+      await chosen('a.saidov');
+      expect(await suggest('Akmal', 'Saidov', 'Botir')).toBe('akmal.saidov');
+      await chosen('akmal.saidov');
+      expect(await suggest('Akmal', 'Saidov', 'Botir')).toBe('akmal.b.saidov');
+      await chosen('akmal.b.saidov');
+      // `akmal.b.saidov` and `a.saidov` are not numbers of `akmal.saidov`.
+      expect(await suggest('Akmal', 'Saidov', 'Botir')).toBe('akmal.saidov2');
+      await chosen('akmal.saidov2');
+      await chosen('akmal.saidov7');
+      expect(await suggest('Akmal', 'Saidov', 'Botir')).toBe('akmal.saidov8');
+    });
+
+    it('answers no suggestion for a name that gives no login', async () => {
+      expect(await suggest('Азиз', 'Каримов', null)).toBeNull();
+    });
+
+    it('takes a chosen login as it is, and refuses one that is taken', async () => {
+      expect((await chosen('dilnoza.r.usmonova')).login).toBe('dilnoza.r.usmonova');
+      await expect(chosen('dilnoza.r.usmonova')).rejects.toBeInstanceOf(LoginTakenError);
     });
   });
 

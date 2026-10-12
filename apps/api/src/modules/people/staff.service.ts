@@ -59,7 +59,13 @@ import {
 } from '../setup/setup-refusals.js';
 import { endAvailability } from './availability.service.js';
 import { staffIdOf, takeStaffNumber } from './staff-numbers.js';
-import { planStatusChange, roleEndFor, startOfDate, type StoredStatusRow } from './staff-status.js';
+import {
+  planStatusChange,
+  rehires,
+  roleEndFor,
+  startOfDate,
+  type StoredStatusRow,
+} from './staff-status.js';
 
 /** The refusals of the database for staff records (db/migrations/0024), by the name of the constraint. */
 const STAFF_REFUSALS: Readonly<Record<string, ErrorCode>> = {
@@ -707,13 +713,8 @@ export class Staff {
         if ('refusal' in plan) {
           throw refused(plan.refusal);
         }
-        // A re-hire: `active` from a date on which the person has left
-        // (task 2.3a, decision 7).
-        const inForce = rows
-          .filter((stored) => stored.validUntil !== stored.validFrom)
-          .filter((stored) => stored.validFrom <= change.from)
-          .at(-1);
-        const rehire = change.status === 'active' && inForce?.status === 'left';
+        // A re-hire (task 2.3a, decision 7).
+        const rehire = rehires(rows, change, today);
         const now = this.clock.now();
         const before = await activeSuperAdmins(transaction, now);
         // A person who stays or becomes employed keeps a profile that fits the

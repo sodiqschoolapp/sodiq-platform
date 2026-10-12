@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { loginBase, LoginNameError } from './login.js';
+import { LOGIN_MAX_LENGTH } from '@sodiq/shared';
+import { isLogin, loginBase, loginForms, LoginNameError } from './login.js';
 
 // Edge cases, "Accounts and sign-in": logins are generated (for example
 // a.karimov). All names here are invented.
@@ -46,4 +47,52 @@ describe('the generated login', () => {
       expect((error as Error).message).not.toMatch(/Азиз|Каримов/);
     }
   });
+});
+
+// The owner's answer 14 (task 2.3a, pull request #62): three forms, in order.
+describe('the login forms', () => {
+  it('are the first letter, the whole first name, then the father’s initial', () => {
+    expect(loginForms('Akmal', 'Karimov', 'Botir')).toEqual([
+      'a.karimov',
+      'akmal.karimov',
+      'akmal.b.karimov',
+    ]);
+  });
+
+  it('skip the third without a father’s name', () => {
+    expect(loginForms('Akmal', 'Karimov', null)).toEqual(['a.karimov', 'akmal.karimov']);
+    expect(loginForms('Akmal', 'Karimov', '  ')).toEqual(['a.karimov', 'akmal.karimov']);
+  });
+
+  it('drop spaces, hyphens and apostrophes; oʻ and gʻ become o and g, sh and ch stay', () => {
+    expect(loginForms('Oʻtkir Jon', 'Gʻaniyeva-Shoxida', 'Chori')).toEqual([
+      'o.ganiyevashoxida',
+      'otkirjon.ganiyevashoxida',
+      'otkirjon.c.ganiyevashoxida',
+    ]);
+  });
+
+  it('appear once when two are the same', () => {
+    expect(loginForms('A', 'Karimov', null)).toEqual(['a.karimov']);
+  });
+
+  it('refuse a Cyrillic name', () => {
+    expect(() => loginForms('Азиз', 'Karimov', null)).toThrow(LoginNameError);
+  });
+});
+
+describe('a text that can be a login', () => {
+  it.each(['a.karimov', 'akmal.karimov', 'akmal.b.karimov', 'akmal.karimov2'])(
+    '%s is one',
+    (text) => {
+      expect(isLogin(text)).toBe(true);
+    },
+  );
+
+  it.each(['karimov', 'a.b.c.karimov', 'A.karimov', `a.${'k'.repeat(LOGIN_MAX_LENGTH)}`])(
+    '%s is not',
+    (text) => {
+      expect(isLogin(text)).toBe(false);
+    },
+  );
 });
