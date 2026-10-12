@@ -19,6 +19,7 @@ import {
   type StudentList,
   type StudentListItem,
   type StudentRecord,
+  type StatusCause,
   type StudentStatus,
   type StudentUidCorrection,
 } from '@sodiq/shared';
@@ -29,6 +30,7 @@ import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { changesOf, notFound } from '../setup/setup-refusals.js';
+import { holdsData, plannedAfter, type StoredStudentStatus } from './student-status.js';
 
 const UNIQUE_VIOLATION = '23505';
 
@@ -53,13 +55,13 @@ interface Taken {
   value: string;
 }
 
-class TakenValue extends Error {
+export class TakenValue extends Error {
   constructor(readonly taken: Taken) {
     super('A value of the student is taken.');
   }
 }
 
-interface StudentRow {
+export interface StudentRow {
   id: string;
   uid: string;
   first_name: string;
@@ -197,6 +199,15 @@ const statusOn = (date: SchoolDate) =>
     limit 1
   )`.as('status');
 
+/** The assignment that lets the account leave, return and delete students in the branch of the request. */
+export const archiverOf = (access: Access): string | undefined =>
+  decide(
+    { area: 'students', action: 'archive', branch: 'request' },
+    access.assignments,
+    access.branchId,
+    PERMISSIONS,
+  )?.id;
+
 /** A current Principal assignment of the account in the branch of the request. */
 const principalOf = (access: Access): string | undefined =>
   access.assignments.find(
@@ -221,7 +232,7 @@ export class Students {
   ) {}
 
   /** Today in the time zone of the branch, at the moment of the transaction. */
-  private async todayIn(transaction: Transaction, branchId: string): Promise<SchoolDate> {
+  async todayIn(transaction: Transaction, branchId: string): Promise<SchoolDate> {
     const branch = await transaction
       .selectFrom('branches')
       .select('time_zone')
@@ -253,18 +264,24 @@ export class Students {
         .orderBy('students.first_name')
         .orderBy('students.uid')
         .execute();
-      const students: StudentListItem[] = rows.map((row) => ({
-        id: row.id,
-        uid: row.uid,
-        firstName: row.first_name,
-        lastName: row.last_name,
-        paternalName: row.paternal_name,
-        sex: row.sex as Sex,
-        grade: row.grade,
-        startsOn: row.starts_on,
-        status: row.status as StudentStatus | null,
-      }));
-      return { students, today };
+      const statuses = await this.statusRowsOf(transaction, null);
+      const students: StudentListItem[] = rows.map((row) => {
+        const own = statuses.get(row.id) ?? [];
+        return {
+          id: row.id,
+          uid: row.uid,
+          firstName: row.first_name,
+          lastName: row.last_name,
+          paternalName: row.paternal_name,
+          sex: row.sex as Sex,
+          grade: row.grade,
+          startsOn: row.starts_on,
+          status: row.status as StudentStatus | null,
+          planned: plannedAfter(own, today),
+          version: own.length,
+        };
+      });
+      return { students, canArchive: archiverOf(access) !== undefined, today };
     });
   }
 
@@ -369,6 +386,7 @@ export class Students {
             branch_id: branchId,
             status: 'active',
             valid_from: input.startsOn,
+            cause: 'start',
           })
           .execute();
         await transaction
@@ -588,7 +606,7 @@ export class Students {
    * The index that refused names the field; `values` gives the value written
    * for each field the write covers.
    */
-  private async inserting<T>(
+  async inserting<T>(
     values: Partial<Record<Taken['path'], string | null>>,
     work: () => Promise<T>,
   ): Promise<T> {
@@ -613,7 +631,7 @@ export class Students {
    * 6 of #67): a student of this branch is named by id (the screen opens it);
    * one of another branch is only said to exist (`held_elsewhere`, decision 3).
    */
-  private async refusingTaken<T>(access: Access, work: () => Promise<T>): Promise<T> {
+  async refusingTaken<T>(access: Access, work: () => Promise<T>): Promise<T> {
     try {
       return await work();
     } catch (error) {
@@ -631,17 +649,23 @@ export class Students {
       const detail: ErrorDetail =
         holder === undefined
           ? { path, code: 'held_elsewhere', message: 'A student of another branch holds it.' }
-          : { path, code: 'already_exists', message: 'A student holds it.', recordId: holder };
+          : holder === null
+            ? // A UID of a student deleted as created twice: reserved for good (0033, decision 3).
+              { path, code: 'uid_released', message: 'A deleted student held it.' }
+            : { path, code: 'already_exists', message: 'A student holds it.', recordId: holder };
       throw new ApiException('student_value_taken', 409, undefined, [detail]);
     }
   }
 
-  /** The id of the student of the branch of the transaction that holds a value, if any. */
+  /**
+   * The id of the student of the branch of the transaction that holds a value,
+   * if any; `null` for a UID of this branch whose student was deleted (0033).
+   */
   private async holderOf(
     transaction: Transaction,
     path: Taken['path'],
     value: string,
-  ): Promise<string | undefined> {
+  ): Promise<string | null | undefined> {
     switch (path) {
       case 'uid':
         return (
@@ -690,7 +714,7 @@ export class Students {
     return row;
   }
 
-  private async lockStudent(transaction: Transaction, id: string): Promise<StudentRow> {
+  async lockStudent(transaction: Transaction, id: string): Promise<StudentRow> {
     const row = await transaction
       .selectFrom('students')
       .select(STUDENT_COLUMNS)
@@ -711,14 +735,15 @@ export class Students {
       .selectFrom('student_contracts')
       .select(['id', 'number', 'signed_on'])
       .where('student_id', '=', id)
-      .orderBy('created_at', 'desc')
+      // The newest contract is the one with the latest id (uuidv7): `created_at` is
+      // bookkeeping only (spec review of the plan of #68, finding 14).
       .orderBy('id', 'desc')
       .limit(1)
       .forUpdate()
       .executeTakeFirstOrThrow();
   }
 
-  private async readDetail(
+  async readDetail(
     transaction: Transaction,
     access: Access,
     id: string,
@@ -726,17 +751,25 @@ export class Students {
     const branchId = branchOf(access);
     const row = await this.readStudent(transaction, id);
     const today = await this.todayIn(transaction, branchId);
-    const statuses = await transaction
-      .selectFrom('student_statuses')
-      .select(['status', 'valid_from', 'valid_until'])
-      .where('student_id', '=', id)
-      .whereRef('valid_from', '<', sql`coalesce(valid_until, 'infinity'::date)`)
-      .orderBy('valid_from')
-      .execute();
-    // As `statusOn`: the row in force today, else the first one after today.
-    const now = statuses.find(
-      (status) => status.valid_until === null || status.valid_until > today,
+    const rows = (await this.statusRowsOf(transaction, id)).get(id) ?? [];
+    const reasons = new Map(
+      (
+        await transaction
+          .selectFrom('student_statuses')
+          .select(['id', 'reason'])
+          .where('student_id', '=', id)
+          .execute()
+      ).map((status) => [status.id, status.reason]),
     );
+    const statuses = rows.filter((status) => status.validFrom !== status.validUntil);
+    // As `statusOn`: the row in force today, else the first one after today.
+    const now = statuses.find((status) => status.validUntil === null || status.validUntil > today);
+    const contractCount = await transaction
+      .selectFrom('student_contracts')
+      .select((eb) => eb.fn.countAll<string>().as('count'))
+      .where('student_id', '=', id)
+      .executeTakeFirstOrThrow();
+    const canArchive = archiverOf(access) !== undefined;
     const contact = readerOf(access, 'student_contact') !== undefined;
     const identity = readerOf(access, 'student_identity') !== undefined;
     const financial = readerOf(access, 'student_financial') !== undefined;
@@ -745,7 +778,6 @@ export class Students {
           .selectFrom('student_contracts')
           .select(['id', 'number', 'signed_on'])
           .where('student_id', '=', id)
-          .orderBy('created_at', 'desc')
           .orderBy('id', 'desc')
           .execute()
       : [];
@@ -780,10 +812,15 @@ export class Students {
           }
         : null,
       statuses: statuses.map((status) => ({
-        status: status.status as StudentStatus,
-        from: status.valid_from,
-        until: status.valid_until,
+        status: status.status,
+        from: status.validFrom,
+        until: status.validUntil,
+        cause: status.cause,
+        // The reason is read by the Financial readers (decision 9).
+        reason: financial ? (reasons.get(status.id) ?? null) : null,
       })),
+      planned: plannedAfter(rows, today),
+      version: rows.length,
       canEdit:
         decide(
           { area: 'students', action: 'edit', branch: 'request' },
@@ -791,8 +828,49 @@ export class Students {
           access.branchId,
           PERMISSIONS,
         ) !== undefined,
+      canArchive,
+      canRestoreGraduated:
+        decide(
+          { area: 'student_graduates', action: 'edit', branch: 'request' },
+          access.assignments,
+          access.branchId,
+          PERMISSIONS,
+        ) !== undefined,
+      deletable:
+        canArchive && !holdsData(rows, row.scholarship_type, Number(contractCount.count)),
       today,
     };
+  }
+
+  /**
+   * The status rows of one student, or of every student the transaction sees
+   * (`id` null), each list in the order of `valid_from`, rows taken back
+   * included: their number is the `version` of the student.
+   */
+  async statusRowsOf(
+    transaction: Transaction,
+    id: string | null,
+  ): Promise<Map<string, StoredStudentStatus[]>> {
+    let query = transaction
+      .selectFrom('student_statuses')
+      .select(['id', 'student_id', 'status', 'valid_from', 'valid_until', 'cause']);
+    if (id !== null) {
+      query = query.where('student_id', '=', id);
+    }
+    const found = await query.orderBy('valid_from').orderBy('id').execute();
+    const rows = new Map<string, StoredStudentStatus[]>();
+    for (const row of found) {
+      const own = rows.get(row.student_id) ?? [];
+      own.push({
+        id: row.id,
+        status: row.status as StudentStatus,
+        validFrom: row.valid_from,
+        validUntil: row.valid_until,
+        cause: row.cause as StatusCause,
+      });
+      rows.set(row.student_id, own);
+    }
+    return rows;
   }
 }
 

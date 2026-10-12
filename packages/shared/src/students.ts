@@ -24,6 +24,28 @@ export const studentStatusSchema = z.enum(STUDENT_STATUSES);
 
 export type StudentStatus = z.infer<typeof studentStatusSchema>;
 
+/**
+ * What wrote a status row (task 2.4b-1, decision 8): the create, a leaving,
+ * a return, an undo of a leaving, the cancel of a scheduled one, the
+ * graduation (task 9.5a) and the Super Admin's restore of a graduated student.
+ */
+export const STATUS_CAUSES = [
+  'start',
+  'leaving',
+  'return',
+  'undo',
+  'cancel',
+  'graduation',
+  'restore',
+] as const;
+
+export const statusCauseSchema = z.enum(STATUS_CAUSES);
+
+export type StatusCause = z.infer<typeof statusCauseSchema>;
+
+/** The reason of a leaving, an undo, a return or a restore; the bound of the database (0033). */
+export const STATUS_REASON_MAX_LENGTH = 500;
+
 /** `04`: "passport or ID with JSHSHIR or birth certificate number". */
 export const DOCUMENT_TYPES = ['passport', 'id_card', 'birth_certificate'] as const;
 
@@ -403,12 +425,26 @@ export const studentListItemSchema = z.object({
   startsOn: schoolDateSchema,
   /** The status in force today in the branch's time zone; `null` before the start date. */
   status: studentStatusSchema.nullable(),
+  /**
+   * The next change after the status shown, when it begins after today: a
+   * scheduled leaving shows "leaves on …" (edge: "the student shows the
+   * current class with a badge"). `from` is the first day of the new status.
+   */
+  planned: z.object({ status: studentStatusSchema, from: schoolDateSchema }).nullable(),
+  /**
+   * The number of status rows: every status change writes one or more, so a
+   * change sent with an older number is refused `student_changed` (edge:
+   * "The second one gets \"student changed, reload\"").
+   */
+  version: z.int().min(0),
 });
 
 export type StudentListItem = z.infer<typeof studentListItemSchema>;
 
 export const studentListSchema = z.object({
   students: z.array(studentListItemSchema),
+  /** Leave, return and delete: the Super Admin and the Academic Vice Principal (task 2.4b-1). */
+  canArchive: z.boolean(),
   /** Today in the time zone of the branch of the request. */
   today: schoolDateSchema,
 });
@@ -455,7 +491,12 @@ export const studentStatusRowSchema = z.object({
   status: studentStatusSchema,
   from: schoolDateSchema,
   until: schoolDateSchema.nullable(),
+  cause: statusCauseSchema,
+  /** For the Financial readers only (task 2.4b-1, decision 9); `null` otherwise or when none was given. */
+  reason: z.string().nullable(),
 });
+
+export type StudentStatusRow = z.infer<typeof studentStatusRowSchema>;
 
 /**
  * A student as the record route answers it: each group the reader may see,
@@ -471,6 +512,12 @@ export const studentDetailSchema = studentListItemSchema.extend({
   statuses: z.array(studentStatusRowSchema),
   /** Edit and UID correction: the Super Admin and the Academic Vice Principal. */
   canEdit: z.boolean(),
+  /** Leave, cancel, undo, return and delete (task 2.4b-1). */
+  canArchive: z.boolean(),
+  /** The restore of a graduated student: the Super Admin (task 2.4b-1). */
+  canRestoreGraduated: z.boolean(),
+  /** The delete of a student created twice is open: no data (`students_delete_guard`, 0033). */
+  deletable: z.boolean(),
   today: schoolDateSchema,
 });
 
@@ -479,3 +526,65 @@ export type StudentDetail = z.infer<typeof studentDetailSchema>;
 export const studentParamsSchema = z.object({ id: z.uuid() });
 
 export type StudentParams = z.infer<typeof studentParamsSchema>;
+
+const statusReasonSchema = z.string().trim().min(1).max(STATUS_REASON_MAX_LENGTH);
+
+/** The status state the person saw (`version` of the list or the record). */
+const versionSchema = z.int().min(0);
+
+/**
+ * Leaving the school (`04`, Movements: "Asks for confirmation, date and
+ * reason"; edge: "The leave date is the last day as a student").
+ */
+export const studentLeavingSchema = z.strictObject({
+  lastDay: schoolDateSchema,
+  reason: statusReasonSchema,
+  version: versionSchema,
+});
+
+export type StudentLeaving = z.infer<typeof studentLeavingSchema>;
+
+/** The cancel of a scheduled leaving (edge: "It can be changed or cancelled until the date"). */
+export const studentCancelLeavingSchema = z.strictObject({ version: versionSchema });
+
+export type StudentCancelLeaving = z.infer<typeof studentCancelLeavingSchema>;
+
+/** Edge: "A leaving entered by mistake has its own \"undo leaving\" action with a reason." */
+export const studentUndoLeavingSchema = z.strictObject({
+  reason: statusReasonSchema,
+  version: versionSchema,
+});
+
+export type StudentUndoLeaving = z.infer<typeof studentUndoLeavingSchema>;
+
+/**
+ * Coming back from the Inactive list (`04`, Movements; edge: "Contracts are
+ * kept as a dated list, and a return adds a new one"), into the grade the
+ * student returns to (decision 7).
+ */
+export const studentReturnSchema = z.strictObject({
+  from: schoolDateSchema,
+  grade: studentGradeSchema,
+  contract: studentContractSchema,
+  reason: statusReasonSchema.nullable(),
+  version: versionSchema,
+});
+
+export type StudentReturn = z.infer<typeof studentReturnSchema>;
+
+/** Edge: "A student is graduated by mistake. The Super Admin restores the student to active ... and a reason." */
+export const studentRestoreSchema = z.strictObject({
+  from: schoolDateSchema,
+  reason: statusReasonSchema,
+  version: versionSchema,
+});
+
+export type StudentRestore = z.infer<typeof studentRestoreSchema>;
+
+/** Edge: "A student is created twice by mistake" (decision 4: with a reason). */
+export const studentDeleteSchema = z.strictObject({
+  reason: statusReasonSchema,
+  version: versionSchema,
+});
+
+export type StudentDelete = z.infer<typeof studentDeleteSchema>;

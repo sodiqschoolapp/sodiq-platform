@@ -495,8 +495,10 @@ export interface Students {
 
 export interface StudentStatuses {
   branch_id: string;
+  cause: string;
   created_at: Generated<Timestamp>;
   id: Generated<string>;
+  reason: string | null;
   status: string;
   student_id: string;
   valid_from: string;
@@ -506,7 +508,8 @@ export interface StudentStatuses {
 export interface StudentUids {
   branch_id: string;
   held_from: Timestamp;
-  student_id: string;
+  released_at: Timestamp | null;
+  student_id: string | null;
   uid: string;
 }
 

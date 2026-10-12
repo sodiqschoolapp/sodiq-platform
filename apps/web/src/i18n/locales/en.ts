@@ -170,6 +170,26 @@ export const en = {
     no_academic_year:
       'The start date is in no academic year of this branch. Ask the Super Admin to create the year, or change the date.',
     account_missing: 'This person has no account yet. Ask the Super Admin to create it.',
+    student_not_active:
+      'This student is not active on that day. Reload the page to see the current status.',
+    leaving_before_start:
+      'The last day is before this student started. Choose a later day, or delete a student created by mistake.',
+    leaving_not_planned: 'No leaving is scheduled for this student. Reload the page.',
+    leaving_in_force: 'This leaving has already taken effect. Use "Undo leaving" with a reason.',
+    student_not_inactive:
+      'This student is not inactive now. Reload the page to see the current status.',
+    undo_not_leaving: 'This status did not come from a leaving, so it cannot be undone here.',
+    return_too_early:
+      'A return on the first day away is the same as no leaving. Use "Undo leaving" instead.',
+    status_date_future: 'Choose today or an earlier date.',
+    student_not_graduated:
+      'This student is not graduated now. Reload the page to see the current status.',
+    restore_before_graduation: 'Choose a date on or after the day the student graduated.',
+    date_in_closed_year:
+      'That date is in a closed academic year. Choose a date in an open year.',
+    student_has_data:
+      'This student has data (a scholarship, a leaving, a graduation or a second contract). Record a leaving instead.',
+    student_changed: 'This student was changed by someone else. Reload the page and try again.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:

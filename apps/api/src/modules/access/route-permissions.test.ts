@@ -239,6 +239,13 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/people/students/:id': { branch: 'request', roles: STUDENT_EDITORS },
   'PUT /api/people/students/:id/uid': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/identity': { branch: 'request', roles: STUDENT_VIEWERS },
+  // Task 2.4b-1, decision 2: `students` `archive`, and `student_graduates` for the Super Admin.
+  'POST /api/people/students/:id/leaving': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/students/:id/leaving/cancel': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/students/:id/leaving/undo': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/students/:id/return': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/students/:id/restore': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/people/students/:id/delete': { branch: 'request', roles: STUDENT_EDITORS },
   // Task 2.3a, decision 4 of pull request #62: the account section.
   'GET /api/people/staff/:id/account': { branch: 'request', roles: ['super_admin', 'principal'] },
   'GET /api/people/staff/:id/account/suggestion': { branch: 'request', roles: ['super_admin'] },
