@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { sql } from 'kysely';
 import type {
   Clock,
   Department,
@@ -55,6 +56,23 @@ const toDepartment = (row: DepartmentRow): Department => ({
   names: namesOf(row),
   archivedAt: moment(row.archived_at),
 });
+
+/**
+ * Whether a staff member who has not left, in any branch, is in the division
+ * or the department (db/migrations/0024, `staff_in_division`).
+ */
+async function staffIn(
+  transaction: Transaction,
+  unit: { divisionId: string } | { departmentId: string },
+  at: Date,
+): Promise<boolean> {
+  const divisionId = 'divisionId' in unit ? unit.divisionId : null;
+  const departmentId = 'departmentId' in unit ? unit.departmentId : null;
+  const found = await sql<{ inside: boolean }>`
+    select staff_in_division(${divisionId}::uuid, ${departmentId}::uuid, ${at}) as inside
+  `.execute(transaction);
+  return found.rows[0]?.inside === true;
+}
 
 /** The departments, in the order of the list; of one division when its id is given. */
 function departmentsIn(transaction: Transaction, divisionId?: string) {
@@ -131,7 +149,13 @@ export class Divisions {
         .orderBy('id')
         .execute();
       const departments = await departmentsIn(transaction).execute();
+      const counts = await sql<{ division_id: string; people: number }>`
+        select division_id, people from staff_count_by_division(${this.clock.now()})
+      `.execute(transaction);
       return {
+        staffCounts: counts.rows
+          .map((row) => ({ divisionId: row.division_id, people: row.people }))
+          .sort((a, b) => a.divisionId.localeCompare(b.divisionId)),
         divisions: divisions.map((division) => ({
           id: division.id,
           names: namesOf(division),
@@ -234,7 +258,13 @@ export class Divisions {
   /**
    * Archives the division and its active departments at the moment of the
    * clock. Academic is refused with `built_in`. An archived division stays as
-   * it is. The refusal while an active staff member is in it: task 2.2.
+   * it is. Refused (`archive_refused`) while a staff member who has not
+   * left is in it (`03`, Divisions: "A division can be archived only when no
+   * active staff member is in it"; task 2.2a, decision 6). The division is
+   * locked first and the staff asked about afterwards: a staff save at the
+   * same moment reads the division FOR SHARE, so one of the two waits for the
+   * other and then sees its result. The staff of every branch are asked
+   * through `staff_in_division`, which answers with a boolean only.
    */
   archiveDivision(access: Access, id: string, requestId: string): Promise<Division> {
     return this.transactions.run([], async (transaction) => {
@@ -251,6 +281,9 @@ export class Divisions {
         throw builtIn();
       }
       if (row.archived_at === null) {
+        if (await staffIn(transaction, { divisionId: id }, this.clock.now())) {
+          throw new ApiException('archive_refused', 409);
+        }
         const departments = await transaction
           .selectFrom('departments')
           .select('id')
@@ -468,6 +501,10 @@ export class Divisions {
           .execute();
         if (subjects.length > 0) {
           throw new ApiException('department_has_subjects', 409);
+        }
+        // Task 2.2a, decision 20: as the division archive.
+        if (await staffIn(transaction, { departmentId: id }, this.clock.now())) {
+          throw new ApiException('department_has_staff', 409);
         }
         const now = this.clock.now();
         await transaction

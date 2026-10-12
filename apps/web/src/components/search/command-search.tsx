@@ -1,3 +1,4 @@
+import { PERMISSIONS, permits } from '@sodiq/shared';
 import { useNavigate } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { ChevronRightIcon, SearchIcon, XIcon } from 'lucide-react';
@@ -11,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { indexedPages, type IndexedPage } from '@/app/page-index';
 import { useMenuPages } from '@/features/access/use-menu';
+import { useView } from '@/features/access/use-view';
 import { searchKey, searchWords } from '@/components/list/list-state';
 import { Button } from '@/components/ui/button';
 import {
@@ -94,9 +96,14 @@ export function CommandSearch() {
   }, []);
 
   const menuPages = useMenuPages();
+  const { role } = useView();
   const pages = useMemo<TitledPage[]>(
-    () => indexedPages(menuPages).map((page) => ({ ...page, title: t(page.titleKey) })),
-    [t, menuPages],
+    () =>
+      indexedPages(
+        menuPages,
+        (area) => role !== null && permits(PERMISSIONS, role, area, 'view'),
+      ).map((page) => ({ ...page, title: t(page.titleKey) })),
+    [t, menuPages, role],
   );
   const matching = matchingPages(pages, typed, i18n.language);
   const activeIndex = Math.min(active, Math.max(0, matching.length - 1));

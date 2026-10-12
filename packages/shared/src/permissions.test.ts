@@ -103,6 +103,8 @@ describe('a frozen permission table', () => {
       'quarters',
       'rooms',
       'settings',
+      'staff',
+      'staff_teaching',
       'subjects',
     ]);
     expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);
@@ -191,6 +193,30 @@ describe('a frozen permission table', () => {
         expect(PERMISSIONS.subjects[role], role).toEqual([]);
       }
       expect(permits(PERMISSIONS, role, 'subjects', 'export')).toBe(false);
+    }
+  });
+
+  // Task 2.2a, decision 2 of pull request #53 (confirmed at its review):
+  // `staff` — the Super Admin views, creates and edits; the Academic Vice
+  // Principal views and edits (the server keeps that edit to name, phone and
+  // email); the Principal views; no export until 2.2c. `staff_teaching` —
+  // subjects, grades and languages: the Super Admin and the Academic Vice
+  // Principal view and edit; the Principal views. Nobody else.
+  it('gives the staff records to the Super Admin, the Academic Vice Principal and the Principal', () => {
+    expect(PERMISSIONS.staff.super_admin).toEqual(['view', 'create', 'edit']);
+    expect(PERMISSIONS.staff.academic_vice_principal).toEqual(['view', 'edit']);
+    expect(PERMISSIONS.staff.principal).toEqual(['view']);
+    expect(PERMISSIONS.staff_teaching.super_admin).toEqual(['view', 'edit']);
+    expect(PERMISSIONS.staff_teaching.academic_vice_principal).toEqual(['view', 'edit']);
+    expect(PERMISSIONS.staff_teaching.principal).toEqual(['view']);
+    for (const role of ROLES) {
+      for (const area of ['staff', 'staff_teaching'] as const) {
+        if (!['super_admin', 'principal', 'academic_vice_principal'].includes(role)) {
+          expect(PERMISSIONS[area][role], role).toEqual([]);
+        }
+        expect(permits(PERMISSIONS, role, area, 'export')).toBe(false);
+        expect(permits(PERMISSIONS, role, area, 'archive')).toBe(false);
+      }
     }
   });
 

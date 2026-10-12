@@ -90,6 +90,24 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   `export` until the export of the lists exists (task 2.2). A new area for
  *   new routes, decided without the owner on pull request #52 (decision 1),
  *   flagged on issue #42.
+ * - `staff` (`04`, Teacher and staff record; task 2.2a): the staff records
+ *   of the branch. The Super Admin creates and edits them ("the Super Admin
+ *   creates staff accounts", `04`; `edge/people-roles-accounts`, Who can
+ *   act); the Academic Vice Principal "sees the teacher list" (`04`) and
+ *   edits name, phone and email ("Phone, email and name are changed by the
+ *   Super Admin or Academic Vice Principal", Accounts and sign-in), which the
+ *   server decides from every current assignment; the Principal views. No
+ *   `export` until the export of the lists exists (task 2.2c). A new area
+ *   for new routes, decided without the owner on pull request #53
+ *   (decision 2), confirmed at its review and flagged on issue #42. Its
+ *   `edit` covers more than one role may do: the branches and the status
+ *   of a person, and every field but name, phone and email, are the Super
+ *   Admin's; the server decides that part from every current assignment and
+ *   refuses the Academic Vice Principal with 403.
+ * - `staff_teaching` (`04`, Academic: subjects with grades, languages of
+ *   instruction; task 2.2a): the Super Admin and the Academic Vice Principal,
+ *   who "edits a teacher's availability, subjects and grades" (Who can act),
+ *   view and edit; the Principal views. Decision 2 of pull request #53.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -136,6 +154,16 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view', 'create', 'edit', 'archive'],
     principal: ['view'],
     academic_vice_principal: ['view', 'create', 'edit', 'archive'],
+  }),
+  staff: rows({
+    super_admin: ['view', 'create', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'edit'],
+  }),
+  staff_teaching: rows({
+    super_admin: ['view', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'edit'],
   }),
   current_period: rows({
     super_admin: ['view'],

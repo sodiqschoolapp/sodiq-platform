@@ -1,4 +1,4 @@
-import { PERMISSIONS, visibleMenu } from '@sodiq/shared';
+import { PERMISSIONS, permits, visibleMenu } from '@sodiq/shared';
 import { useMemo } from 'react';
 import { BUILT_ITEMS, BUILT_PAGES, type MenuPage } from './menu-pages';
 import { useView } from './use-view';
@@ -12,7 +12,14 @@ export function useMenuPages(): MenuPage[] {
     }
     return visibleMenu(role, BUILT_ITEMS, PERMISSIONS).flatMap((item) => {
       const page = BUILT_PAGES[item];
-      return page === undefined ? [] : [page];
+      if (
+        page === undefined ||
+        (page.areas !== undefined &&
+          !page.areas.some((area) => permits(PERMISSIONS, role, area, 'view')))
+      ) {
+        return [];
+      }
+      return [page];
     });
   }, [role]);
 }

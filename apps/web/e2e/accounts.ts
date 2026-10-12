@@ -23,6 +23,7 @@ export type AccountKey =
   | 'calendar'
   | 'settings'
   | 'subjects'
+  | 'staff'
   | 'shellTools'
   | 'switchers'
   | 'account'

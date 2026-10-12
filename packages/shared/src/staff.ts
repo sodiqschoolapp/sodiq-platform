@@ -1,0 +1,365 @@
+import { z } from 'zod';
+import { schoolDateSchema } from './academic-year.js';
+import { roleSchema, type Role } from './roles.js';
+import { instructionLanguageSchema } from './settings.js';
+import { subjectGradesSchema } from './subjects.js';
+
+/**
+ * Staff records (docs/spec/04-people.md, Teacher and staff record; task 2.2a,
+ * pull request #53). The database keeps the same bounds and lists
+ * (db/migrations/0024); tests compare them.
+ */
+
+/** A first name, a surname or a father's name (answer 13; decided on pull request #53). */
+export const STAFF_NAME_MAX_LENGTH = 60;
+
+/** Answer 12. */
+export const EDUCATION_LEVELS = [
+  'secondary',
+  'specialised_secondary',
+  'bachelor',
+  'master',
+  'phd',
+  'other',
+] as const;
+
+export const educationLevelSchema = z.enum(EDUCATION_LEVELS);
+
+export type EducationLevel = z.infer<typeof educationLevelSchema>;
+
+export const SEXES = ['male', 'female'] as const;
+
+export const sexSchema = z.enum(SEXES);
+
+export type Sex = z.infer<typeof sexSchema>;
+
+/** `04`: "Contract type (full or part time) and date." */
+export const CONTRACT_TYPES = ['full_time', 'part_time'] as const;
+
+export const contractTypeSchema = z.enum(CONTRACT_TYPES);
+
+export type ContractType = z.infer<typeof contractTypeSchema>;
+
+/** Answer 11 with the bounds of decision 12: lessons per week by contract and most lessons per day. */
+export const WEEKLY_LESSONS_MAX = 60;
+export const DAILY_LESSONS_MAX = 12;
+
+/** `04`: "Status: Active, inactive, left." */
+export const STAFF_STATUSES = ['active', 'inactive', 'left'] as const;
+
+export const staffStatusSchema = z.enum(STAFF_STATUSES);
+
+export type StaffStatus = z.infer<typeof staffStatusSchema>;
+
+/**
+ * The categories shown on a profile, taken from the assignments of the
+ * person's account, never typed (`edge/people-roles-accounts`, Who can act).
+ */
+export const STAFF_CATEGORY_ROLES = [
+  'tutor',
+  'teacher',
+  'head_teacher',
+  'senior_head_teacher',
+] as const satisfies readonly Role[];
+
+/** S-YYNNNN (`04`; spec change of 12 October 2026). */
+export const staffIdSchema = z.string().regex(/^S-[0-9]{6}$/);
+
+/** The default country code of a phone typed in the form (`04`, Close relatives: "+998 by default"). */
+export const DEFAULT_PHONE_PREFIX = '+998';
+
+const OKINA = 'ʻ';
+const MODIFIER_APOSTROPHE = 'ʼ';
+/** The apostrophes a keyboard types: ', `, ʻ, ʼ, ’ and ‘. */
+const APOSTROPHES = /['`ʻʼ’‘]/g;
+
+/**
+ * A name in its stored form (answer 13; review of pull request #53,
+ * correction 9): outer spaces dropped, inner runs of spaces made one, and each
+ * apostrophe stored as one letter: after o or g it is the ʻ of oʻ and gʻ
+ * (U+02BB), elsewhere the sign ʼ (U+02BC). So "O'tkir", "O’tkir" and "Oʻtkir"
+ * are one name, and the duplicate warning compares them as one.
+ */
+export function storedName(typed: string): string {
+  const spaced = typed.trim().replace(/\s+/g, ' ');
+  return spaced.replace(APOSTROPHES, (_mark, offset: number) => {
+    const before = spaced.charAt(offset - 1).toLowerCase();
+    return before === 'o' || before === 'g' ? OKINA : MODIFIER_APOSTROPHE;
+  });
+}
+
+/** Latin letters, ʻ and ʼ, words joined by one space or hyphen; the check of the database. */
+const STORED_NAME = /^[A-Za-zʻʼ]+([ -][A-Za-zʻʼ]+)*$/;
+
+export const staffNameSchema = z
+  .string()
+  .transform(storedName)
+  .pipe(z.string().min(1).max(STAFF_NAME_MAX_LENGTH).regex(STORED_NAME));
+
+/** An optional name: empty means none. */
+const optionalNameSchema = z
+  .string()
+  .transform(storedName)
+  .transform((name) => (name === '' ? null : name))
+  .pipe(z.string().max(STAFF_NAME_MAX_LENGTH).regex(STORED_NAME).nullable())
+  .nullable();
+
+/**
+ * A phone with its country code: spaces, hyphens and brackets are dropped,
+ * then a plus and 7 to 15 digits (decided on pull request #53, decision 11).
+ */
+export const staffPhoneSchema = z
+  .string()
+  .transform((typed) => typed.replace(/[\s()-]/g, ''))
+  .pipe(z.string().regex(/^\+[0-9]{7,15}$/));
+
+const optionalEmailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .transform((text) => (text === '' ? null : text))
+  .pipe(z.email().max(254).nullable())
+  .nullable();
+
+/** JSHSHIR: the personal number of 14 digits; empty means none. */
+export const jshshirSchema = z
+  .string()
+  .trim()
+  .transform((text) => (text === '' ? null : text))
+  .pipe(
+    z
+      .string()
+      .regex(/^[0-9]{14}$/)
+      .nullable(),
+  )
+  .nullable();
+
+/**
+ * The divisions of a record (`03`, Divisions): one main division and any
+ * further ones, each once, each with its department when it has one. The
+ * database also requires a department in Academic.
+ */
+export const staffDivisionsSchema = z
+  .array(
+    z.object({
+      divisionId: z.uuid(),
+      departmentId: z.uuid().nullable(),
+      main: z.boolean(),
+    }),
+  )
+  .min(1)
+  .max(10)
+  .superRefine((divisions, context) => {
+    if (divisions.filter((division) => division.main).length !== 1) {
+      context.addIssue({ code: 'custom', message: 'Exactly one main division.' });
+    }
+    if (new Set(divisions.map((division) => division.divisionId)).size !== divisions.length) {
+      context.addIssue({ code: 'custom', message: 'Each division once.' });
+    }
+  });
+
+export type StaffDivisions = z.infer<typeof staffDivisionsSchema>;
+
+/**
+ * What is typed for a person (`04`, Personal and Academic blocks), as the
+ * create and the edit take it. Subjects and languages have a route of their
+ * own (`staffTeachingSchema`), and so do the branches and the status.
+ */
+export const staffRecordSchema = z.object({
+  firstName: staffNameSchema,
+  lastName: staffNameSchema,
+  fatherName: optionalNameSchema,
+  sex: sexSchema,
+  birthDate: schoolDateSchema,
+  educationLevel: educationLevelSchema.nullable(),
+  phone: staffPhoneSchema,
+  email: optionalEmailSchema,
+  jshshir: jshshirSchema,
+  admissionDate: schoolDateSchema,
+  contractType: contractTypeSchema.nullable(),
+  contractDate: schoolDateSchema.nullable(),
+  weeklyLessons: z.int().min(1).max(WEEKLY_LESSONS_MAX).nullable(),
+  dailyLessons: z.int().min(1).max(DAILY_LESSONS_MAX).nullable(),
+  divisions: staffDivisionsSchema,
+});
+
+export type StaffRecord = z.infer<typeof staffRecordSchema>;
+
+/**
+ * The fields the Academic Vice Principal may change (`edge/people-roles-accounts`,
+ * Accounts and sign-in: "Phone, email and name are changed by the Super Admin
+ * or Academic Vice Principal"); every other field is the Super Admin's.
+ */
+export const STAFF_CONTACT_FIELDS = [
+  'firstName',
+  'lastName',
+  'fatherName',
+  'phone',
+  'email',
+] as const satisfies readonly (keyof StaffRecord)[];
+
+/** Subjects with the grades taught, and the languages of instruction (`04`). */
+export const staffTeachingSchema = z
+  .object({
+    subjects: z
+      .array(z.object({ subjectId: z.uuid(), grades: subjectGradesSchema }))
+      .max(30)
+      .refine((rows) => new Set(rows.map((row) => row.subjectId)).size === rows.length, {
+        message: 'Each subject once.',
+      }),
+    languages: z
+      .array(instructionLanguageSchema)
+      .max(2)
+      .refine((languages) => new Set(languages).size === languages.length, {
+        message: 'Each language once.',
+      }),
+  })
+  .refine((teaching) => teaching.subjects.length === 0 || teaching.languages.length > 0, {
+    path: ['languages'],
+    message: 'A language of instruction once there is a subject.',
+  });
+
+export type StaffTeaching = z.infer<typeof staffTeachingSchema>;
+
+/** The branches of a person: the main one and any further ones (`04`). */
+export const staffBranchesSchema = z
+  .object({
+    mainBranchId: z.uuid(),
+    furtherBranchIds: z.array(z.uuid()).max(10),
+  })
+  .refine(
+    (branches) =>
+      !branches.furtherBranchIds.includes(branches.mainBranchId) &&
+      new Set(branches.furtherBranchIds).size === branches.furtherBranchIds.length,
+    { path: ['furtherBranchIds'], message: 'Each branch once.' },
+  );
+
+export type StaffBranches = z.infer<typeof staffBranchesSchema>;
+
+/** A status from a date, today or later (`edge/people-roles-accounts`, Staff over time). */
+export const staffStatusChangeSchema = z.object({
+  status: staffStatusSchema,
+  from: schoolDateSchema,
+});
+
+export type StaffStatusChange = z.infer<typeof staffStatusChangeSchema>;
+
+/** The duplicate warning asks with what is typed (`edge/people-roles-accounts`, Staff over time). */
+export const staffCheckSchema = z.object({
+  firstName: staffNameSchema,
+  lastName: staffNameSchema,
+  birthDate: schoolDateSchema,
+  phone: staffPhoneSchema,
+  /** The record being edited, which is not its own duplicate. */
+  staffRecordId: z.uuid().nullable(),
+});
+
+export type StaffCheck = z.infer<typeof staffCheckSchema>;
+
+const staffMatchSchema = z.object({
+  id: z.uuid(),
+  staffId: staffIdSchema,
+  firstName: z.string(),
+  lastName: z.string(),
+});
+
+/**
+ * Matches in the branch of the request are named; of other branches only
+ * whether one exists (owner's answer 2 on pull request #53).
+ */
+export const staffCheckResultSchema = z.object({
+  sameNameAndBirth: z.array(staffMatchSchema),
+  samePhone: z.array(staffMatchSchema),
+  elsewhere: z.boolean(),
+});
+
+export type StaffCheckResult = z.infer<typeof staffCheckResultSchema>;
+
+/** A row of the status history. */
+export const staffStatusRowSchema = z.object({
+  id: z.uuid(),
+  status: staffStatusSchema,
+  from: schoolDateSchema,
+  until: schoolDateSchema.nullable(),
+});
+
+export type StaffStatusRow = z.infer<typeof staffStatusRowSchema>;
+
+/** A person as the list answers it: the columns of `04` that exist so far. */
+export const staffListItemSchema = z.object({
+  id: z.uuid(),
+  staffId: staffIdSchema,
+  firstName: z.string(),
+  lastName: z.string(),
+  fatherName: z.string().nullable(),
+  categories: z.array(roleSchema),
+  branches: z.array(z.object({ branchId: z.uuid(), name: z.string(), main: z.boolean() })),
+  divisions: z.array(
+    z.object({ divisionId: z.uuid(), departmentId: z.uuid().nullable(), main: z.boolean() }),
+  ),
+  subjects: z.array(z.object({ subjectId: z.uuid(), grades: z.array(z.int()) })),
+  languages: z.array(instructionLanguageSchema),
+  phone: z.string(),
+  /** The status in force today in the main branch's time zone; `null` before the first row (admission later). */
+  status: staffStatusSchema.nullable(),
+  /** A change planned after today, if any. */
+  planned: z.object({ status: staffStatusSchema, from: schoolDateSchema }).nullable(),
+});
+
+export type StaffListItem = z.infer<typeof staffListItemSchema>;
+
+export const staffListSchema = z.object({
+  staff: z.array(staffListItemSchema),
+  /** Today in the time zone of the branch of the request. */
+  today: schoolDateSchema,
+});
+
+export type StaffList = z.infer<typeof staffListSchema>;
+
+/**
+ * What the account may do with the record, decided by the server from every
+ * current assignment; the screen follows it (`.claude/rules/api.md`).
+ */
+export const staffRightsSchema = z.object({
+  /** Every field of the record, the branches and the status: the Super Admin. */
+  all: z.boolean(),
+  /** Name, phone and email: the Super Admin and the Academic Vice Principal. */
+  contact: z.boolean(),
+  /** Subjects, grades and languages. */
+  teaching: z.boolean(),
+});
+
+export type StaffRights = z.infer<typeof staffRightsSchema>;
+
+/** A person as the record route answers it. */
+export const staffDetailSchema = staffListItemSchema.extend({
+  sex: sexSchema,
+  /** `null` while hidden from the Principal (decision 9); `identityHidden` says so. */
+  birthDate: schoolDateSchema.nullable(),
+  jshshir: z.string().nullable(),
+  identityHidden: z.boolean(),
+  educationLevel: educationLevelSchema.nullable(),
+  email: z.string().nullable(),
+  admissionDate: schoolDateSchema,
+  contractType: contractTypeSchema.nullable(),
+  contractDate: schoolDateSchema.nullable(),
+  weeklyLessons: z.int().nullable(),
+  dailyLessons: z.int().nullable(),
+  statuses: z.array(staffStatusRowSchema),
+  rights: staffRightsSchema,
+  today: schoolDateSchema,
+});
+
+export type StaffDetail = z.infer<typeof staffDetailSchema>;
+
+/** The identity fields shown on a logged "show" (decision 9). */
+export const staffIdentitySchema = z.object({
+  birthDate: schoolDateSchema,
+  jshshir: z.string().nullable(),
+});
+
+export type StaffIdentity = z.infer<typeof staffIdentitySchema>;
+
+export const staffParamsSchema = z.object({ id: z.uuid() });
+
+export type StaffParams = z.infer<typeof staffParamsSchema>;

@@ -336,6 +336,75 @@ export interface SlotTypes {
   name: string;
 }
 
+export interface Staff {
+  account_id: string | null;
+  admission_date: string | null;
+  birth_date: string | null;
+  contract_date: string | null;
+  contract_type: string | null;
+  created_at: Generated<Timestamp>;
+  daily_lessons: number | null;
+  education_level: string | null;
+  email: string | null;
+  father_name: string | null;
+  first_name: string | null;
+  id: Generated<string>;
+  jshshir: string | null;
+  kind: string;
+  last_name: string | null;
+  phone: string | null;
+  sex: string | null;
+  staff_id: string | null;
+  vacancy_name: string | null;
+  weekly_lessons: number | null;
+}
+
+export interface StaffBranches {
+  branch_id: string;
+  is_main: boolean;
+  staff_id: string;
+}
+
+export interface StaffDivisions {
+  department_id: string | null;
+  division_id: string;
+  is_main: boolean;
+  staff_id: string;
+}
+
+export interface StaffIdCounters {
+  last_number: number;
+  year: number;
+}
+
+export interface StaffLanguages {
+  language: string;
+  staff_id: string;
+}
+
+export interface StaffStatuses {
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  staff_id: string;
+  status: string;
+  valid_from: string;
+  valid_until: string | null;
+}
+
+export interface StaffStatusRoleEnds {
+  assignment_id: string;
+  previous_ended_by: string | null;
+  previous_valid_until: Timestamp | null;
+  staff_id: string;
+  status_id: string;
+}
+
+export interface StaffSubjects {
+  grades: number[];
+  staff_id: string;
+  subject_id: string;
+}
+
 export interface SubjectDailyWeights {
   attendance: number;
   branch_id: string;
@@ -413,6 +482,14 @@ export interface DB {
   sign_in_throttle: SignInThrottle;
   slot_type_lengths: SlotTypeLengths;
   slot_types: SlotTypes;
+  staff: Staff;
+  staff_branches: StaffBranches;
+  staff_divisions: StaffDivisions;
+  staff_id_counters: StaffIdCounters;
+  staff_languages: StaffLanguages;
+  staff_status_role_ends: StaffStatusRoleEnds;
+  staff_statuses: StaffStatuses;
+  staff_subjects: StaffSubjects;
   subject_daily_weights: SubjectDailyWeights;
   subject_quarter_weights: SubjectQuarterWeights;
   subjects: Subjects;
