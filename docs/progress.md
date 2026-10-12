@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: task 2.4a Student record, UID and readers
+
+- Built: migration 0032 (`students`, `student_uids` reserved for good, `student_contracts`, `student_statuses`, `student_accounts` switched off, `student_duplicate_elsewhere`); seven routes under `people/students` in `Students` with the areas `students`, `student_contact`, `student_identity`, `student_financial`; `spellingKey`, `uidSetOf` and the student schemas in `packages/shared/src/students.ts`; the error codes `uid_set_mismatch`, `no_academic_year`, `student_value_taken`.
+- Screens: People → Students (`/people/students`), the profile panel (Overview, Contract and scholarship, the Principal's show), the student form with the duplicate and UID set warnings, the UID correction; every list search folds Cyrillic and apostrophes (`searchKey` = `spellingKey`); browser test in `people.spec.ts` (screenshots in `docs/screens/2.4a/`).
+- Tests: `students.database.test.ts`, `students.test.ts` (readers, refusals of every role, 404s, taken values here and elsewhere, races), `students.test.ts` of shared, `students-page.test.tsx`.
+- Left out: statuses, delete, bulk actions, export, photos, consent list and the "No class" counter (2.4b); relatives (2.5); class, groups, tutor, language and the Tutor's profiles (3.1, 3.2); leaving inside classes, branch moves and the merge (3.3).
+
+The next sessions must know:
+
+- A UID is reserved in `student_uids` in the transaction that gives it; `students.uid` must be a row of it for that student (deferred key `students_uid_held_fkey`).
+- The groups of fields are decided by `readerOf(access, area)` from every current assignment; a new field goes into one group's schema and answer.
+- A refusal of a taken value is 409 `student_value_taken`; `details[].recordId` names a holder of the branch only, `held_elsewhere` says nothing more.
+- The next task is 2.4b.
+
 ## 12 October 2026: task 2.3c-2 Password reset by email and the own photo
 
 - Built: migration 0031 (`password_reset_links`, set once by a trigger; `password_reset_allowed`, `password_reset_address`, `own_staff_record`, `last_email_change`); the public `POST auth/password-reset` and `.../confirm` in `PasswordResetEmailModule`, the job `auth.password_reset_mail`, the log-only `LogMailer` (`apps/api/src/mail/`); `PUT/DELETE/GET auth/photo`; the email edit limited by `reachingAssignment` (`account-reach.ts`, shared with `AccountAccess`).
