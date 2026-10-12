@@ -387,6 +387,38 @@ describe('leaving a record form with typed changes', () => {
   });
 });
 
+// The phone tab bar's "More" holds sign-out too (docs/design-system.md, Layout
+// shell, Phone width; pull request #61, plan review 5): its sheet closes first,
+// then the leave question asks.
+describe('sign-out from "More"', () => {
+  it('asks with typed changes, sends nothing when the person stays, and signs out when they leave', async () => {
+    const { panel, calls } = await openForm();
+    type(field(panel, en.sample.score), '90');
+    const sent = () => calls.filter((call) => call.route === 'POST /api/auth/sign-out');
+    const signOut = async (): Promise<void> => {
+      fireEvent.click(
+        within(screen.getByRole('navigation', { name: en.menu.tabs })).getByRole('button', {
+          name: en.menu.more,
+        }),
+      );
+      const more = await screen.findByRole('dialog', { name: en.menu.more });
+      fireEvent.click(within(more).getByRole('button', { name: en.layout.signOut }));
+    };
+
+    await signOut();
+    fireEvent.click(within(await leaveDialog()).getByRole('button', { name: en.unsent.stay }));
+    await noDialog();
+    expect(sent()).toHaveLength(0);
+    expect(field(panel, en.sample.score).value).toBe('90');
+
+    await signOut();
+    fireEvent.click(within(await leaveDialog()).getByRole('button', { name: en.unsent.leave }));
+
+    expect(await screen.findByRole('heading', { name: en.signIn.title })).toBeDefined();
+    expect(sent()).toHaveLength(1);
+  });
+});
+
 // docs/spec/12-ux-standards.md, No lost work: "Actions that cannot be undone
 // ask for confirmation and name what will be affected."
 describe('the confirmation of a bulk action', () => {

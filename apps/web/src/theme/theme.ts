@@ -63,7 +63,7 @@ export class ThemeStore {
   constructor(initial: Theme = readStoredTheme()) {
     this.theme = initial;
     this.query = deviceQuery();
-    this.query?.addEventListener('change', this.apply);
+    this.query?.addEventListener('change', this.follow);
     this.apply();
   }
 
@@ -76,6 +76,9 @@ export class ThemeStore {
 
   readonly snapshot = (): Theme => this.theme;
 
+  /** Whether the page is drawn dark now, for a part that shows it (the theme button). */
+  readonly darkSnapshot = (): boolean => this.dark;
+
   /** Whether the page is dark now. */
   get dark(): boolean {
     return isDark(this.theme, this.query?.matches ?? false);
@@ -85,14 +88,24 @@ export class ThemeStore {
     this.theme = theme;
     storeTheme(theme);
     this.apply();
-    for (const listener of this.listeners) {
-      listener();
-    }
+    this.notify();
   }
 
   /** Stops following the device; for tests that make several stores. */
   stop(): void {
-    this.query?.removeEventListener('change', this.apply);
+    this.query?.removeEventListener('change', this.follow);
+  }
+
+  /** The device changed its theme: drawn again, and said to whoever shows it. */
+  private readonly follow = (): void => {
+    this.apply();
+    this.notify();
+  };
+
+  private notify(): void {
+    for (const listener of this.listeners) {
+      listener();
+    }
   }
 
   private readonly apply = (): void => {
@@ -109,6 +122,7 @@ export const ThemeContext = createContext<ThemeStore | null>(null);
 
 const subscribeToNothing = (): (() => void) => () => undefined;
 const defaultTheme = (): Theme => DEFAULT_THEME;
+const notDark = (): boolean => false;
 
 /**
  * The chosen theme, whether the page is drawn dark now, and a way to change
@@ -120,9 +134,13 @@ export function useTheme(): { theme: Theme; dark: boolean; setTheme: (theme: The
     store?.subscribe ?? subscribeToNothing,
     store?.snapshot ?? defaultTheme,
   );
+  const dark = useSyncExternalStore(
+    store?.subscribe ?? subscribeToNothing,
+    store?.darkSnapshot ?? notDark,
+  );
   return {
     theme,
-    dark: store?.dark ?? false,
+    dark,
     setTheme: (next) => {
       store?.set(next);
     },

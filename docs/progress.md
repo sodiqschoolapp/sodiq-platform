@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: task 2.2d-2 Layout shell and brand moments
+
+- Built: the navy menu (on-dark logo, Material icons, the current item orange, the rail under `sodiq.menu`, the person and sign-out at its foot with the theme and language in the person menu), the phone tab bar (four items and "More"), the 64-high top bar (branch, year and quarter, search with Ctrl+K, notifications, feedback, role); the sign-in frame with the slogan panel for sign-in and its steps; empty pages (`EmptyState` with a title) and full-page errors as brand moments with Bitter and the hexagon drawing; two pending outlines; the print letterhead (`components/print/letterhead.tsx`).
+- Tests: `app-menu.test.tsx`, `pages.test.tsx`, `states.test.tsx`, `letterhead.test.tsx`, new source checks (Bitter, hand-written svg, orange text, `sodiq.theme`/`sodiq.menu`) and contrast pairs; the browser test `brand.spec.ts` (seed account `brand`) with the Bitter letter check and the screenshots of `docs/screens/2.2d-2/`.
+- Left out: the person's name in the menu and "Forgot your password?" (2.3, written there); year and quarter selects (with the feature that opens another year); single screens and the duplicate primary button of a list page that is empty (2.7).
+
+The next sessions must know:
+
+- A page that is empty is `EmptyState` with a `title` (a list gives `empty.title`); without a title it is a quiet line for a part of a page.
+- A new menu item gets its icon from `MENU_ICONS` (`features/access/menu-pages.ts`); the person's own entries live in the person menu and in "More", not in the item list.
+- Bitter is the class `font-brand`, allowed only in `states.tsx` and `auth-page.tsx` (`design-parts.test.ts`); hand-written `<svg>` only in `components/brand/`.
+- The next task is 2.3.
+
 ## 12 October 2026: task 2.2d-1 Tokens, type, icons and controls
 
 - Built: the colour tokens of `docs/design-system.md` for both themes in `index.css` (new: `primary-hover`, `secondary-hover`, the state colours and tints, `today`, `top-bar`, `link`, `checkbox`), every pair in `contrast.test.ts`; Golos Text from our own files; Material Symbols Rounded filled (weight 500) through `components/icons.tsx`, `lucide-react` and Geist removed; `button.tsx` with three sizes and four kinds; `control.ts` (`FIELD`, `CHECKBOX`, `FOCUS_RING`, `PANEL`), `Select` and `Segmented`; the list in a white panel with the selection bar in `--today`; the notifications count as a plain number; the icons in `index.html`.

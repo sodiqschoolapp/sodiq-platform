@@ -18,6 +18,11 @@ import {
 } from '@/testing/render-app';
 import { BRANCH_STORAGE_KEY, ROLE_STORAGE_KEY } from './view-store';
 
+// The items a principal finds under "More" (the fifth to the eighth of its row).
+const { MORE_OF_PRINCIPAL } = vi.hoisted(() => ({
+  MORE_OF_PRINCIPAL: new Set(['timetable', 'journal', 'results', 'plans']),
+}));
+
 // Every page is built here, so that the menu shows the whole row of the table.
 vi.mock('./menu-pages', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./menu-pages')>();
@@ -25,10 +30,11 @@ vi.mock('./menu-pages', async (importOriginal) => {
   const pages = Object.fromEntries(
     MENU_ITEMS.map((item) => [
       item,
-      // Home at its own address, the others elsewhere, so one item is the current page.
+      // Home at its own address, the others elsewhere, so one item is the current
+      // page; the items a principal finds under "More" lead to the account page.
       {
         titleKey: `menu.${item}`,
-        to: item === 'home' ? '/' : '/setup',
+        to: item === 'home' ? '/' : MORE_OF_PRINCIPAL.has(item) ? '/account' : '/setup',
         icon: actual.MENU_ICONS[item],
       },
     ]),
@@ -291,5 +297,24 @@ describe('the tab bar on a phone', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: en.menu.more })).toBeNull();
     });
+  });
+});
+
+describe('the "More" tab', () => {
+  it('is the current one on a page reached through it', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionOf({ assignments: [held('principal')] })),
+      'GET /api/auth/sessions': () => json({ sessions: [] }),
+      'GET /api/auth/trusted-devices': () => json({ devices: [] }),
+      'GET /api/auth/second-step': () => json({ on: false, required: false, recoveryCodesLeft: 0 }),
+    });
+    renderApp('/account');
+    await heading(en.account.title);
+
+    const bar = within(screen.getByRole('navigation', { name: en.menu.tabs }));
+    expect(bar.getByRole('button', { name: en.menu.more }).getAttribute('aria-current')).toBe(
+      'page',
+    );
+    expect(bar.getAllByRole('link').every((link) => !link.hasAttribute('aria-current'))).toBe(true);
   });
 });

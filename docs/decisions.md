@@ -186,6 +186,22 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 12 October 2026: layout shell and brand moments (task 2.2d-2)
+
+Plan approved on pull request #61 with corrections 1 to 4; decisions 1 to 17 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Tests rewritten where the shell moved: the chevron and `menu.current` of the active item, the own account entry in the item list, and the browser tests' paths to the theme, the language, the account menu and the phone menu | Decision 17; `docs/design-system.md`, Layout shell; what each proved is still asserted |
+| **Look first.** The sign-in slogan is the one orange text | Decision 16; a contradiction inside the design system, wording proposed on #42 |
+| **Look first.** The empty page's hexagon outlines take the foreground colour in the dark theme | Decision 14; navy fails 3 : 1 on the dark card |
+| **Look first.** In the rail the current item is an icon on an orange square | Build; the active fill of the design system on an icon-only item, against What we never do 2; wording proposed on #42 |
+| `EmptyState` with a title is the brand moment of an empty page; without one a quiet line | Decision 1 |
+| Theme and language in the person menu (radio items that close the menu) and in "More" (the segmented control); feedback stays in the top bar; the sign-in page has a theme button through `useTheme()` | Decisions 2 and 3; correction 1 |
+| The side menu from 640 px, fixed to the window with a column of its width; the current item matches its inner pages, Home only itself; "More" is the current tab on a page under it | Decision 5; build |
+| The colour logo and shield on white, their on-dark versions in the dark theme | `docs/design-system.md`, Logo: "the on-dark version goes on navy" |
+| Slab titles 40/44, 28/34 below 640 px; the slogan 56/58 from 1024 px and 40/44 from 640 to 1023 px | Decision 15; build: 56 px does not fit the narrow panel |
+
 ## 12 October 2026: tokens, type, icons and controls (task 2.2d-1)
 
 Plan approved on pull request #60 with corrections 1 to 6; decisions 1 to 13 confirmed there. Flagged on issue #42.

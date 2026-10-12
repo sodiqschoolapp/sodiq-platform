@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -133,7 +133,7 @@ function Avatar({ login }: { login: string }) {
   return (
     <span
       aria-hidden
-      className="grid size-9 shrink-0 place-items-center rounded-full bg-sidebar-avatar text-xs font-semibold text-sidebar-accent-foreground"
+      className="grid size-8 shrink-0 place-items-center rounded-full bg-sidebar-avatar text-xs font-semibold text-sidebar-accent-foreground"
     >
       {initialsOf(login)}
     </span>
@@ -335,6 +335,10 @@ export function PhoneTabBar({ actions }: { actions: PersonActions }) {
   const { t } = useTranslation();
   const pages = useMenuPages();
   const { tabs, more } = tabBarSplit(pages);
+  const path = useRouterState({ select: (state) => state.location.pathname });
+  const inMore = more.some((page) =>
+    page.to === '/' ? path === '/' : path === page.to || path.startsWith(`${String(page.to)}/`),
+  );
   const [open, setOpen] = useState(false);
   const close = () => {
     setOpen(false);
@@ -363,7 +367,20 @@ export function PhoneTabBar({ actions }: { actions: PersonActions }) {
       ))}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger
-          render={<button type="button" className={cn(TAB, 'hover:bg-sidebar-accent')} />}
+          render={
+            <button
+              type="button"
+              // The page open is under "More": the tab is the current one (Phone width,
+              // "the active one orange"), by its fill and for a screen reader.
+              {...(inMore ? { 'aria-current': 'page' as const } : {})}
+              className={cn(
+                TAB,
+                inMore
+                  ? 'bg-sidebar-primary font-semibold text-sidebar-primary-foreground'
+                  : 'hover:bg-sidebar-accent',
+              )}
+            />
+          }
         >
           <TabIcon Icon={MoreHorizIcon} />
           <span>{t('menu.more')}</span>

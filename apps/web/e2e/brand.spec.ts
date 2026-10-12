@@ -44,11 +44,12 @@ const CHECK = 'Oʻgʻil, Ўзбекистон, Қашқадарё, Ғулом, �
  * letter in two different fallback families: a letter Bitter lacks is drawn
  * by the fallback and has its width. `document.fonts.check` alone cannot
  * fail: it is true when no face covers the letters (plan review of #61, 3).
+ * The Uzbek slogan adds the U+02BC of "Taʼlim".
  */
 async function lettersBitterLacks(page: Page): Promise<string[]> {
   // A string, as the other browser tests: the e2e files have no DOM types.
   return page.evaluate<string[]>(`(async () => {
-    const text = ${JSON.stringify(CHECK)};
+    const text = ${JSON.stringify(`${CHECK} ${uz.brand.slogan}`)};
     await document.fonts.load('700 40px "Bitter Variable"', text);
     const context = document.createElement('canvas').getContext('2d');
     const width = (family, letter) => {

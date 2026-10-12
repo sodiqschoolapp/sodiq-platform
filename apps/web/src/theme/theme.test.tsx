@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, refusal, renderApp, sessionOf } from '@/testing/render-app';
@@ -180,5 +180,23 @@ describe('the theme choice', () => {
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
     fireEvent.click(screen.getByRole('button', { name: en.theme.toDark }));
     expect(isPageDark()).toBe(true);
+  });
+
+  // Pull request #61, correction 1: the button "reads the theme that is drawn
+  // now", also when the device changes it while the page is open.
+  it('names the other theme of the one the device draws now', async () => {
+    const device = fakeDevice(false);
+    fakeApi({ 'GET /api/auth/session': () => refusal('not_signed_in', 401) });
+    renderApp('/sign-in', 'en', newStore());
+    await screen.findByRole('heading', { name: en.signIn.title });
+
+    expect(screen.getByRole('button', { name: en.theme.toDark })).toBeDefined();
+    act(() => {
+      device.set(true);
+    });
+    expect(isPageDark()).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: en.theme.toLight }));
+    expect(isPageDark()).toBe(false);
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
   });
 });
