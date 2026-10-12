@@ -42,6 +42,14 @@ import { Accounts, LoginTakenError } from '../auth/accounts.service.js';
 import { appointedSubjects } from '../access/appointment-subjects.js';
 import { actorsOf } from './actors.js';
 import { notFound } from '../setup/setup-refusals.js';
+import {
+  branchOf,
+  findPerson,
+  leftForGood,
+  neverUsedAccounts,
+  readingBranches,
+  type Person,
+} from './staff-account-records.js';
 import { startOfDate } from './staff-status.js';
 import { Staff } from './staff.service.js';
 
@@ -50,27 +58,6 @@ const superAdminOf = (access: Access): string | undefined =>
   access.assignments.find((assignment) => assignment.role === 'super_admin')?.id;
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
-
-/**
- * The branch of the request. Every route of a record is declared without
- * `branch: 'none'`, so the guard has always named a branch: a fault of the
- * code, never a request, reaches the throw.
- */
-function branchOf(access: Access): string {
-  if (access.branchId === null) {
-    throw new Error('An account route works for the branch of the request.');
-  }
-  return access.branchId;
-}
-
-/** The record of a person, as the account routes read it. */
-interface Person {
-  id: string;
-  accountId: string | null;
-  firstName: string;
-  lastName: string;
-  fatherName: string | null;
-}
 
 /**
  * The account section of a staff record (task 2.3a, pull request #62): the
@@ -92,18 +79,6 @@ export class StaffAccounts {
     private readonly audit: Audit,
   ) {}
 
-  /** Every branch for a Super Admin, else the branch of the request. */
-  private async readingBranches(access: Access): Promise<readonly string[]> {
-    if (superAdminOf(access) === undefined) {
-      return access.branchIds;
-    }
-    return this.transactions.run([], async (transaction) =>
-      (await transaction.selectFrom('branches').select('id').orderBy('id').execute()).map(
-        (row) => row.id,
-      ),
-    );
-  }
-
   /** The Super Admin assignment that allows a change; the route asks `create` or `edit`, which only the Super Admin has. */
   private actingAs(access: Access): string {
     const superAdmin = superAdminOf(access);
@@ -116,8 +91,8 @@ export class StaffAccounts {
   /** The section of the record of the branch of the request. */
   async read(access: Access, id: string): Promise<StaffAccount> {
     const branchId = branchOf(access);
-    return this.transactions.run(await this.readingBranches(access), async (transaction) => {
-      const person = await this.findPerson(transaction, id, branchId, false);
+    return this.transactions.run(await readingBranches(this.transactions, access), async (transaction) => {
+      const person = await findPerson(transaction, id, branchId, false);
       return this.sectionOf(transaction, access, person, branchId);
     });
   }
@@ -126,8 +101,8 @@ export class StaffAccounts {
   async suggest(access: Access, id: string): Promise<LoginSuggestion> {
     const branchId = branchOf(access);
     this.actingAs(access);
-    return this.transactions.run(await this.readingBranches(access), async (transaction) => {
-      const person = await this.findPerson(transaction, id, branchId, false);
+    return this.transactions.run(await readingBranches(this.transactions, access), async (transaction) => {
+      const person = await findPerson(transaction, id, branchId, false);
       return { login: await this.accounts.suggest(transaction, person) };
     });
   }
@@ -145,8 +120,8 @@ export class StaffAccounts {
   ): Promise<FirstPasswordSlip> {
     const branchId = branchOf(access);
     const superAdmin = this.actingAs(access);
-    return this.transactions.run(await this.readingBranches(access), async (transaction) => {
-      const person = await this.findPerson(transaction, id, branchId, true);
+    return this.transactions.run(await readingBranches(this.transactions, access), async (transaction) => {
+      const person = await findPerson(transaction, id, branchId, true);
       if (person.accountId !== null) {
         throw refused('account_exists');
       }
@@ -202,9 +177,9 @@ export class StaffAccounts {
     const branchId = branchOf(access);
     const superAdmin = this.actingAs(access);
     return this.refusing(async () =>
-      this.transactions.run(await this.readingBranches(access), async (transaction) => {
+      this.transactions.run(await readingBranches(this.transactions, access), async (transaction) => {
         await lockSuperAdmins(transaction);
-        const person = await this.findPerson(transaction, id, branchId, true);
+        const person = await findPerson(transaction, id, branchId, true);
         if (person.accountId === null) {
           throw refused('no_account');
         }
@@ -352,9 +327,9 @@ export class StaffAccounts {
     const branchId = branchOf(access);
     const superAdmin = this.actingAs(access);
     return this.refusing(async () =>
-      this.transactions.run(await this.readingBranches(access), async (transaction) => {
+      this.transactions.run(await readingBranches(this.transactions, access), async (transaction) => {
         await lockSuperAdmins(transaction);
-        const person = await this.findPerson(transaction, id, branchId, true);
+        const person = await findPerson(transaction, id, branchId, true);
         if (person.accountId === null) {
           throw refused('no_account');
         }
@@ -481,9 +456,9 @@ export class StaffAccounts {
     const branchId = branchOf(access);
     const superAdmin = this.actingAs(access);
     return this.refusing(async () =>
-      this.transactions.run(await this.readingBranches(access), async (transaction) => {
+      this.transactions.run(await readingBranches(this.transactions, access), async (transaction) => {
         await lockSuperAdmins(transaction);
-        const person = await this.findPerson(transaction, id, branchId, true);
+        const person = await findPerson(transaction, id, branchId, true);
         if (person.accountId === null) {
           throw refused('no_account');
         }
@@ -585,50 +560,9 @@ export class StaffAccounts {
     }
   }
 
-  /**
-   * The record of a person linked to the branch of the request, locked for a
-   * change; 404 for another branch's record, an unknown id and a vacancy
-   * ("no account", `04`, Vacancy).
-   */
-  private async findPerson(
-    transaction: Transaction,
-    id: string,
-    branchId: string,
-    lock: boolean,
-  ): Promise<Person> {
-    const linked = await transaction
-      .selectFrom('staff_branches')
-      .select('staff_id')
-      .where('staff_id', '=', id)
-      .where('branch_id', '=', branchId)
-      .executeTakeFirst();
-    if (linked === undefined) {
-      throw notFound();
-    }
-    let query = transaction
-      .selectFrom('staff')
-      .select(['id', 'account_id', 'first_name', 'last_name', 'father_name'])
-      .where('id', '=', id)
-      .where('kind', '=', 'person');
-    if (lock) {
-      query = query.forUpdate();
-    }
-    const row = await query.executeTakeFirst();
-    if (row === undefined || row.first_name === null || row.last_name === null) {
-      throw notFound();
-    }
-    return {
-      id: row.id,
-      accountId: row.account_id,
-      firstName: row.first_name,
-      lastName: row.last_name,
-      fatherName: row.father_name,
-    };
-  }
-
   /** No account and no role for a person who has left for good (decision 12). */
   private async refuseLeft(transaction: Transaction, id: string): Promise<void> {
-    if (await this.leftForGood(transaction, id)) {
+    if (await leftForGood(transaction, id)) {
       throw refused('staff_left');
     }
   }
@@ -695,13 +629,6 @@ export class StaffAccounts {
     return found !== undefined;
   }
 
-  private async leftForGood(transaction: Transaction, id: string): Promise<boolean> {
-    const found = await sql<{ out: boolean }>`
-      select staff_out_for_good(${id}::uuid, ${await transactionMoment(transaction)}) as out
-    `.execute(transaction);
-    return found.rows[0]?.out === true;
-  }
-
   /** The time zone of a branch; of the school for the two roles without one (0.7a). */
   private async zoneOf(transaction: Transaction, branchId: string | null): Promise<string> {
     if (branchId === null) {
@@ -723,7 +650,7 @@ export class StaffAccounts {
   ): Promise<StaffAccount> {
     const now = await transactionMoment(transaction);
     const today = schoolDateOf(now, await this.zoneOf(transaction, branchId));
-    const left = await this.leftForGood(transaction, person.id);
+    const left = await leftForGood(transaction, person.id);
     const canEdit = superAdminOf(access) !== undefined;
     if (person.accountId === null) {
       return { account: null, canEdit, left, today };
@@ -733,12 +660,12 @@ export class StaffAccounts {
       .select(['login', 'created_at', 'locked_at'])
       .where('id', '=', person.accountId)
       .executeTakeFirstOrThrow();
-    const used = await transaction
-      .selectFrom('sessions')
-      .select('id')
-      .where('account_id', '=', person.accountId)
-      .limit(1)
-      .executeTakeFirst();
+    // Since the start of the current employment period (task 2.3c-1,
+    // correction 2 of the review of #65), as the section "Sign-in access" and
+    // the report of accounts never used say it.
+    const neverUsed = (
+      await neverUsedAccounts(transaction, [{ staffId: person.id, accountId: person.accountId }])
+    ).has(person.accountId);
     const rows = await transaction
       .selectFrom('assignments')
       .leftJoin('branches', 'branches.id', 'assignments.branch_id')
@@ -811,7 +738,7 @@ export class StaffAccounts {
       account: {
         login: account.login,
         createdAt: account.created_at.toISOString(),
-        neverUsed: used === undefined,
+        neverUsed,
         locked: account.locked_at !== null,
         roles,
       },

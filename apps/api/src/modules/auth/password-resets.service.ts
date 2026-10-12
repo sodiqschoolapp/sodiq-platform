@@ -27,7 +27,32 @@ export class UnknownAccountError extends Error {
   }
 }
 
-export interface PasswordReset {
+/**
+ * What an audit entry of a change by an administrator names besides the actor
+ * (task 2.3c-1, decision 8): the assignment that allowed it, the person and the
+ * branch of the request. Left out, the entry goes to the school's log with no
+ * assignment, as in 0.6.
+ */
+export interface AuditNames {
+  actingAssignmentId?: string;
+  personId?: string;
+  branchId?: string;
+}
+
+/** The fields of an audit entry from `AuditNames`. */
+export function auditOf(names: AuditNames): {
+  branchId: string | null;
+  assignmentId?: string;
+  personId?: string;
+} {
+  return {
+    branchId: names.branchId ?? null,
+    ...(names.actingAssignmentId === undefined ? {} : { assignmentId: names.actingAssignmentId }),
+    ...(names.personId === undefined ? {} : { personId: names.personId }),
+  };
+}
+
+export interface PasswordReset extends AuditNames {
   /** The account whose password is reset. */
   accountId: string;
   /** The account of the administrator who resets it. */
@@ -57,6 +82,8 @@ export interface FirstPassword {
 export interface ResetPassword {
   /** Shown once to the administrator and stored nowhere. */
   oneTimePassword: string;
+  /** The one-time password works until this moment (24 hours). */
+  validUntil: Date;
 }
 
 /**
@@ -66,8 +93,9 @@ export interface ResetPassword {
  * Y"; the session answer names X until the password is changed. The count of
  * failed sign-ins of the login starts again, so the person need not wait.
  *
- * The reset by an administrator gets its route in task 2.3c; the re-hire of
- * task 2.3a calls `forRehire`.
+ * The reset by an administrator has its route since task 2.3c-1
+ * (`AccountAccess`, which decides who may reset whom); the re-hire of task
+ * 2.3a calls `forRehire`.
  */
 @Injectable()
 export class PasswordResets {
@@ -85,6 +113,7 @@ export class PasswordResets {
     const oneTimePassword = randomFirstPassword();
     const passwordHash = await hashPassword(oneTimePassword);
     const now = this.clock.now();
+    const validUntil = new Date(now.getTime() + RESET_PASSWORD_VALID_MS);
 
     const changed = await transaction
       .updateTable('accounts')
@@ -92,7 +121,7 @@ export class PasswordResets {
         password_hash: passwordHash,
         // Together, as the check constraint of `accounts` demands.
         must_change_password: true,
-        password_expires_at: new Date(now.getTime() + RESET_PASSWORD_VALID_MS),
+        password_expires_at: validUntil,
         password_reset_by: reset.resetBy,
         password_reset_at: now,
       })
@@ -112,14 +141,14 @@ export class PasswordResets {
       .returning('id')
       .execute();
     await this.audit.record(transaction, {
-      branchId: null,
       actorId: reset.resetBy,
+      ...auditOf(reset),
       action: 'account.password_reset',
       record: { type: 'account', id: reset.accountId },
       details: { endedSessions: ended.length },
       ...(reset.requestId === undefined ? {} : { requestId: reset.requestId }),
     });
-    return { oneTimePassword };
+    return { oneTimePassword, validUntil };
   }
 
   /**

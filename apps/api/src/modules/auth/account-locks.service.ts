@@ -1,13 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { Clock } from '@sodiq/shared';
+import { LOCK_REASON_MAX_LENGTH, type Clock } from '@sodiq/shared';
 import { CLOCK } from '../../clock/clock.module.js';
 import type { Transaction } from '../../database/transactions.js';
 import { Audit } from '../audit/audit.service.js';
-import { UnknownAccountError } from './password-resets.service.js';
+import { auditOf, UnknownAccountError, type AuditNames } from './password-resets.service.js';
 import { Sessions } from './sessions.service.js';
 
-/** The reason of a lock is kept with it and in the audit log; longer texts are refused. */
-export const LOCK_REASON_MAX_LENGTH = 500;
+/** The reason of a lock is kept with it and in the audit log; longer texts are refused (the bound of `lockSchema`). */
+export { LOCK_REASON_MAX_LENGTH };
 
 /** Nobody locks or unlocks their own account (decided by the owner). */
 export class OwnAccountLockError extends Error {
@@ -35,7 +35,7 @@ export class LockReasonError extends Error {
   }
 }
 
-export interface AccountLock {
+export interface AccountLock extends AuditNames {
   /** The account that is locked. */
   accountId: string;
   /** The account of the administrator who locks it. */
@@ -44,7 +44,7 @@ export interface AccountLock {
   requestId?: string;
 }
 
-export interface AccountUnlock {
+export interface AccountUnlock extends AuditNames {
   /** The account that is unlocked. */
   accountId: string;
   /** The account of the administrator who unlocks it. */
@@ -58,9 +58,8 @@ export interface AccountUnlock {
  * reassignment and is logged with a reason. A locked account cannot sign in
  * until it is unlocked; its password, second step and roles stay as they were.
  *
- * Until the screens of task 2.3 this service has no route: who may lock whom,
- * and the refusal to lock the last active Super Admin, are checked there. Only
- * tests call it.
+ * The routes of task 2.3c-1 (`AccountAccess`) decide who may lock whom and
+ * refuse the lock of the last active Super Admin; this service does the lock.
  */
 @Injectable()
 export class AccountLocks {
@@ -97,8 +96,8 @@ export class AccountLocks {
       .returning('id')
       .execute();
     await this.audit.record(transaction, {
-      branchId: null,
       actorId: lock.lockedBy,
+      ...auditOf(lock),
       action: 'account.locked',
       record: { type: 'account', id: lock.accountId },
       reason,
@@ -121,8 +120,8 @@ export class AccountLocks {
       .where('id', '=', unlock.accountId)
       .execute();
     await this.audit.record(transaction, {
-      branchId: null,
       actorId: unlock.unlockedBy,
+      ...auditOf(unlock),
       action: 'account.unlocked',
       record: { type: 'account', id: unlock.accountId },
       details: { lockedAt: account.locked_at.toISOString(), lockedBy: account.locked_by },

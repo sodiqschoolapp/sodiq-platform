@@ -94,7 +94,7 @@ const detailOf = (row: StaffListItem, fields: Partial<StaffDetail> = {}): StaffD
   weeklyLessons: 18,
   dailyLessons: 5,
   statuses: [{ id: uid(41), status: 'active', from: '2026-09-01', until: null }],
-  rights: { all: true, contact: true, teaching: true, accounts: false },
+  rights: { all: true, contact: true, teaching: true, accounts: false, accountAccess: false },
   today: '2026-10-10',
   ...fields,
 });
@@ -254,7 +254,7 @@ describe('the staff page', () => {
 
   it('lets the Academic Vice Principal change only name, phone and email of the record', async () => {
     openList('academic_vice_principal', {}, 'en', {
-      rights: { all: false, contact: true, teaching: true, accounts: false },
+      rights: { all: false, contact: true, teaching: true, accounts: false, accountAccess: false },
     });
     renderApp(PATH);
     await screen.findByRole('heading', { name: en.people.staff.title });
@@ -288,7 +288,7 @@ describe('the staff page', () => {
       },
       'en',
       {
-        rights: { all: false, contact: false, teaching: false, accounts: false },
+        rights: { all: false, contact: false, teaching: false, accounts: false, accountAccess: false },
         identityHidden: true,
         birthDate: null,
         jshshir: null,
@@ -501,7 +501,7 @@ describe('staff photos', () => {
 
   it('gives the Principal no photo buttons', async () => {
     openWith('principal', {}, 'en', {
-      rights: { all: false, contact: false, teaching: false, accounts: false },
+      rights: { all: false, contact: false, teaching: false, accounts: false, accountAccess: false },
     });
     renderApp(PATH);
     const panel = await openPanel();
@@ -520,7 +520,7 @@ describe('staff photos', () => {
       [`GET /api/people/staff/${AKMAL.id}`]: () =>
         json(
           detailOf(removed ? AKMAL : WITH_PHOTO, {
-            rights: { all: false, contact: true, teaching: true, accounts: false },
+            rights: { all: false, contact: true, teaching: true, accounts: false, accountAccess: false },
           }),
         ),
     });

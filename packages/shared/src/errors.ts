@@ -225,6 +225,16 @@ export const ERROR_CODES = [
   'role_not_appointment',
   /** The appointment ends on or before the date of a change of its subjects; its end is not moved later by the change (task 2.3b-1). */
   'appointment_ends_by_then',
+  /** Nobody locks, unlocks or resets their own account or second step (0.6b, 0.6d; task 2.3c-1, decision 11). */
+  'own_account',
+  /** The account is locked already (task 2.3c-1). */
+  'account_already_locked',
+  /** The account is not locked, so there is nothing to unlock (task 2.3c-1). */
+  'account_not_locked',
+  /** The account has no confirmed second step to reset (task 2.3c-1, decision 6). */
+  'second_step_off',
+  /** The staff record has no account yet, so there is nothing to lock or reset (task 2.3c-1). */
+  'account_missing',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
