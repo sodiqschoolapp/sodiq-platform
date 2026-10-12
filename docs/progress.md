@@ -14,6 +14,14 @@ The next sessions must know:
 - Only the Super Admin's reads and its branches and status routes run with every branch (`readingBranches` in `staff.service.ts`); everything else keeps `access.branchIds`.
 - The next task is 2.2b.
 
+## 12 October 2026: one design for both apps (process change, no task)
+
+- Owner: `docs/design-system.md` is now the text shared word for word with the procurement app above its last section, "This app"; the bottom tab bar at phone width is added to 2.2d; one sign-in for both apps is planned after both are live (`docs/decisions.md`, 12 October 2026).
+
+## 12 October 2026: the design system and the brand files (process change, no task)
+
+- Owner: the design system is `docs/design-system.md` (approved from the design board "Sodiq Platform design directions"); the logo, the browser-tab icon and the app icons are in `apps/web/public/brand/`; tasks 2.2d (design system and brand, after 2.2) and 2.7 (polish of Phases 1 and 2, before the Phase 3 gate) are in the build plan with their answers in `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7"); the builder and the reviewer check every screen against the design system. The next task is 2.2 (its split into 2.2a, 2.2b and 2.2c is proposed on pull request #53), then 2.2d.
+
 ## 11 October 2026: task 2.1 Subjects
 
 - Built: migrations 0020 (`subjects` school-wide; `subject_daily_weights` and `subject_quarter_weights` per branch, each distribution 1–100 per part and total 100 in the database; department and closed-year guards), 0021 (`weights_round`), 0022 (round guards, the closed-year lock) and 0023 (`rating_round` and its guards); nine routes under `/api/setup/subjects` (area `subjects`); the department archive refused while an active subject is in it; checklist item "Subjects and weights".
