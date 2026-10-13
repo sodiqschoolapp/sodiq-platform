@@ -1091,6 +1091,154 @@ try {
   );
   seeded.emailReset = { login: emailReset.login, password: emailReset.firstPassword };
 
+  // The Audit log (task 2.6a): an Academic Vice Principal and a Principal of a
+  // branch of their own, with one student and the entry of its creation by the
+  // Academic Vice Principal, its address among the values (Identity, hidden
+  // from the Principal with a logged show).
+  const auditBranch = await insertBranch(migrator, 'Audit browser test branch');
+  const auditVice = await create('Rustam', 'Ergashev');
+  const auditPrincipal = await create('Shahnoza', 'Yoqubova');
+  const auditGiven = await transactions.run([auditBranch], async (transaction) => {
+    const vice = await assignments.give(transaction, {
+      accountId: auditVice.id,
+      role: 'academic_vice_principal',
+      branchId: auditBranch,
+      givenBy: null,
+    });
+    await assignments.give(transaction, {
+      accountId: auditPrincipal.id,
+      role: 'principal',
+      branchId: auditBranch,
+      givenBy: null,
+    });
+    return vice;
+  });
+  const auditStudent = await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: auditBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: auditBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    // The staff record of the Academic Vice Principal: the log names the actor.
+    const viceRecord = await transaction
+      .insertInto('staff')
+      .values({
+        kind: 'person',
+        staff_id: 'S-269050',
+        first_name: 'Rustam',
+        last_name: 'Ergashev',
+        sex: 'male',
+        birth_date: '1984-05-06',
+        phone: '+998935550150',
+        admission_date: '2026-09-01',
+        account_id: auditVice.id,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: viceRecord.id, branch_id: auditBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: viceRecord.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: viceRecord.id, status: 'active', valid_from: '2026-09-01' })
+      .execute();
+    const student = await transaction
+      .insertInto('students')
+      .values({
+        branch_id: auditBranch,
+        uid: '9999501',
+        first_name: 'Oydin',
+        last_name: 'Murodova',
+        name_key: studentNameKey('Murodova', 'Oydin'),
+        sex: 'female',
+        birth_date: '2013-09-14',
+        address: 'Bodomzor 9',
+        grade: 7,
+        starts_on: startDate,
+        created_by: auditVice.id,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('student_uids')
+      .values({
+        uid: '9999501',
+        student_id: student.id,
+        branch_id: auditBranch,
+        held_from: new Date(),
+      })
+      .execute();
+    await transaction
+      .insertInto('student_contracts')
+      .values({
+        student_id: student.id,
+        branch_id: auditBranch,
+        number: 'E2E-AUDIT-1',
+        signed_on: startDate,
+      })
+      .execute();
+    await transaction
+      .insertInto('student_statuses')
+      .values({
+        student_id: student.id,
+        branch_id: auditBranch,
+        status: 'active',
+        valid_from: startDate,
+        cause: 'start',
+      })
+      .execute();
+    await transaction
+      .insertInto('student_accounts')
+      .values({ student_id: student.id, branch_id: auditBranch, created_at: new Date() })
+      .execute();
+    await linkRelative(transaction, student.id, auditBranch, new Date(), {
+      fullName: 'Feruza Murodova',
+    });
+    return student.id;
+  });
+  await transactions.run([auditBranch], (transaction) =>
+    audit.record(transaction, {
+      branchId: auditBranch,
+      actorId: auditVice.id,
+      assignmentId: auditGiven.id,
+      action: 'student.create',
+      record: { type: 'student', id: auditStudent },
+      newValue: {
+        uid: '9999501',
+        firstName: 'Oydin',
+        lastName: 'Murodova',
+        birthDate: '2013-09-14',
+        address: 'Bodomzor 9',
+      },
+    }),
+  );
+  seeded.auditVice = { login: auditVice.login, password: auditVice.firstPassword };
+  seeded.auditPrincipal = { login: auditPrincipal.login, password: auditPrincipal.firstPassword };
+
   console.log(JSON.stringify(seeded));
 } finally {
   await app.close();
