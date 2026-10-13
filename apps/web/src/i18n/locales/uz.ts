@@ -790,6 +790,8 @@ export const uz: Texts<'one' | 'other'> = {
       switches: 'Xususiyatlar',
       daily: 'Kunlik taqsimot',
       quarterly: 'Choraklik taqsimot',
+      changeWeights: 'Taqsimotni oʻzgartirish',
+      changeWeightsOf: 'Taqsimotni oʻzgartirish: {{name}}',
       quarterlyMissing: 'Vaznsiz choraklar',
       // The cell of the column (finding 20; task 2.7b-1, decision 8).
       quartersNotSet: '{{total}} tadan {{missing}} tasi vaznsiz',

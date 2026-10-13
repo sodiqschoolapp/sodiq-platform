@@ -1,5 +1,4 @@
 import {
-  assignmentEndSchema,
   assignmentRecordSchema,
   FIRST_GRADE,
   LAST_GRADE,
@@ -11,7 +10,6 @@ import {
   TEMPLATE_LEVELS,
   WEEKDAYS,
   type Assignment,
-  type AssignmentEnd,
   type AssignmentRecord,
   type DayTemplateSummary,
   type TemplateLevelName,
@@ -31,6 +29,7 @@ import { type Column, type Filter, type ListSearch } from '@/components/list/lis
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { useView } from '@/features/access/use-view';
+import { TemplateAssignmentPanel } from './template-assignment-panel';
 import { TemplateTableView, usePreview } from './template-table';
 import {
   assignmentsQuery,
@@ -128,79 +127,6 @@ function SetForm({ templates, tomorrow, onSave }: SetFormProps) {
       />
       <DateField label={t('setup.templateSettings.from')} {...form.bind('from')} />
     </RecordForm>
-  );
-}
-
-/** A setting in the side panel: what it is, and its end from a date (never the default's, decision 8). */
-function AssignmentPanel({
-  assignment,
-  templateName,
-  tomorrow,
-  canEdit,
-}: {
-  assignment: Assignment;
-  templateName: string;
-  tomorrow: string;
-  canEdit: boolean;
-}) {
-  const { t, i18n } = useTranslation();
-  const queryClient = useQueryClient();
-  const preview = usePreview();
-  const end = useMutation({
-    mutationFn: (change: AssignmentEnd) =>
-      answerOf(
-        api.POST('/api/setup/day-template-assignments/{id}/end', {
-          params: { path: { id: assignment.id }, header: branchHeader() },
-          body: change,
-        }),
-      ),
-    onSuccess: () => invalidateTemplates(queryClient),
-  });
-  const form = useRecordForm({
-    schema: assignmentEndSchema,
-    initial: { from: tomorrow },
-    save: async (change) => {
-      await preview.confirm({ kind: 'assignment_end', assignmentId: assignment.id, change });
-      await end.mutateAsync(change);
-    },
-  });
-  const date = (value: string | null) =>
-    value === null ? '' : schoolDateText(value, i18n.language);
-  return (
-    <div className="grid gap-6">
-      <dl className="grid gap-2 text-sm">
-        <div className="grid gap-0.5">
-          <dt className="text-muted-foreground">{t('setup.templateSettings.template')}</dt>
-          <dd>{templateName}</dd>
-        </div>
-        <div className="grid gap-0.5">
-          <dt className="text-muted-foreground">{t('setup.templateSettings.from')}</dt>
-          <dd>{date(assignment.validFrom)}</dd>
-        </div>
-        <div className="grid gap-0.5">
-          <dt className="text-muted-foreground">{t('setup.templateSettings.until')}</dt>
-          <dd>
-            {assignment.validUntil === null
-              ? t('setup.templateSettings.open')
-              : date(assignment.validUntil)}
-          </dd>
-        </div>
-      </dl>
-      {canEdit &&
-        (assignment.level === 'default' ? (
-          <p className="text-sm text-muted-foreground">
-            {t('setup.templateSettings.defaultStays')}
-          </p>
-        ) : (
-          <section className="grid gap-3">
-            <h3 className={SECTION_TITLE}>{t('setup.templateSettings.endTitle')}</h3>
-            <RecordForm form={form} label={t('setup.templateSettings.endTitle')}>
-              <DateField label={t('setup.templateSettings.endFrom')} {...form.bind('from')} />
-            </RecordForm>
-          </section>
-        ))}
-      {preview.dialog}
-    </div>
   );
 }
 
@@ -417,7 +343,7 @@ export function TemplateSettingsPage() {
         }}
         panel={(row) =>
           tomorrow === null ? null : (
-            <AssignmentPanel
+            <TemplateAssignmentPanel
               key={row.id}
               assignment={row}
               templateName={nameOf(row.dayTemplateId)}

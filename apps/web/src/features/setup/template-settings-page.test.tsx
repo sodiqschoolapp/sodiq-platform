@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { actionsAreLast, panelActionNames, savedInPanel } from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const PATH = '/setup/day-template-settings';
@@ -294,7 +295,16 @@ describe('the page of where day templates apply', () => {
       screen.getByText(en.setup.templateSettings.levels.weekday, { selector: 'button' }),
     );
     const panel = await screen.findByRole('complementary', { name: rowName });
-    const form = within(panel).getByRole('form', { name: en.setup.templateSettings.endTitle });
+    // Task 2.7c-2b-1: read first; the end is the panel's one action, at the bottom.
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(panelActionNames(panel)).toEqual([en.setup.templateSettings.endTitle]);
+    expect(actionsAreLast(panel)).toBe(true);
+    fireEvent.click(
+      within(panel).getByRole('button', { name: en.setup.templateSettings.endTitle }),
+    );
+    const form = await within(panel).findByRole('form', {
+      name: en.setup.templateSettings.endTitle,
+    });
     type(within(form).getByLabelText(en.setup.templateSettings.endFrom), '2026-11-02');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     const dialog = await screen.findByRole('dialog', { name: en.setup.templateTable.previewTitle });
@@ -309,6 +319,7 @@ describe('the page of where day templates apply', () => {
         from: '2026-11-02',
       });
     });
+    await savedInPanel(panel);
 
     fireEvent.click(
       screen.getByText(en.setup.templateSettings.levels.default, { selector: 'button' }),
@@ -318,6 +329,7 @@ describe('the page of where day templates apply', () => {
     });
     expect(within(defaultPanel).queryByRole('form')).toBeNull();
     expect(within(defaultPanel).getByText(en.setup.templateSettings.defaultStays)).toBeDefined();
+    expect(panelActionNames(defaultPanel)).toEqual([]);
   });
 
   it('shows the Principal the table and the settings without a form', async () => {

@@ -778,6 +778,8 @@ export const en = {
       switches: 'Switches',
       daily: 'Daily distribution',
       quarterly: 'Quarterly distribution',
+      changeWeights: 'Change distribution',
+      changeWeightsOf: 'Change distribution: {{name}}',
       quarterlyMissing: 'Quarters not set',
       // The cell of the column (finding 20; task 2.7b-1, decision 8).
       quartersNotSet: '{{missing}} of {{total}} not set',

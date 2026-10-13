@@ -13,6 +13,8 @@ import { ApiFailure, answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { SelectField } from '@/components/field';
+import { PanelActions } from '@/components/list/panel-actions';
+import { usePanelEditing, type PanelEditing } from '@/components/list/use-panel-editing';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
@@ -62,6 +64,9 @@ export function SubjectPanel({
   const active = subject.archivedAt === null;
   const graded = subject.journalType === 'graded';
   const refresh = () => invalidateSubjects(queryClient);
+  // One form open at a time: the record, the daily or a quarter's distribution (task 2.7c-2b-1).
+  const panel = usePanelEditing();
+  const editable = canEdit && active;
 
   const edit = useMutation({
     mutationFn: (record: SubjectRecord) =>
@@ -119,94 +124,173 @@ export function SubjectPanel({
   const yes = (on: boolean) => (on ? t('setup.subjects.yes') : t('setup.subjects.no'));
 
   return (
-    <div className="grid gap-6">
-      {canEdit && active ? (
-        <SubjectForm
-          key={subject.id}
-          subject={subject}
-          departments={departments}
-          hasDaily={graded && subject.daily !== null}
-          departmentLocked={!mayMoveDepartment}
-          label={name}
-          onSave={async (record) => {
-            await edit.mutateAsync(record);
-          }}
-        />
-      ) : (
-        <dl className="grid gap-2 text-sm">
-          {(
-            [
-              [
-                t('setup.subjects.name'),
-                <SubjectChip key="chip" colour={subject.colour} name={name} />,
-              ],
-              [t('setup.subjects.nameUz'), subject.names.uz],
-              [t('setup.subjects.nameRu'), subject.names.ru],
-              [t('setup.subjects.nameEn'), subject.names.en],
-              [t('setup.subjects.department'), departmentName],
-              [t('setup.subjects.grades'), gradeRanges(subject.grades)],
-              [
-                t('setup.subjects.journalType'),
-                t(`setup.subjects.journalTypes.${subject.journalType}`),
-              ],
-              [t('setup.subjects.ratingExam'), yes(subject.ratingExam)],
-              [t('setup.subjects.groupSubject'), yes(subject.groupSubject)],
-              [t('setup.subjects.languageRule'), yes(subject.languageRule)],
-              [t('setup.subjects.demanding'), yes(subject.demanding)],
-              [
-                t('setup.subjects.status'),
-                active ? t('setup.subjects.active') : t('setup.subjects.archived'),
-              ],
-            ] as const
-          ).map(([term, value]) => (
-            <div key={term} className="grid gap-0.5">
-              <dt className="text-muted-foreground">{term}</dt>
-              <dd>{value}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-
-      <TeachersOutside error={edit.error} />
-
-      {graded && (
-        <section className="grid gap-3">
-          <h3 className={SECTION_TITLE}>{t('setup.subjects.daily')}</h3>
-          {subject.daily === null ? (
-            <p className="text-sm text-muted-foreground">{t('setup.subjects.notSet')}</p>
-          ) : canEdit && active ? (
-            <WeightsForm
-              key={subject.id}
-              kind="daily"
-              parts={THREE}
-              weights={subject.daily}
-              label={t('setup.subjects.daily')}
-              onSave={async (weights) => {
-                await setDaily.mutateAsync(weights);
-              }}
-            />
-          ) : (
-            <p className="text-sm">{weightsText(subject.daily, language)}</p>
-          )}
-        </section>
-      )}
-
-      {graded && <QuarterWeights subject={subject} canEdit={canEdit && active} />}
-
-      {canArchive && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant={active ? 'destructive' : 'secondary'}
-            disabled={archive.isPending}
-            onClick={() => {
-              void askArchive();
+    <div ref={panel.root} className="grid gap-6">
+      {editable && panel.editing === 'record' ? (
+        // The form takes the read view's place; a refusal that names the
+        // teachers who keep the subject follows it.
+        <div className="grid gap-4">
+          <SubjectForm
+            subject={subject}
+            departments={departments}
+            hasDaily={graded && subject.daily !== null}
+            departmentLocked={!mayMoveDepartment}
+            label={name}
+            onSave={async (record) => {
+              await edit.mutateAsync(record);
+              panel.stop({ saved: true });
             }}
-          >
-            {active ? t('setup.subjects.archiveSubject') : t('setup.subjects.restoreSubject')}
-          </Button>
-          <FailureAlert error={archive.error} />
+            onCancel={() => {
+              panel.stop();
+            }}
+          />
+          <TeachersOutside error={edit.error} />
         </div>
+      ) : (
+        <>
+          <dl className="grid gap-2 text-sm">
+            {(
+              [
+                [
+                  t('setup.subjects.name'),
+                  <SubjectChip key="chip" colour={subject.colour} name={name} />,
+                ],
+                [t('setup.subjects.nameUz'), subject.names.uz],
+                [t('setup.subjects.nameRu'), subject.names.ru],
+                [t('setup.subjects.nameEn'), subject.names.en],
+                [t('setup.subjects.department'), departmentName],
+                [t('setup.subjects.grades'), gradeRanges(subject.grades)],
+                [
+                  t('setup.subjects.journalType'),
+                  t(`setup.subjects.journalTypes.${subject.journalType}`),
+                ],
+                [t('setup.subjects.ratingExam'), yes(subject.ratingExam)],
+                [t('setup.subjects.groupSubject'), yes(subject.groupSubject)],
+                [t('setup.subjects.languageRule'), yes(subject.languageRule)],
+                [t('setup.subjects.demanding'), yes(subject.demanding)],
+                [
+                  t('setup.subjects.status'),
+                  active ? t('setup.subjects.active') : t('setup.subjects.archived'),
+                ],
+              ] as const
+            ).map(([term, value]) => (
+              <div key={term} className="grid gap-0.5">
+                <dt className="text-muted-foreground">{term}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          {graded && (
+            <section className="grid gap-3">
+              <h3 className={SECTION_TITLE}>{t('setup.subjects.daily')}</h3>
+              {subject.daily === null ? (
+                <p className="text-sm text-muted-foreground">{t('setup.subjects.notSet')}</p>
+              ) : editable && panel.editing === 'weights:daily' ? (
+                <WeightsForm
+                  kind="daily"
+                  parts={THREE}
+                  weights={subject.daily}
+                  label={t('setup.subjects.daily')}
+                  onSave={async (weights) => {
+                    await setDaily.mutateAsync(weights);
+                    panel.stop({ saved: true });
+                  }}
+                  onCancel={() => {
+                    panel.stop();
+                  }}
+                />
+              ) : (
+                <>
+                  <p className="text-sm">{weightsText(subject.daily, language)}</p>
+                  {editable && (
+                    <ChangeWeights
+                      panel={panel}
+                      editKey="weights:daily"
+                      name={t('setup.subjects.daily')}
+                    />
+                  )}
+                </>
+              )}
+            </section>
+          )}
+
+          {graded && <QuarterWeights subject={subject} canEdit={editable} panel={panel} />}
+        </>
       )}
+
+      {(canEdit || canArchive) && panel.editing === null && (
+        <PanelActions
+          primary={
+            editable && (
+              <Button
+                {...panel.opener('record')}
+                onClick={() => {
+                  panel.start('record');
+                }}
+              >
+                {t('form.edit')}
+              </Button>
+            )
+          }
+          secondary={
+            canArchive &&
+            !active && (
+              <Button
+                variant="secondary"
+                disabled={archive.isPending}
+                onClick={() => {
+                  void askArchive();
+                }}
+              >
+                {t('setup.subjects.restoreSubject')}
+              </Button>
+            )
+          }
+          danger={
+            canArchive &&
+            active && (
+              <Button
+                variant="destructive"
+                disabled={archive.isPending}
+                onClick={() => {
+                  void askArchive();
+                }}
+              >
+                {t('setup.subjects.archiveSubject')}
+              </Button>
+            )
+          }
+          error={archive.error}
+          saved={panel.saved}
+        />
+      )}
+    </div>
+  );
+}
+
+/** The secondary button that opens a distribution's form in its section. */
+function ChangeWeights({
+  panel,
+  editKey,
+  name,
+}: {
+  panel: PanelEditing;
+  editKey: string;
+  name: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div>
+      <Button
+        variant="secondary"
+        aria-label={t('setup.subjects.changeWeightsOf', { name })}
+        {...panel.opener(editKey)}
+        onClick={() => {
+          panel.start(editKey);
+        }}
+      >
+        {t('setup.subjects.changeWeights')}
+      </Button>
     </div>
   );
 }
@@ -216,7 +300,16 @@ export function SubjectPanel({
  * With no such year the section says so (`edge/academic-year`: "An action
  * whose prerequisite is missing is switched off and says what is missing").
  */
-function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boolean }) {
+function QuarterWeights({
+  subject,
+  canEdit,
+  panel,
+}: {
+  subject: Subject;
+  canEdit: boolean;
+  /** The panel's one open form: a quarter's form is one of them. */
+  panel: PanelEditing;
+}) {
   const { t, i18n } = useTranslation();
   const { branchId } = useView();
   const queryClient = useQueryClient();
@@ -335,7 +428,7 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
               <h4 className={SUBSECTION_TITLE}>
                 {label} <span className="font-normal text-muted-foreground">{dates}</span>
               </h4>
-              {canEdit && !frozen ? (
+              {canEdit && !frozen && panel.editing === `weights:${row.quarterId}` ? (
                 <WeightsForm
                   key={`${row.quarterId}-${String(subject.ratingExam)}-${row.number === 1 ? '' : String(copies)}`}
                   kind="quarter"
@@ -344,10 +437,23 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
                   label={label}
                   onSave={async (weights) => {
                     await setQuarter.mutateAsync({ quarterId: row.quarterId, weights });
+                    panel.stop({ saved: true });
+                  }}
+                  onCancel={() => {
+                    panel.stop();
                   }}
                 />
               ) : (
-                <p className="text-sm">{state}</p>
+                <>
+                  <p className="text-sm">{state}</p>
+                  {canEdit && !frozen && (
+                    <ChangeWeights
+                      panel={panel}
+                      editKey={`weights:${row.quarterId}`}
+                      name={label}
+                    />
+                  )}
+                </>
               )}
               {canEdit && !frozen && row.weights !== null && !row.fits && (
                 <p className="text-sm text-muted-foreground">{t('setup.subjects.setAgain')}</p>
@@ -355,7 +461,7 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
             </div>
           );
         })}
-        {canEdit && !frozen && (
+        {canEdit && !frozen && panel.editing === null && (
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="secondary"

@@ -830,6 +830,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       switches: 'Признаки',
       daily: 'Ежедневное распределение',
       quarterly: 'Распределение по четвертям',
+      changeWeights: 'Изменить распределение',
+      changeWeightsOf: 'Изменить распределение: {{name}}',
       quarterlyMissing: 'Четверти без весов',
       // The cell of the column (finding 20; task 2.7b-1, decision 8).
       quartersNotSet: '{{missing}} из {{total}} без весов',

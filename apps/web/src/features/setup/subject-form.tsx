@@ -103,6 +103,8 @@ interface SubjectFormProps {
   label: string;
   /** What the name field says when the server answers that the name is taken. */
   onSave: (record: SubjectRecord) => Promise<void>;
+  /** Closes the form (opened by Edit in the side panel). */
+  onCancel?: () => void;
 }
 
 /**
@@ -119,6 +121,7 @@ export function SubjectForm({
   departmentLocked = false,
   label,
   onSave,
+  onCancel,
 }: SubjectFormProps) {
   const { t } = useTranslation();
   const switchValue = (on: boolean) => (on ? CHECKED : '');
@@ -187,7 +190,7 @@ export function SubjectForm({
   };
 
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       {nameField('nameUz', 'uz')}
       {nameField('nameRu', 'ru')}
       {nameField('nameEn', 'en')}

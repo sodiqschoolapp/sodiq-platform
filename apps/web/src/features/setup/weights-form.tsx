@@ -102,10 +102,12 @@ interface WeightsFormProps {
   kind: 'daily' | 'quarter';
   label: string;
   onSave: (weights: Weights) => Promise<void>;
+  /** Closes the form (opened in the side panel). */
+  onCancel?: () => void;
 }
 
 /** One distribution saved on its own: the daily one of the branch, or one quarter's. */
-export function WeightsForm({ parts, weights, kind, label, onSave }: WeightsFormProps) {
+export function WeightsForm({ parts, weights, kind, label, onSave, onCancel }: WeightsFormProps) {
   const { t } = useTranslation();
   const initial = (part: WeightPart): string => {
     const value = weights?.[part];
@@ -134,7 +136,7 @@ export function WeightsForm({ parts, weights, kind, label, onSave }: WeightsForm
     save: onSave,
   });
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       <WeightFields form={form} parts={parts} />
     </RecordForm>
   );
