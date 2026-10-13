@@ -3,12 +3,12 @@
 > Part of the Sodiq School platform spec, baseline of 3 October 2026 (document revision 88).
 > Index and reading order: `docs/spec/00-index.md`. Where an edge-case file is more specific than a module file, the edge-case file applies.
 
-Setup is done once per branch and then drives every other screen. Super Admin owns the structure; the Academic Vice Principal owns the calendar and lesson times.
+Setup is done once per branch and then drives every other screen. Super Admin owns the structure and sees every branch in the Branches list under School setup; the Academic Vice Principal owns the calendar and lesson times.
 
 | Item | Fields and rules | Owner |
 | --- | --- | --- |
-| Branch | Name, address, working weekdays, contacts. Every record belongs to one branch. | Super Admin |
-| Building, floor, room | Rooms are added floor by floor. Room: name or number, floor, type (classroom, laboratory, sports hall, hall, other), capacity, status (in use, under repair, closed). | Super Admin |
+| Branch | Name, address, working weekdays, contacts. Every record belongs to one branch. The Super Admin sees every branch in one list under School setup: name, address, working weekdays, number of buildings and of rooms. Opening a branch switches the current branch to it. A new branch is added from this list, in the side panel. The list needs no new permission: it uses the rights to view and create branches. | Super Admin |
+| Building, floor, room | Rooms are added floor by floor. Room: name or number, floor, type (classroom, laboratory, sports hall, hall, other), capacity, status (in use, under repair, closed). The Super Admin's forced delete (`06`) also removes a building, floor or room that no lesson, timetable entry or other record references, with a reason, an audit entry and 30 days to restore; a referenced one stays archive-only. | Super Admin |
 | Division | One list for the whole school; see Divisions below. Every staff record has a main division and can have further divisions. Academic is built in. | Super Admin |
 | Department (kafedra) | Inside Academic: STEAM, Foreign languages, National, Natural sciences, General, Tutors. A department groups subjects and teachers. It has no head, except Tutors, whose head is the Head Tutor; Head Teachers are appointed to subjects (see Roles and access). Other divisions may have departments too; there they are only groupings. | Super Admin |
 | Academic year | Start and end date. Status: planned, current, closed. Exactly one current year per branch. | Super Admin |

@@ -2,6 +2,10 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: spec change, the Branches list, Category shows every role, #42 texts
+
+- The owner's decisions on #39 and the texts proposed on #42 for tasks 2.2d to 2.7a are in the spec and the design system (`docs/spec-changes.md`, 13 October 2026). 2.7c-3 now builds the Branches list and the category of every role; 5.8 the forced delete of an unused building, floor or room. The procurement copy of `docs/design-system.md` needs the same lines. The next task is still 2.7c-2.
+
 ## 13 October 2026: task 2.7c-1 The page sweep, the text rule and the "New branch" side panel
 
 - Built: `SECTION_TITLE`/`SUBSECTION_TITLE` on every heading; button sizes and kinds (large only on the sign-in frame, small only in tables and the selection bar); 24 gaps and panel padding; content in white panels; the template table marker without orange; the text rule on School setup, People, Home (empty page per kind) and Account; "New branch" in the side panel; the "More" avatar; a not-found page inside the layout.
