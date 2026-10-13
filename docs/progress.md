@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: task 2.6a Audit log screen, reading rights and the own sign-in history
+
+- Built: migration 0039 (search indexes, `own_sign_in_history` and `audit_names`, both security definer); `GET /audit/entries`, `POST /audit/entries/:id/show`, `GET /auth/sign-in-history`; the area `audit_log`; `AUDIT_ACTIONS` typing every action the API writes; `hideIdentity`, fail closed.
+- Screens: the Audit log page (menu item, server paging through `more` of `ListPage`, filters of its own, entry panel with form labels and a logged Show); History links on the staff, student and parent panels; "Sign-in history" on the account page; browser test `audit.spec.ts`.
+- Left out: the personal data report per person (2.6b); the report of entries within 48 hours of a reset (6.1); an export of the log (not asked).
+
+The next sessions must know:
+
+- Every new audit action goes into `AUDIT_ACTION_GROUPS` with a name under `audit.actions` in the three locales: `AuditEntry.action` does not compile otherwise. A new event of the own history goes into both `SIGN_IN_HISTORY_ACTIONS` and `own_sign_in_history` (a test compares them).
+- A school-wide entry that a branch must read carries `details.branchId`; a new key of a people entry that is not Identity goes into `NOT_IDENTITY_KEYS`, or the Principal sees it hidden.
+- The next task is 2.6b.
+
 ## 13 October 2026: task 2.5b-2 Extra phones, the same person and relatives in the export
 
 - Built: migration 0038 (`relatives.extra_phones` with `relative_extra_phones_valid`, `relatives.staff_id` with `relatives_staff_idx`, `relatives_merged_empty_check`, the trigger `relatives_same_person_check`); `PUT` and `DELETE people/relatives/:id/same-person`; extra phones on the create, link, new owner and edit; the merge of extra phones and marks; `sameAsRelative` on the staff detail; five Contact columns of relatives in the student file.
