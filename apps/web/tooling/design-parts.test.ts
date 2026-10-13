@@ -248,7 +248,8 @@ describe('the pages of the design system', () => {
       'set-up-page.tsx',
     ].map((name) => path.join('src', 'features', 'auth', name));
     const working = drawn.filter(
-      ({ file }) => !frame.includes(file) && file !== path.join('src', 'components', 'ui', 'button.tsx'),
+      ({ file }) =>
+        !frame.includes(file) && file !== path.join('src', 'components', 'ui', 'button.tsx'),
     );
     // PersonPhoto has a size of its own, `lg`, which is not a button.
     const buttons = working.map(({ file, text }) => ({

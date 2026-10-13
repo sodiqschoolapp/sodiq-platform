@@ -3,7 +3,7 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf, type AccountKey } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { changeFirstPassword, checkPage, heading, languageChooser, signIn } from './steps';
 import { codeNow } from './totp';
 
 /**
@@ -54,6 +54,30 @@ const confirmWith = async (page: Page, action: string): Promise<void> => {
 };
 
 /**
+ * Task 2.7c-1 (pull request #80, decision 8): the pages that only the Super
+ * Admin reaches, against the design system in light, dark and at phone width:
+ * the Branch page with the "New branch" side panel open, the travel time as a
+ * form, and the audit log of the whole school. The seed holds no fourth Super
+ * Admin, so this runs at the end of the first test's session.
+ */
+async function checkSuperAdminPages(page: Page): Promise<void> {
+  await page.goto('/setup/branch');
+  await expect(heading(page, en.setup.branch.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setup.branch.newBranch, exact: true }).click();
+  await expect(
+    page.getByRole('complementary', { name: en.setup.branch.newBranchTitle }),
+  ).toBeVisible();
+  await checkPage(page, 'setup-branch-new');
+  await page.goto('/setup/travel-times');
+  await expect(heading(page, en.setup.travelTimes.title)).toBeVisible();
+  await expect(page.getByRole('form').first()).toBeVisible();
+  await checkPage(page, 'setup-travel-times-edit');
+  await page.goto('/audit');
+  await expect(heading(page, en.audit.title)).toBeVisible();
+  await checkPage(page, 'audit-super-admin');
+}
+
+/**
  * Task 2.6b, done when: "the Super Admin prints the report of a student and
  * the log holds the entry". The student of the Audit log's seed, in a branch
  * of its own; the print itself is stubbed, the print mode is read. The seed
@@ -75,6 +99,8 @@ async function printPersonalDataReport(page: Page): Promise<void> {
   // Identity plainly, and the relative of the student.
   await expect(page.getByText('Bodomzor 9').first()).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Feruza Murodova', level: 4 })).toBeVisible();
+  // The page against the design system (task 2.7c-1): no other role reaches it.
+  await checkPage(page, 'people-report');
   // The browser's print dialog is replaced by a note of the print mode it saw.
   await page.evaluate(
     "window.print = () => { document.body.dataset.printed = document.body.dataset.printing ?? ''; }",
@@ -168,6 +194,7 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
   );
 
   await printPersonalDataReport(page);
+  await checkSuperAdminPages(page);
 });
 
 // docs/build-plan.md, task 1.2, done when: "Academic cannot be renamed or

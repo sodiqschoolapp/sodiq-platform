@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: task 2.7c-1 The page sweep, the text rule and the "New branch" side panel
+
+- Built: `SECTION_TITLE`/`SUBSECTION_TITLE` on every heading; button sizes and kinds (large only on the sign-in frame, small only in tables and the selection bar); 24 gaps and panel padding; content in white panels; the template table marker without orange; the text rule on School setup, People, Home (empty page per kind) and Account; "New branch" in the side panel; the "More" avatar; a not-found page inside the layout.
+- Browser test `e2e/pages.spec.ts` with `checkPage` (`e2e/steps.ts`): every page in light, dark and at 390 px, screenshots in `docs/screens/2.7c-1/`; the e2e account `pages`.
+- Left out: new records and record actions in the side panel, checkboxes at phone width (2.7c-2); Rooms "By floor" and the Branches list (2.7c-3); the Super Admin's own record (2.7d).
+
+The next sessions must know:
+
+- A heading under the page title is `SECTION_TITLE` (h2, h3) or `SUBSECTION_TITLE` (h4); `size="lg"` is for the sign-in frame only. `tooling/design-parts.test.ts` refuses both, and orange borders.
+- A new page or list joins `e2e/pages.spec.ts`; `checkPage` names what sticks out when a page scrolls sideways.
+- The next task is 2.7c-2.
+
 ## 13 October 2026: task 2.7b-2 Smaller UX
 
 - Built: `useRecordForm` options `checkedOnSave` (a checkbox group says what is missing on Save only) and `followInitial` (a form follows what it shows instead of a remounting key); `SavedSign`; `Column.narrow` with `useMinWidth` (`lib/use-min-width.ts`); `AttentionAlerts` for the phone; the e2e account `topBar` with three rooms.

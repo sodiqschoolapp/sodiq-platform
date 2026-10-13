@@ -82,7 +82,7 @@ function guarded(area: Area, Page: () => React.JSX.Element, action: Action = 'vi
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: Outlet,
-  notFoundComponent: NotFoundPage,
+  notFoundComponent: () => <NotFoundPage />,
 });
 
 const signInRoute = createRoute({
@@ -423,7 +423,7 @@ export function createAppRouter(queryClient: QueryClient, history?: RouterHistor
     context: { queryClient },
     defaultPendingComponent: PendingPage,
     defaultErrorComponent: ErrorPage,
-    defaultNotFoundComponent: NotFoundPage,
+    defaultNotFoundComponent: () => <NotFoundPage />,
     ...(history === undefined ? {} : { history }),
   });
 }

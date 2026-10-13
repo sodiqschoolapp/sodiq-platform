@@ -1309,6 +1309,209 @@ try {
   );
   seeded.peopleTabs = { login: peopleTabs.login, password: peopleTabs.firstPassword };
 
+  // The visit of every page of Phases 0 to 2 (task 2.7c-1, pull request #80,
+  // decision 8): an Academic Vice Principal who also teaches, in a branch of
+  // its own with one record of each list (a building with a floor and rooms,
+  // a year with quarters, a slot type, a template, a person, a student and a
+  // parent), so every list has a record to open in its side panel. Written by
+  // the migrator; the test reads and changes nothing but the theme.
+  const pagesBranch = await insertBranch(migrator, 'Pages browser test branch');
+  const pages = await create('Jasur', 'Tojiboyev');
+  await transactions.run([pagesBranch], async (transaction) => {
+    await assignments.give(transaction, {
+      accountId: pages.id,
+      role: 'academic_vice_principal',
+      branchId: pagesBranch,
+      givenBy: null,
+    });
+    await assignments.give(transaction, {
+      accountId: pages.id,
+      role: 'teacher',
+      branchId: pagesBranch,
+      givenBy: null,
+    });
+  });
+  await migrator.transaction().execute(async (transaction) => {
+    const building = await transaction
+      .insertInto('buildings')
+      .values({ branch_id: pagesBranch, name: 'Main building' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const floor = await transaction
+      .insertInto('floors')
+      .values({ branch_id: pagesBranch, building_id: building.id, name: 'First floor' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('rooms')
+      .values(
+        (['201', '202'] as const).map((name) => ({
+          branch_id: pagesBranch,
+          floor_id: floor.id,
+          name,
+          type: 'classroom' as const,
+          capacity: 26,
+          status: 'in_use' as const,
+          shared: false,
+          max_simultaneous_lessons: null,
+        })),
+      )
+      .execute();
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: pagesBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: pagesBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const lesson = await transaction
+      .insertInto('slot_types')
+      .values({ branch_id: pagesBranch, name: 'Lesson 45', kind: 'lesson' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('slot_type_lengths')
+      .values({
+        branch_id: pagesBranch,
+        slot_type_id: lesson.id,
+        length_minutes: 45,
+        valid_from: startDate,
+      })
+      .execute();
+    const template = await transaction
+      .insertInto('day_templates')
+      .values({ branch_id: pagesBranch, name: 'Main' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const version = await transaction
+      .insertInto('day_template_versions')
+      .values({
+        branch_id: pagesBranch,
+        day_template_id: template.id,
+        start_minutes: 480,
+        valid_from: startDate,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('day_template_slots')
+      .values(
+        [1, 2].map((position) => ({
+          version_id: version.id,
+          branch_id: pagesBranch,
+          position,
+          slot_type_id: lesson.id,
+        })),
+      )
+      .execute();
+    await transaction
+      .insertInto('day_template_assignments')
+      .values({
+        branch_id: pagesBranch,
+        level: 'default',
+        day_template_id: template.id,
+        valid_from: startDate,
+      })
+      .execute();
+    const person = await transaction
+      .insertInto('staff')
+      .values({
+        kind: 'person',
+        staff_id: 'S-269060',
+        first_name: 'Lola',
+        last_name: 'Saidova',
+        sex: 'female',
+        birth_date: '1990-02-17',
+        phone: '+998935550160',
+        admission_date: '2026-09-01',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: person.id, branch_id: pagesBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: person.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+      .execute();
+    const student = await transaction
+      .insertInto('students')
+      .values({
+        branch_id: pagesBranch,
+        uid: '9999601',
+        first_name: 'Shahzod',
+        last_name: 'Ibragimov',
+        name_key: studentNameKey('Ibragimov', 'Shahzod'),
+        sex: 'male',
+        birth_date: '2012-03-21',
+        address: 'Yunusobod 4',
+        grade: 8,
+        starts_on: startDate,
+        created_by: pages.id,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('student_uids')
+      .values({
+        uid: '9999601',
+        student_id: student.id,
+        branch_id: pagesBranch,
+        held_from: new Date(),
+      })
+      .execute();
+    await transaction
+      .insertInto('student_contracts')
+      .values({
+        student_id: student.id,
+        branch_id: pagesBranch,
+        number: 'E2E-PAGES-1',
+        signed_on: startDate,
+      })
+      .execute();
+    await transaction
+      .insertInto('student_statuses')
+      .values({
+        student_id: student.id,
+        branch_id: pagesBranch,
+        status: 'active',
+        valid_from: startDate,
+        cause: 'start',
+      })
+      .execute();
+    await transaction
+      .insertInto('student_accounts')
+      .values({ student_id: student.id, branch_id: pagesBranch, created_at: new Date() })
+      .execute();
+    await linkRelative(transaction, student.id, pagesBranch, new Date(), {
+      fullName: 'Malika Ibragimova',
+      phone: '+998935550161',
+    });
+  });
+  seeded.pages = { login: pages.login, password: pages.firstPassword };
+
   console.log(JSON.stringify(seeded));
 } finally {
   await app.close();

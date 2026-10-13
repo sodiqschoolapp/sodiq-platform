@@ -7,7 +7,7 @@ import { en } from '../src/i18n/locales/en';
 import { uz } from '../src/i18n/locales/uz';
 import { accountOf } from './accounts';
 import { pngOf } from './photos';
-import { heading, languageChooser, openPersonMenu, signIn } from './steps';
+import { checkPage, heading, languageChooser, openPersonMenu, signIn } from './steps';
 
 // The outbox of the API of the browser tests (apps/api/src/testing/e2e/mail.ts):
 // each mail is one JSON file there.
@@ -96,6 +96,8 @@ test('asks for a reset from the sign-in page, chooses a new password with the li
   await expect(heading(page, en.reset.title)).toBeVisible();
   // The token is taken out of the address at once.
   await expect(page).toHaveURL(/\/reset-password$/);
+  // The page against the design system (task 2.7c-1): only a link of a mail opens it.
+  await checkPage(page, 'reset-password', { signInFrame: true });
   await page.getByLabel(en.password.new, { exact: true }).fill(CHOSEN);
   await page.getByLabel(en.password.repeat, { exact: true }).fill(CHOSEN);
   await screenshot(page, 'reset');

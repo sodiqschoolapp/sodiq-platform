@@ -1,3 +1,5 @@
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
 import { expect, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import type { ru } from '../src/i18n/locales/ru';
@@ -61,4 +63,87 @@ export async function chooseTheme(
 ): Promise<void> {
   await openPersonMenu(page, t);
   await page.getByRole('menuitemradio', { name: t.theme[theme], exact: true }).click();
+}
+
+/** The three views of a page in the check of task 2.7c-1. */
+const VIEWS = [
+  { name: 'light', width: 1440, height: 900, colorScheme: 'light' },
+  { name: 'dark', width: 1440, height: 900, colorScheme: 'dark' },
+  { name: 'phone', width: 390, height: 844, colorScheme: 'light' },
+] as const;
+
+/** Where `checkPage` saves its screenshots with SCREENSHOTS=1, for the report. */
+const PAGE_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.7c-1');
+
+interface Measured {
+  h1: number;
+  scrollWidth: number;
+  innerWidth: number;
+  /** The innermost elements that reach past the right edge, for a readable failure. */
+  outside: string[];
+  /** Each visible button of the Button part: its height and its words. */
+  buttons: { height: number; text: string }[];
+}
+
+/**
+ * Task 2.7c-1 (pull request #80): a page against docs/design-system.md, in
+ * light and dark at 1440 x 900 and in light at 390 x 844. One page title; the
+ * page never scrolls sideways (Layout shell, phone width); every visible
+ * button is one of the sizes of Buttons: 32, 40 or 44 high, and 48 only on
+ * the sign-in frame; no 32-high button at phone width. The theme follows the
+ * device (the account never chose one), so the dark view is the device's.
+ * With SCREENSHOTS=1 it saves docs/screens/2.7c-1/<name>-<view>.png. The page
+ * is left in light at 1440 x 900.
+ */
+export async function checkPage(
+  page: Page,
+  name: string,
+  { signInFrame = false }: { signInFrame?: boolean } = {},
+): Promise<void> {
+  for (const view of VIEWS) {
+    await page.setViewportSize({ width: view.width, height: view.height });
+    await page.emulateMedia({ colorScheme: view.colorScheme });
+    await expect(page.locator('html')).toHaveClass(
+      view.colorScheme === 'dark' ? /dark/ : /^(?!.*dark)/,
+    );
+    // A string, as the other browser tests: the e2e files have no DOM types.
+    const measured = await page.evaluate<Measured>(`(() => {
+      const visible = (element) => {
+        const box = element.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && getComputedStyle(element).visibility !== 'hidden';
+      };
+      return {
+        h1: [...document.querySelectorAll('h1')].filter(visible).length,
+        scrollWidth: document.documentElement.scrollWidth,
+        innerWidth: document.documentElement.clientWidth,
+        outside: [...document.querySelectorAll('body *')]
+          .filter((element) => visible(element) && element.getBoundingClientRect().right > document.documentElement.clientWidth + 0.5)
+          .filter((element) => ![...element.children].some((child) => child.getBoundingClientRect().right > document.documentElement.clientWidth + 0.5))
+          .slice(0, 5)
+          .map((element) => element.tagName.toLowerCase() + ' "' + (element.textContent ?? '').trim().slice(0, 40) + '" ' + String(element.className).slice(0, 80)),
+        buttons: [...document.querySelectorAll('[data-slot="button"]')].filter(visible).map((button) => ({
+          height: Math.round(button.getBoundingClientRect().height),
+          text: (button.getAttribute('aria-label') ?? button.textContent ?? '').trim(),
+        })),
+      };
+    })()`);
+    const where = `${name}, ${view.name}`;
+    expect(measured.h1, `${where}: one page title`).toBe(1);
+    expect(
+      measured.scrollWidth,
+      `${where}: no sideways scroll (${measured.outside.join('; ')})`,
+    ).toBeLessThanOrEqual(measured.innerWidth);
+    const allowed = view.name === 'phone' ? [40, 44] : [32, 40, 44];
+    if (signInFrame) {
+      allowed.push(48);
+    }
+    const wrong = measured.buttons.filter((button) => !allowed.includes(button.height));
+    expect(wrong, `${where}: buttons of the sizes of the design system`).toEqual([]);
+    if (process.env.SCREENSHOTS === '1') {
+      mkdirSync(PAGE_SCREENS, { recursive: true });
+      await page.screenshot({ path: path.join(PAGE_SCREENS, `${name}-${view.name}.png`) });
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ colorScheme: 'light' });
 }

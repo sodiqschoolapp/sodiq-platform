@@ -32,7 +32,9 @@ export function Segmented<Value extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className={cn('inline-flex gap-1 rounded-lg bg-accent p-1', className)}
+      // Wraps where its choices do not fit (the tabs of a record in a side
+      // panel) rather than reaching past the panel (task 2.7c-1).
+      className={cn('inline-flex max-w-full flex-wrap gap-1 rounded-lg bg-accent p-1', className)}
     >
       {options.map((option) => (
         <label key={option.value} className="relative">

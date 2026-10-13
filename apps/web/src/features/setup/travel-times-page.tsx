@@ -114,7 +114,9 @@ export function TravelTimesPage() {
     ));
   } else {
     body = (
-      <div className={PANEL}>
+      // A grid item as wide as its content would push the page sideways: the
+      // table scrolls inside its panel instead (Layout shell, phone width).
+      <div className={`min-w-0 ${PANEL}`}>
         <Table>
           <TableHeader>
             <TableRow>

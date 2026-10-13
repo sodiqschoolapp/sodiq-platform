@@ -213,6 +213,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 13 October 2026: the page sweep (task 2.7c-1)
+
+Plan approved on pull request #80 with corrections 1 to 3; decisions 1 to 15 confirmed there; 1, 3, 9 and 10 and the tests changed by a requirement marked Look first. The decisions after 15 came from the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 2.7c is 2.7c-1 (this sweep), 2.7c-2 (new records and record actions in the side panel, checkboxes at phone width) and 2.7c-3 (Rooms "By floor", the Branches list) | Decision 1 |
+| **Look first** (tests changed by a requirement). `access.test.tsx` and `e2e/access.spec.ts` read the new short `home.*` lines, one per kind; the "No class" tile test asserts the tiles only, without the line; the template-table test reads "11 cells change." and the info tint; `branch-page.test.tsx` finds the form in the side panel | #39 item 4, finding 12, decision 5 |
+| **Look first** (`12`, Look and feel). Home is the empty page with one short line per kind and no action until its tasks fill it; the Academic Vice Principal's home shows its tiles, and the empty page once both count 0. Proposed `/spec-change` of `12`: "Empty pages say what the page is for and offer the first action where there is one." | Decision 3, correction 1 |
+| **Look first** (the owner's design system). The People tabs stay underline tabs; line the owner may add to Layout shell: "Sections of one page are tabs: a 2 px navy line under the chosen one, Control type, 44 high at phone width." | Decision 9 |
+| **Look first** (the owner's design system). The audit page keeps its labelled date and select fields and its "Clear"; "Reset" and `list.clearSearch` are left to the owner | Decision 10 |
+| Every h2 and h3 under `features/` and `components/` is `SECTION_TITLE`, every h4 `SUBSECTION_TITLE`, also in the personal data report and its printout; only `page-header.tsx`, `states.tsx` and the first-password slip draw their own | Decisions 6, 12; build |
+| Large buttons only on the sign-in frame (`sign-in-page.tsx` among its files); `password-page.tsx` and `second-step-set-up.tsx` take the size from where they are drawn (`FRAME_BUTTON_SIZE`, a `size` property); on the frame their fields are 48 high and a quiet button under the large one is large too | Decision 13; build |
+| Small buttons only in tables and the selection bar: the panel actions, the photo buttons, "Add phone", the retries and "Change availability" are the default size; a floor's and a department's "Archive" are the danger kind | Plan item 2; build |
+| Panel padding 24 at every width; 24 between panels, between a list and its side panel and between the Home tiles | Decision 4, correction 2 |
+| The changed cell of the template table is the info tint with the `edit` icon, a hidden word and the legend "Changes with this save" (the preview is of any change, not only a template); the count reads "11 cells change." | Decision 5; build |
+| An account with no role sees the empty page with "Your account has no role yet." | Build |
+| A list's column may shrink below its table (`grid-cols-1`) and a segmented control wraps: the browser check found the student panel pushed past the page at 1440 px; the read-only travel-time table scrolls inside its panel (`min-w-0`) | Build, browser check |
+| The browser check measures the Button part (`[data-slot="button"]`); a link drawn as a button and the name button of a row are not measured | Build |
+| The e2e account `pages` is an Academic Vice Principal and a Teacher of a branch of its own; the Super Admin's pages are checked at the end of the first Super Admin test; its second sign-in uses a recovery code | Decision 8; build |
+
 ## 13 October 2026: smaller UX (task 2.7b-2)
 
 Plan approved on pull request #79 with corrections 1 to 3; decisions 1 to 10 confirmed there; 1, 2 and 4 marked Look first. The decisions after 10 came from the build and its review. Flagged on issue #42.

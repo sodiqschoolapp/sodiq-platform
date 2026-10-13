@@ -403,8 +403,16 @@ export function ListPage<Row>({
 
   return (
     <div ref={root} className="flex items-start gap-6">
-      {/* On a narrow screen the open record takes the place of the list. */}
-      <div className={cn('min-w-0 flex-1 gap-3', openId === undefined ? 'grid' : 'hidden lg:grid')}>
+      {/* On a narrow screen the open record takes the place of the list. One
+          column that may shrink below the table's width (grid-cols-1 is
+          minmax(0, 1fr)): a wide table scrolls inside its panel and never
+          pushes the side panel off the page (task 2.7c-1). */}
+      <div
+        className={cn(
+          'min-w-0 flex-1 grid-cols-1 gap-3',
+          openId === undefined ? 'grid' : 'hidden lg:grid',
+        )}
+      >
         <div className="flex flex-wrap items-end gap-2">
           <div className="relative">
             <label htmlFor={searchId} className="sr-only">

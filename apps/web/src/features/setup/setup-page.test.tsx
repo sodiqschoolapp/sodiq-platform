@@ -63,6 +63,23 @@ describe('the School setup entry', () => {
     expect(within(crumbs).getByRole('link', { name: en.home.title })).toBeDefined();
   });
 
+  // .claude/rules/web.md, Text on screens: "A menu page is a title and its
+  // links" (issue #39, item 4; pull request #80, decision 2): no intro under
+  // the title and no line under a link.
+  it('is a title and its links, with no intro and no line under a link', async () => {
+    fakeApi({ 'GET /api/auth/session': () => json(sessionAs('principal')) });
+    renderApp('/setup');
+    const title = await screen.findByRole('heading', { name: en.setup.title, level: 1 });
+    expect(title.closest('header')?.nextElementSibling?.tagName).not.toBe('P');
+    const items = within(screen.getByRole('list', { name: en.setup.title })).getAllByRole(
+      'listitem',
+    );
+    expect(items.length).toBeGreaterThan(5);
+    for (const item of items) {
+      expect(item.textContent).toBe(within(item).getByRole('link').textContent);
+    }
+  });
+
   // Owner's answer 3 (task 1.3): the Principal and the Academic Vice Principal view the years.
   it.each(['principal', 'academic_vice_principal'] as const)(
     'lists the academic years for the %s',
