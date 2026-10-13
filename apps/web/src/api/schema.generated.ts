@@ -16901,6 +16901,9 @@ export interface operations {
                             login: string;
                             /** Format: date-time */
                             createdAt: string;
+                            /** Format: date-time */
+                            lastSignInAt: string | null;
+                            neverUsed: boolean;
                             language: string;
                             /** Format: date-time */
                             lockedAt: string | null;
@@ -16920,9 +16923,15 @@ export interface operations {
                                 /** Format: date-time */
                                 until: string | null;
                                 subjects: {
-                                    uz: string;
-                                    ru: string;
-                                    en: string;
+                                    subject: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                    /** Format: date-time */
+                                    from: string;
+                                    /** Format: date-time */
+                                    until: string | null;
                                 }[];
                             }[];
                         } | null;
