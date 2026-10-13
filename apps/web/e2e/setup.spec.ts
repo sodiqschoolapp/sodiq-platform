@@ -672,9 +672,9 @@ test('the Academic Vice Principal changes the edit days and a late value, and th
     .click();
   const checklist = page.getByRole('region', { name: en.setup.checklist.title });
   const slotTypesItem = checklist.locator('[data-item="slotTypes"]');
-  await expect(slotTypesItem.getByLabel(en.setup.checklist.missing)).toBeVisible();
+  await expect(slotTypesItem.getByText(en.setup.checklist.missing, { exact: true })).toBeVisible();
   await expect(
-    checklist.locator('[data-item="year"]').getByLabel(en.setup.checklist.done),
+    checklist.locator('[data-item="year"]').getByText(en.setup.checklist.done, { exact: true }),
   ).toBeVisible();
 
   await page
@@ -714,7 +714,7 @@ test('the Academic Vice Principal changes the edit days and a late value, and th
     .getByRole('navigation', { name: en.layout.menu })
     .getByRole('link', { name: new RegExp(en.menu.setup) })
     .click();
-  await expect(slotTypesItem.getByLabel(en.setup.checklist.done)).toBeVisible();
+  await expect(slotTypesItem.getByText(en.setup.checklist.done, { exact: true })).toBeVisible();
 });
 
 // docs/build-plan.md, task 2.1, done when: "a graded subject cannot be saved

@@ -38,6 +38,11 @@ export function formMessage(
   issue: FormIssue,
   typed: string,
 ): string {
+  // Too few choices in a checkbox group: not a text to fill in or lengthen
+  // (issue #39, hand test of 13 October 2026, finding 21).
+  if (issue.code === 'too_small' && issue.origin === 'array') {
+    return t('form.chooseOne');
+  }
   if (typed.trim() === '') {
     return t('form.required');
   }

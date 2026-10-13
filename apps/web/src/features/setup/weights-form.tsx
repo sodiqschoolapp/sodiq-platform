@@ -129,6 +129,8 @@ export function WeightsForm({ parts, weights, kind, label, onSave }: WeightsForm
         : {}),
     }),
     message: (field) => (field === 'total' ? t('setup.subjects.totalWrong') : undefined),
+    // A saved distribution shows "Saved." and a change from elsewhere (finding 18).
+    followInitial: true,
     save: onSave,
   });
   return (

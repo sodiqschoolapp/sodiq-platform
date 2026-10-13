@@ -279,7 +279,7 @@ How to read the task lines:
   - Build: browser names in Sessions and Trusted devices; the Shared column of the rooms export; a day past midnight shown as such; grade ranges ("5–11"); "4 of 4 not set"; phones shown and exported as "+998 90 111 22 33"; the UID set in its warning; surname first in every list and export (owner's answer to 27); the branch phone as "Decided ahead for tasks 2.2d and 2.7", item 10 says.
   - Done when: each of those findings is done, every screen and export shows phones and grades in one format, and a branch phone outside the format is refused by the database.
 
-- [ ] **2.7b-2 Smaller UX** (split from 2.7b on pull request #78, decision 1)
+- [x] **2.7b-2 Smaller UX** (split from 2.7b on pull request #78, decision 1)
   - Read: issue #39 (findings 13, 14, 17, 18, 21, 22, 26, 28–31 and the owner's answers), `12`, `docs/design-system.md`, `.claude/rules/web.md`.
   - Build: the selection bar only when a row is ticked (13); the Rooms table and the top bar at 1047 px, one row and no sideways scroll (14); words beside the setup checklist icons (17); "Saved." after travel time, "Subjects and languages", availability, closing or reopening a vacancy (18); "Choose at least one grade." and "Choose at least one subject." on Save instead of the early messages (21); the photo message "Choose a JPEG or PNG photo, up to 5 MB." (22); "Keep the leaving" / "Cancel the leaving" (26); Cancel in the merge view (28); no "Leave school" form after a scheduled leaving (29); the Super Admin alerts collapsed on phones (30); "Send feedback" with its word in "More" (31).
   - Done when: each of findings 13, 14, 17, 18, 21, 22, 26, 28, 29, 30 and 31 is done or named as left out with its reason in the report.

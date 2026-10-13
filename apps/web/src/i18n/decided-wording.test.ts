@@ -42,4 +42,20 @@ describe('the decided wording', () => {
     expect(ru.people.sections).toBe('Разделы «Люди»');
     expect(uz.people.sections).toBe('Odamlar boʻlimlari');
   });
+
+  // The owner's confirmation of 13 October 2026, 19:46, on issue #39 (task
+  // 2.7b-2, findings 17, 21, 22 and 26).
+  it('names the photo refusal, the leaving dialog, the choices and the checklist marks', () => {
+    expect(en.errors.photo_invalid).toBe('Choose a JPEG or PNG photo, up to 5 MB.');
+    expect(uz.errors.photo_invalid).toBe(
+      'JPEG yoki PNG formatidagi, 5 MB gacha boʻlgan surat tanlang.',
+    );
+    expect(ru.errors.photo_invalid).toBe('Выберите фотографию в формате JPEG или PNG, до 5 МБ.');
+    expect(en.people.students.keepLeaving).toBe('Keep the leaving');
+    expect(en.people.students.cancelLeaving).toBe('Cancel the leaving');
+    expect(en.form.chooseGrade).toBe('Choose at least one grade.');
+    expect(en.form.chooseSubject).toBe('Choose at least one subject.');
+    expect(en.setup.checklist.done).toBe('Done');
+    expect(en.setup.checklist.missing).toBe('Missing');
+  });
 });

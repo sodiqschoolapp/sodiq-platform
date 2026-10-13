@@ -69,6 +69,8 @@ export function BranchForm({ branch, label, onSave }: BranchFormProps) {
     save: onSave,
     // A phone not in the format says the format (item 10).
     message: (field) => (field === 'phone' ? t('form.phoneFormat') : undefined),
+    // Finding 21: the weekdays say what is missing on Save, not as they are ticked.
+    checkedOnSave: ['workingWeekdays'],
   });
 
   return (

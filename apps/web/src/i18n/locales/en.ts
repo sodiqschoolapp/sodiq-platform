@@ -239,8 +239,7 @@ export const en = {
       'Teachers who have not left, or open vacancies, have this subject with these grades in this department. Change their subjects first, then the subject.',
     department_has_staff:
       'Staff members who have not left, or open vacancies, are in this department. Move them to another department or close the vacancies first.',
-    photo_invalid:
-      'This file is not a JPEG or PNG photo of at most 800 pixels a side. Choose another photo.',
+    photo_invalid: 'Choose a JPEG or PNG photo, up to 5 MB.',
     photo_too_large: 'The photo is larger than 5 MB. Choose a smaller one.',
     photos_not_configured: 'Photos are not configured yet. Ask the administrator.',
     photos_unavailable: 'Photos cannot be reached right now. Try again later.',
@@ -363,6 +362,10 @@ export const en = {
     notTrusted:
       'This device is not trusted: a one-time password was in use at sign-in. To trust it, sign out and sign in again with "Trust this device" on.',
     dismiss: 'Close',
+    attentionLine_one: 'Needs your attention: {{n}}',
+    attentionLine_other: 'Needs your attention: {{n}}',
+    attentionShow: 'Show',
+    attentionHide: 'Hide',
   },
   search: {
     label: 'Search',
@@ -426,6 +429,9 @@ export const en = {
     saved: 'Saved.',
     notSaved: 'Not saved: nothing was changed.',
     required: 'Fill in this field.',
+    chooseOne: 'Choose at least one.',
+    chooseGrade: 'Choose at least one grade.',
+    chooseSubject: 'Choose at least one subject.',
     tooShort_one: 'Enter at least {{n}} character.',
     tooShort_other: 'Enter at least {{n}} characters.',
     tooLong_one: 'Enter at most {{n}} character.',
@@ -1245,6 +1251,7 @@ export const en = {
         'The student becomes inactive from the day after the last day. All data is kept.',
       leaveAction: 'Leave school',
       cancelLeaving: 'Cancel the leaving',
+      keepLeaving: 'Keep the leaving',
       cancelConfirmTitle: 'Cancel the scheduled leaving?',
       cancelConfirmText: 'The student stays active.',
       undoTitle: 'Undo leaving',

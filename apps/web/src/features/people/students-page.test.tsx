@@ -1110,6 +1110,72 @@ describe('the Status section', () => {
     });
   });
 
+  // Issue #39, hand test of 13 October 2026, finding 18 (task 2.7b-2, decision
+  // 7): the form is not drawn again by its own save, so "Saved." stays.
+  it('keeps "Saved." after a UID correction, with the new UID and an empty reason', async () => {
+    let detail = detailOf(OTKIR, { canEdit: true });
+    openOne('academic_vice_principal', OTKIR, detail, {
+      [`GET /api/people/students/${OTKIR.id}`]: () => json(detail),
+      [`PUT /api/people/students/${OTKIR.id}/uid`]: (body) => {
+        detail = { ...detail, uid: (body as { uid: string }).uid, version: detail.version + 1 };
+        return json(detail);
+      },
+    });
+    renderApp(`${PATH}?open=${OTKIR.id}`);
+    const form = await screen.findByRole('form', {
+      name: en.people.students.uidLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.students.uid), {
+      target: { value: '2606077' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Typed wrong' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+    await waitFor(() => {
+      expect(within(form).getByRole('status').textContent).toBe(en.form.saved);
+    });
+    expect(form.isConnected).toBe(true);
+    expect(within(form).getByLabelText<HTMLInputElement>(en.people.students.uid).value).toBe(
+      '2606077',
+    );
+    expect(within(form).getByLabelText<HTMLInputElement>(en.people.students.reason).value).toBe('');
+  });
+
+  // Issue #39, hand test of 13 October 2026, findings 26 and 29 (task 2.7b-2).
+  it('names the two buttons of the dialog apart, keeps the leaving, and draws no "Leave school" form while one is scheduled', async () => {
+    const scheduled = detailOf(OTKIR, {
+      canArchive: true,
+      planned: { status: 'inactive', from: '2026-10-21' },
+      version: 2,
+      statuses: [
+        { status: 'active', from: '2026-09-02', until: '2026-10-21', cause: 'start', reason: null },
+        { status: 'inactive', from: '2026-10-21', until: null, cause: 'leaving', reason: 'Moved' },
+      ],
+    });
+    const calls = openOne('academic_vice_principal', OTKIR, scheduled);
+    renderApp(`${PATH}?open=${OTKIR.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const cancel = await within(panel).findByRole('button', {
+      name: en.people.students.cancelLeaving,
+    });
+    expect(within(panel).queryByRole('form', { name: en.people.students.leaveTitle })).toBeNull();
+
+    fireEvent.click(cancel);
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.students.cancelConfirmTitle,
+    });
+    expect(
+      within(dialog).getByRole('button', { name: en.people.students.cancelLeaving }),
+    ).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.keepLeaving }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(calls.some((call) => call.route.endsWith('/leaving/cancel'))).toBe(false);
+  });
+
   it.each([
     ['super_admin', true],
     ['academic_vice_principal', false],

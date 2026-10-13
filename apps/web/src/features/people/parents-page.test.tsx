@@ -408,6 +408,92 @@ describe('the page of a relative', () => {
       });
     });
 
+    // Issue #39, hand test of 13 October 2026, finding 28 (task 2.7b-2, decision
+    // 9): Cancel leaves the choice, not the edit.
+    describe('Cancel in the choices', () => {
+      const routes = () => ({
+        [`PATCH /api/people/relatives/${DILFUZA.id}`]: takenAnswer(true),
+        'POST /api/people/relatives/phone-match': () =>
+          json({ holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 } }),
+      });
+      const cancel = (choices: HTMLElement) => {
+        fireEvent.click(within(choices).getByRole('button', { name: en.confirm.cancel }));
+      };
+      const closed = async () => {
+        await waitFor(() => {
+          expect(screen.queryByRole('region', { name: en.people.relatives.takenTitle })).toBeNull();
+        });
+        // The phone typed into the edit stays as it is.
+        const panel = screen.getByRole('complementary', { name: 'Dilfuza Rahimova' });
+        const form = within(panel).getAllByRole('form')[0] as HTMLElement;
+        expect(within(form).getByLabelText<HTMLInputElement>(en.people.relatives.phone).value).toBe(
+          '+998 90 444 55 66',
+        );
+      };
+
+      it('closes the choices before one is chosen, and sends nothing', async () => {
+        const calls = openList('academic_vice_principal', routes());
+        renderApp(PATH);
+        cancel(await refuse());
+        await closed();
+        expect(calls.filter((call) => call.route.startsWith('PATCH'))).toHaveLength(1);
+        expect(calls.some((call) => call.route.endsWith('/merge'))).toBe(false);
+      });
+
+      it('closes the merge view and sends nothing', async () => {
+        const calls = openList('academic_vice_principal', routes());
+        renderApp(PATH);
+        const choices = await refuse();
+        fireEvent.click(
+          within(choices).getByRole('button', {
+            name: en.people.relatives.mergeWith.replace('{{name}}', 'Shoira Nazarova'),
+          }),
+        );
+        cancel(choices);
+        await closed();
+        expect(calls.some((call) => call.route.endsWith('/merge'))).toBe(false);
+      });
+
+      it('closes the new owner view at once with nothing typed', async () => {
+        openList('academic_vice_principal', routes());
+        renderApp(PATH);
+        const choices = await refuse();
+        fireEvent.click(
+          within(choices).getByRole('button', { name: en.people.relatives.newOwner }),
+        );
+        cancel(choices);
+        expect(screen.queryByRole('alertdialog')).toBeNull();
+        await closed();
+      });
+
+      it('asks before dropping a typed previous phone, and keeps it when the person stays', async () => {
+        const calls = openList('academic_vice_principal', routes());
+        renderApp(PATH);
+        const choices = await refuse();
+        fireEvent.click(
+          within(choices).getByRole('button', { name: en.people.relatives.newOwner }),
+        );
+        const previous = within(choices).getByLabelText<HTMLInputElement>(
+          en.people.relatives.previousPhone.replace('{{name}}', 'Shoira Nazarova'),
+        );
+        fireEvent.change(previous, { target: { value: '+998 90 777 88 99' } });
+
+        cancel(choices);
+        let dialog = await screen.findByRole('alertdialog', { name: en.unsent.leaveTitle });
+        fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.stay }));
+        await waitFor(() => {
+          expect(screen.queryByRole('alertdialog')).toBeNull();
+        });
+        expect(previous.value).toBe('+998 90 777 88 99');
+
+        cancel(choices);
+        dialog = await screen.findByRole('alertdialog', { name: en.unsent.leaveTitle });
+        fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.leave }));
+        await closed();
+        expect(calls.filter((call) => call.route.startsWith('PATCH'))).toHaveLength(1);
+      });
+    });
+
     it('shows "no valid phone" with its date on the page', async () => {
       openList('academic_vice_principal', {}, 'en', {
         phone: null,

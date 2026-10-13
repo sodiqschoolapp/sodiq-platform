@@ -239,6 +239,19 @@ describe('availability', () => {
         { weekday: 2, start: '13:00', end: '15:00' },
       ],
     });
+    // Issue #39, hand test of 13 October 2026, finding 18: the form closes, and
+    // "Saved." stands beside "Change availability" until the next change starts.
+    const change = await within(panel).findByRole('button', {
+      name: en.people.availability.change,
+    });
+    const sign = () => change.parentElement?.querySelector('[role="status"]')?.textContent;
+    expect(sign()).toBe(en.form.saved);
+    fireEvent.click(change);
+    expect(
+      within(panel)
+        .getAllByRole('status')
+        .some((status) => status.textContent === en.form.saved && !status.closest('form')),
+    ).toBe(false);
   });
 
   it('says what to fix before sending, and names the weekdays of an overlap', async () => {
@@ -360,6 +373,37 @@ describe('the vacancies', () => {
     });
   });
 
+  // Issue #39, hand test of 13 October 2026, finding 21 (task 2.7b-2).
+  it('say nothing as a subject is ticked, and on Save ask for a grade under that subject', async () => {
+    const calls = api('academic_vice_principal');
+    renderApp('/people/vacancies');
+    const add = await screen.findByRole('button', { name: en.people.vacancies.add });
+    await waitFor(() => {
+      expect((add as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(add);
+    const form = await screen.findByRole('form', { name: en.people.vacancies.newTitle });
+    fireEvent.change(within(form).getByLabelText(en.people.vacancies.name), {
+      target: { value: 'Mathematics vacancy 1' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.vacancies.department), {
+      target: { value: uid(11) },
+    });
+    fireEvent.click(await within(form).findByLabelText('Mathematics'));
+    const grades = within(form).getByRole('group', {
+      name: en.people.staff.gradesOf.replace('{{subject}}', 'Mathematics'),
+    });
+    expect(within(form).queryByText(en.form.chooseGrade)).toBeNull();
+    expect(within(form).queryByText(en.form.required)).toBeNull();
+
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+    expect(within(grades).getByText(en.form.chooseGrade)).toBeDefined();
+    const subjects = within(form).getByRole('group', { name: en.people.vacancies.subjects });
+    expect(within(subjects).queryByText(en.form.chooseGrade)).toBeNull();
+    expect(calls.some((call) => call.route === 'POST /api/people/vacancies')).toBe(false);
+  });
+
   it('give the Principal no add, form, close or delete', async () => {
     api('principal');
     renderApp(`/people/vacancies?open=${OPEN.id}`);
@@ -382,12 +426,29 @@ describe('the vacancies', () => {
         closed = true;
         return json(vacancyDetail({ ...OPEN, status: 'closed' }));
       },
+      [`POST /api/people/vacancies/${OPEN.id}/reopen`]: () => {
+        closed = false;
+        return json(vacancyDetail(OPEN));
+      },
       [`POST /api/people/vacancies/${OPEN.id}/delete`]: () => nothing(),
     });
     renderApp(`/people/vacancies?open=${OPEN.id}`);
     const panel = await screen.findByRole('complementary', { name: OPEN.name });
     fireEvent.click(await within(panel).findByRole('button', { name: en.people.vacancies.close }));
-    await within(panel).findByRole('button', { name: en.people.vacancies.reopen });
+    const reopen = await within(panel).findByRole('button', { name: en.people.vacancies.reopen });
+    // Finding 18: the close is said to be saved, beside its button.
+    expect(reopen.parentElement?.querySelector('[role="status"]')?.textContent).toBe(en.form.saved);
+    // Reopened: the sign goes while it is on its way and comes with the answer.
+    fireEvent.click(reopen);
+    const closeAgain = await within(panel).findByRole('button', {
+      name: en.people.vacancies.close,
+    });
+    await waitFor(() => {
+      expect(closeAgain.parentElement?.querySelector('[role="status"]')?.textContent).toBe(
+        en.form.saved,
+      );
+    });
+    expect(calls.some((call) => call.route.endsWith('/reopen'))).toBe(true);
     fireEvent.click(within(panel).getByRole('button', { name: en.people.vacancies.delete }));
     const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText(OPEN.name)).toBeDefined();

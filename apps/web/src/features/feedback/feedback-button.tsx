@@ -29,8 +29,12 @@ import {
  * is closed and opened again in this tab; it is lost at a reload or sign-out,
  * as a form is when the session ends (0.8b-2). After a send the form is new
  * and a sign says that the report went out.
+ *
+ * In the top bar the button is the icon alone below 1280 px, named by its
+ * hidden word (task 2.7b-2, finding 14); `withWord` shows the word at every
+ * width, as in the More sheet among the other items (finding 31).
  */
-export function FeedbackButton() {
+export function FeedbackButton({ withWord = false }: { withWord?: boolean }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   /** The text of a report not sent yet. */
@@ -49,9 +53,16 @@ export function FeedbackButton() {
         }
       }}
     >
-      <DialogTrigger render={<Button variant="ghost" />}>
+      {/* Icon only below 1280 px: square, as every icon button (docs/design-system.md, Buttons). */}
+      <DialogTrigger
+        render={
+          <Button variant="ghost" className={withWord ? undefined : 'max-xl:size-10 max-xl:px-0'} />
+        }
+      >
         <FeedbackIcon aria-hidden />
-        <span className="sr-only sm:not-sr-only">{t('feedback.button')}</span>
+        <span className={withWord ? undefined : 'sr-only xl:not-sr-only'}>
+          {t('feedback.button')}
+        </span>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

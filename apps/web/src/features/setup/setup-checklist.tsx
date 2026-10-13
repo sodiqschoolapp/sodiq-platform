@@ -20,18 +20,25 @@ const PAGES: Record<ChecklistItemKey, { to: LinkProps['to']; area: string }> = {
   subjects: { to: '/setup/subjects', area: 'subjects' },
 };
 
+/**
+ * Done or missing, in words beside the icon: never by colour or shape alone
+ * (`12`, Accessibility; issue #39, hand test of 13 October 2026, finding 17).
+ */
 function Mark({ done }: { done: boolean | null }) {
   const { t } = useTranslation();
   if (done === null) {
     return <InfoIcon aria-hidden className="size-4 text-muted-foreground" />;
   }
   return done ? (
-    <CheckCircleIcon aria-label={t('setup.checklist.done')} className="size-4 text-success" />
+    <span className="inline-flex items-center gap-1 text-success">
+      <CheckCircleIcon aria-hidden className="size-4" />
+      {t('setup.checklist.done')}
+    </span>
   ) : (
-    <RadioButtonUncheckedIcon
-      aria-label={t('setup.checklist.missing')}
-      className="size-4 text-muted-foreground"
-    />
+    <span className="inline-flex items-center gap-1 text-muted-foreground">
+      <RadioButtonUncheckedIcon aria-hidden className="size-4" />
+      {t('setup.checklist.missing')}
+    </span>
   );
 }
 

@@ -365,6 +365,50 @@ describe('the subjects page', () => {
     });
   });
 
+  // Issue #39, hand test of 13 October 2026, finding 18 (task 2.7b-2, decision
+  // 7): a save that changes what the form shows keeps the form and its sign.
+  it('keeps "Saved." after an edit that gives the subject its daily distribution, and after a daily change', async () => {
+    let subjects = [MATHS, PHYSICS, SPIRIT, OLD];
+    const saveOne = (one: Subject) => (body: unknown) => {
+      const saved = { ...one, ...(body as object) };
+      subjects = subjects.map((item) => (item.id === one.id ? saved : item));
+      return json(saved);
+    };
+    await openList({
+      extra: {
+        'GET /api/setup/subjects': () => json({ subjects, mayMoveDepartment: true }),
+        [`PUT /api/setup/subjects/${PHYSICS.id}`]: saveOne(PHYSICS),
+        [`PUT /api/setup/subjects/${MATHS.id}/daily-weights`]: (body) =>
+          saveOne(MATHS)({ daily: body }),
+      },
+    });
+    fireEvent.click(rowButton('Physics'));
+    let panel = await screen.findByRole('complementary', { name: 'Physics' });
+    const form = within(panel).getByRole('form', { name: 'Physics' });
+    type(within(form).getByLabelText(subjectsText.parts.attendance), '20');
+    type(within(form).getByLabelText(subjectsText.parts.classwork), '40');
+    type(within(form).getByLabelText(subjectsText.parts.homework), '40');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(within(form).getByRole('status').textContent).toBe(en.form.saved);
+    });
+    await waitFor(() => {
+      expect(subjects.find((one) => one.id === PHYSICS.id)?.daily).not.toBeNull();
+    });
+    expect(form.isConnected).toBe(true);
+    expect(within(form).getByRole('status').textContent).toBe(en.form.saved);
+
+    fireEvent.click(rowButton('Mathematics'));
+    panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+    const daily = within(panel).getByRole('form', { name: subjectsText.daily });
+    type(within(daily).getByLabelText(subjectsText.parts.attendance), '20');
+    type(within(daily).getByLabelText(subjectsText.parts.classwork), '40');
+    fireEvent.click(within(daily).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(within(daily).getByRole('status').textContent).toBe(en.form.saved);
+    });
+  });
+
   // Decision 14: an attendance-only subject made graded again needs this
   // branch's daily distribution in the same request (the spec review).
   it('asks for the daily distribution when an attendance-only subject is made graded, and sends it', async () => {

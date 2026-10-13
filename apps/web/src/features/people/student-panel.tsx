@@ -218,7 +218,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
                 />
               </section>
               <UidCorrection
-                key={`${student.id}-${student.uid}`}
+                key={student.id}
                 student={student}
                 label={name}
                 holderText={holderText}
@@ -414,6 +414,9 @@ function UidCorrection({
     schema: UID_SCHEMA,
     initial: { uid: student.uid, reason: '' },
     read: (typed) => ({ uid: typed.uid, reason: typed.reason, confirmUidSet: false }),
+    // Keyed by the student alone: its own save keeps "Saved." and empties the
+    // reason for the next correction (finding 18).
+    followInitial: true,
     save: onSave,
   });
   const taken = takenOf(form.failure);

@@ -121,7 +121,7 @@ export function SubjectPanel({
     <div className="grid gap-6">
       {canEdit && active ? (
         <SubjectForm
-          key={`${subject.id}-${subject.journalType}-${String(subject.daily === null)}`}
+          key={subject.id}
           subject={subject}
           departments={departments}
           hasDaily={graded && subject.daily !== null}

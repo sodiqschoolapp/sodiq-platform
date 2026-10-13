@@ -60,7 +60,7 @@ import {
 } from './people-api';
 import { photoRefusalOf, shrinkPhoto } from './shrink-photo';
 import { AvailabilitySection } from './availability-section';
-import { asFormSchema } from './form-schema';
+import { asFormSchema, isGradesField, subjectsFieldOf } from './form-schema';
 import { StaffForm } from './staff-form';
 import { schoolDateText } from '@/lib/dates';
 
@@ -490,7 +490,7 @@ function TeachingSection({
       <h3 className="text-base font-semibold">{t('people.staff.teachingTitle')}</h3>
       {staff.rights.teaching && department !== undefined && department !== null ? (
         <TeachingForm
-          key={`${staff.id}-teaching-${staff.subjects.map((own) => own.subjectId).join('-')}`}
+          key={`${staff.id}-teaching-${department}`}
           staff={staff}
           offered={offered}
           label={t('people.staff.teachingOf', { name: label })}
@@ -545,13 +545,9 @@ function TeachingForm({
     );
   }
   const form = useRecordForm<Fields, StaffTeaching>({
-    schema: asFormSchema<StaffTeaching>(staffTeachingSchema, (path) => {
-      const [first, index] = path;
-      if (first === 'subjects' && typeof index === 'number') {
-        return ['subjects'];
-      }
-      return [...path];
-    }),
+    schema: asFormSchema<StaffTeaching>(staffTeachingSchema, subjectsFieldOf),
+    // Keyed by the person and the department: its own save keeps "Saved." (finding 18).
+    followInitial: true,
     initial: initial,
     read: (typed) => ({
       subjects: listValues(typed.subjects).map((subjectId) => ({
@@ -562,6 +558,16 @@ function TeachingForm({
       })),
       languages: listValues(typed.languages),
     }),
+    // Finding 21: a subject's grades say what is missing on Save, under that
+    // subject's grades.
+    // The languages too: a subject needs one (review of the build, must fix 1).
+    checkedOnSave: [...(Object.keys(initial) as Fields[]).filter(isGradesField), 'languages'],
+    message: (field) =>
+      isGradesField(field)
+        ? t('form.chooseGrade')
+        : field === 'languages'
+          ? t('form.chooseOne')
+          : undefined,
     save: onSave,
   });
   const chosen = listValues(form.bind('subjects').value);

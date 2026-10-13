@@ -68,13 +68,17 @@ test('the sample list is worked from the keyboard, and its state is in the addre
   await page.keyboard.press('Enter');
   await expect(page.getByText(en.sample.exported_other.replace('{{n}}', '20'))).toBeVisible();
 
-  // Tab: "tick all", past the bulk actions, which are off while nothing is
-  // ticked. It takes the rows that match the search.
+  // Tab: "tick all"; with nothing ticked there is no bar of bulk actions
+  // (task 2.7b-2, finding 13). It takes the rows that match the search.
   const tickAll = page.getByRole('checkbox', { name: en.list.selectAll });
+  const bar = page.getByRole('group', { name: en.list.bulkActions });
+  await expect(bar).toHaveCount(0);
   await page.keyboard.press('Tab');
   await expect(tickAll).toBeFocused();
   await page.keyboard.press('Space');
-  await expect(page.getByText(selected(20))).toBeVisible();
+  // The count in the bar, read from that element: the hidden status holds the
+  // same words.
+  await expect(bar.locator('[data-slot="selection-count"]')).toHaveText(selected(20));
 
   // Back to the bulk action, now on: it is handed the ticked rows.
   await page.keyboard.press('Shift+Tab');
