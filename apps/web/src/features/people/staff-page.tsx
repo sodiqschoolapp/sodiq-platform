@@ -13,7 +13,7 @@ import {
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
@@ -21,12 +21,12 @@ import { useConfirm } from '@/components/confirm-dialog';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { ListPage } from '@/components/list/list-page';
 import { useExport } from '@/components/list/use-export';
+import { useNewRecord } from '@/components/list/use-new-record';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { divisionsQuery, nameOf } from '@/features/setup/setup-api';
 import { subjectsQuery } from '@/features/setup/subjects-api';
@@ -34,7 +34,6 @@ import { invalidateStaff, staffPhotoQuery, staffQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
 import { StaffForm } from './staff-form';
 import { StaffPanel } from './staff-panel';
-import { SECTION_TITLE } from '@/components/ui/control';
 
 /**
  * A member of staff in the list, a picker or a list inside a message: surname first
@@ -63,9 +62,8 @@ export function StaffPage() {
   const search = useSearch({ from: '/app/people/staff' });
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
   const confirm = useConfirm();
-  const [adding, setAdding] = useState(false);
+  const newRecord = useNewRecord();
   const canCreate = role !== null && permits(PERMISSIONS, role, 'staff', 'create');
   const canExport = role !== null && permits(PERMISSIONS, role, 'staff', 'export');
   const exporter = useExport<StaffListItem>('staff', (row) => row.id);
@@ -141,7 +139,6 @@ export function StaffPage() {
       );
     },
     onSuccess: async () => {
-      setAdding(false);
       await invalidateStaff(queryClient);
     },
   });
@@ -293,11 +290,12 @@ export function StaffPage() {
     void navigate({ to: '/people/staff', search: next, replace: how === 'replace' });
   };
 
-  const addButton = canCreate && !adding && (
+  const addButton = canCreate && newRecord.value === null && (
     <Button
+      id={newRecord.buttonId}
       disabled={divisions.data === undefined}
       onClick={() => {
-        setAdding(true);
+        newRecord.start(true);
       }}
     >
       {t('people.staff.add')}
@@ -325,37 +323,6 @@ export function StaffPage() {
           }}
         />
       )}
-      {adding && divisions.data !== undefined && (
-        <section
-          aria-label={t('people.staff.newTitle')}
-          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6"
-        >
-          <h2 className={SECTION_TITLE}>{t('people.staff.newTitle')}</h2>
-          <StaffForm
-            staff={null}
-            divisions={divisions.data}
-            contactOnly={false}
-            label={t('people.staff.newTitle')}
-            onSave={async (record) => {
-              await create.mutateAsync(record);
-            }}
-          />
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void leave.leave().then((leaves) => {
-                  if (leaves) {
-                    setAdding(false);
-                  }
-                });
-              }}
-            >
-              {t('people.staff.cancel')}
-            </Button>
-          </div>
-        </section>
-      )}
       <ListPage
         listId="staff"
         caption={t('people.staff.caption')}
@@ -378,6 +345,33 @@ export function StaffPage() {
           text: t('people.staff.empty'),
           action: addButton === false ? undefined : addButton,
         }}
+        creating={
+          newRecord.value === null || divisions.data === undefined
+            ? undefined
+            : {
+                key: 'staff',
+                title: t('people.staff.newTitle'),
+                content: ({ saved, close }) => (
+                  <div className="grid gap-4">
+                    <StaffForm
+                      staff={null}
+                      divisions={divisions.data}
+                      contactOnly={false}
+                      label={t('people.staff.newTitle')}
+                      onSave={async (record) => {
+                        saved((await create.mutateAsync(record)).id);
+                      }}
+                    />
+                    <div>
+                      <Button variant="ghost" onClick={close}>
+                        {t('people.staff.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                ),
+                ...newRecord.handlers,
+              }
+        }
         panel={(row) =>
           divisions.data === undefined ? null : (
             <StaffPanel

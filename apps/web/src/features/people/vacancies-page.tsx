@@ -10,17 +10,17 @@ import {
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { ListPage } from '@/components/list/list-page';
 import { useExport } from '@/components/list/use-export';
+import { useNewRecord } from '@/components/list/use-new-record';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { divisionsQuery, nameOf } from '@/features/setup/setup-api';
 import { subjectsQuery } from '@/features/setup/subjects-api';
@@ -28,7 +28,6 @@ import { invalidateVacancies, vacanciesQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
 import { VacancyForm } from './vacancy-form';
 import { VacancyPanel } from './vacancy-panel';
-import { SECTION_TITLE } from '@/components/ui/control';
 
 /**
  * The vacancies of the branch (`04`, Vacancy: "The teacher list shows
@@ -43,8 +42,7 @@ export function VacanciesPage() {
   const search = useSearch({ from: '/app/people/vacancies' });
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
-  const [adding, setAdding] = useState(false);
+  const newRecord = useNewRecord();
   const canCreate = role !== null && permits(PERMISSIONS, role, 'vacancies', 'create');
   const canExport = role !== null && permits(PERMISSIONS, role, 'vacancies', 'export');
   const exporter = useExport<VacancyListItem>('vacancies', (row) => row.id);
@@ -78,7 +76,6 @@ export function VacanciesPage() {
         api.POST('/api/people/vacancies', { params: { header: branchHeader() }, body: record }),
       ),
     onSuccess: async () => {
-      setAdding(false);
       await invalidateVacancies(queryClient);
     },
   });
@@ -183,11 +180,12 @@ export function VacanciesPage() {
     void navigate({ to: '/people/vacancies', search: next, replace: how === 'replace' });
   };
 
-  const addButton = canCreate && !adding && (
+  const addButton = canCreate && newRecord.value === null && (
     <Button
+      id={newRecord.buttonId}
       disabled={divisions.data === undefined || subjects.data === undefined}
       onClick={() => {
-        setAdding(true);
+        newRecord.start(true);
       }}
     >
       {t('people.vacancies.add')}
@@ -215,37 +213,6 @@ export function VacanciesPage() {
           }}
         />
       )}
-      {adding && divisions.data !== undefined && subjects.data !== undefined && (
-        <section
-          aria-label={t('people.vacancies.newTitle')}
-          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6"
-        >
-          <h2 className={SECTION_TITLE}>{t('people.vacancies.newTitle')}</h2>
-          <VacancyForm
-            vacancy={null}
-            divisions={divisions.data}
-            subjects={subjects.data.subjects}
-            label={t('people.vacancies.newTitle')}
-            onSave={async (record) => {
-              await create.mutateAsync(record);
-            }}
-          />
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void leave.leave().then((leaves) => {
-                  if (leaves) {
-                    setAdding(false);
-                  }
-                });
-              }}
-            >
-              {t('people.staff.cancel')}
-            </Button>
-          </div>
-        </section>
-      )}
       <ListPage
         listId="vacancies"
         caption={t('people.vacancies.caption')}
@@ -267,6 +234,33 @@ export function VacanciesPage() {
           text: t('people.vacancies.empty'),
           action: addButton === false ? undefined : addButton,
         }}
+        creating={
+          newRecord.value === null || divisions.data === undefined || subjects.data === undefined
+            ? undefined
+            : {
+                key: 'vacancy',
+                title: t('people.vacancies.newTitle'),
+                content: ({ saved, close }) => (
+                  <div className="grid gap-4">
+                    <VacancyForm
+                      vacancy={null}
+                      divisions={divisions.data}
+                      subjects={subjects.data.subjects}
+                      label={t('people.vacancies.newTitle')}
+                      onSave={async (record) => {
+                        saved((await create.mutateAsync(record)).id);
+                      }}
+                    />
+                    <div>
+                      <Button variant="ghost" onClick={close}>
+                        {t('people.staff.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                ),
+                ...newRecord.handlers,
+              }
+        }
         panel={(row) =>
           // The page shows a failed query of divisions or subjects with a
           // retry; the panel waits for both, so that no name is drawn blank.

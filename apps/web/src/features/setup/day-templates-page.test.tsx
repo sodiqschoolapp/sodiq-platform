@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
+import { savedRecordPanel } from '@/testing/new-record';
 
 const PATH = '/setup/day-templates';
 const TODAY = '2026-10-10';
@@ -160,7 +161,10 @@ describe('the day templates page', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.dayTemplates.add }));
-    const form = await screen.findByRole('form', { name: en.setup.dayTemplates.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.dayTemplates.newTitle }),
+    ).getByRole('form', { name: en.setup.dayTemplates.newTitle });
     type(within(form).getByLabelText(en.setup.dayTemplates.name), 'Late');
     type(within(form).getByLabelText(en.setup.dayTemplates.startTime), '23:15');
     fireEvent.click(within(form).getByRole('button', { name: en.form.add })); // Lesson 45
@@ -195,7 +199,10 @@ describe('the day templates page', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.dayTemplates.add }));
-    const form = await screen.findByRole('form', { name: en.setup.dayTemplates.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.dayTemplates.newTitle }),
+    ).getByRole('form', { name: en.setup.dayTemplates.newTitle });
     type(within(form).getByLabelText(en.setup.dayTemplates.name), 'Senior');
     type(within(form).getByLabelText(en.setup.dayTemplates.startTime), '08:30');
     const choice = within(form).getByLabelText(
@@ -234,6 +241,8 @@ describe('the day templates page', () => {
         slotTypeIds: [LESSON.id, LESSON.id, LUNCH.id],
       });
     });
+    // The panel shows the saved record (task 2.7c-2a).
+    await savedRecordPanel(en.setup.dayTemplates.newTitle);
   });
 
   it('names an archived slot type still in a template, and never offers it for adding', async () => {

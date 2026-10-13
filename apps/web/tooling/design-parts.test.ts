@@ -298,4 +298,37 @@ describe('the pages of the design system', () => {
       ),
     ).toEqual([]);
   });
+
+  // Accessibility: "touch targets of 44 px at phone width" (pull request #81,
+  // decision 8): every checkbox sits in a label with `CHECKBOX_TARGET`.
+  it('put every checkbox in a label that is the 44 px target at phone width', () => {
+    const drawn = sources.filter(
+      ({ file }) => file.endsWith('.tsx') && !file.endsWith('.test.tsx'),
+    );
+    const outside = drawn.flatMap(({ file, text }) =>
+      [...text.matchAll(/(?<=\s)type\s*=\s*\{?\s*["'`]checkbox["'`]/g)].flatMap((match) => {
+        const before = text.slice(0, match.index);
+        const opened = before.lastIndexOf('<label');
+        const inside =
+          opened !== -1 &&
+          !before.slice(opened).includes('</label>') &&
+          /\bCHECKBOX_TARGET\b/.test(
+            before.slice(opened, before.indexOf('>', opened) + 1 || undefined),
+          );
+        return inside ? [] : [`${file}:${String(before.split('\n').length)}`];
+      }),
+    );
+    expect(outside).toEqual([]);
+    // A checkbox written another way (an object key, a default value) is not
+    // drawn in a label this test can read: none is.
+    expect(matchingText(/type\s*[:=]\s*\{?\s*["'`]checkbox["'`]\s*[,}]/, drawn)).toEqual([]);
+    expect(matchingText(/type\s*:\s*["'`]checkbox["'`]/, drawn)).toEqual([]);
+    // Six checkboxes today: a new one is checked by the same rule.
+    expect(
+      drawn.reduce((sum, { text }) => sum + [...text.matchAll(/type="checkbox"/g)].length, 0),
+    ).toBeGreaterThanOrEqual(6);
+    expect(read('src/components/ui/control.ts')).toMatch(
+      /CHECKBOX_TARGET = '[^']*max-sm:min-h-11[^']*max-sm:min-w-11/,
+    );
+  });
 });

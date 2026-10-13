@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import { savedRecordPanel } from '@/testing/new-record';
 
 const PATH = '/people/staff';
 
@@ -476,7 +477,10 @@ describe('the staff page', () => {
     renderApp(PATH);
     await screen.findByRole('heading', { name: en.people.staff.title });
     fireEvent.click(await screen.findByRole('button', { name: en.people.staff.add }));
-    const form = await screen.findByRole('form', { name: en.people.staff.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.staff.newTitle }),
+    ).getByRole('form', { name: en.people.staff.newTitle });
     const type = (label: string, value: string) => {
       fireEvent.change(within(form).getByLabelText(label), { target: { value } });
     };
@@ -495,15 +499,26 @@ describe('the staff page', () => {
   });
 
   it('warns about a person of the same name in another branch before adding, and saves when told to', async () => {
+    let saved: (typeof AKMAL)[] = [];
     const calls = openList('super_admin', {
       'POST /api/people/staff/check': () =>
         json({ sameNameAndBirth: [], samePhone: [], elsewhere: true }),
-      'POST /api/people/staff': () => json(detailOf({ ...AKMAL, id: uid(33) }), 201),
+      'POST /api/people/staff': () => {
+        saved = [{ ...AKMAL, id: uid(33) }];
+        return json(detailOf({ ...AKMAL, id: uid(33) }), 201);
+      },
+      // The list read again after the save holds the new member of staff.
+      'GET /api/people/staff': () =>
+        json({ staff: [AKMAL, NODIRA, ...saved], today: '2026-10-10' }),
+      [`GET /api/people/staff/${uid(33)}`]: () => json(detailOf({ ...AKMAL, id: uid(33) })),
     });
     renderApp(PATH);
     await screen.findByRole('heading', { name: en.people.staff.title });
     fireEvent.click(await screen.findByRole('button', { name: en.people.staff.add }));
-    const form = await screen.findByRole('form', { name: en.people.staff.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.staff.newTitle }),
+    ).getByRole('form', { name: en.people.staff.newTitle });
     const type = (label: string, value: string) => {
       fireEvent.change(within(form).getByLabelText(label), { target: { value } });
     };
@@ -530,6 +545,8 @@ describe('the staff page', () => {
       phone: '+998901112233',
       divisions: [{ divisionId: ACADEMIC.id, departmentId: uid(11), main: true }],
     });
+    // The panel shows the saved record (task 2.7c-2a).
+    await savedRecordPanel(en.people.staff.newTitle);
   });
 
   // Task 2.4a: the Tutor has People for the student list, without the staff.

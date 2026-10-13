@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { savedRecordPanel } from '@/testing/new-record';
 
 const PATH = '/setup/calendar';
 // Saturday 10 October 2026 in branch time.
@@ -184,14 +185,23 @@ describe('the calendar page', () => {
   });
 
   it('adds a working Saturday after its preview', async () => {
+    // The list read again after the save holds the new entry.
+    let added: object[] = [];
     const { calls } = await openList('academic_vice_principal', {
       'POST /api/setup/calendar-entries/preview': () => json(PREVIEW),
-      'POST /api/setup/calendar-entries': (body) =>
-        json({ ...SATURDAY, ...(body as object), id: uid(5), dayTemplateName: 'Short' }, 201),
+      'POST /api/setup/calendar-entries': (body) => {
+        added = [{ ...SATURDAY, ...(body as object), id: uid(5), dayTemplateName: 'Short' }];
+        return json(added[0], 201);
+      },
+      'GET /api/setup/calendar-entries': () =>
+        json({ today: TODAY, entries: [PAST, SENIORS, HOLIDAY, SATURDAY, ...added] }),
     });
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.calendar.add }));
-    const form = await screen.findByRole('form', { name: en.setup.calendar.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.calendar.newTitle }),
+    ).getByRole('form', { name: en.setup.calendar.newTitle });
     type(within(form).getByLabelText(en.setup.calendar.kind), 'special_day');
     type(within(form).getByLabelText(en.setup.calendar.name), 'Working Saturday');
     type(within(form).getByLabelText(en.setup.calendar.firstDate), '2026-10-17');
@@ -231,6 +241,8 @@ describe('the calendar page', () => {
         record,
       );
     });
+    // The panel shows the saved record (task 2.7c-2a).
+    await savedRecordPanel(en.setup.calendar.newTitle);
   });
 
   it('sends nothing when the preview is cancelled, and says so', async () => {
@@ -239,7 +251,10 @@ describe('the calendar page', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.calendar.add }));
-    const form = await screen.findByRole('form', { name: en.setup.calendar.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.calendar.newTitle }),
+    ).getByRole('form', { name: en.setup.calendar.newTitle });
     type(within(form).getByLabelText(en.setup.calendar.name), 'Day off');
     type(within(form).getByLabelText(en.setup.calendar.firstDate), '2026-10-20');
     type(within(form).getByLabelText(en.setup.calendar.lastDate), '2026-10-20');
@@ -268,7 +283,10 @@ describe('the calendar page', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.calendar.add }));
-    const form = await screen.findByRole('form', { name: en.setup.calendar.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.calendar.newTitle }),
+    ).getByRole('form', { name: en.setup.calendar.newTitle });
     type(within(form).getByLabelText(en.setup.calendar.kind), 'special_day');
     type(within(form).getByLabelText(en.setup.calendar.name), 'Saturday');
     type(within(form).getByLabelText(en.setup.calendar.firstDate), '2026-10-17');

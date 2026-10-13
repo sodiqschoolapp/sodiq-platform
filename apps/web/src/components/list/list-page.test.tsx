@@ -5,8 +5,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiFailure } from '@/api/failure';
 import { createI18n } from '@/i18n/i18n';
 import { en } from '@/i18n/locales/en';
+import { CHECKBOX_TARGET } from '@/components/ui/control';
 import { setWindowWidth } from '@/testing/window-width';
-import { ListPage, type BulkAction, type ExportExtra, type ExportState } from './list-page';
+import {
+  ListPage,
+  type BulkAction,
+  type ExportExtra,
+  type ExportState,
+  type NewRecord,
+} from './list-page';
 import type { Column, ListSearch } from './list-state';
 
 // What the sample list cannot show: rows that change under the list, a failed
@@ -53,6 +60,9 @@ interface HarnessProps {
   panel?: (row: Room) => React.ReactNode;
   more?: { onMore: () => void; loading: boolean };
   columns?: Column<Room>[];
+  creating?: NewRecord;
+  /** Sees every address the list writes. */
+  onAddress?: (search: ListSearch) => void;
 }
 
 /** A list whose address is a piece of state. */
@@ -67,6 +77,8 @@ function Harness({
   panel,
   more,
   columns = COLUMNS,
+  creating,
+  onAddress,
 }: HarnessProps) {
   const [search, setSearch] = useState(start);
   return (
@@ -79,13 +91,17 @@ function Harness({
       rowName={(row) => row.name}
       columns={columns}
       search={search}
-      onSearchChange={setSearch}
+      onSearchChange={(next) => {
+        onAddress?.(next);
+        setSearch(next);
+      }}
       empty={{ title: 'No rooms yet', text: 'Rooms are listed here.' }}
       bulkActions={actions ?? [{ key: 'close', label: 'Close the rooms', run: () => undefined }]}
       onExport={onExport}
       exportState={exportState}
       exportExtras={exportExtras}
       panel={panel}
+      creating={creating}
       more={more}
     />
   );
@@ -384,6 +400,22 @@ describe('the bar of the bulk actions', () => {
   });
 });
 
+// docs/design-system.md, Accessibility: "touch targets of 44 px at phone
+// width" (task 2.7c-2a, pull request #81, decision 8).
+describe('the checkboxes of a list', () => {
+  it('sit in a label that is the 44 px target at phone width, and a press on it ticks the row', () => {
+    show({ rows: ROOMS });
+    const all = screen.getByLabelText(en.list.selectAll);
+    for (const box of [all, tick('Room 12')]) {
+      expect(box.closest('label')?.className.split(' ')).toEqual(
+        expect.arrayContaining(CHECKBOX_TARGET.split(' ')),
+      );
+    }
+    fireEvent.click(tick('Room 4').closest('label') as HTMLElement);
+    expect(tick('Room 4').checked).toBe(true);
+  });
+});
+
 // Issue #39, finding 14, and the owner's confirmation of 13 October 2026:
 // "tables that hide less important columns first" (task 2.7b-2, decision 3).
 describe('the narrow columns of a list', () => {
@@ -433,5 +465,60 @@ describe('the narrow columns of a list', () => {
     setWindowWidth(1440);
     show({ rows: ROOMS, columns: WITH_FLOOR });
     expect(headers()).not.toContain('Floor');
+  });
+});
+
+// Task 2.7c-2a (pull request #81): a new record in the side panel, in the
+// place of an opened record. The prompts and Back need the whole app: they
+// are tested on the buildings page (buildings-page.test.tsx).
+describe('a new record in the side panel', () => {
+  const newRecord = (onSaved = vi.fn(), id?: string): NewRecord => ({
+    key: 'room',
+    title: 'New room',
+    content: ({ saved }) => (
+      <button
+        type="button"
+        onClick={() => {
+          saved(id);
+        }}
+      >
+        Done
+      </button>
+    ),
+    onClose: vi.fn(),
+    onReplaced: vi.fn(),
+    onSaved,
+  });
+
+  it('takes the place of an opened record and of the list on a narrow screen', () => {
+    show({ rows: ROOMS, panel: (row) => row.name, creating: newRecord() });
+    expect(screen.getByRole('complementary', { name: 'New room' })).toBeDefined();
+    expect(screen.getAllByRole('complementary')).toHaveLength(1);
+    const list = screen.getByRole('table', { name: 'Rooms' }).closest('[class*="lg:grid"]');
+    expect(list?.className).toContain('hidden lg:grid');
+  });
+
+  it('writes the saved record into the address with what is typed in the search box', () => {
+    const addresses: ListSearch[] = [];
+    const onSaved = vi.fn();
+    show({
+      rows: ROOMS,
+      panel: (row) => row.name,
+      creating: newRecord(onSaved, 'r2'),
+      onAddress: (next) => {
+        addresses.push(next);
+      },
+    });
+    fireEvent.change(screen.getByRole('searchbox', { name: en.list.search }), {
+      target: { value: 'Room' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(onSaved).toHaveBeenCalledTimes(1);
+    expect(addresses.at(-1)).toEqual({ q: 'Room', open: 'r2' });
+  });
+
+  it('draws nothing without a panel for the records', () => {
+    show({ rows: ROOMS, creating: newRecord() });
+    expect(screen.queryByRole('complementary')).toBeNull();
   });
 });

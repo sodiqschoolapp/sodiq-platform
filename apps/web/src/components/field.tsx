@@ -3,7 +3,7 @@ import { ArrowDownwardIcon, ArrowUpwardIcon, CloseIcon } from '@/components/icon
 import { useId, useState, type ComponentProps, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { CHECKBOX } from '@/components/ui/control';
+import { CHECKBOX, CHECKBOX_TARGET } from '@/components/ui/control';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
@@ -191,7 +191,10 @@ export function CheckboxField({
   const { noteId, errorId, describedBy } = described(id, note, error);
   return (
     <div className="grid gap-1.5">
-      <div className="flex items-center gap-2 max-sm:min-h-11">
+      <label
+        htmlFor={id}
+        className={`${CHECKBOX_TARGET} text-sm leading-none font-medium select-none has-disabled:cursor-not-allowed has-disabled:opacity-50`}
+      >
         <input
           id={id}
           name={name}
@@ -208,8 +211,8 @@ export function CheckboxField({
             onChange({ target: { value: event.target.checked ? CHECKED : '' } });
           }}
         />
-        <Label htmlFor={id}>{label}</Label>
-      </div>
+        {label}
+      </label>
       <Messages noteId={noteId} errorId={errorId} note={note} error={error} />
     </div>
   );
@@ -258,7 +261,7 @@ export function CheckboxGroupField({
           <label
             key={option.value}
             htmlFor={`${id}-${option.value}`}
-            className="flex items-center gap-2 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50 max-sm:min-h-11"
+            className={`${CHECKBOX_TARGET} text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50`}
           >
             <input
               id={`${id}-${option.value}`}

@@ -1,7 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf, NEW_PASSWORD } from './accounts';
-import { changeFirstPassword, checkPage, heading, languageChooser, signIn } from './steps';
+import {
+  changeFirstPassword,
+  checkNewRecord,
+  checkPage,
+  heading,
+  languageChooser,
+  signIn,
+} from './steps';
 import { codeNow } from './totp';
 
 /** A page opened by its address, waited for by its title. */
@@ -38,6 +45,52 @@ const LISTS = [
   ['people-vacancies', '/people/vacancies', en.people.vacancies.title],
   ['audit', '/audit', en.audit.title],
   ['people-parents', '/people/parents', en.people.relatives.title],
+] as const;
+
+/** The lists the Academic Vice Principal adds to, with the "New …" button and the panel's title. */
+const NEW_RECORDS = [
+  [
+    'setup-slot-types',
+    '/setup/slot-types',
+    en.setup.slotTypes.title,
+    en.setup.slotTypes.add,
+    en.setup.slotTypes.newTitle,
+  ],
+  [
+    'setup-day-templates',
+    '/setup/day-templates',
+    en.setup.dayTemplates.title,
+    en.setup.dayTemplates.add,
+    en.setup.dayTemplates.newTitle,
+  ],
+  [
+    'setup-calendar',
+    '/setup/calendar',
+    en.setup.calendar.title,
+    en.setup.calendar.add,
+    en.setup.calendar.newTitle,
+  ],
+  [
+    'setup-subjects',
+    '/setup/subjects',
+    en.setup.subjects.title,
+    en.setup.subjects.add,
+    en.setup.subjects.newTitle,
+  ],
+  [
+    'people-students',
+    '/people/students',
+    en.people.students.title,
+    en.people.students.add,
+    en.people.students.newTitle,
+  ],
+  [
+    'people-vacancies',
+    '/people/vacancies',
+    en.people.vacancies.title,
+    en.people.vacancies.add,
+    en.people.vacancies.newTitle,
+  ],
 ] as const;
 
 /** The other pages of Phases 0 to 2 the Academic Vice Principal opens. */
@@ -119,6 +172,23 @@ test('every page of Phases 0 to 2 is drawn with the design system in light, dark
     await openFirstRecord(page);
     await checkPage(page, `${name}-record`);
   }
+  // Task 2.7c-2a: every list the Academic Vice Principal may add to, with its
+  // new record in the side panel; the others are the Super Admin's
+  // (setup.spec.ts). Nothing is saved.
+  for (const [name, address, title, add, newTitle] of NEW_RECORDS) {
+    await open(page, address, title);
+    await checkNewRecord(page, name, add, newTitle);
+  }
+  // The bulk "Leave school" of the ticked students, in the side panel.
+  await open(page, '/people/students', en.people.students.title);
+  await page.locator('tbody input[type="checkbox"]').first().check();
+  await page.getByRole('button', { name: en.people.students.bulkLeave, exact: true }).click();
+  await expect(
+    page.getByRole('complementary', {
+      name: en.people.students.bulkLeaveTitle_one.replace('{{n}}', '1'),
+    }),
+  ).toBeVisible();
+  await checkPage(page, 'people-students-leave');
 
   // The same account as Teacher: its home and its account.
   await page.goto('/');

@@ -198,13 +198,16 @@ describe('the buildings page', () => {
     const { calls } = await openList();
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.buildings.add }));
-    const form = screen.getByRole('form', { name: en.setup.buildings.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const panel = await screen.findByRole('complementary', { name: en.setup.buildings.newTitle });
+    const form = within(panel).getByRole('form', { name: en.setup.buildings.newTitle });
     type(within(form).getByLabelText(en.setup.buildings.name), 'Sports block');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
 
-    await waitFor(() => {
-      expect(screen.queryByRole('form', { name: en.setup.buildings.newTitle })).toBeNull();
-    });
+    // The panel then shows the saved building, never "Record not in the list".
+    expect(await screen.findByRole('complementary', { name: 'Sports block' })).toBeDefined();
+    expect(screen.queryByRole('form', { name: en.setup.buildings.newTitle })).toBeNull();
+    expect(screen.queryByText(en.list.recordGoneTitle)).toBeNull();
     expect(calls.find((call) => call.route === 'POST /api/setup/buildings')?.body).toEqual({
       name: 'Sports block',
     });
@@ -337,5 +340,152 @@ describe('the export of the buildings list', () => {
     expect(headingsDrawn()).toEqual(
       BUILDING_EXPORT_COLUMNS.map((key) => EXPORT_TEXTS.en.buildings.columns[key]),
     );
+  });
+});
+
+// Task 2.7c-2a (pull request #81, decisions 3, 5 and 11): a new record opens
+// in the side panel of `ListPage`, in the place of an opened record. Shown
+// here on the buildings, the first list that has it.
+describe('a new record in the side panel of a list', () => {
+  const newPanel = () => screen.queryByRole('complementary', { name: en.setup.buildings.newTitle });
+  const startNew = async (): Promise<HTMLElement> => {
+    fireEvent.click(screen.getByRole('button', { name: en.setup.buildings.add }));
+    const panel = await screen.findByRole('complementary', { name: en.setup.buildings.newTitle });
+    return panel;
+  };
+  const typeName = (panel: HTMLElement, value: string): void => {
+    type(within(panel).getByLabelText(en.setup.buildings.name), value);
+  };
+  const answer = async (button: string): Promise<void> => {
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: button }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+  };
+
+  it('takes the place of the list on a narrow screen, and its heading takes the focus', async () => {
+    await openList();
+    const panel = await startNew();
+    const list = screen
+      .getByRole('table', { name: en.setup.buildings.caption })
+      .closest('[class*="lg:grid"]');
+    expect(list?.className).toContain('hidden lg:grid');
+    await waitFor(() => {
+      expect(document.activeElement).toBe(within(panel).getByRole('heading'));
+    });
+    // The header's "New …" is not drawn while the form is open.
+    expect(screen.queryByRole('button', { name: en.setup.buildings.add })).toBeNull();
+  });
+
+  it('asks before a row takes the place of typed text, and stays when told to', async () => {
+    await openList();
+    typeName(await startNew(), 'Sports block');
+
+    fireEvent.click(rowButton('Main'));
+    await answer(en.unsent.stay);
+    expect(newPanel()).not.toBeNull();
+    expect(
+      within(newPanel() as HTMLElement).getByLabelText<HTMLInputElement>(en.setup.buildings.name)
+        .value,
+    ).toBe('Sports block');
+
+    fireEvent.click(rowButton('Main'));
+    await answer(en.unsent.leave);
+    const record = await screen.findByRole('complementary', { name: 'Main' });
+    expect(newPanel()).toBeNull();
+    // The record that took its place keeps the focus: no close without a save.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(document.activeElement).toBe(within(record).getByRole('heading', { name: 'Main' }));
+  });
+
+  it('asks before the close button, Escape or "Cancel" drop typed text, and gives the focus back to "New …"', async () => {
+    await openList();
+    typeName(await startNew(), 'Sports block');
+
+    fireEvent.click(screen.getByRole('button', { name: en.list.closePanel }));
+    await answer(en.unsent.stay);
+    expect(newPanel()).not.toBeNull();
+
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    await answer(en.unsent.stay);
+    expect(newPanel()).not.toBeNull();
+
+    fireEvent.click(
+      within(newPanel() as HTMLElement).getByRole('button', { name: en.setup.buildings.cancel }),
+    );
+    await answer(en.unsent.leave);
+    await waitFor(() => {
+      expect(newPanel()).toBeNull();
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: en.setup.buildings.add }),
+      );
+    });
+  });
+
+  it('closes without asking when nothing is typed', async () => {
+    await openList();
+    await startNew();
+    fireEvent.click(screen.getByRole('button', { name: en.list.closePanel }));
+    await waitFor(() => {
+      expect(newPanel()).toBeNull();
+    });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('asks before "New …" takes the place of a record with typed changes, and takes the record out of the address', async () => {
+    const { router } = await openList();
+    fireEvent.click(rowButton('Main'));
+    const record = await screen.findByRole('complementary', { name: 'Main' });
+    const name = within(record).getAllByLabelText(en.setup.buildings.name)[0] as HTMLElement;
+    type(name, 'Main hall');
+
+    fireEvent.click(screen.getByRole('button', { name: en.setup.buildings.add }));
+    await answer(en.unsent.stay);
+    expect(newPanel()).toBeNull();
+    expect(router.state.location.search).toEqual({ open: MAIN.id });
+
+    fireEvent.click(screen.getByRole('button', { name: en.setup.buildings.add }));
+    await answer(en.unsent.leave);
+    const panel = await screen.findByRole('complementary', { name: en.setup.buildings.newTitle });
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({});
+    });
+    // The heading of the new record has the focus, not the row it replaced.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(within(panel).getByRole('heading'));
+    });
+  });
+
+  it('gives way to a record that Back brings into the address', async () => {
+    const { router } = await openList();
+    fireEvent.click(rowButton('Main'));
+    await screen.findByRole('complementary', { name: 'Main' });
+    fireEvent.click(screen.getByRole('button', { name: en.list.closePanel }));
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({});
+    });
+    await startNew();
+
+    router.history.back();
+    expect(await screen.findByRole('complementary', { name: 'Main' })).toBeDefined();
+    expect(newPanel()).toBeNull();
+  });
+
+  it('keeps what is typed in the search box when the saved record opens', async () => {
+    const { router } = await openList();
+    const search = screen.getByRole<HTMLInputElement>('searchbox', { name: en.list.search });
+    fireEvent.change(search, { target: { value: 'Ma' } });
+    const panel = await startNew();
+    typeName(panel, 'Sports block');
+    fireEvent.click(within(panel).getByRole('button', { name: en.form.save }));
+    expect(await screen.findByRole('complementary', { name: 'Sports block' })).toBeDefined();
+    expect(search.value).toBe('Ma');
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ q: 'Ma', open: uid(3) });
+    });
   });
 });

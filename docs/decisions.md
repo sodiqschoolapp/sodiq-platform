@@ -213,6 +213,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 13 October 2026: new records in the side panel (task 2.7c-2a)
+
+Plan approved on pull request #81 with correction 1; decisions 1 to 11 confirmed there, 10 changed by the correction; 1 and 2 marked Look first. The decisions after 11 came from the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 2.7c-2 is 2.7c-2a (new records and the bulk leaving in the side panel, checkboxes at phone width) and 2.7c-2b (the side panels' actions at the bottom, the staff panel's five Save buttons) | Decision 1 |
+| **Look first** (tests changed by a requirement). The page tests find the new form in the side panel instead of above the list; request bodies, prompts and refusal tests stay | Decision 2 |
+| The new record is page state (`useNewRecord`), not the address; "New …" over an open record replaces it after `useLeave()`; a record that the address brings (a row, Back, a link) replaces the new record | Decisions 3, 5, 11 |
+| After a save the panel shows the saved record: the list's query is read again first, then `saved(id)` writes `open` through the list | Decision 4 |
+| The consent filter of Students is turned off only when the saved student has consent; no other filter or search is touched | Correction 1 |
+| The bulk "Leave school" is in the side panel; its title names how many, the names stay in the confirmation; "Restore this student" opens the holder in the panel in place of the new form, after `useLeave()` | Decision 6; build |
+| The quiet "Cancel" stays under each new form; the focus goes to the panel's heading when it opens and back to "New …" after a close without a save | Decision 7; build |
+| Every checkbox sits in a label with `CHECKBOX_TARGET` (44 × 44 below 640 px); the box stays 16 px | Decision 8 |
+| The header's "New …" stays primary on the list pages | Decision 9 |
+| The browser check of the Super Admin's new records runs in the pages test's branch: the floor of its own test's branch is archived by then and "Add room" needs one | Build |
+
 ## 13 October 2026: the page sweep (task 2.7c-1)
 
 Plan approved on pull request #80 with corrections 1 to 3; decisions 1 to 15 confirmed there; 1, 3, 9 and 10 and the tests changed by a requirement marked Look first. The decisions after 15 came from the build. Flagged on issue #42.

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { setWindowWidth } from '@/testing/window-width';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
+import { savedRecordPanel } from '@/testing/new-record';
 
 const PATH = '/setup/rooms';
 
@@ -241,6 +242,26 @@ describe('the room list', () => {
     ).toEqual([en.setup.rooms.chooseFloor, 'Ground']);
   });
 
+  // Task 2.7c-2a: the saved room is shown in the side panel.
+  it('shows a new room in the side panel once it is saved', async () => {
+    await openList();
+    await waitFor(() => {
+      expect(
+        screen.getByRole<HTMLButtonElement>('button', { name: en.setup.rooms.add }).disabled,
+      ).toBe(false);
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.setup.rooms.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.rooms.newTitle }),
+    ).getByRole('form', { name: en.setup.rooms.newTitle });
+    type(field(form, en.setup.rooms.name), '205');
+    type(field(form, en.setup.rooms.building), ANNEX.id);
+    type(field(form, en.setup.rooms.floor), uid(21));
+    type(field(form, en.setup.rooms.capacity), '24');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await savedRecordPanel(en.setup.rooms.newTitle);
+  });
+
   it('adds a room from the header, and shows a refused name as its text', async () => {
     const { calls } = await openList(superAdmin(), ROOMS, [MAIN, ANNEX], {
       'POST /api/setup/rooms': () => refusal('already_exists', 409),
@@ -252,7 +273,10 @@ describe('the room list', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.rooms.add }));
-    const form = screen.getByRole('form', { name: en.setup.rooms.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.rooms.newTitle }),
+    ).getByRole('form', { name: en.setup.rooms.newTitle });
     type(field(form, en.setup.rooms.name), '101');
     type(field(form, en.setup.rooms.building), ANNEX.id);
     type(field(form, en.setup.rooms.floor), uid(21));

@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, nothing, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import { savedRecordPanel } from '@/testing/new-record';
 
 const uid = (n: number): string => `0199c000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -344,7 +345,10 @@ describe('the vacancies', () => {
       expect((add as HTMLButtonElement).disabled).toBe(false);
     });
     fireEvent.click(add);
-    const form = await screen.findByRole('form', { name: en.people.vacancies.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.vacancies.newTitle }),
+    ).getByRole('form', { name: en.people.vacancies.newTitle });
     fireEvent.change(within(form).getByLabelText(en.people.vacancies.name), {
       target: { value: 'Mathematics vacancy 1' },
     });
@@ -371,6 +375,8 @@ describe('the vacancies', () => {
       weeklyLessons: 12,
       dailyLessons: null,
     });
+    // The panel shows the saved record (task 2.7c-2a).
+    await savedRecordPanel(en.people.vacancies.newTitle);
   });
 
   // Issue #39, hand test of 13 October 2026, finding 21 (task 2.7b-2).
@@ -382,7 +388,10 @@ describe('the vacancies', () => {
       expect((add as HTMLButtonElement).disabled).toBe(false);
     });
     fireEvent.click(add);
-    const form = await screen.findByRole('form', { name: en.people.vacancies.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.vacancies.newTitle }),
+    ).getByRole('form', { name: en.people.vacancies.newTitle });
     fireEvent.change(within(form).getByLabelText(en.people.vacancies.name), {
       target: { value: 'Mathematics vacancy 1' },
     });

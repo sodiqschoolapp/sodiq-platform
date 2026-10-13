@@ -6,10 +6,11 @@ import {
   type StudentDetail,
   type StudentListItem,
 } from '@sodiq/shared';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { savedRecordPanel } from '@/testing/new-record';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -350,7 +351,10 @@ describe('the profile of a student', () => {
 describe('adding a student', () => {
   async function fillAndSave() {
     fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
-    const form = await screen.findByRole('form', { name: en.people.students.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.students.newTitle }),
+    ).getByRole('form', { name: en.people.students.newTitle });
     const type = (label: string, value: string) => {
       fireEvent.change(within(form).getByLabelText(label), { target: { value } });
     };
@@ -422,6 +426,88 @@ describe('adding a student', () => {
 
     const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText('Rahimov Oʻtkir (2607041)')).toBeDefined();
+  });
+
+  /** A list that holds the new student once it is saved, as the server's does. */
+  function openSaving(
+    readsFinancial: boolean,
+    consentMissing: boolean,
+    status: StudentListItem['status'] = 'active',
+  ) {
+    const NEW: StudentListItem = { ...OTKIR, id: uid(9), uid: '2606001', consentMissing, status };
+    let saved: StudentListItem[] = [];
+    const list = (query: string) =>
+      json({
+        // As the server reads the consent list: the active students without consent.
+        students: [ZARINA, ...saved].filter(
+          (row) =>
+            !query.includes('consent=missing') ||
+            (row.status === 'active' && row.consentMissing === true),
+        ),
+        canArchive: true,
+        exportGroups: [],
+        readsFinancial,
+        today: '2026-10-10',
+      });
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/people/students': () => list(calls.at(-1)?.query ?? ''),
+      [`GET /api/people/students/${NEW.id}`]: () => json(detailOf(NEW)),
+      [`GET /api/people/students/${NEW.id}/relatives`]: () => json(MOTHER),
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/students': () => {
+        saved = [NEW];
+        return json(detailOf(NEW), 201);
+      },
+    });
+    return calls;
+  }
+
+  // Pull request #81, decision 4: the saved student is shown in the panel.
+  it('shows the saved student in the side panel', async () => {
+    openSaving(false, false);
+    renderApp(PATH);
+    await fillAndSave();
+    const panel = await savedRecordPanel(en.people.students.newTitle);
+    expect(panel.getAttribute('aria-label')).toBe('Oʻtkir Rahimov');
+  });
+
+  // Pull request #81, correction 1: the consent filter is turned off only when
+  // it would hide the saved student.
+  it('turns the consent filter off for a saved student with consent, and keeps it for one without', async () => {
+    const filtered = `${PATH}?f=${encodeURIComponent(JSON.stringify({ consent: 'missing' }))}`;
+    openSaving(true, false);
+    const { router } = renderApp(filtered);
+    await fillAndSave();
+    expect((await savedRecordPanel(en.people.students.newTitle)).getAttribute('aria-label')).toBe(
+      'Oʻtkir Rahimov',
+    );
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ open: uid(9) });
+    });
+    cleanup();
+
+    openSaving(true, true);
+    const second = renderApp(filtered);
+    await fillAndSave();
+    await savedRecordPanel(en.people.students.newTitle);
+    await waitFor(() => {
+      expect(second.router.state.location.search).toEqual({
+        f: { consent: 'missing' },
+        open: uid(9),
+      });
+    });
+    cleanup();
+
+    // Without consent but not active yet (a start date after today): not in
+    // the consent list either, so the filter goes.
+    openSaving(true, true, null);
+    const third = renderApp(filtered);
+    await fillAndSave();
+    await savedRecordPanel(en.people.students.newTitle);
+    await waitFor(() => {
+      expect(third.router.state.location.search).toEqual({ open: uid(9) });
+    });
   });
 
   it('warns about a student of the same name elsewhere, then about the UID set, and saves when told to', async () => {
@@ -768,7 +854,11 @@ describe('leaving, return and delete', () => {
     }
     fireEvent.click(await screen.findByRole('button', { name: en.people.students.bulkLeave }));
     const title = en.people.students.bulkLeaveTitle_other.replace('{{n}}', '2');
-    const form = await screen.findByRole('form', { name: title });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(await screen.findByRole('complementary', { name: title })).getByRole(
+      'form',
+      { name: title },
+    );
     fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
       target: { value: '2026-10-20' },
     });
@@ -786,6 +876,44 @@ describe('leaving, return and delete', () => {
       ),
     ).toBeDefined();
     expect(calls.filter((call) => call.route.endsWith('/leaving'))).toHaveLength(2);
+    // Done, the panel closes, the ticked rows stay listed and the search box has the focus.
+    expect(screen.queryByRole('complementary')).toBeNull();
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('searchbox', { name: en.list.search }));
+    });
+  });
+
+  it('asks before "Leave school" takes the place of a record with typed changes', async () => {
+    openList('academic_vice_principal');
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    fireEvent.click(screen.getByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const record = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.change(await within(record).findByLabelText(en.people.students.lastName), {
+      target: { value: 'Rahimova' },
+    });
+    for (const box of screen.getAllByRole('checkbox').slice(1, 3)) {
+      fireEvent.click(box);
+    }
+    const title = en.people.students.bulkLeaveTitle_other.replace('{{n}}', '2');
+
+    fireEvent.click(screen.getByRole('button', { name: en.people.students.bulkLeave }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: en.unsent.stay }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(screen.getByRole('complementary', { name: 'Oʻtkir Rahimov' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: en.people.students.bulkLeave }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: en.unsent.leave }),
+    );
+    expect(await screen.findByRole('complementary', { name: title })).toBeDefined();
+    expect(screen.queryByRole('complementary', { name: 'Oʻtkir Rahimov' })).toBeNull();
   });
 
   it('offers "Restore this student" for an inactive holder of the document, and opens them', async () => {
@@ -821,7 +949,10 @@ describe('leaving, return and delete', () => {
       expect(rowsDrawn()).toHaveLength(2);
     });
     fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
-    const form = await screen.findByRole('form', { name: en.people.students.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.students.newTitle }),
+    ).getByRole('form', { name: en.people.students.newTitle });
     const type = (label: string, value: string) => {
       fireEvent.change(within(form).getByLabelText(label), { target: { value } });
     };
@@ -844,7 +975,13 @@ describe('leaving, return and delete', () => {
     fireEvent.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: en.unsent.leave }),
     );
-    expect(await screen.findByRole('complementary', { name: 'Lola Karimova' })).toBeDefined();
+    // The holder takes the place of the new form in the one side panel, with the focus.
+    const holder = await screen.findByRole('complementary', { name: 'Lola Karimova' });
+    expect(screen.queryByRole('complementary', { name: en.people.students.newTitle })).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(document.activeElement).toBe(
+      within(holder).getByRole('heading', { name: 'Lola Karimova' }),
+    );
   });
 
   it('offers no "Restore this student" for an active holder of the document', async () => {

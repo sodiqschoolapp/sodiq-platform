@@ -14,6 +14,7 @@ import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { DateField } from '@/components/field';
 import { ListPage } from '@/components/list/list-page';
+import { useNewRecord } from '@/components/list/use-new-record';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
@@ -26,7 +27,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { calendarDayQuery, calendarEntriesQuery, invalidateCalendar, isPast } from './calendar-api';
 import { CalendarEntryForm } from './calendar-entry-form';
@@ -108,9 +108,8 @@ export function CalendarPage() {
   const search = useSearch({ from: '/app/setup/calendar' });
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
   const preview = useCalendarPreview();
-  const [adding, setAdding] = useState(false);
+  const newRecord = useNewRecord();
   const can = (action: 'create' | 'edit' | 'archive') =>
     role !== null && permits(PERMISSIONS, role, 'calendar', action);
   const entries = useQuery(calendarEntriesQuery(branchId));
@@ -136,7 +135,6 @@ export function CalendarPage() {
       );
     },
     onSuccess: async () => {
-      setAdding(false);
       await invalidateCalendar(queryClient);
     },
   });
@@ -222,10 +220,11 @@ export function CalendarPage() {
     void navigate({ to: '/setup/calendar', search: next, replace: how === 'replace' });
   };
 
-  const addButton = can('create') && !adding && (
+  const addButton = can('create') && newRecord.value === null && (
     <Button
+      id={newRecord.buttonId}
       onClick={() => {
-        setAdding(true);
+        newRecord.start(true);
       }}
     >
       {t('setup.calendar.add')}
@@ -242,47 +241,6 @@ export function CalendarPage() {
         ]}
         actions={addButton === false ? undefined : addButton}
       />
-      {adding && (
-        <section
-          aria-label={t('setup.calendar.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6"
-        >
-          <h2 className={SECTION_TITLE}>{t('setup.calendar.newTitle')}</h2>
-          {today === undefined || templates.isPending ? (
-            <LoadingOutline />
-          ) : templates.isError ? (
-            <ErrorState
-              error={templates.error}
-              onRetry={() => {
-                void templates.refetch();
-              }}
-            />
-          ) : (
-            <CalendarEntryForm
-              firstDate={nextDay(today)}
-              templates={active}
-              label={t('setup.calendar.newTitle')}
-              onSave={async (record) => {
-                await create.mutateAsync(record);
-              }}
-            />
-          )}
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void leave.leave().then((leaves) => {
-                  if (leaves) {
-                    setAdding(false);
-                  }
-                });
-              }}
-            >
-              {t('setup.calendar.cancel')}
-            </Button>
-          </div>
-        </section>
-      )}
       <ListPage
         listId="calendar"
         caption={t('setup.calendar.caption')}
@@ -302,6 +260,43 @@ export function CalendarPage() {
           text: t('setup.calendar.empty'),
           action: addButton === false ? undefined : addButton,
         }}
+        creating={
+          newRecord.value === null
+            ? undefined
+            : {
+                key: 'calendar-entry',
+                title: t('setup.calendar.newTitle'),
+                content: ({ saved, close }) => (
+                  <div className="grid gap-4">
+                    {today === undefined || templates.isPending ? (
+                      <LoadingOutline />
+                    ) : templates.isError ? (
+                      <ErrorState
+                        error={templates.error}
+                        onRetry={() => {
+                          void templates.refetch();
+                        }}
+                      />
+                    ) : (
+                      <CalendarEntryForm
+                        firstDate={nextDay(today)}
+                        templates={active}
+                        label={t('setup.calendar.newTitle')}
+                        onSave={async (record) => {
+                          saved((await create.mutateAsync(record)).id);
+                        }}
+                      />
+                    )}
+                    <div>
+                      <Button variant="ghost" onClick={close}>
+                        {t('setup.calendar.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                ),
+                ...newRecord.handlers,
+              }
+        }
         panel={(row) =>
           today === undefined ? null : templates.isError ? (
             <ErrorState

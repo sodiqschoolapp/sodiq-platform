@@ -65,7 +65,7 @@ export async function chooseTheme(
   await page.getByRole('menuitemradio', { name: t.theme[theme], exact: true }).click();
 }
 
-/** The three views of a page in the check of task 2.7c-1. */
+/** The three views of a page in the check of tasks 2.7c-1 and 2.7c-2a. */
 const VIEWS = [
   { name: 'light', width: 1440, height: 900, colorScheme: 'light' },
   { name: 'dark', width: 1440, height: 900, colorScheme: 'dark' },
@@ -73,7 +73,7 @@ const VIEWS = [
 ] as const;
 
 /** Where `checkPage` saves its screenshots with SCREENSHOTS=1, for the report. */
-const PAGE_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.7c-1');
+const PAGE_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.7c-2a');
 
 interface Measured {
   h1: number;
@@ -83,6 +83,8 @@ interface Measured {
   outside: string[];
   /** Each visible button of the Button part: its height and its words. */
   buttons: { height: number; text: string }[];
+  /** Each visible checkbox: the size of its target (its label, or the box without one). */
+  checkboxes: { height: number; width: number; text: string }[];
 }
 
 /**
@@ -92,7 +94,8 @@ interface Measured {
  * button is one of the sizes of Buttons: 32 or 40 high on a desktop, 44 at
  * phone width, and 48 only on the sign-in frame. The theme follows the
  * device (the account never chose one), so the dark view is the device's.
- * With SCREENSHOTS=1 it saves docs/screens/2.7c-1/<name>-<view>.png. The page
+ * At phone width every checkbox's target is 44 px (task 2.7c-2a).
+ * With SCREENSHOTS=1 it saves docs/screens/2.7c-2a/<name>-<view>.png. The page
  * is left in light at 1440 x 900.
  */
 export async function checkPage(
@@ -125,6 +128,14 @@ export async function checkPage(
           height: Math.round(button.getBoundingClientRect().height),
           text: (button.getAttribute('aria-label') ?? button.textContent ?? '').trim(),
         })),
+        checkboxes: [...document.querySelectorAll('input[type="checkbox"]')].filter(visible).map((box) => {
+          const target = (box.closest('label') ?? box).getBoundingClientRect();
+          return {
+            height: Math.round(target.height),
+            width: Math.round(target.width),
+            text: (box.getAttribute('aria-label') ?? box.closest('label')?.textContent ?? '').trim().slice(0, 40),
+          };
+        }),
       };
     })()`);
     const where = `${name}, ${view.name}`;
@@ -140,6 +151,11 @@ export async function checkPage(
     }
     const wrong = measured.buttons.filter((button) => !allowed.includes(button.height));
     expect(wrong, `${where}: buttons of the sizes of the design system`).toEqual([]);
+    // Accessibility: "touch targets of 44 px at phone width" (task 2.7c-2a).
+    if (view.name === 'phone') {
+      const small = measured.checkboxes.filter((box) => box.height < 44 || box.width < 44);
+      expect(small, `${where}: checkbox targets of 44 px`).toEqual([]);
+    }
     if (process.env.SCREENSHOTS === '1') {
       mkdirSync(PAGE_SCREENS, { recursive: true });
       await page.screenshot({ path: path.join(PAGE_SCREENS, `${name}-${view.name}.png`) });
@@ -147,4 +163,21 @@ export async function checkPage(
   }
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ colorScheme: 'light' });
+}
+
+/**
+ * Task 2.7c-2a (pull request #81): a list's "New …" opens the form in the side
+ * panel; the page is checked with it open, and nothing is saved.
+ */
+export async function checkNewRecord(
+  page: Page,
+  name: string,
+  add: string,
+  newTitle: string,
+): Promise<void> {
+  const button = page.getByRole('button', { name: add, exact: true }).first();
+  await expect(button).toBeEnabled();
+  await button.click();
+  await expect(page.getByRole('complementary', { name: newTitle })).toBeVisible();
+  await checkPage(page, `${name}-new`);
 }
