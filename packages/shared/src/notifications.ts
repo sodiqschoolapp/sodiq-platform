@@ -27,8 +27,21 @@ export const NOTIFICATION_KIND_MAX_LENGTH = 100;
  * `sample.message` exists for the tests and the browser tests of task 0.9; no
  * route of the application sends one.
  */
+const relativeName = z.string().min(1).max(120);
+
 export const NOTIFICATION_KINDS = {
   'sample.message': z.strictObject({ text: z.string().min(1).max(500) }),
+  /**
+   * A relative linked to a student of the branch was renamed in another
+   * branch (`edge/close-relatives`: "A change of name or phone is logged and
+   * the other branch's Academic Vice Principal is told"; task 2.5b-1,
+   * decision 5). The branch of the notification is the branch of the change.
+   */
+  'relative.renamed': z.strictObject({ previousName: relativeName, fullName: relativeName }),
+  /** The main phone of such a relative was changed in another branch, or the number has a new owner; no phone in the data. */
+  'relative.phone_changed': z.strictObject({ fullName: relativeName }),
+  /** Such a relative was merged with another record in another branch; `fullName` is the name that stays. */
+  'relative.merged': z.strictObject({ mergedName: relativeName, fullName: relativeName }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

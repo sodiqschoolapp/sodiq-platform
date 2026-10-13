@@ -30,7 +30,14 @@ import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
 import { asFormSchema } from './form-schema';
-import { NoticesField, phoneHolderOf, smsWarning } from './relative-form';
+import {
+  NEW_OWNER,
+  NoticesField,
+  OwnerChoice,
+  phoneHolderOf,
+  SAME_PERSON,
+  smsWarning,
+} from './relative-form';
 
 /** The fields of the form: one per input. */
 export type StudentField =
@@ -65,7 +72,11 @@ export type StudentField =
   | 'relativeWorkplace'
   | 'relativeEmail'
   | 'relativePortal'
-  | 'relativeNotices';
+  | 'relativeNotices'
+  // The new owner of a matched phone (task 2.5b-1).
+  | 'relativeOwner'
+  | 'relativePreviousPhone'
+  | 'relativePreviousUnknown';
 
 /** The field of the relative step an issue of `relatives.0` names. */
 const RELATIVE_FIELDS: Readonly<Record<string, StudentField>> = {
@@ -74,6 +85,7 @@ const RELATIVE_FIELDS: Readonly<Record<string, StudentField>> = {
   workplace: 'relativeWorkplace',
   email: 'relativeEmail',
   relationship: 'relativeRelationship',
+  previousPhone: 'relativePreviousPhone',
 };
 
 /** The field of the form an issue of the record names. */
@@ -249,6 +261,9 @@ export function StudentForm({
       relativeEmail: '',
       relativePortal: CHECKED,
       relativeNotices: CHECKED,
+      relativeOwner: SAME_PERSON,
+      relativePreviousPhone: `${DEFAULT_PHONE_PREFIX} `,
+      relativePreviousUnknown: '',
     },
     read: (typed) => {
       // The country code alone is no phone.
@@ -293,19 +308,36 @@ export function StudentForm({
         portalAccess: typed.relativePortal === CHECKED,
         receivesNotices: typed.relativeNotices === CHECKED,
       };
+      const matched =
+        match !== null && phoneNow === match.phone && match.holder.id !== null ? match : null;
       const relative =
-        match !== null && phoneNow === match.phone && match.holder.id !== null
-          ? { kind: 'existing', relativeId: match.holder.id, phone: match.phone, ...link }
-          : {
-              kind: 'new',
+        matched !== null && matched.holder.id !== null && typed.relativeOwner === NEW_OWNER
+          ? {
+              // "Different person, the number has a new owner" (task 2.5b-1).
+              kind: 'new_owner',
               relative: {
                 fullName: typed.relativeName,
-                phone: noPhone ? null : typed.relativePhone,
+                phone: typed.relativePhone,
                 workplace: typed.relativeWorkplace,
                 email: typed.relativeEmail,
               },
+              previousId: matched.holder.id,
+              previousPhone:
+                typed.relativePreviousUnknown === CHECKED ? null : typed.relativePreviousPhone,
               ...link,
-            };
+            }
+          : matched !== null && matched.holder.id !== null
+            ? { kind: 'existing', relativeId: matched.holder.id, phone: matched.phone, ...link }
+            : {
+                kind: 'new',
+                relative: {
+                  fullName: typed.relativeName,
+                  phone: noPhone ? null : typed.relativePhone,
+                  workplace: typed.relativeWorkplace,
+                  email: typed.relativeEmail,
+                },
+                ...link,
+              };
       return {
         ...record,
         uid: typed.uid,
@@ -564,11 +596,15 @@ function RelativeStep({
           }}
         />
       )}
-      {found !== null ? (
-        <p role="status" className="text-sm">
-          {t('people.relatives.found', { name: found.fullName, count: found.students })}
-        </p>
-      ) : (
+      {found !== null && (
+        <OwnerChoice
+          found={found}
+          owner={bind('relativeOwner')}
+          previousPhone={bind('relativePreviousPhone')}
+          previousUnknown={bind('relativePreviousUnknown')}
+        />
+      )}
+      {(found === null || bind('relativeOwner').value === NEW_OWNER) && (
         <>
           <Field
             label={t('people.relatives.fullName')}

@@ -5,7 +5,9 @@ import { Assignments } from '../../modules/access/assignments.service.js';
 import { Audit } from '../../modules/audit/audit.service.js';
 import { Accounts } from '../../modules/auth/accounts.service.js';
 import { FirstAccountModule } from '../../modules/auth/first-account.command.js';
+import { studentNameKey } from '@sodiq/shared';
 import { insertBranch } from '../branch-filter-sql.js';
+import { linkRelative } from '../relatives-kit.js';
 import { e2eDatabaseUrls } from './database.js';
 import { E2E_RESET_EMAIL } from './mail.js';
 
@@ -784,6 +786,108 @@ try {
     });
   }
   seeded.relatives = { login: relativesVice.login, password: relativesVice.firstPassword };
+
+  // Two branches, each with an Academic Vice Principal of its own, for the
+  // new owner of a phone (task 2.5b-1): branch B has a student whose relative
+  // holds +998 90 555 01 37; the Academic Vice Principal of A gives the number
+  // to a new relative and the one of B is told.
+  const ownersVice = await create('Mohira', 'Tojiyeva');
+  const ownersOtherVice = await create('Ulugʻbek', 'Hamroyev');
+  for (const [name, vice] of [
+    ['Phone owners browser test branch A', ownersVice],
+    ['Phone owners browser test branch B', ownersOtherVice],
+  ] as const) {
+    const ownersBranch = await insertBranch(migrator, name);
+    await transactions.run([ownersBranch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: vice.id,
+        role: 'academic_vice_principal',
+        branchId: ownersBranch,
+        givenBy: null,
+      }),
+    );
+    await migrator.transaction().execute(async (transaction) => {
+      const year = await transaction
+        .insertInto('academic_years')
+        .values({
+          branch_id: ownersBranch,
+          start_date: startDate,
+          end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('quarters')
+        .values(
+          [1, 2, 3, 4].map((number) => ({
+            branch_id: ownersBranch,
+            academic_year_id: year.id,
+            number,
+          })),
+        )
+        .execute();
+      if (vice !== ownersOtherVice) {
+        return;
+      }
+      const student = await transaction
+        .insertInto('students')
+        .values({
+          branch_id: ownersBranch,
+          uid: '9999301',
+          first_name: 'Bekzod',
+          last_name: 'Aliyev',
+          name_key: studentNameKey('Aliyev', 'Bekzod'),
+          sex: 'male',
+          birth_date: '2013-03-04',
+          grade: 8,
+          starts_on: startDate,
+          created_by: vice.id,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('student_uids')
+        .values({
+          uid: '9999301',
+          student_id: student.id,
+          branch_id: ownersBranch,
+          held_from: new Date(),
+        })
+        .execute();
+      await transaction
+        .insertInto('student_contracts')
+        .values({
+          student_id: student.id,
+          branch_id: ownersBranch,
+          number: 'E2E-OWNERS-1',
+          signed_on: startDate,
+        })
+        .execute();
+      await transaction
+        .insertInto('student_statuses')
+        .values({
+          student_id: student.id,
+          branch_id: ownersBranch,
+          status: 'active',
+          valid_from: startDate,
+          cause: 'start',
+        })
+        .execute();
+      await transaction
+        .insertInto('student_accounts')
+        .values({ student_id: student.id, branch_id: ownersBranch, created_at: new Date() })
+        .execute();
+      await linkRelative(transaction, student.id, ownersBranch, new Date(), {
+        fullName: 'Zarina Aliyeva',
+        phone: '+998905550137',
+      });
+    });
+  }
+  seeded.phoneOwners = { login: ownersVice.login, password: ownersVice.firstPassword };
+  seeded.phoneOwnersOther = {
+    login: ownersOtherVice.login,
+    password: ownersOtherVice.firstPassword,
+  };
 
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');

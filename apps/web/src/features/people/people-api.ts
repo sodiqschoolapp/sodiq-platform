@@ -6,6 +6,7 @@ import {
   neverUsedListSchema,
   relativeDetailSchema,
   relativeListSchema,
+  relativeNoValidPhoneSchema,
   relativePhoneMatchResultSchema,
   staffAccountSchema,
   staffDetailSchema,
@@ -379,12 +380,34 @@ export const invalidateStudents = (queryClient: QueryClient): Promise<unknown> =
 export const relativesKey = (branchId?: string | null) =>
   branchId === undefined ? [...PEOPLE_KEY, 'relatives'] : [...PEOPLE_KEY, 'relatives', branchId];
 
-export const relativesQuery = (branchId: string | null) =>
+/**
+ * `filter: 'no_valid_phone'`: the relatives with no valid phone and a student
+ * of the branch active today (`edge/close-relatives`, row 2; task 2.5b-1),
+ * decided by the server.
+ */
+export const relativesQuery = (branchId: string | null, filter?: 'no_valid_phone') =>
   queryOptions({
-    queryKey: relativesKey(branchId),
+    queryKey: filter === undefined ? relativesKey(branchId) : [...relativesKey(branchId), filter],
     queryFn: async () =>
       relativeListSchema.parse(
-        await answerOf(api.GET('/api/people/relatives', { params: { header: branchHeader() } })),
+        await answerOf(
+          api.GET('/api/people/relatives', {
+            params: { header: branchHeader(), query: filter === undefined ? {} : { filter } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** The number of relatives with no valid phone, for the Academic Vice Principal's home (task 2.5b-1). */
+export const relativeNoValidPhoneQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: [...relativesKey(branchId), 'no-valid-phone-count'],
+    queryFn: async () =>
+      relativeNoValidPhoneSchema.parse(
+        await answerOf(
+          api.GET('/api/people/relatives/no-valid-phone', { params: { header: branchHeader() } }),
+        ),
       ),
     enabled: branchId !== null,
   });

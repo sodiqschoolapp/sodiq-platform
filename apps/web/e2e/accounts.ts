@@ -38,7 +38,9 @@ export type AccountKey =
   | 'students'
   | 'leaving'
   | 'studentExport'
-  | 'relatives';
+  | 'relatives'
+  | 'phoneOwners'
+  | 'phoneOwnersOther';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

@@ -165,6 +165,70 @@ describe('the relative step of a new student', () => {
   });
 });
 
+describe('the new owner of a typed phone (task 2.5b-1; edge/close-relatives, row 2)', () => {
+  it('creates a different person with the number and gives the earlier one a new phone', async () => {
+    const calls = openList(TWO, {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/relatives/phone-match': () =>
+        json({ holder: { id: uid(50), fullName: 'Shoira Nazarova', students: 1 } }),
+      'POST /api/people/students': () => json(DETAIL, 201),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
+    const form = await screen.findByRole('form', { name: en.people.students.newTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.students.uid, '2607003');
+    type(en.people.students.lastName, 'Nazarov');
+    type(en.people.students.firstName, 'Jamshid');
+    type(en.people.students.sex, 'male');
+    type(en.people.students.birthDate, '2014-05-02');
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2026-09-02');
+    type(en.people.students.contractNumber, 'SQ-2026/141');
+    type(en.people.students.contractSignedOn, '2026-08-20');
+    const phone = within(form).getByLabelText(en.people.relatives.phone);
+    fireEvent.change(phone, { target: { value: '+998 90 777 88 99' } });
+    fireEvent.blur(phone);
+    const choice = await within(form).findByLabelText(
+      en.people.relatives.ownerChoice.replace('{{name}}', 'Shoira Nazarova'),
+    );
+    fireEvent.change(choice, { target: { value: 'new_owner' } });
+    // The fields of the new person are back, with the earlier relative's new phone.
+    type(en.people.relatives.fullName, 'Nodira Rasulova');
+    type(
+      en.people.relatives.previousPhone.replace('{{name}}', 'Shoira Nazarova'),
+      '+998 90 111 22 33',
+    );
+    type(en.people.relatives.relationship, 'mother');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/students')).toBe(true);
+    });
+    const sent = calls.find((call) => call.route === 'POST /api/people/students')?.body as {
+      relatives: unknown[];
+    };
+    expect(sent.relatives).toEqual([
+      {
+        kind: 'new_owner',
+        relative: {
+          fullName: 'Nodira Rasulova',
+          phone: '+998907778899',
+          workplace: null,
+          email: null,
+        },
+        previousId: uid(50),
+        previousPhone: '+998901112233',
+        relationship: 'mother',
+        mainContact: true,
+        portalAccess: true,
+        receivesNotices: true,
+      },
+    ]);
+  });
+});
+
 describe("the student's Relatives tab", () => {
   it('opens first for a student with no relative, with the add form', async () => {
     openList({ relatives: [], canEdit: true });

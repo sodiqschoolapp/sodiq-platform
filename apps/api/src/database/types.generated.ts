@@ -292,8 +292,10 @@ export interface Relatives {
   email: string | null;
   full_name: string;
   id: Generated<string>;
+  merged_into: string | null;
   name_key: string;
   phone: string | null;
+  phone_invalid_since: Timestamp | null;
   workplace: string | null;
 }
 

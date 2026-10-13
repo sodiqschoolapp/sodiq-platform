@@ -1,19 +1,59 @@
 import { Injectable } from '@nestjs/common';
 import {
+  PERMISSIONS,
   relativeNameKey,
   type ErrorDetail,
+  type NotificationData,
+  type NotificationKind,
   type RelativeHolder,
   type RelativeLinkInput,
+  type RelativeNewOwner,
   type RelativeRecord,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import { Notifications } from '../notifications/notifications.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 
 const UNIQUE_VIOLATION = '23505';
+const DEADLOCK = '40P01';
+
+/**
+ * The refusals of 0037 that the routes of relatives answer (task 2.5b-1): a
+ * holder whose phone moved before the new owner took it, a merged relative,
+ * and two changes that crossed (decision 10: a deadlock of two new owners
+ * swapping numbers is answered, never a fault).
+ */
+export async function refusingRelativeRaces<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    const failure = error as { code?: unknown; constraint?: unknown };
+    if (failure.constraint === 'relative_phone_changed') {
+      throw new ApiException('relative_phone_changed', 409);
+    }
+    if (failure.constraint === 'relative_merged') {
+      throw new ApiException('relative_merged', 409);
+    }
+    if (failure.code === DEADLOCK) {
+      throw new ApiException('relative_changed', 409);
+    }
+    throw error;
+  }
+}
+
+/** The assignment that lets the account create relatives in the branch of the request. */
+export const relativeCreatorOf = (access: Access): string | undefined =>
+  decide(
+    { area: 'relatives', action: 'create', branch: 'request' },
+    access.assignments,
+    access.branchId,
+    PERMISSIONS,
+  )?.id;
 
 /**
  * A main phone refused by `relatives_phone_idx` (db/migrations/0036). The
@@ -59,6 +99,7 @@ export interface RelativeRow {
   phone: string | null;
   workplace: string | null;
   email: string | null;
+  phone_invalid_since: Date | null;
 }
 
 /** The live link of a student as the routes read it. */
@@ -72,7 +113,7 @@ export interface LinkRow {
 }
 
 /** The record fields of a relative as the audit entries compare them. */
-export const recordOf = (row: RelativeRow): RelativeRecord => ({
+export const recordOf = (row: Omit<RelativeRow, 'phone_invalid_since'>): RelativeRecord => ({
   fullName: row.full_name,
   phone: row.phone,
   workplace: row.workplace,
@@ -108,7 +149,126 @@ export class RelativeWrites {
   constructor(
     private readonly transactions: Transactions,
     private readonly audit: Audit,
+    private readonly notifications: Notifications,
   ) {}
+
+  /**
+   * The accounts to tell of a change of a relative the transaction sees: a
+   * current Academic Vice Principal of each other branch where it is linked
+   * live (decision 5, Look first; `relative_notice_accounts` of 0037).
+   */
+  async noticeAccounts(
+    transaction: Transaction,
+    relativeId: string,
+    branchId: string,
+  ): Promise<string[]> {
+    const found = await sql<{ account_id: string }>`
+      select account_id from relative_notice_accounts(${relativeId}::uuid, ${branchId}::uuid)
+    `.execute(transaction);
+    return found.rows.map((row) => row.account_id);
+  }
+
+  /**
+   * Tells the other branches of a change (`edge`, row 1). The branch of the
+   * notice is the branch of the change, the branch of the request (0.9); the
+   * account making the change is left out.
+   */
+  async tell<Kind extends NotificationKind>(
+    transaction: Transaction,
+    access: Access,
+    kind: Kind,
+    data: NotificationData<Kind>,
+    accountIds: readonly string[],
+  ): Promise<void> {
+    const others = [...new Set(accountIds)].filter((id) => id !== access.accountId);
+    if (others.length === 0) {
+      return;
+    }
+    await this.notifications.send(transaction, {
+      kind,
+      data,
+      branchId: branchOf(access),
+      accountIds: others,
+    });
+  }
+
+  /**
+   * "Different person, the number has a new owner" (`edge`, row 2; decision
+   * 2, Look first): the holder of `phone` the match showed gets its new phone,
+   * or "no valid phone", in `relative_release_phone` of 0037, which locks it
+   * and refuses `relative_phone_changed` when the phone moved. For the
+   * holders of `relatives` create only (decision 4). Called after the
+   * student's lock (2.5a order) and before the number is claimed by its new
+   * owner (decision 10). Tells the other branches; the caller writes the
+   * entry once the new owner has an id (`releasedEntry`).
+   */
+  async releasePhone(
+    transaction: Transaction,
+    access: Access,
+    phone: string,
+    owner: RelativeNewOwner,
+    path: string,
+  ): Promise<{ assignmentId: string; holder: RelativeHolder }> {
+    const assignmentId = relativeCreatorOf(access);
+    if (assignmentId === undefined) {
+      throw new ApiException('permission_denied', 403);
+    }
+    const holder = await this.holderOf(transaction, phone);
+    if (holder?.id !== owner.previousId) {
+      throw new ApiException('relative_phone_changed', 409, undefined, [
+        {
+          path,
+          code: 'relative_phone_changed',
+          message: 'The relative chosen no longer has this phone.',
+        },
+      ]);
+    }
+    const targets = await writingPhone(
+      owner.previousPhone,
+      `${path}.previousPhone`,
+      'relative_phone_taken',
+      () =>
+        sql<{ account_id: string }>`
+        select account_id from relative_release_phone(
+          ${owner.previousId}::uuid, ${phone}, ${owner.previousPhone}, ${branchOf(access)}::uuid
+        )
+      `.execute(transaction),
+    );
+    await this.tell(
+      transaction,
+      access,
+      'relative.phone_changed',
+      { fullName: holder.fullName },
+      targets.rows.map((row) => row.account_id),
+    );
+    return { assignmentId, holder };
+  }
+
+  /** The school-wide entry of a released phone, naming its new owner. */
+  async releasedEntry(
+    transaction: Transaction,
+    access: Access,
+    released: { assignmentId: string; holder: RelativeHolder },
+    phone: string,
+    owner: RelativeNewOwner,
+    newOwnerId: string,
+    requestId: string,
+  ): Promise<void> {
+    await this.audit.record(transaction, {
+      branchId: null,
+      actorId: access.accountId,
+      assignmentId: released.assignmentId,
+      action: 'relative.phone_released',
+      record: { type: 'relative', id: owner.previousId },
+      oldValue: { phone },
+      newValue:
+        owner.previousPhone === null
+          ? { phone: null, phoneInvalid: true }
+          : { phone: owner.previousPhone },
+      details: { branchId: branchOf(access), newOwnerId },
+      requestId,
+    });
+  }
 
   /**
    * The holder of an exact main phone, archived ones included (decision 3,
@@ -151,8 +311,7 @@ export class RelativeWrites {
         if (holder === null) {
           return null;
         }
-        const visible =
-          error.code === 'relative_phone_exists' ||
+        const here =
           (await transaction
             .selectFrom('student_relatives')
             .select('id')
@@ -160,12 +319,21 @@ export class RelativeWrites {
             .where('branch_id', '=', branchId)
             .where('unlinked_at', 'is', null)
             .executeTakeFirst()) !== undefined;
+        const visible = error.code === 'relative_phone_exists' || here;
+        // Decision 8 of #73: a merge is offered for a holder linked live in the
+        // branch, or in any branch to the Super Admin.
+        const superAdmin = access.assignments.some(
+          (assignment) => assignment.role === 'super_admin',
+        );
         const found: ErrorDetail = {
           path: error.path,
           code: 'already_exists',
           message: 'Another relative has this main phone.',
           holder: { fullName: holder.fullName, students: holder.students },
           ...(visible && holder.id !== null ? { recordId: holder.id } : {}),
+          ...(error.code === 'relative_phone_taken'
+            ? { mergeable: here || (superAdmin && holder.students > 0) }
+            : {}),
         };
         return found;
       });
@@ -241,7 +409,32 @@ export class RelativeWrites {
     const branchId = branchOf(access);
     let relativeId: string;
     let created = false;
-    if (input.kind === 'new') {
+    if (input.kind === 'new_owner') {
+      const released = await this.releasePhone(
+        transaction,
+        access,
+        input.relative.phone,
+        input,
+        `${path}.phone`,
+      );
+      relativeId = await this.createRelative(
+        transaction,
+        access,
+        input.relative,
+        `${path}.relative.phone`,
+        requestId,
+      );
+      await this.releasedEntry(
+        transaction,
+        access,
+        released,
+        input.relative.phone,
+        input,
+        relativeId,
+        requestId,
+      );
+      created = true;
+    } else if (input.kind === 'new') {
       relativeId = await this.createRelative(
         transaction,
         access,
@@ -379,7 +572,7 @@ export class RelativeWrites {
     }
     const row = await transaction
       .selectFrom('relatives')
-      .select(['id', 'full_name', 'phone', 'workplace', 'email'])
+      .select(['id', 'full_name', 'phone', 'workplace', 'email', 'phone_invalid_since'])
       .where('id', '=', relativeId)
       .forUpdate()
       .executeTakeFirst();

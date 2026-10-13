@@ -199,6 +199,11 @@ export const en = {
       'The relative you chose no longer has that phone. Type the phone again.',
     last_relative: 'A student keeps at least one relative. Add another relative first.',
     main_contact_needed: 'Choose another relative as the main contact.',
+    merge_needs_super_admin:
+      'One of these relatives is linked to students of another branch. Only the Super Admin merges them.',
+    relative_changed: 'This relative was changed by someone else. Reload and try again.',
+    relative_merged:
+      'This relative was merged into another record. Type the phone again to find the record that stays.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -1306,6 +1311,23 @@ export const en = {
       found_other: 'Found: {{name}}, linked to {{count}} students. Saving links this person.',
       takenBy_one: 'This phone belongs to {{name}}, linked to {{count}} student.',
       takenBy_other: 'This phone belongs to {{name}}, linked to {{count}} students.',
+      ownerChoice: 'Who is {{name}}?',
+      samePerson: 'The same person: link them',
+      newOwner: 'A different person: the number has a new owner',
+      previousPhone: 'New phone of {{name}}',
+      previousUnknown: 'The new phone of {{name}} is unknown: no valid phone',
+      noValidPhone: 'No valid phone',
+      noValidPhoneSince: 'No valid phone since {{date}}',
+      noValidPhoneFilter: 'No valid phone',
+      takenTitle: 'The phone belongs to another relative',
+      mergeWith: 'Merge with {{name}}',
+      mergeName: 'Name that stays',
+      mergePhone: 'Phone that stays',
+      mergeTitle: 'Merge the two records?',
+      mergeText_one: 'Both become one record; its {{count}} student link moves to it.',
+      mergeText_other: 'Both become one record; all {{count}} student links move to it.',
+      merge: 'Merge',
+      giveNumber: 'Give the number to this relative',
       takenGone: 'This phone belongs to another relative.',
       hidden: 'Hidden',
       show: 'Show workplace and email',
@@ -1513,6 +1535,7 @@ export const en = {
   home: {
     title: 'Home',
     noClass: { title: 'Students with no class', link: 'Open the list' },
+    noValidPhone: { title: 'Parents with no valid phone', link: 'Open the list' },
     empty:
       'This page will show what you need to do today. Your menu and your tasks appear here as the sections of the platform are opened.',
     teaching:
@@ -1639,6 +1662,14 @@ export const en = {
       unknown: 'A notification this version of the app cannot show yet. Reload the page.',
       sample: {
         message: 'Sample: {{text}}',
+      },
+      relative: {
+        renamed:
+          'A parent of your students, {{previousName}}, was renamed to {{fullName}} in another branch.',
+        phone_changed:
+          'The main phone of {{fullName}}, a parent of your students, was changed in another branch.',
+        merged:
+          'The parent records {{mergedName}} and {{fullName}} were merged in another branch; {{fullName}} stays.',
       },
     },
   },

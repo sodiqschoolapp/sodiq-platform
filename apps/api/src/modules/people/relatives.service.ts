@@ -6,14 +6,16 @@ import {
   spellingKey,
   type Relationship,
   type RelativeDetail,
+  type RelativeEdit,
   type RelativeIdentity,
   type RelativeLinkEdit,
   type RelativeLinkInput,
   type RelativeList,
   type RelativeListItem,
   type RelativeListQuery,
+  type RelativeMerge,
+  type RelativeNoValidPhone,
   type RelativePhoneMatchResult,
-  type RelativeRecord,
   type RelativeStudent,
   type RelativeUnlink,
   type StudentRelatives,
@@ -25,7 +27,13 @@ import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { changesOf, notFound } from '../setup/setup-refusals.js';
-import { linkValueOf, RelativeWrites, recordOf, writingPhone } from './relative-writes.js';
+import {
+  linkValueOf,
+  refusingRelativeRaces,
+  RelativeWrites,
+  recordOf,
+  writingPhone,
+} from './relative-writes.js';
 import { Students } from './students.service.js';
 
 function branchOf(access: Access): string {
@@ -44,6 +52,10 @@ const principalOf = (access: Access): string | undefined =>
   access.assignments.find(
     (assignment) => assignment.role === 'principal' && assignment.branchId === access.branchId,
   )?.id;
+
+/** The current Super Admin assignment of the account, which counts in every branch. */
+const superAdminOf = (access: Access): string | undefined =>
+  access.assignments.find((assignment) => assignment.role === 'super_admin')?.id;
 
 /**
  * Workplace and email are read as Identity (decision 5, Look first): the
@@ -86,7 +98,12 @@ export class Relatives {
     return this.transactions.run(access.branchIds, async (transaction) => {
       let found = transaction
         .selectFrom('relatives')
-        .select(['relatives.id', 'relatives.full_name', 'relatives.phone'])
+        .select([
+          'relatives.id',
+          'relatives.full_name',
+          'relatives.phone',
+          'relatives.phone_invalid_since',
+        ])
         .where((eb) =>
           eb.exists(
             eb
@@ -104,6 +121,9 @@ export class Relatives {
       if (query.phone !== undefined && query.phone !== '') {
         found = found.where(sql<boolean>`strpos(relatives.phone, ${query.phone}) > 0`);
       }
+      if (query.filter === 'no_valid_phone') {
+        found = found.where(await this.noValidPhoneCondition(transaction, branchId));
+      }
       const rows = await found.orderBy('relatives.name_key').orderBy('relatives.id').execute();
       const students = await this.studentsOf(
         transaction,
@@ -118,6 +138,7 @@ export class Relatives {
           phone: row.phone,
           students: students.get(row.id) ?? [],
           elsewhere: await this.writes.elsewhere(transaction, row.id),
+          phoneInvalidSince: row.phone_invalid_since?.toISOString() ?? null,
         });
       }
       return {
@@ -126,6 +147,49 @@ export class Relatives {
         canEdit: holderOf(access, 'relatives', 'edit') !== undefined,
       };
     });
+  }
+
+  /**
+   * The relatives of the branch with "no valid phone" and a student of the
+   * branch active today, counted for the Academic Vice Principal's home
+   * (`edge`, row 2: "listed for the Academic Vice Principal while a linked
+   * student is active"; task 2.5b-1, decision 3).
+   */
+  noValidPhone(access: Access): Promise<RelativeNoValidPhone> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const found = await transaction
+        .selectFrom('relatives')
+        .select((eb) => eb.fn.countAll<string>().as('count'))
+        .where(await this.noValidPhoneCondition(transaction, branchId))
+        .executeTakeFirstOrThrow();
+      return { count: Number(found.count) };
+    });
+  }
+
+  /**
+   * The condition of a relative with no valid phone linked live to a student
+   * of the branch whose status today is active (`statusOn` of the students).
+   */
+  private async noValidPhoneCondition(transaction: Transaction, branchId: string) {
+    const today = await this.students.todayIn(transaction, branchId);
+    return sql<boolean>`(
+      relatives.phone_invalid_since is not null
+      and exists (
+        select 1 from student_relatives l
+        where l.relative_id = relatives.id
+          and l.branch_id = ${branchId}::uuid
+          and l.unlinked_at is null
+          and (
+            select ss.status from student_statuses ss
+            where ss.student_id = l.student_id
+              and coalesce(ss.valid_until, 'infinity'::date) > ${today}::date
+              and ss.valid_from < coalesce(ss.valid_until, 'infinity'::date)
+            order by ss.valid_from
+            limit 1
+          ) = 'active'
+      )
+    )`;
   }
 
   /** A relative's page (`04`: "Shows the relative's data and all linked students"). */
@@ -150,48 +214,342 @@ export class Relatives {
    * The record of a relative, for every linked student (`04`: "Editing the
    * phone or name here changes it for every linked student"). A phone held by
    * another relative is refused with that relative shown (`04`, Changing a
-   * phone).
+   * phone), or given with `newOwner`: the holder gets a new phone or "no
+   * valid phone" (decision 8 of #73). A change of name or phone is told to
+   * the other branches where the relative is linked (`edge`, row 1).
    */
-  edit(
+  edit(access: Access, id: string, edit: RelativeEdit, requestId: string): Promise<RelativeDetail> {
+    const branchId = branchOf(access);
+    const { newOwner, ...record } = edit;
+    return this.writes.refusingHeldPhone(access, () =>
+      refusingRelativeRaces(() =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          const row = await this.writes.lockRelative(transaction, branchId, id);
+          const changes = changesOf({ ...recordOf(row) }, { ...record });
+          if (changes === null) {
+            return this.readDetail(transaction, access, id);
+          }
+          const owner = newOwner ?? null;
+          const released =
+            owner !== null && record.phone !== null && record.phone !== row.phone
+              ? await this.writes.releasePhone(transaction, access, record.phone, owner, 'newOwner')
+              : null;
+          await writingPhone(record.phone, 'phone', 'relative_phone_taken', () =>
+            transaction
+              .updateTable('relatives')
+              .set({
+                full_name: record.fullName,
+                name_key: relativeNameKey(record.fullName),
+                phone: record.phone,
+                workplace: record.workplace,
+                email: record.email,
+              })
+              .where('id', '=', id)
+              .execute(),
+          );
+          if (released !== null && owner !== null && record.phone !== null) {
+            await this.writes.releasedEntry(
+              transaction,
+              access,
+              released,
+              record.phone,
+              owner,
+              id,
+              requestId,
+            );
+          }
+          await this.audit.record(transaction, {
+            branchId: null,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'relative.edit',
+            record: { type: 'relative', id },
+            oldValue: changes.oldValue,
+            newValue: changes.newValue,
+            details: { branchId },
+            requestId,
+          });
+          const told = await this.writes.noticeAccounts(transaction, id, branchId);
+          if (record.fullName !== row.full_name) {
+            await this.writes.tell(
+              transaction,
+              access,
+              'relative.renamed',
+              { previousName: row.full_name, fullName: record.fullName },
+              told,
+            );
+          }
+          if (record.phone !== row.phone) {
+            await this.writes.tell(
+              transaction,
+              access,
+              'relative.phone_changed',
+              { fullName: record.fullName },
+              told,
+            );
+          }
+          return this.readDetail(transaction, access, id);
+        }),
+      ),
+    );
+  }
+
+  /**
+   * Merges two records of one person (`edge/close-relatives`, row 3: "The
+   * Academic Vice Principal picks the name and phone that stay; all links
+   * move to one record. Across branches, only the Super Admin merges"; task
+   * 2.5b-1, decisions 6 and 7). The record whose phone stays stays, with its
+   * id and its Parent account; the other is emptied, marked `merged_into`
+   * and archived with its account switched off (correction 2). Lock order:
+   * the students of both records' live links, then both records, each in the
+   * order of its id; then everything is read again, and a change meanwhile
+   * is refused `relative_changed` (decision 9).
+   */
+  async merge(
     access: Access,
     id: string,
-    record: RelativeRecord,
+    input: RelativeMerge,
     requestId: string,
   ): Promise<RelativeDetail> {
     const branchId = branchOf(access);
-    return this.writes.refusingHeldPhone(access, () =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        const row = await this.writes.lockRelative(transaction, branchId, id);
-        const changes = changesOf({ ...recordOf(row) }, { ...record });
-        if (changes === null) {
-          return this.readDetail(transaction, access, id);
-        }
-        await writingPhone(record.phone, 'phone', 'relative_phone_taken', () =>
+    if (input.otherId === id) {
+      throw new ApiException('request_refused', 422);
+    }
+    const superAdmin = superAdminOf(access);
+    const branches =
+      superAdmin === undefined
+        ? access.branchIds
+        : await this.transactions.run([], async (transaction) =>
+            (await transaction.selectFrom('branches').select('id').orderBy('id').execute()).map(
+              (row) => row.id,
+            ),
+          );
+    const ids = [id, input.otherId].sort((a, b) => a.localeCompare(b));
+    return refusingRelativeRaces(() =>
+      this.transactions.run(branches, async (transaction) => {
+        const liveLinks = () =>
           transaction
-            .updateTable('relatives')
-            .set({
-              full_name: record.fullName,
-              name_key: relativeNameKey(record.fullName),
-              phone: record.phone,
-              workplace: record.workplace,
-              email: record.email,
-            })
-            .where('id', '=', id)
-            .execute(),
+            .selectFrom('student_relatives')
+            .select([
+              'id',
+              'student_id',
+              'branch_id',
+              'relative_id',
+              'relationship',
+              'main_contact',
+              'portal_access',
+              'receives_notices',
+            ])
+            .where('relative_id', 'in', ids)
+            .where('unlinked_at', 'is', null)
+            .orderBy('linked_at')
+            .orderBy('id')
+            .execute();
+        // Both records are live and visible in the transaction: the branch
+        // of the request, or every branch for the Super Admin.
+        const before = await liveLinks();
+        for (const one of ids) {
+          if (!before.some((link) => link.relative_id === one)) {
+            throw notFound();
+          }
+        }
+        const students = [...new Set(before.map((link) => link.student_id))].sort((a, b) =>
+          a.localeCompare(b),
         );
+        await transaction
+          .selectFrom('students')
+          .select('id')
+          .where('id', 'in', students)
+          .orderBy('id')
+          .forUpdate()
+          .execute();
+        await transaction
+          .selectFrom('relatives')
+          .select('id')
+          .where('id', 'in', ids)
+          .orderBy('id')
+          .forUpdate()
+          .execute();
+        // Read again after the locks, each in a statement of its own.
+        const rows = await transaction
+          .selectFrom('relatives')
+          .select(['id', 'full_name', 'phone', 'workplace', 'email', 'merged_into'])
+          .where('id', 'in', ids)
+          .execute();
+        const links = await liveLinks();
+        const self = rows.find((row) => row.id === id);
+        const other = rows.find((row) => row.id === input.otherId);
+        if (
+          self === undefined ||
+          other === undefined ||
+          self.merged_into !== null ||
+          other.merged_into !== null ||
+          self.phone !== input.thisPhone ||
+          other.phone !== input.otherPhone ||
+          links.some((link) => !students.includes(link.student_id)) ||
+          ids.some((one) => !links.some((link) => link.relative_id === one))
+        ) {
+          throw new ApiException('relative_changed', 409);
+        }
+        const elsewhere =
+          links.some((link) => link.branch_id !== branchId) ||
+          (await this.writes.elsewhere(transaction, id)) > 0 ||
+          (await this.writes.elsewhere(transaction, input.otherId)) > 0;
+        if (elsewhere && superAdmin === undefined) {
+          throw new ApiException('merge_needs_super_admin', 403);
+        }
+        const assignmentId =
+          elsewhere && superAdmin !== undefined ? superAdmin : access.assignmentId;
+        const [kept, merged] = input.phoneOf === 'this' ? [self, other] : [other, self];
+        const fullName = input.nameOf === 'this' ? self.full_name : other.full_name;
+        // The other branches of both records, while both are still linked.
+        const told = [
+          ...(await this.writes.noticeAccounts(transaction, kept.id, branchId)),
+          ...(await this.writes.noticeAccounts(transaction, merged.id, branchId)),
+        ];
+        // The merged record is written while it is still visible (review finding 4).
+        const emptied = await transaction
+          .updateTable('relatives')
+          .set({ phone: null, merged_into: kept.id })
+          .where('id', '=', merged.id)
+          .executeTakeFirst();
+        if (emptied.numUpdatedRows !== 1n) {
+          throw new ApiException('relative_changed', 409);
+        }
+        const moment = await transactionMoment(transaction);
+        for (const link of links.filter((one) => one.relative_id === merged.id)) {
+          const keptLink = links.find(
+            (one) => one.relative_id === kept.id && one.student_id === link.student_id,
+          );
+          await transaction
+            .updateTable('student_relatives')
+            .set({ main_contact: false, unlinked_at: moment })
+            .where('id', '=', link.id)
+            .execute();
+          if (keptLink !== undefined) {
+            // The student keeps the kept record's link; the main mark moves to it.
+            if (link.main_contact && !keptLink.main_contact) {
+              await transaction
+                .updateTable('student_relatives')
+                .set({ main_contact: true })
+                .where('id', '=', keptLink.id)
+                .execute();
+              await this.audit.record(transaction, {
+                branchId: keptLink.branch_id,
+                actorId: access.accountId,
+                assignmentId,
+                action: 'relative.link_edit',
+                record: { type: 'relative', id: kept.id },
+                oldValue: { studentId: link.student_id, mainContact: false },
+                newValue: { studentId: link.student_id, mainContact: true },
+                details: { mergedId: merged.id },
+                requestId,
+              });
+            }
+            continue;
+          }
+          await transaction
+            .insertInto('student_relatives')
+            .values({
+              student_id: link.student_id,
+              branch_id: link.branch_id,
+              relative_id: kept.id,
+              relationship: link.relationship,
+              main_contact: link.main_contact,
+              portal_access: link.portal_access,
+              receives_notices: link.receives_notices,
+              linked_at: moment,
+            })
+            .execute();
+          await this.audit.record(transaction, {
+            branchId: link.branch_id,
+            actorId: access.accountId,
+            assignmentId,
+            action: 'relative.link_moved',
+            record: { type: 'relative', id: kept.id },
+            oldValue: { ...linkValueOf(link.student_id, link), relativeId: merged.id },
+            newValue: { ...linkValueOf(link.student_id, link), relativeId: kept.id },
+            requestId,
+          });
+        }
+        const keptValue = {
+          fullName,
+          phone: kept.phone,
+          workplace: kept.workplace ?? merged.workplace,
+          email: kept.email ?? merged.email,
+        };
+        await transaction
+          .updateTable('relatives')
+          .set({
+            full_name: keptValue.fullName,
+            name_key: relativeNameKey(keptValue.fullName),
+            workplace: keptValue.workplace,
+            email: keptValue.email,
+          })
+          .where('id', '=', kept.id)
+          .execute();
         await this.audit.record(transaction, {
           branchId: null,
           actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'relative.edit',
-          record: { type: 'relative', id },
-          oldValue: changes.oldValue,
-          newValue: changes.newValue,
+          assignmentId,
+          action: 'relative.merge',
+          record: { type: 'relative', id: kept.id },
+          oldValue: recordOf(kept),
+          newValue: keptValue,
+          details: { branchId, mergedId: merged.id },
+          requestId,
+        });
+        await this.audit.record(transaction, {
+          branchId: null,
+          actorId: access.accountId,
+          assignmentId,
+          action: 'relative.merged',
+          record: { type: 'relative', id: merged.id },
+          oldValue: recordOf(merged),
+          // Its Parent account stays with it, switched off (correction 2).
+          newValue: { mergedInto: kept.id, phone: null, account: 'off' },
+          details: { branchId, keptId: kept.id },
+          requestId,
+        });
+        await this.audit.record(transaction, {
+          branchId: null,
+          actorId: access.accountId,
+          assignmentId,
+          action: 'relative.archive',
+          record: { type: 'relative', id: merged.id },
           details: { branchId },
           requestId,
         });
-        return this.readDetail(transaction, access, id);
+        await this.tell(transaction, access, told, merged.full_name, keptValue.fullName);
+        const detail = await this.readDetail(transaction, access, kept.id);
+        // The students of other branches are counted against the branch of the
+        // request, also in the Super Admin's every-branch transaction.
+        const outside = await transaction
+          .selectFrom('student_relatives')
+          .select((eb) => eb.fn.countAll<string>().as('count'))
+          .where('relative_id', '=', kept.id)
+          .where('unlinked_at', 'is', null)
+          .where('branch_id', '<>', branchId)
+          .executeTakeFirstOrThrow();
+        return { ...detail, elsewhere: Number(outside.count) + detail.elsewhere };
       }),
+    );
+  }
+
+  /** The notice of a merge to the other branches of both records. */
+  private async tell(
+    transaction: Transaction,
+    access: Access,
+    accountIds: readonly string[],
+    mergedName: string,
+    fullName: string,
+  ): Promise<void> {
+    await this.writes.tell(
+      transaction,
+      access,
+      'relative.merged',
+      { mergedName, fullName },
+      accountIds,
     );
   }
 
@@ -238,21 +596,23 @@ export class Relatives {
     requestId: string,
   ): Promise<StudentRelatives> {
     return this.writes.refusingHeldPhone(access, () =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        await this.students.lockStudent(transaction, studentId);
-        const links = await this.writes.linksOf(transaction, studentId);
-        // A student's only relative is the main contact automatically (`edge`).
-        const mainContact = input.mainContact || links.length === 0;
-        await this.writes.link(
-          transaction,
-          access,
-          studentId,
-          { ...input, mainContact },
-          'relative',
-          requestId,
-        );
-        return this.readStudentRelatives(transaction, access, studentId);
-      }),
+      refusingRelativeRaces(() =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          await this.students.lockStudent(transaction, studentId);
+          const links = await this.writes.linksOf(transaction, studentId);
+          // A student's only relative is the main contact automatically (`edge`).
+          const mainContact = input.mainContact || links.length === 0;
+          await this.writes.link(
+            transaction,
+            access,
+            studentId,
+            { ...input, mainContact },
+            'relative',
+            requestId,
+          );
+          return this.readStudentRelatives(transaction, access, studentId);
+        }),
+      ),
     );
   }
 
@@ -411,7 +771,7 @@ export class Relatives {
   private async readRelative(transaction: Transaction, branchId: string, id: string) {
     const row = await transaction
       .selectFrom('relatives')
-      .select(['id', 'full_name', 'phone', 'workplace', 'email'])
+      .select(['id', 'full_name', 'phone', 'workplace', 'email', 'phone_invalid_since'])
       .where('id', '=', id)
       .where((eb) =>
         eb.exists(
@@ -445,6 +805,7 @@ export class Relatives {
       phone: row.phone,
       students: students.get(id) ?? [],
       elsewhere: await this.writes.elsewhere(transaction, id),
+      phoneInvalidSince: row.phone_invalid_since?.toISOString() ?? null,
       identity: identity ? { workplace: row.workplace, email: row.email } : null,
       identityHidden: !identity && principalOf(access) !== undefined,
       canEdit: holderOf(access, 'relatives', 'edit') !== undefined,

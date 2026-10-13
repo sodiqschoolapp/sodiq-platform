@@ -618,13 +618,15 @@ describe('close relatives', () => {
         record({ phone: elsewhere }),
       );
       refusedWith(response, 409, 'relative_phone_taken');
-      // Held in another branch only: the name and the count, no id.
+      // Held in another branch only: the name and the count, no id; the
+      // Super Admin may merge across branches (task 2.5b-1, decision 8).
       expect(detailsOf(response)).toEqual([
         {
           path: 'phone',
           code: 'already_exists',
           message: expect.any(String) as string,
           holder: { fullName: 'Shoira Nazarova', students: 1 },
+          mergeable: true,
         },
       ]);
       expect(await snapshot()).toEqual(before);

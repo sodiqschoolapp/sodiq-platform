@@ -1691,6 +1691,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -1737,6 +1740,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -2047,6 +2053,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2093,6 +2102,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -2491,6 +2503,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2537,6 +2552,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -2868,6 +2886,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2914,6 +2935,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -3202,6 +3226,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3248,6 +3275,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -3542,6 +3572,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3588,6 +3621,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -3870,6 +3906,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3916,6 +3955,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -4222,6 +4264,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4268,6 +4313,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -4554,6 +4602,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4600,6 +4651,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -4886,6 +4940,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4932,6 +4989,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -5209,6 +5269,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5255,6 +5318,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -5532,6 +5598,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5578,6 +5647,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -5835,6 +5907,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5881,6 +5956,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -6138,6 +6216,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6184,6 +6265,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -6487,6 +6571,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6533,6 +6620,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -6885,6 +6975,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6931,6 +7024,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -7216,6 +7312,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -7262,6 +7361,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -7626,6 +7728,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -7672,6 +7777,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -8028,6 +8136,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8074,6 +8185,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -8421,6 +8535,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8467,6 +8584,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -8749,6 +8869,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8795,6 +8918,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -9155,6 +9281,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -9201,6 +9330,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -9521,6 +9653,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -9567,6 +9702,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -9887,6 +10025,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -9933,6 +10074,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -10237,6 +10381,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10283,6 +10430,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -10587,6 +10737,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10633,6 +10786,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -10897,6 +11053,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10943,6 +11102,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -11207,6 +11369,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -11253,6 +11418,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -11552,6 +11720,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -11598,6 +11769,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -11909,6 +12083,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -11955,6 +12132,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -12278,6 +12458,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12324,6 +12507,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -12621,6 +12807,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12667,6 +12856,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -13005,6 +13197,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -13051,6 +13246,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -13381,6 +13579,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -13427,6 +13628,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -13731,6 +13935,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -13777,6 +13984,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -14095,6 +14305,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -14141,6 +14354,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -14457,6 +14673,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -14503,6 +14722,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -14825,6 +15047,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -14871,6 +15096,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -15167,6 +15395,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15213,6 +15444,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -15509,6 +15743,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15555,6 +15792,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -15838,6 +16078,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15884,6 +16127,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -16272,6 +16518,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -16318,6 +16567,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -16692,6 +16944,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -16738,6 +16993,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -17120,6 +17378,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -17166,6 +17427,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -17566,6 +17830,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -17612,6 +17879,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -17976,6 +18246,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18022,6 +18295,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -18386,6 +18662,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18432,6 +18711,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -18771,6 +19053,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18817,6 +19102,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -19234,6 +19522,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19280,6 +19571,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -19631,6 +19925,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19677,6 +19974,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -20070,6 +20370,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -20116,6 +20419,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -20982,6 +21288,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -21028,6 +21337,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -21390,6 +21702,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -21436,6 +21751,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -21896,6 +22214,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -21942,6 +22263,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -22779,6 +23103,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -22825,6 +23152,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -23297,6 +23627,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -23343,6 +23676,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -23697,6 +24033,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -23743,6 +24082,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -24097,6 +24439,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -24143,6 +24488,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -24535,6 +24883,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -24581,6 +24932,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -24835,6 +25189,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -24881,6 +25238,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -25155,6 +25515,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -25201,6 +25564,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -25493,6 +25859,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -25539,6 +25908,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -25844,6 +26216,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -25890,6 +26265,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -26188,6 +26566,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -26234,6 +26615,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -26504,6 +26888,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -26550,6 +26937,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -26803,6 +27193,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -26849,6 +27242,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -27126,6 +27522,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -27172,6 +27571,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -27545,6 +27947,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -27591,6 +27996,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -28071,6 +28479,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -28117,6 +28528,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -28404,6 +28818,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -28450,6 +28867,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -28942,6 +29362,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -28988,6 +29411,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -29387,6 +29813,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -29433,6 +29862,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -29800,6 +30232,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -29846,6 +30281,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -30213,6 +30651,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -30259,6 +30700,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -30595,6 +31039,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -30641,6 +31088,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -31016,6 +31466,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -31062,6 +31515,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -31408,6 +31864,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -31454,6 +31913,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -31883,6 +32345,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -31929,6 +32394,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -32629,6 +33097,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -32675,6 +33146,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -32963,6 +33437,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -33009,6 +33486,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -33587,6 +34067,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -33633,6 +34116,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -34343,6 +34829,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -34389,6 +34878,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -34718,6 +35210,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -34764,6 +35259,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -35396,6 +35894,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -35442,6 +35943,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -36050,6 +36554,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -36096,6 +36603,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -36735,6 +37245,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -36781,6 +37294,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -37026,6 +37542,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -37072,6 +37591,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -37528,6 +38050,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -37574,6 +38099,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -37848,6 +38376,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -37894,6 +38425,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -38135,6 +38669,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -38181,6 +38718,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -38688,6 +39228,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -38734,6 +39277,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -39220,6 +39766,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -39266,6 +39815,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -39762,6 +40314,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -39808,6 +40363,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -40027,6 +40585,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -40073,6 +40634,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -40308,6 +40872,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -40354,6 +40921,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -40741,6 +41311,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -40787,6 +41360,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -41194,6 +41770,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -41240,6 +41819,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -41627,6 +42209,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -41673,6 +42258,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -41929,6 +42517,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -41975,6 +42566,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -42231,6 +42825,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -42277,6 +42874,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -42556,6 +43156,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -42602,6 +43205,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -42948,6 +43554,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -42994,6 +43603,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -43589,6 +44201,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -43635,6 +44250,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -43855,6 +44473,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -43901,6 +44522,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -44135,6 +44759,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -44181,6 +44808,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -44748,6 +45378,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -44794,6 +45427,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -45349,6 +45985,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -45395,6 +46034,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -45713,6 +46355,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -45759,6 +46404,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -46182,6 +46830,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -46228,6 +46879,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -46513,6 +47167,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -46559,6 +47216,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -46914,6 +47574,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -46960,6 +47623,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -47393,6 +48059,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -47439,6 +48108,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -47794,6 +48466,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -47840,6 +48515,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -48195,6 +48873,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -48241,6 +48922,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -48463,6 +49147,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -48509,6 +49196,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -48879,6 +49569,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -48925,6 +49618,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -49265,6 +49961,87 @@
                             "kind",
                             "relativeId",
                             "phone",
+                            "relationship",
+                            "mainContact",
+                            "portalAccess",
+                            "receivesNotices"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "new_owner"
+                              ]
+                            },
+                            "relative": {
+                              "type": "object",
+                              "properties": {
+                                "fullName": {
+                                  "type": "string"
+                                },
+                                "phone": {
+                                  "type": "string"
+                                },
+                                "workplace": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "email": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "fullName",
+                                "phone",
+                                "workplace",
+                                "email"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "previousId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "previousPhone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "relationship": {
+                              "type": "string",
+                              "enum": [
+                                "father",
+                                "mother",
+                                "grandfather",
+                                "grandmother",
+                                "uncle",
+                                "aunt",
+                                "brother",
+                                "sister",
+                                "guardian",
+                                "other"
+                              ]
+                            },
+                            "mainContact": {
+                              "type": "boolean"
+                            },
+                            "portalAccess": {
+                              "type": "boolean"
+                            },
+                            "receivesNotices": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "relative",
+                            "previousId",
+                            "previousPhone",
                             "relationship",
                             "mainContact",
                             "portalAccess",
@@ -49820,6 +50597,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -49866,6 +50646,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -50096,6 +50879,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -50142,6 +50928,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -50444,6 +51233,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -50490,6 +51282,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -50794,6 +51589,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -50840,6 +51638,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -51423,6 +52224,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -51469,6 +52273,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -52226,6 +53033,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -52272,6 +53082,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -52885,6 +53698,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -52931,6 +53747,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -53218,6 +54037,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -53264,6 +54086,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -53880,6 +54705,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -53926,6 +54754,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -54530,6 +55361,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -54576,6 +55410,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -55186,6 +56023,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -55232,6 +56072,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -55873,6 +56716,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -55919,6 +56765,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -56535,6 +57384,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -56581,6 +57433,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -56830,6 +57685,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -56876,6 +57734,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -57115,6 +57976,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -57161,6 +58025,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -57381,6 +58248,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -57427,6 +58297,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -57661,6 +58534,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -57707,6 +58583,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -57754,6 +58633,17 @@
       "get": {
         "operationId": "RelativesController_list",
         "parameters": [
+          {
+            "name": "filter",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "no_valid_phone"
+              ]
+            }
+          },
           {
             "name": "search",
             "required": false,
@@ -57860,6 +58750,10 @@
                             "type": "integer",
                             "minimum": 0,
                             "maximum": 9007199254740991
+                          },
+                          "phoneInvalidSince": {
+                            "nullable": true,
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -57867,7 +58761,8 @@
                           "fullName",
                           "phone",
                           "students",
-                          "elsewhere"
+                          "elsewhere",
+                          "phoneInvalidSince"
                         ],
                         "additionalProperties": false
                       }
@@ -58039,6 +58934,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -58085,6 +58983,291 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Relatives"
+        ]
+      }
+    },
+    "/api/people/relatives/no-valid-phone": {
+      "get": {
+        "operationId": "RelativesController_noValidPhone",
+        "parameters": [
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "count"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "subject_department_archived",
+                            "subject_move_super_admin",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "staff_id_exhausted",
+                            "staff_department_required",
+                            "subject_outside_department",
+                            "grade_not_in_subject",
+                            "languages_required",
+                            "division_archived",
+                            "status_from_past",
+                            "status_before_admission",
+                            "status_unchanged",
+                            "own_status",
+                            "account_inactive",
+                            "subject_has_teachers",
+                            "department_has_staff",
+                            "availability_overlap",
+                            "photo_invalid",
+                            "photo_too_large",
+                            "photos_not_configured",
+                            "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
+                            "head_teacher_taken",
+                            "subject_unknown",
+                            "role_not_appointment",
+                            "appointment_ends_by_then",
+                            "own_account",
+                            "account_already_locked",
+                            "account_not_locked",
+                            "second_step_off",
+                            "account_missing",
+                            "uid_set_mismatch",
+                            "student_value_taken",
+                            "no_academic_year",
+                            "student_not_active",
+                            "leaving_before_start",
+                            "leaving_not_planned",
+                            "leaving_in_force",
+                            "student_not_inactive",
+                            "undo_not_leaving",
+                            "return_too_early",
+                            "status_date_future",
+                            "student_not_graduated",
+                            "restore_before_graduation",
+                            "date_in_closed_year",
+                            "student_has_data",
+                            "student_changed",
+                            "student_needs_relative",
+                            "relative_phone_taken",
+                            "relative_phone_exists",
+                            "relative_phone_changed",
+                            "last_relative",
+                            "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "recordId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "holder": {
+                                "type": "object",
+                                "properties": {
+                                  "fullName": {
+                                    "type": "string"
+                                  },
+                                  "students": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "fullName",
+                                  "students"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -58355,6 +59538,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -58401,6 +59587,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -58543,6 +59732,10 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     },
+                    "phoneInvalidSince": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "identity": {
                       "nullable": true,
                       "type": "object",
@@ -58575,6 +59768,7 @@
                     "phone",
                     "students",
                     "elsewhere",
+                    "phoneInvalidSince",
                     "identity",
                     "identityHidden",
                     "canEdit"
@@ -58734,6 +59928,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -58780,6 +59977,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -58867,6 +60067,26 @@
                   "email": {
                     "nullable": true,
                     "type": "string"
+                  },
+                  "newOwner": {
+                    "nullable": true,
+                    "type": "object",
+                    "properties": {
+                      "previousId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "previousPhone": {
+                        "nullable": true,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "previousId",
+                      "previousPhone"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -58954,6 +60174,10 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     },
+                    "phoneInvalidSince": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "identity": {
                       "nullable": true,
                       "type": "object",
@@ -58986,6 +60210,7 @@
                     "phone",
                     "students",
                     "elsewhere",
+                    "phoneInvalidSince",
                     "identity",
                     "identityHidden",
                     "canEdit"
@@ -59145,6 +60370,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -59191,6 +60419,446 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Relatives"
+        ]
+      }
+    },
+    "/api/people/relatives/{id}/merge": {
+      "post": {
+        "operationId": "RelativesController_merge",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "otherId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "thisPhone": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "otherPhone": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "phoneOf": {
+                    "type": "string",
+                    "enum": [
+                      "this",
+                      "other"
+                    ]
+                  },
+                  "nameOf": {
+                    "type": "string",
+                    "enum": [
+                      "this",
+                      "other"
+                    ]
+                  }
+                },
+                "required": [
+                  "otherId",
+                  "thisPhone",
+                  "otherPhone",
+                  "phoneOf",
+                  "nameOf"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "fullName": {
+                      "type": "string"
+                    },
+                    "phone": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "students": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "firstName": {
+                            "type": "string"
+                          },
+                          "lastName": {
+                            "type": "string"
+                          },
+                          "uid": {
+                            "type": "string"
+                          },
+                          "relationship": {
+                            "type": "string",
+                            "enum": [
+                              "father",
+                              "mother",
+                              "grandfather",
+                              "grandmother",
+                              "uncle",
+                              "aunt",
+                              "brother",
+                              "sister",
+                              "guardian",
+                              "other"
+                            ]
+                          },
+                          "mainContact": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "firstName",
+                          "lastName",
+                          "uid",
+                          "relationship",
+                          "mainContact"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "elsewhere": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "phoneInvalidSince": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "identity": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "workplace": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "email": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "workplace",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "identityHidden": {
+                      "type": "boolean"
+                    },
+                    "canEdit": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "fullName",
+                    "phone",
+                    "students",
+                    "elsewhere",
+                    "phoneInvalidSince",
+                    "identity",
+                    "identityHidden",
+                    "canEdit"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "subject_department_archived",
+                            "subject_move_super_admin",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "staff_id_exhausted",
+                            "staff_department_required",
+                            "subject_outside_department",
+                            "grade_not_in_subject",
+                            "languages_required",
+                            "division_archived",
+                            "status_from_past",
+                            "status_before_admission",
+                            "status_unchanged",
+                            "own_status",
+                            "account_inactive",
+                            "subject_has_teachers",
+                            "department_has_staff",
+                            "availability_overlap",
+                            "photo_invalid",
+                            "photo_too_large",
+                            "photos_not_configured",
+                            "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
+                            "head_teacher_taken",
+                            "subject_unknown",
+                            "role_not_appointment",
+                            "appointment_ends_by_then",
+                            "own_account",
+                            "account_already_locked",
+                            "account_not_locked",
+                            "second_step_off",
+                            "account_missing",
+                            "uid_set_mismatch",
+                            "student_value_taken",
+                            "no_academic_year",
+                            "student_not_active",
+                            "leaving_before_start",
+                            "leaving_not_planned",
+                            "leaving_in_force",
+                            "student_not_inactive",
+                            "undo_not_leaving",
+                            "return_too_early",
+                            "status_date_future",
+                            "student_not_graduated",
+                            "restore_before_graduation",
+                            "date_in_closed_year",
+                            "student_has_data",
+                            "student_changed",
+                            "student_needs_relative",
+                            "relative_phone_taken",
+                            "relative_phone_exists",
+                            "relative_phone_changed",
+                            "last_relative",
+                            "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "recordId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "holder": {
+                                "type": "object",
+                                "properties": {
+                                  "fullName": {
+                                    "type": "string"
+                                  },
+                                  "students": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "fullName",
+                                  "students"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -59435,6 +61103,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -59481,6 +61152,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -59796,6 +61470,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -59842,6 +61519,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -60031,6 +61711,87 @@
                       "kind",
                       "relativeId",
                       "phone",
+                      "relationship",
+                      "mainContact",
+                      "portalAccess",
+                      "receivesNotices"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "new_owner"
+                        ]
+                      },
+                      "relative": {
+                        "type": "object",
+                        "properties": {
+                          "fullName": {
+                            "type": "string"
+                          },
+                          "phone": {
+                            "type": "string"
+                          },
+                          "workplace": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "email": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "fullName",
+                          "phone",
+                          "workplace",
+                          "email"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "previousId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "previousPhone": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "relationship": {
+                        "type": "string",
+                        "enum": [
+                          "father",
+                          "mother",
+                          "grandfather",
+                          "grandmother",
+                          "uncle",
+                          "aunt",
+                          "brother",
+                          "sister",
+                          "guardian",
+                          "other"
+                        ]
+                      },
+                      "mainContact": {
+                        "type": "boolean"
+                      },
+                      "portalAccess": {
+                        "type": "boolean"
+                      },
+                      "receivesNotices": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "relative",
+                      "previousId",
+                      "previousPhone",
                       "relationship",
                       "mainContact",
                       "portalAccess",
@@ -60290,6 +62051,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -60336,6 +62100,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -60704,6 +62471,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -60750,6 +62520,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -61097,6 +62870,9 @@
                             "relative_phone_changed",
                             "last_relative",
                             "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
                             "request_refused",
                             "internal_error"
                           ]
@@ -61143,6 +62919,9 @@
                                   "students"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -61393,6 +63172,9 @@
                   "relative_phone_changed",
                   "last_relative",
                   "main_contact_needed",
+                  "merge_needs_super_admin",
+                  "relative_changed",
+                  "relative_merged",
                   "request_refused",
                   "internal_error"
                 ]
@@ -61439,6 +63221,9 @@
                         "students"
                       ],
                       "additionalProperties": false
+                    },
+                    "mergeable": {
+                      "type": "boolean"
                     }
                   },
                   "required": [

@@ -3,6 +3,7 @@ import { CONFIG } from '../../config/config.module.js';
 import type { AppConfig } from '../../config/config.js';
 import { AccessModule } from '../access/access.module.js';
 import { AuthModule } from '../auth/auth.module.js';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 import { AccountAccessController } from './account-access.controller.js';
 import { AccountAccess } from './account-access.service.js';
 import { AvailabilityController } from './availability.controller.js';
@@ -39,7 +40,7 @@ import { Vacancies } from './vacancies.service.js';
  * export and photos (task 2.4b-2), their close relatives (task 2.5a).
  */
 @Module({
-  imports: [AccessModule, AuthModule],
+  imports: [AccessModule, AuthModule, NotificationsModule],
   controllers: [
     StaffController,
     StaffAccountsController,

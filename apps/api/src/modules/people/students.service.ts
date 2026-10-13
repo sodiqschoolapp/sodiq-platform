@@ -32,7 +32,7 @@ import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { changesOf, notFound } from '../setup/setup-refusals.js';
-import { RelativeWrites } from './relative-writes.js';
+import { refusingRelativeRaces, RelativeWrites } from './relative-writes.js';
 import { exportGroupsOf } from './student-export.js';
 import { holdsData, plannedAfter, type StoredStudentStatus } from './student-status.js';
 
@@ -409,95 +409,111 @@ export class Students {
     }
     return this.refusingTaken(access, () =>
       this.relatives.refusingHeldPhone(access, () =>
-        this.transactions.run(access.branchIds, async (transaction) => {
-          await this.checkSet(transaction, branchId, input.uid, input.grade, input.startsOn, input);
-          const moment = await transactionMoment(transaction);
-          const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
-          const id = found.rows[0]?.id;
-          if (id === undefined) {
-            throw new Error('No id for the new student.');
-          }
-          await this.inserting(
-            { uid: input.uid, jshshir: input.jshshir, documentNumber: input.documentNumber },
-            () =>
+        refusingRelativeRaces(() =>
+          this.transactions.run(access.branchIds, async (transaction) => {
+            await this.checkSet(
+              transaction,
+              branchId,
+              input.uid,
+              input.grade,
+              input.startsOn,
+              input,
+            );
+            const moment = await transactionMoment(transaction);
+            const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
+            const id = found.rows[0]?.id;
+            if (id === undefined) {
+              throw new Error('No id for the new student.');
+            }
+            await this.inserting(
+              { uid: input.uid, jshshir: input.jshshir, documentNumber: input.documentNumber },
+              () =>
+                transaction
+                  .insertInto('students')
+                  .values({
+                    id,
+                    branch_id: branchId,
+                    uid: input.uid,
+                    starts_on: input.startsOn,
+                    created_by: access.accountId,
+                    ...columnsOf(input),
+                  })
+                  .execute(),
+            );
+            await this.inserting({ uid: input.uid }, () =>
               transaction
-                .insertInto('students')
+                .insertInto('student_uids')
+                .values({ uid: input.uid, student_id: id, branch_id: branchId, held_from: moment })
+                .execute(),
+            );
+            await this.inserting({ 'contract.number': input.contract.number }, () =>
+              transaction
+                .insertInto('student_contracts')
                 .values({
-                  id,
+                  student_id: id,
                   branch_id: branchId,
-                  uid: input.uid,
-                  starts_on: input.startsOn,
-                  created_by: access.accountId,
-                  ...columnsOf(input),
+                  number: input.contract.number,
+                  signed_on: input.contract.signedOn,
                 })
                 .execute(),
-          );
-          await this.inserting({ uid: input.uid }, () =>
-            transaction
-              .insertInto('student_uids')
-              .values({ uid: input.uid, student_id: id, branch_id: branchId, held_from: moment })
-              .execute(),
-          );
-          await this.inserting({ 'contract.number': input.contract.number }, () =>
-            transaction
-              .insertInto('student_contracts')
+            );
+            await transaction
+              .insertInto('student_statuses')
               .values({
                 student_id: id,
                 branch_id: branchId,
-                number: input.contract.number,
-                signed_on: input.contract.signedOn,
+                status: 'active',
+                valid_from: input.startsOn,
+                cause: 'start',
               })
-              .execute(),
-          );
-          await transaction
-            .insertInto('student_statuses')
-            .values({
-              student_id: id,
-              branch_id: branchId,
-              status: 'active',
-              valid_from: input.startsOn,
-              cause: 'start',
-            })
-            .execute();
-          await transaction
-            .insertInto('student_accounts')
-            .values({ student_id: id, branch_id: branchId, created_at: moment })
-            .execute();
-          await this.audit.record(transaction, {
-            branchId,
-            actorId: access.accountId,
-            assignmentId: access.assignmentId,
-            action: 'student.create',
-            record: { type: 'student', id },
-            // Each relative and link has an entry of its own.
-            newValue: { ...input, confirmUidSet: undefined, relatives: undefined },
-            requestId,
-          });
-          // The relatives found by phone in the order of their id, then the new
-          // ones: the lock order of the links (`relatives_follow_links`).
-          const links = input.relatives
-            .map((link, index) => ({ link, index }))
-            .sort((a, b) =>
-              a.link.kind === b.link.kind
-                ? a.link.kind === 'existing' && b.link.kind === 'existing'
-                  ? a.link.relativeId.localeCompare(b.link.relativeId)
-                  : a.index - b.index
-                : a.link.kind === 'existing'
-                  ? -1
-                  : 1,
-            );
-          for (const { link, index } of links) {
-            await this.relatives.link(
-              transaction,
-              access,
-              id,
-              link,
-              `relatives.${String(index)}`,
+              .execute();
+            await transaction
+              .insertInto('student_accounts')
+              .values({ student_id: id, branch_id: branchId, created_at: moment })
+              .execute();
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'student.create',
+              record: { type: 'student', id },
+              // Each relative and link has an entry of its own.
+              newValue: { ...input, confirmUidSet: undefined, relatives: undefined },
               requestId,
-            );
-          }
-          return this.readDetail(transaction, access, id);
-        }),
+            });
+            // The relatives found by phone, and the earlier holders of a number
+            // with a new owner, in the order of their id, then the new ones: the
+            // lock order of the links (`relatives_follow_links`; task 2.5b-1).
+            const lockedId = (link: (typeof input.relatives)[number]): string | null =>
+              link.kind === 'existing'
+                ? link.relativeId
+                : link.kind === 'new_owner'
+                  ? link.previousId
+                  : null;
+            const links = input.relatives
+              .map((link, index) => ({ link, index, key: lockedId(link) }))
+              .sort((a, b) =>
+                a.key !== null && b.key !== null
+                  ? a.key.localeCompare(b.key)
+                  : a.key === null && b.key === null
+                    ? a.index - b.index
+                    : a.key !== null
+                      ? -1
+                      : 1,
+              );
+            for (const { link, index } of links) {
+              await this.relatives.link(
+                transaction,
+                access,
+                id,
+                link,
+                `relatives.${String(index)}`,
+                requestId,
+              );
+            }
+            return this.readDetail(transaction, access, id);
+          }),
+        ),
       ),
     );
   }
