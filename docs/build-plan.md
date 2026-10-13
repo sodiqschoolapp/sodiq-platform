@@ -257,12 +257,17 @@ How to read the task lines:
   - Build: extra phones of a relative (not unique, not used for a match or for sign-in; Contact); a staff record and a relative record marked as the same person (the report of marks a staff member enters for their own child comes with the journal); the relatives of a student in the student export (Contact columns for the Contact exporters only).
   - Done when: an extra phone is never unique nor used for a match, and the export holds relatives only for the Contact exporters.
 
-- [ ] **2.6 Audit log screen and personal data tools**
-  - Read: `edge/people-roles-accounts` (Personal data and the audit log), `13` (Security).
-  - Build: the audit log screen with search by person, record and date, and the reading rights per role; each user's own sign-in history; the personal data report per person; export rules (limited by role, every export logged).
+- [x] **2.6a Audit log screen, reading rights and the own sign-in history** (2.6 split in two, pull request #75, decision 1)
+  - Read: `edge/people-roles-accounts` (Personal data and the audit log), `13` (Security), the plan and the decisions of pull request #75.
+  - Build: the audit log screen with search by person, record and date, and the reading rights per role (the school-wide entries a branch reads, the Super Admin's scopes); identity hidden in the entries with a logged show; each user's own sign-in history; export rules (limited by role, every export logged, a pinned list of export routes).
   - Done when: a Principal sees only the branch's log and every export leaves a log entry.
   - From 2.5a (pull request #72, decision 17 as changed by correction 1): the entries of a relative's record (`relative.create`, `relative.edit`, `relative.archive`, `relative.restore`) are in `audit_log_school` with the branch of the request in `details`; the link entries are in the branch's log. Decide which branches read the record entries of a relative.
   - From 2.4b-1 (pull request #68): the audit entries `student.create`, `student.edit` and `student.delete` hold the identity fields of the student; a reader without the Identity group (the Principal) sees them hidden, with a logged show, as on the record.
+
+- [ ] **2.6b The personal data report per person** (split from 2.6 on pull request #75, decision 1)
+  - Read: `edge/people-roles-accounts` (Personal data and the audit log: "The Super Admin can produce a personal data report per person"), `13` (Security), "Decided ahead for tasks 2.1 to 2.6" (answer 25: a printable page, no PDF library), `docs/design-system.md` (Printouts), the plan and the decisions of pull request #75.
+  - Build: for the Super Admin, the personal data report of a student, a relative or a staff member on screen as a printable page: every field of the record in every group, the links (relatives, students), the account and its roles, the photo, the consent and statuses, and the audit entries about the person; producing it is an export and leaves an audit entry.
+  - Done when: the Super Admin prints the report of a student and the log holds the entry; no other role reaches it.
 
 - [ ] **2.7 Polish of Phases 1 and 2**
   - Read: `docs/design-system.md`, `.claude/rules/web.md`, issue #39 (the owner's polish list; the owner adds the findings of the hand tests there before this task starts), `03` (the Branches list, spec change of 12 October 2026), `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7").
