@@ -35,7 +35,13 @@ import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { schoolDateText } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
-import { invalidateStudents, studentPhotoQuery, studentsQuery } from './people-api';
+import {
+  invalidateRelatives,
+  invalidateStudents,
+  phoneMatch,
+  studentPhotoQuery,
+  studentsQuery,
+} from './people-api';
 import { PeopleTabs } from './people-tabs';
 import { StudentForm } from './student-form';
 import { StudentPanel } from './student-panel';
@@ -270,7 +276,7 @@ export function StudentsPage() {
     },
     onSuccess: async () => {
       setAdding(false);
-      await invalidateStudents(queryClient);
+      await invalidateRelatives(queryClient);
     },
     // A holder saved after the list was read: the list is read again, so the
     // refusal can name them (spec review of the build).
@@ -455,6 +461,7 @@ export function StudentsPage() {
             onCreate={async (record) => {
               await create.mutateAsync(record);
             }}
+            onPhoneMatch={phoneMatch}
           />
           <div>
             <Button

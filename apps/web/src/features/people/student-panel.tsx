@@ -24,12 +24,13 @@ import { Segmented } from '@/components/ui/segmented';
 import { useView } from '@/features/access/use-view';
 import { schoolDateText } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
-import { invalidateStudents, studentDetailQuery } from './people-api';
+import { invalidateStudents, studentDetailQuery, studentRelativesQuery } from './people-api';
 import { StudentForm, takenOf, takenText } from './student-form';
 import { StudentPhotoSection } from './student-photo-section';
+import { StudentRelativesTab } from './student-relatives';
 import { StatusSection } from './student-status-section';
 
-type Tab = 'overview' | 'contract';
+type Tab = 'overview' | 'relatives' | 'contract';
 
 interface StudentPanelProps {
   id: string;
@@ -57,7 +58,13 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     ...studentDetailQuery(branchId, id),
     enabled: branchId !== null && !deleted,
   });
-  const [tab, setTab] = useState<Tab>('overview');
+  // Unchosen, a student with no relative opens on the Relatives tab (task 2.5a, decision 11).
+  const [tab, setTab] = useState<Tab | null>(null);
+  const relatives = useQuery({
+    ...studentRelativesQuery(branchId, id),
+    enabled:
+      branchId !== null && !deleted && detail.data !== undefined && detail.data.contact !== null,
+  });
   const where = () => ({ header: branchHeader(), path: { id } });
   const refresh = async (answer: unknown) => {
     queryClient.setQueryData(
@@ -132,11 +139,16 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   // segmented control of the design system; one tab draws no control.
   const tabs: { key: Tab; title: string }[] = [
     { key: 'overview', title: t('people.students.tabs.overview') },
+    // The Relatives tab for the Contact readers (`02`; task 2.5a).
+    ...(student.contact === null
+      ? []
+      : [{ key: 'relatives' as const, title: t('people.students.tabs.relatives') }]),
     ...(student.financial === null
       ? []
       : [{ key: 'contract' as const, title: t('people.students.tabs.contract') }]),
   ];
-  const shownTab = tabs.some((one) => one.key === tab) ? tab : 'overview';
+  const chosen = tab ?? (relatives.data?.relatives.length === 0 ? 'relatives' : 'overview');
+  const shownTab = tabs.some((one) => one.key === chosen) ? chosen : 'overview';
 
   return (
     <div className="grid gap-6">
@@ -149,7 +161,13 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
           onChange={setTab}
         />
       )}
-      {shownTab === 'overview' ? <Overview student={student} /> : <ContractTab student={student} />}
+      {shownTab === 'overview' ? (
+        <Overview student={student} />
+      ) : shownTab === 'relatives' ? (
+        <StudentRelativesTab studentId={student.id} name={name} />
+      ) : (
+        <ContractTab student={student} />
+      )}
       <StatusSection
         student={student}
         label={name}

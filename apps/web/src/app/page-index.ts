@@ -42,6 +42,7 @@ export const SETUP_PAGES: readonly IndexedPage[] = [
 export const PEOPLE_PAGES: readonly (IndexedPage & { area: string })[] = [
   { titleKey: 'people.staff.title', to: '/people/staff', area: 'staff' },
   { titleKey: 'people.students.title', to: '/people/students', area: 'students' },
+  { titleKey: 'people.relatives.title', to: '/people/parents', area: 'relatives' },
   { titleKey: 'people.vacancies.title', to: '/people/vacancies', area: 'vacancies' },
   { titleKey: 'people.headTeachers.title', to: '/people/head-teachers', area: 'head_teachers' },
   { titleKey: 'people.neverUsed.title', to: '/people/never-used', area: 'account_access' },

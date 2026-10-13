@@ -110,6 +110,23 @@ const rowsDrawn = (): string[][] =>
       .map((cell) => cell.textContent ?? ''),
   );
 
+/** The relatives of Oʻtkir (task 2.5a): his mother, the main contact. */
+const MOTHER = {
+  relatives: [
+    {
+      relativeId: uid(40),
+      fullName: 'Dilfuza Rahimova',
+      phone: '+998901112233',
+      relationship: 'mother',
+      mainContact: true,
+      portalAccess: null,
+      receivesNotices: null,
+      identity: null,
+    },
+  ],
+  canEdit: false,
+};
+
 function openList(
   role: Role,
   extra: Record<string, (body: unknown) => Response> = {},
@@ -127,6 +144,8 @@ function openList(
         today: '2026-10-10',
       }),
     [`GET /api/people/students/${OTKIR.id}`]: () => json(detailOf(OTKIR, detail)),
+    // Task 2.5a: the Relatives tab of the Contact readers.
+    [`GET /api/people/students/${OTKIR.id}/relatives`]: () => json(MOTHER),
     ...extra,
   });
 }
@@ -257,8 +276,13 @@ describe('the profile of a student', () => {
     fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     expect(await within(panel).findByText('+998901234567')).toBeDefined();
-    // One tab draws no control: the Overview alone.
-    expect(within(panel).queryByRole('radiogroup')).toBeNull();
+    // The Overview and the Relatives tab (task 2.5a), no contract tab.
+    const tabs = await within(panel).findByRole('radiogroup');
+    expect(
+      within(tabs)
+        .getAllByRole('radio')
+        .map((one) => one.closest('label')?.textContent),
+    ).toEqual([en.people.students.tabs.overview, en.people.students.tabs.relatives]);
     expect(within(panel).queryByText(en.people.students.birthDate)).toBeNull();
     expect(
       within(panel).queryByRole('button', { name: en.people.students.showIdentity }),
@@ -282,6 +306,10 @@ describe('adding a student', () => {
     type(en.people.students.startsOn, '2026-09-02');
     type(en.people.students.contractNumber, 'SQ-2026/099');
     type(en.people.students.contractSignedOn, '2026-08-20');
+    // Task 2.5a: the relative, typed phone first.
+    type(en.people.relatives.phone, '+998 90 111 22 33');
+    type(en.people.relatives.fullName, 'Dilfuza Rahimova');
+    type(en.people.relatives.relationship, 'mother');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     return form;
   }
@@ -695,6 +723,9 @@ describe('leaving, return and delete', () => {
     type(en.people.students.jshshir, '31403141234567');
     type(en.people.students.contractNumber, 'SQ-2026/130');
     type(en.people.students.contractSignedOn, '2026-08-20');
+    type(en.people.relatives.phone, '+998 90 111 22 33');
+    type(en.people.relatives.fullName, 'Dilfuza Rahimova');
+    type(en.people.relatives.relationship, 'mother');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     fireEvent.click(await screen.findByRole('button', { name: en.people.students.restoreThis }));
     // The refused new student is not saved: leaving it asks first.
@@ -741,6 +772,9 @@ describe('leaving, return and delete', () => {
     type(en.people.students.jshshir, '31403141234567');
     type(en.people.students.contractNumber, 'SQ-2026/132');
     type(en.people.students.contractSignedOn, '2026-08-20');
+    type(en.people.relatives.phone, '+998 90 111 22 33');
+    type(en.people.relatives.fullName, 'Dilfuza Rahimova');
+    type(en.people.relatives.relationship, 'mother');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     expect(
       await within(form).findByText(
@@ -781,6 +815,9 @@ describe('leaving, return and delete', () => {
     type(en.people.students.startsOn, '2026-09-02');
     type(en.people.students.contractNumber, 'SQ-2026/131');
     type(en.people.students.contractSignedOn, '2026-08-20');
+    type(en.people.relatives.phone, '+998 90 111 22 33');
+    type(en.people.relatives.fullName, 'Dilfuza Rahimova');
+    type(en.people.relatives.relationship, 'mother');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     expect(await within(form).findByText(en.people.students.uidReleased)).toBeDefined();
   });
@@ -1018,6 +1055,9 @@ describe('the Status section', () => {
       type(en.people.students.documentNumber, 'AB1234567');
       type(en.people.students.contractNumber, 'SQ-2026/140');
       type(en.people.students.contractSignedOn, '2026-08-20');
+      type(en.people.relatives.phone, '+998 90 111 22 33');
+      type(en.people.relatives.fullName, 'Dilfuza Rahimova');
+      type(en.people.relatives.relationship, 'mother');
       fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
       expect(
         await within(form).findByText(
