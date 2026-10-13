@@ -37,8 +37,10 @@ describe('the "No class" counter of the home page', () => {
     const shell = renderApp('/');
     const section = await screen.findByRole('region', { name: en.home.noClass.title });
     expect(within(section).getByText('1,234')).toBeTruthy();
-    // The page's own line stays under the counter.
-    expect(screen.getByText(en.home.academic_vice_principal)).toBeTruthy();
+    // A home with a tile shows the tiles only: no empty page, no line (pull
+    // request #80, decision 3).
+    expect(screen.queryByText(en.home.academic_vice_principal)).toBeNull();
+    expect(screen.queryByRole('heading', { name: en.home.emptyTitle })).toBeNull();
     fireEvent.click(within(section).getByRole('link', { name: en.home.noClass.link }));
     await screen.findByRole('heading', { name: en.people.students.title });
     await waitFor(() => {

@@ -32,6 +32,7 @@ import { VersionForm } from './day-template-form';
 import { usePreview } from './template-table';
 import { dayTemplateQuery, invalidateTemplates, rangeText } from './templates-api';
 import { schoolDateText } from '@/lib/dates';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 interface DayTemplatePanelProps {
   summary: DayTemplateSummary;
@@ -129,7 +130,7 @@ export function DayTemplatePanel({
   return (
     <div className="grid gap-6">
       <section className="grid gap-2">
-        <h3 className="text-base font-semibold">
+        <h3 className={SECTION_TITLE}>
           {t('setup.dayTemplates.dayOn', { date: schoolDateText(tomorrow, i18n.language) })}
         </h3>
         <ol className="grid gap-1 text-sm">
@@ -156,7 +157,7 @@ export function DayTemplatePanel({
             />
           </RecordForm>
           <section className="grid gap-3">
-            <h3 className="text-base font-semibold">{t('setup.dayTemplates.changeSlots')}</h3>
+            <h3 className={SECTION_TITLE}>{t('setup.dayTemplates.changeSlots')}</h3>
             <VersionForm
               key={inForce?.id ?? 'none'}
               slotTypes={slotTypes}
@@ -179,7 +180,7 @@ export function DayTemplatePanel({
         </>
       )}
       <section className="grid gap-3">
-        <h3 className="text-base font-semibold">{t('setup.dayTemplates.versions')}</h3>
+        <h3 className={SECTION_TITLE}>{t('setup.dayTemplates.versions')}</h3>
         <Table>
           <TableHeader>
             <TableRow>

@@ -284,10 +284,20 @@ How to read the task lines:
   - Build: the selection bar only when a row is ticked (13); the Rooms table and the top bar at 1047 px, one row and no sideways scroll (14); words beside the setup checklist icons (17); "Saved." after travel time, "Subjects and languages", availability, closing or reopening a vacancy (18); "Choose at least one grade." and "Choose at least one subject." on Save instead of the early messages (21); the photo message "Choose a JPEG or PNG photo, up to 5 MB." (22); "Keep the leaving" / "Cancel the leaving" (26); Cancel in the merge view (28); no "Leave school" form after a scheduled leaving (29); the Super Admin alerts collapsed on phones (30); "Send feedback" with its word in "More" (31).
   - Done when: each of findings 13, 14, 17, 18, 21, 22, 26, 28, 29, 30 and 31 is done or named as left out with its reason in the report.
 
-- [ ] **2.7c Pages against the design system** (split from 2.7 on pull request #77, decision 1)
-  - Read: `docs/design-system.md`, `.claude/rules/web.md`, issue #39 (items 1, 2, 4, 5; finding 12), `03` (the Branches list, spec change of 12 October 2026), `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7"), the plan of pull request #77.
-  - Build: every page of Phases 0 to 2 checked against the design system and "What we never do" and brought into line (page headers, toolbars, button sizes and kinds, empty, loading and error states, side panels, phone width); the text rule on the School setup and Branch pages (#39 item 4); the "New branch" form in the side panel (#39 item 2, finding 12); the Rooms "By floor" view (#39 item 5); the school-wide Branches list for the Super Admin (#39 item 1) once its spec change is merged ("Decided ahead for tasks 2.2d and 2.7", item 11).
-  - Done when: each item of #39 is done or named as left out with its reason in the report; the browser test visits every page of Phases 0 to 2 in light and dark and attaches the screenshots to the report.
+- [x] **2.7c-1 The page sweep, the text rule and the "New branch" side panel** (split from 2.7c on pull request #80, decision 1)
+  - Read: `docs/design-system.md`, `.claude/rules/web.md`, issue #39 (items 2 and 4; finding 12), `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7"), the plan of pull request #80.
+  - Build: every page of Phases 0 to 2 checked against the design system and "What we never do" and brought into line (one section title style, button sizes and kinds, a 24 gap between panels, content in white panels, the changed cell of the template table without orange, the shell); the text rule on School setup, Branch, People, Home and Account (#39 item 4); the "New branch" form in the side panel (#39 item 2, finding 12); the browser test that visits every page in light, dark and at 390 px.
+  - Done when: every page passes the browser check in light, dark and at 390 px with the screenshots in the report; #39 items 1 and 5 are named as left out (2.7c-3).
+
+- [ ] **2.7c-2 New records and record actions in the side panel** (split from 2.7c on pull request #80, decision 1)
+  - Read: `docs/design-system.md` (Layout shell, Lists; Buttons), `.claude/rules/web.md`, the plan of pull request #80 (decisions 14 and 15).
+  - Build: the "New …" forms that open inline above the list on Buildings, Rooms, Divisions, Years, Slot types, Day templates, Calendar, Subjects, Staff, Students (with its bulk "Leave school" form) and Vacancies move into the side panel; the side panels get their actions at the bottom (primary "Edit", secondary actions, danger quiet "Archive") with one primary per area, the staff panel's five Save buttons included; checkboxes with 44 px targets at phone width.
+  - Done when: every list page opens a new record in the side panel, every side panel has its actions at the bottom, and the browser test of 2.7c-1 (`e2e/pages.spec.ts`) passes again with its screenshots in the report.
+
+- [ ] **2.7c-3 Rooms "By floor" and the Branches list** (split from 2.7c on pull request #80, decision 1)
+  - Read: `docs/design-system.md`, issue #39 (items 1 and 5), `03` (the Branches list, spec change of 12 October 2026), `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7", item 11), the plan of pull request #77.
+  - Build: the Rooms "By floor" view (#39 item 5); the school-wide Branches list for the Super Admin (#39 item 1) once its spec change is merged.
+  - Done when: "By floor" is built; the Branches list is built, or reported as waiting for its `/spec-change` ("Decided ahead for tasks 2.2d and 2.7", item 11), which closes the item for this task.
 
 - [ ] **2.7d The Super Admin's own staff record** (split from 2.7 on pull request #77, decision 1)
   - Read: issue #39 (the owner's answer to question 37), `04` (Teacher and staff record), `edge/people-roles-accounts`, the plan of pull request #77.

@@ -28,6 +28,7 @@ import { invalidateVacancies, vacanciesQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
 import { VacancyForm } from './vacancy-form';
 import { VacancyPanel } from './vacancy-panel';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /**
  * The vacancies of the branch (`04`, Vacancy: "The teacher list shows
@@ -217,9 +218,9 @@ export function VacanciesPage() {
       {adding && divisions.data !== undefined && subjects.data !== undefined && (
         <section
           aria-label={t('people.vacancies.newTitle')}
-          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6"
         >
-          <h2 className="text-lg font-semibold">{t('people.vacancies.newTitle')}</h2>
+          <h2 className={SECTION_TITLE}>{t('people.vacancies.newTitle')}</h2>
           <VacancyForm
             vacancy={null}
             divisions={divisions.data}

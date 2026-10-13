@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { useView } from '@/features/access/use-view';
 import { checklistQuery } from './settings-api';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /** The page of each item and the area of the permission table it belongs to. */
 const PAGES: Record<ChecklistItemKey, { to: LinkProps['to']; area: string }> = {
@@ -126,11 +127,8 @@ export function SetupChecklist() {
   }
 
   return (
-    <section
-      aria-label={title}
-      className="mb-6 grid max-w-3xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
-    >
-      <h2 className="text-lg font-semibold">{title}</h2>
+    <section aria-label={title} className="mb-6 grid max-w-3xl gap-3 rounded-xl bg-card p-6">
+      <h2 className={SECTION_TITLE}>{title}</h2>
       {body}
     </section>
   );

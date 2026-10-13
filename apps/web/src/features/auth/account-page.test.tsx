@@ -131,6 +131,25 @@ describe('the account page', () => {
     ).toBeDefined();
   });
 
+  // .claude/rules/web.md, Text on screens: one line only under a setting
+  // whose effect is not obvious (pull request #80, decision 7).
+  it('keeps a line under the second step and the trusted devices only', async () => {
+    openAccount();
+    await heading(en.account.title);
+    const lineOf = (title: string) =>
+      screen.getByRole('region', { name: title }).querySelector('h2')?.nextElementSibling ?? null;
+    expect(lineOf(en.account.secondStepTitle)?.textContent).toBe(en.account.secondStepText);
+    expect(lineOf(en.account.devicesTitle)?.textContent).toBe(en.account.devicesText);
+    for (const title of [
+      en.account.languageTitle,
+      en.account.passwordTitle,
+      en.account.sessionsTitle,
+      en.account.signInHistoryTitle,
+    ]) {
+      expect(lineOf(title), title).toBeNull();
+    }
+  });
+
   // The entry every role has, in the person menu at the foot of the navy menu
   // (docs/design-system.md, Layout shell; pull request #61, decision 7).
   it('is the entry every role has, and opens from the person menu at the foot of the menu', async () => {
@@ -584,6 +603,9 @@ describe('the own photo on the account page', () => {
     expect(photo.getByText('NS')).toBeDefined();
     expect(photo.queryByRole('img')).toBeNull();
     expect(photo.queryByRole('button', { name: en.account.photoRemove })).toBeNull();
+    // No line under the title (pull request #80, decision 7).
+    const title = screen.getByRole('region', { name: en.account.photoTitle }).querySelector('h2');
+    expect(title?.nextElementSibling ?? null).toBeNull();
   });
 
   it('shows the photo, and removes it after asking', async () => {

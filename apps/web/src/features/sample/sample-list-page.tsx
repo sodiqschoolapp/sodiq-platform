@@ -12,7 +12,7 @@ import {
 } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Letterhead } from '@/components/print/letterhead';
-import { PANEL } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { Button } from '@/components/ui/button';
 import { SampleForm } from './sample-form';
 import { sampleRows, type SampleRow } from './sample-rows';
@@ -213,7 +213,7 @@ export function SampleListPage() {
       />
       {/* The print letterhead (task 2.2d-2), shown here until its first document (2.3). */}
       <section className={`mt-6 grid gap-3 ${PANEL}`}>
-        <h2 className="text-[1.0625rem]/6 font-bold">{t('sample.letterhead')}</h2>
+        <h2 className={SECTION_TITLE}>{t('sample.letterhead')}</h2>
         <Letterhead />
       </section>
     </>

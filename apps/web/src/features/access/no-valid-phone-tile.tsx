@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from 'cn';
 import { ErrorState, LoadingOutline } from '@/components/states';
-import { PANEL } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { relativeNoValidPhoneQuery } from '@/features/people/people-api';
 import { useView } from './use-view';
 
@@ -22,7 +22,7 @@ export function NoValidPhoneTile() {
   const counted = useQuery(relativeNoValidPhoneQuery(branchId));
   if (counted.isError) {
     return (
-      <div className={cn(PANEL, 'mb-4')}>
+      <div className={PANEL}>
         <ErrorState
           error={counted.error}
           onRetry={() => {
@@ -34,7 +34,7 @@ export function NoValidPhoneTile() {
   }
   if (counted.data === undefined) {
     return (
-      <div className={cn(PANEL, 'mb-4')}>
+      <div className={PANEL}>
         <LoadingOutline lines={1} />
       </div>
     );
@@ -45,10 +45,10 @@ export function NoValidPhoneTile() {
   return (
     <section
       aria-label={t('home.noValidPhone.title')}
-      className={cn(PANEL, 'mb-4 grid max-w-sm gap-1')}
+      className={cn(PANEL, 'grid max-w-sm gap-1')}
       data-tile="no-valid-phone"
     >
-      <h2 className="text-[1.0625rem]/6 font-bold">{t('home.noValidPhone.title')}</h2>
+      <h2 className={SECTION_TITLE}>{t('home.noValidPhone.title')}</h2>
       {/* The Page title style of docs/design-system.md, with tabular figures. */}
       <p className="text-[1.75rem]/[2.125rem] font-bold tracking-[-0.01em] tabular-nums" data-count>
         {number.format(counted.data.count)}

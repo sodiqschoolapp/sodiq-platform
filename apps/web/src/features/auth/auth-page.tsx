@@ -33,6 +33,14 @@ export function ThemeButton() {
   );
 }
 
+/**
+ * The button size of the sign-in frame (docs/design-system.md, Buttons: Large
+ * for sign-in). A page drawn both on the frame and inside the layout takes it
+ * from here on the frame and the default size inside (pull request #80,
+ * decision 13).
+ */
+export const FRAME_BUTTON_SIZE = 'lg';
+
 interface AuthPageProps {
   title: string;
   /** One line under the title, on the steps that need it (not used every day). */

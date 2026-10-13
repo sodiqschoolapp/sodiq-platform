@@ -399,12 +399,8 @@ export function PhoneTabBar({ actions }: { actions: PersonActions }) {
           <DialogTitle>{t('menu.more')}</DialogTitle>
           <DialogDescription className="sr-only">{t('layout.menu')}</DialogDescription>
           <p data-person="" className="flex items-center gap-3 text-sm font-semibold">
-            <span
-              aria-hidden
-              className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground"
-            >
-              {initialsOf(shown)}
-            </span>
+            {/* The avatar of the menu, on #1B2A63 (docs/design-system.md, Layout shell). */}
+            <Avatar shown={shown} />
             {shown}
           </p>
           {more.length > 0 && (

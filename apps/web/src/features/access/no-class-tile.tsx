@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from 'cn';
 import { ErrorState, LoadingOutline } from '@/components/states';
-import { PANEL } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { studentNoClassQuery } from '@/features/people/people-api';
 import { useView } from './use-view';
 
@@ -23,7 +23,7 @@ export function NoClassTile() {
   const noClass = useQuery(studentNoClassQuery(branchId));
   if (noClass.isError) {
     return (
-      <div className={cn(PANEL, 'mb-4')}>
+      <div className={PANEL}>
         <ErrorState
           error={noClass.error}
           onRetry={() => {
@@ -35,7 +35,7 @@ export function NoClassTile() {
   }
   if (noClass.data === undefined) {
     return (
-      <div className={cn(PANEL, 'mb-4')}>
+      <div className={PANEL}>
         <LoadingOutline lines={1} />
       </div>
     );
@@ -46,10 +46,10 @@ export function NoClassTile() {
   return (
     <section
       aria-label={t('home.noClass.title')}
-      className={cn(PANEL, 'mb-4 grid max-w-sm gap-1')}
+      className={cn(PANEL, 'grid max-w-sm gap-1')}
       data-tile="no-class"
     >
-      <h2 className="text-[1.0625rem]/6 font-bold">{t('home.noClass.title')}</h2>
+      <h2 className={SECTION_TITLE}>{t('home.noClass.title')}</h2>
       {/* The Page title style of docs/design-system.md, with tabular figures. */}
       <p className="text-[1.75rem]/[2.125rem] font-bold tracking-[-0.01em] tabular-nums" data-count>
         {number.format(noClass.data.count)}

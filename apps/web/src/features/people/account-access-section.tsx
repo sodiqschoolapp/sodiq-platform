@@ -36,6 +36,7 @@ import {
   staffAccountKey,
 } from './people-api';
 import { formatMoment } from '@/lib/dates';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /** Who locked or reset: the name when the server could read it, the login otherwise. */
 const actorText = (actor: Actor | null): string =>
@@ -271,7 +272,7 @@ export function AccountAccessSection({ staff, label }: { staff: StaffDetail; lab
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section className="grid gap-3" aria-labelledby={`access-${id}`}>
-      <h3 id={`access-${id}`} className="text-base font-semibold">
+      <h3 id={`access-${id}`} className={SECTION_TITLE}>
         {title}
       </h3>
       {children}

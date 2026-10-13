@@ -47,6 +47,7 @@ import { PeopleTabs } from './people-tabs';
 import { StudentForm } from './student-form';
 import { StudentPanel } from './student-panel';
 import { schoolDateText } from '@/lib/dates';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /**
  * A student in the list, a picker or a list inside a message: surname first
@@ -465,9 +466,9 @@ export function StudentsPage() {
       {adding && (
         <section
           aria-label={t('people.students.newTitle')}
-          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6"
         >
-          <h2 className="text-lg font-semibold">{t('people.students.newTitle')}</h2>
+          <h2 className={SECTION_TITLE}>{t('people.students.newTitle')}</h2>
           <StudentForm
             student={null}
             label={t('people.students.newTitle')}
@@ -587,11 +588,8 @@ function BulkLeavingForm({
     save: onSave,
   });
   return (
-    <section
-      aria-label={title}
-      className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
-    >
-      <h2 className="text-lg font-semibold">{title}</h2>
+    <section aria-label={title} className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6">
+      <h2 className={SECTION_TITLE}>{title}</h2>
       <RecordForm form={form} label={title}>
         <DateField label={t('people.students.lastDay')} {...form.bind('lastDay')} />
         <Field label={t('people.students.reason')} {...form.bind('reason')} />

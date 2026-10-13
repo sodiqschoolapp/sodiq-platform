@@ -283,8 +283,18 @@ describe('the branch page', () => {
     await screen.findByRole('form', { name: 'North' });
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.branch.newBranch }));
-    const section = screen.getByRole('region', { name: en.setup.branch.newBranchTitle });
-    const added = within(section).getByRole('form', { name: en.setup.branch.newBranchTitle });
+    // The new branch opens in the side panel beside the branch in use, whose
+    // form stays (issue #39, item 2 and finding 12; pull request #80).
+    const panel = screen.getByRole('complementary', { name: en.setup.branch.newBranchTitle });
+    const added = within(panel).getByRole('form', { name: en.setup.branch.newBranchTitle });
+    expect(screen.getByRole('form', { name: 'North' })).toBeDefined();
+    expect(panel.contains(screen.getByRole('form', { name: 'North' }))).toBe(false);
+    // Its Save is the only primary of the panel.
+    expect(
+      within(panel)
+        .getAllByRole('button')
+        .filter((button) => button.className.includes('bg-primary ')),
+    ).toHaveLength(1);
     expect(field(added, en.setup.branch.name).value).toBe('');
     expect(within(added).getByLabelText<HTMLInputElement>('Friday').checked).toBe(true);
     expect(within(added).getByLabelText<HTMLInputElement>('Saturday').checked).toBe(false);
@@ -293,7 +303,9 @@ describe('the branch page', () => {
     fireEvent.click(within(added).getByRole('button', { name: en.form.save }));
 
     await waitFor(() => {
-      expect(screen.queryByRole('region', { name: en.setup.branch.newBranchTitle })).toBeNull();
+      expect(
+        screen.queryByRole('complementary', { name: en.setup.branch.newBranchTitle }),
+      ).toBeNull();
     });
     const post = calls.find((call) => call.route === 'POST /api/setup/branches');
     expect(post?.body).toEqual({
@@ -331,6 +343,17 @@ describe('the branch page', () => {
       expect(screen.queryByRole('alertdialog')).toBeNull();
     });
     expect(screen.getByRole('form', { name: en.setup.branch.newBranchTitle })).toBeDefined();
+
+    // The close button of the side panel asks the same, and closes it on "Leave".
+    fireEvent.click(screen.getByRole('button', { name: en.list.closePanel }));
+    const again = await screen.findByRole('alertdialog', { name: en.unsent.leaveTitle });
+    fireEvent.click(within(again).getByRole('button', { name: en.unsent.leave }));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('complementary', { name: en.setup.branch.newBranchTitle }),
+      ).toBeNull();
+    });
+    expect(screen.getByRole('form', { name: 'North' })).toBeDefined();
   });
 
   it('shows the failure of the load with a way to try again', async () => {

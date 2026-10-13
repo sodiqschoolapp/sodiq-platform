@@ -72,7 +72,7 @@ export function SignInHistorySection() {
   }
 
   return (
-    <AccountSection title={t('account.signInHistoryTitle')} text={t('account.signInHistoryText')}>
+    <AccountSection title={t('account.signInHistoryTitle')}>
       {body}
       {history.hasNextPage && (
         <div>

@@ -27,6 +27,7 @@ import { useView } from '@/features/access/use-view';
 import { SlotTypePanel } from './slot-type-panel';
 import { invalidateTemplates, slotTypesQuery } from './templates-api';
 import { schoolDateText } from '@/lib/dates';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /** The next length planned after today, if any. */
 export const plannedLength = (slotType: SlotType, today: string) =>
@@ -200,9 +201,9 @@ export function SlotTypesPage() {
       {adding && (
         <section
           aria-label={t('setup.slotTypes.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6"
         >
-          <h2 className="text-lg font-semibold">{t('setup.slotTypes.newTitle')}</h2>
+          <h2 className={SECTION_TITLE}>{t('setup.slotTypes.newTitle')}</h2>
           <SlotTypeForm
             onSave={async (record) => {
               await create.mutateAsync(record);

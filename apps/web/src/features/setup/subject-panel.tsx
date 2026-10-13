@@ -23,6 +23,7 @@ import { SubjectForm, type DepartmentChoice } from './subject-form';
 import { invalidateSubjects, quarterWeightsQuery } from './subjects-api';
 import { WeightsForm, weightsText, type WeightPart, type Weights } from './weights-form';
 import { schoolDateText } from '@/lib/dates';
+import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 
 const THREE: readonly WeightPart[] = ['attendance', 'classwork', 'homework'];
 const FOUR: readonly WeightPart[] = ['attendance', 'classwork', 'homework', 'ratingExam'];
@@ -170,7 +171,7 @@ export function SubjectPanel({
 
       {graded && (
         <section className="grid gap-3">
-          <h3 className="text-base font-semibold">{t('setup.subjects.daily')}</h3>
+          <h3 className={SECTION_TITLE}>{t('setup.subjects.daily')}</h3>
           {subject.daily === null ? (
             <p className="text-sm text-muted-foreground">{t('setup.subjects.notSet')}</p>
           ) : canEdit && active ? (
@@ -196,7 +197,6 @@ export function SubjectPanel({
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant={active ? 'destructive' : 'secondary'}
-            size="sm"
             disabled={archive.isPending}
             onClick={() => {
               void askArchive();
@@ -332,7 +332,7 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
               data-quarter={row.number}
               className="grid gap-2 rounded-lg border p-3"
             >
-              <h4 className="text-sm font-semibold">
+              <h4 className={SUBSECTION_TITLE}>
                 {label} <span className="font-normal text-muted-foreground">{dates}</span>
               </h4>
               {canEdit && !frozen ? (
@@ -359,7 +359,6 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="secondary"
-              size="sm"
               disabled={copy.isPending || !(rows[0]?.fits ?? false)}
               onClick={() => {
                 void askCopy(rows);
@@ -379,7 +378,7 @@ function QuarterWeights({ subject, canEdit }: { subject: Subject; canEdit: boole
 
   return (
     <section className="grid gap-3">
-      <h3 className="text-base font-semibold">{title}</h3>
+      <h3 className={SECTION_TITLE}>{title}</h3>
       {open.length === 1 && (
         <p className="text-sm text-muted-foreground">
           {t('setup.subjects.yearNamed', { name: open[0]?.name })}

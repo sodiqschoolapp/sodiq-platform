@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { asFormSchema } from './form-schema';
 import { takenOf, takenText } from './student-form';
 import { schoolDateText } from '@/lib/dates';
+import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 
 /** Every path of an issue is the field of the same name; a contract is two fields. */
 const fieldOf = (path: readonly PropertyKey[]): PropertyKey[] => {
@@ -116,7 +117,7 @@ export function StatusSection({
 
   return (
     <section className="grid gap-4">
-      <h3 className="text-base font-semibold">{t('people.students.statusTitle')}</h3>
+      <h3 className={SECTION_TITLE}>{t('people.students.statusTitle')}</h3>
       <ol className="grid gap-2 text-sm">
         {student.statuses.map((row) => (
           <li key={`${row.from}-${row.cause}`} className="grid gap-0.5">
@@ -267,7 +268,7 @@ function LeavingForm({ student, label, onChanged, onStale }: ChangeFormProps) {
   });
   return (
     <section className="grid gap-3">
-      <h4 className="font-semibold">{t('people.students.leaveTitle')}</h4>
+      <h4 className={SUBSECTION_TITLE}>{t('people.students.leaveTitle')}</h4>
       <RecordForm form={form} label={t('people.students.leaveTitle')}>
         <DateField label={t('people.students.lastDay')} {...form.bind('lastDay')} />
         <Field label={t('people.students.reason')} {...form.bind('reason')} />
@@ -300,7 +301,7 @@ function UndoForm({ student, onChanged, onStale }: ChangeFormProps) {
   });
   return (
     <section className="grid gap-3">
-      <h4 className="font-semibold">{t('people.students.undoTitle')}</h4>
+      <h4 className={SUBSECTION_TITLE}>{t('people.students.undoTitle')}</h4>
       <RecordForm form={form} label={t('people.students.undoTitle')}>
         <Field label={t('people.students.reason')} {...form.bind('reason')} />
       </RecordForm>
@@ -365,7 +366,7 @@ function ReturnForm({
   const contractNumber = form.bind('contractNumber');
   return (
     <section className="grid gap-3">
-      <h4 className="font-semibold">{t('people.students.returnTitle')}</h4>
+      <h4 className={SUBSECTION_TITLE}>{t('people.students.returnTitle')}</h4>
       <RecordForm form={form} label={t('people.students.returnTitle')}>
         <DateField label={t('people.students.returnFrom')} {...form.bind('from')} />
         <SelectField
@@ -430,7 +431,7 @@ function RestoreForm({ student, label, onChanged, onStale }: ChangeFormProps) {
   });
   return (
     <section className="grid gap-3">
-      <h4 className="font-semibold">{t('people.students.restoreTitle')}</h4>
+      <h4 className={SUBSECTION_TITLE}>{t('people.students.restoreTitle')}</h4>
       <RecordForm form={form} label={t('people.students.restoreTitle')}>
         <DateField label={t('people.students.restoreFrom')} {...form.bind('from')} />
         <Field label={t('people.students.reason')} {...form.bind('reason')} />
@@ -478,7 +479,7 @@ function DeleteForm({
   });
   return (
     <section className="grid gap-3">
-      <h4 className="font-semibold">{t('people.students.deleteTitle')}</h4>
+      <h4 className={SUBSECTION_TITLE}>{t('people.students.deleteTitle')}</h4>
       <RecordForm form={form} label={t('people.students.deleteTitle')}>
         <Field label={t('people.students.reason')} {...form.bind('reason')} />
       </RecordForm>

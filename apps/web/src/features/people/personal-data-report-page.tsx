@@ -18,7 +18,7 @@ import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { Letterhead } from '@/components/print/letterhead';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { PANEL } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
 import {
   actionName,
@@ -68,7 +68,7 @@ type Words = ReturnType<typeof useWords>;
 function Part({ title, rows }: { title: string; rows: readonly Row[] }) {
   return (
     <section className="grid gap-2 break-inside-avoid">
-      <h3 className="text-lg font-semibold">{title}</h3>
+      <h3 className={SECTION_TITLE}>{title}</h3>
       <dl className="grid grid-cols-[minmax(10rem,auto)_1fr] gap-x-6 gap-y-1 text-sm max-sm:grid-cols-1">
         {rows.map(([label, value], index) => (
           // Two rows may share a label (two contracts); the order is fixed.
@@ -94,13 +94,13 @@ function Records({
 }) {
   return (
     <section className="grid gap-3">
-      <h3 className="text-lg font-semibold">{title}</h3>
+      <h3 className={SECTION_TITLE}>{title}</h3>
       {records.length === 0 ? (
         <p className="text-sm">{none}</p>
       ) : (
         records.map((record) => (
           <div key={record.key} className="grid gap-1 break-inside-avoid">
-            <h4 className="text-base font-semibold">{record.heading}</h4>
+            <h4 className={SUBSECTION_TITLE}>{record.heading}</h4>
             <dl className="grid grid-cols-[minmax(10rem,auto)_1fr] gap-x-6 gap-y-1 text-sm max-sm:grid-cols-1">
               {record.rows.map(([label, value], index) => (
                 <div key={`${label}-${String(index)}`} className="contents">
@@ -537,7 +537,7 @@ function Entries({ report, words }: { report: PersonalDataReport; words: Words }
   };
   return (
     <section className="grid gap-3">
-      <h3 className="text-lg font-semibold">{t('people.report.entriesTitle')}</h3>
+      <h3 className={SECTION_TITLE}>{t('people.report.entriesTitle')}</h3>
       {report.entries.length === 0 ? (
         <p className="text-sm">{t('people.report.noEntries')}</p>
       ) : (
@@ -649,7 +649,7 @@ function ReportSheet({ report }: { report: PersonalDataReport }) {
                   />
                 )}
                 <div className="grid gap-1">
-                  <h2 className="text-2xl font-semibold">{name}</h2>
+                  <h2 className={SECTION_TITLE}>{name}</h2>
                   <p className="text-sm">
                     {t('people.report.produced', {
                       moment: words.moment(report.producedAt),

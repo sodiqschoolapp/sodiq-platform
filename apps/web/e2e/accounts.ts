@@ -45,6 +45,7 @@ export type AccountKey =
   | 'phoneOwnersOther'
   | 'samePerson'
   | 'peopleTabs'
+  | 'pages'
   | 'topBar';
 
 /** Invented for the tests. */

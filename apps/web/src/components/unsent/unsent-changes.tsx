@@ -228,7 +228,6 @@ export function UnsentBanner() {
       {first !== undefined && (
         <Button
           variant="secondary"
-          size="sm"
           className="max-w-full"
           onClick={() => {
             first.focus();

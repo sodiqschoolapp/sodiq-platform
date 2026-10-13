@@ -82,7 +82,7 @@ function guarded(area: Area, Page: () => React.JSX.Element, action: Action = 'vi
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: Outlet,
-  notFoundComponent: NotFoundPage,
+  notFoundComponent: () => <NotFoundPage />,
 });
 
 const signInRoute = createRoute({
@@ -292,7 +292,7 @@ function PersonalDataRouteView() {
   const { kind, id } = personalDataRoute.useParams();
   const parsed = personalDataKindSchema.safeParse(kind);
   if (!parsed.success) {
-    return <NotFoundPage />;
+    return <NotFoundPage inLayout />;
   }
   // A new person is a new page: the report is produced once per person.
   return <PersonalDataReportPage key={`${parsed.data}:${id}`} kind={parsed.data} id={id} />;
@@ -423,7 +423,7 @@ export function createAppRouter(queryClient: QueryClient, history?: RouterHistor
     context: { queryClient },
     defaultPendingComponent: PendingPage,
     defaultErrorComponent: ErrorPage,
-    defaultNotFoundComponent: NotFoundPage,
+    defaultNotFoundComponent: () => <NotFoundPage />,
     ...(history === undefined ? {} : { history }),
   });
 }

@@ -25,6 +25,7 @@ import { branchQuery } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import { availabilityQuery } from './people-api';
 import { schoolDateText, weekdayName } from '@/lib/dates';
+import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 
 type DayField = `day${Weekday}`;
 type Fields = 'from' | DayField;
@@ -113,7 +114,6 @@ export function AvailabilitySection({ id, label }: { id: string; label: string }
             {!changing && (
               <Button
                 variant="secondary"
-                size="sm"
                 onClick={() => {
                   setChanging(true);
                   setSavedFor(null);
@@ -147,7 +147,7 @@ export function AvailabilitySection({ id, label }: { id: string; label: string }
         <OverlapDays error={set.error} />
         {data.elsewhere.map((other) => (
           <section key={other.branchId} className="grid gap-2">
-            <h4 className="text-sm font-semibold">
+            <h4 className={SUBSECTION_TITLE}>
               {t('people.availability.elsewhere', { name: other.name })}
             </h4>
             <Entries entries={other.entries} today={data.today} days={WEEKDAYS} />
@@ -158,7 +158,7 @@ export function AvailabilitySection({ id, label }: { id: string; label: string }
   }
   return (
     <section className="grid gap-3">
-      <h3 className="text-base font-semibold">{t('people.availability.title')}</h3>
+      <h3 className={SECTION_TITLE}>{t('people.availability.title')}</h3>
       {body}
     </section>
   );

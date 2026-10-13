@@ -105,7 +105,7 @@ export function PhotoSection() {
   const pending = upload.isPending || remove.isPending;
 
   return (
-    <AccountSection title={t('account.photoTitle')} text={t('account.photoText')}>
+    <AccountSection title={t('account.photoTitle')}>
       <div className="flex flex-wrap items-center gap-4">
         <span className="relative inline-flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-2xl font-medium text-muted-foreground">
           <span aria-hidden>{initials}</span>

@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/table';
 import { invalidateYears } from './setup-api';
 import { monthsText, schoolDateText } from '@/lib/dates';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /** The reason a custom issue of a shared schema names (`params.reason`), if any. */
 function reasonOf(issue: FormIssue): string | undefined {
@@ -279,7 +280,7 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
   return (
     <div className="grid gap-6">
       <section className="grid gap-3">
-        <h3 className="text-base font-semibold">{t('setup.years.datesTitle')}</h3>
+        <h3 className={SECTION_TITLE}>{t('setup.years.datesTitle')}</h3>
         {canEditYear && !closed ? (
           <YearForm
             key={year.id}
@@ -311,7 +312,6 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
           <>
             <Button
               variant="secondary"
-              size="sm"
               disabled={startBlocked !== null || start.isPending}
               onClick={() => {
                 void askStart();
@@ -328,7 +328,7 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
       <FailureAlert error={start.error} />
 
       <section className="grid gap-3">
-        <h3 className="text-base font-semibold">{t('setup.years.quartersTitle')}</h3>
+        <h3 className={SECTION_TITLE}>{t('setup.years.quartersTitle')}</h3>
         {canEditQuarters && !closed ? (
           <QuartersFormView
             key={year.id}

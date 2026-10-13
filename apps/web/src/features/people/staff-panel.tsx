@@ -63,6 +63,7 @@ import { AvailabilitySection } from './availability-section';
 import { asFormSchema, isGradesField, subjectsFieldOf } from './form-schema';
 import { StaffForm } from './staff-form';
 import { schoolDateText } from '@/lib/dates';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 interface StaffPanelProps {
   id: string;
@@ -156,7 +157,7 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
       <ReportLink kind="staff" id={staff.id} />
       {staff.rights.contact && (
         <section className="grid gap-3">
-          <h3 className="text-base font-semibold">{t('people.staff.recordTitle')}</h3>
+          <h3 className={SECTION_TITLE}>{t('people.staff.recordTitle')}</h3>
           <StaffForm
             key={`${staff.id}-record`}
             staff={staff}
@@ -288,7 +289,6 @@ function PhotoSection({
             />
             <Button
               variant="secondary"
-              size="sm"
               disabled={pending}
               onClick={() => {
                 input.current?.click();
@@ -299,7 +299,6 @@ function PhotoSection({
             {staff.photoId !== null && (
               <Button
                 variant="destructive"
-                size="sm"
                 disabled={pending}
                 onClick={() => {
                   void confirm({
@@ -431,7 +430,6 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="secondary"
-            size="sm"
             disabled={show.isPending}
             onClick={() => {
               show.mutate();
@@ -487,7 +485,7 @@ function TeachingSection({
 
   return (
     <section className="grid gap-3">
-      <h3 className="text-base font-semibold">{t('people.staff.teachingTitle')}</h3>
+      <h3 className={SECTION_TITLE}>{t('people.staff.teachingTitle')}</h3>
       {staff.rights.teaching && department !== undefined && department !== null ? (
         <TeachingForm
           key={`${staff.id}-teaching-${department}`}
@@ -638,7 +636,7 @@ function BranchesSection({
   const chosenMain = form.bind('mainBranchId').value;
   return (
     <section className="grid gap-3">
-      <h3 className="text-base font-semibold">{t('people.staff.branchesTitle')}</h3>
+      <h3 className={SECTION_TITLE}>{t('people.staff.branchesTitle')}</h3>
       <RecordForm form={form} label={t('people.staff.branchesOf', { name: label })}>
         <SelectField
           label={t('people.staff.mainBranchField')}
@@ -701,7 +699,7 @@ function StatusSection({
   });
   return (
     <section className="grid gap-3">
-      <h3 className="text-base font-semibold">{t('people.staff.statusTitle')}</h3>
+      <h3 className={SECTION_TITLE}>{t('people.staff.statusTitle')}</h3>
       <p className="text-sm">
         {staff.status === null
           ? t('people.staff.notStarted')

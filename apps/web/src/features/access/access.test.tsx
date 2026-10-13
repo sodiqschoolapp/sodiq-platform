@@ -56,6 +56,11 @@ describe('the menu and the home page of each role', () => {
   it.each(ROLES)('shows the row of the table and the first screen of %s', async (role) => {
     fakeApi({
       'GET /api/auth/session': () => json(sessionOf({ assignments: [held(role)] })),
+      // The two counters of the Academic Vice Principal's home, both 0: the
+      // page is then the empty page with the kind's own line (pull request
+      // #80, correction 1).
+      'GET /api/people/students/no-class': () => json({ count: 0 }),
+      'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
     });
 
     renderApp('/');
@@ -71,7 +76,11 @@ describe('the menu and the home page of each role', () => {
     // The own account page (task 0.8d) is reached from the person at the foot of the menu
     // (pull request #61, decision 7).
     expect(screen.getByRole('button', { name: en.layout.account })).toBeDefined();
-    expect(screen.getByText(en.home[HOME_KIND[role]])).toBeDefined();
+    // Home is the empty page of the design system until its tasks fill it,
+    // with one short line of its own per kind (pull request #80, decision 3).
+    const line = await screen.findByText(en.home[HOME_KIND[role]]);
+    expect(line.tagName).toBe('P');
+    expect(screen.getByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
     expect(screen.queryByLabelText(en.switcher.role)).toBeNull();
   });
 });

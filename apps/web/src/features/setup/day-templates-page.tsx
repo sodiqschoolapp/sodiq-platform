@@ -19,6 +19,7 @@ import { useView } from '@/features/access/use-view';
 import { NewTemplateForm } from './day-template-form';
 import { DayTemplatePanel } from './day-template-panel';
 import { dayTemplatesQuery, invalidateTemplates, rangeText, slotTypesQuery } from './templates-api';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /**
  * The day templates of the branch in use (`03`, Slot types and day templates:
@@ -157,9 +158,9 @@ export function DayTemplatesPage() {
       {adding && today !== undefined && allSlotTypes !== undefined && (
         <section
           aria-label={t('setup.dayTemplates.newTitle')}
-          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6"
         >
-          <h2 className="text-lg font-semibold">{t('setup.dayTemplates.newTitle')}</h2>
+          <h2 className={SECTION_TITLE}>{t('setup.dayTemplates.newTitle')}</h2>
           <NewTemplateForm
             slotTypes={allSlotTypes}
             today={today}

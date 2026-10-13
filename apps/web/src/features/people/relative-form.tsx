@@ -184,7 +184,6 @@ export function ExtraPhonesField({
           <Button
             type="button"
             variant="secondary"
-            size="sm"
             onClick={() => {
               set(count, String(shown + 1));
             }}

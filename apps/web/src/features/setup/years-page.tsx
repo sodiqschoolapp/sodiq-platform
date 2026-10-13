@@ -20,6 +20,7 @@ import { useView } from '@/features/access/use-view';
 import { invalidateYears, yearsQuery } from './setup-api';
 import { YearForm, YearPanel } from './year-panel';
 import { schoolDateText } from '@/lib/dates';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 const datedCount = (year: AcademicYear): number =>
   year.quarters.filter((quarter) => quarter.startDate !== null).length;
@@ -146,9 +147,9 @@ export function YearsPage() {
       {adding && (
         <section
           aria-label={t('setup.years.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6"
         >
-          <h2 className="text-lg font-semibold">{t('setup.years.newTitle')}</h2>
+          <h2 className={SECTION_TITLE}>{t('setup.years.newTitle')}</h2>
           <YearForm
             year={null}
             label={t('setup.years.newTitle')}

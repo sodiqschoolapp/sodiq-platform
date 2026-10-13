@@ -11,7 +11,6 @@ interface SetupLink {
   key: string;
   to: LinkProps['to'];
   title: string;
-  text: string;
   /** The area of the permission table the page belongs to. */
   area: string;
 }
@@ -31,84 +30,72 @@ export function SetupPage() {
       key: 'branch',
       to: '/setup/branch',
       title: t('setup.branchLink'),
-      text: t('setup.branchLinkText'),
       area: 'branches',
     },
     {
       key: 'buildings',
       to: '/setup/buildings',
       title: t('setup.buildingsLink'),
-      text: t('setup.buildingsLinkText'),
       area: 'rooms',
     },
     {
       key: 'rooms',
       to: '/setup/rooms',
       title: t('setup.roomsLink'),
-      text: t('setup.roomsLinkText'),
       area: 'rooms',
     },
     {
       key: 'divisions',
       to: '/setup/divisions',
       title: t('setup.divisionsLink'),
-      text: t('setup.divisionsLinkText'),
       area: 'divisions',
     },
     {
       key: 'years',
       to: '/setup/years',
       title: t('setup.yearsLink'),
-      text: t('setup.yearsLinkText'),
       area: 'academic_years',
     },
     {
       key: 'slotTypes',
       to: '/setup/slot-types',
       title: t('setup.slotTypesLink'),
-      text: t('setup.slotTypesLinkText'),
       area: 'day_templates',
     },
     {
       key: 'dayTemplates',
       to: '/setup/day-templates',
       title: t('setup.dayTemplatesLink'),
-      text: t('setup.dayTemplatesLinkText'),
       area: 'day_templates',
     },
     {
       key: 'templateSettings',
       to: '/setup/day-template-settings',
       title: t('setup.templateSettingsLink'),
-      text: t('setup.templateSettingsLinkText'),
       area: 'day_templates',
     },
     {
       key: 'calendar',
       to: '/setup/calendar',
       title: t('setup.calendarLink'),
-      text: t('setup.calendarLinkText'),
       area: 'calendar',
     },
     {
       key: 'settings',
       to: '/setup/settings',
       title: t('setup.settingsLink'),
-      text: t('setup.settingsLinkText'),
       area: 'settings',
     },
     {
       key: 'travelTimes',
       to: '/setup/travel-times',
       title: t('setup.travelTimesLink'),
-      text: t('setup.travelTimesLinkText'),
       area: 'branches',
     },
     {
       key: 'subjects',
       to: '/setup/subjects',
       title: t('setup.subjectsLink'),
-      text: t('setup.subjectsLinkText'),
       area: 'subjects',
     },
   ];
@@ -120,12 +107,11 @@ export function SetupPage() {
   return (
     <>
       <PageHeader title={t('setup.title')} breadcrumbs={[{ label: t('home.title'), to: '/' }]} />
-      <p className="mb-4 max-w-prose text-sm text-muted-foreground">{t('setup.intro')}</p>
       {showsChecklist && <SetupChecklist />}
       {links.length === 0 ? (
         <EmptyState title={t('setup.noneTitle')} text={t('setup.none')} />
       ) : (
-        <ul aria-label={t('setup.title')} className="grid max-w-3xl gap-3">
+        <ul aria-label={t('setup.title')} className="grid max-w-3xl gap-6">
           {links.map((link) => (
             <li key={link.key} className={PANEL}>
               <Link
@@ -134,7 +120,6 @@ export function SetupPage() {
               >
                 {link.title}
               </Link>
-              <p className="mt-1 text-sm text-muted-foreground">{link.text}</p>
             </li>
           ))}
         </ul>

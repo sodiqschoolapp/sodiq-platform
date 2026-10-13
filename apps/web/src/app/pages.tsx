@@ -136,10 +136,16 @@ export function NoAccessPage({ inLayout = false }: { inLayout?: boolean }) {
   );
 }
 
-export function NotFoundPage() {
+/**
+ * A page that does not exist. Inside the layout (a report address with a
+ * kind that does not exist) it stands in the layout's `main`, with no second
+ * `main` and no padding of its own.
+ */
+export function NotFoundPage({ inLayout = false }: { inLayout?: boolean }) {
   const { t } = useTranslation();
+  const Frame = inLayout ? InLayout : FullPage;
   return (
-    <FullPage>
+    <Frame>
       <BrandMoment
         heading="h1"
         title={t('problems.notFoundTitle')}
@@ -150,6 +156,6 @@ export function NotFoundPage() {
           </Link>
         }
       />
-    </FullPage>
+    </Frame>
   );
 }

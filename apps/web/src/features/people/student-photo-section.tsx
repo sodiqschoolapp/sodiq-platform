@@ -91,7 +91,6 @@ export function StudentPhotoSection({ student, name }: { student: StudentDetail;
             />
             <Button
               variant="secondary"
-              size="sm"
               disabled={pending}
               onClick={() => {
                 input.current?.click();
@@ -102,7 +101,6 @@ export function StudentPhotoSection({ student, name }: { student: StudentDetail;
             {student.photoId !== null && (
               <Button
                 variant="destructive"
-                size="sm"
                 disabled={pending}
                 onClick={() => {
                   void confirm({
