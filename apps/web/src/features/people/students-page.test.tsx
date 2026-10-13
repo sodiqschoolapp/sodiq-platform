@@ -429,13 +429,20 @@ describe('adding a student', () => {
   });
 
   /** A list that holds the new student once it is saved, as the server's does. */
-  function openSaving(readsFinancial: boolean, consentMissing: boolean) {
-    const NEW: StudentListItem = { ...OTKIR, id: uid(9), uid: '2606001', consentMissing };
+  function openSaving(
+    readsFinancial: boolean,
+    consentMissing: boolean,
+    status: StudentListItem['status'] = 'active',
+  ) {
+    const NEW: StudentListItem = { ...OTKIR, id: uid(9), uid: '2606001', consentMissing, status };
     let saved: StudentListItem[] = [];
     const list = (query: string) =>
       json({
+        // As the server reads the consent list: the active students without consent.
         students: [ZARINA, ...saved].filter(
-          (row) => !query.includes('consent=missing') || row.consentMissing === true,
+          (row) =>
+            !query.includes('consent=missing') ||
+            (row.status === 'active' && row.consentMissing === true),
         ),
         canArchive: true,
         exportGroups: [],
@@ -489,6 +496,17 @@ describe('adding a student', () => {
         f: { consent: 'missing' },
         open: uid(9),
       });
+    });
+    cleanup();
+
+    // Without consent but not active yet (a start date after today): not in
+    // the consent list either, so the filter goes.
+    openSaving(true, true, null);
+    const third = renderApp(filtered);
+    await fillAndSave();
+    await savedRecordPanel(en.people.students.newTitle);
+    await waitFor(() => {
+      expect(third.router.state.location.search).toEqual({ open: uid(9) });
     });
   });
 
@@ -858,8 +876,11 @@ describe('leaving, return and delete', () => {
       ),
     ).toBeDefined();
     expect(calls.filter((call) => call.route.endsWith('/leaving'))).toHaveLength(2);
-    // Done, the panel closes; the ticked rows stay listed.
+    // Done, the panel closes, the ticked rows stay listed and the search box has the focus.
     expect(screen.queryByRole('complementary')).toBeNull();
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('searchbox', { name: en.list.search }));
+    });
   });
 
   it('asks before "Leave school" takes the place of a record with typed changes', async () => {
@@ -954,9 +975,13 @@ describe('leaving, return and delete', () => {
     fireEvent.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: en.unsent.leave }),
     );
-    // The holder takes the place of the new form in the one side panel.
-    expect(await screen.findByRole('complementary', { name: 'Lola Karimova' })).toBeDefined();
+    // The holder takes the place of the new form in the one side panel, with the focus.
+    const holder = await screen.findByRole('complementary', { name: 'Lola Karimova' });
     expect(screen.queryByRole('complementary', { name: en.people.students.newTitle })).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(document.activeElement).toBe(
+      within(holder).getByRole('heading', { name: 'Lola Karimova' }),
+    );
   });
 
   it('offers no "Restore this student" for an active holder of the document', async () => {

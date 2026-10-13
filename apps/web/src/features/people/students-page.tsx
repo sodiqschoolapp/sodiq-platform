@@ -556,10 +556,13 @@ export function StudentsPage() {
                         onOpenHolder={openHolder}
                         onCreate={async (record) => {
                           const created = await create.mutateAsync(record);
-                          // A student with consent is not among the rows of the
-                          // consent filter: it is turned off, so the panel shows
-                          // the student (pull request #81, correction 1).
-                          const hidden = wantsConsent && created.consentMissing !== true;
+                          // The consent filter holds the active students without
+                          // consent only, as the server reads it: any other saved
+                          // student would be hidden, so it is turned off and the
+                          // panel shows the student (pull request #81, correction 1).
+                          const hidden =
+                            wantsConsent &&
+                            !(created.status === 'active' && created.consentMissing === true);
                           saved(
                             created.id,
                             hidden

@@ -53,7 +53,6 @@ export interface BulkAction<Row> {
   confirm?: (rows: Row[]) => Pick<Confirmation, 'title' | 'text' | 'action' | 'destructive'>;
 }
 
-/** Where an export started by the list stands: on the way, refused, or done with columns left out. */
 /** What the form of a new record in the side panel may do (`ListPage`, `creating`). */
 export interface NewRecordActions {
   /**
@@ -83,12 +82,15 @@ export interface NewRecord {
   key: string;
   title: string;
   content: (actions: NewRecordActions) => ReactNode;
-  /** The panel closed without a save (after `useLeave()`), or an opened record took its place. */
+  /** The panel closed without a save (after `useLeave()`): the focus goes back to "New …". */
   onClose: () => void;
+  /** An opened record took its place (a row, Back, a link): the focus stays with that record. */
+  onReplaced: () => void;
   /** The panel closed with a save. */
   onSaved: () => void;
 }
 
+/** Where an export started by the list stands: on the way, refused, or done with columns left out. */
 export interface ExportState {
   pending: boolean;
   /** Why the last export failed; shown above the rows. */
@@ -447,9 +449,17 @@ export function ListPage<Row>({
     const arrived = state.open !== undefined && state.open !== openBefore.current;
     openBefore.current = state.open;
     if (arrived && latestCreating.current !== undefined) {
-      latestCreating.current.onClose();
+      latestCreating.current.onReplaced();
     }
   }, [state.open]);
+
+  // Counts the bulk saves after which the search box takes the focus.
+  const [focusList, setFocusList] = useState(0);
+  useEffect(() => {
+    if (focusList > 0) {
+      root.current?.querySelector<HTMLElement>(`#${CSS.escape(searchId)}`)?.focus();
+    }
+  }, [focusList, searchId]);
 
   const closeCreating = (): void => {
     void leave().then((leaves) => {
@@ -461,8 +471,14 @@ export function ListPage<Row>({
   const newRecordActions: NewRecordActions = {
     saved: (id, also = {}) => {
       creating?.onSaved();
+      // The newest address of the list, not the one of the moment Save was
+      // pressed: a filter or an order changed during the save stays.
       if (id !== undefined || Object.keys(also).length > 0) {
-        change({ ...also, open: id }, 'push');
+        latestChange.current({ ...also, open: id }, 'push');
+      }
+      if (id === undefined) {
+        // Nothing opens (a bulk form): the list takes the focus back.
+        setFocusList((before) => before + 1);
       }
     },
     close: closeCreating,

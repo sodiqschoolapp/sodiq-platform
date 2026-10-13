@@ -13,7 +13,7 @@ export interface NewRecordState<Value> {
    */
   start: (value: Value) => void;
   /** The part of `ListPage`'s `creating` that closes the form. */
-  handlers: Pick<NewRecord, 'onClose' | 'onSaved'>;
+  handlers: Pick<NewRecord, 'onClose' | 'onReplaced' | 'onSaved'>;
 }
 
 /**
@@ -50,6 +50,9 @@ export function useNewRecord<Value = true>(): NewRecordState<Value> {
       onClose: () => {
         setValue(null);
         setCloses((before) => before + 1);
+      },
+      onReplaced: () => {
+        setValue(null);
       },
       onSaved: () => {
         setValue(null);

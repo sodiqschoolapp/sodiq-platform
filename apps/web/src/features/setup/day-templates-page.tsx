@@ -129,7 +129,8 @@ export function DayTemplatesPage() {
   const addButton = can('create') && newRecord.value === null && (
     <Button
       id={newRecord.buttonId}
-      disabled={!hasLessonType}
+      // The new form needs the day of tomorrow and the slot types: off until both are there.
+      disabled={!hasLessonType || today === undefined || allSlotTypes === undefined}
       onClick={() => {
         newRecord.start(true);
       }}

@@ -319,6 +319,10 @@ describe('the pages of the design system', () => {
       }),
     );
     expect(outside).toEqual([]);
+    // A checkbox written another way (an object key, a default value) is not
+    // drawn in a label this test can read: none is.
+    expect(matchingText(/type\s*[:=]\s*\{?\s*["'`]checkbox["'`]\s*[,}]/, drawn)).toEqual([]);
+    expect(matchingText(/type\s*:\s*["'`]checkbox["'`]/, drawn)).toEqual([]);
     // Six checkboxes today: a new one is checked by the same rule.
     expect(
       drawn.reduce((sum, { text }) => sum + [...text.matchAll(/type="checkbox"/g)].length, 0),

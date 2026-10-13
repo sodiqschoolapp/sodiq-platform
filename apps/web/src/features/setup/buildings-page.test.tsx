@@ -393,8 +393,11 @@ describe('a new record in the side panel of a list', () => {
 
     fireEvent.click(rowButton('Main'));
     await answer(en.unsent.leave);
-    expect(await screen.findByRole('complementary', { name: 'Main' })).toBeDefined();
+    const record = await screen.findByRole('complementary', { name: 'Main' });
     expect(newPanel()).toBeNull();
+    // The record that took its place keeps the focus: no close without a save.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(document.activeElement).toBe(within(record).getByRole('heading', { name: 'Main' }));
   });
 
   it('asks before the close button, Escape or "Cancel" drop typed text, and gives the focus back to "New …"', async () => {
