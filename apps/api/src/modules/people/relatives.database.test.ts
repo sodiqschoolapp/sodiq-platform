@@ -1,5 +1,6 @@
 import {
   RELATIONSHIPS,
+  RELATIVE_EXTRA_PHONES_MAX,
   RELATIVE_NAME_MAX_LENGTH,
   RELATIVE_WORKPLACE_MAX_LENGTH,
   relativeNameKey,
@@ -12,6 +13,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { linkRelative } from '../../testing/relatives-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { staffIdOf } from './staff-numbers.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
 const CHECK_VIOLATION = '23514';
@@ -793,6 +795,398 @@ describe('close relatives in the database', () => {
       });
       expect(await elsewhere(north)).toBe('1');
       expect(await elsewhere(south)).toBe('1');
+    });
+  });
+
+  // Task 2.5b-2 (db/migrations/0038, pull request #74): extra phones are a
+  // list on the record, never unique and never matched (decision 2); the mark
+  // "same person" names one person of the staff that the writing transaction
+  // sees (decision 4); a merged record is emptied of both (decision 5).
+  describe('extra phones and the same person (task 2.5b-2)', () => {
+    let academic: string;
+    let steam: string;
+    let phones = 0;
+    let people = 0;
+
+    /** A new invented phone of the people shape, never used before in this file. */
+    const phone = () => {
+      phones += 1;
+      return `+99897${String(3000000 + phones)}`;
+    };
+
+    const extraPhonesOf = async (relative: string) =>
+      (
+        await database.migrator
+          .selectFrom('relatives')
+          .select('extra_phones')
+          .where('id', '=', relative)
+          .executeTakeFirstOrThrow()
+      ).extra_phones;
+
+    const staffIdOfRelative = async (relative: string) =>
+      (
+        await database.migrator
+          .selectFrom('relatives')
+          .select('staff_id')
+          .where('id', '=', relative)
+          .executeTakeFirstOrThrow()
+      ).staff_id;
+
+    /** The application writes a relative with its account and its main link to a new student. */
+    const insertRelative = (values: Record<string, unknown>) =>
+      inBranch(north, async (transaction) => {
+        const student = await writeStudent(transaction, north);
+        const id = await newId(transaction);
+        await transaction
+          .insertInto('relatives')
+          .values({
+            id,
+            full_name: 'Aziza Rahimova',
+            name_key: relativeNameKey('Aziza Rahimova'),
+            ...values,
+          })
+          .execute();
+        await transaction
+          .insertInto('relative_accounts')
+          .values({ relative_id: id, created_at: MOMENT })
+          .execute();
+        await transaction
+          .insertInto('student_relatives')
+          .values({
+            student_id: student,
+            branch_id: north,
+            relative_id: id,
+            relationship: 'aunt',
+            main_contact: true,
+            linked_at: MOMENT,
+          })
+          .execute();
+        return id;
+      });
+
+    /** The mark "same person" written by the application in a branch. */
+    const markAs = (branch: string, relative: string, staff: string | null) =>
+      inBranch(branch, (transaction) =>
+        transaction
+          .updateTable('relatives')
+          .set({ staff_id: staff })
+          .where('id', '=', relative)
+          .execute(),
+      );
+
+    /** A person with a main branch, written as the service does, and further branches by the migrator. */
+    async function createPerson(branch: string, further: string[] = []): Promise<string> {
+      people += 1;
+      const id = await inBranch(branch, async (transaction) => {
+        const record = await newId(transaction);
+        await transaction
+          .insertInto('staff')
+          .values({
+            id: record,
+            kind: 'person',
+            staff_id: staffIdOf(2026, 8000 + people),
+            first_name: 'Javlon',
+            last_name: `Saidov${'a'.repeat(people % 5)}`,
+            sex: 'male',
+            birth_date: `1988-02-${String((people % 28) + 1).padStart(2, '0')}`,
+            phone: `+9989400${String(people).padStart(5, '0')}`,
+            admission_date: '2026-09-01',
+          })
+          .execute();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: record, branch_id: branch, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({ staff_id: record, division_id: academic, department_id: steam, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: record, status: 'active', valid_from: '2026-09-01' })
+          .execute();
+        return record;
+      });
+      for (const other of further) {
+        await database.migrator
+          .insertInto('staff_branches')
+          .values({ staff_id: id, branch_id: other, is_main: false })
+          .execute();
+      }
+      return id;
+    }
+
+    /** The writes of a vacancy's create, in the order of the service. */
+    const createVacancy = (branch: string) =>
+      inBranch(branch, async (transaction) => {
+        people += 1;
+        const id = await newId(transaction);
+        await transaction
+          .insertInto('staff')
+          .values({ id, kind: 'vacancy', vacancy_name: `Physics vacancy ${String(people)}` })
+          .execute();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: id, branch_id: branch, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({ staff_id: id, division_id: academic, department_id: steam, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_languages')
+          .values({ staff_id: id, language: 'uz' })
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: id, status: 'open', valid_from: '2026-10-12' })
+          .execute();
+        return id;
+      });
+
+    beforeAll(async () => {
+      academic = (
+        await database.migrator
+          .selectFrom('divisions')
+          .select('id')
+          .where('name_en', '=', 'Academic')
+          .executeTakeFirstOrThrow()
+      ).id;
+      steam = (
+        await database.migrator
+          .selectFrom('departments')
+          .select('id')
+          .where('name_en', '=', 'STEAM')
+          .executeTakeFirstOrThrow()
+      ).id;
+    });
+
+    describe('relatives_extra_phones_check, as packages/shared bounds them', () => {
+      it(`takes ${String(RELATIVE_EXTRA_PHONES_MAX)} extra phones and refuses one more`, async () => {
+        const most = Array.from({ length: RELATIVE_EXTRA_PHONES_MAX }, () => phone());
+        const relative = await insertRelative({ extra_phones: most });
+        expect(await extraPhonesOf(relative)).toEqual(most);
+        await expect(
+          insertRelative({ extra_phones: [...most.map(() => phone()), phone()] }),
+        ).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'relatives_extra_phones_check',
+        });
+      });
+
+      it('refuses a bad shape, an empty item and a phone given twice', async () => {
+        const twice = phone();
+        for (const extra of [
+          ['998901234567'],
+          ['+99890 1234567'],
+          ['+123456'],
+          [phone(), null],
+          [twice, twice],
+        ]) {
+          await expect(
+            insertRelative({ extra_phones: extra }),
+            JSON.stringify(extra),
+          ).rejects.toMatchObject({
+            code: CHECK_VIOLATION,
+            constraint: 'relatives_extra_phones_check',
+          });
+        }
+      });
+
+      it('keeps the check on an update by the application', async () => {
+        const relative = await insertRelative({});
+        expect(await extraPhonesOf(relative)).toEqual([]);
+        const update = (extra: (string | null)[]) =>
+          inBranch(north, (transaction) =>
+            transaction
+              .updateTable('relatives')
+              .set({ extra_phones: extra as string[] })
+              .where('id', '=', relative)
+              .execute(),
+          );
+        const kept = [phone(), phone()];
+        await update(kept);
+        expect(await extraPhonesOf(relative)).toEqual(kept);
+        await expect(update([...kept, phone(), phone()])).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'relatives_extra_phones_check',
+        });
+        await expect(update([kept[0] ?? '', null])).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'relatives_extra_phones_check',
+        });
+        expect(await extraPhonesOf(relative)).toEqual(kept);
+      });
+    });
+
+    describe('an extra phone is never unique and never matched (decision 2)', () => {
+      it('takes one extra phone on two relatives, and one equal to a main phone', async () => {
+        const shared = phone();
+        const first = await insertRelative({ extra_phones: [shared] });
+        const second = await insertRelative({ extra_phones: [shared] });
+        expect(await extraPhonesOf(first)).toEqual([shared]);
+        expect(await extraPhonesOf(second)).toEqual([shared]);
+
+        const main = phone();
+        const holder = await insertRelative({ phone: main });
+        const other = await insertRelative({ extra_phones: [main] });
+        expect(await extraPhonesOf(other)).toEqual([main]);
+        expect(holder).not.toBe(other);
+        // The record's own main phone among its extra phones passes too.
+        const own = phone();
+        const self = await insertRelative({ phone: own, extra_phones: [own] });
+        expect(await extraPhonesOf(self)).toEqual([own]);
+      });
+
+      it('is not found by relative_by_phone nor released by relative_release_phone', async () => {
+        const extra = phone();
+        const relative = await insertRelative({ phone: phone(), extra_phones: [extra] });
+        for (const branch of [north, south]) {
+          const found = await inBranch(branch, (transaction) =>
+            sql`select * from relative_by_phone(${extra})`.execute(transaction),
+          );
+          expect(found.rows).toEqual([]);
+        }
+        await expect(
+          inBranch(north, (transaction) =>
+            sql`
+              select * from relative_release_phone(${relative}::uuid, ${extra}, ${phone()}, ${north}::uuid)
+            `.execute(transaction),
+          ),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'relative_phone_changed' });
+        expect(await extraPhonesOf(relative)).toEqual([extra]);
+      });
+    });
+
+    describe('the rights of the application on the new columns', () => {
+      it('updates extra phones and the mark, and never inserts the mark', async () => {
+        const person = await createPerson(north);
+        const relative = await insertRelative({ extra_phones: [phone()] });
+        const next = [phone()];
+        await inBranch(north, (transaction) =>
+          transaction
+            .updateTable('relatives')
+            .set({ extra_phones: next })
+            .where('id', '=', relative)
+            .execute(),
+        );
+        expect(await extraPhonesOf(relative)).toEqual(next);
+        await markAs(north, relative, person);
+        expect(await staffIdOfRelative(relative)).toBe(person);
+
+        await expect(insertRelative({ staff_id: await createPerson(north) })).rejects.toMatchObject(
+          { code: INSUFFICIENT_PRIVILEGE },
+        );
+      });
+    });
+
+    describe('the mark "same person" (decision 4)', () => {
+      it('refuses a second relative marked with the same staff record (relatives_staff_idx)', async () => {
+        const person = await createPerson(north);
+        const first = await studentWithRelative(north);
+        const second = await studentWithRelative(north);
+        await markAs(north, first.relative, person);
+        await expect(markAs(north, second.relative, person)).rejects.toMatchObject({
+          code: UNIQUE_VIOLATION,
+          constraint: 'relatives_staff_idx',
+        });
+        expect(await staffIdOfRelative(second.relative)).toBeNull();
+      });
+
+      it('refuses a vacancy of the branch', async () => {
+        const vacancy = await createVacancy(north);
+        const { relative } = await studentWithRelative(north);
+        await expect(markAs(north, relative, vacancy)).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'relatives_same_person_vacancy',
+        });
+        expect(await staffIdOfRelative(relative)).toBeNull();
+      });
+
+      it('refuses a person linked only to a branch outside the transaction', async () => {
+        const person = await createPerson(south);
+        const { relative } = await studentWithRelative(north);
+        await expect(markAs(north, relative, person)).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'relatives_same_person_unseen',
+        });
+        expect(await staffIdOfRelative(relative)).toBeNull();
+      });
+
+      it('takes a person of the branch, also through a further branch link, and a removal', async () => {
+        const { relative } = await studentWithRelative(north);
+        const here = await createPerson(north);
+        await markAs(north, relative, here);
+        expect(await staffIdOfRelative(relative)).toBe(here);
+        await markAs(north, relative, null);
+        expect(await staffIdOfRelative(relative)).toBeNull();
+        const further = await createPerson(south, [north]);
+        await markAs(north, relative, further);
+        expect(await staffIdOfRelative(relative)).toBe(further);
+      });
+
+      it('does not check a kept mark again after the staff member left the branch', async () => {
+        const { relative } = await studentWithRelative(north);
+        // The main link in the south, a further link in the north (staff_main_branch_check).
+        const person = await createPerson(south, [north]);
+        await markAs(north, relative, person);
+        await database.migrator
+          .deleteFrom('staff_branches')
+          .where('staff_id', '=', person)
+          .where('branch_id', '=', north)
+          .execute();
+        // Another column, and the same mark written again: neither is checked.
+        await inBranch(north, (transaction) =>
+          transaction
+            .updateTable('relatives')
+            .set({ workplace: 'Shahar kasalxonasi' })
+            .where('id', '=', relative)
+            .execute(),
+        );
+        await markAs(north, relative, person);
+        expect(await staffIdOfRelative(relative)).toBe(person);
+        // A new mark of the same person is now refused, and a removal passes.
+        const { relative: other } = await studentWithRelative(north);
+        await expect(markAs(north, other, person)).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'relatives_same_person_unseen',
+        });
+        await markAs(north, relative, null);
+        expect(await staffIdOfRelative(relative)).toBeNull();
+      });
+    });
+
+    describe('a merged record is emptied of both (decision 5)', () => {
+      it('refuses a merged record with extra phones or a mark', async () => {
+        const kept = await studentWithRelative(north);
+        const person = await createPerson(north);
+        for (const values of [{ extra_phones: [phone()] }, { staff_id: person }]) {
+          const merged = await studentWithRelative(north);
+          await expect(
+            database.migrator
+              .updateTable('relatives')
+              .set({ merged_into: kept.relative, ...values })
+              .where('id', '=', merged.relative)
+              .execute(),
+            JSON.stringify(values),
+          ).rejects.toMatchObject({
+            code: CHECK_VIOLATION,
+            constraint: 'relatives_merged_empty_check',
+          });
+        }
+        // A record that holds them is refused the merge too.
+        const holder = await insertRelative({ extra_phones: [phone()] });
+        await expect(
+          database.migrator
+            .updateTable('relatives')
+            .set({ merged_into: kept.relative })
+            .where('id', '=', holder)
+            .execute(),
+        ).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'relatives_merged_empty_check',
+        });
+      });
     });
   });
 });

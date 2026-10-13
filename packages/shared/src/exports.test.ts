@@ -113,7 +113,16 @@ describe('the student export', () => {
       'grade',
       'startsOn',
     ]);
-    expect(of('contact')).toEqual(['phone', 'email']);
+    // Task 2.5b-2, decision 1 (Look first): the relatives are Contact columns.
+    expect(of('contact')).toEqual([
+      'phone',
+      'email',
+      'mainContactName',
+      'mainContactRelationship',
+      'mainContactPhone',
+      'mainContactExtraPhones',
+      'otherRelatives',
+    ]);
     expect(of('identity')).toEqual([
       'birthDate',
       'documentType',

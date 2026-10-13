@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   RELATIONSHIPS,
+  RELATIVE_EXTRA_PHONES_MAX,
+  relativeEditSchema,
+  relativeSamePersonSchema,
   receivesNotices,
   relativeListQuerySchema,
   relativeNameKey,
@@ -31,6 +34,7 @@ describe('relative records', () => {
       email: ' A.Otkirov@Example.UZ ',
     });
     expect(parsed).toEqual({
+      extraPhones: [],
       fullName: 'Gʻulom Oʻtkirov',
       phone: '+998901234567',
       workplace: 'Toshkent shahar shifoxonasi',
@@ -167,5 +171,49 @@ describe('the unlink and the list query', () => {
   it('takes a phone typed with spaces and a part of one', () => {
     expect(relativeListQuerySchema.parse({ phone: '+998 90 12' }).phone).toBe('+9989012');
     expect(relativeListQuerySchema.safeParse({ phone: 'abc' }).success).toBe(false);
+  });
+});
+
+// Task 2.5b-2 (pull request #74): extra phones (decisions 2 and 4) and the mark
+// "same person" (decision 4), as the database keeps them (db/migrations/0038).
+describe('extra phones and the mark "same person"', () => {
+  const record = (extraPhones?: unknown) => ({
+    fullName: 'Dilfuza Saidova',
+    phone: '+998901112233',
+    workplace: '',
+    email: '',
+    ...(extraPhones === undefined ? {} : { extraPhones }),
+  });
+
+  it('takes up to RELATIVE_EXTRA_PHONES_MAX extra phones, typed with spaces, none by default', () => {
+    expect(RELATIVE_EXTRA_PHONES_MAX).toBe(3);
+    expect(relativeRecordSchema.parse(record()).extraPhones).toEqual([]);
+    expect(
+      relativeRecordSchema.parse(record(['+998 71 123-45-67', '+12025550147', '+998901112244']))
+        .extraPhones,
+    ).toEqual(['+998711234567', '+12025550147', '+998901112244']);
+    // The main phone repeated is no refusal (decision 4 of the review).
+    expect(relativeRecordSchema.safeParse(record(['+998901112233'])).success).toBe(true);
+  });
+
+  it('refuses a fourth extra phone, a bad shape and a phone given twice', () => {
+    const four = ['+998901110001', '+998901110002', '+998901110003', '+998901110004'];
+    expect(relativeRecordSchema.safeParse(record(four)).success).toBe(false);
+    expect(relativeRecordSchema.safeParse(record(['12345'])).success).toBe(false);
+    expect(
+      relativeRecordSchema.safeParse(record(['+998901110001', '+998 90 111 00 01'])).success,
+    ).toBe(false);
+  });
+
+  it('wants the whole list on the edit, never a silent clear', () => {
+    expect(relativeEditSchema.safeParse(record()).success).toBe(false);
+    expect(relativeEditSchema.safeParse(record([])).success).toBe(true);
+  });
+
+  it('names one staff record by id for the mark', () => {
+    const staffId = '01a13429-da37-76ab-9087-36a8604699c4';
+    expect(relativeSamePersonSchema.parse({ staffId })).toEqual({ staffId });
+    expect(relativeSamePersonSchema.safeParse({ staffId: 'S-000001' }).success).toBe(false);
+    expect(relativeSamePersonSchema.safeParse({ staffId, more: 1 }).success).toBe(false);
   });
 });

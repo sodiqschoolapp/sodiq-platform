@@ -213,6 +213,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 13 October 2026: extra phones, the same person and relatives in the export (task 2.5b-2)
+
+Plan approved on pull request #74 with corrections 1 and 2; decisions 1 to 9 confirmed there; 1, 4 and 9 marked Look first. The decisions after 9 came from the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a pinned list widened). The student file gains five Contact columns: the main contact's name, relationship, phone and extra phones, and `otherRelatives` (one line per other live relative); written only through a Super Admin or Academic Vice Principal assignment, named in the Principal's `leftOut`; workplace and email not exported | Decision 1; build-plan line; `edge/people-roles-accounts` (Contact is "phones of student and relatives") |
+| **Look first.** The mark is `relatives.staff_id`, one relative per staff record (`relatives_staff_idx`), set and removed under `relatives` edit when both records are visible in the branch of the request; the trigger `relatives_same_person_check` refuses a vacancy and a staff record the transaction does not see | Decision 4; `edge/close-relatives`, row 8 |
+| **Look first** (personal data across branches). A mark whose staff member is not of the branch is neither shown nor changed there: 409 `same_person_elsewhere` to all but the Super Admin, whose `PUT` and `DELETE` run with every branch in the transaction and name the Super Admin assignment; `same_person_taken` names the holder only when it is linked live in the branch | Decision 9, correction 1 of the review |
+| Extra phones are a `text[]` on the record: at most three, the phone shape, none twice, never unique, not read by `relative_by_phone`, `relative_release_phone`, the Parents phone search or a merge's choice of phone; one equal to the main phone is allowed | Decision 2; `edge`, row 5 |
+| A change of extra phones only is logged (`relative.edit`) and tells no other branch | Decision 3; `edge`, row 1 tells of "a change of name or phone" |
+| A merge keeps the kept record's extra phones and mark, each filled from the other when the kept has none; the merged record is emptied (`relatives_merged_empty_check`); two different marks 422 `merge_marks_differ`; a mark to move whose staff record the transaction does not see 403 `merge_needs_super_admin`; `relative.merge` and `relative.merged` carry `extraPhones` and `staffId` | Decision 5 |
+| Each record shows the other: the Parent panel to `relatives` view readers when the staff member is of the branch; the staff panel ("Also a parent") to readers who also hold `relatives` view, when the relative is linked live in the branch | Decision 6 |
+| The edit requires `extraPhones` (the whole list); a missing field is 400, never a silent clear | Plan review; the earlier tests of the edit send the list |
+| The merge locks the staff row of a mark after both relatives, as the routes of the mark lock the relative, then the staff rows in id order, then the branch link `for share` (decision taken in the build) | A mark and a merge of one staff member wait on each other instead of deadlocking |
+| **Look first** (a test changed). The test "refuses the second of two merges sharing a record" sent both merges at once and answered 404 or 409 by timing (CI of the plan commit); it became "refuses a later merge of a record already merged" (404, nothing changed); the concurrent case stays proved by the lock pair "a merge that waited on another merge of the same record" | Decision taken in the build; a test must not depend on timing |
+
 ## 13 October 2026: phone owners, merge and the notice to the other branch (task 2.5b-1)
 
 Plan approved on pull request #73 with corrections 1 to 3; decisions 1 to 11 confirmed there; 1, 2, 5 to 9 marked Look first. The decisions after 11 came from the build. Flagged on issue #42.
