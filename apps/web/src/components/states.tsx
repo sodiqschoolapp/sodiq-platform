@@ -103,15 +103,16 @@ interface ErrorStateProps {
 
 /**
  * "Error messages say what happened and what to do next." A refusal of the
- * role says so with no "Try again", which cannot help (issue #39, hand test of
- * 13 October 2026, finding 4).
+ * role says that this part is not for the role, with no "Try again", which
+ * cannot help (issue #39, hand test of 13 October 2026, finding 4). A page the
+ * role may not open at all is the full-page "no access" of the route.
  */
 export function ErrorState({ error, onRetry }: ErrorStateProps) {
   const { t } = useTranslation();
   const refused = error instanceof ApiFailure && error.code === 'permission_denied';
   return (
     <div className="grid justify-items-start gap-3">
-      <p role="alert">{refused ? t('problems.noAccessText') : failureText(t, error)}</p>
+      <p role="alert">{refused ? t('problems.noAccessPart') : failureText(t, error)}</p>
       {onRetry !== undefined && !refused && (
         <Button onClick={onRetry}>{t('problems.retry')}</Button>
       )}

@@ -14,7 +14,7 @@ import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
 import { accountAccessKey } from './people-api';
-import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
 const PATH = '/people/staff';
 
@@ -544,6 +544,40 @@ describe('the account section', () => {
       });
     },
   );
+
+  it('says the branch was not read instead of using the device time zone on the slip', async () => {
+    let up = false;
+    open('super_admin', {
+      'GET /api/setup/branch': () =>
+        up
+          ? json({
+              id: NORTH.id,
+              name: 'North',
+              address: null,
+              phone: null,
+              email: null,
+              workingWeekdays: [1, 2, 3, 4, 5],
+              timeZone: 'Asia/Tashkent',
+              goLiveDate: null,
+            })
+          : refusal('internal_error', 500),
+      [`GET /api/people/staff/${LOLA.id}/account`]: () => json(noAccount),
+      [`GET /api/people/staff/${LOLA.id}/account/suggestion`]: () => json({ login: 'l.tursunova' }),
+      [`POST /api/people/staff/${LOLA.id}/account`]: () => json(SLIP, 201),
+    });
+    const found = await section();
+    const form = await within(found).findByRole('form', {
+      name: en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('dialog', { name: en.people.account.slipTitle });
+    expect((await within(dialog).findByRole('alert')).textContent).toBe(en.errors.internal_error);
+    expect(dialog.textContent).not.toContain('2026, ');
+
+    up = true;
+    fireEvent.click(within(dialog).getByRole('button', { name: en.problems.retry }));
+    expect(await within(dialog).findByText('17 October 2026, 23:55')).toBeDefined();
+  });
 
   // Decision 7: a re-hire answers a slip, shown once like the first one.
   it('shows the slip of a re-hire after the status change', async () => {

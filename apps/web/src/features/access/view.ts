@@ -4,6 +4,7 @@ import {
   ROLES,
   SCHOOL_WIDE_ROLES,
   roleSchema,
+  type Action,
   type Role,
   type SessionResponse,
 } from '@sodiq/shared';
@@ -66,10 +67,11 @@ export function mayView(
   session: Pick<SessionResponse, 'assignments'> | null,
   branchId: string | null,
   area: string,
+  action: Action = 'view',
 ): boolean {
   return (session?.assignments ?? []).some(
     (assignment) =>
-      permits(PERMISSIONS, assignment.role, area, 'view') &&
+      permits(PERMISSIONS, assignment.role, area, action) &&
       ((assignment.branchId === null && SCHOOL_WIDE_ROLES.includes(assignment.role)) ||
         (branchId !== null && assignment.branchId === branchId)),
   );

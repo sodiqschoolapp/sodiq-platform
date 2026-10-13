@@ -59,9 +59,14 @@ export function AuthPendingPage() {
           <Bar className="h-12 w-full" />
         </div>
       </div>
-      <div className="hidden w-[42%] max-w-160 shrink-0 bg-sidebar sm:block" />
+      <div className="hidden w-[42%] max-w-160 min-w-0 bg-sidebar sm:block" />
     </div>
   );
+}
+
+/** A full-page error drawn inside the layout's `main`. */
+function InLayout({ children }: { children: React.ReactNode }) {
+  return <div className="mx-auto grid max-w-5xl content-start">{children}</div>;
 }
 
 /** A full-page error on the canvas: the brand moment of the design system. */
@@ -111,10 +116,12 @@ export function ErrorPage({ error }: ErrorComponentProps) {
  * The full-page "no access" screen: a page the role may not open (task 2.7a,
  * finding 4: "Try again" cannot help a refusal of the role).
  */
-export function NoAccessPage() {
+export function NoAccessPage({ inLayout = false }: { inLayout?: boolean }) {
   const { t } = useTranslation();
+  // Inside the layout the page already stands in its `main`, with its padding.
+  const Frame = inLayout ? InLayout : FullPage;
   return (
-    <FullPage>
+    <Frame>
       <BrandMoment
         heading="h1"
         title={t('problems.noAccessTitle')}
@@ -125,7 +132,7 @@ export function NoAccessPage() {
           </Link>
         }
       />
-    </FullPage>
+    </Frame>
   );
 }
 

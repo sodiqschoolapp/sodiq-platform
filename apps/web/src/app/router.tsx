@@ -8,7 +8,7 @@ import {
   redirect,
   type RouterHistory,
 } from '@tanstack/react-router';
-import { personalDataKindSchema, type Area } from '@sodiq/shared';
+import { personalDataKindSchema, type Action, type Area } from '@sodiq/shared';
 import { HomePage } from '@/features/access/home-page';
 import { AccountPage } from '@/features/auth/account-page';
 import { AuditPage } from '@/features/audit/audit-page';
@@ -74,9 +74,9 @@ function only(...steps: Step[]) {
  * branch of the tab lives in the view store of the shell. Display only: the
  * server refuses the calls anyway.
  */
-function guarded(area: Area, Page: () => React.JSX.Element) {
+function guarded(area: Area, Page: () => React.JSX.Element, action: Action = 'view') {
   return function Guarded() {
-    return useMayView(area) ? <Page /> : <NoAccessPage />;
+    return useMayView(area, action) ? <Page /> : <NoAccessPage inLayout />;
   };
 }
 
@@ -285,7 +285,7 @@ const headTeachersRoute = createRoute({
 const personalDataRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/people/report/$kind/$id',
-  component: PersonalDataRouteView,
+  component: guarded('personal_data_report', PersonalDataRouteView, 'export'),
 });
 
 function PersonalDataRouteView() {

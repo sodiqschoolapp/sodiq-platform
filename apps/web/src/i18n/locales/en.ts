@@ -28,6 +28,7 @@ export const en = {
     dark: 'Dark',
   },
   problems: {
+    noAccessPart: 'Your role may not see this.',
     noAccessText:
       'Your role may not open this page. Go to the home page, or ask an administrator if you need it.',
     noAccessTitle: 'No access',

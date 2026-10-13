@@ -1,4 +1,5 @@
 import type { Weekday } from '@sodiq/shared';
+import { en } from '@/i18n/locales/en';
 import { uz } from '@/i18n/locales/uz';
 
 /**
@@ -138,6 +139,14 @@ export function momentDateText(language: string, iso: string, options: MomentOpt
   if (language === 'uz') {
     const parts = partsOf(moment, options.timeZone);
     return uzDate(parts.day, parts.month, parts.year);
+  }
+  if (language === 'en' && (options.month ?? 'short') === 'short') {
+    // The browser's English short month of September is "Sept" in newer
+    // language data and "Sep" in older: one form, "13 Oct 2026", "2 Sep 2026"
+    // (answer 38).
+    const parts = partsOf(moment, options.timeZone);
+    const months: Record<string, string> = en.dates.months;
+    return `${String(parts.day)} ${(months[String(parts.month)] ?? '').slice(0, 3)} ${String(parts.year)}`;
   }
   return new Intl.DateTimeFormat(intlLocale(language), {
     day: 'numeric',

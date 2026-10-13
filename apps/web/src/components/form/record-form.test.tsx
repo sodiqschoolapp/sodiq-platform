@@ -320,3 +320,80 @@ describe('the sign of a failed save', () => {
     expect(score().value).toBe('90');
   });
 });
+
+// Review of the build of pull request #77, finding 4: the hand test's case of
+// two forms on one page, and a form taken away after its refusal.
+describe('the sign of a failed save with two forms on the page', () => {
+  const OTHER: SampleRow = { ...ROW, id: 'sample-0003', name: 'Malika Yusupova', score: 64 };
+
+  function renderTwo(saveFirst: Save, saveSecond: Save) {
+    function Page() {
+      const [first, setFirst] = useState(true);
+      return (
+        <>
+          {first && <SampleForm row={ROW} onSave={saveFirst} />}
+          <SampleForm row={OTHER} onSave={saveSecond} />
+          <button
+            type="button"
+            onClick={() => {
+              setFirst(false);
+            }}
+          >
+            close
+          </button>
+          <Leaver />
+        </>
+      );
+    }
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <ConfirmProvider>
+          <UnsentProvider>
+            <Page />
+          </UnsentProvider>
+        </ConfirmProvider>
+      </I18nextProvider>,
+    );
+  }
+
+  const formOf = (name: string) => screen.getByRole('form', { name });
+  const scoreOf = (name: string) =>
+    within(formOf(name)).getByLabelText<HTMLInputElement>(en.sample.score);
+
+  it('does not say "Save failed" after another form saves, once the refused one was changed', async () => {
+    renderTwo(
+      () => Promise.reject(new ApiFailure('no_answer')),
+      () => Promise.resolve(),
+    );
+    fireEvent.change(scoreOf(ROW.name), { target: { value: '90' } });
+    fireEvent.submit(formOf(ROW.name));
+    await waitFor(() => {
+      expect(unsent()).toBe('failed');
+    });
+    fireEvent.change(scoreOf(ROW.name), { target: { value: '91' } });
+
+    fireEvent.change(scoreOf(OTHER.name), { target: { value: '70' } });
+    fireEvent.submit(formOf(OTHER.name));
+    await within(formOf(OTHER.name)).findByText(en.form.saved);
+
+    expect(unsent()).toBe('typed');
+  });
+
+  it('is gone when the refused form is closed', async () => {
+    renderTwo(
+      () => Promise.reject(new ApiFailure('no_answer')),
+      () => Promise.resolve(),
+    );
+    fireEvent.change(scoreOf(ROW.name), { target: { value: '90' } });
+    fireEvent.submit(formOf(ROW.name));
+    await waitFor(() => {
+      expect(unsent()).toBe('failed');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'close' }));
+
+    await waitFor(() => {
+      expect(unsent()).toBe('');
+    });
+  });
+});

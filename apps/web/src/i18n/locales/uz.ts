@@ -25,6 +25,7 @@ export const uz: Texts<'one' | 'other'> = {
     dark: 'Qorongʻi',
   },
   problems: {
+    noAccessPart: 'Rolingiz buni koʻrishga ruxsat bermaydi.',
     noAccessText:
       'Rolingiz bu sahifani ochishga ruxsat bermaydi. Bosh sahifaga oʻting yoki kerak boʻlsa, administratordan soʻrang.',
     noAccessTitle: 'Ruxsat yoʻq',
@@ -686,7 +687,7 @@ export const uz: Texts<'one' | 'other'> = {
       cancel: 'Bekor qilish',
       empty:
         'Bu yerda filialning oʻquv kunlari: boshlanish vaqti va tartibdagi slotlar. Hozircha yoʻq.',
-      needLessonType: 'Avval «dars» turidagi dars yoki tanaffus turini qoʻshing.',
+      needLessonType: 'Avval dars turini qoʻshing.',
       slots: 'Tartibdagi slotlar',
       startTime: 'Boshlanish vaqti',
       from: 'Dan',

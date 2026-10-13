@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createContext, useContext, useMemo, useSyncExternalStore } from 'react';
-import type { Role } from '@sodiq/shared';
+import type { Action, Role } from '@sodiq/shared';
 import { sessionQuery } from '@/features/auth/session';
 import { mayView, resolveView, type View } from './view';
 import type { ViewStore } from './view-store';
@@ -38,8 +38,8 @@ export function useView(): UseView {
 }
 
 /** Whether the page of an area may be opened in the branch of the tab (`mayView`). */
-export function useMayView(area: string): boolean {
+export function useMayView(area: string, action: Action = 'view'): boolean {
   const { data: session } = useQuery(sessionQuery);
   const { branchId } = useView();
-  return mayView(session ?? null, branchId, area);
+  return mayView(session ?? null, branchId, area, action);
 }

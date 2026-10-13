@@ -90,6 +90,15 @@ describe('Russian and English go through the browser', () => {
     );
   });
 
+  it('writes the English short month of September as "Sep" in every browser', () => {
+    expect(formatMomentIn('en', '2026-09-02T10:03:00.000Z', 'Asia/Tashkent')).toBe(
+      '2 Sep 2026, 15:03',
+    );
+    expect(momentDateText('en', '2026-06-05T10:00:00.000Z', { timeZone: 'Asia/Tashkent' })).toBe(
+      '5 Jun 2026',
+    );
+  });
+
   it('writes Russian moments on the 24-hour clock', () => {
     expect(formatMomentIn('ru', '2026-10-13T10:03:00.000Z', 'Asia/Tashkent')).toBe(
       '13 окт. 2026 г., 15:03',

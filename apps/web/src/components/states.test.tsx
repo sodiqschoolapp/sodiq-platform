@@ -43,7 +43,7 @@ describe('an empty state', () => {
 describe('an error state', () => {
   it('says the role may not see it, with no "Try again"', () => {
     render(<ErrorState error={new ApiFailure('permission_denied')} onRetry={() => undefined} />);
-    expect(screen.getByRole('alert').textContent).toBe('problems.noAccessText');
+    expect(screen.getByRole('alert').textContent).toBe('problems.noAccessPart');
     expect(screen.queryByRole('button', { name: 'problems.retry' })).toBeNull();
   });
 

@@ -91,3 +91,20 @@ describe('a page the person may not open', () => {
     expect(calls.map((call) => call.route)).not.toContain('GET /api/people/staff');
   });
 });
+
+// Review of the build of pull request #77, finding 7: the personal data report
+// is the Super Admin's export; any other role gets the full-page "no access".
+describe('the personal data report page', () => {
+  it('shows the Principal the full-page "no access" and produces nothing', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'principal', branchId: NORTH.id }] })),
+    });
+    renderApp('/people/report/student/0199c000-0000-7000-8000-000000000031');
+
+    expect(await heading(en.problems.noAccessTitle)).toBeDefined();
+    expect(calls.some((call) => call.route.startsWith('POST'))).toBe(false);
+    // Drawn inside the layout's own `main`, never a second one.
+    expect(document.querySelectorAll('main')).toHaveLength(1);
+  });
+});
