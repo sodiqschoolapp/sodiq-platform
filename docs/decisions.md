@@ -213,6 +213,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 13 October 2026: student export, photos, consent list and the "No class" counter (task 2.4b-2)
+
+Plan approved on pull request #70 with corrections 1 to 3; decisions 1 to 10 confirmed there, 3 with correction 3, 8 with correction 1; 1 to 4 marked Look first. The decisions after 10 came from the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** `students` gains `export` for the Super Admin, the Academic Vice Principal and the Principal; Tutors with their class scope in 3.1; the Spiritual VP, the Head Tutor and the Head Teachers none | Decision 1; `edge`: "Exports are allowed, without identity documents"; `02`: "view only" |
+| **Look first.** Contact, Identity and Financial fields go only into export-only columns, chosen by group under "Also export" and off by default; the list still shows no phone | Decision 2; `04`: "Phone numbers are not shown in the list"; `edge`: "Whole-branch exports with contact or identity fields are for the Super Admin and Academic Vice Principal" |
+| **Look first.** Contact and Identity are refused to every exporter but the Super Admin and the Academic Vice Principal on ticked rows too, decided from every current assignment that counts in the branch of the request; proposed `/spec-change` for `edge/people-roles-accounts`: "Exports with contact or identity fields, of the whole branch or of ticked rows, are for the Super Admin and Academic Vice Principal." | Decision 3 with correction 3; 2.2c-1 decision 4 |
+| **Look first.** `STUDENT_PHOTO_ROUTE` is the third entry of `FILE_ROUTES` and of the pinned list of `file-routes.test.ts` | Decision 4; answer 2: "one upload route per photo kind" |
+| The export follows 2.2c-1: ticked or matching rows, at most 5,000 ids, a synchronous file in the account's language, no request key, the audit entry with filters, columns, `leftOut`, selection and rows | Decision 5 |
+| `groups` and `tutor` are `exported: false` until 3.1 and 3.2; the class cell writes the list's "Grade 7, no class" | Decision 6 |
+| Student photos as 2.2c-2: set and removed under `students` `edit`, read under `students` `view`, not audited when read; the object stays in the bucket | Decision 7 |
+| The consent list is the list filter "Active, no consent" for the Financial readers; the list route answers `consent=missing` to them only and refuses it 403 to others; the page asks the server for it | Decision 8, correction 1 |
+| The "No class" counter is `GET people/students/no-class`, the students active today (before the start date included) with no class, on the Academic Vice Principal's home only, hidden at 0 | Decisions 9, 10 |
+| The export-only columns are one key per cell (`documentType`, `documentNumber`, `contractNumber`, `contractSignedOn`, `scholarshipType`, `scholarshipCoverage`, `scholarshipAmount`) rather than the plan's grouped `document`, `contract` and `scholarship`; "More basic fields" adds the paternal name, sex, grade and start date (decision taken in the build) | One heading per column ties each heading to the field of the profile in `export-texts.test.ts` |
+| The photo `PUT` answers 204 and the page reads the record again, where the staff photo answers the record (decision taken in the build) | The student record is read with the groups of the reader; one read path |
+| The audit entry of a file names the assignment of its narrowest group written: Identity, then Contact, then Financial; a file of Basic columns names the route's own (decision taken in the build) | `.claude/rules/api.md`: "the audit entry names the assignment that allowed that part" |
+| The panel photo sits above the profile tabs, as the staff panel has it, not inside Overview (decision taken in the build, spec review) | The photo is Basic and names the person on every tab |
+| The "Also export" choice counts and sends only the groups offered now; a group no longer offered (another branch) drops out (decision taken in the build, spec review) | `.claude/rules/web.md`: a choice kept in state follows the options of its query |
+
 ## 12 October 2026: leaving, return and delete (task 2.4b-1)
 
 Plan approved on pull request #68 with corrections 1 to 3; decisions 1 to 13 confirmed there, decision 14 added by correction 2; 1 to 4 marked Look first. The decisions after 14 came from the build. Flagged on issue #42.

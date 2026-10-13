@@ -429,6 +429,44 @@ describe('student records in the database', () => {
       await refusedUpdate({ phone: '998901234567' });
       await refusedUpdate({ region: 'moscow' });
     });
+
+    // Task 2.4b-2 (db/migrations/0035): a photo is a JPEG or PNG, its id and type together.
+    it('couples the photo and its type, JPEG or PNG only', async () => {
+      const photo = '0199a000-0000-7000-8000-0000000000bb';
+      await refusedUpdate({ photo_id: photo });
+      await refusedUpdate({ photo_type: 'image/jpeg' });
+      await refusedUpdate({ photo_id: photo, photo_type: 'image/gif' });
+      const id = await createStudent({ branch: north, uid: '2308977' });
+      await inBranch(north, (transaction) =>
+        transaction
+          .updateTable('students')
+          .set({ photo_id: photo, photo_type: 'image/png' })
+          .where('id', '=', id)
+          .execute(),
+      );
+      const stored = await database.migrator
+        .selectFrom('students')
+        .select(['photo_id', 'photo_type'])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      expect(stored).toEqual({ photo_id: photo, photo_type: 'image/png' });
+    });
+
+    // The update grant covers the two columns; a photo is never written at create.
+    it('lets the application write no photo at create', async () => {
+      await expect(
+        inBranch(north, (transaction) =>
+          transaction
+            .insertInto('students')
+            .values({
+              branch_id: north,
+              photo_id: '0199a000-0000-7000-8000-0000000000cc',
+              photo_type: 'image/png',
+            } as never)
+            .execute(),
+        ),
+      ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+    });
   });
 
   describe('the branch filter', () => {

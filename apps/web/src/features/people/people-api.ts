@@ -9,6 +9,7 @@ import {
   staffListSchema,
   studentDetailSchema,
   studentListSchema,
+  studentNoClassSchema,
   vacancyDetailSchema,
   vacancyListSchema,
 } from '@sodiq/shared';
@@ -276,15 +277,75 @@ export const neverUsedQuery = (branchId: string | null) =>
 export const studentsKey = (branchId?: string | null) =>
   branchId === undefined ? [...PEOPLE_KEY, 'students'] : [...PEOPLE_KEY, 'students', branchId];
 
-export const studentsQuery = (branchId: string | null) =>
+/**
+ * `consent: 'missing'`: the active students without consent (answer 23),
+ * which the server gives the Financial readers only (task 2.4b-2).
+ */
+export const studentsQuery = (branchId: string | null, consent?: 'missing') =>
   queryOptions({
-    queryKey: studentsKey(branchId),
+    queryKey: consent === undefined ? studentsKey(branchId) : [...studentsKey(branchId), consent],
     queryFn: async () =>
       studentListSchema.parse(
-        await answerOf(api.GET('/api/people/students', { params: { header: branchHeader() } })),
+        await answerOf(
+          api.GET('/api/people/students', {
+            params: { header: branchHeader(), query: consent === undefined ? {} : { consent } },
+          }),
+        ),
       ),
     enabled: branchId !== null,
   });
+
+/** The "No class" counter of the Academic Vice Principal's home page (task 2.4b-2). */
+export const studentNoClassQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: [...studentsKey(branchId), 'no-class'],
+    queryFn: async () =>
+      studentNoClassSchema.parse(
+        await answerOf(
+          api.GET('/api/people/students/no-class', { params: { header: branchHeader() } }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** The photo of a student (task 2.4b-2), kept in memory under its id as the staff photo. */
+export const studentPhotoQuery = (branchId: string | null, id: string, photoId: string | null) =>
+  queryOptions({
+    queryKey: [...PEOPLE_KEY, 'student-photo', id, photoId],
+    queryFn: async () => {
+      const file: unknown = await answerOf(
+        api.GET('/api/people/students/{id}/photo', {
+          params: { header: branchHeader(), path: { id } },
+          parseAs: 'blob',
+        }),
+      );
+      if (!(file instanceof Blob)) {
+        throw new ApiFailure('no_answer');
+      }
+      return dataUrlOf(file);
+    },
+    enabled: branchId !== null && photoId !== null,
+    staleTime: Infinity,
+    retry: false,
+  });
+
+/** Sends a photo the browser has shrunk (`shrinkPhoto`). */
+export const setStudentPhoto = (id: string, photo: Blob) =>
+  answerOf(
+    api.PUT('/api/people/students/{id}/photo', {
+      params: { header: branchHeader(), path: { id } },
+      body: photo as unknown as string,
+      bodySerializer: (body: unknown) => body as Blob,
+      headers: { 'Content-Type': photo.type },
+    }),
+  );
+
+export const removeStudentPhoto = (id: string) =>
+  answerOf(
+    api.DELETE('/api/people/students/{id}/photo', {
+      params: { header: branchHeader(), path: { id } },
+    }),
+  );
 
 /** One student with the groups of fields the account may read. */
 export const studentDetailQuery = (branchId: string | null, id: string) =>

@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: task 2.4b-2 Export, photos, consent list and the "No class" counter
+
+- Built: migration 0035 (`students.photo_id`, `photo_type`); `POST people/students/export` (`StudentExports`, groups decided by `exportGroupsOf` in `student-export.ts`), `GET people/students/no-class`, the `consent=missing` query of the list (403 without `student_financial`), the photo routes of `StudentPhotos` (the third `FILE_ROUTES` entry); `students` `export` for the Super Admin, the Academic Vice Principal and the Principal.
+- Screens: the photo column and the panel photo, Export with "Also export" groups (`exportExtras` of `ListPage`), the "Active, no consent" filter for the Financial readers, the "Students with no class" tile on the Academic Vice Principal's home; browser test in `people.spec.ts`.
+- Tests: `student-exports.test.ts` (the done-when), `student-photos.test.ts`, `students.test.ts`, `students.database.test.ts`, `students-page.test.tsx`, `no-class-tile.test.tsx`, `export-texts.test.ts`, `exports.test.ts` of shared.
+- Left out: Tutors' export of their own class, the `groups` and `tutor` columns and the class-based counter (3.1, 3.2); the attendance column (with the journal); relatives in the export (2.5).
+
+The next sessions must know:
+
+- A student file is the list's exported columns (`STUDENT_LIST_EXPORT_COLUMNS`) then export-only columns by group (`STUDENT_EXPORT_GROUPS`); a new field goes into one group and `EXPORT_TEXTS.students`, and `export-texts.test.ts` ties its heading to the screen.
+- Contact and Identity are exported only through a Super Admin or Academic Vice Principal assignment that counts in the branch of the request, ticked rows included; the audit entry names the assignment of the narrowest group written.
+- `ApiCall` of the web tests records the `query` of the address.
+- The next task is 2.5.
+
 ## 13 October 2026: the repository is public (process change, no task)
 
 - Owner: the loop trusts only `abbosc` and this repository's branches; the bridge wakes the builder only on a comment by `abbosc` and fires nothing for a fork's pull request, `review-pr`, `next-task` and `finish-task` count only `[review]` comments by `abbosc`, and the reviewer never reviews, comments on or merges a fork's pull request (`docs/decisions.md`, 13 October 2026: the repository is public).

@@ -1,6 +1,13 @@
-import type { Role, StudentDetail, StudentListItem } from '@sodiq/shared';
+import {
+  EXPORT_TEXTS,
+  STUDENT_EXPORT_COLUMNS,
+  STUDENT_LIST_EXPORT_COLUMNS,
+  type Role,
+  type StudentDetail,
+  type StudentListItem,
+} from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
@@ -19,6 +26,8 @@ const OTKIR: StudentListItem = {
   sex: 'male',
   grade: 7,
   startsOn: '2026-09-02',
+  photoId: null,
+  consentMissing: null,
   status: 'active',
   planned: null,
   version: 1,
@@ -33,6 +42,8 @@ const ZARINA: StudentListItem = {
   sex: 'female',
   grade: 8,
   startsOn: '2026-11-02',
+  photoId: null,
+  consentMissing: null,
   status: null,
   planned: null,
   version: 1,
@@ -48,6 +59,8 @@ const LOLA: StudentListItem = {
   sex: 'female',
   grade: 7,
   startsOn: '2026-09-02',
+  photoId: null,
+  consentMissing: null,
   status: 'inactive',
   planned: null,
   version: 2,
@@ -109,6 +122,8 @@ function openList(
       json({
         students: [OTKIR, ZARINA],
         canArchive: role === 'academic_vice_principal' || role === 'super_admin',
+        exportGroups: [],
+        readsFinancial: false,
         today: '2026-10-10',
       }),
     [`GET /api/people/students/${OTKIR.id}`]: () => json(detailOf(OTKIR, detail)),
@@ -129,6 +144,8 @@ describe('the student list', () => {
     });
     expect(rowsDrawn()).toEqual([
       [
+        // The photo column (task 2.4b-2): the initials while there is no photo.
+        'OR',
         '2607001',
         'Oʻtkir Rahimov',
         en.people.students.gradeNoClass.replace('{{grade}}', grade(7)),
@@ -137,6 +154,7 @@ describe('the student list', () => {
         en.people.students.statuses.active,
       ],
       [
+        'ZS',
         '2507014',
         'Zarina Saidova',
         en.people.students.gradeNoClass.replace('{{grade}}', grade(8)),
@@ -156,7 +174,7 @@ describe('the student list', () => {
       await waitFor(() => {
         expect(rowsDrawn()).toHaveLength(1);
       });
-      expect(rowsDrawn()[0]?.[1]).toBe('Oʻtkir Rahimov');
+      expect(rowsDrawn()[0]?.[2]).toBe('Oʻtkir Rahimov');
     },
   );
 
@@ -166,7 +184,7 @@ describe('the student list', () => {
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(1);
     });
-    expect(rowsDrawn()[0]?.[1]).toBe('Zarina Saidova');
+    expect(rowsDrawn()[0]?.[2]).toBe('Zarina Saidova');
   });
 
   it('is in Russian', async () => {
@@ -176,13 +194,13 @@ describe('the student list', () => {
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(2);
     });
-    expect(rowsDrawn()[0]?.[2]).toBe(
+    expect(rowsDrawn()[0]?.[3]).toBe(
       ru.people.students.gradeNoClass.replace(
         '{{grade}}',
         ru.setup.subjects.grade.replace('{{grade}}', '7'),
       ),
     );
-    expect(rowsDrawn()[0]?.[5]).toBe(ru.people.students.statuses.active);
+    expect(rowsDrawn()[0]?.[6]).toBe(ru.people.students.statuses.active);
   });
 
   it('offers the add button to the Academic Vice Principal and not to the Principal', async () => {
@@ -474,6 +492,8 @@ describe('leaving, return and delete', () => {
         json({
           students: [{ ...OTKIR, planned: { status: 'inactive', from: '2026-10-21' }, version: 2 }],
           canArchive: true,
+          exportGroups: [],
+          readsFinancial: false,
           today: '2026-10-10',
         }),
     });
@@ -481,15 +501,21 @@ describe('leaving, return and delete', () => {
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(1);
     });
-    expect(rowsDrawn()[0]?.[5]).toContain(ru.people.students.statuses.active);
-    expect(rowsDrawn()[0]?.[5]).toContain(ru.people.students.inactiveFrom.split(' ')[0] ?? '');
+    expect(rowsDrawn()[0]?.[6]).toContain(ru.people.students.statuses.active);
+    expect(rowsDrawn()[0]?.[6]).toContain(ru.people.students.inactiveFrom.split(' ')[0] ?? '');
   });
 
   it('brings an inactive student back with a new contract', async () => {
     const calls = fakeApi({
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
       'GET /api/people/students': () =>
-        json({ students: [LOLA], canArchive: true, today: '2026-10-10' }),
+        json({
+          students: [LOLA],
+          canArchive: true,
+          exportGroups: [],
+          readsFinancial: false,
+          today: '2026-10-10',
+        }),
       [`GET /api/people/students/${LOLA.id}`]: () =>
         json(
           detailOf(LOLA, {
@@ -626,7 +652,13 @@ describe('leaving, return and delete', () => {
     fakeApi({
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
       'GET /api/people/students': () =>
-        json({ students: [OTKIR, LOLA], canArchive: true, today: '2026-10-10' }),
+        json({
+          students: [OTKIR, LOLA],
+          canArchive: true,
+          exportGroups: [],
+          readsFinancial: false,
+          today: '2026-10-10',
+        }),
       [`GET /api/people/students/${LOLA.id}`]: () => json(detailOf(LOLA, { canArchive: true })),
       'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
       'POST /api/people/students': () =>
@@ -811,7 +843,13 @@ describe('the Status section', () => {
     return fakeApi({
       'GET /api/auth/session': () => json(sessionAs(role, language)),
       'GET /api/people/students': () =>
-        json({ students: [row], canArchive: detail.canArchive, today: '2026-10-10' }),
+        json({
+          students: [row],
+          canArchive: detail.canArchive,
+          exportGroups: [],
+          readsFinancial: false,
+          today: '2026-10-10',
+        }),
       [`GET /api/people/students/${row.id}`]: () => json(detail),
       ...extra,
     });
@@ -932,7 +970,13 @@ describe('the Status section', () => {
       fakeApi({
         'GET /api/auth/session': () => json(sessionAs(role)),
         'GET /api/people/students': () =>
-          json({ students: [OTKIR, GRADUATED], canArchive: true, today: '2026-10-10' }),
+          json({
+            students: [OTKIR, GRADUATED],
+            canArchive: true,
+            exportGroups: [],
+            readsFinancial: false,
+            today: '2026-10-10',
+          }),
         'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
         'POST /api/people/students': () =>
           Response.json(
@@ -1025,5 +1069,282 @@ describe('the Status section', () => {
       ),
     ).toBeDefined();
     expect(within(panel).getByRole('form', { name: ru.people.students.returnTitle })).toBeDefined();
+  });
+});
+
+// Task 2.4b-2, pull request #70: the export by groups of readers, the consent
+// list (answer 23) and the photo column.
+describe('the export of the student list', () => {
+  const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+  function openExport(
+    exportGroups: string[],
+    written: (columns: string[]) => string[] = (columns) => columns,
+  ) {
+    class FileUrl extends URL {
+      static override createObjectURL = (): string => 'blob:file';
+      static override revokeObjectURL = (): void => undefined;
+    }
+    vi.stubGlobal('URL', FileUrl);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    return fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/people/students': () =>
+        json({
+          students: [OTKIR, ZARINA],
+          canArchive: false,
+          exportGroups,
+          readsFinancial: exportGroups.includes('financial'),
+          today: '2026-10-10',
+        }),
+      'POST /api/people/students/export': (body) =>
+        new Response(new Blob(['PK']), {
+          status: 200,
+          headers: {
+            'Content-Type': XLSX,
+            'X-Export-Columns': written((body as { columns: string[] }).columns).join(','),
+          },
+        }),
+    });
+  }
+
+  const sentColumns = (calls: ReturnType<typeof fakeApi>) =>
+    (
+      calls.filter((call) => call.route === 'POST /api/people/students/export').at(-1)?.body as
+        { columns: string[] } | undefined
+    )?.columns;
+
+  const exported = async (calls: ReturnType<typeof fakeApi>, count: number) => {
+    fireEvent.click(screen.getByRole('button', { name: en.list.export }));
+    await waitFor(() => {
+      expect(
+        calls.filter((call) => call.route === 'POST /api/people/students/export'),
+      ).toHaveLength(count);
+    });
+  };
+
+  it('sends the columns of the list, never the photo, groups or tutor; the headings are the file’s', async () => {
+    const calls = openExport(['basic', 'contact', 'identity', 'financial']);
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    const exportedHeadings = [...document.querySelectorAll('thead th')]
+      .filter((cell) => cell.querySelector('input') === null)
+      .map((cell) => cell.textContent ?? '')
+      .filter(
+        (text) =>
+          ![
+            en.people.staff.photo.column,
+            en.people.students.groups,
+            en.people.students.tutor,
+          ].includes(text),
+      );
+    expect(exportedHeadings).toEqual(
+      STUDENT_LIST_EXPORT_COLUMNS.map((key) => EXPORT_TEXTS.en.students.columns[key]),
+    );
+    await exported(calls, 1);
+    expect(sentColumns(calls)).toEqual([...STUDENT_LIST_EXPORT_COLUMNS]);
+    vi.restoreAllMocks();
+  });
+
+  it('adds the columns of a group chosen under "Also export", in the order of the file', async () => {
+    const calls = openExport(['basic', 'contact', 'identity', 'financial']);
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.list.exportAlso }));
+    const menu = await screen.findByRole('menu');
+    expect(
+      within(menu)
+        .getAllByRole('menuitemcheckbox')
+        .map((item) => item.textContent),
+    ).toEqual([
+      en.people.students.exportGroups.basic,
+      en.people.students.exportGroups.contact,
+      en.people.students.exportGroups.identity,
+      en.people.students.exportGroups.financial,
+    ]);
+    fireEvent.click(
+      within(menu).getByRole('menuitemcheckbox', { name: en.people.students.exportGroups.contact }),
+    );
+    fireEvent.click(
+      within(menu).getByRole('menuitemcheckbox', {
+        name: en.people.students.exportGroups.identity,
+      }),
+    );
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    await exported(calls, 1);
+    expect(sentColumns(calls)).toEqual([
+      ...STUDENT_LIST_EXPORT_COLUMNS,
+      'phone',
+      'email',
+      'birthDate',
+      'documentType',
+      'documentNumber',
+      'jshshir',
+      'address',
+      'region',
+    ]);
+    // Every column of the file is in one of the groups or the list (the shared order).
+    expect(STUDENT_EXPORT_COLUMNS).toEqual(expect.arrayContaining(sentColumns(calls) ?? []));
+    vi.restoreAllMocks();
+  });
+
+  it('offers the Principal only the groups the server names, and names a column left out in words', async () => {
+    const calls = openExport(['basic', 'financial'], (columns) =>
+      columns.filter((column) => column !== 'consentSignedOn'),
+    );
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.list.exportAlso }));
+    const menu = await screen.findByRole('menu');
+    expect(
+      within(menu)
+        .getAllByRole('menuitemcheckbox')
+        .map((item) => item.textContent),
+    ).toEqual([en.people.students.exportGroups.basic, en.people.students.exportGroups.financial]);
+    fireEvent.click(
+      within(menu).getByRole('menuitemcheckbox', {
+        name: en.people.students.exportGroups.financial,
+      }),
+    );
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    await exported(calls, 1);
+    const status = await screen.findByText(
+      en.list.exportColumnsLeftOut.replace('{{columns}}', en.people.students.consentSignedOn),
+    );
+    expect(status.textContent).not.toContain('consentSignedOn');
+    vi.restoreAllMocks();
+  });
+
+  it('draws no Export button for a reader the server gives no group', async () => {
+    openList('head_tutor');
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    expect(screen.queryByRole('button', { name: en.list.export })).toBeNull();
+    expect(screen.queryByRole('button', { name: en.list.exportAlso })).toBeNull();
+  });
+});
+
+describe('the consent list', () => {
+  const WITHOUT: StudentListItem = { ...OTKIR, consentMissing: true };
+  const SIGNED: StudentListItem = { ...ZARINA, consentMissing: false, status: 'active' };
+
+  function openConsent(
+    readsFinancial: boolean,
+    students: StudentListItem[],
+    language: 'en' | 'ru',
+  ) {
+    return fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('principal', language)),
+      'GET /api/people/students': () =>
+        json({
+          students,
+          canArchive: false,
+          exportGroups: readsFinancial ? ['basic', 'financial'] : [],
+          readsFinancial,
+          today: '2026-10-10',
+        }),
+    });
+  }
+
+  it('asks the server for the active students without consent, for a Financial reader', async () => {
+    const calls = openConsent(true, [WITHOUT, SIGNED], 'en');
+    renderApp(`${PATH}?f=${encodeURIComponent(JSON.stringify({ consent: 'missing' }))}`);
+    await waitFor(() => {
+      expect(calls.some((call) => call.query === '?consent=missing')).toBe(true);
+    });
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row[2])).toEqual(['Oʻtkir Rahimov']);
+    });
+    expect(screen.getByRole('combobox', { name: en.people.students.consent })).toBeTruthy();
+  });
+
+  it('offers the filter in Russian, also on an empty list', async () => {
+    openConsent(true, [], 'ru');
+    renderApp(PATH, 'ru');
+    const filter = await screen.findByRole('combobox', { name: ru.people.students.consent });
+    expect(
+      within(filter).getByRole('option', { name: ru.people.students.activeNoConsent }),
+    ).toBeTruthy();
+  });
+
+  it('offers no consent filter, and asks for no consent list, without the Financial group', async () => {
+    const calls = openConsent(false, [OTKIR, ZARINA], 'en');
+    renderApp(`${PATH}?f=${encodeURIComponent(JSON.stringify({ consent: 'missing' }))}`);
+    await screen.findByRole('heading', { name: en.people.students.title });
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'GET /api/people/students')).toBe(true);
+    });
+    expect(screen.queryByRole('combobox', { name: en.people.students.consent })).toBeNull();
+    expect(calls.some((call) => (call.query ?? '').includes('consent'))).toBe(false);
+  });
+});
+
+describe('student photos', () => {
+  const PHOTO_ID = uid(61);
+  const PIXEL = Uint8Array.from(
+    atob(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNoAAAAggCBd81ytgAAAABJRU5ErkJggg==',
+    ),
+    (char) => char.charCodeAt(0),
+  );
+
+  const photoCell = (name: string) =>
+    [...document.querySelectorAll('tbody tr')]
+      .find((row) => row.textContent.includes(name))
+      ?.querySelectorAll('td')[1];
+
+  it('shows the photo in the list, and the initials where there is none', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/people/students': () =>
+        json({
+          students: [{ ...OTKIR, photoId: PHOTO_ID }, ZARINA],
+          canArchive: true,
+          exportGroups: [],
+          readsFinancial: false,
+          today: '2026-10-10',
+        }),
+      [`GET /api/people/students/${OTKIR.id}/photo`]: () =>
+        new Response(new Blob([PIXEL], { type: 'image/png' }), {
+          status: 200,
+          headers: { 'Content-Type': 'image/png' },
+        }),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(photoCell('Oʻtkir Rahimov')?.querySelector('img')?.getAttribute('src')).toMatch(
+        /^data:image\/png;base64,/,
+      );
+    });
+    expect(photoCell('Zarina Saidova')?.querySelector('img')).toBeNull();
+    expect(photoCell('Zarina Saidova')?.textContent).toBe('ZS');
+    expect(calls.filter((call) => call.route.endsWith('/photo')).map((call) => call.route)).toEqual(
+      [`GET /api/people/students/${OTKIR.id}/photo`],
+    );
+  });
+
+  it('offers to add a photo in the panel to an editor', async () => {
+    openList('academic_vice_principal');
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    expect(within(panel).getByRole('button', { name: en.people.staff.photo.add })).toBeTruthy();
+  });
+
+  it('gives a reader who may not edit no photo buttons', async () => {
+    openList('principal', {}, 'en', { canEdit: false });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('region', { name: en.people.staff.photo.title });
+    expect(within(panel).queryByRole('button', { name: en.people.staff.photo.add })).toBeNull();
   });
 });

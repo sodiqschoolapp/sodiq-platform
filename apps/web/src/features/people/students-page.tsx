@@ -1,10 +1,15 @@
 import {
   PERMISSIONS,
   permits,
+  STUDENT_EXPORT_COLUMNS,
+  STUDENT_EXPORT_GROUPS,
+  STUDENT_LIST_EXPORT_COLUMNS,
   STUDENT_STATUSES,
   studentCheckResultSchema,
   studentLeavingSchema,
   type StudentCreate,
+  type StudentExportColumn,
+  type StudentFieldGroup,
   type StudentLeaving,
   type StudentListItem,
 } from '@sodiq/shared';
@@ -20,15 +25,17 @@ import { DateField, Field } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
-import { ListPage, type BulkAction } from '@/components/list/list-page';
+import { ListPage, type BulkAction, type ExportExtra } from '@/components/list/list-page';
+import { useExport } from '@/components/list/use-export';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
+import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { Button } from '@/components/ui/button';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { schoolDateText } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
-import { invalidateStudents, studentsQuery } from './people-api';
+import { invalidateStudents, studentPhotoQuery, studentsQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
 import { StudentForm } from './student-form';
 import { StudentPanel } from './student-panel';
@@ -38,6 +45,41 @@ const fullName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) =>
 
 /** No class, group or tutor exists before tasks 3.1 and 3.2 (answer 17: "every student shows No class"). */
 const NO_CLASS = 'none';
+
+/** The one option of the consent filter (answer 23: "a list shows active students without it"). */
+const NO_CONSENT = 'missing';
+
+type ExtraColumn = Exclude<StudentExportColumn, (typeof STUDENT_LIST_EXPORT_COLUMNS)[number]>;
+
+/** The words of the student record that name each export-only column, as the profile names the field. */
+const EXTRA_HEADERS = {
+  paternalName: 'people.students.paternalName',
+  sex: 'people.students.sex',
+  grade: 'people.students.grade',
+  startsOn: 'people.students.startsOn',
+  phone: 'people.students.phone',
+  email: 'people.students.email',
+  birthDate: 'people.students.birthDate',
+  documentType: 'people.students.documentType',
+  documentNumber: 'people.students.documentNumber',
+  jshshir: 'people.students.jshshir',
+  address: 'people.students.address',
+  region: 'people.students.region',
+  contractNumber: 'people.students.contractNumber',
+  contractSignedOn: 'people.students.contractSignedOn',
+  scholarshipType: 'people.students.scholarshipType',
+  scholarshipCoverage: 'people.students.scholarshipCoverage',
+  scholarshipAmount: 'people.students.scholarshipAmount',
+  previousSchool: 'people.students.previousSchool',
+  diagnosticScore: 'people.students.diagnosticScore',
+  consentSignedOn: 'people.students.consentSignedOn',
+} as const satisfies Record<ExtraColumn, string>;
+
+/** The export-only columns of the file (task 2.4b-2): those after the list's own, in its order. */
+const EXTRA_COLUMNS = STUDENT_EXPORT_COLUMNS.filter(
+  (column): column is ExtraColumn =>
+    !(STUDENT_LIST_EXPORT_COLUMNS as readonly StudentExportColumn[]).includes(column),
+);
 
 /** One last day and reason for every ticked student (task 2.4b-1, decision 12). */
 type BulkLeaving = Omit<StudentLeaving, 'version'>;
@@ -67,9 +109,9 @@ interface Outcome {
  * The students of the branch (`04`, Student record: "Student list columns, in
  * this order: checkbox, number, photo, UID, name and surname, class (grade
  * and name, for example 7 Oxford), groups, tutor, status"; task 2.4a), each
- * opened in the side panel. The photo comes with task 2.4b and the attendance
- * column with its task; phone numbers are never in the list. The Super Admin
- * and the Academic Vice Principal add students.
+ * opened in the side panel. The attendance column comes with its task; phone
+ * numbers are never in the list, only in the export-only columns of the file
+ * (task 2.4b-2). The Super Admin and the Academic Vice Principal add students.
  */
 export function StudentsPage() {
   const { t, i18n } = useTranslation();
@@ -84,11 +126,22 @@ export function StudentsPage() {
   const [leaving, setLeaving] = useState<StudentListItem[] | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const canCreate = role !== null && permits(PERMISSIONS, role, 'students', 'create');
-  const students = useQuery(studentsQuery(branchId));
+  const exporter = useExport<StudentListItem>('students', (row) => row.id);
+  const all = useQuery(studentsQuery(branchId));
+  // The consent list comes from the server, which gives it to the Financial
+  // readers only (correction 1 of the review of pull request #70).
+  const wantsConsent = search.f?.consent === NO_CONSENT && all.data?.readsFinancial === true;
+  const withoutConsent = useQuery({
+    ...studentsQuery(branchId, NO_CONSENT),
+    enabled: branchId !== null && wantsConsent,
+  });
+  const students = wantsConsent ? withoutConsent : all;
+  const exportGroups = all.data?.exportGroups;
+  const readsFinancial = all.data?.readsFinancial === true;
 
   const byId = useMemo(
-    () => new Map((students.data?.students ?? []).map((row) => [row.id, row] as const)),
-    [students.data],
+    () => new Map((all.data?.students ?? []).map((row) => [row.id, row] as const)),
+    [all.data],
   );
   const holderText = (id: string): string | null => {
     const found = byId.get(id);
@@ -101,7 +154,7 @@ export function StudentsPage() {
     const status = byId.get(id)?.status;
     return status === 'inactive' || (status === 'graduated' && canRestoreGraduated);
   };
-  const canArchive = students.data?.canArchive === true;
+  const canArchive = all.data?.canArchive === true;
 
   /**
    * The bulk "Leave school" (`04`: "Bulk actions on ticked rows: ... archive"):
@@ -228,8 +281,34 @@ export function StudentsPage() {
     },
   });
 
+  /** The groups of export-only columns this reader may add (`exportGroups` of the server). */
+  const exportExtras = useMemo(
+    (): ExportExtra[] =>
+      (exportGroups ?? []).map((group: StudentFieldGroup) => ({
+        key: group,
+        label: t(`people.students.exportGroups.${group}`),
+        columns: EXTRA_COLUMNS.filter((column) => STUDENT_EXPORT_GROUPS[column] === group).map(
+          (column) => ({ key: column, header: t(EXTRA_HEADERS[column]) }),
+        ),
+      })),
+    [exportGroups, t],
+  );
+
   const columns = useMemo(
     (): Column<StudentListItem>[] => [
+      {
+        // `04`: "checkbox, number, photo, UID, ..."; not a cell of the Excel file.
+        key: 'photo',
+        header: t('people.staff.photo.column'),
+        cell: (row) => (
+          <PersonPhoto
+            name={fullName(row)}
+            initials={initialsOf(row.firstName, row.lastName)}
+            photo={row.photoId === null ? null : studentPhotoQuery(branchId, row.id, row.photoId)}
+          />
+        ),
+        exported: false,
+      },
       {
         key: 'uid',
         header: t('people.students.uid'),
@@ -258,14 +337,17 @@ export function StudentsPage() {
         sortValue: (row) => row.grade,
       },
       {
+        // No group or tutor before tasks 3.1 and 3.2: not columns of the file yet (decision 6).
         key: 'groups',
         header: t('people.students.groups'),
         cell: () => '—',
+        exported: false,
       },
       {
         key: 'tutor',
         header: t('people.students.tutor'),
         cell: () => '—',
+        exported: false,
       },
       {
         key: 'status',
@@ -287,7 +369,7 @@ export function StudentsPage() {
         sortValue: (row) => row.status ?? '',
       },
     ],
-    [t, i18n.language],
+    [t, i18n.language, branchId],
   );
 
   const filters = useMemo(
@@ -316,8 +398,19 @@ export function StudentsPage() {
         })),
         matches: (row, value) => row.status === value,
       },
+      ...(readsFinancial
+        ? [
+            {
+              key: 'consent',
+              label: t('people.students.consent'),
+              options: [{ value: NO_CONSENT, label: t('people.students.activeNoConsent') }],
+              matches: (row: StudentListItem) =>
+                row.status === 'active' && row.consentMissing === true,
+            },
+          ]
+        : []),
     ],
-    [t],
+    [t, readsFinancial],
   );
 
   const open = (next: ListSearch, how: 'push' | 'replace'): void => {
@@ -437,6 +530,11 @@ export function StudentsPage() {
           action: addButton === false ? undefined : addButton,
         }}
         bulkActions={bulkActions}
+        onExport={
+          exportGroups !== undefined && exportGroups.length > 0 ? exporter.onExport : undefined
+        }
+        exportState={exporter.state}
+        exportExtras={exportExtras}
         panel={(row) => (
           <StudentPanel key={row.id} id={row.id} name={fullName(row)} holderText={holderText} />
         )}

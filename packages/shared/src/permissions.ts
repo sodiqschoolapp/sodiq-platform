@@ -189,6 +189,15 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   restores the student to active with a class and a reason"). Decided
  *   without the owner on pull request #68 (decision 2, Look first),
  *   confirmed at its review and flagged on issue #42.
+ * - `students` `export` (`edge/people-roles-accounts`, Personal data and
+ *   the audit log: "An export contains only what the role may see ... Every
+ *   export is logged"; task 2.4b-2): the Super Admin, the Academic Vice
+ *   Principal and the Principal ("Exports are allowed, without identity
+ *   documents"). The Spiritual VP and the Head Tutor are "view only" in `02`
+ *   and the Head Teachers have no export line; Tutors export their own class
+ *   with the class scope of task 3.1. Which groups a file holds is decided by
+ *   the route. Decided without the owner on pull request #70 (decision 1,
+ *   Look first), confirmed at its review and flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -268,9 +277,9 @@ export const PERMISSIONS = freezeTable({
     head_teacher: ['view'],
   }),
   students: rows({
-    super_admin: ['view', 'create', 'edit', 'archive'],
-    principal: ['view'],
-    academic_vice_principal: ['view', 'create', 'edit', 'archive'],
+    super_admin: ['view', 'create', 'edit', 'archive', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive', 'export'],
     spiritual_vice_principal: ['view'],
     head_tutor: ['view'],
     tutor: ['view'],

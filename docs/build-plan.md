@@ -236,7 +236,7 @@ How to read the task lines:
   - Build: leaving (inactive, a date and a reason, scheduled when in the future, cancellable until the date), "undo leaving" with a reason, coming back from the Inactive list with a new contract, the Super Admin's restore of a graduated student with a reason; the delete of a student created twice (no data; `edge`: "A student is created twice by mistake"); "restore this student" offered on a document match of the branch; the bulk "Leave school" on ticked rows.
   - Done when: a leaving and a return keep the UID and history.
 
-- [ ] **2.4b-2 Export, photos, consent list and the "No class" counter** (split from 2.4b on pull request #68, decision 1)
+- [x] **2.4b-2 Export, photos, consent list and the "No class" counter** (split from 2.4b on pull request #68, decision 1)
   - Read: `04` (Student record), `edge/students-classes-groups`, `edge/people-roles-accounts` (Personal data and the audit log), `docs/decisions.md` ("Decided ahead for tasks 2.1 to 2.6", answers 1, 2 and 23), the plans of pull requests #58, #59, #67 and #68.
   - Build: the Excel export of the student list by readers, ticked or matching, with the groups the role reads (whole-branch contact or identity fields for the Super Admin and the Academic Vice Principal only; Tutors their own class from 3.1), and its bulk action; student photos (a second `FileRoute`, the photo column of the list); the list of active students without consent (answer 23); the "No class" counter on the Academic Vice Principal's home page.
   - Done when: an export holds only the groups the role reads.
@@ -265,6 +265,7 @@ How to read the task lines:
   - Build: class as grade plus name (shown as "7 Oxford"), language of instruction, Tutor, main classroom, maximum size; class membership as date ranges that cannot overlap (database constraint); class scope for Tutors in the permission guard; class cards and list.
   - Done when: the database refuses a student in two classes on one date and the Tutor language rule is enforced.
   - From 2.4a (pull request #67): the class, groups and tutor columns and the class, group and language filters of the student list (`04`); a Tutor opens the profiles of their own class and reads its Contact group (`02`; until then `GET people/students/:id` refuses a Tutor-only reader, decision 6); an active student with no class is allowed only before their start date (`edge/students-classes-groups`, "A student is enrolled in August before classes are formed").
+  - From 2.4b-2 (pull request #70): Tutors export the students of their own class (`students` `export` with the class scope; `edge/people-roles-accounts`: "Tutors export their own class"), with a test that a Tutor's export with the consent filter is refused (`StudentExports`, unreachable while every exporter reads the Financial group); the `groups` and `tutor` columns join `STUDENT_EXPORT_COLUMNS` and lose `exported: false` once they hold data (3.1, 3.2); the "No class" counter (`GET people/students/no-class`) and the "No class" filter read the class memberships instead of counting every active student.
 
 - [ ] **3.2 Groups and splits**
   - Read: `05`, `06` (Model, Rules), `03` (Slot types and day templates), `edge/timetable` (Structure), `edge/time-dates-calendar`, `edge/students-classes-groups`.

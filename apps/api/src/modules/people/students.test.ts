@@ -612,6 +612,7 @@ describe('student records', () => {
         expect(read.contact).not.toBeNull();
         expect(read.identity).not.toBeNull();
         expect(read.financial).not.toBeNull();
+        expect(read.consentMissing).toBe(false);
         expect(read.identityHidden).toBe(false);
         expect(read.canEdit).toBe(true);
       }
@@ -623,6 +624,7 @@ describe('student records', () => {
       expect(read.identityHidden).toBe(true);
       expect(read.contact).not.toBeNull();
       expect(read.financial).not.toBeNull();
+      expect(read.consentMissing).toBe(false);
       expect(read.canEdit).toBe(false);
       expect(JSON.stringify(read)).not.toContain(student.identity?.birthDate ?? 'missing');
       expect(JSON.stringify(read)).not.toContain(student.identity?.jshshir ?? 'missing');
@@ -635,6 +637,8 @@ describe('student records', () => {
         expect(read.identity).toBeNull();
         expect(read.identityHidden).toBe(false);
         expect(read.financial).toBeNull();
+        // Task 2.4b-2: the consent is Financial too.
+        expect(read.consentMissing).toBeNull();
         expect(JSON.stringify(read)).not.toContain('birthDate');
         expect(JSON.stringify(read)).not.toContain('Navoiy');
       }
@@ -646,6 +650,7 @@ describe('student records', () => {
         expect(read.contact).toBeNull();
         expect(read.identity).toBeNull();
         expect(read.financial).toBeNull();
+        expect(read.consentMissing).toBeNull();
         expect(read.identityHidden).toBe(false);
       }
     });
@@ -757,6 +762,7 @@ describe('student records', () => {
         contact: null,
         identity: null,
         financial: null,
+        consentMissing: null,
         identityHidden: false,
         canEdit: false,
       });
@@ -787,7 +793,12 @@ describe('student records', () => {
         (await t.post('/api/people/students', t.south, body())).body,
       );
       const read = await detail(south.id, seniorHeadTeacher, t.south);
-      expect(read).toMatchObject({ contact: null, identity: null, financial: null });
+      expect(read).toMatchObject({
+        contact: null,
+        identity: null,
+        financial: null,
+        consentMissing: null,
+      });
       refusedWith(
         await t.get(`/api/people/students/${south.id}`, t.north, seniorHeadTeacher),
         404,
@@ -823,6 +834,9 @@ describe('student records', () => {
           sex: 'male',
           grade: 7,
           startsOn: '2026-09-02',
+          photoId: null,
+          // The consent is with the Financial readers (task 2.4b-2).
+          consentMissing: [t.admin, t.principal, t.vicePrincipal].includes(cookie) ? false : null,
           status: 'active',
           planned: null,
           version: 1,

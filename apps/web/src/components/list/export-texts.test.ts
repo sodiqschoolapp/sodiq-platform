@@ -69,6 +69,33 @@ const SCREEN: Record<ExportList, Record<string, (texts: Texts) => string>> = {
     switches: (texts) => texts.setup.subjects.switches,
     status: (texts) => texts.setup.subjects.status,
   },
+  // Task 2.4b-2: the list's headers, then the export-only columns named as the profile names the field.
+  students: {
+    uid: (texts) => texts.people.students.uid,
+    name: (texts) => texts.people.students.name,
+    class: (texts) => texts.people.students.class,
+    status: (texts) => texts.people.students.status,
+    paternalName: (texts) => texts.people.students.paternalName,
+    sex: (texts) => texts.people.students.sex,
+    grade: (texts) => texts.people.students.grade,
+    startsOn: (texts) => texts.people.students.startsOn,
+    phone: (texts) => texts.people.students.phone,
+    email: (texts) => texts.people.students.email,
+    birthDate: (texts) => texts.people.students.birthDate,
+    documentType: (texts) => texts.people.students.documentType,
+    documentNumber: (texts) => texts.people.students.documentNumber,
+    jshshir: (texts) => texts.people.students.jshshir,
+    address: (texts) => texts.people.students.address,
+    region: (texts) => texts.people.students.region,
+    contractNumber: (texts) => texts.people.students.contractNumber,
+    contractSignedOn: (texts) => texts.people.students.contractSignedOn,
+    scholarshipType: (texts) => texts.people.students.scholarshipType,
+    scholarshipCoverage: (texts) => texts.people.students.scholarshipCoverage,
+    scholarshipAmount: (texts) => texts.people.students.scholarshipAmount,
+    previousSchool: (texts) => texts.people.students.previousSchool,
+    diagnosticScore: (texts) => texts.people.students.diagnosticScore,
+    consentSignedOn: (texts) => texts.people.students.consentSignedOn,
+  },
 };
 
 describe('the headings of the export files', () => {
@@ -97,6 +124,17 @@ describe('the headings of the export files', () => {
       expect(file.journalTypes).toEqual(screen.setup.subjects.journalTypes);
       expect(file.notStarted).toBe(screen.people.staff.notStarted);
       expect(file.grade).toBe(screen.setup.subjects.grade);
+      // Task 2.4b-2: the student file.
+      expect(file.student.statuses).toEqual(screen.people.students.statuses);
+      expect(file.student.notStarted).toBe(screen.people.students.notStarted);
+      expect(file.student.gradeNoClass).toBe(screen.people.students.gradeNoClass);
+      expect(file.student.sexes).toEqual(screen.people.staff.sexes);
+      expect(file.student.documentTypes).toEqual(screen.people.students.documentTypes);
+      expect(file.student.regions).toEqual(screen.people.students.regions);
+      expect(file.student.scholarshipTypes).toEqual(screen.people.students.scholarshipTypes);
+      expect(file.student.scholarshipCoverages).toEqual(
+        screen.people.students.scholarshipCoverages,
+      );
     }
   });
 });

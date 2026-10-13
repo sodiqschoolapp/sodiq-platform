@@ -18,6 +18,8 @@ import {
   type StudentIdentity,
   type StudentList,
   type StudentListItem,
+  type StudentListQuery,
+  type StudentNoClass,
   type StudentRecord,
   type StatusCause,
   type StudentStatus,
@@ -30,6 +32,7 @@ import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { changesOf, notFound } from '../setup/setup-refusals.js';
+import { exportGroupsOf } from './student-export.js';
 import { holdsData, plannedAfter, type StoredStudentStatus } from './student-status.js';
 
 const UNIQUE_VIOLATION = '23505';
@@ -84,6 +87,8 @@ export interface StudentRow {
   scholarship_coverage: string | null;
   scholarship_amount: number | null;
   consent_signed_on: string | null;
+  photo_id: string | null;
+  photo_type: string | null;
 }
 
 const STUDENT_COLUMNS = [
@@ -109,6 +114,8 @@ const STUDENT_COLUMNS = [
   'scholarship_coverage',
   'scholarship_amount',
   'consent_signed_on',
+  'photo_id',
+  'photo_type',
 ] as const;
 
 /** The columns an edit writes, from what was typed. */
@@ -241,47 +248,102 @@ export class Students {
     return schoolDateOf(await transactionMoment(transaction), branch.time_zone);
   }
 
-  /** The students of the branch of the request: the Basic group and the status today. */
-  list(access: Access): Promise<StudentList> {
+  /**
+   * The students of the branch of the request: the Basic group and the status
+   * today, the photo, and for a Financial reader whether consent is missing.
+   * `consent: 'missing'` keeps the active students without consent (answer
+   * 23); a reader without the Financial group is refused it (correction 1 of
+   * the review of pull request #70: the filter is checked here, not only
+   * hidden on the screen).
+   */
+  list(access: Access, query: StudentListQuery = {}): Promise<StudentList> {
+    const branchId = branchOf(access);
+    const readsFinancial = readerOf(access, 'student_financial') !== undefined;
+    if (query.consent !== undefined && !readsFinancial) {
+      throw new ApiException('permission_denied', 403);
+    }
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const today = await this.todayIn(transaction, branchId);
+      const all = await this.listItems(transaction, access, branchId, today);
+      const students =
+        query.consent === 'missing'
+          ? all.filter((student) => student.status === 'active' && student.consentMissing === true)
+          : all;
+      return {
+        students,
+        canArchive: archiverOf(access) !== undefined,
+        exportGroups: [...exportGroupsOf(access).keys()],
+        readsFinancial,
+        today,
+      };
+    });
+  }
+
+  /** The list's rows of the branch as the list answers them, by surname, first name and UID. */
+  async listItems(
+    transaction: Transaction,
+    access: Access,
+    branchId: string,
+    today: SchoolDate,
+  ): Promise<StudentListItem[]> {
+    const readsFinancial = readerOf(access, 'student_financial') !== undefined;
+    const rows = await transaction
+      .selectFrom('students')
+      .select([
+        'students.id',
+        'students.uid',
+        'students.first_name',
+        'students.last_name',
+        'students.paternal_name',
+        'students.sex',
+        'students.grade',
+        'students.starts_on',
+        'students.photo_id',
+        'students.consent_signed_on',
+        statusOn(today),
+      ])
+      .where('students.branch_id', '=', branchId)
+      .orderBy('students.last_name')
+      .orderBy('students.first_name')
+      .orderBy('students.uid')
+      .execute();
+    const statuses = await this.statusRowsOf(transaction, null);
+    return rows.map((row) => {
+      const own = statuses.get(row.id) ?? [];
+      return {
+        id: row.id,
+        uid: row.uid,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        paternalName: row.paternal_name,
+        sex: row.sex as Sex,
+        grade: row.grade,
+        startsOn: row.starts_on,
+        photoId: row.photo_id,
+        consentMissing: readsFinancial ? row.consent_signed_on === null : null,
+        status: row.status as StudentStatus | null,
+        planned: plannedAfter(own, today),
+        version: own.length,
+      };
+    });
+  }
+
+  /**
+   * The counter of the Academic Vice Principal's home page (edge: "An active
+   * student with no class ... in a counter"; decision 9): the students of the
+   * branch active today, before the start date included, with no class. No
+   * class exists before task 3.1, so every active student counts.
+   */
+  noClass(access: Access): Promise<StudentNoClass> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const today = await this.todayIn(transaction, branchId);
       const rows = await transaction
         .selectFrom('students')
-        .select([
-          'students.id',
-          'students.uid',
-          'students.first_name',
-          'students.last_name',
-          'students.paternal_name',
-          'students.sex',
-          'students.grade',
-          'students.starts_on',
-          statusOn(today),
-        ])
+        .select(statusOn(today))
         .where('students.branch_id', '=', branchId)
-        .orderBy('students.last_name')
-        .orderBy('students.first_name')
-        .orderBy('students.uid')
         .execute();
-      const statuses = await this.statusRowsOf(transaction, null);
-      const students: StudentListItem[] = rows.map((row) => {
-        const own = statuses.get(row.id) ?? [];
-        return {
-          id: row.id,
-          uid: row.uid,
-          firstName: row.first_name,
-          lastName: row.last_name,
-          paternalName: row.paternal_name,
-          sex: row.sex as Sex,
-          grade: row.grade,
-          startsOn: row.starts_on,
-          status: row.status as StudentStatus | null,
-          planned: plannedAfter(own, today),
-          version: own.length,
-        };
-      });
-      return { students, canArchive: archiverOf(access) !== undefined, today };
+      return { count: rows.filter((row) => row.status === 'active').length };
     });
   }
 
@@ -788,6 +850,8 @@ export class Students {
       sex: row.sex as Sex,
       grade: row.grade,
       startsOn: row.starts_on,
+      photoId: row.photo_id,
+      consentMissing: financial ? row.consent_signed_on === null : null,
       status: now?.status ?? null,
       contact: contact ? { phone: row.phone, email: row.email } : null,
       identity: identity ? identityOf(row) : null,

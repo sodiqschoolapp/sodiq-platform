@@ -32,6 +32,11 @@ export function staffPhotoKey(staffId: string, photoId: string): string {
   return `staff/${staffId}/${photoId}`;
 }
 
+/** The key of a student's photo (task 2.4b-2): one per upload, never reused. */
+export function studentPhotoKey(studentId: string, photoId: string): string {
+  return `students/${studentId}/${photoId}`;
+}
+
 /** No store on this server: nothing is read or written. */
 export class NoPhotoStore implements PhotoStore {
   readonly configured = false;

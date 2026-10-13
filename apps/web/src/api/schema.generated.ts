@@ -1860,6 +1860,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/people/students/no-class": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StudentsController_noClass"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/people/students/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StudentsController_export"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/people/students/check": {
         parameters: {
             query?: never;
@@ -2015,6 +2047,22 @@ export interface paths {
         put?: never;
         post: operations["StudentStatusesController_delete"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/people/students/{id}/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StudentPhotosController_readPhoto"];
+        put: operations["StudentPhotosController_setPhoto"];
+        post?: never;
+        delete: operations["StudentPhotosController_removePhoto"];
         options?: never;
         head?: never;
         patch?: never;
@@ -12268,7 +12316,9 @@ export interface operations {
     };
     StudentsController_list: {
         parameters: {
-            query?: never;
+            query?: {
+                consent?: "missing";
+            };
             header: {
                 "X-Branch-Id": string;
             };
@@ -12295,6 +12345,9 @@ export interface operations {
                             grade: number;
                             /** Format: date */
                             startsOn: string;
+                            /** Format: uuid */
+                            photoId: string | null;
+                            consentMissing: boolean | null;
                             /** @enum {string|null} */
                             status: "active" | "inactive" | "graduated" | null;
                             planned: {
@@ -12306,6 +12359,8 @@ export interface operations {
                             version: number;
                         }[];
                         canArchive: boolean;
+                        exportGroups: ("basic" | "contact" | "identity" | "financial")[];
+                        readsFinancial: boolean;
                         /** Format: date */
                         today: string;
                     };
@@ -12414,6 +12469,9 @@ export interface operations {
                         grade: number;
                         /** Format: date */
                         startsOn: string;
+                        /** Format: uuid */
+                        photoId: string | null;
+                        consentMissing: boolean | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "graduated" | null;
                         planned: {
@@ -12477,6 +12535,125 @@ export interface operations {
                         /** Format: date */
                         today: string;
                     };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "uid_set_mismatch" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    StudentsController_noClass: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        count: number;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "uid_set_mismatch" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    StudentsController_export: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    ids: string[];
+                    columns: ("uid" | "name" | "class" | "status" | "paternalName" | "sex" | "grade" | "startsOn" | "phone" | "email" | "birthDate" | "documentType" | "documentNumber" | "jshshir" | "address" | "region" | "contractNumber" | "contractSignedOn" | "scholarshipType" | "scholarshipCoverage" | "scholarshipAmount" | "previousSchool" | "diagnosticScore" | "consentSignedOn")[];
+                    /** @enum {string} */
+                    selection: "ticked" | "matching";
+                    search: string;
+                    filters: {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                 };
             };
             403: {
@@ -12616,6 +12793,9 @@ export interface operations {
                         grade: number;
                         /** Format: date */
                         startsOn: string;
+                        /** Format: uuid */
+                        photoId: string | null;
+                        consentMissing: boolean | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "graduated" | null;
                         planned: {
@@ -12782,6 +12962,9 @@ export interface operations {
                         grade: number;
                         /** Format: date */
                         startsOn: string;
+                        /** Format: uuid */
+                        photoId: string | null;
+                        consentMissing: boolean | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "graduated" | null;
                         planned: {
@@ -12918,6 +13101,9 @@ export interface operations {
                         grade: number;
                         /** Format: date */
                         startsOn: string;
+                        /** Format: uuid */
+                        photoId: string | null;
+                        consentMissing: boolean | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "graduated" | null;
                         planned: {
@@ -13119,6 +13305,9 @@ export interface operations {
                         grade: number;
                         /** Format: date */
                         startsOn: string;
+                        /** Format: uuid */
+                        photoId: string | null;
+                        consentMissing: boolean | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "graduated" | null;
                         planned: {
@@ -13253,6 +13442,9 @@ export interface operations {
                         grade: number;
                         /** Format: date */
                         startsOn: string;
+                        /** Format: uuid */
+                        photoId: string | null;
+                        consentMissing: boolean | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "graduated" | null;
                         planned: {
@@ -13388,6 +13580,9 @@ export interface operations {
                         grade: number;
                         /** Format: date */
                         startsOn: string;
+                        /** Format: uuid */
+                        photoId: string | null;
+                        consentMissing: boolean | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "graduated" | null;
                         planned: {
@@ -13531,6 +13726,9 @@ export interface operations {
                         grade: number;
                         /** Format: date */
                         startsOn: string;
+                        /** Format: uuid */
+                        photoId: string | null;
+                        consentMissing: boolean | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "graduated" | null;
                         planned: {
@@ -13668,6 +13866,9 @@ export interface operations {
                         grade: number;
                         /** Format: date */
                         startsOn: string;
+                        /** Format: uuid */
+                        photoId: string | null;
+                        consentMissing: boolean | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "graduated" | null;
                         planned: {
@@ -13785,6 +13986,170 @@ export interface operations {
                 };
             };
         };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "uid_set_mismatch" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    StudentPhotosController_readPhoto: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                    "image/png": string;
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "uid_set_mismatch" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    StudentPhotosController_setPhoto: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "image/jpeg": string;
+                "image/png": string;
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "uid_set_mismatch" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    StudentPhotosController_removePhoto: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             204: {
                 headers: {

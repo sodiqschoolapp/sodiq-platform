@@ -7,6 +7,7 @@ import {
   EXPORT_SEARCH_MAX_LENGTH,
   roomExportSchema,
   staffExportSchema,
+  studentExportSchema,
   subjectExportSchema,
   vacancyExportSchema,
   type ExportSelection,
@@ -63,6 +64,12 @@ const EXPORTS = {
     api.POST('/api/setup/divisions/export', {
       params: header(),
       body: divisionExportSchema.parse(body),
+      parseAs: 'blob',
+    }),
+  students: (body: Body) =>
+    api.POST('/api/people/students/export', {
+      params: header(),
+      body: studentExportSchema.parse(body),
       parseAs: 'blob',
     }),
   subjects: (body: Body) =>

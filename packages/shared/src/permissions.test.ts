@@ -134,11 +134,14 @@ describe('a frozen permission table', () => {
       student_financial: ['super_admin', 'principal', 'academic_vice_principal'],
     };
     for (const role of ROLES) {
+      // Task 2.4b-2 (decision 1): `export` for the editors and the Principal only.
       const students = editors.includes(role)
-        ? ['view', 'create', 'edit', 'archive']
-        : viewers.includes(role)
-          ? ['view']
-          : [];
+        ? ['view', 'create', 'edit', 'archive', 'export']
+        : role === 'principal'
+          ? ['view', 'export']
+          : viewers.includes(role)
+            ? ['view']
+            : [];
       expect(PERMISSIONS.students[role], role).toEqual(students);
       for (const [area, readers] of Object.entries(groups)) {
         const rowsOfArea = PERMISSIONS[area as keyof typeof PERMISSIONS];

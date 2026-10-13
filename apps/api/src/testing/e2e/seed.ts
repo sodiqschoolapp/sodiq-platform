@@ -713,6 +713,41 @@ try {
   });
   seeded.leaving = { login: leavingVice.login, password: leavingVice.firstPassword };
 
+  // The Academic Vice Principal of the student export test (task 2.4b-2), in
+  // a branch of its own with the same planned year around today.
+  const exportBranch = await insertBranch(migrator, 'Student export browser test branch');
+  const exportVice = await create('Dilfuza', 'Saidova');
+  await transactions.run([exportBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: exportVice.id,
+      role: 'academic_vice_principal',
+      branchId: exportBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: exportBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: exportBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+  });
+  seeded.studentExport = { login: exportVice.login, password: exportVice.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');

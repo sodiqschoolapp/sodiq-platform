@@ -26,6 +26,7 @@ import { schoolDateText } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import { invalidateStudents, studentDetailQuery } from './people-api';
 import { StudentForm, takenOf, takenText } from './student-form';
+import { StudentPhotoSection } from './student-photo-section';
 import { StatusSection } from './student-status-section';
 
 type Tab = 'overview' | 'contract';
@@ -139,6 +140,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
 
   return (
     <div className="grid gap-6">
+      <StudentPhotoSection student={student} name={name} />
       {tabs.length > 1 && (
         <Segmented
           label={t('people.students.tabs.label')}

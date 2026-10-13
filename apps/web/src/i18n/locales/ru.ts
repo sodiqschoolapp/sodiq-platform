@@ -376,6 +376,11 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     exportTicked_many: 'Экспорт отмеченных: {{n}}',
     exportTicked_other: 'Экспорт отмеченных: {{n}}',
     exporting: 'Идёт экспорт…',
+    exportAlso: 'Добавить в файл',
+    exportAlsoChosen_one: 'Добавить в файл: {{n}} группа',
+    exportAlsoChosen_few: 'Добавить в файл: {{n}} группы',
+    exportAlsoChosen_many: 'Добавить в файл: {{n}} групп',
+    exportAlsoChosen_other: 'Добавить в файл: {{n}} группы',
     exportColumnsLeftOut:
       'Не вошли в файл, потому что ваша роль не может их экспортировать: {{columns}}.',
     selectAll: 'Выбрать все строки, подходящие под поиск и фильтры',
@@ -1179,6 +1184,14 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       scholarshipAmount: 'Сумма в сумах',
       amount: 'Сумма в сумах: {{amount}}',
       consentSignedOn: 'Согласие подписано',
+      consent: 'Согласие',
+      activeNoConsent: 'Учатся, без согласия',
+      exportGroups: {
+        basic: 'Другие основные поля',
+        contact: 'Телефон и почта',
+        identity: 'Документы, дата рождения и адрес',
+        financial: 'Договор, стипендия и согласие',
+      },
       noConsent: 'Не подписано',
       choose: 'Выберите',
       notSet: 'Не указано',
@@ -1513,6 +1526,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
   },
   home: {
     title: 'Главная',
+    noClass: { title: 'Ученики без класса', link: 'Открыть список' },
     empty:
       'Здесь будет показано, что вам нужно сделать сегодня. Меню и задачи появятся по мере открытия разделов платформы.',
     teaching:
