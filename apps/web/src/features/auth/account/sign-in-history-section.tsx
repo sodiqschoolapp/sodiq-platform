@@ -13,7 +13,7 @@ import {
 import { signInHistoryQuery } from '@/features/audit/audit-api';
 import { actionName } from '@/features/audit/entry-panel';
 import { AccountSection } from './account-section';
-import { formatMoment } from '../moments';
+import { formatMoment } from '@/lib/dates';
 
 /**
  * The own sign-in history (edge cases, Personal data and the audit log:

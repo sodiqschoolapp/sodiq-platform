@@ -15,9 +15,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useView } from '@/features/access/use-view';
-import { formatMoment } from '@/features/auth/moments';
 import { showEntry } from './audit-api';
 import { codesOf, fieldLabel, fieldsTypeOf } from './field-labels';
+import { formatMoment } from '@/lib/dates';
 
 /** The name of an action on the screen; an action the list does not hold shows as stored. */
 export function actionName(t: TFunction, action: string): string {

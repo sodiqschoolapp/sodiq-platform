@@ -575,7 +575,7 @@ const ru: ExportTexts = {
       ratingExam: 'Рейтинговый экзамен',
       daily: 'Ежедневное распределение',
       quarterly: 'Четверти без весов',
-      switches: 'Переключатели',
+      switches: 'Признаки',
       status: 'Статус',
     },
   },
@@ -777,7 +777,7 @@ const uz: ExportTexts = {
       ratingExam: 'Reyting imtihoni',
       daily: 'Kunlik taqsimot',
       quarterly: 'Vaznsiz choraklar',
-      switches: 'Belgilar',
+      switches: 'Xususiyatlar',
       status: 'Holati',
     },
   },
@@ -818,7 +818,7 @@ const uz: ExportTexts = {
   student: {
     statuses: {
       active: 'Faol',
-      inactive: 'Nofaol',
+      inactive: 'Faol emas',
       graduated: 'Bitiruvchi',
     },
     notStarted: 'Keyinroq boshlaydi',

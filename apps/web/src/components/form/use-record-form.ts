@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formMessage, type FormIssue, type FormSchema } from './form-messages';
+import { SaveCancelled } from './save-cancelled';
 
 export type FormStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
@@ -108,10 +109,10 @@ export function useRecordForm<Field extends string, Values>({
         setTouched((before) => new Set(before).add(field));
         const back = same(next, savedNow.current);
         // "Saved" is true of what was saved, not of what is typed now. A save
-        // that failed is over once the fields hold what is saved again.
-        setStatus((before) =>
-          before === 'saved' || (before === 'failed' && back) ? 'idle' : before,
-        );
+        // that failed is over once the fields change: what they hold now was
+        // never sent, so the top bar says it is not saved, not that a save
+        // failed (issue #39, hand test of 13 October 2026, finding 10).
+        setStatus((before) => (before === 'saved' || before === 'failed' ? 'idle' : before));
         if (back) {
           setFailure(null);
         }
@@ -149,7 +150,9 @@ export function useRecordForm<Field extends string, Values>({
         } catch (error) {
           // What was typed stays in the fields: nothing is lost by a refusal.
           setFailure(error);
-          setStatus('failed');
+          // A save the person stopped before it was sent did not fail: what is
+          // typed is not saved, and the top bar says so (finding 10).
+          setStatus(error instanceof SaveCancelled ? 'idle' : 'failed');
         } finally {
           flight.current = null;
         }

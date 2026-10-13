@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiFailure } from '@/api/failure';
+import { SaveCancelled } from '@/components/form/save-cancelled';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 import { UnsentProvider, useLeave, useUnsent } from '@/components/unsent/unsent-changes';
 import { SampleForm } from '@/features/sample/sample-form';
@@ -249,5 +250,150 @@ describe('the messages of a field', () => {
 
     const message = screen.getByText(en.form.tooBig.replace('{{max}}', '100'));
     expect(message.parentElement?.getAttribute('aria-live')).toBe('polite');
+  });
+});
+
+// Issue #39, hand test of 13 October 2026, finding 10: "Save failed" in the
+// top bar lasts only while it is true of what the form holds.
+describe('the sign of a failed save', () => {
+  const refusedOnce = () => {
+    let calls = 0;
+    return vi.fn<Save>(() => {
+      calls += 1;
+      return calls === 1 ? Promise.reject(new ApiFailure('no_answer')) : Promise.resolve();
+    });
+  };
+
+  it('becomes "not saved" once the fields change after the refusal', async () => {
+    renderForm(refusedOnce());
+    type('90');
+    pressSave();
+    await waitFor(() => {
+      expect(unsent()).toBe('failed');
+    });
+
+    type('91');
+
+    expect(unsent()).toBe('typed');
+  });
+
+  it('is gone after the next save of the form succeeds', async () => {
+    renderForm(refusedOnce());
+    type('90');
+    pressSave();
+    await waitFor(() => {
+      expect(unsent()).toBe('failed');
+    });
+
+    pressSave();
+
+    await waitFor(() => {
+      expect(unsent()).toBe('');
+    });
+  });
+
+  it('is gone when the person leaves and what was typed is dropped', async () => {
+    renderForm(refusedOnce());
+    type('90');
+    pressSave();
+    await waitFor(() => {
+      expect(unsent()).toBe('failed');
+    });
+
+    tryToLeave();
+    const dialog = await screen.findByRole('alertdialog', { name: en.unsent.leaveTitle });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.leave }));
+
+    await waitFor(() => {
+      expect(unsent()).toBe('');
+    });
+    expect(score().value).toBe('77');
+  });
+
+  it('is never shown for a save the person stopped before it was sent', async () => {
+    renderForm(() => Promise.reject(new SaveCancelled()));
+    type('90');
+    pressSave();
+    await waitFor(() => {
+      expect(unsent()).toBe('typed');
+    });
+    expect(score().value).toBe('90');
+  });
+});
+
+// Review of the build of pull request #77, finding 4: the hand test's case of
+// two forms on one page, and a form taken away after its refusal.
+describe('the sign of a failed save with two forms on the page', () => {
+  const OTHER: SampleRow = { ...ROW, id: 'sample-0003', name: 'Malika Yusupova', score: 64 };
+
+  function renderTwo(saveFirst: Save, saveSecond: Save) {
+    function Page() {
+      const [first, setFirst] = useState(true);
+      return (
+        <>
+          {first && <SampleForm row={ROW} onSave={saveFirst} />}
+          <SampleForm row={OTHER} onSave={saveSecond} />
+          <button
+            type="button"
+            onClick={() => {
+              setFirst(false);
+            }}
+          >
+            close
+          </button>
+          <Leaver />
+        </>
+      );
+    }
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <ConfirmProvider>
+          <UnsentProvider>
+            <Page />
+          </UnsentProvider>
+        </ConfirmProvider>
+      </I18nextProvider>,
+    );
+  }
+
+  const formOf = (name: string) => screen.getByRole('form', { name });
+  const scoreOf = (name: string) =>
+    within(formOf(name)).getByLabelText<HTMLInputElement>(en.sample.score);
+
+  it('does not say "Save failed" after another form saves, once the refused one was changed', async () => {
+    renderTwo(
+      () => Promise.reject(new ApiFailure('no_answer')),
+      () => Promise.resolve(),
+    );
+    fireEvent.change(scoreOf(ROW.name), { target: { value: '90' } });
+    fireEvent.submit(formOf(ROW.name));
+    await waitFor(() => {
+      expect(unsent()).toBe('failed');
+    });
+    fireEvent.change(scoreOf(ROW.name), { target: { value: '91' } });
+
+    fireEvent.change(scoreOf(OTHER.name), { target: { value: '70' } });
+    fireEvent.submit(formOf(OTHER.name));
+    await within(formOf(OTHER.name)).findByText(en.form.saved);
+
+    expect(unsent()).toBe('typed');
+  });
+
+  it('is gone when the refused form is closed', async () => {
+    renderTwo(
+      () => Promise.reject(new ApiFailure('no_answer')),
+      () => Promise.resolve(),
+    );
+    fireEvent.change(scoreOf(ROW.name), { target: { value: '90' } });
+    fireEvent.submit(formOf(ROW.name));
+    await waitFor(() => {
+      expect(unsent()).toBe('failed');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'close' }));
+
+    await waitFor(() => {
+      expect(unsent()).toBe('');
+    });
   });
 });

@@ -46,6 +46,34 @@ const liveRows = (rows: readonly StoredStudentStatus[]): StoredStudentStatus[] =
     .filter((row) => !isWithdrawn(row))
     .sort((a, b) => (a.validFrom < b.validFrom ? -1 : a.validFrom > b.validFrom ? 1 : 0));
 
+/**
+ * The status rows as the history of the record shows them (issue #39, hand
+ * test of 13 October 2026, finding 7): a leaving taken back, by a cancel
+ * before its date or by an undo, leaves no break. An active row that starts
+ * where the active row before it ends, written by a cancel or an undo, is
+ * read as part of that row: one line from its first day. The stored rows and
+ * their audit entries keep the cancel or the undo, with its reason; a real
+ * break (a leaving in force, then a return) stays two lines.
+ */
+export function historyLines<Row extends StoredStudentStatus>(rows: readonly Row[]): Row[] {
+  const lines: Row[] = [];
+  for (const row of liveRows(rows) as Row[]) {
+    const last = lines.at(-1);
+    if (
+      last !== undefined &&
+      last.status === 'active' &&
+      row.status === 'active' &&
+      last.validUntil === row.validFrom &&
+      (row.cause === 'cancel' || row.cause === 'undo')
+    ) {
+      lines[lines.length - 1] = { ...last, validUntil: row.validUntil };
+    } else {
+      lines.push(row);
+    }
+  }
+  return lines;
+}
+
 /** A leaving written and not yet in force: its inactive row starts after today. */
 const isScheduledLeaving = (row: StoredStudentStatus | undefined, today: SchoolDate): boolean =>
   row !== undefined &&

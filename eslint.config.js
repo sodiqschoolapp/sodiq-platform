@@ -57,6 +57,17 @@ const hardCodedText = [
   `${textAttribute} > JSXExpressionContainer > ${chosen} > ${textLiteral}`,
 ].map((selector) => ({ selector, message: hardCodedTextMessage }));
 
+// docs/spec/12-ux-standards.md, Language: dates follow the chosen language.
+// The browser's own Uzbek data may be trimmed ("2026 M09 2", issue #39, hand
+// test of 13 October 2026, finding 3), so every date and time of the web app
+// comes from apps/web/src/lib/dates.ts (task 2.7a).
+const ownDatesMessage =
+  'Format a date or a time with apps/web/src/lib/dates.ts, never with Intl.DateTimeFormat or toLocale…String.';
+const ownDates = [
+  "MemberExpression[object.name='Intl'][property.name='DateTimeFormat']",
+  'CallExpression[callee.property.name=/^toLocale(Date|Time)?String$/]',
+].map((selector) => ({ selector, message: ownDatesMessage }));
+
 /** Decorators of NestJS that hand a route unchecked input, or the whole request. */
 const rawInputDecorators = [
   'Body',
@@ -323,7 +334,15 @@ export default defineConfig(
     files: ['apps/web/src/**/*.tsx'],
     ignores: ['**/*.test.tsx'],
     rules: {
-      'no-restricted-syntax': ['error', ...hardCodedText],
+      // One block for both lists: a second block for the same files would replace this one.
+      'no-restricted-syntax': ['error', ...hardCodedText, ...ownDates],
+    },
+  },
+  {
+    files: ['apps/web/src/**/*.ts'],
+    ignores: ['**/*.test.ts', 'apps/web/src/lib/dates.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', ...ownDates],
     },
   },
   prettier,

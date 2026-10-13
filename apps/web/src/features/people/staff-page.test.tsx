@@ -322,6 +322,76 @@ describe('the staff page', () => {
     expect(within(panel).queryByLabelText(en.people.staff.mainBranchField)).toBeNull();
   });
 
+  // Issue #39, hand test of 13 October 2026, finding 2: the further
+  // divisions are the Super Admin's; for the Academic Vice Principal they are
+  // greyed like the main division, and a save sends them unchanged.
+  it('greys the further divisions for the Academic Vice Principal and sends them unchanged', async () => {
+    const calls = openList(
+      'academic_vice_principal',
+      { [`PUT /api/people/staff/${AKMAL.id}`]: () => json(detailOf(AKMAL)) },
+      'en',
+      {
+        rights: {
+          all: false,
+          contact: true,
+          teaching: true,
+          accounts: false,
+          accountAccess: false,
+          email: true,
+        },
+      },
+    );
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const record = await within(panel).findByRole('form', { name: 'Akmal Karimov' });
+    const management = within(record).getByRole<HTMLInputElement>('checkbox', {
+      name: 'Management',
+    });
+    expect(management.disabled).toBe(true);
+    expect(management.closest('label')?.className).toContain('has-disabled:opacity-50');
+    fireEvent.click(management);
+    expect(management.checked).toBe(false);
+
+    fireEvent.change(within(record).getByLabelText(en.people.staff.phone), {
+      target: { value: '+998 90 111 22 33' },
+    });
+    fireEvent.click(within(record).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `PUT /api/people/staff/${AKMAL.id}`)?.body,
+      ).toMatchObject({
+        divisions: [{ divisionId: ACADEMIC.id, departmentId: uid(11), main: true }],
+      });
+    });
+  });
+
+  it('lets the Super Admin tick a further division and sends it', async () => {
+    const calls = openList('super_admin', {
+      [`PUT /api/people/staff/${AKMAL.id}`]: () => json(detailOf(AKMAL)),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const record = await within(panel).findByRole('form', { name: 'Akmal Karimov' });
+    const management = within(record).getByRole<HTMLInputElement>('checkbox', {
+      name: 'Management',
+    });
+    expect(management.disabled).toBe(false);
+    fireEvent.click(management);
+    fireEvent.click(within(record).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `PUT /api/people/staff/${AKMAL.id}`)?.body,
+      ).toMatchObject({
+        divisions: [
+          { divisionId: ACADEMIC.id, departmentId: uid(11), main: true },
+          { divisionId: MANAGEMENT.id, departmentId: null, main: false },
+        ],
+      });
+    });
+  });
+
   it('shows the Principal the record without forms, and birth date and JSHSHIR after a logged show', async () => {
     const calls = openList(
       'principal',

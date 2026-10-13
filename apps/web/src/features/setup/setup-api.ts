@@ -8,7 +8,6 @@ import {
   roomListSchema,
   type Building,
   type Names,
-  type Weekday,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -73,18 +72,6 @@ export function activeFloorsOf(buildings: readonly Building[]): FloorChoice[] {
           floorName: floor.name,
         })),
     );
-}
-
-/**
- * The name of a weekday in the chosen language (`12`, Language: "Dates,
- * numbers and weekdays follow the chosen language"), with a capital first
- * letter as a label has. The first of January 2024 was a Monday.
- */
-export function weekdayName(language: string, day: Weekday): string {
-  const name = new Intl.DateTimeFormat(language, { weekday: 'long', timeZone: 'UTC' }).format(
-    new Date(Date.UTC(2024, 0, day)),
-  );
-  return name.charAt(0).toLocaleUpperCase(language) + name.slice(1);
 }
 
 /**
@@ -158,36 +145,3 @@ export const invalidateYears = (queryClient: QueryClient): Promise<unknown> =>
     queryClient.invalidateQueries({ queryKey: periodKey() }),
     queryClient.invalidateQueries({ queryKey: [...SETUP_KEY, 'branch'] }),
   ]);
-
-/**
- * A school date (`YYYY-MM-DD`) in the chosen language (`12`, Language:
- * "Dates ... follow the chosen language"): "10 November 2026", or "10
- * November" without the year. Read as a day of the calendar, never moved by a
- * time zone.
- */
-export function schoolDateText(date: string, language: string, withYear = true): string {
-  const [year, month, day] = date.split('-').map(Number);
-  return new Intl.DateTimeFormat(language, {
-    day: 'numeric',
-    month: 'long',
-    ...(withYear ? { year: 'numeric' } : {}),
-    timeZone: 'UTC',
-  }).format(new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1)));
-}
-
-/**
- * The months a quarter covers (`03`, Quarters: "Months are derived from
- * dates"), in the chosen language: "September – October".
- */
-export function monthsText(startDate: string, endDate: string, language: string): string {
-  const month = (date: string) => {
-    const [year, number] = date.split('-').map(Number);
-    const name = new Intl.DateTimeFormat(language, { month: 'long', timeZone: 'UTC' }).format(
-      new Date(Date.UTC(year ?? 1970, (number ?? 1) - 1, 1)),
-    );
-    return name.charAt(0).toLocaleUpperCase(language) + name.slice(1);
-  };
-  const first = month(startDate);
-  const last = month(endDate);
-  return startDate.slice(0, 7) === endDate.slice(0, 7) ? first : `${first} – ${last}`;
-}

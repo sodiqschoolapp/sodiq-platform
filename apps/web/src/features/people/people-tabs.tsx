@@ -1,5 +1,6 @@
 import { PERMISSIONS, permits } from '@sodiq/shared';
 import { Link } from '@tanstack/react-router';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useView } from '@/features/access/use-view';
 
@@ -68,20 +69,36 @@ export function PeopleTabs({ current }: { current: Section }) {
   const shown = SECTIONS.filter(
     (section) => role !== null && permits(PERMISSIONS, role, section.area, 'view'),
   );
+  const row = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const tab = row.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    // Not every browser of the tests draws a layout to scroll in.
+    if (tab !== null && tab !== undefined && typeof tab.scrollIntoView === 'function') {
+      tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  }, [current]);
   if (shown.length < 2) {
     return null;
   }
   return (
-    <nav aria-label={t('people.sections')} className="mb-4 flex gap-6 border-b">
+    // One row that scrolls sideways inside its own box when the tabs do not
+    // fit (a phone), with the tab in use scrolled into view (issue #39, hand
+    // test of 13 October 2026, finding 8).
+    <nav
+      ref={row}
+      aria-label={t('people.sections')}
+      className="mb-4 flex gap-6 overflow-x-auto border-b whitespace-nowrap"
+    >
       {shown.map((section) => (
         <Link
           key={section.key}
           to={section.to}
+          data-section={section.key}
           aria-current={current === section.key ? 'page' : undefined}
           className={
             current === section.key
-              ? 'border-b-2 border-foreground px-1 pb-2 font-semibold'
-              : 'border-b-2 border-transparent px-1 pb-2 text-muted-foreground hover:text-foreground'
+              ? 'shrink-0 border-b-2 border-foreground px-1 pb-2 font-semibold max-sm:pt-3'
+              : 'shrink-0 border-b-2 border-transparent px-1 pb-2 text-muted-foreground hover:text-foreground max-sm:pt-3'
           }
         >
           {t(section.title)}

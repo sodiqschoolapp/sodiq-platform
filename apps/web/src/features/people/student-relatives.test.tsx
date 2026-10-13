@@ -257,10 +257,19 @@ describe("the student's Relatives tab", () => {
       throw new Error('The main contact is listed.');
     }
     const unlink = within(main).getByRole('button', { name: en.people.relatives.unlink });
-    expect(unlink.hasAttribute('disabled')).toBe(true);
+    // Finding 6 of the hand test of 13 October 2026: pressed with no new main
+    // contact chosen, it says what to do first and sends nothing.
+    fireEvent.click(unlink);
+    expect(await within(main).findByText(en.people.relatives.chooseMainFirst)).toBeDefined();
+    expect(
+      within(main).getByLabelText(en.people.relatives.newMain).getAttribute('aria-invalid'),
+    ).toBe('true');
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(calls.some((call) => call.route.endsWith('/unlink'))).toBe(false);
     fireEvent.change(within(main).getByLabelText(en.people.relatives.newMain), {
       target: { value: uid(41) },
     });
+    expect(within(main).queryByText(en.people.relatives.chooseMainFirst)).toBeNull();
     fireEvent.click(unlink);
     const dialog = await screen.findByRole('alertdialog', {
       name: en.people.relatives.unlinkTitle,

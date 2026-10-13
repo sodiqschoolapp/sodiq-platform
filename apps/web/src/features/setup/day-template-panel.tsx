@@ -29,9 +29,9 @@ import {
 } from '@/components/ui/table';
 import { useView } from '@/features/access/use-view';
 import { VersionForm } from './day-template-form';
-import { schoolDateText } from './setup-api';
 import { usePreview } from './template-table';
 import { dayTemplateQuery, invalidateTemplates, rangeText } from './templates-api';
+import { schoolDateText } from '@/lib/dates';
 
 interface DayTemplatePanelProps {
   summary: DayTemplateSummary;

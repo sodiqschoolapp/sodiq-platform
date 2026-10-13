@@ -33,7 +33,6 @@ import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { Button } from '@/components/ui/button';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
-import { schoolDateText } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import {
   invalidateRelatives,
@@ -45,6 +44,7 @@ import {
 import { PeopleTabs } from './people-tabs';
 import { StudentForm } from './student-form';
 import { StudentPanel } from './student-panel';
+import { schoolDateText } from '@/lib/dates';
 
 const fullName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) =>
   `${row.firstName} ${row.lastName}`;

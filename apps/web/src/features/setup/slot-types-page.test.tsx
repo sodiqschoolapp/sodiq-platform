@@ -100,7 +100,7 @@ describe('the slot types page', () => {
     await openList();
 
     expect(rowsDrawn()).toEqual([
-      ['Lesson 45', 'Lesson', '45 min', '40 min from November 1, 2026', 'Active'],
+      ['Lesson 45', 'Lesson', '45 min', '40 min from 1 November 2026', 'Active'],
       ['Lunch', 'Break', '40 min', '', 'Active'],
     ]);
   });
@@ -247,6 +247,6 @@ describe('the slot types page', () => {
     const panel = await openSlotType('Lesson 45');
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.setup.slotTypes.archive })).toBeNull();
-    expect(within(panel).getAllByText('November 1, 2026', { selector: 'td' })).toHaveLength(2);
+    expect(within(panel).getAllByText('1 November 2026', { selector: 'td' })).toHaveLength(2);
   });
 });

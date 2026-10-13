@@ -1,6 +1,8 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { EmptyState } from './states';
+// Rendered without the app's i18n: a text is its key here.
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { ApiFailure } from '@/api/failure';
+import { EmptyState, ErrorState } from './states';
 
 // docs/design-system.md, Brand moments, Empty page; `12`, Look and feel:
 // "Empty pages say what the page is for and offer the first action". Pull
@@ -34,5 +36,22 @@ describe('an empty state', () => {
     expect(screen.queryByRole('heading')).toBeNull();
     expect(container.querySelector('svg')).toBeNull();
     expect(screen.getByText('No notifications.').className).toContain('text-muted-foreground');
+  });
+});
+
+// Issue #39, hand test of 13 October 2026, finding 4.
+describe('an error state', () => {
+  it('says the role may not see it, with no "Try again"', () => {
+    render(<ErrorState error={new ApiFailure('permission_denied')} onRetry={() => undefined} />);
+    expect(screen.getByRole('alert').textContent).toBe('problems.noAccessPart');
+    expect(screen.queryByRole('button', { name: 'problems.retry' })).toBeNull();
+  });
+
+  it('keeps "Try again" for any other failure', () => {
+    const retry = vi.fn();
+    render(<ErrorState error={new ApiFailure('internal_error')} onRetry={retry} />);
+    expect(screen.getByRole('alert').textContent).toBe('errors.internal_error');
+    fireEvent.click(screen.getByRole('button', { name: 'problems.retry' }));
+    expect(retry).toHaveBeenCalledOnce();
   });
 });

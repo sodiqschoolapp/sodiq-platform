@@ -17,8 +17,9 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
-import { invalidateYears, schoolDateText, yearsQuery } from './setup-api';
+import { invalidateYears, yearsQuery } from './setup-api';
 import { YearForm, YearPanel } from './year-panel';
+import { schoolDateText } from '@/lib/dates';
 
 const datedCount = (year: AcademicYear): number =>
   year.quarters.filter((quarter) => quarter.startDate !== null).length;

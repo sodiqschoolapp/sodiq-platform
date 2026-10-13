@@ -8,7 +8,7 @@ import {
   redirect,
   type RouterHistory,
 } from '@tanstack/react-router';
-import { personalDataKindSchema } from '@sodiq/shared';
+import { personalDataKindSchema, type Action, type Area } from '@sodiq/shared';
 import { HomePage } from '@/features/access/home-page';
 import { AccountPage } from '@/features/auth/account-page';
 import { AuditPage } from '@/features/audit/audit-page';
@@ -44,7 +44,8 @@ import { SetupPage } from '@/features/setup/setup-page';
 import { listSearch } from '@/components/list/list-state';
 import { SignInPage } from '@/features/auth/sign-in-page';
 import { AppLayout } from './app-layout';
-import { AuthPendingPage, ErrorPage, NotFoundPage, PendingPage } from './pages';
+import { useMayView } from '@/features/access/use-view';
+import { AuthPendingPage, ErrorPage, NoAccessPage, NotFoundPage, PendingPage } from './pages';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -65,6 +66,20 @@ function only(...steps: Step[]) {
   };
 }
 
+/**
+ * A page of one area opens only when an assignment of the person permits that
+ * area in the branch of the tab; otherwise the full-page "no access" screen,
+ * and none of the page's calls is made (issue #39, hand test of 13 October
+ * 2026, finding 4). The check is drawn by the route's component because the
+ * branch of the tab lives in the view store of the shell. Display only: the
+ * server refuses the calls anyway.
+ */
+function guarded(area: Area, Page: () => React.JSX.Element, action: Action = 'view') {
+  return function Guarded() {
+    return useMayView(area, action) ? <Page /> : <NoAccessPage inLayout />;
+  };
+}
+
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: Outlet,
   notFoundComponent: NotFoundPage,
@@ -74,9 +89,14 @@ const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sign-in',
   // `ended`: the session was over when the person tried to go on;
-  // `password_changed`: a new password was chosen with a reset link (2.3c-2).
-  validateSearch: (search: Record<string, unknown>): { reason?: 'ended' | 'password_changed' } =>
-    search.reason === 'ended' || search.reason === 'password_changed'
+  // `password_changed`: a new password was chosen with a reset link (2.3c-2);
+  // `signed_out`: the person signed out, or removed this trusted device (2.7a).
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { reason?: 'ended' | 'password_changed' | 'signed_out' } =>
+    search.reason === 'ended' ||
+    search.reason === 'password_changed' ||
+    search.reason === 'signed_out'
       ? { reason: search.reason }
       : {},
   beforeLoad: only('sign_in'),
@@ -179,28 +199,28 @@ const setupRoute = createRoute({
 const branchRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/branch',
-  component: BranchPage,
+  component: guarded('branches', BranchPage),
 });
 
 const buildingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/buildings',
   validateSearch: listSearch,
-  component: BuildingsPage,
+  component: guarded('rooms', BuildingsPage),
 });
 
 const roomsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/rooms',
   validateSearch: listSearch,
-  component: RoomsPage,
+  component: guarded('rooms', RoomsPage),
 });
 
 const divisionsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/divisions',
   validateSearch: listSearch,
-  component: DivisionsPage,
+  component: guarded('divisions', DivisionsPage),
 });
 
 /** Subjects and their weights (task 2.1). */
@@ -208,7 +228,7 @@ const subjectsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/subjects',
   validateSearch: listSearch,
-  component: SubjectsPage,
+  component: guarded('subjects', SubjectsPage),
 });
 
 /** People (task 2.2a): the entry of the menu item and the staff list. */
@@ -222,7 +242,7 @@ const staffRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/people/staff',
   validateSearch: listSearch,
-  component: StaffPage,
+  component: guarded('staff', StaffPage),
 });
 
 /** The students of the branch (task 2.4a). */
@@ -230,7 +250,7 @@ const studentsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/people/students',
   validateSearch: listSearch,
-  component: StudentsPage,
+  component: guarded('students', StudentsPage),
 });
 
 /** The relatives of the students of the branch, the Parents (task 2.5a). */
@@ -238,7 +258,7 @@ const parentsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/people/parents',
   validateSearch: listSearch,
-  component: ParentsPage,
+  component: guarded('relatives', ParentsPage),
 });
 
 /** The vacancies, the second section of the teacher list (task 2.2b). */
@@ -246,7 +266,7 @@ const vacanciesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/people/vacancies',
   validateSearch: listSearch,
-  component: VacanciesPage,
+  component: guarded('vacancies', VacanciesPage),
 });
 
 /** The Head Teachers of the branch, the third section of People (task 2.3b-2). */
@@ -254,7 +274,7 @@ const headTeachersRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/people/head-teachers',
   validateSearch: listSearch,
-  component: HeadTeachersPage,
+  component: guarded('head_teachers', HeadTeachersPage),
 });
 
 /**
@@ -265,7 +285,7 @@ const headTeachersRoute = createRoute({
 const personalDataRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/people/report/$kind/$id',
-  component: PersonalDataRouteView,
+  component: guarded('personal_data_report', PersonalDataRouteView, 'export'),
 });
 
 function PersonalDataRouteView() {
@@ -283,7 +303,7 @@ const auditRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/audit',
   validateSearch: auditSearch,
-  component: AuditPage,
+  component: guarded('audit_log', AuditPage),
 });
 
 /** The accounts never used of the branch, a section of People (task 2.3c-1). */
@@ -291,54 +311,54 @@ const neverUsedRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/people/never-used',
   validateSearch: listSearch,
-  component: NeverUsedPage,
+  component: guarded('account_access', NeverUsedPage),
 });
 
 const yearsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/years',
   validateSearch: listSearch,
-  component: YearsPage,
+  component: guarded('academic_years', YearsPage),
 });
 
 const slotTypesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/slot-types',
   validateSearch: listSearch,
-  component: SlotTypesPage,
+  component: guarded('day_templates', SlotTypesPage),
 });
 
 const dayTemplatesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/day-templates',
   validateSearch: listSearch,
-  component: DayTemplatesPage,
+  component: guarded('day_templates', DayTemplatesPage),
 });
 
 const templateSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/day-template-settings',
   validateSearch: listSearch,
-  component: TemplateSettingsPage,
+  component: guarded('day_templates', TemplateSettingsPage),
 });
 
 const calendarRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/calendar',
   validateSearch: listSearch,
-  component: CalendarPage,
+  component: guarded('calendar', CalendarPage),
 });
 
 const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/settings',
-  component: SettingsPage,
+  component: guarded('settings', SettingsPage),
 });
 
 const travelTimesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/travel-times',
-  component: TravelTimesPage,
+  component: guarded('branches', TravelTimesPage),
 });
 
 /**

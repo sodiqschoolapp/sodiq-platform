@@ -41,7 +41,7 @@ import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-
 import { HistoryLink } from '@/features/audit/history-link';
 import { ReportLink } from './report-link';
 import { useView } from '@/features/access/use-view';
-import { nameOf, schoolDateText } from '@/features/setup/setup-api';
+import { nameOf } from '@/features/setup/setup-api';
 import { AccountAccessSection } from './account-access-section';
 import { AccountSection } from './account-section';
 import { FirstPasswordSlipDialog } from './first-password-slip';
@@ -60,6 +60,7 @@ import { photoRefusalOf, shrinkPhoto } from './shrink-photo';
 import { AvailabilitySection } from './availability-section';
 import { asFormSchema } from './form-schema';
 import { StaffForm } from './staff-form';
+import { schoolDateText } from '@/lib/dates';
 
 interface StaffPanelProps {
   id: string;

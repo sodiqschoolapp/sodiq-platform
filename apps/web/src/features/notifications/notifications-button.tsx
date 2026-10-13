@@ -19,8 +19,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { formatMoment } from '@/features/auth/moments';
 import { NOTIFICATIONS_KEY, notificationsQuery } from './notifications-api';
+import { formatMoment } from '@/lib/dates';
 
 /**
  * The text of a notification, from the kind and its data, in the language of

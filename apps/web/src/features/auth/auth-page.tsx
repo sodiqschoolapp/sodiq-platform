@@ -81,15 +81,21 @@ export function AuthPage({ title, text, children }: AuthPageProps) {
           </div>
         </main>
       </div>
-      {/* The brand book's cover: navy in both themes, hidden at phone width. */}
-      <div className="hidden w-[42%] max-w-160 shrink-0 bg-sidebar sm:flex">
-        <div className="flex flex-1 flex-col justify-center gap-6 p-12">
-          <p className="font-brand text-[2.5rem]/[2.75rem] font-extrabold text-primary uppercase lg:text-[3.5rem]/[3.625rem]">
+      {/* The brand book's cover: navy in both themes, hidden at phone width.
+          It never makes the page wider than the window (issue #39, hand test of
+          13 October 2026, finding 1): the panel may shrink; the slogan steps
+          between sizes of the type table, chosen by the room its panel gives
+          it, so its longest word always fits (56 / 58 from 424 px, 40 / 44
+          from 304 px, else 28 / 34); the hexagon column is narrower below
+          1280 px and hidden below 768 px, where it would leave no room. */}
+      <div className="hidden w-[42%] max-w-160 min-w-0 bg-sidebar sm:flex">
+        <div className="@container flex min-w-0 flex-1 flex-col justify-center gap-6 p-6 lg:p-8 xl:p-12">
+          <p className="font-brand text-[1.75rem]/[2.125rem] font-extrabold text-primary uppercase @[19rem]:text-[2.5rem]/[2.75rem] @[26.5rem]:text-[3.5rem]/[3.625rem]">
             {t('brand.slogan')}
           </p>
           <LineOrnament />
         </div>
-        <HexagonColumn />
+        <HexagonColumn className="hidden md:block md:w-12 xl:w-20" />
       </div>
     </div>
   );

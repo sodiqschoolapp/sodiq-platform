@@ -16,10 +16,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AccountSection } from './account-section';
-import { formatMoment } from '../moments';
 import { refreshSession } from '../session';
 import { useLeaveSignedOut } from '../use-sign-out';
 import { DEVICES_KEY, sessionsQuery } from './sessions-section';
+import { formatMoment } from '@/lib/dates';
 
 export const devicesQuery = queryOptions({
   queryKey: DEVICES_KEY,

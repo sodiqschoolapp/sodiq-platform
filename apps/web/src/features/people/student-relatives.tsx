@@ -250,6 +250,9 @@ function LinkEditor({
     ),
   );
   const [nextMain, setNextMain] = useState('');
+  // Unlink pressed with no new main contact chosen (issue #39, hand test of
+  // 13 October 2026, finding 6): the select says what to do first.
+  const [mainMissing, setMainMissing] = useState(false);
   const form = useRecordForm<LinkField, RelativeLinkEdit>({
     schema: LINK_SCHEMA,
     initial: {
@@ -308,16 +311,23 @@ function LinkEditor({
               ]}
               name="newMain"
               value={choice}
-              error={undefined}
+              error={
+                mainMissing && choice === '' ? t('people.relatives.chooseMainFirst') : undefined
+              }
               onChange={(event) => {
                 setNextMain(event.target.value);
+                setMainMissing(false);
               }}
             />
           )}
           <Button
             variant="secondary"
-            disabled={unlink.isPending || (needsNext && choice === '')}
+            disabled={unlink.isPending}
             onClick={() => {
+              if (needsNext && choice === '') {
+                setMainMissing(true);
+                return;
+              }
               void confirm({
                 title: t('people.relatives.unlinkTitle'),
                 text: t('people.relatives.unlinkText'),

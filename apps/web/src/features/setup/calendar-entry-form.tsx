@@ -12,7 +12,7 @@ import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { WEEKDAYS } from './calendar-preview';
-import { weekdayName } from './setup-api';
+import { weekdayName } from '@/lib/dates';
 
 interface CalendarEntryFormProps {
   /** The entry edited; none for a new one. */

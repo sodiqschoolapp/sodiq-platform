@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ApiFailure } from '@/api/failure';
 import { failureText } from '@/api/failure-text';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -100,13 +101,21 @@ interface ErrorStateProps {
   onRetry?: () => void;
 }
 
-/** "Error messages say what happened and what to do next." */
+/**
+ * "Error messages say what happened and what to do next." A refusal of the
+ * role says that this part is not for the role, with no "Try again", which
+ * cannot help (issue #39, hand test of 13 October 2026, finding 4). A page the
+ * role may not open at all is the full-page "no access" of the route.
+ */
 export function ErrorState({ error, onRetry }: ErrorStateProps) {
   const { t } = useTranslation();
+  const refused = error instanceof ApiFailure && error.code === 'permission_denied';
   return (
     <div className="grid justify-items-start gap-3">
-      <p role="alert">{failureText(t, error)}</p>
-      {onRetry !== undefined && <Button onClick={onRetry}>{t('problems.retry')}</Button>}
+      <p role="alert">{refused ? t('problems.noAccessPart') : failureText(t, error)}</p>
+      {onRetry !== undefined && !refused && (
+        <Button onClick={onRetry}>{t('problems.retry')}</Button>
+      )}
     </div>
   );
 }

@@ -269,10 +269,25 @@ How to read the task lines:
   - Build: for the Super Admin, the personal data report of a student, a relative or a staff member on screen as a printable page: every field of the record in every group, the links (relatives, students), the account and its roles, the photo, the consent and statuses, and the audit entries about the person; producing it is an export and leaves an audit entry.
   - Done when: the Super Admin prints the report of a student and the log holds the entry; no other role reaches it.
 
-- [ ] **2.7 Polish of Phases 1 and 2**
-  - Read: `docs/design-system.md`, `.claude/rules/web.md`, issue #39 (the owner's polish list; the owner adds the findings of the hand tests there before this task starts), `03` (the Branches list, spec change of 12 October 2026), `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7").
-  - Build: every page of Phases 0 to 2 checked against the design system and "What we never do" and brought into line (page headers, toolbars, button sizes and kinds, empty, loading and error states, side panels, phone width); the items of issue #39: the school-wide Branches list for the Super Admin, the "New branch" form in the side panel, the branch phone as decided; each finding the owner listed on #39.
+- [x] **2.7a "Fix first" findings, dates in the app, accessibility and wording** (2.7 split in four, pull request #77, decision 1)
+  - Read: issue #39 (the hand test of 13 October 2026, findings 1–10, 23, 32–36, and the owner's answers after it, answer 38 included), `12` (Language), `docs/design-system.md` (Brand moments), `.claude/rules/web.md`, the plan and the review of pull request #77.
+  - Build: the ten "Fix first" findings (sign-in sideways scroll, locked further divisions, the full-page "no access", the student panel tabs, the main contact message, one history line after a cancelled leaving, the People tabs on a phone, "You are signed out.", the "Save failed" pill); every date and time from `apps/web/src/lib/dates.ts` (Uzbek names from i18n keys, English day-first and 24-hour); the first-password slip's dates; findings 32–34; the decided Uzbek and Russian wording (35–36).
+  - Done when: each of those findings is done, Uzbek dates read "8-dekabr, 2026" with the browser's `Intl` trimmed, and a lint rule keeps dates in `lib/dates.ts`.
+
+- [ ] **2.7b Formats and smaller UX** (split from 2.7 on pull request #77, decision 1)
+  - Read: issue #39 (the hand test of 13 October 2026, findings 11, 13–22, 24–31, and the owner's answers), `docs/design-system.md`, `.claude/rules/web.md`, `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7", item 10), the plan of pull request #77.
+  - Build: browser names in Sessions and Trusted devices; the selection bar only when a row is ticked; the Rooms table and the top bar at 1047 px; the Shared column of the rooms export; a day past midnight shown as such; words in the setup checklist; "Saved." on the forms that lack it; grade ranges ("5–11"); "4 of 4 not set"; the early and wrong messages (21) and the photo message (22); phones shown and exported as "+998 90 111 22 33"; the UID set in its warning; the leaving dialog's buttons; surname first in every list and export (owner's answer to 27); Cancel in the merge view; no "Leave school" form after a scheduled leaving; the Super Admin alerts and "More" on phones; the branch phone (#39 item 3) as "Decided ahead for tasks 2.2d and 2.7", item 10 says.
+  - Done when: each of those findings is done or named as left out with its reason in the report.
+
+- [ ] **2.7c Pages against the design system** (split from 2.7 on pull request #77, decision 1)
+  - Read: `docs/design-system.md`, `.claude/rules/web.md`, issue #39 (items 1, 2, 4, 5; finding 12), `03` (the Branches list, spec change of 12 October 2026), `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7"), the plan of pull request #77.
+  - Build: every page of Phases 0 to 2 checked against the design system and "What we never do" and brought into line (page headers, toolbars, button sizes and kinds, empty, loading and error states, side panels, phone width); the text rule on the School setup and Branch pages (#39 item 4); the "New branch" form in the side panel (#39 item 2, finding 12); the Rooms "By floor" view (#39 item 5); the school-wide Branches list for the Super Admin (#39 item 1) once its spec change is merged ("Decided ahead for tasks 2.2d and 2.7", item 11).
   - Done when: each item of #39 is done or named as left out with its reason in the report; the browser test visits every page of Phases 0 to 2 in light and dark and attaches the screenshots to the report.
+
+- [ ] **2.7d The Super Admin's own staff record** (split from 2.7 on pull request #77, decision 1)
+  - Read: issue #39 (the owner's answer to question 37), `04` (Teacher and staff record), `edge/people-roles-accounts`, the plan of pull request #77.
+  - Build: the Super Admin creates their own staff record and links it to their existing account, so the menu, "Given by …", "Locked by …" and the Account photo show the name; the link is audited.
+  - Done when: a Super Admin without a staff record links one to their account, and no other role can link a record to an existing account this way.
 
 ## Phase 3. Classes, groups and teaching load
 
@@ -407,6 +422,7 @@ How to read the task lines:
   - Read: `06` (Protection), `03` (Quarters), `edge/timetable` (Versions and drafts).
   - Build: a dated lesson with data cannot be deleted or change its class, group or subject; forced delete by the Super Admin with a reason and 30-day restore; version history, comparison of two versions, reopening an old version as a new draft; the version in force on the first day of each quarter.
   - Done when: each of the four Protection rules has a test.
+  - From 2.7 (pull request #77, decision 2; issue #39, item 6): the same forced delete for a building, floor or room that nothing references, once the owner's spec change of `03` is merged.
 
 - [ ] **5.9 Timetable views, print and export**
   - Read: `06` (Views and outputs), `edge/system-behaviour`.

@@ -1,8 +1,9 @@
 import type { Branch } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { uz } from '@/i18n/locales/uz';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
 const PATH = '/setup/branch';
@@ -58,6 +59,41 @@ describe('the branch page', () => {
     expect(within(days).getByLabelText<HTMLInputElement>('Saturday').checked).toBe(false);
     expect(within(days).getByLabelText<HTMLInputElement>('Sunday').checked).toBe(false);
     expect(screen.getByRole('button', { name: en.setup.branch.newBranch })).toBeDefined();
+  });
+
+  // Issue #39, hand test of 13 October 2026, finding 33: the weekdays were
+  // announced as "1" … "7" where the browser's Uzbek data is trimmed.
+  it('names the weekday switches in Uzbek even where the browser has no Uzbek names', async () => {
+    const Real = Intl.DateTimeFormat;
+    const trimmed = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(((
+      locale?: string | string[],
+      options?: Intl.DateTimeFormatOptions,
+    ) => {
+      const real = new Real(locale, options);
+      const language = Array.isArray(locale) ? locale[0] : locale;
+      return language?.startsWith('uz') === true
+        ? Object.assign(Object.create(real) as Intl.DateTimeFormat, { format: () => '1' })
+        : real;
+    }) as typeof Intl.DateTimeFormat);
+    try {
+      fakeApi({
+        'GET /api/auth/session': () => json({ ...superAdmin(), language: 'uz' }),
+        'GET /api/setup/branch': () => json(BRANCH),
+      });
+      renderApp(PATH, 'uz');
+      await screen.findByRole('form', { name: 'North' });
+      const days = within(form()).getByRole('group', { name: uz.setup.branch.workingWeekdays });
+      expect(
+        within(days)
+          .getAllByRole('checkbox')
+          .map((box) => box.closest('label')?.textContent),
+      ).toEqual(['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba']);
+      expect(
+        within(days).getByRole<HTMLInputElement>('checkbox', { name: 'Dushanba' }).checked,
+      ).toBe(true);
+    } finally {
+      trimmed.mockRestore();
+    }
   });
 
   it('saves the typed record with the ticked weekdays, says "Saved" and reads the session again for the switcher', async () => {
@@ -369,7 +405,7 @@ describe('the branch page', () => {
       });
       renderApp(PATH);
 
-      expect(await screen.findByText('November 10, 2026')).toBeDefined();
+      expect(await screen.findByText('10 November 2026')).toBeDefined();
       expect(screen.queryByRole('form', { name: en.setup.branch.goLiveTitle })).toBeNull();
     });
   });

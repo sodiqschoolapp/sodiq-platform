@@ -9,7 +9,8 @@ import { rememberTrustAsked } from './trust-asked';
 /**
  * What the tab does once its session is over by its own doing (sign-out, the
  * removal of this trusted device): nothing of the person stays in the tab,
- * and the sign-in page opens.
+ * and the sign-in page opens with "You are signed out." (issue #39, hand
+ * test of 13 October 2026, finding 9), not "Your session has ended.".
  */
 export function useLeaveSignedOut(): () => void {
   const queryClient = useQueryClient();
@@ -19,7 +20,7 @@ export function useLeaveSignedOut(): () => void {
     rememberTrustAsked(false);
     forgetSession(queryClient);
     view.clear();
-    void navigate({ to: STEP_PATH.sign_in });
+    void navigate({ to: STEP_PATH.sign_in, search: { reason: 'signed_out' } });
   };
 }
 

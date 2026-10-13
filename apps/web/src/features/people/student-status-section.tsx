@@ -23,9 +23,9 @@ import { RecordForm } from '@/components/form/record-form';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
-import { schoolDateText } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import { takenOf, takenText } from './student-form';
+import { schoolDateText } from '@/lib/dates';
 
 /** Every path of an issue is the field of the same name; a contract is two fields. */
 const fieldOf = (path: readonly PropertyKey[]): PropertyKey[] => {

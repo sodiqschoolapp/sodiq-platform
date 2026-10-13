@@ -28,6 +28,7 @@ export const en = {
     dark: 'Dark',
   },
   problems: {
+    noAccessPart: 'Your role may not see this.',
     noAccessText:
       'Your role may not open this page. Go to the home page, or ask an administrator if you need it.',
     noAccessTitle: 'No access',
@@ -288,6 +289,7 @@ export const en = {
     loginMissing: 'Enter your login.',
     passwordMissing: 'Enter your password.',
     sessionEnded: 'Your session has ended. Sign in again.',
+    signedOut: 'You are signed out.',
     forgot: 'Forgot your password?',
     passwordChanged: 'Your password was changed. Sign in with the new one.',
   },
@@ -1337,7 +1339,7 @@ export const en = {
         current: 'In force',
       },
     },
-    sections: 'Sections of the teacher list',
+    sections: 'People sections',
     availability: {
       title: 'Availability',
       change: 'Change from a date',
@@ -1410,6 +1412,7 @@ export const en = {
       unlinkTitle: 'Unlink this relative?',
       unlinkText: 'The relative stays linked to their other students.',
       newMain: 'New main contact',
+      chooseMainFirst: 'Choose who becomes the main contact first.',
       choose: 'Choose',
       needsRelative: 'Add a relative before editing this record.',
       stepTitle: 'Relative',
@@ -1613,6 +1616,31 @@ export const en = {
       duplicateElsewhere:
         'A staff member with the same name and date of birth, or the same phone, works in another branch.',
       saveAnyway: 'Save anyway',
+    },
+  },
+  dates: {
+    months: {
+      '1': 'January',
+      '2': 'February',
+      '3': 'March',
+      '4': 'April',
+      '5': 'May',
+      '6': 'June',
+      '7': 'July',
+      '8': 'August',
+      '9': 'September',
+      '10': 'October',
+      '11': 'November',
+      '12': 'December',
+    },
+    weekdays: {
+      '1': 'Monday',
+      '2': 'Tuesday',
+      '3': 'Wednesday',
+      '4': 'Thursday',
+      '5': 'Friday',
+      '6': 'Saturday',
+      '7': 'Sunday',
     },
   },
   period: {

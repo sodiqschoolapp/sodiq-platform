@@ -1,8 +1,11 @@
 import type { FirstPasswordSlip as Slip } from '@sodiq/shared';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Letterhead } from '@/components/print/letterhead';
+import { failureText } from '@/api/failure-text';
+import { LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,8 +15,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { formatMoment } from '@/features/auth/moments';
-import { schoolDateText } from '@/features/setup/setup-api';
+import { useView } from '@/features/access/use-view';
+import { branchQuery } from '@/features/setup/setup-api';
+import { momentText, schoolDateText } from '@/lib/dates';
 
 /** The body attribute that prints the slip alone (index.css). */
 const PRINTING = 'slip';
@@ -22,10 +26,16 @@ const PRINTING = 'slip';
  * The slip itself (docs/design-system.md, This app, Printouts): the
  * letterhead, the person, the three steps to sign in at the site's address,
  * and a box with the login, the password and the date of issue; a cut line
- * below. One slip per person (answer 15).
+ * below. One slip per person (answer 15). Both dates have the long month
+ * (issue #39, hand test of 13 October 2026, finding 23); "Valid until" is a
+ * moment in the branch's time zone, as on the personal data report (task
+ * 2.6b); until the branch is read it is not drawn, and a failure to read it
+ * says so with a retry (never the device's time zone in its place).
  */
 export function FirstPasswordSlipCard({ slip, issued }: { slip: Slip; issued: string }) {
   const { t, i18n } = useTranslation();
+  const { branchId } = useView();
+  const branch = useQuery(branchQuery(branchId));
   const address = window.location.origin;
   return (
     <article data-slip="" className="grid gap-4 border-b-2 border-dashed border-foreground/40 pb-6">
@@ -46,7 +56,29 @@ export function FirstPasswordSlipCard({ slip, issued }: { slip: Slip; issued: st
         <dt>{t('people.account.issued')}</dt>
         <dd>{schoolDateText(issued, i18n.language)}</dd>
         <dt>{t('people.account.validUntil')}</dt>
-        <dd>{formatMoment(i18n.language, slip.validUntil)}</dd>
+        <dd>
+          {branch.data !== undefined ? (
+            momentText(i18n.language, slip.validUntil, {
+              month: 'long',
+              timeZone: branch.data.timeZone,
+            })
+          ) : branch.isError ? (
+            <span className="inline-flex flex-wrap items-center gap-2">
+              <span role="alert">{failureText(t, branch.error)}</span>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  void branch.refetch();
+                }}
+              >
+                {t('problems.retry')}
+              </Button>
+            </span>
+          ) : (
+            <LoadingOutline lines={1} />
+          )}
+        </dd>
       </dl>
     </article>
   );
