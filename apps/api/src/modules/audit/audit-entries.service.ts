@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   AUDIT_ACTION_GROUPS,
   AUDIT_DEFAULT_RANGE_DAYS,
+  AUDIT_MAX_RANGE_DAYS,
   AUDIT_PAGE_SIZE,
   auditCursorOf,
   hideIdentity,
@@ -101,12 +102,21 @@ export class AuditEntries {
     }
     const branchIds = query.scope === 'branch' ? access.branchIds : await this.everyBranch();
     return this.transactions.run(branchIds, async (transaction) => {
+      // The dates are read in the time zone of the branch of the request in
+      // every scope (decision 4): all branches are Asia/Tashkent today.
       const timeZone = await this.timeZoneOf(transaction, branchId);
       const to = query.to ?? schoolDateOf(this.clock.now(), timeZone);
       const from = query.from ?? daysBefore(to, AUDIT_DEFAULT_RANGE_DAYS - 1);
       if (from > to) {
         throw new ApiException('validation_failed', 400, undefined, [
           { path: 'from', code: 'custom', message: 'The range ends before it begins.' },
+        ]);
+      }
+      // The longest range holds when one end was left out too (permission
+      // review of the build): the schema checks it only when both are sent.
+      if (from < daysBefore(to, AUDIT_MAX_RANGE_DAYS - 1)) {
+        throw new ApiException('validation_failed', 400, undefined, [
+          { path: 'from', code: 'custom', message: 'The range is longer than allowed.' },
         ]);
       }
       let person: EntriesSearch['person'];
@@ -161,12 +171,14 @@ export class AuditEntries {
    */
   async show(access: Access, id: string, requestId: string): Promise<AuditEntryAnswer> {
     const branchId = branchOf(access);
-    const superAdmin = superAdminOf(access) !== undefined;
-    const branchIds = superAdmin ? await this.everyBranch() : access.branchIds;
+    // Every reader, the Super Admin included, is held to the branch of the
+    // request (`.claude/rules/api.md`; permission review of the build): the
+    // Super Admin has nothing hidden, so never needs a show of another log.
+    const branchIds = access.branchIds;
     return this.transactions.run(branchIds, async (transaction) => {
       const [row] = await readEntries(transaction, {
         branchLog: 'filtered',
-        schoolLog: superAdmin ? 'all' : 'branch',
+        schoolLog: 'branch',
         branchId,
         timeZone: await this.timeZoneOf(transaction, branchId),
         id,

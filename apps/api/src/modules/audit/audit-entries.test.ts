@@ -537,6 +537,13 @@ describe('the audit log page', () => {
         400,
         'validation_failed',
       );
+      // One end left out: the other is the default, and the limit still holds.
+      refusedWith(
+        await t.get('/api/audit/entries?from=2025-10-09', t.north, t.principal),
+        400,
+        'validation_failed',
+      );
+      page(await t.get('/api/audit/entries?from=2025-10-10', t.north, t.principal));
       refusedWith(
         await t.get('/api/audit/entries?person=teacher:' + UNKNOWN, t.north, t.principal),
         400,
@@ -739,6 +746,10 @@ describe('the audit log page', () => {
         t.vicePrincipal,
       );
       expect(response.status).toBe(200);
+      // The Super Admin reads the entry of the branch, nothing hidden, nothing logged.
+      const admin = await t.post(`/api/audit/entries/${createEntry}/show`, t.north, {}, t.admin);
+      expect(admin.status).toBe(200);
+      expect(JSON.stringify(admin.body)).toContain('Yunusobod 7-mavze 41');
       expect(await logs()).toEqual(before);
     });
 
@@ -753,19 +764,31 @@ describe('the audit log page', () => {
         action: 'auth.sign_in',
         record: { type: 'session', id: UNKNOWN },
       });
+      // A school-wide entry written from another branch, and one about a
+      // relative never linked in the branch (decision 3, correction 1).
+      const southSchool = await entry({
+        branch: null,
+        action: 'relative.edit',
+        record: { type: 'relative', id: await newId() },
+        details: { branchId: t.south },
+        newValue: { workplace: 'Chorsu' },
+      });
       const before = await logs();
-      for (const id of [UNKNOWN, south, signIn]) {
+      for (const id of [UNKNOWN, south, signIn, southSchool]) {
         refusedWith(
           await t.post(`/api/audit/entries/${id}/show`, t.north, {}, t.principal),
           404,
           'not_found',
         );
       }
-      refusedWith(
-        await t.post(`/api/audit/entries/${UNKNOWN}/show`, t.north, {}, t.admin),
-        404,
-        'not_found',
-      );
+      // The Super Admin too is held to the branch of the request.
+      for (const id of [UNKNOWN, south, southSchool]) {
+        refusedWith(
+          await t.post(`/api/audit/entries/${id}/show`, t.north, {}, t.admin),
+          404,
+          'not_found',
+        );
+      }
       expect(await logs()).toEqual(before);
     });
   });
