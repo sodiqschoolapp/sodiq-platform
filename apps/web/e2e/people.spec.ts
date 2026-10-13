@@ -488,3 +488,132 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   await expect(page.locator('tbody tr').filter({ hasText: '9998002' })).toHaveCount(0);
   await leavingScreenshot(page, 'deleted');
 });
+
+// Task 2.4b-2, pull request #70: an Academic Vice Principal adds two students,
+// filters the active students without consent (answer 23), exports a ticked
+// row with the identity group (the columns the server wrote are read from the
+// answer's X-Export-Columns), adds a student photo, and finds the "No class"
+// counter on the home page, whose link opens the rows it counts. What each
+// role may export, and the cells of the file, are proved by the API tests,
+// which read the file back. With SCREENSHOTS=1 the list and the home page are
+// saved for the report under docs/screens/2.4b-2/. All names are invented.
+const EXPORT_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.4b-2');
+
+async function exportScreenshot(page: Page, name: string): Promise<void> {
+  if (process.env.SCREENSHOTS !== '1') {
+    return;
+  }
+  await page.waitForTimeout(400);
+  mkdirSync(EXPORT_SCREENS, { recursive: true });
+  await page.screenshot({ path: path.join(EXPORT_SCREENS, `${name}.png`) });
+}
+
+test('an Academic Vice Principal exports students with their documents, adds a photo and sees the No class counter', async ({
+  page,
+}) => {
+  const account = accountOf('studentExport');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+  await page.goto('/people/students');
+  await expect(heading(page, en.people.students.title)).toBeVisible();
+
+  const texts = en.people.students;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(Date.now());
+  const daysAgo = (days: number): string => {
+    const [year, month, day] = today.split('-').map(Number);
+    return new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, (day ?? 1) - days))
+      .toISOString()
+      .slice(0, 10);
+  };
+  async function add(uid: string, lastName: string, contract: string, consent: string | null) {
+    await page.getByRole('button', { name: texts.add, exact: true }).first().click();
+    const form = page.getByRole('form', { name: texts.newTitle });
+    await form.getByLabel(texts.uid, { exact: true }).fill(uid);
+    await form.getByLabel(texts.lastName, { exact: true }).fill(lastName);
+    await form.getByLabel(texts.firstName, { exact: true }).fill('Kamola');
+    await form.getByLabel(texts.sex, { exact: true }).selectOption('female');
+    await form.getByLabel(texts.birthDate, { exact: true }).fill('2013-07-14');
+    await form.getByLabel(texts.grade, { exact: true }).selectOption('8');
+    await form.getByLabel(texts.startsOn, { exact: true }).fill(daysAgo(40));
+    await form.getByLabel(texts.jshshir, { exact: true }).fill(`3140713${uid}`);
+    if (consent !== null) {
+      await form.getByLabel(texts.consentSignedOn, { exact: true }).fill(consent);
+    }
+    await form.getByLabel(texts.contractNumber, { exact: true }).fill(contract);
+    await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(daysAgo(41));
+    await form.getByRole('button', { name: en.form.save, exact: true }).click();
+    const question = page.getByRole('alertdialog', { name: texts.setTitle });
+    await expect(question).toBeVisible();
+    await question.getByRole('button', { name: texts.saveAnyway, exact: true }).click();
+    await expect(page.getByRole('form', { name: texts.newTitle })).toHaveCount(0);
+  }
+  await add('9997001', 'Ergasheva', 'E2E-EXPORT-1', null);
+  await add('9997002', 'Musayeva', 'E2E-EXPORT-2', daysAgo(45));
+  await expect(page.locator('tbody tr')).toHaveCount(2);
+
+  // Answer 23: the active students without consent.
+  await page.getByRole('combobox', { name: texts.consent }).selectOption('missing');
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await expect(page.locator('tbody tr')).toContainText('Kamola Ergasheva');
+  await page.getByRole('button', { name: en.list.clearSearch, exact: true }).click();
+  await expect(page.locator('tbody tr')).toHaveCount(2);
+
+  // A ticked row, with the documents, birth date and address added to the file.
+  await page
+    .locator('tbody tr')
+    .filter({ hasText: '9997002' })
+    .getByRole('checkbox')
+    .check();
+  await page.getByRole('button', { name: en.list.exportAlso, exact: true }).click();
+  await page
+    .getByRole('menuitemcheckbox', { name: texts.exportGroups.identity, exact: true })
+    .click();
+  await page.keyboard.press('Escape');
+  await exportScreenshot(page, 'list');
+  const answer = page.waitForResponse((response) =>
+    response.url().endsWith('/api/people/students/export'),
+  );
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: /^Export 1 ticked$/ }).click();
+  expect((await answer).headers()['x-export-columns']).toBe(
+    'uid,name,class,status,birthDate,documentType,documentNumber,jshshir,address,region',
+  );
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^Students-\d{4}-\d{2}-\d{2}\.xlsx$/);
+  expect(statSync(await file.path()).size).toBeGreaterThan(0);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+
+  // A photo, shrunk by the browser and shown in the photo column.
+  const row = page.locator('tbody tr').filter({ hasText: '9997001' });
+  await row.getByRole('button', { name: 'Kamola Ergasheva' }).click();
+  const panel = page.getByRole('complementary', { name: 'Kamola Ergasheva' });
+  await panel.getByLabel(en.people.staff.photo.add).setInputFiles({
+    name: 'photo.png',
+    mimeType: 'image/png',
+    buffer: pngOf(1600, 1200),
+  });
+  await expect(panel.getByRole('button', { name: en.people.staff.photo.change })).toBeVisible();
+  await expect(row.getByRole('img', { name: 'Kamola Ergasheva' })).toHaveAttribute(
+    'src',
+    /^data:image\/jpeg;base64,/,
+  );
+
+  // The counter of the home page, and the rows its link opens.
+  await page.goto('/');
+  const counter = page.getByRole('region', { name: en.home.noClass.title });
+  await expect(counter).toContainText('2');
+  await exportScreenshot(page, 'home');
+  await counter.getByRole('link', { name: en.home.noClass.link }).click();
+  await expect(heading(page, texts.title)).toBeVisible();
+  await expect(page.locator('tbody tr')).toHaveCount(2);
+});

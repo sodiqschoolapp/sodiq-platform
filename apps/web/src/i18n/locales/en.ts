@@ -364,6 +364,9 @@ export const en = {
     exportTicked_one: 'Export {{n}} ticked',
     exportTicked_other: 'Export {{n}} ticked',
     exporting: 'Exporting…',
+    exportAlso: 'Also export',
+    exportAlsoChosen_one: 'Also export: {{n}} group',
+    exportAlsoChosen_other: 'Also export: {{n}} groups',
     exportColumnsLeftOut: 'Not in the file, because your role may not export them: {{columns}}.',
     selectAll: 'Select every row that matches the search and filters',
     selectRow: 'Select {{name}}',
@@ -1107,6 +1110,14 @@ export const en = {
       scholarshipAmount: 'Amount in soʻm',
       amount: '{{amount}} soʻm',
       consentSignedOn: 'Consent signed on',
+      consent: 'Consent',
+      activeNoConsent: 'Active, no consent',
+      exportGroups: {
+        basic: 'More basic fields',
+        contact: 'Phone and email',
+        identity: 'Documents, birth date and address',
+        financial: 'Contract, scholarship and consent',
+      },
       noConsent: 'Not signed',
       choose: 'Choose',
       notSet: 'Not set',
@@ -1436,6 +1447,7 @@ export const en = {
   },
   home: {
     title: 'Home',
+    noClass: { title: 'Students with no class', link: 'Open the list' },
     empty:
       'This page will show what you need to do today. Your menu and your tasks appear here as the sections of the platform are opened.',
     teaching:

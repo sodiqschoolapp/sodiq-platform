@@ -59,6 +59,19 @@ export interface ExportState {
   leftOut: readonly string[];
 }
 
+/**
+ * A group of export-only columns the person may add to a file (task 2.4b-2,
+ * pull request #70): the fields a list does not show, such as the student
+ * phone (`04`: "Phone numbers are not shown in the list"), offered by group
+ * and off until ticked.
+ */
+export interface ExportExtra {
+  key: string;
+  label: string;
+  /** The column keys of the file, in its order, with the words that name each. */
+  columns: readonly { key: string; header: string }[];
+}
+
 interface ListPageProps<Row> {
   /** Names the list in the browser's storage (the hidden columns). */
   listId: string;
@@ -106,12 +119,18 @@ interface ListPageProps<Row> {
     | undefined;
   /** The state of the export of `onExport` (`useExport`). */
   exportState?: ExportState | undefined;
+  /**
+   * Groups of export-only columns, chosen under "Also export" beside the
+   * Export button; their columns follow the columns shown in `columnKeys`.
+   */
+  exportExtras?: readonly ExportExtra[] | undefined;
   /** The record of a row, shown in the side panel. Needs a column with `opens`. */
   panel?: ((row: Row) => ReactNode) | undefined;
 }
 
 const NO_FILTERS: readonly never[] = [];
 const NO_ACTIONS: readonly never[] = [];
+const NO_EXTRAS: readonly ExportExtra[] = [];
 
 /**
  * The one way every list works (docs/spec/12-ux-standards.md, Lists): search,
@@ -140,6 +159,7 @@ export function ListPage<Row>({
   bulkActions = NO_ACTIONS,
   onExport,
   exportState,
+  exportExtras = NO_EXTRAS,
   panel,
 }: ListPageProps<Row>) {
   const { t, i18n } = useTranslation();
@@ -226,6 +246,8 @@ export function ListPage<Row>({
 
   // A ticked row that left the list (archived, moved) is no longer ticked.
   const [tickedIds, setTickedIds] = useState<ReadonlySet<string>>(new Set());
+  // The groups of export-only columns chosen; none until the person ticks one.
+  const [chosenExtras, setChosenExtras] = useState<ReadonlySet<string>>(new Set());
   const tickedRows = (rows ?? []).filter((row) => tickedIds.has(rowId(row)));
   const ticked = new Set(tickedRows.map(rowId));
   const matchingIds = matching.map(rowId);
@@ -431,6 +453,37 @@ export function ListPage<Row>({
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+            {onExport !== undefined && exportExtras.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button variant="ghost" />}>
+                  {chosenExtras.size > 0
+                    ? t('list.exportAlsoChosen', {
+                        count: chosenExtras.size,
+                        n: number.format(chosenExtras.size),
+                      })
+                    : t('list.exportAlso')}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {exportExtras.map((extra) => (
+                    <DropdownMenuCheckboxItem
+                      key={extra.key}
+                      checked={chosenExtras.has(extra.key)}
+                      onCheckedChange={(chosen) => {
+                        const next = new Set(chosenExtras);
+                        if (chosen) {
+                          next.add(extra.key);
+                        } else {
+                          next.delete(extra.key);
+                        }
+                        setChosenExtras(next);
+                      }}
+                    >
+                      {extra.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             {onExport !== undefined && (
               <Button
                 variant="secondary"
@@ -438,9 +491,14 @@ export function ListPage<Row>({
                 onClick={() => {
                   onExport(
                     exportRows,
-                    shownColumns
-                      .filter((column) => column.exported !== false)
-                      .map((column) => column.key),
+                    [
+                      ...shownColumns
+                        .filter((column) => column.exported !== false)
+                        .map((column) => column.key),
+                      ...exportExtras
+                        .filter((extra) => chosenExtras.has(extra.key))
+                        .flatMap((extra) => extra.columns.map((column) => column.key)),
+                    ],
                     current,
                     ticked.size === 0 ? 'matching' : 'ticked',
                   );
@@ -465,7 +523,14 @@ export function ListPage<Row>({
           <p role="status" className="text-sm text-muted-foreground">
             {t('list.exportColumnsLeftOut', {
               columns: exportState.leftOut
-                .map((key) => columns.find((column) => column.key === key)?.header ?? key)
+                .map(
+                  (key) =>
+                    columns.find((column) => column.key === key)?.header ??
+                    exportExtras
+                      .flatMap((extra) => extra.columns)
+                      .find((column) => column.key === key)?.header ??
+                    key,
+                )
                 .join(', '),
             })}
           </p>

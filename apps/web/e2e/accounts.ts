@@ -36,7 +36,8 @@ export type AccountKey =
   | 'notifications'
   | 'emailReset'
   | 'students'
-  | 'leaving';
+  | 'leaving'
+  | 'studentExport';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

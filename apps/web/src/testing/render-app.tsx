@@ -15,6 +15,8 @@ export interface ApiCall {
   /** For example `POST /api/auth/sign-in`. */
   route: string;
   body: unknown;
+  /** The query of the address, `?` included; empty when there is none (task 2.4b-2). */
+  query: string;
 }
 
 export const json = (body: unknown, status = 200): Response => Response.json(body, { status });
@@ -93,7 +95,7 @@ export function fakeApi(handlers: Record<string, Handler>): ApiCall[] {
         const text = await input.text();
         body = text === '' ? undefined : JSON.parse(text);
       }
-      calls.push({ route, body });
+      calls.push({ route, body, query: new URL(input.url).search });
       const handler = handlers[route] ?? SHELL_ANSWERS[route];
       if (handler === undefined) {
         throw new TypeError('Failed to fetch');

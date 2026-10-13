@@ -377,6 +377,9 @@ export const uz: Texts<'one' | 'other'> = {
     exportTicked_one: 'Belgilangan {{n}} tasini eksport qilish',
     exportTicked_other: 'Belgilangan {{n}} tasini eksport qilish',
     exporting: 'Eksport qilinmoqda…',
+    exportAlso: 'Faylga qoʻshish',
+    exportAlsoChosen_one: 'Faylga qoʻshish: {{n}} guruh',
+    exportAlsoChosen_other: 'Faylga qoʻshish: {{n}} guruh',
     exportColumnsLeftOut:
       'Faylga kirmadi, chunki rolingiz ularni eksport qila olmaydi: {{columns}}.',
     selectAll: 'Qidiruv va filtrlarga mos barcha qatorlarni tanlash',
@@ -1120,6 +1123,14 @@ export const uz: Texts<'one' | 'other'> = {
       scholarshipAmount: 'Miqdori, soʻm',
       amount: '{{amount}} soʻm',
       consentSignedOn: 'Rozilik imzolangan sana',
+      consent: 'Rozilik',
+      activeNoConsent: 'Faol, roziliksiz',
+      exportGroups: {
+        basic: 'Boshqa asosiy maydonlar',
+        contact: 'Telefon va pochta',
+        identity: 'Hujjatlar, tugʻilgan sana va manzil',
+        financial: 'Shartnoma, grant va rozilik',
+      },
       noConsent: 'Imzolanmagan',
       choose: 'Tanlang',
       notSet: 'Koʻrsatilmagan',
@@ -1451,6 +1462,7 @@ export const uz: Texts<'one' | 'other'> = {
   },
   home: {
     title: 'Bosh sahifa',
+    noClass: { title: 'Sinfsiz oʻquvchilar', link: 'Roʻyxatni ochish' },
     empty:
       'Bu sahifada bugun bajarishingiz kerak boʻlgan ishlar koʻrsatiladi. Menyu va vazifalar platforma boʻlimlari ochilgani sari shu yerda paydo boʻladi.',
     teaching:
