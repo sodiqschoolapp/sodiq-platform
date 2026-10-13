@@ -2,6 +2,10 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: no silent stalls (process change, no task)
+
+- Owner: after every push the builder checks that CI started and pushes one empty commit when GitHub fired no event; a green re-run after a `CI red` verdict is followed by an empty commit, and the reviewer also reviews such a head; after pull requests #63 and #68 (`docs/decisions.md`, 13 October 2026).
+
 ## 12 October 2026: task 2.4a Student record, UID and readers
 
 - Built: migration 0032 (`students`, `student_uids` reserved for good, `student_contracts`, `student_statuses`, `student_accounts` switched off, `student_duplicate_elsewhere`); seven routes under `people/students` in `Students` with the areas `students`, `student_contact`, `student_identity`, `student_financial`; `spellingKey`, `uidSetOf` and the student schemas in `packages/shared/src/students.ts`; the error codes `uid_set_mismatch`, `no_academic_year`, `student_value_taken`.
