@@ -184,3 +184,80 @@ describe('the parts of the design system', () => {
     }
   });
 });
+
+// Task 2.7c-1: the page sweep against docs/design-system.md.
+describe('the pages of the design system', () => {
+  const drawn = sources.filter(({ file }) => !/\.test\.tsx?$/.test(file));
+
+  // What we never do 9 and Accessibility ("no information by colour alone"):
+  // orange is the action, the active item and "now", never a marker. Every
+  // way of drawing it as a line or a fill: border, ring, outline, underline,
+  // and the fill and stroke of a drawing outside the brand drawings.
+  it('draw no orange border, ring, outline or fill outside the brand drawings', () => {
+    const marked = drawn.filter(
+      ({ file }) => !file.startsWith(path.join('src', 'components', 'brand')),
+    );
+    expect(
+      matching(/\b(border|ring|outline|decoration|fill|stroke)(-[trblxy])?-primary(?!-)/, marked),
+    ).toEqual([]);
+  });
+
+  // Type: "Section 17 / 24, 700: panel and section titles". Every heading
+  // under the page title takes the one class; a sub-title inside a section
+  // takes the Control style (pull request #80, decision 12). The page title
+  // is PageHeader's, the brand titles are states.tsx's and the slip is a
+  // printout with a size of its own (Brand moments, Printouts).
+  it('give every section heading the Section style and every sub-title the Control style', () => {
+    const excepted = [
+      path.join('src', 'components', 'page-header.tsx'),
+      path.join('src', 'components', 'states.tsx'),
+      path.join('src', 'features', 'people', 'first-password-slip.tsx'),
+    ];
+    const wrong = drawn
+      .filter(
+        ({ file }) =>
+          !excepted.includes(file) &&
+          (file.startsWith(path.join('src', 'features')) ||
+            file.startsWith(path.join('src', 'components'))),
+      )
+      .flatMap(({ file, text }) =>
+        [...text.matchAll(/<h([234])\b([^>]*)>/g)].flatMap((match) => {
+          const level = match[1] ?? '';
+          const attributes = match[2] ?? '';
+          const wanted = level === '4' ? /\bSUBSECTION_TITLE\b/ : /\bSECTION_TITLE\b/;
+          const line = text.slice(0, match.index).split('\n').length;
+          return wanted.test(attributes) ? [] : [`${file}:${String(line)} h${level}`];
+        }),
+      );
+    expect(wrong).toEqual([]);
+  });
+
+  // Buttons: "Large 48: sign-in, the main action of a phone screen"; Medium
+  // everywhere else. Large is written only in the files of the sign-in frame;
+  // the two files drawn on the frame and inside the layout take the size from
+  // their caller (pull request #80, decision 13), so they never name it. Every
+  // way of writing it: an attribute, a value inside braces, a key and a
+  // default value.
+  it('draw a large button only on the sign-in frame', () => {
+    const frame = [
+      'auth-page.tsx',
+      'sign-in-page.tsx',
+      'forgot-password-page.tsx',
+      'reset-password-page.tsx',
+      'code-page.tsx',
+      'set-up-page.tsx',
+    ].map((name) => path.join('src', 'features', 'auth', name));
+    const working = drawn.filter(
+      ({ file }) => !frame.includes(file) && file !== path.join('src', 'components', 'ui', 'button.tsx'),
+    );
+    // PersonPhoto has a size of its own, `lg`, which is not a button.
+    const buttons = working.map(({ file, text }) => ({
+      file,
+      text: text.replace(/<PersonPhoto\b[^>]*>/g, (tag) => tag.replaceAll(/\S/g, ' ')),
+    }));
+    expect(matching(/size\s*=\s*\{?\s*["'](lg|icon-lg)["']/, buttons)).toEqual([]);
+    expect(matching(/size\s*=\s*\{[^}]*["'](lg|icon-lg)["']/, buttons)).toEqual([]);
+    expect(matching(/size\s*:\s*["'](lg|icon-lg)["']/, buttons)).toEqual([]);
+    expect(matching(/size\s*=\s*["'](lg|icon-lg)["']\s*[,)]/, buttons)).toEqual([]);
+  });
+});
