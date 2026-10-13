@@ -1,5 +1,6 @@
 import {
   EXPORT_TEXTS,
+  gradeRanges,
   isLanguage,
   schoolDateOf,
   type Clock,
@@ -191,13 +192,9 @@ export const nameIn = (
   language: Language,
 ): string => (id === null || id === undefined ? '' : (names.get(id)?.[language] ?? ''));
 
-/** Grades as the staff and vacancy lists name them, each once, smallest first: "Grade 5, Grade 7". */
-export const gradesOf = (
-  subjects: readonly { grades: readonly number[] }[],
-  texts: ExportTexts,
-): string =>
-  joined(
-    [...new Set(subjects.flatMap((subject) => subject.grades))]
-      .sort((a, b) => a - b)
-      .map((grade) => texts.grade.replace('{{grade}}', String(grade))),
-  );
+/**
+ * Grades as the staff and vacancy lists name them: the grades of every
+ * subject as ranges, "5–7, 9" (finding 19; task 2.7b-1, decision 2).
+ */
+export const gradesOf = (subjects: readonly { grades: readonly number[] }[]): string =>
+  gradeRanges(subjects.flatMap((subject) => subject.grades));

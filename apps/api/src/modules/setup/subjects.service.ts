@@ -14,6 +14,7 @@ import type {
   SubjectQuarterWeights,
   SubjectRecord,
 } from '@sodiq/shared';
+import { gradeRanges } from '@sodiq/shared';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -903,6 +904,7 @@ export class Subjects {
         archivedAt: row.archived_at === null ? null : row.archived_at.toISOString(),
         daily: !graded || own === undefined ? null : dailyOf(own),
         quarterWeightsMissing: graded && quarters.length > 0 ? quarters.length - fitting : null,
+        quarterCount: graded && quarters.length > 0 ? quarters.length : null,
       };
     });
   }
@@ -989,7 +991,7 @@ function subjectExportColumns(
     ),
     grades: oneCell(
       (texts) => texts.subjects.columns.grades,
-      (row) => joined(row.grades.map(String)),
+      (row) => gradeRanges(row.grades),
     ),
     journalType: oneCell(
       (texts) => texts.subjects.columns.journalType,

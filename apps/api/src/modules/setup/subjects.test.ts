@@ -233,6 +233,7 @@ describe('subjects', () => {
         archivedAt: null,
         daily: DAILY,
         quarterWeightsMissing: null,
+        quarterCount: null,
       });
       const requestId = response.headers['x-request-id'];
       const created = await schoolEntries('subject.create', subject.id);
@@ -394,7 +395,10 @@ describe('subjects', () => {
         RATED,
       );
       expect(set.status).toBe(200);
-      expect((await inList(subject.id, branch)).quarterWeightsMissing).toBe(3);
+      expect(await inList(subject.id, branch)).toMatchObject({
+        quarterWeightsMissing: 3,
+        quarterCount: 4,
+      });
     });
 
     it('is read by the Principal and the Academic Vice Principal, not by a Teacher', async () => {
@@ -498,6 +502,7 @@ describe('subjects', () => {
         journalType: 'attendance_only',
         daily: null,
         quarterWeightsMissing: null,
+        quarterCount: null,
       });
       const kept = await t.database.migrator
         .selectFrom('subject_daily_weights')
@@ -995,6 +1000,7 @@ describe('subjects', () => {
       expect(subjectSchema.parse(on.body)).toMatchObject({
         daily: DAILY,
         quarterWeightsMissing: 4,
+        quarterCount: 4,
       });
       expect((await schoolEntries('subject.edit', subject.id)).at(-1)?.details).toEqual({
         ratingRound: { from: 2, to: 3 },
@@ -1053,6 +1059,7 @@ describe('subjects', () => {
       expect(subjectSchema.parse(on.body)).toMatchObject({
         daily: newDaily,
         quarterWeightsMissing: 4,
+        quarterCount: 4,
       });
       // The switch went off with the journal type and comes back with it: a new rating round too.
       expect((await schoolEntries('subject.edit', subject.id)).at(-1)?.details).toEqual({

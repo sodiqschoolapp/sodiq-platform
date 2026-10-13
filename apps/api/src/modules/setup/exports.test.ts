@@ -227,11 +227,30 @@ describe('the export of the setup lists', () => {
       );
       expect(response.status).toBe(200);
       const file = await fileOf(response);
+      // Shared is Yes or No, and the lessons at once a number of its own
+      // column, empty for a room that is not shared (task 2.7b-1, decision 10).
+      expect(file.sheet.headings).toEqual([
+        'Name or number',
+        'Building',
+        'Floor',
+        'Type',
+        'Capacity',
+        'Status',
+        'Shared',
+        'Lessons at once',
+      ]);
       expect(file.sheet.rows).toEqual([
-        ['Hall A', 'Science block', '1', 'Sports hall', 60, 'In use', 2],
-        ['Lab A', 'Science block', '1', 'Laboratory', 24, 'In use', 'No'],
+        ['Hall A', 'Science block', '1', 'Sports hall', 60, 'In use', 'Yes', 2],
+        ['Lab A', 'Science block', '1', 'Laboratory', 24, 'In use', 'No', null],
       ]);
       expect(await auditAt('room.export')).toMatchObject({ details: { list: 'rooms', rows: 2 } });
+
+      await speak('ru');
+      const russian = await fileOf(
+        await exportOf('/api/setup/rooms/export', send([hall.id], ['shared']), t.principal),
+      );
+      expect(russian.sheet.headings).toEqual(['Общий', 'Уроков одновременно']);
+      expect(russian.sheet.rows).toEqual([['Да', 2]]);
     });
 
     it('answers 404 for a room of another branch and an unknown id, with nothing changed', async () => {
@@ -333,7 +352,7 @@ describe('the export of the setup lists', () => {
         [
           'Physics',
           'STEAM',
-          '7, 8, 9',
+          '7–9',
           'Graded',
           'No',
           10,
@@ -346,7 +365,7 @@ describe('the export of the setup lists', () => {
         [
           'Music',
           'STEAM',
-          '7, 8, 9',
+          '7–9',
           'Attendance only',
           'No',
           null,

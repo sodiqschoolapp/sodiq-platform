@@ -284,7 +284,12 @@ describe('student records', () => {
     it('refuses a UID outside the set of the grade until it is confirmed', async () => {
       const before = await snapshot();
       const input = body({ uid: '2606901', grade: 7 });
-      refusedWith(await t.post('/api/people/students', t.north, input), 409, 'uid_set_mismatch');
+      const refused = await t.post('/api/people/students', t.north, input);
+      refusedWith(refused, 409, 'uid_set_mismatch');
+      // The warning names the set of the grade (finding 25; task 2.7b-1, decision 7).
+      expect(detailsOf(refused)).toEqual([
+        { path: 'uid', code: 'uid_set', message: expect.any(String), expected: '2607' },
+      ]);
       expect(await snapshot()).toEqual(before);
       const response = await t.post('/api/people/students', t.north, {
         ...input,
@@ -306,6 +311,31 @@ describe('student records', () => {
         409,
         'uid_set_mismatch',
       );
+    });
+
+    it('names no set and refuses nothing for a grade that has no set in its year', async () => {
+      // 2025–2026: the grade 11 of that year had left before the sets of
+      // 2026–2027, so `uidSetOf` knows none (decision 5 of task 2.4a).
+      // A year is written with its four quarters, undated (db/migrations/0016).
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        const year = await transaction
+          .insertInto('academic_years')
+          .values({ branch_id: t.south, start_date: '2025-09-01', end_date: '2026-05-31' })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        for (const number of [1, 2, 3, 4]) {
+          await transaction
+            .insertInto('quarters')
+            .values({ branch_id: t.south, academic_year_id: year.id, number })
+            .execute();
+        }
+      });
+      const response = await t.post(
+        '/api/people/students',
+        t.south,
+        body({ uid: '9911901', grade: 11, startsOn: '2026-01-12' }),
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(201);
     });
 
     it('refuses a start date in no year of the branch and before none', async () => {
@@ -1073,7 +1103,9 @@ describe('student records', () => {
       const correct = (uid: string, reason = 'Typo.', confirmUidSet = false) =>
         t.put(`/api/people/students/${student.id}/uid`, t.north, { uid, reason, confirmUidSet });
       refusedWith(await correct('2607993', ''), 400, 'validation_failed');
-      refusedWith(await correct('2606993'), 409, 'uid_set_mismatch');
+      const outside = await correct('2606993');
+      refusedWith(outside, 409, 'uid_set_mismatch');
+      expect(detailsOf(outside)[0]).toMatchObject({ path: 'uid', code: 'uid_set', expected: '2607' });
       const here = await correct(holder.uid);
       refusedWith(here, 409, 'student_value_taken');
       expect(detailsOf(here)[0]).toMatchObject({ path: 'uid', recordId: holder.id });

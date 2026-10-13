@@ -118,6 +118,8 @@ describe('the record of a branch', () => {
       expect(response.body).toEqual({
         id: expect.any(String) as string,
         ...RECORD,
+        // Stored as the digits ("Decided ahead for tasks 2.2d and 2.7", item 10).
+        phone: '+998712000000',
         timeZone: 'Asia/Tashkent',
         goLiveDate: null,
       });
@@ -125,7 +127,7 @@ describe('the record of a branch', () => {
       expect(row).toMatchObject({
         name: 'East',
         address: 'Yunusobod, 4',
-        phone: '+998 71 200 00 00',
+        phone: '+998712000000',
         email: 'east@example.test',
         working_weekdays: [1, 2, 3, 4, 5, 6],
         time_zone: 'Asia/Tashkent',
@@ -139,6 +141,7 @@ describe('the record of a branch', () => {
         old_value: null,
         new_value: {
           ...RECORD,
+          phone: '+998712000000',
           settings: {
             editDays: 7,
             lowResult: 50,
@@ -196,6 +199,10 @@ describe('the record of a branch', () => {
         [{ ...RECORD, name: 'A2', workingWeekdays: [2, 1] }, 'workingWeekdays'],
         [{ ...RECORD, name: 'A3', email: 'east' }, 'email'],
         [{ ...RECORD, name: '' }, 'name'],
+        // "+998" and nine digits only (item 10 of "Decided ahead for tasks 2.2d and 2.7").
+        [{ ...RECORD, name: 'A4', phone: '71 200 00 00' }, 'phone'],
+        [{ ...RECORD, name: 'A5', phone: '+7 495 123 45 67' }, 'phone'],
+        [{ ...RECORD, name: 'A6', phone: 'call the office' }, 'phone'],
       ] as const) {
         const response = await create(admin, body);
         expect(response.status).toBe(400);
@@ -295,6 +302,25 @@ describe('the record of a branch', () => {
       expect((await branchEntries('branch.edit', south)).length).toBe(before);
     });
 
+
+    it('with the phone stored as its digits and audited so, and a spaced form of the same phone as no change', async () => {
+      const typed = { name: 'South', address: 'Sergeli, 9', email: '', workingWeekdays: [1, 2, 3, 4, 5, 6] };
+      const response = await put(admin, south, { ...typed, phone: '+998 (71) 200-00-09' });
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({ phone: '+998712000009' });
+      expect((await stored(south)).phone).toBe('+998712000009');
+      expect((await branchEntries('branch.edit', south)).at(-1)).toMatchObject({
+        old_value: { phone: null },
+        new_value: { phone: '+998712000009' },
+      });
+      const before = (await branchEntries('branch.edit', south)).length;
+      expect((await put(admin, south, { ...typed, phone: '+998 71 200 00 09' })).status).toBe(200);
+      expect(await branchEntries('branch.edit', south)).toHaveLength(before);
+      const refused = await put(admin, south, { ...typed, phone: '200-00-09' });
+      expect(refused.status).toBe(400);
+      expect(detailPaths(refused)).toEqual(['phone']);
+      expect((await stored(south)).phone).toBe('+998712000009');
+    });
     it('and refused with already_exists for the name of another branch', async () => {
       const response = await put(admin, south, { ...RECORD, name: 'north' });
 

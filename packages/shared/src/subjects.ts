@@ -192,6 +192,11 @@ export const subjectSchema = subjectFieldsSchema.extend({
    * attendance-only subject, or a branch without a planned or current year.
    */
   quarterWeightsMissing: z.int().min(0).nullable(),
+  /**
+   * The quarters `quarterWeightsMissing` counts against, for "4 of 4 not set"
+   * (finding 20; task 2.7b-1, decision 8); `null` exactly when it is.
+   */
+  quarterCount: z.int().min(0).nullable(),
 });
 
 export type Subject = z.infer<typeof subjectSchema>;

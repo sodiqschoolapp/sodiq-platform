@@ -1,10 +1,18 @@
-import { BRANCH_HEADER, staffDetailSchema, vacancyDetailSchema } from '@sodiq/shared';
+import {
+  BRANCH_HEADER,
+  phoneText,
+  staffDetailSchema,
+  vacancyDetailSchema,
+} from '@sodiq/shared';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { binary, dateOfCell, fileOf } from '../../testing/xlsx-kit.js';
+
+/** A stored phone as the file writes it (finding 24). */
+const grouped = (phone: string | null): string => phoneText(phone ?? '');
 
 const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -222,18 +230,29 @@ describe('the export of the staff and vacancy lists', () => {
       ]);
       expect(file.sheet.rows).toEqual([
         [
-          `Malika Ahmedova`,
+          `Ahmedova Malika`,
           second.staffId,
           'STEAM',
           'Mathematics',
-          'Grade 5, Grade 7',
+          '5, 7',
           'Russian, Uzbek',
-          second.phone,
+          grouped(second.phone),
           'Active',
           null,
           null,
         ],
-        [`Malika Rahimova`, first.staffId, 'STEAM', '', '', '', first.phone, 'Active', null, null],
+        [
+          `Rahimova Malika`,
+          first.staffId,
+          'STEAM',
+          '',
+          '',
+          '',
+          grouped(first.phone),
+          'Active',
+          null,
+          null,
+        ],
       ]);
       const [entry, ...more] = await t.entries('staff.export');
       expect(more).toEqual([]);
@@ -272,7 +291,7 @@ describe('the export of the staff and vacancy lists', () => {
       );
       expect(response.status).toBe(200);
       const file = await fileOf(response);
-      expect(file.sheet.rows).toEqual([[`Malika ${someone.lastName}`, someone.phone]]);
+      expect(file.sheet.rows).toEqual([[`${someone.lastName} Malika`, grouped(someone.phone)]]);
       const entries = await t.entries('staff.export');
       expect(entries.at(-1)).toMatchObject({
         assignment_id: t.viceAssignment,
@@ -295,6 +314,7 @@ describe('the export of the staff and vacancy lists', () => {
       expect(file.columns).toBe('name,status');
       expect(file.sheet.headings).toEqual(['Name', 'Status', 'Planned status', 'Planned from']);
       expect(JSON.stringify(file.sheet.rows)).not.toContain(someone.phone);
+      expect(JSON.stringify(file.sheet.rows)).not.toContain(grouped(someone.phone));
       expect((await t.entries('staff.export')).at(-1)).toMatchObject({
         assignment_id: await assignmentOf('principal'),
         details: { columns: ['name', 'status'], rows: 1 },
@@ -330,7 +350,7 @@ describe('the export of the staff and vacancy lists', () => {
           both.cookie,
         ),
       );
-      expect(withPhone.sheet.rows).toEqual([[`Malika ${someone.lastName}`, someone.phone]]);
+      expect(withPhone.sheet.rows).toEqual([[`${someone.lastName} Malika`, grouped(someone.phone)]]);
       expect((await t.entries('staff.export')).at(-1)).toMatchObject({
         assignment_id: viceHeld.id,
         details: { columns: ['name', 'phone'], leftOut: [] },
@@ -460,8 +480,8 @@ describe('the export of the staff and vacancy lists', () => {
       expect(file.sheet.name).toBe('Vacancies');
       expect(file.disposition).toContain('filename="vacancies-2026-10-10.xlsx"');
       expect(file.sheet.rows).toEqual([
-        [first.name, 'STEAM', 'Mathematics', 'Grade 7, Grade 8', 'Russian, Uzbek', 16, 'Open'],
-        [second.name, 'STEAM', 'Mathematics', 'Grade 7, Grade 8', 'Russian, Uzbek', 16, 'Open'],
+        [first.name, 'STEAM', 'Mathematics', '7–8', 'Russian, Uzbek', 16, 'Open'],
+        [second.name, 'STEAM', 'Mathematics', '7–8', 'Russian, Uzbek', 16, 'Open'],
       ]);
       expect((await t.entries('vacancy.export')).at(-1)).toMatchObject({
         branch_id: t.north,

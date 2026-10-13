@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  listName,
   nextDay,
   PERMISSIONS,
+  phoneText,
   schoolDateOf,
   STAFF_CATEGORY_ROLES,
   STAFF_CONTACT_EXPORT_COLUMNS,
@@ -1524,7 +1526,8 @@ function staffExportColumns(
   return {
     name: oneCell(
       (texts) => texts.staff.columns.name,
-      (row) => `${row.firstName} ${row.lastName}`,
+      // Surname first in every list and export (owner's answer to finding 27).
+      (row) => listName(row),
     ),
     staffId: oneCell(
       (texts) => texts.staff.columns.staffId,
@@ -1557,7 +1560,7 @@ function staffExportColumns(
     ),
     grades: oneCell(
       (texts) => texts.staff.columns.grades,
-      (row, texts) => gradesOf(row.subjects, texts),
+      (row) => gradesOf(row.subjects),
     ),
     languages: oneCell(
       (texts) => texts.staff.columns.languages,
@@ -1565,7 +1568,7 @@ function staffExportColumns(
     ),
     phone: oneCell(
       (texts) => texts.staff.columns.phone,
-      (row) => row.phone,
+      (row) => (row.phone === null ? null : phoneText(row.phone)),
     ),
     status: {
       headings: (texts) => [texts.staff.columns.status, texts.plannedStatus, texts.plannedFrom],

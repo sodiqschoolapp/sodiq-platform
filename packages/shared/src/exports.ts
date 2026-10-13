@@ -307,6 +307,11 @@ export interface ExportTexts {
   journalTypes: Record<JournalType, string>;
   yes: string;
   no: string;
+  /**
+   * The second heading of the Shared column of the rooms file: the number of
+   * lessons a shared room takes at once, a number cell (task 2.7b-1, decision 10).
+   */
+  lessonsAtOnce: string;
   /** One grade as the lists name it, with `{{grade}}` for its number. */
   grade: string;
   /** The parts of the daily distribution, one number column each. */
@@ -503,6 +508,7 @@ const en: ExportTexts = {
   journalTypes: { graded: 'Graded', attendance_only: 'Attendance only' },
   yes: 'Yes',
   no: 'No',
+  lessonsAtOnce: 'Lessons at once',
   grade: 'Grade {{grade}}',
   weightParts: { attendance: 'Attendance', classwork: 'Classwork', homework: 'Homework' },
   switches: {
@@ -706,6 +712,7 @@ const ru: ExportTexts = {
   journalTypes: { graded: 'С оценками', attendance_only: 'Только посещаемость' },
   yes: 'Да',
   no: 'Нет',
+  lessonsAtOnce: 'Уроков одновременно',
   grade: '{{grade}} класс',
   weightParts: {
     attendance: 'Посещаемость',
@@ -908,6 +915,7 @@ const uz: ExportTexts = {
   journalTypes: { graded: 'Baholanadi', attendance_only: 'Faqat davomat' },
   yes: 'Ha',
   no: 'Yoʻq',
+  lessonsAtOnce: 'Bir vaqtdagi darslar',
   grade: '{{grade}}-sinf',
   weightParts: { attendance: 'Davomat', classwork: 'Sinf ishi', homework: 'Uy vazifasi' },
   switches: { groupSubject: 'Guruhli fan', languageRule: 'Til qoidasi', demanding: 'Murakkab fan' },
