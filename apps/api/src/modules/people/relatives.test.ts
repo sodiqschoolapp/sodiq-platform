@@ -475,6 +475,17 @@ describe('close relatives', () => {
       const entries = await t.entries('relative.show', relativeId);
       expect(entries).toHaveLength(1);
       expect(entries[0]).toMatchObject({ branch_id: t.north, assignment_id: principalAssignment });
+      // The show of a relative of another branch only, or unknown: 404, nothing logged.
+      const southern = await withRelative(phone(), t.south);
+      const logged = await snapshot();
+      for (const id of [southern.relativeId, UNKNOWN]) {
+        refusedWith(
+          await t.post(`/api/people/relatives/${id}/show`, t.north, {}, t.principal),
+          404,
+          'not_found',
+        );
+      }
+      expect(await snapshot()).toEqual(logged);
       // A reader who sees them is refused the show.
       refusedWith(
         await t.post(`/api/people/relatives/${relativeId}/show`, t.north, {}, t.vicePrincipal),
@@ -807,6 +818,14 @@ describe('close relatives', () => {
         [`/api/people/students/${mine.student.id}/relatives/${southern.relativeId}`, 'patch'],
         [`/api/people/students/${southern.student.id}/relatives/${southern.relativeId}`, 'patch'],
         [`/api/people/students/${mine.student.id}/relatives/${UNKNOWN}/unlink`, 'post'],
+        [`/api/people/students/${mine.student.id}/relatives/${southern.relativeId}/unlink`, 'post'],
+        [
+          `/api/people/students/${southern.student.id}/relatives/${southern.relativeId}/unlink`,
+          'post',
+        ],
+        [`/api/people/students/${UNKNOWN}/relatives/${mine.relativeId}/unlink`, 'post'],
+        [`/api/people/students/${UNKNOWN}/relatives/${mine.relativeId}`, 'patch'],
+        [`/api/people/students/${mine.student.id}/relatives/${UNKNOWN}`, 'patch'],
       ] as const) {
         const response =
           send === 'post'
