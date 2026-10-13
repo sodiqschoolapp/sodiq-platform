@@ -230,6 +230,10 @@ Plan approved on pull request #79 with corrections 1 to 3; decisions 1 to 10 con
 | Cancel in the phone-taken choices keeps the edit's phone and asks before dropping a typed previous phone | Decision 9 |
 | A group with too few choices says "Choose at least one."; the grades of a staff or vacancy subject "Choose at least one grade." under that subject; the subjects of an appointment "Choose at least one subject." | Decision 10, correction 2 |
 | The e2e account `topBar` is an Academic Vice Principal and a Teacher of two branches, not a Super Admin: the seed already holds the three Super Admins allowed. The alerts line is proved by the unit tests | Build |
+| A `checkedOnSave` field shows its message only when it was drawn and wrong at a press of Save; one that turns wrong later, or is taken away and drawn again, waits for the next Save. The languages of the teaching and vacancy forms are such a group ("Choose at least one.") | Spec review of the build |
+| The search and feedback icon buttons are 40 × 40 from 640 to 1279 px (44 below 640), so the top bar stays 64 high; the role select may be 288 px wide | Spec review of the build; `docs/design-system.md`, Top bar and Buttons |
+| Cancel in the phone-taken choices is off while a merge or a new owner is on its way | Spec review of the build |
+| The Show/Hide of the phone alerts line is a plain button in the alert's own colour, as the branch names of the vice principal alert: a quiet button would add a hover colour on the warning tint with no checked contrast pair | Spec review of the build |
 
 ## 13 October 2026: formats (task 2.7b-1)
 
