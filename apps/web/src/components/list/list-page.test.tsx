@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiFailure } from '@/api/failure';
 import { createI18n } from '@/i18n/i18n';
 import { en } from '@/i18n/locales/en';
-import { ListPage, type BulkAction, type ExportState } from './list-page';
+import { ListPage, type BulkAction, type ExportExtra, type ExportState } from './list-page';
 import type { Column, ListSearch } from './list-state';
 
 // What the sample list cannot show: rows that change under the list, a failed
@@ -47,12 +47,22 @@ interface HarnessProps {
     selection: 'ticked' | 'matching',
   ) => void;
   exportState?: ExportState;
+  exportExtras?: ExportExtra[];
   actions?: BulkAction<Room>[];
   panel?: (row: Room) => React.ReactNode;
 }
 
 /** A list whose address is a piece of state. */
-function Harness({ rows, error, start = {}, onExport, exportState, actions, panel }: HarnessProps) {
+function Harness({
+  rows,
+  error,
+  start = {},
+  onExport,
+  exportState,
+  exportExtras,
+  actions,
+  panel,
+}: HarnessProps) {
   const [search, setSearch] = useState(start);
   return (
     <ListPage
@@ -69,6 +79,7 @@ function Harness({ rows, error, start = {}, onExport, exportState, actions, pane
       bulkActions={actions ?? [{ key: 'close', label: 'Close the rooms', run: () => undefined }]}
       onExport={onExport}
       exportState={exportState}
+      exportExtras={exportExtras}
       panel={panel}
     />
   );
@@ -263,5 +274,55 @@ describe('a record that leaves the list while it is open', () => {
 
     expect(screen.getByLabelText<HTMLInputElement>('Note on Room 4').value).toBe('typed');
     expect(screen.getByText(en.list.recordLeft)).toBeDefined();
+  });
+});
+
+// Task 2.4b-2, pull request #70: groups of export-only columns, off until ticked.
+describe('the export-only columns of a list', () => {
+  const EXTRAS: ExportExtra[] = [
+    { key: 'contact', label: 'Phone and email', columns: [{ key: 'phone', header: 'Phone' }] },
+    {
+      key: 'identity',
+      label: 'Documents',
+      columns: [
+        { key: 'document', header: 'Document' },
+        { key: 'address', header: 'Address' },
+      ],
+    },
+  ];
+
+  it('adds the columns of the groups ticked after the columns shown, in the order of the groups', async () => {
+    window.localStorage.removeItem('sodiq.list.rooms.hidden');
+    const onExport = vi.fn<(rows: Room[], columnKeys: string[]) => void>();
+    show({ rows: ROOMS, onExport, exportExtras: EXTRAS });
+    fireEvent.click(screen.getByRole('button', { name: en.list.exportAlso }));
+    const menu = await screen.findByRole('menu');
+    fireEvent.click(within(menu).getByRole('menuitemcheckbox', { name: 'Documents' }));
+    fireEvent.click(within(menu).getByRole('menuitemcheckbox', { name: 'Phone and email' }));
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    expect(
+      screen.getByRole('button', {
+        name: en.list.exportAlsoChosen_other.replace('{{n}}', '2'),
+      }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: en.list.export }));
+    expect(onExport.mock.calls[0]?.[1]).toEqual(['name', 'seats', 'phone', 'document', 'address']);
+  });
+
+  it('names a left-out export-only column by its words, never its key', () => {
+    show({
+      rows: ROOMS,
+      onExport: () => undefined,
+      exportState: { pending: false, error: null, leftOut: ['seats', 'address'] },
+      exportExtras: EXTRAS,
+    });
+    expect(
+      screen.getByText(en.list.exportColumnsLeftOut.replace('{{columns}}', 'Seats, Address')),
+    ).toBeTruthy();
+  });
+
+  it('draws no "Also export" without groups', () => {
+    show({ rows: ROOMS, onExport: () => undefined });
+    expect(screen.queryByRole('button', { name: en.list.exportAlso })).toBeNull();
   });
 });

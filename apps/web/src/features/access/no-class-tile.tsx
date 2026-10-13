@@ -49,8 +49,11 @@ export function NoClassTile() {
       className={cn(PANEL, 'mb-4 grid max-w-sm gap-1')}
       data-tile="no-class"
     >
-      <h2 className="text-sm text-muted-foreground">{t('home.noClass.title')}</h2>
-      <p className="text-3xl font-semibold tabular-nums">{number.format(noClass.data.count)}</p>
+      <h2 className="text-[1.0625rem]/6 font-bold">{t('home.noClass.title')}</h2>
+      {/* The Page title style of docs/design-system.md, with tabular figures. */}
+      <p className="text-[1.75rem]/[2.125rem] font-bold tracking-[-0.01em] tabular-nums" data-count>
+        {number.format(noClass.data.count)}
+      </p>
       <Link
         to="/people/students"
         search={{ f: { class: 'none', status: 'active' } }}

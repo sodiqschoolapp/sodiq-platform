@@ -451,6 +451,22 @@ describe('student records in the database', () => {
         .executeTakeFirstOrThrow();
       expect(stored).toEqual({ photo_id: photo, photo_type: 'image/png' });
     });
+
+    // The update grant covers the two columns; a photo is never written at create.
+    it('lets the application write no photo at create', async () => {
+      await expect(
+        inBranch(north, (transaction) =>
+          transaction
+            .insertInto('students')
+            .values({
+              branch_id: north,
+              photo_id: '0199a000-0000-7000-8000-0000000000cc',
+              photo_type: 'image/png',
+            } as never)
+            .execute(),
+        ),
+      ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+    });
   });
 
   describe('the branch filter', () => {

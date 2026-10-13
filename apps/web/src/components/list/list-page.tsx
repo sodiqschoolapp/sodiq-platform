@@ -247,7 +247,12 @@ export function ListPage<Row>({
   // A ticked row that left the list (archived, moved) is no longer ticked.
   const [tickedIds, setTickedIds] = useState<ReadonlySet<string>>(new Set());
   // The groups of export-only columns chosen; none until the person ticks one.
-  const [chosenExtras, setChosenExtras] = useState<ReadonlySet<string>>(new Set());
+  const [chosenKeys, setChosenExtras] = useState<ReadonlySet<string>>(new Set());
+  // A choice follows the groups offered now (another branch may offer fewer):
+  // what the trigger counts is what the file adds (.claude/rules/web.md).
+  const chosenExtras: ReadonlySet<string> = new Set(
+    exportExtras.filter((extra) => chosenKeys.has(extra.key)).map((extra) => extra.key),
+  );
   const tickedRows = (rows ?? []).filter((row) => tickedIds.has(rowId(row)));
   const ticked = new Set(tickedRows.map(rowId));
   const matchingIds = matching.map(rowId);

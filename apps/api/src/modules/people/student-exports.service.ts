@@ -74,6 +74,8 @@ export class StudentExports {
     const branchId = branchOf(access);
     const groups = exportGroupsOf(access);
     // Correction 1 of the review: the consent list is the Financial readers'.
+    // Every exporter reads Financial today; this refusal guards the Tutor's
+    // export of task 3.1, whose tests reach it (build plan, the line on 3.1).
     if (Object.hasOwn(request.filters, CONSENT_FILTER) && !groups.has('financial')) {
       throw new ApiException('permission_denied', 403);
     }

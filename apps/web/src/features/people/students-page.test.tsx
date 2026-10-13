@@ -509,7 +509,9 @@ describe('leaving, return and delete', () => {
     const calls = fakeApi({
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
       'GET /api/people/students': () =>
-        json({ students: [LOLA], canArchive: true,
+        json({
+          students: [LOLA],
+          canArchive: true,
           exportGroups: [],
           readsFinancial: false,
           today: '2026-10-10',
@@ -650,7 +652,9 @@ describe('leaving, return and delete', () => {
     fakeApi({
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
       'GET /api/people/students': () =>
-        json({ students: [OTKIR, LOLA], canArchive: true,
+        json({
+          students: [OTKIR, LOLA],
+          canArchive: true,
           exportGroups: [],
           readsFinancial: false,
           today: '2026-10-10',
@@ -839,7 +843,9 @@ describe('the Status section', () => {
     return fakeApi({
       'GET /api/auth/session': () => json(sessionAs(role, language)),
       'GET /api/people/students': () =>
-        json({ students: [row], canArchive: detail.canArchive,
+        json({
+          students: [row],
+          canArchive: detail.canArchive,
           exportGroups: [],
           readsFinancial: false,
           today: '2026-10-10',
@@ -964,11 +970,13 @@ describe('the Status section', () => {
       fakeApi({
         'GET /api/auth/session': () => json(sessionAs(role)),
         'GET /api/people/students': () =>
-          json({ students: [OTKIR, GRADUATED], canArchive: true,
-          exportGroups: [],
-          readsFinancial: false,
-          today: '2026-10-10',
-        }),
+          json({
+            students: [OTKIR, GRADUATED],
+            canArchive: true,
+            exportGroups: [],
+            readsFinancial: false,
+            today: '2026-10-10',
+          }),
         'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
         'POST /api/people/students': () =>
           Response.json(
@@ -1103,16 +1111,15 @@ describe('the export of the student list', () => {
   const sentColumns = (calls: ReturnType<typeof fakeApi>) =>
     (
       calls.filter((call) => call.route === 'POST /api/people/students/export').at(-1)?.body as
-        | { columns: string[] }
-        | undefined
+        { columns: string[] } | undefined
     )?.columns;
 
   const exported = async (calls: ReturnType<typeof fakeApi>, count: number) => {
     fireEvent.click(screen.getByRole('button', { name: en.list.export }));
     await waitFor(() => {
-      expect(calls.filter((call) => call.route === 'POST /api/people/students/export')).toHaveLength(
-        count,
-      );
+      expect(
+        calls.filter((call) => call.route === 'POST /api/people/students/export'),
+      ).toHaveLength(count);
     });
   };
 
@@ -1229,7 +1236,11 @@ describe('the consent list', () => {
   const WITHOUT: StudentListItem = { ...OTKIR, consentMissing: true };
   const SIGNED: StudentListItem = { ...ZARINA, consentMissing: false, status: 'active' };
 
-  function openConsent(readsFinancial: boolean, students: StudentListItem[], language: 'en' | 'ru') {
+  function openConsent(
+    readsFinancial: boolean,
+    students: StudentListItem[],
+    language: 'en' | 'ru',
+  ) {
     return fakeApi({
       'GET /api/auth/session': () => json(sessionAs('principal', language)),
       'GET /api/people/students': () =>
@@ -1259,7 +1270,9 @@ describe('the consent list', () => {
     openConsent(true, [], 'ru');
     renderApp(PATH, 'ru');
     const filter = await screen.findByRole('combobox', { name: ru.people.students.consent });
-    expect(within(filter).getByRole('option', { name: ru.people.students.activeNoConsent })).toBeTruthy();
+    expect(
+      within(filter).getByRole('option', { name: ru.people.students.activeNoConsent }),
+    ).toBeTruthy();
   });
 
   it('offers no consent filter, and asks for no consent list, without the Financial group', async () => {
@@ -1270,7 +1283,7 @@ describe('the consent list', () => {
       expect(calls.some((call) => call.route === 'GET /api/people/students')).toBe(true);
     });
     expect(screen.queryByRole('combobox', { name: en.people.students.consent })).toBeNull();
-    expect(calls.some((call) => call.query.includes('consent'))).toBe(false);
+    expect(calls.some((call) => (call.query ?? '').includes('consent'))).toBe(false);
   });
 });
 

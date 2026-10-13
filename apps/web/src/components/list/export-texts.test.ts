@@ -132,7 +132,9 @@ describe('the headings of the export files', () => {
       expect(file.student.documentTypes).toEqual(screen.people.students.documentTypes);
       expect(file.student.regions).toEqual(screen.people.students.regions);
       expect(file.student.scholarshipTypes).toEqual(screen.people.students.scholarshipTypes);
-      expect(file.student.scholarshipCoverages).toEqual(screen.people.students.scholarshipCoverages);
+      expect(file.student.scholarshipCoverages).toEqual(
+        screen.people.students.scholarshipCoverages,
+      );
     }
   });
 });

@@ -569,11 +569,7 @@ test('an Academic Vice Principal exports students with their documents, adds a p
   await expect(page.locator('tbody tr')).toHaveCount(2);
 
   // A ticked row, with the documents, birth date and address added to the file.
-  await page
-    .locator('tbody tr')
-    .filter({ hasText: '9997002' })
-    .getByRole('checkbox')
-    .check();
+  await page.locator('tbody tr').filter({ hasText: '9997002' }).getByRole('checkbox').check();
   await page.getByRole('button', { name: en.list.exportAlso, exact: true }).click();
   await page
     .getByRole('menuitemcheckbox', { name: texts.exportGroups.identity, exact: true })
@@ -611,7 +607,7 @@ test('an Academic Vice Principal exports students with their documents, adds a p
   // The counter of the home page, and the rows its link opens.
   await page.goto('/');
   const counter = page.getByRole('region', { name: en.home.noClass.title });
-  await expect(counter).toContainText('2');
+  await expect(counter.locator('[data-count]')).toHaveText('2');
   await exportScreenshot(page, 'home');
   await counter.getByRole('link', { name: en.home.noClass.link }).click();
   await expect(heading(page, texts.title)).toBeVisible();

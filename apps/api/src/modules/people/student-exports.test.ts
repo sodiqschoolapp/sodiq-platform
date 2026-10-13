@@ -228,6 +228,28 @@ describe('the student export, the consent list and the "No class" counter', () =
       }
     });
 
+    // Correction 3: decided in the branch of the request, on the list too.
+    it('decides the consent list and the export groups in the branch of the request', async () => {
+      await create({ consentSignedOn: null });
+      await create({ consentSignedOn: null }, t.south);
+      const both = await t.kit.completeSession('Dildora', 'Karimova');
+      await t.kit.giveRole(both.account.id, { role: 'head_tutor', branchId: t.north });
+      await t.kit.giveRole(both.account.id, { role: 'principal', branchId: t.south });
+      const north = studentListSchema.parse(
+        (await t.get('/api/people/students', t.north, both.cookie)).body,
+      );
+      expect(north).toMatchObject({ readsFinancial: false, exportGroups: [] });
+      expect(north.students.every((item) => item.consentMissing === null)).toBe(true);
+      const refused = await t.get('/api/people/students?consent=missing', t.north, both.cookie);
+      expect(refused.status).toBe(403);
+      const south = await t.get('/api/people/students?consent=missing', t.south, both.cookie);
+      expect(south.status, JSON.stringify(south.body)).toBe(200);
+      const answer = studentListSchema.parse(south.body);
+      expect(answer).toMatchObject({ readsFinancial: true, exportGroups: ['basic', 'financial'] });
+      expect(answer.students.length).toBeGreaterThan(0);
+      expect(answer.students.every((item) => item.consentMissing === true)).toBe(true);
+    });
+
     // Correction 1 of the review: the filter is checked on the server.
     it('refuses the consent list to every reader without the Financial group', async () => {
       for (const cookie of [spiritual, headTutor, tutor, headTeacher, seniorHeadTeacher]) {
@@ -252,6 +274,23 @@ describe('the student export, the consent list and the "No class" counter', () =
       await create({ startsOn: '2026-11-02' });
       await leave(await create(), '2026-10-01');
       await leave(await create(), '2026-10-25');
+      // A graduated student, written by the migrator: no route graduates before task 9.5a.
+      const graduated = await create();
+      await t.database.migrator
+        .updateTable('student_statuses')
+        .set({ valid_until: '2026-10-01' })
+        .where('student_id', '=', graduated.id)
+        .execute();
+      await t.database.migrator
+        .insertInto('student_statuses')
+        .values({
+          student_id: graduated.id,
+          branch_id: t.north,
+          status: 'graduated',
+          valid_from: '2026-10-01',
+          cause: 'graduation',
+        })
+        .execute();
       // The last day is today: inactive from tomorrow.
       await leave(await create(), '2026-10-10');
       await create({}, t.south);
