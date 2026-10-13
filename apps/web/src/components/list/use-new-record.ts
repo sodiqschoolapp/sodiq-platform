@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import type { NewRecord } from './list-page';
 
@@ -34,17 +34,19 @@ export function useNewRecord<Value = true>(): NewRecordState<Value> {
     }
   }, [closes, buttonId]);
 
-  return {
-    value,
-    buttonId,
-    start: (next) => {
+  // Stable, so a page may keep them in its memos (the bulk actions of a list).
+  const start = useCallback(
+    (next: Value) => {
       void leave().then((leaves) => {
         if (leaves) {
           setValue(() => next);
         }
       });
     },
-    handlers: {
+    [leave],
+  );
+  const handlers = useMemo(
+    () => ({
       onClose: () => {
         setValue(null);
         setCloses((before) => before + 1);
@@ -52,6 +54,9 @@ export function useNewRecord<Value = true>(): NewRecordState<Value> {
       onSaved: () => {
         setValue(null);
       },
-    },
-  };
+    }),
+    [],
+  );
+
+  return { value, buttonId, start, handlers };
 }

@@ -27,13 +27,18 @@ import { DateField, Field } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
-import { ListPage, type BulkAction, type ExportExtra } from '@/components/list/list-page';
+import {
+  ListPage,
+  type BulkAction,
+  type ExportExtra,
+  type NewRecord,
+} from '@/components/list/list-page';
+import { useNewRecord } from '@/components/list/use-new-record';
 import { useExport } from '@/components/list/use-export';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { Button } from '@/components/ui/button';
-import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { asFormSchema } from './form-schema';
 import {
@@ -47,7 +52,6 @@ import { PeopleTabs } from './people-tabs';
 import { StudentForm } from './student-form';
 import { StudentPanel } from './student-panel';
 import { schoolDateText } from '@/lib/dates';
-import { SECTION_TITLE } from '@/components/ui/control';
 
 /**
  * A student in the list, a picker or a list inside a message: surname first
@@ -122,6 +126,9 @@ const BULK_REFUSALS: ReadonlySet<string> = new Set([
   'not_found',
 ]);
 
+/** What the side panel holds besides a student: a new student, or the bulk leaving of the ticked ones. */
+type NewForm = { kind: 'student' } | { kind: 'leaving'; rows: StudentListItem[] };
+
 /** What a bulk leaving did: how many went through, the names of those refused, and a failure that stopped it. */
 interface Outcome {
   done: number;
@@ -144,10 +151,11 @@ export function StudentsPage() {
   const search = useSearch({ from: '/app/people/students' });
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
   const confirm = useConfirm();
-  const [adding, setAdding] = useState(false);
-  const [leaving, setLeaving] = useState<StudentListItem[] | null>(null);
+  // A new student, or the bulk leaving of the ticked students, in the side
+  // panel of the list (task 2.7c-2a).
+  const newRecord = useNewRecord<NewForm>();
+  const { start: startNew } = newRecord;
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const canCreate = role !== null && permits(PERMISSIONS, role, 'students', 'create');
   const exporter = useExport<StudentListItem>('students', (row) => row.id);
@@ -208,10 +216,7 @@ export function StudentsPage() {
       }
       return result;
     },
-    onSuccess: (result) => {
-      setOutcome(result);
-      setLeaving(null);
-    },
+    onSuccess: setOutcome,
     onSettled: () => invalidateStudents(queryClient),
   });
 
@@ -224,12 +229,12 @@ export function StudentsPage() {
               label: t('people.students.bulkLeave'),
               run: (rows) => {
                 setOutcome(null);
-                setLeaving(rows);
+                startNew({ kind: 'leaving', rows });
               },
             },
           ]
         : [],
-    [canArchive, t],
+    [canArchive, t, startNew],
   );
 
   /**
@@ -292,10 +297,8 @@ export function StudentsPage() {
         return send(true);
       }
     },
-    onSuccess: async () => {
-      setAdding(false);
-      await invalidateRelatives(queryClient);
-    },
+    // The list holds the new student before the panel shows it.
+    onSuccess: () => invalidateRelatives(queryClient),
     // A holder saved after the list was read: the list is read again, so the
     // refusal can name them (spec review of the build).
     onError: async (error) => {
@@ -442,15 +445,49 @@ export function StudentsPage() {
     void navigate({ to: '/people/students', search: next, replace: how === 'replace' });
   };
 
-  const addButton = canCreate && !adding && (
+  const addButton = canCreate && newRecord.value === null && (
     <Button
+      id={newRecord.buttonId}
       onClick={() => {
-        setAdding(true);
+        newRecord.start({ kind: 'student' });
       }}
     >
       {t('people.students.add')}
     </Button>
   );
+
+  const leavingPanel = (rows: StudentListItem[]): NewRecord => {
+    const title = t('people.students.bulkLeaveTitle', {
+      count: rows.length,
+      n: number.format(rows.length),
+    });
+    return {
+      key: `leaving:${rows.map((row) => row.id).join()}`,
+      title,
+      content: ({ saved, close }) => (
+        <BulkLeavingForm
+          key={rows.map((row) => row.id).join()}
+          title={title}
+          onSave={async (input) => {
+            const go = await confirm({
+              title: t('people.students.leaveConfirmTitle'),
+              text: t('people.students.leaveConfirmText'),
+              names: rows.map(fullName),
+              action: t('people.students.leaveAction'),
+              destructive: true,
+            });
+            if (!go) {
+              throw new SaveCancelled();
+            }
+            await leaveMany.mutateAsync({ rows, input });
+            saved();
+          }}
+          onCancel={close}
+        />
+      ),
+      ...newRecord.handlers,
+    };
+  };
 
   return (
     <>
@@ -463,66 +500,6 @@ export function StudentsPage() {
         actions={addButton === false ? undefined : addButton}
       />
       <PeopleTabs current="students" />
-      {adding && (
-        <section
-          aria-label={t('people.students.newTitle')}
-          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6"
-        >
-          <h2 className={SECTION_TITLE}>{t('people.students.newTitle')}</h2>
-          <StudentForm
-            student={null}
-            label={t('people.students.newTitle')}
-            holderText={holderText}
-            holderRestorable={holderRestorable}
-            onOpenHolder={(id) => {
-              open({ ...search, open: id }, 'push');
-            }}
-            onCreate={async (record) => {
-              await create.mutateAsync(record);
-            }}
-            onPhoneMatch={phoneMatch}
-          />
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void leave.leave().then((leaves) => {
-                  if (leaves) {
-                    setAdding(false);
-                  }
-                });
-              }}
-            >
-              {t('people.students.cancel')}
-            </Button>
-          </div>
-        </section>
-      )}
-      {leaving !== null && (
-        <BulkLeavingForm
-          key={leaving.map((row) => row.id).join()}
-          title={t('people.students.bulkLeaveTitle', {
-            count: leaving.length,
-            n: number.format(leaving.length),
-          })}
-          onSave={async (input) => {
-            const go = await confirm({
-              title: t('people.students.leaveConfirmTitle'),
-              text: t('people.students.leaveConfirmText'),
-              names: leaving.map(fullName),
-              action: t('people.students.leaveAction'),
-              destructive: true,
-            });
-            if (!go) {
-              throw new SaveCancelled();
-            }
-            await leaveMany.mutateAsync({ rows: leaving, input });
-          }}
-          onCancel={() => {
-            setLeaving(null);
-          }}
-        />
-      )}
       {outcome !== null && (
         <p role="status" className="mb-3 text-sm">
           {t('people.students.bulkLeft', { count: outcome.done, n: number.format(outcome.done) })}
@@ -562,6 +539,53 @@ export function StudentsPage() {
         }
         exportState={exporter.state}
         exportExtras={exportExtras}
+        creating={
+          newRecord.value === null
+            ? undefined
+            : newRecord.value.kind === 'student'
+              ? {
+                  key: 'student',
+                  title: t('people.students.newTitle'),
+                  content: ({ saved, close, open: openHolder }) => (
+                    <div className="grid gap-4">
+                      <StudentForm
+                        student={null}
+                        label={t('people.students.newTitle')}
+                        holderText={holderText}
+                        holderRestorable={holderRestorable}
+                        onOpenHolder={openHolder}
+                        onCreate={async (record) => {
+                          const created = await create.mutateAsync(record);
+                          // A student with consent is not among the rows of the
+                          // consent filter: it is turned off, so the panel shows
+                          // the student (pull request #81, correction 1).
+                          const hidden = wantsConsent && created.consentMissing !== true;
+                          saved(
+                            created.id,
+                            hidden
+                              ? {
+                                  f: Object.fromEntries(
+                                    Object.entries(search.f ?? {}).filter(
+                                      ([key]) => key !== 'consent',
+                                    ),
+                                  ),
+                                }
+                              : {},
+                          );
+                        }}
+                        onPhoneMatch={phoneMatch}
+                      />
+                      <div>
+                        <Button variant="ghost" onClick={close}>
+                          {t('people.students.cancel')}
+                        </Button>
+                      </div>
+                    </div>
+                  ),
+                  ...newRecord.handlers,
+                }
+              : leavingPanel(newRecord.value.rows)
+        }
         panel={(row) => (
           <StudentPanel key={row.id} id={row.id} name={typedName(row)} holderText={holderText} />
         )}
@@ -570,7 +594,7 @@ export function StudentsPage() {
   );
 }
 
-/** The one last day and reason of a bulk leaving, above the list. */
+/** The one last day and reason of a bulk leaving, in the side panel of the list. */
 function BulkLeavingForm({
   title,
   onSave,
@@ -581,33 +605,22 @@ function BulkLeavingForm({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const leave = useLeave();
   const form = useRecordForm<'lastDay' | 'reason', BulkLeaving>({
     schema: BULK_LEAVING_SCHEMA,
     initial: { lastDay: '', reason: '' },
     save: onSave,
   });
   return (
-    <section aria-label={title} className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6">
-      <h2 className={SECTION_TITLE}>{title}</h2>
+    <div className="grid gap-4">
       <RecordForm form={form} label={title}>
         <DateField label={t('people.students.lastDay')} {...form.bind('lastDay')} />
         <Field label={t('people.students.reason')} {...form.bind('reason')} />
       </RecordForm>
       <div>
-        <Button
-          variant="ghost"
-          onClick={() => {
-            void leave.leave().then((leaves) => {
-              if (leaves) {
-                onCancel();
-              }
-            });
-          }}
-        >
+        <Button variant="ghost" onClick={onCancel}>
           {t('people.students.cancel')}
         </Button>
       </div>
-    </section>
+    </div>
   );
 }

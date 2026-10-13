@@ -65,6 +65,11 @@ export interface NewRecordActions {
   saved: (id?: string, also?: Omit<ListSearch, 'open'>) => void;
   /** The form's own "Cancel": asks first when something is typed. */
   close: () => void;
+  /**
+   * Another record of the list in the panel instead (a holder named by the
+   * form): asks first when something is typed, as a row opened from the list.
+   */
+  open: (id: string) => void;
 }
 
 /**
@@ -461,6 +466,9 @@ export function ListPage<Row>({
       }
     },
     close: closeCreating,
+    open: (id) => {
+      openRecord(id);
+    },
   };
   const openRow = openId === undefined ? undefined : rows?.find((row) => rowId(row) === openId);
   // The row last shown in the panel. When it leaves the list while it is open

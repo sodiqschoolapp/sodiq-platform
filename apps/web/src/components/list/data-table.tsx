@@ -2,7 +2,7 @@ import { cn } from 'cn';
 import { ArrowDownwardIcon, ArrowUpwardIcon, UnfoldMoreIcon } from '@/components/icons';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CHECKBOX as CHECKBOX_BASE, FOCUS_RING } from '@/components/ui/control';
+import { CHECKBOX as CHECKBOX_BASE, CHECKBOX_TARGET, FOCUS_RING } from '@/components/ui/control';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -56,14 +56,16 @@ function TickAll({ selection }: { selection: Selection }) {
     }
   }, [some]);
   return (
-    <input
-      ref={box}
-      type="checkbox"
-      className={CHECKBOX}
-      aria-label={t('list.selectAll')}
-      checked={selection.all === 'all'}
-      onChange={selection.onToggleAll}
-    />
+    <label className={CHECKBOX_TARGET}>
+      <input
+        ref={box}
+        type="checkbox"
+        className={CHECKBOX}
+        aria-label={t('list.selectAll')}
+        checked={selection.all === 'all'}
+        onChange={selection.onToggleAll}
+      />
+    </label>
   );
 }
 
@@ -165,15 +167,17 @@ export function DataTable<Row>({
             >
               {selection !== undefined && (
                 <TableCell className="w-8">
-                  <input
-                    type="checkbox"
-                    className={CHECKBOX}
-                    aria-label={t('list.selectRow', { name: rowName(row) })}
-                    checked={ticked}
-                    onChange={() => {
-                      selection.onToggle(id);
-                    }}
-                  />
+                  <label className={CHECKBOX_TARGET}>
+                    <input
+                      type="checkbox"
+                      className={CHECKBOX}
+                      aria-label={t('list.selectRow', { name: rowName(row) })}
+                      checked={ticked}
+                      onChange={() => {
+                        selection.onToggle(id);
+                      }}
+                    />
+                  </label>
                 </TableCell>
               )}
               {columns.map((column) => (

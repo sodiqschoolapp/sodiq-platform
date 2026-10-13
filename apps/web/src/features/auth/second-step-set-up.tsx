@@ -14,7 +14,7 @@ import { Field } from '@/components/field';
 import { FailureAlert } from '@/components/failure-alert';
 import { Button, type buttonVariants } from '@/components/ui/button';
 import type { VariantProps } from 'class-variance-authority';
-import { CHECKBOX } from '@/components/ui/control';
+import { CHECKBOX, CHECKBOX_TARGET } from '@/components/ui/control';
 import { useWaiting } from './form-helpers';
 
 /** The key in groups of four, as it is typed into the app by hand. */
@@ -142,7 +142,7 @@ export function SecondStepSetUp({
               <li key={recoveryCode}>{recoveryCode}</li>
             ))}
           </ul>
-          <label className="flex items-center gap-2 text-sm font-medium max-sm:min-h-11">
+          <label className={`${CHECKBOX_TARGET} text-sm font-medium`}>
             <input
               type="checkbox"
               className={CHECKBOX}

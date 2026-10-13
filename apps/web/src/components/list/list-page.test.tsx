@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiFailure } from '@/api/failure';
 import { createI18n } from '@/i18n/i18n';
 import { en } from '@/i18n/locales/en';
+import { CHECKBOX_TARGET } from '@/components/ui/control';
 import { setWindowWidth } from '@/testing/window-width';
 import { ListPage, type BulkAction, type ExportExtra, type ExportState } from './list-page';
 import type { Column, ListSearch } from './list-state';
@@ -381,6 +382,22 @@ describe('the bar of the bulk actions', () => {
     fireEvent.click(screen.getByRole('button', { name: en.list.clearSelection }));
     expect(bar()).toBeNull();
     expect(status().textContent).toBe('');
+  });
+});
+
+// docs/design-system.md, Accessibility: "touch targets of 44 px at phone
+// width" (task 2.7c-2a, pull request #81, decision 8).
+describe('the checkboxes of a list', () => {
+  it('sit in a label that is the 44 px target at phone width, and a press on it ticks the row', () => {
+    show({ rows: ROOMS });
+    const all = screen.getByLabelText(en.list.selectAll);
+    for (const box of [all, tick('Room 12')]) {
+      expect(box.closest('label')?.className.split(' ')).toEqual(
+        expect.arrayContaining(CHECKBOX_TARGET.split(' ')),
+      );
+    }
+    fireEvent.click(tick('Room 4').closest('label') as HTMLElement);
+    expect(tick('Room 4').checked).toBe(true);
   });
 });
 
