@@ -112,6 +112,7 @@ describe('student records in the database', () => {
         branch_id: input.branch,
         status: 'active',
         valid_from: '2026-09-02',
+        cause: 'start',
       })
       .execute();
     await transaction
@@ -142,6 +143,13 @@ describe('student records in the database', () => {
         branch_id: input.branch,
         status: input.status,
         valid_from: '2026-10-01',
+        cause:
+          input.status === 'graduated'
+            ? 'graduation'
+            : input.status === 'inactive'
+              ? 'leaving'
+              : 'start',
+        reason: input.status === 'inactive' ? 'Moved away' : null,
       })
       .execute();
     return id;
@@ -514,19 +522,19 @@ describe('student records in the database', () => {
   });
 
   describe('history and the account', () => {
-    it('lets the application delete no student row', async () => {
+    // The student itself is deleted only through `students_delete_guard` (task
+    // 2.4b-1, decision 4); its rows go with it (`student-leaving.database.test.ts`).
+    it('lets the application delete no UID, contract, status or account row', async () => {
       const id = await createStudent({ branch: north, uid: '2607090' });
       for (const table of [
-        'students',
+        'student_uids',
         'student_contracts',
         'student_statuses',
         'student_accounts',
       ] as const) {
         await expect(
           inBranch(north, (transaction) =>
-            table === 'students'
-              ? transaction.deleteFrom('students').where('id', '=', id).execute()
-              : transaction.deleteFrom(table).where('student_id', '=', id).execute(),
+            transaction.deleteFrom(table).where('student_id', '=', id).execute(),
           ),
           table,
         ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
@@ -544,6 +552,8 @@ describe('student records in the database', () => {
               branch_id: north,
               status: 'inactive',
               valid_from: '2026-10-20',
+              cause: 'leaving',
+              reason: 'Moved away',
             })
             .execute(),
         ),

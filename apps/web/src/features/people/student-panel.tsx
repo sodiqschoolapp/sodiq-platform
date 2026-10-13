@@ -26,6 +26,7 @@ import { schoolDateText } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import { invalidateStudents, studentDetailQuery } from './people-api';
 import { StudentForm, takenOf, takenText } from './student-form';
+import { StatusSection } from './student-status-section';
 
 type Tab = 'overview' | 'contract';
 
@@ -41,14 +42,20 @@ interface StudentPanelProps {
  * tabs"; task 2.4a): the tabs that have data so far, Overview and Contract and
  * scholarship. Each group of fields is drawn only when the server answers it
  * (edge/people-roles-accounts, Personal data and the audit log); the Principal
- * sees the identity fields behind a logged show.
+ * sees the identity fields behind a logged show. The status, its history
+ * and its changes (task 2.4b-1) follow the overview.
  */
 export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const { t } = useTranslation();
   const { branchId } = useView();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const detail = useQuery(studentDetailQuery(branchId, id));
+  // After the delete of a student created twice the panel says so and reads nothing more (task 2.4b-1).
+  const [deleted, setDeleted] = useState(false);
+  const detail = useQuery({
+    ...studentDetailQuery(branchId, id),
+    enabled: branchId !== null && !deleted,
+  });
   const [tab, setTab] = useState<Tab>('overview');
   const where = () => ({ header: branchHeader(), path: { id } });
   const refresh = async (answer: unknown) => {
@@ -103,6 +110,9 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     onError: rereadOnTaken,
   });
 
+  if (deleted) {
+    return <p role="status">{t('people.students.deleted')}</p>;
+  }
   if (detail.isError) {
     return (
       <ErrorState
@@ -138,6 +148,23 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
         />
       )}
       {shownTab === 'overview' ? <Overview student={student} /> : <ContractTab student={student} />}
+      <StatusSection
+        student={student}
+        label={name}
+        holderText={holderText}
+        onChanged={refresh}
+        onStale={async () => {
+          await queryClient.invalidateQueries({
+            queryKey: studentDetailQuery(branchId, id).queryKey,
+          });
+          await invalidateStudents(queryClient);
+        }}
+        onDeleted={async () => {
+          setDeleted(true);
+          queryClient.removeQueries({ queryKey: studentDetailQuery(branchId, id).queryKey });
+          await invalidateStudents(queryClient);
+        }}
+      />
       {student.canEdit && (
         <>
           <section className="grid gap-3">
@@ -352,9 +379,7 @@ function UidCorrection({
           label={t('people.students.uid')}
           inputMode="numeric"
           {...uid}
-          error={
-            uid.error ?? (taken === null ? undefined : t(...takenText(taken.holderId, holderText)))
-          }
+          error={uid.error ?? (taken === null ? undefined : t(...takenText(taken, holderText)))}
         />
         <Field label={t('people.students.reason')} {...form.bind('reason')} />
       </RecordForm>

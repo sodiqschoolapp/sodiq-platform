@@ -135,7 +135,7 @@ describe('a frozen permission table', () => {
     };
     for (const role of ROLES) {
       const students = editors.includes(role)
-        ? ['view', 'create', 'edit']
+        ? ['view', 'create', 'edit', 'archive']
         : viewers.includes(role)
           ? ['view']
           : [];
@@ -144,6 +144,10 @@ describe('a frozen permission table', () => {
         const rowsOfArea = PERMISSIONS[area as keyof typeof PERMISSIONS];
         expect(rowsOfArea[role], `${area} ${role}`).toEqual(readers.includes(role) ? ['view'] : []);
       }
+      // Task 2.4b-1: the Super Admin alone restores a graduated student.
+      expect(PERMISSIONS.student_graduates[role], role).toEqual(
+        role === 'super_admin' ? ['edit'] : [],
+      );
     }
   });
 
@@ -165,6 +169,7 @@ describe('a frozen permission table', () => {
       'staff_teaching',
       'student_contact',
       'student_financial',
+      'student_graduates',
       'student_identity',
       'students',
       'subjects',

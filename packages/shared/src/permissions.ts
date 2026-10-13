@@ -180,6 +180,15 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   for new routes, decided without the owner on pull request #67 (decision
  *   2, Look first: the Senior Head Teacher reads students of every branch),
  *   confirmed at its review and flagged on issue #42.
+ * - `students` `archive` and `student_graduates` (`04`, Movements;
+ *   `edge/students-classes-groups`; task 2.4b-1): the Super Admin and the
+ *   Academic Vice Principal record a leaving, cancel or undo it, bring a
+ *   student back and delete a student created twice ("The Academic Vice
+ *   Principal may delete a student only if there is no ... data"); the
+ *   Super Admin alone restores a graduated student ("The Super Admin
+ *   restores the student to active with a class and a reason"). Decided
+ *   without the owner on pull request #68 (decision 2, Look first),
+ *   confirmed at its review and flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -259,9 +268,9 @@ export const PERMISSIONS = freezeTable({
     head_teacher: ['view'],
   }),
   students: rows({
-    super_admin: ['view', 'create', 'edit'],
+    super_admin: ['view', 'create', 'edit', 'archive'],
     principal: ['view'],
-    academic_vice_principal: ['view', 'create', 'edit'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive'],
     spiritual_vice_principal: ['view'],
     head_tutor: ['view'],
     tutor: ['view'],
@@ -283,6 +292,9 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view'],
     principal: ['view'],
     academic_vice_principal: ['view'],
+  }),
+  student_graduates: rows({
+    super_admin: ['edit'],
   }),
   current_period: rows({
     super_admin: ['view'],

@@ -17,6 +17,7 @@ import { DateField, Field, NumberField, SelectField } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
+import { Button } from '@/components/ui/button';
 import { asFormSchema } from './form-schema';
 
 /** The fields of the form: one per input. */
@@ -71,8 +72,17 @@ const FIELD_OF_DETAIL: Readonly<Record<string, StudentField>> = {
   'contract.number': 'contractNumber',
 };
 
+/** A value refused as taken. */
+export interface Taken {
+  field: StudentField;
+  /** The student of this branch who holds it, when named. */
+  holderId: string | null;
+  /** A UID of a student deleted as created twice: reserved for good (task 2.4b-1). */
+  released: boolean;
+}
+
 /** A value refused as taken: the field, and the student of this branch who holds it when named. */
-export function takenOf(failure: unknown): { field: StudentField; holderId: string | null } | null {
+export function takenOf(failure: unknown): Taken | null {
   if (!(failure instanceof ApiFailure) || failure.code !== 'student_value_taken') {
     return null;
   }
@@ -80,21 +90,27 @@ export function takenOf(failure: unknown): { field: StudentField; holderId: stri
   const field = detail === undefined ? undefined : FIELD_OF_DETAIL[detail.path];
   return field === undefined || detail === undefined
     ? null
-    : { field, holderId: detail.recordId ?? null };
+    : { field, holderId: detail.recordId ?? null, released: detail.code === 'uid_released' };
 }
 
 /**
  * The text under a field refused as taken: the holder of the branch by name
  * and UID, while the list holds them; "another student of this branch" until
- * the list is read again; "a student of another branch" otherwise.
+ * the list is read again; a UID of a deleted student; "a student of another
+ * branch" otherwise.
  */
 export function takenText(
-  holderId: string | null,
+  taken: Pick<Taken, 'holderId' | 'released'>,
   holderText: (id: string) => string | null,
 ):
   | ['people.students.takenElsewhere']
+  | ['people.students.uidReleased']
   | ['people.students.takenHereUnknown']
   | ['people.students.takenHere', { student: string }] {
+  const { holderId } = taken;
+  if (taken.released) {
+    return ['people.students.uidReleased'];
+  }
   if (holderId === null) {
     return ['people.students.takenElsewhere'];
   }
@@ -118,6 +134,10 @@ interface StudentFormProps {
   holderText: (id: string) => string | null;
   onCreate?: (record: StudentCreate) => Promise<void>;
   onEdit?: (record: StudentRecord) => Promise<void>;
+  /** Whether a holder of this branch is inactive or graduated, so it can be brought back. */
+  holderRestorable?: (id: string) => boolean;
+  /** Opens a student of this branch in the side panel. */
+  onOpenHolder?: (id: string) => void;
 }
 
 /**
@@ -126,7 +146,15 @@ interface StudentFormProps {
  * when the student is created; the UID has a correction of its own and the
  * start date is fixed (decided in the build of task 2.4a).
  */
-export function StudentForm({ student, label, holderText, onCreate, onEdit }: StudentFormProps) {
+export function StudentForm({
+  student,
+  label,
+  holderText,
+  onCreate,
+  onEdit,
+  holderRestorable,
+  onOpenHolder,
+}: StudentFormProps) {
   const { t } = useTranslation();
   const creating = student === null;
   const contract = student?.financial?.contracts[0];
@@ -209,7 +237,18 @@ export function StudentForm({ student, label, holderText, onCreate, onEdit }: St
   });
 
   const taken = takenOf(form.failure);
-  const refusal = taken === null ? null : t(...takenText(taken.holderId, holderText));
+  const refusal = taken === null ? null : t(...takenText(taken, holderText));
+  // edge: "A matching JSHSHIR or document number blocks the save and offers
+  // \"restore this student\"": for an inactive or graduated holder of the
+  // branch (task 2.4b-1, decision 11).
+  const restorable =
+    taken !== null &&
+    (taken.field === 'jshshir' || taken.field === 'documentNumber') &&
+    taken.holderId !== null &&
+    onOpenHolder !== undefined &&
+    holderRestorable?.(taken.holderId) === true
+      ? taken.holderId
+      : null;
   const bind = (field: StudentField) => {
     const bound = form.bind(field);
     return {
@@ -222,103 +261,126 @@ export function StudentForm({ student, label, holderText, onCreate, onEdit }: St
   const coverage = form.bind('scholarshipCoverage').value;
 
   return (
-    <RecordForm form={form} label={label}>
-      {creating && <Field label={t('people.students.uid')} inputMode="numeric" {...bind('uid')} />}
-      <Field label={t('people.students.lastName')} autoComplete="off" {...bind('lastName')} />
-      <Field label={t('people.students.firstName')} autoComplete="off" {...bind('firstName')} />
-      <Field
-        label={t('people.students.paternalName')}
-        autoComplete="off"
-        {...bind('paternalName')}
-      />
-      <SelectField
-        label={t('people.students.sex')}
-        options={[
-          option('', t('people.students.choose')),
-          ...SEXES.map((sex) => option(sex, t(`people.staff.sexes.${sex}`))),
-        ]}
-        {...bind('sex')}
-      />
-      <DateField label={t('people.students.birthDate')} {...bind('birthDate')} />
-      <SelectField
-        label={t('people.students.grade')}
-        options={[
-          option('', t('people.students.choose')),
-          ...Array.from({ length: 11 }, (_unused, index) =>
-            option(String(index + 1), t('setup.subjects.grade', { grade: index + 1 })),
-          ),
-        ]}
-        {...bind('grade')}
-      />
-      {creating && <DateField label={t('people.students.startsOn')} {...bind('startsOn')} />}
-      <SelectField
-        label={t('people.students.documentType')}
-        options={[
-          option('', t('people.students.notSet')),
-          ...DOCUMENT_TYPES.map((type) => option(type, t(`people.students.documentTypes.${type}`))),
-        ]}
-        {...bind('documentType')}
-      />
-      <Field
-        label={t('people.students.documentNumber')}
-        autoComplete="off"
-        {...bind('documentNumber')}
-      />
-      <Field label={t('people.students.jshshir')} inputMode="numeric" {...bind('jshshir')} />
-      <Field label={t('people.students.phone')} type="tel" autoComplete="off" {...bind('phone')} />
-      <Field
-        label={t('people.students.email')}
-        type="email"
-        autoComplete="off"
-        {...bind('email')}
-      />
-      <Field label={t('people.students.address')} autoComplete="off" {...bind('address')} />
-      <SelectField
-        label={t('people.students.region')}
-        options={[
-          option('', t('people.students.notSet')),
-          ...REGIONS.map((region) => option(region, t(`people.students.regions.${region}`))),
-        ]}
-        {...bind('region')}
-      />
-      <Field
-        label={t('people.students.previousSchool')}
-        autoComplete="off"
-        {...bind('previousSchool')}
-      />
-      <NumberField label={t('people.students.diagnosticScore')} {...bind('diagnosticScore')} />
-      <Field
-        label={t('people.students.contractNumber')}
-        autoComplete="off"
-        {...bind('contractNumber')}
-      />
-      <DateField label={t('people.students.contractSignedOn')} {...bind('contractSignedOn')} />
-      <SelectField
-        label={t('people.students.scholarshipType')}
-        options={SCHOLARSHIP_TYPES.map((type) =>
-          option(type, t(`people.students.scholarshipTypes.${type}`)),
+    <>
+      <RecordForm form={form} label={label}>
+        {creating && (
+          <Field label={t('people.students.uid')} inputMode="numeric" {...bind('uid')} />
         )}
-        {...bind('scholarshipType')}
-      />
-      {scholarshipType !== 'none' && (
+        <Field label={t('people.students.lastName')} autoComplete="off" {...bind('lastName')} />
+        <Field label={t('people.students.firstName')} autoComplete="off" {...bind('firstName')} />
+        <Field
+          label={t('people.students.paternalName')}
+          autoComplete="off"
+          {...bind('paternalName')}
+        />
         <SelectField
-          label={t('people.students.scholarshipCoverage')}
+          label={t('people.students.sex')}
           options={[
             option('', t('people.students.choose')),
-            ...SCHOLARSHIP_COVERAGES.map((one) =>
-              option(one, t(`people.students.scholarshipCoverages.${one}`)),
+            ...SEXES.map((sex) => option(sex, t(`people.staff.sexes.${sex}`))),
+          ]}
+          {...bind('sex')}
+        />
+        <DateField label={t('people.students.birthDate')} {...bind('birthDate')} />
+        <SelectField
+          label={t('people.students.grade')}
+          options={[
+            option('', t('people.students.choose')),
+            ...Array.from({ length: 11 }, (_unused, index) =>
+              option(String(index + 1), t('setup.subjects.grade', { grade: index + 1 })),
             ),
           ]}
-          {...bind('scholarshipCoverage')}
+          {...bind('grade')}
         />
-      )}
-      {scholarshipType !== 'none' && coverage === 'partial' && (
-        <NumberField
-          label={t('people.students.scholarshipAmount')}
-          {...bind('scholarshipAmount')}
+        {creating && <DateField label={t('people.students.startsOn')} {...bind('startsOn')} />}
+        <SelectField
+          label={t('people.students.documentType')}
+          options={[
+            option('', t('people.students.notSet')),
+            ...DOCUMENT_TYPES.map((type) =>
+              option(type, t(`people.students.documentTypes.${type}`)),
+            ),
+          ]}
+          {...bind('documentType')}
         />
+        <Field
+          label={t('people.students.documentNumber')}
+          autoComplete="off"
+          {...bind('documentNumber')}
+        />
+        <Field label={t('people.students.jshshir')} inputMode="numeric" {...bind('jshshir')} />
+        <Field
+          label={t('people.students.phone')}
+          type="tel"
+          autoComplete="off"
+          {...bind('phone')}
+        />
+        <Field
+          label={t('people.students.email')}
+          type="email"
+          autoComplete="off"
+          {...bind('email')}
+        />
+        <Field label={t('people.students.address')} autoComplete="off" {...bind('address')} />
+        <SelectField
+          label={t('people.students.region')}
+          options={[
+            option('', t('people.students.notSet')),
+            ...REGIONS.map((region) => option(region, t(`people.students.regions.${region}`))),
+          ]}
+          {...bind('region')}
+        />
+        <Field
+          label={t('people.students.previousSchool')}
+          autoComplete="off"
+          {...bind('previousSchool')}
+        />
+        <NumberField label={t('people.students.diagnosticScore')} {...bind('diagnosticScore')} />
+        <Field
+          label={t('people.students.contractNumber')}
+          autoComplete="off"
+          {...bind('contractNumber')}
+        />
+        <DateField label={t('people.students.contractSignedOn')} {...bind('contractSignedOn')} />
+        <SelectField
+          label={t('people.students.scholarshipType')}
+          options={SCHOLARSHIP_TYPES.map((type) =>
+            option(type, t(`people.students.scholarshipTypes.${type}`)),
+          )}
+          {...bind('scholarshipType')}
+        />
+        {scholarshipType !== 'none' && (
+          <SelectField
+            label={t('people.students.scholarshipCoverage')}
+            options={[
+              option('', t('people.students.choose')),
+              ...SCHOLARSHIP_COVERAGES.map((one) =>
+                option(one, t(`people.students.scholarshipCoverages.${one}`)),
+              ),
+            ]}
+            {...bind('scholarshipCoverage')}
+          />
+        )}
+        {scholarshipType !== 'none' && coverage === 'partial' && (
+          <NumberField
+            label={t('people.students.scholarshipAmount')}
+            {...bind('scholarshipAmount')}
+          />
+        )}
+        <DateField label={t('people.students.consentSignedOn')} {...bind('consentSignedOn')} />
+      </RecordForm>
+      {restorable !== null && (
+        <div>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              onOpenHolder?.(restorable);
+            }}
+          >
+            {t('people.students.restoreThis')}
+          </Button>
+        </div>
       )}
-      <DateField label={t('people.students.consentSignedOn')} {...bind('consentSignedOn')} />
-    </RecordForm>
+    </>
   );
 }

@@ -197,6 +197,38 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 12 October 2026: leaving, return and delete (task 2.4b-1)
+
+Plan approved on pull request #68 with corrections 1 to 3; decisions 1 to 13 confirmed there, decision 14 added by correction 2; 1 to 4 marked Look first. The decisions after 14 came from the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 2.4b split into 2.4b-1 (leaving, return, delete) and 2.4b-2 (export, photos, consent list, "No class" counter), with lines added to 3.3, 6.1, 8.2, 8.5, 9.1, 9.2b and 9.5a | Decision 1; the 2.2 and 2.3c precedents |
+| **Look first.** `students` gains `archive` for the Super Admin and the Academic Vice Principal (leave, cancel, undo, return, delete); the new area `student_graduates` gives `edit` to the Super Admin alone (the restore of a graduated student) | Decision 2; `02` "Full edit of students"; `edge`: "may delete a student", "The Super Admin restores the student" |
+| **Look first.** `student_uids.student_id` is nullable: the key `on delete set null (student_id)` keeps the UIDs of a deleted student reserved for good, with `released_at` written by the trigger `student_uids_release` from `app.now`; `sodiq_app` has no update right on the table | Decision 3; `developer-rules`, Identifiers: "never used twice"; `04`: "never given to another student" |
+| **Look first.** The delete of a student created twice is the one exception to "Archive, do not delete": `delete` on `students` only, held by `students_delete_guard`; the contracts, status rows and account go with the student (keys `on delete cascade`); the audit entry keeps all of them | Decision 4; `edge`: "may delete a student only if there is no ... data" |
+| The last day of a leaving is the last day as a student, inactive from the next day; a past last day back to the start of the active time in force (the day before the start for a student who never started); a closed year refused by `student_statuses_closed_year_guard`; the closed quarter with 9.2b. A return is dated today or earlier (a gap: a re-enrolment ahead of term is recorded on the first day) | Decision 5 |
+| Cancel takes no reason; undo, the restore and the leaving need one (also a check of the database) | Decision 6 |
+| The return carries the grade the student comes back to; the UID never changes | Decision 7 |
+| "Undo leaving" only for an inactive row in force written by a leaving and still the last row; `cause` records which action wrote each row | Decision 8 |
+| The reason of a status row is read by the Financial readers; status, dates and cause are Basic | Decision 9 |
+| Nothing to sign out on a leaving while the student account is switched off | Decision 10 |
+| "Restore this student" only for an inactive or graduated holder of the branch | Decision 11 |
+| The bulk "Leave school": one change and one audit entry per student, the refused ones named | Decision 12 |
+| The delete guard refuses a scholarship, a live status row that is not `active` and a second contract; a cancelled or undone leaving blocks nothing | Decision 14 (correction 2) |
+| The closed-year guard checks an insert and a change of `valid_until` only, and finds the year by the row's branch: the move of 3.3 carries rows that end in a closed year | Correction 1 |
+| `version` is the number of status rows of the student, not the id of the newest one: every change writes at least one row, and a count does not depend on the order of `uuidv7` across connections (decision taken in the build) | Finding 3 of the spec review of the plan; a change made on an older state is `student_changed` |
+| The newest contract is the one with the latest id; `created_at` is bookkeeping (decision taken in the build) | Finding 14 of the spec review of the plan |
+| A UID of a deleted student of the branch answers the detail `uid_released`, without a holder; one of another branch answers `held_elsewhere` as before (decision taken in the build) | The other branch's rows are not read |
+| The "Inactive from …" badge shows the next change of status after the status shown; an adjacent row of the same status (the fill of a cancel or an undo) is none (decision taken in the build) | Finding 9 of the spec review of the plan |
+| After the delete the panel says "This student was deleted." and reads nothing more, instead of closing: closing while the form is still saving would ask "Leave without saving?" (decision taken in the build) | `UnsentGuard` |
+| The "Inactive from …" badge beside the status of a scheduled leaving differs from `docs/design-system.md` ("What we never do" 4: no tags for plain status): `edge/students-classes-groups` asks for it ("the student shows the current class with a badge"), so the spec wins and the difference is reported here (decision taken in the build, spec review) | The design system: "the spec wins and the difference is reported"; task 2.7 may draw it as a label of "This app" |
+| The refusal codes of the plan changed in the build: `return_in_future` became `status_date_future`, one code for the return and the restore; `restore_before_graduation` was added; the texts of `student_not_active`, `leaving_before_start`, `return_too_early` and `student_has_data` were reworded to be true on every path that sends them (decision taken in the build, spec review) | `.claude/rules/web.md`: the text of an error code is true on every path |
+| A return and a graduated restore ask for a confirmation naming the student, as a leaving and a delete do; a bulk leaving that meets a failure other than a refusal stops and says how many went through (decisions taken in the build, spec review) | `12`: "Actions that cannot be undone ask for confirmation and name what will be affected" |
+| `student_uids_insert_guard` (0034): a UID row is inserted with its student and without a release, by every user (decision taken in the build, spec review) | Decision 3: a UID is released only by the delete of its student |
+| The delete of a student created twice removes their status rows and contracts also when they are dated in a closed year: `student_statuses_closed_year_guard` covers insert and update, not the cascade (decision taken at the code review) | Such a student holds no data; the audit entry keeps the removed rows |
+| The test "lets the application delete no student row" of 2.4a became "no UID, contract, status or account row": the requirement changed with decision 4 (decision taken in the build, **Look first**) | `CLAUDE.md`: a test changed because a requirement changed is named |
+
 ## 12 October 2026: student record, UID and readers (task 2.4a)
 
 Plan approved on pull request #67 with corrections 1 to 6; decisions 1 to 17 confirmed there, 5 changed (correction 2), 4, 16 and 17 marked Look first. Decisions 18 to 21 came from the build. Flagged on issue #42.
