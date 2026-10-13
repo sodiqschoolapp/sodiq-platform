@@ -1753,10 +1753,43 @@ describe('phone owners, merges and the notice to the other branch', () => {
       const before = await snapshot();
       refusedWith(await merge(kept.relativeId, input, t.north), 403, 'merge_needs_super_admin');
       expect(await snapshot()).toEqual(before);
-      const response = await merge(kept.relativeId, input, t.north, t.admin);
+      // An account that is Academic Vice Principal of the north first and
+      // Super Admin second: the part only the Super Admin may do names that
+      // assignment (permission review of 2.5b-2, M1).
+      const both = await t.kit.completeSession('Shoira', 'Valiyeva');
+      await t.kit.giveRole(both.account.id, {
+        role: 'academic_vice_principal',
+        branchId: t.north,
+      });
+      const superAssignment = (await t.kit.giveRole(both.account.id, { role: 'super_admin' })).id;
+      const response = await merge(kept.relativeId, input, t.north, both.cookie);
       expect(response.status, JSON.stringify(response.body)).toBe(200);
       expect(await extraOf(kept.relativeId)).toMatchObject({ staff_id: teacher });
       expect(await extraOf(merged.relativeId)).toMatchObject({ staff_id: null });
+      for (const [action, id] of [
+        ['relative.merge', kept.relativeId],
+        ['relative.merged', merged.relativeId],
+      ] as const) {
+        expect(await schoolEntries(action, id)).toEqual([
+          expect.objectContaining({ assignment_id: superAssignment }),
+        ]);
+      }
+    });
+
+    it('refuses two different marks, one of another branch, as merge_needs_super_admin before naming them', async () => {
+      const { kept, merged, input } = await mergePair();
+      await markAs(kept.relativeId, await staffMember(t.north));
+      const teacher = await staffMember(t.south, [t.north]);
+      await markAs(merged.relativeId, teacher);
+      await t.database.migrator
+        .deleteFrom('staff_branches')
+        .where('staff_id', '=', teacher)
+        .where('branch_id', '=', t.north)
+        .execute();
+      const before = await snapshot();
+      refusedWith(await merge(kept.relativeId, input, t.north), 403, 'merge_needs_super_admin');
+      refusedWith(await merge(kept.relativeId, input, t.north, t.admin), 422, 'merge_marks_differ');
+      expect(await snapshot()).toEqual(before);
     });
   });
 });
