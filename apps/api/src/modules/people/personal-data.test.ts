@@ -248,6 +248,35 @@ describe('the personal data report', () => {
       const southRelative = await relativeOf(southStudent);
       const southStaff = await person(null, [t.south]);
       const vacancy = await person(null, [t.north], 'vacancy');
+      // A relative whose link in north has ended, still linked in south: the
+      // route needs a live link in the branch of the request (decision 4).
+      const northStudent = await student(t.north);
+      const movedAway = await t.database.migrator.transaction().execute((transaction) =>
+        linkRelative(transaction, northStudent, t.north, new Date('2026-09-02T08:00:00Z'), {
+          fullName: 'Kamola Ismoilova',
+          mainContact: false,
+        }),
+      );
+      await t.database.migrator
+        .insertInto('student_relatives')
+        .values({
+          student_id: southStudent,
+          branch_id: t.south,
+          relative_id: movedAway,
+          relationship: 'aunt',
+          main_contact: false,
+          linked_at: new Date('2026-09-02T08:00:00Z'),
+        })
+        .execute();
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', '2026-10-01T09:00:00Z', true)`.execute(transaction);
+        await transaction
+          .updateTable('student_relatives')
+          .set({ unlinked_at: new Date('2026-10-01T09:00:00Z') })
+          .where('relative_id', '=', movedAway)
+          .where('branch_id', '=', t.north)
+          .execute();
+      });
       const before = await logs();
       for (const [kind, id] of [
         ['students', southStudent],
@@ -256,6 +285,7 @@ describe('the personal data report', () => {
         ['staff', vacancy],
         ['staff', UNKNOWN],
         ['relatives', southRelative],
+        ['relatives', movedAway],
         ['relatives', UNKNOWN],
       ] as const) {
         const response = await report(kind, id);
@@ -479,6 +509,7 @@ describe('the personal data report', () => {
 
   describe("a relative's report", () => {
     let relative: string;
+    let released: string;
     let found: RelativeReport;
 
     beforeAll(async () => {
@@ -508,7 +539,25 @@ describe('the personal data report', () => {
           },
         ])
         .execute();
+      released = await entry({
+        branch: null,
+        action: 'relative.phone_released',
+        record: { type: 'relative', id: await newId() },
+        oldValue: { phone: '+998907776655' },
+        newValue: { phone: null },
+        details: { newOwnerId: relative, branchId: t.north },
+      });
       found = relativeReportSchema.parse(ok(await report('relatives', relative)));
+    });
+
+    it("holds an entry about another relative without that person's values", () => {
+      const other = found.entries.find((one) => one.id === released);
+      expect(other).toMatchObject({
+        action: 'relative.phone_released',
+        oldValue: null,
+        newValue: null,
+      });
+      expect(JSON.stringify(found)).not.toContain('+998907776655');
     });
 
     it('holds every link in every branch, live and ended (decision 1)', () => {

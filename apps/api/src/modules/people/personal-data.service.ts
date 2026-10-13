@@ -17,6 +17,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import type { Access } from '../access/permission.guard.js';
 import { entryAnswers } from '../audit/audit-entries.service.js';
 import { Audit } from '../audit/audit.service.js';
+import { ApiException } from '../../http/api-exception.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { readPersonEntries, type ReportPerson } from './personal-data.query.js';
 import { branchOf } from './staff-account-records.js';
@@ -55,7 +56,20 @@ export class PersonalData {
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
-  /** Every branch: the report reads the person's rows of all of them (decision 1). */
+  /**
+   * The current Super Admin assignment, which the entry names, and every
+   * branch: the report reads the person's rows of all of them (decision 1).
+   * Decided from every current assignment (`.claude/rules/api.md`), so that a
+   * later widening of the area never opens every branch to another role.
+   */
+  private async reach(access: Access): Promise<{ assignmentId: string; branches: string[] }> {
+    const superAdmin = access.assignments.find((assignment) => assignment.role === 'super_admin');
+    if (superAdmin === undefined) {
+      throw new ApiException('permission_denied', 403);
+    }
+    return { assignmentId: superAdmin.id, branches: await this.everyBranch() };
+  }
+
   private async everyBranch(): Promise<string[]> {
     return this.transactions.run([], async (transaction) =>
       (await transaction.selectFrom('branches').select('id').orderBy('id').execute()).map(
@@ -66,7 +80,7 @@ export class PersonalData {
 
   async student(access: Access, id: string, requestId: string): Promise<StudentReport> {
     const branchId = branchOf(access);
-    const branches = await this.everyBranch();
+    const { assignmentId, branches } = await this.reach(access);
     return this.transactions.run(branches, async (transaction) => {
       // The row filter holds every branch here: the branch of the request is
       // checked in the query (`.claude/rules/api.md`, the 2.5b-1 rule), before
@@ -136,6 +150,7 @@ export class PersonalData {
       const frame = await this.frame(
         transaction,
         access,
+        assignmentId,
         branches,
         { kind: 'student', id, accountId: null, assignmentIds: [] },
         requestId,
@@ -224,7 +239,7 @@ export class PersonalData {
 
   async staff(access: Access, id: string, requestId: string): Promise<StaffReport> {
     const branchId = branchOf(access);
-    const branches = await this.everyBranch();
+    const { assignmentId, branches } = await this.reach(access);
     return this.transactions.run(branches, async (transaction) => {
       // A person linked to the branch of the request; a vacancy and another
       // branch's record are 404 (`findPerson`, decision 4).
@@ -363,6 +378,7 @@ export class PersonalData {
       const frame = await this.frame(
         transaction,
         access,
+        assignmentId,
         branches,
         {
           kind: 'staff',
@@ -461,7 +477,7 @@ export class PersonalData {
 
   async relative(access: Access, id: string, requestId: string): Promise<RelativeReport> {
     const branchId = branchOf(access);
-    const branches = await this.everyBranch();
+    const { assignmentId, branches } = await this.reach(access);
     return this.transactions.run(branches, async (transaction) => {
       // A relative live-linked to a student of the branch of the request, as
       // the record opens today (decision 4).
@@ -527,6 +543,7 @@ export class PersonalData {
       const frame = await this.frame(
         transaction,
         access,
+        assignmentId,
         branches,
         { kind: 'relative', id, accountId: null, assignmentIds: [] },
         requestId,
@@ -588,6 +605,7 @@ export class PersonalData {
   private async frame(
     transaction: Transaction,
     access: Access,
+    assignmentId: string,
     branches: readonly string[],
     person: ReportPerson,
     requestId: string,
@@ -599,7 +617,17 @@ export class PersonalData {
       .where('id', '=', branchId)
       .executeTakeFirstOrThrow();
     const found = await readPersonEntries(transaction, person, PERSONAL_DATA_ENTRY_LIMIT);
-    const entries = await entryAnswers(transaction, branches, found.rows, false);
+    // In a relative's report, an entry whose record is another relative (a
+    // phone given to someone else, a merge) is about this person through its
+    // details only: its values are the other person's and are left out.
+    const entries = (await entryAnswers(transaction, branches, found.rows, false)).map((entry) =>
+      person.kind === 'relative' &&
+      entry.record !== null &&
+      entry.record.type === 'relative' &&
+      entry.record.id !== person.id
+        ? { ...entry, oldValue: null, newValue: null }
+        : entry,
+    );
     const leftOut = found.total - found.rows.length;
     const producer = await sql<{ first_name: string | null; last_name: string | null }>`
       select first_name, last_name from audit_names(${[access.accountId]}::uuid[])
@@ -610,7 +638,7 @@ export class PersonalData {
     await this.audit.record(transaction, {
       branchId,
       actorId: access.accountId,
-      assignmentId: access.assignmentId,
+      assignmentId,
       action,
       record: { type: person.kind, id: person.id },
       personId: person.id,
