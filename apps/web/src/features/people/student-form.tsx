@@ -31,12 +31,17 @@ import { useRecordForm } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
 import { asFormSchema } from './form-schema';
 import {
+  extraPhoneIssueField,
+  extraPhonesInitial,
+  extraPhonesTyped,
+  ExtraPhonesField,
   NEW_OWNER,
   NoticesField,
   OwnerChoice,
   phoneHolderOf,
   SAME_PERSON,
   smsWarning,
+  type ExtraPhoneFields,
 } from './relative-form';
 
 /** The fields of the form: one per input. */
@@ -76,7 +81,19 @@ export type StudentField =
   // The new owner of a matched phone (task 2.5b-1).
   | 'relativeOwner'
   | 'relativePreviousPhone'
-  | 'relativePreviousUnknown';
+  | 'relativePreviousUnknown'
+  // The extra phones of the relative (task 2.5b-2).
+  | 'relativeExtraCount'
+  | 'relativeExtra1'
+  | 'relativeExtra2'
+  | 'relativeExtra3';
+
+const RELATIVE_EXTRA_FIELDS: ExtraPhoneFields<
+  'relativeExtraCount' | 'relativeExtra1' | 'relativeExtra2' | 'relativeExtra3'
+> = {
+  count: 'relativeExtraCount',
+  phones: ['relativeExtra1', 'relativeExtra2', 'relativeExtra3'],
+};
 
 /** The field of the relative step an issue of `relatives.0` names. */
 const RELATIVE_FIELDS: Readonly<Record<string, StudentField>> = {
@@ -104,6 +121,10 @@ function fieldOf(path: readonly PropertyKey[]): PropertyKey[] {
     return [second === 'signedOn' ? 'contractSignedOn' : 'contractNumber'];
   }
   if (first === 'relatives') {
+    const extra = extraPhoneIssueField(path, RELATIVE_EXTRA_FIELDS);
+    if (extra !== undefined) {
+      return [extra];
+    }
     const last = path[path.length - 1];
     return [(typeof last === 'string' ? RELATIVE_FIELDS[last] : undefined) ?? 'relativePhone'];
   }
@@ -264,6 +285,7 @@ export function StudentForm({
       relativeOwner: SAME_PERSON,
       relativePreviousPhone: `${DEFAULT_PHONE_PREFIX} `,
       relativePreviousUnknown: '',
+      ...extraPhonesInitial(RELATIVE_EXTRA_FIELDS, []),
     },
     read: (typed) => {
       // The country code alone is no phone.
@@ -320,6 +342,7 @@ export function StudentForm({
                 phone: typed.relativePhone,
                 workplace: typed.relativeWorkplace,
                 email: typed.relativeEmail,
+                extraPhones: extraPhonesTyped(RELATIVE_EXTRA_FIELDS, typed),
               },
               previousId: matched.holder.id,
               previousPhone:
@@ -335,6 +358,7 @@ export function StudentForm({
                   phone: noPhone ? null : typed.relativePhone,
                   workplace: typed.relativeWorkplace,
                   email: typed.relativeEmail,
+                  extraPhones: extraPhonesTyped(RELATIVE_EXTRA_FIELDS, typed),
                 },
                 ...link,
               };
@@ -610,6 +634,10 @@ function RelativeStep({
             label={t('people.relatives.fullName')}
             autoComplete="off"
             {...bind('relativeName')}
+          />
+          <ExtraPhonesField
+            count={bind(RELATIVE_EXTRA_FIELDS.count)}
+            phones={RELATIVE_EXTRA_FIELDS.phones.map((field) => bind(field))}
           />
           <Field
             label={t('people.relatives.workplace')}

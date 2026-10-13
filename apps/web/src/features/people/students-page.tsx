@@ -79,6 +79,12 @@ const EXTRA_HEADERS = {
   previousSchool: 'people.students.previousSchool',
   diagnosticScore: 'people.students.diagnosticScore',
   consentSignedOn: 'people.students.consentSignedOn',
+  // Task 2.5b-2: the relatives, in the Contact group.
+  mainContactName: 'people.students.mainContactName',
+  mainContactRelationship: 'people.students.mainContactRelationship',
+  mainContactPhone: 'people.students.mainContactPhone',
+  mainContactExtraPhones: 'people.students.mainContactExtraPhones',
+  otherRelatives: 'people.students.otherRelatives',
 } as const satisfies Record<ExtraColumn, string>;
 
 /** The export-only columns of the file (task 2.4b-2): those after the list's own, in its order. */

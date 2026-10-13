@@ -889,6 +889,124 @@ try {
     password: ownersOtherVice.firstPassword,
   };
 
+  // A branch with a parent and a teacher of the same family name, for the
+  // extra phone and the mark "same person" (task 2.5b-2).
+  const sameVice = await create('Dildora', 'Rahmonova');
+  const sameBranch = await insertBranch(migrator, 'Same person browser test branch');
+  await transactions.run([sameBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: sameVice.id,
+      role: 'academic_vice_principal',
+      branchId: sameBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: sameBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: sameBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const student = await transaction
+      .insertInto('students')
+      .values({
+        branch_id: sameBranch,
+        uid: '9999401',
+        first_name: 'Sevara',
+        last_name: 'Yusupova',
+        name_key: studentNameKey('Yusupova', 'Sevara'),
+        sex: 'female',
+        birth_date: '2014-06-07',
+        grade: 7,
+        starts_on: startDate,
+        created_by: sameVice.id,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('student_uids')
+      .values({
+        uid: '9999401',
+        student_id: student.id,
+        branch_id: sameBranch,
+        held_from: new Date(),
+      })
+      .execute();
+    await transaction
+      .insertInto('student_contracts')
+      .values({
+        student_id: student.id,
+        branch_id: sameBranch,
+        number: 'E2E-SAME-1',
+        signed_on: startDate,
+      })
+      .execute();
+    await transaction
+      .insertInto('student_statuses')
+      .values({
+        student_id: student.id,
+        branch_id: sameBranch,
+        status: 'active',
+        valid_from: startDate,
+        cause: 'start',
+      })
+      .execute();
+    await transaction
+      .insertInto('student_accounts')
+      .values({ student_id: student.id, branch_id: sameBranch, created_at: new Date() })
+      .execute();
+    await linkRelative(transaction, student.id, sameBranch, new Date(), {
+      fullName: 'Kamola Yusupova',
+      phone: '+998905550141',
+    });
+    const person = await transaction
+      .insertInto('staff')
+      .values({
+        kind: 'person',
+        staff_id: 'S-269401',
+        first_name: 'Farrux',
+        last_name: 'Yusupov',
+        sex: 'male',
+        birth_date: '1983-02-10',
+        phone: '+998935550141',
+        admission_date: '2026-09-01',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: person.id, branch_id: sameBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: person.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+      .execute();
+  });
+  seeded.samePerson = { login: sameVice.login, password: sameVice.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');

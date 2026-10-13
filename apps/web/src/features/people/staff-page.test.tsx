@@ -103,6 +103,7 @@ const detailOf = (row: StaffListItem, fields: Partial<StaffDetail> = {}): StaffD
     email: true,
   },
   today: '2026-10-10',
+  sameAsRelative: null,
   ...fields,
 });
 
@@ -356,6 +357,33 @@ describe('the staff page', () => {
 
     expect(await within(panel).findByText('31234567890123')).toBeDefined();
     expect(calls.filter((call) => call.route.endsWith('/identity'))).toHaveLength(1);
+  });
+
+  // Task 2.5b-2 (edge/close-relatives, row 8): the relative marked as the same person.
+  it('names the relative this person is also, with a link to the Parent panel', async () => {
+    const parent = { id: uid(70), fullName: 'Dilnoza Karimova' };
+    openList('academic_vice_principal', {}, 'en', { sameAsRelative: parent });
+    const shell = renderApp(PATH);
+    fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const term = await within(panel).findByText(en.people.staff.alsoParent, { selector: 'dt' });
+    const link = within(term.parentElement ?? panel).getByRole('link', {
+      name: 'Dilnoza Karimova',
+    });
+    fireEvent.click(link);
+    await waitFor(() => {
+      expect(shell.router.state.location.pathname).toBe('/people/parents');
+    });
+    expect(shell.router.state.location.search).toMatchObject({ open: parent.id });
+  });
+
+  it('shows no "Also a parent" line when the person is marked as no relative', async () => {
+    openList('academic_vice_principal');
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    await within(panel).findByText(en.people.staff.staffId, { selector: 'dt' });
+    expect(within(panel).queryByText(en.people.staff.alsoParent)).toBeNull();
   });
 
   it('warns about a person of the same name in another branch before adding, and saves when told to', async () => {

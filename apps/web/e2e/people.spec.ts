@@ -787,3 +787,72 @@ test('the number of a relative of another branch gets a new owner, and that bran
   await expect(page.locator('tbody tr').first()).toContainText('Zarina Aliyeva');
   await expect(page.locator('tbody tr').first()).toContainText(relatives.noValidPhone);
 });
+
+// Task 2.5b-2 (edge/close-relatives, rows 5 and 8): the Academic Vice
+// Principal gives a parent an extra phone, marks the parent as the same
+// person as a teacher of the branch, and opens the teacher's panel from the
+// Parent panel, where the teacher is shown as also a parent. The seed gives
+// the branch a student whose mother Kamola Yusupova holds +998 90 555 01 41
+// and the teacher Farrux Yusupov (S-269401). All names and phones are invented.
+test('an Academic Vice Principal gives a parent an extra phone and marks them as a teacher of the branch', async ({
+  page,
+}) => {
+  const account = accountOf('samePerson');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  const relatives = en.people.relatives;
+  await page.goto('/people/parents');
+  await expect(heading(page, relatives.title)).toBeVisible();
+  await page.getByRole('button', { name: 'Kamola Yusupova', exact: true }).click();
+  const panel = page.getByRole('complementary', { name: 'Kamola Yusupova' });
+
+  // An extra phone, saved with the record.
+  const form = panel.getByRole('form', {
+    name: relatives.formLabel.replace('{{name}}', 'Kamola Yusupova'),
+  });
+  await form.getByRole('button', { name: relatives.addExtraPhone, exact: true }).click();
+  await form
+    .getByLabel(relatives.extraPhone.replace('{{n}}', '1'), { exact: true })
+    .fill('+998 93 555 01 42');
+  await form.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(panel.locator('dt', { hasText: relatives.extraPhones }).locator('+ dd')).toHaveText(
+    '+998935550142',
+  );
+
+  // The same person as a teacher of the branch, found by name.
+  const same = panel.getByRole('region', { name: relatives.sameTitle });
+  await same.getByRole('button', { name: relatives.markStaff, exact: true }).click();
+  await same.getByLabel(relatives.staffSearch, { exact: true }).fill('Yusupov');
+  await same
+    .getByLabel(relatives.staffChoice, { exact: true })
+    .selectOption({ label: 'Yusupov Farrux (S-269401)' });
+  await same.getByRole('button', { name: relatives.markSave, exact: true }).click();
+  const link = same.getByRole('link', { name: 'Farrux Yusupov', exact: true });
+  await expect(link).toBeVisible();
+  await expect(
+    same.getByText(relatives.staffIdOf.replace('{{staffId}}', 'S-269401'), { exact: true }),
+  ).toBeVisible();
+  await studentScreenshot(page, 'same-person');
+
+  // The teacher's panel, opened from the Parent panel, names the parent.
+  await link.click();
+  await expect(heading(page, en.people.staff.title)).toBeVisible();
+  const staffPanel = page.getByRole('complementary', { name: 'Farrux Yusupov' });
+  await expect(
+    staffPanel
+      .locator('dt', { hasText: en.people.staff.alsoParent })
+      .locator('+ dd')
+      .getByRole('link', { name: 'Kamola Yusupova', exact: true }),
+  ).toBeVisible();
+});

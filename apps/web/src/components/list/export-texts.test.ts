@@ -95,6 +95,12 @@ const SCREEN: Record<ExportList, Record<string, (texts: Texts) => string>> = {
     previousSchool: (texts) => texts.people.students.previousSchool,
     diagnosticScore: (texts) => texts.people.students.diagnosticScore,
     consentSignedOn: (texts) => texts.people.students.consentSignedOn,
+    // Task 2.5b-2: the relatives, Contact columns.
+    mainContactName: (texts) => texts.people.students.mainContactName,
+    mainContactRelationship: (texts) => texts.people.students.mainContactRelationship,
+    mainContactPhone: (texts) => texts.people.students.mainContactPhone,
+    mainContactExtraPhones: (texts) => texts.people.students.mainContactExtraPhones,
+    otherRelatives: (texts) => texts.people.students.otherRelatives,
   },
 };
 
@@ -135,6 +141,8 @@ describe('the headings of the export files', () => {
       expect(file.student.scholarshipCoverages).toEqual(
         screen.people.students.scholarshipCoverages,
       );
+      // Task 2.5b-2: the relationship of the main contact, as the Relatives tab names it.
+      expect(file.student.relationships).toEqual(screen.people.relatives.relationships);
     }
   });
 });

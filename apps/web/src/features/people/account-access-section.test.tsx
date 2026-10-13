@@ -68,6 +68,7 @@ const detail: StaffDetail = {
     email: true,
   },
   today: '2026-10-10',
+  sameAsRelative: null,
 };
 
 const PASSWORD = 'Rt5vNw8QpL2kXz7M';

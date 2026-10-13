@@ -87,6 +87,7 @@ const AKMAL_DETAIL: StaffDetail = {
     email: true,
   },
   today: '2026-10-10',
+  sameAsRelative: null,
 };
 
 const HOURS: Availability = {

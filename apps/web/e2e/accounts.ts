@@ -40,7 +40,8 @@ export type AccountKey =
   | 'studentExport'
   | 'relatives'
   | 'phoneOwners'
-  | 'phoneOwnersOther';
+  | 'phoneOwnersOther'
+  | 'samePerson';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';
