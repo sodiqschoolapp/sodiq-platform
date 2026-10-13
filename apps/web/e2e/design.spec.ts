@@ -11,13 +11,16 @@ import { codeNow } from './totp';
 // test also saves its screenshots for the report under docs/screens/2.2d-1/.
 const SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.2d-1');
 
-async function screenshot(page: Page, name: string): Promise<void> {
+async function screenshot(page: Page, name: string, folder = SCREENS): Promise<void> {
   if (process.env.SCREENSHOTS !== '1') {
     return;
   }
-  mkdirSync(SCREENS, { recursive: true });
-  await page.screenshot({ path: path.join(SCREENS, `${name}.png`) });
+  mkdirSync(folder, { recursive: true });
+  await page.screenshot({ path: path.join(folder, `${name}.png`) });
 }
+
+/** The screenshots of task 2.7b-2, for its report. */
+const SCREENS_27B2 = path.join(import.meta.dirname, '../../../docs/screens/2.7b-2');
 
 /** The letters the design system names: Uzbek Latin with U+02BB, and Cyrillic. */
 const LETTERS = ['oʻ', 'gʻ', 'Ў', 'Қ', 'Ғ', 'Ҳ'];
@@ -117,4 +120,101 @@ test('the staff list and its side panel are drawn with the design system in ligh
   await screenshot(page, 'sample-list-light');
 
   expect(fontHosts).toEqual([]);
+});
+
+/** The top bar and the page: their height and whether either scrolls sideways. */
+const widths = (page: Page) =>
+  page.evaluate<{ bar: number; barFits: boolean; pageFits: boolean }>(`(() => {
+    const bar = document.querySelector('header');
+    const root = document.documentElement;
+    return {
+      bar: Math.round(bar.getBoundingClientRect().height),
+      barFits: bar.scrollWidth <= bar.clientWidth,
+      pageFits: root.scrollWidth <= root.clientWidth,
+    };
+  })()`);
+
+// Issue #39, hand test of 13 October 2026, findings 14 and 31 (task 2.7b-2):
+// the top bar is one row from 1024 px with both switchers, the Rooms list fits
+// a 1047 px window, and on a phone "Send feedback" shows its word in "More".
+// The alerts line of finding 30 needs a Super Admin with an alert; the seed
+// has its three Super Admins for other tests, so the unit tests prove it.
+test('the top bar is one row at laptop width, Rooms fits, and More shows Send feedback', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1047, height: 800 });
+  const account = accountOf('topBar');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  // The Teacher's two branches: the role and the branch are both selects.
+  const bar = page.getByRole('banner', { name: en.layout.topBar });
+  const role = bar.getByLabel(en.switcher.role);
+  await role.selectOption({ label: en.roles.teacher });
+  const branch = bar.getByLabel(en.switcher.branch);
+  await expect(branch).toBeVisible();
+  await branch.selectOption({ label: 'Top bar browser test branch' });
+  // Below 1280 px the search and feedback are icon buttons named by their words.
+  await expect(bar.getByRole('button', { name: en.search.label })).toBeVisible();
+  await expect(bar.getByRole('button', { name: en.feedback.button })).toBeVisible();
+
+  for (const [width, height] of [
+    [1047, 800],
+    [1024, 768],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    const measured = await widths(page);
+    // One row: no taller than a row of 44 px controls and its padding.
+    expect(measured.bar, `top bar at ${String(width)} px`).toBeLessThanOrEqual(69);
+    expect(measured.barFits).toBe(true);
+    expect(measured.pageFits).toBe(true);
+    await screenshot(page, `top-bar-${String(width)}`, SCREENS_27B2);
+  }
+  await page.setViewportSize({ width: 768, height: 1024 });
+  expect((await widths(page)).pageFits).toBe(true);
+  expect((await widths(page)).barFits).toBe(true);
+
+  await page.setViewportSize({ width: 1047, height: 800 });
+  await role.selectOption({ label: en.roles.academic_vice_principal });
+  await page.goto('/setup/rooms');
+  await expect(heading(page, en.setup.rooms.title)).toBeVisible();
+  await expect(page.locator('tbody tr')).toHaveCount(3);
+  await expect(page.getByRole('columnheader', { name: en.setup.rooms.building })).toHaveCount(0);
+  const rooms = await widths(page);
+  expect(rooms.pageFits).toBe(true);
+  // Nothing in the list scrolls sideways either.
+  const tableFits = await page.evaluate<boolean>(`(() => {
+    const table = document.querySelector('table');
+    let box = table.parentElement;
+    while (box !== null && box !== document.body) {
+      if (box.scrollWidth > box.clientWidth) return false;
+      box = box.parentElement;
+    }
+    return true;
+  })()`);
+  expect(tableFits).toBe(true);
+  await screenshot(page, 'rooms-1047', SCREENS_27B2);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(heading(page, en.home.title)).toBeVisible();
+  expect((await widths(page)).pageFits).toBe(true);
+
+  await page
+    .getByRole('navigation', { name: en.menu.tabs })
+    .getByRole('button', { name: en.menu.more, exact: true })
+    .click();
+  const more = page.getByRole('dialog', { name: en.menu.more });
+  await expect(more.getByText(en.feedback.button, { exact: true })).toBeVisible();
+  await screenshot(page, 'more-390', SCREENS_27B2);
 });

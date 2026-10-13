@@ -44,7 +44,8 @@ export type AccountKey =
   | 'phoneOwners'
   | 'phoneOwnersOther'
   | 'samePerson'
-  | 'peopleTabs';
+  | 'peopleTabs'
+  | 'topBar';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

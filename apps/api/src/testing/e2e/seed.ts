@@ -488,6 +488,61 @@ try {
   );
   seeded.design = { login: design.login, password: design.firstPassword };
 
+  // The Academic Vice Principal of a branch of its own, with three rooms there,
+  // who also teaches there and in the first branch: the one-row top bar with
+  // both switchers (the Teacher has two branches) and the Rooms list at a
+  // laptop width (task 2.7b-2, finding 14).
+  // The seed has its three Super Admins already, so the alerts line of a phone
+  // (finding 30) is proved by the unit tests.
+  const topBarBranch = await insertBranch(migrator, 'Top bar browser test branch');
+  const topBar = await create('Dildora', 'Rasulova');
+  for (const teaches of [branchId, topBarBranch]) {
+    await transactions.run([teaches], (transaction) =>
+      assignments.give(transaction, {
+        accountId: topBar.id,
+        role: 'teacher',
+        branchId: teaches,
+        givenBy: null,
+      }),
+    );
+  }
+  await transactions.run([topBarBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: topBar.id,
+      role: 'academic_vice_principal',
+      branchId: topBarBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const building = await transaction
+      .insertInto('buildings')
+      .values({ branch_id: topBarBranch, name: 'Main building with a long name' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const floor = await transaction
+      .insertInto('floors')
+      .values({ branch_id: topBarBranch, building_id: building.id, name: 'Ground floor' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('rooms')
+      .values(
+        (['101', '102', 'Sports hall'] as const).map((name, index) => ({
+          branch_id: topBarBranch,
+          floor_id: floor.id,
+          name,
+          type: index === 2 ? 'sports_hall' : 'classroom',
+          capacity: index === 2 ? 120 : 28,
+          status: 'in_use',
+          shared: index === 2,
+          max_simultaneous_lessons: index === 2 ? 2 : null,
+        })),
+      )
+      .execute();
+  });
+  seeded.topBar = { login: topBar.login, password: topBar.firstPassword };
+
   // A branch of its own with an Academic Vice Principal who adds the photo of
   // a person of the branch (task 2.2c-2, decision 2); the photos of the
   // browser tests live in memory (PHOTOS_IN_MEMORY of server.ts).
