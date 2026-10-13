@@ -89,8 +89,8 @@ interface Measured {
  * Task 2.7c-1 (pull request #80): a page against docs/design-system.md, in
  * light and dark at 1440 x 900 and in light at 390 x 844. One page title; the
  * page never scrolls sideways (Layout shell, phone width); every visible
- * button is one of the sizes of Buttons: 32, 40 or 44 high, and 48 only on
- * the sign-in frame; no 32-high button at phone width. The theme follows the
+ * button is one of the sizes of Buttons: 32 or 40 high on a desktop, 44 at
+ * phone width, and 48 only on the sign-in frame. The theme follows the
  * device (the account never chose one), so the dark view is the device's.
  * With SCREENSHOTS=1 it saves docs/screens/2.7c-1/<name>-<view>.png. The page
  * is left in light at 1440 x 900.
@@ -133,7 +133,8 @@ export async function checkPage(
       measured.scrollWidth,
       `${where}: no sideways scroll (${measured.outside.join('; ')})`,
     ).toBeLessThanOrEqual(measured.innerWidth);
-    const allowed = view.name === 'phone' ? [40, 44] : [32, 40, 44];
+    // Below 640 px every size is 44 (button.tsx); 32 and 40 on a desktop.
+    const allowed = view.name === 'phone' ? [44] : [32, 40];
     if (signInFrame) {
       allowed.push(48);
     }

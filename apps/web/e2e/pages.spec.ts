@@ -35,6 +35,8 @@ const LISTS = [
   ['setup-template-settings', '/setup/day-template-settings', en.setup.templateSettings.title],
   ['people-staff', '/people/staff', en.people.staff.title],
   ['people-students', '/people/students', en.people.students.title],
+  ['people-vacancies', '/people/vacancies', en.people.vacancies.title],
+  ['audit', '/audit', en.audit.title],
   ['people-parents', '/people/parents', en.people.relatives.title],
 ] as const;
 
@@ -48,10 +50,8 @@ const PAGES = [
   ['setup-settings', '/setup/settings', en.setup.settings.title],
   ['setup-travel-times', '/setup/travel-times', en.setup.travelTimes.title],
   ['people', '/people', en.people.title],
-  ['people-vacancies', '/people/vacancies', en.people.vacancies.title],
   ['people-head-teachers', '/people/head-teachers', en.people.headTeachers.title],
   ['people-never-used', '/people/never-used', en.people.neverUsed.title],
-  ['audit', '/audit', en.audit.title],
 ] as const;
 
 // docs/build-plan.md, task 2.7c-1 (pull request #80), done when: every page of

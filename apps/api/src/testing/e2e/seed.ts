@@ -1317,8 +1317,8 @@ try {
   // the migrator; the test reads and changes nothing but the theme.
   const pagesBranch = await insertBranch(migrator, 'Pages browser test branch');
   const pages = await create('Jasur', 'Tojiboyev');
-  await transactions.run([pagesBranch], async (transaction) => {
-    await assignments.give(transaction, {
+  const pagesGiven = await transactions.run([pagesBranch], async (transaction) => {
+    const vice = await assignments.give(transaction, {
       accountId: pages.id,
       role: 'academic_vice_principal',
       branchId: pagesBranch,
@@ -1330,6 +1330,7 @@ try {
       branchId: pagesBranch,
       givenBy: null,
     });
+    return vice;
   });
   await migrator.transaction().execute(async (transaction) => {
     const building = await transaction
@@ -1510,6 +1511,43 @@ try {
       phone: '+998935550161',
     });
   });
+  // A vacancy, and its creation in the log, so the Vacancies and Audit log
+  // lists have a record to open too.
+  const pagesVacancy = await migrator.transaction().execute(async (transaction) => {
+    const vacancy = await transaction
+      .insertInto('staff')
+      .values({ kind: 'vacancy', vacancy_name: 'Geometry vacancy 1' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: vacancy.id, branch_id: pagesBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: vacancy.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: vacancy.id, status: 'open', valid_from: startDate })
+      .execute();
+    return vacancy.id;
+  });
+  await transactions.run([pagesBranch], (transaction) =>
+    audit.record(transaction, {
+      branchId: pagesBranch,
+      actorId: pages.id,
+      assignmentId: pagesGiven.id,
+      action: 'vacancy.create',
+      record: { type: 'staff', id: pagesVacancy },
+      newValue: { name: 'Geometry vacancy 1', status: 'open', from: startDate },
+    }),
+  );
   seeded.pages = { login: pages.login, password: pages.firstPassword };
 
   console.log(JSON.stringify(seeded));

@@ -33,6 +33,19 @@ function matching(pattern: RegExp, files = sources): string[] {
   );
 }
 
+/** Matches over the whole text (a value written over several lines), as `file: line`. */
+function matchingText(pattern: RegExp, files = sources): string[] {
+  const global = new RegExp(
+    pattern.source,
+    pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`,
+  );
+  return files.flatMap(({ file, text }) =>
+    [...text.matchAll(global)].map(
+      (match) => `${file}:${String(text.slice(0, match.index).split('\n').length)}`,
+    ),
+  );
+}
+
 const read = (file: string): string => readFileSync(path.join(web, file), 'utf8');
 
 describe('the parts of the design system', () => {
@@ -191,15 +204,22 @@ describe('the pages of the design system', () => {
 
   // What we never do 9 and Accessibility ("no information by colour alone"):
   // orange is the action, the active item and "now", never a marker. Every
-  // way of drawing it as a line or a fill: border, ring, outline, underline,
-  // and the fill and stroke of a drawing outside the brand drawings.
+  // way of drawing it as a line or a fill outside the brand drawings: a
+  // border on any side (logical ones too), a divider, a ring, an outline, an
+  // underline, a shadow, a checkbox accent, the fill and stroke of a drawing,
+  // the menu's orange under its own name, an arbitrary value and the
+  // variable itself in a style.
   it('draw no orange border, ring, outline or fill outside the brand drawings', () => {
     const marked = drawn.filter(
       ({ file }) => !file.startsWith(path.join('src', 'components', 'brand')),
     );
     expect(
-      matching(/\b(border|ring|outline|decoration|fill|stroke)(-[trblxy])?-primary(?!-)/, marked),
+      matching(
+        /\b(border|divide|ring|outline|decoration|shadow|accent|fill|stroke)(-[trblxyse])?-(sidebar-)?primary(?!-)/,
+        marked,
+      ),
     ).toEqual([]);
+    expect(matching(/var\(--(sidebar-)?primary\)/, marked)).toEqual([]);
   });
 
   // Type: "Section 17 / 24, 700: panel and section titles". Every heading
@@ -225,11 +245,19 @@ describe('the pages of the design system', () => {
           const level = match[1] ?? '';
           const attributes = match[2] ?? '';
           const wanted = level === '4' ? /\bSUBSECTION_TITLE\b/ : /\bSECTION_TITLE\b/;
+          // No size or weight of its own beside the class.
+          const overridden =
+            /\btext-(xs|sm|base|lg|\d?xl|\[)|\bfont-(thin|light|normal|medium|semibold|bold|extrabold|black)\b/;
           const line = text.slice(0, match.index).split('\n').length;
-          return wanted.test(attributes) ? [] : [`${file}:${String(line)} h${level}`];
+          return wanted.test(attributes) && !overridden.test(attributes)
+            ? []
+            : [`${file}:${String(line)} h${level}`];
         }),
       );
     expect(wrong).toEqual([]);
+    // No deeper level and no heading drawn by a role: the Type table has two
+    // levels under the page title.
+    expect(matchingText(/<h[56]\b|role=["'{]*heading/, drawn)).toEqual([]);
   });
 
   // Buttons: "Large 48: sign-in, the main action of a phone screen"; Medium
@@ -256,9 +284,18 @@ describe('the pages of the design system', () => {
       file,
       text: text.replace(/<PersonPhoto\b[^>]*>/g, (tag) => tag.replaceAll(/\S/g, ' ')),
     }));
-    expect(matching(/size\s*=\s*\{?\s*["'](lg|icon-lg)["']/, buttons)).toEqual([]);
-    expect(matching(/size\s*=\s*\{[^}]*["'](lg|icon-lg)["']/, buttons)).toEqual([]);
-    expect(matching(/size\s*:\s*["'](lg|icon-lg)["']/, buttons)).toEqual([]);
-    expect(matching(/size\s*=\s*["'](lg|icon-lg)["']\s*[,)]/, buttons)).toEqual([]);
+    // An attribute or a default value, a value chosen inside braces (also over
+    // several lines, as Prettier writes a long one), and a key; any quote.
+    expect(matchingText(/size\s*=\s*\{?\s*["'`](lg|icon-lg)["'`]/, buttons)).toEqual([]);
+    expect(matchingText(/size\s*=\s*\{[^}]*["'`](lg|icon-lg)["'`]/, buttons)).toEqual([]);
+    expect(matchingText(/size\s*:\s*["'`](lg|icon-lg)["'`]/, buttons)).toEqual([]);
+    // The frame's size by its name, only where the frame decides it.
+    const decides = [...frame, path.join('src', 'features', 'auth', 'password-page.tsx')];
+    expect(
+      matchingText(
+        /\bFRAME_BUTTON_SIZE\b/,
+        drawn.filter(({ file }) => !decides.includes(file)),
+      ),
+    ).toEqual([]);
   });
 });

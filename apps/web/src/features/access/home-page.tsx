@@ -46,7 +46,13 @@ function ViceHome() {
   const { branchId } = useView();
   const noClass = useQuery(studentNoClassQuery(branchId));
   const noValidPhone = useQuery(relativeNoValidPhoneQuery(branchId));
-  const nothing = noClass.data?.count === 0 && noValidPhone.data?.count === 0;
+  // A failed refetch keeps the old answer: the tile then shows its failure,
+  // and the page is not called empty under it.
+  const nothing =
+    noClass.data?.count === 0 &&
+    noValidPhone.data?.count === 0 &&
+    !noClass.isError &&
+    !noValidPhone.isError;
   return (
     <div className="grid gap-6">
       <NoClassTile />

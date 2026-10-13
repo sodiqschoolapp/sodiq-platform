@@ -603,6 +603,9 @@ describe('the own photo on the account page', () => {
     expect(photo.getByText('NS')).toBeDefined();
     expect(photo.queryByRole('img')).toBeNull();
     expect(photo.queryByRole('button', { name: en.account.photoRemove })).toBeNull();
+    // No line under the title (pull request #80, decision 7).
+    const title = screen.getByRole('region', { name: en.account.photoTitle }).querySelector('h2');
+    expect(title?.nextElementSibling ?? null).toBeNull();
   });
 
   it('shows the photo, and removes it after asking', async () => {

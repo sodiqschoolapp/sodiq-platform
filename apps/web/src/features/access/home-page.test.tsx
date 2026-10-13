@@ -80,6 +80,24 @@ describe('the home page', () => {
     expect(emptyPage()).toBeNull();
   });
 
+  it('drops the empty page when a counter fails on a later refetch', async () => {
+    let failing = false;
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/people/students/no-class': () =>
+        failing ? refusal('internal_error', 500) : json({ count: 0 }),
+      'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+    });
+    const { queryClient } = renderApp('/');
+    await bothAsked(calls);
+    expect(await screen.findByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
+    failing = true;
+    await queryClient.refetchQueries();
+    // The tile says it failed, with a retry, and the page is not called empty under it.
+    expect(await screen.findByRole('button', { name: en.problems.retry })).toBeDefined();
+    expect(emptyPage()).toBeNull();
+  });
+
   it('says so when the account holds no role', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionOf({ assignments: [] })) });
     renderApp('/');

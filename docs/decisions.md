@@ -231,7 +231,8 @@ Plan approved on pull request #80 with corrections 1 to 3; decisions 1 to 15 con
 | The changed cell of the template table is the info tint with the `edit` icon, a hidden word and the legend "Changes with this save" (the preview is of any change, not only a template); the count reads "11 cells change." | Decision 5; build |
 | An account with no role sees the empty page with "Your account has no role yet." | Build |
 | A list's column may shrink below its table (`grid-cols-1`) and a segmented control wraps: the browser check found the student panel pushed past the page at 1440 px; the read-only travel-time table scrolls inside its panel (`min-w-0`) | Build, browser check |
-| The browser check measures the Button part (`[data-slot="button"]`); a link drawn as a button and the name button of a row are not measured | Build |
+| The browser check measures the Button part (`[data-slot="button"]`): 32 or 40 high on a desktop, 44 at phone width, 48 only on the sign-in frame; a link drawn as a button and the name button of a row are not measured | Build; spec review |
+| The e2e branch of `pages` holds a vacancy and its log entry, so the Vacancies and Audit log lists open a record too | Spec review |
 | The e2e account `pages` is an Academic Vice Principal and a Teacher of a branch of its own; the Super Admin's pages are checked at the end of the first Super Admin test; its second sign-in uses a recovery code | Decision 8; build |
 
 ## 13 October 2026: smaller UX (task 2.7b-2)
