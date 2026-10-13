@@ -68,8 +68,7 @@ export function BranchForm({ branch, label, onSave }: BranchFormProps) {
     }),
     save: onSave,
     // A phone not in the format says the format (item 10).
-    message: (field, issue) =>
-      field === 'phone' ? t('form.phoneFormat') : undefined,
+    message: (field) => (field === 'phone' ? t('form.phoneFormat') : undefined),
   });
 
   return (

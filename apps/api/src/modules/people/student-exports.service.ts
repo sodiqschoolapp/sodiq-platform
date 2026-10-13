@@ -273,13 +273,10 @@ const STUDENT_EXPORT_SPECS: Readonly<Record<StudentExportColumn, ExportColumn<Ex
     const main = mainContactOf(row);
     return main === undefined ? null : texts.student.relationships[main.relationship];
   }),
-  mainContactPhone: oneCell(
-    heading('mainContactPhone'),
-    (row) => {
-      const phone = mainContactOf(row)?.phone;
-      return phone === null || phone === undefined ? null : phoneText(phone);
-    },
-  ),
+  mainContactPhone: oneCell(heading('mainContactPhone'), (row) => {
+    const phone = mainContactOf(row)?.phone;
+    return phone === null || phone === undefined ? null : phoneText(phone);
+  }),
   mainContactExtraPhones: oneCell(heading('mainContactExtraPhones'), (row) =>
     phonesOf(mainContactOf(row)?.extraPhones ?? []),
   ),

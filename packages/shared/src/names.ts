@@ -100,5 +100,7 @@ export function spellingKey(text: string): string {
  * 13 October 2026). Titles of panels and pages, the own name and sentences
  * keep "First name Surname" (task 2.7b-1, decision 3).
  */
-export const listName = (person: { readonly firstName: string; readonly lastName: string }): string =>
-  `${person.lastName} ${person.firstName}`;
+export const listName = (person: {
+  readonly firstName: string;
+  readonly lastName: string;
+}): string => `${person.lastName} ${person.firstName}`;

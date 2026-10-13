@@ -362,19 +362,7 @@ describe('the export of the setup lists', () => {
           'Group subject, Demanding',
           'Active',
         ],
-        [
-          'Music',
-          'STEAM',
-          '7–9',
-          'Attendance only',
-          'No',
-          null,
-          null,
-          null,
-          null,
-          '',
-          'Active',
-        ],
+        ['Music', 'STEAM', '7–9', 'Attendance only', 'No', null, null, null, null, '', 'Active'],
       ]);
       const south = await fileOf(
         await exportOf('/api/setup/subjects/export', send([physics], ['daily']), t.admin, t.south),

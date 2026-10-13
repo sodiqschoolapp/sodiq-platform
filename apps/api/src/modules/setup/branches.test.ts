@@ -302,9 +302,13 @@ describe('the record of a branch', () => {
       expect((await branchEntries('branch.edit', south)).length).toBe(before);
     });
 
-
     it('with the phone stored as its digits and audited so, and a spaced form of the same phone as no change', async () => {
-      const typed = { name: 'South', address: 'Sergeli, 9', email: '', workingWeekdays: [1, 2, 3, 4, 5, 6] };
+      const typed = {
+        name: 'South',
+        address: 'Sergeli, 9',
+        email: '',
+        workingWeekdays: [1, 2, 3, 4, 5, 6],
+      };
       const response = await put(admin, south, { ...typed, phone: '+998 (71) 200-00-09' });
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({ phone: '+998712000009' });

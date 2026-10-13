@@ -1,10 +1,4 @@
-import {
-  APPOINTMENT_ROLES,
-  listName,
-  PERMISSIONS,
-  permits,
-  type Appointment,
-} from '@sodiq/shared';
+import { APPOINTMENT_ROLES, listName, PERMISSIONS, permits, type Appointment } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
@@ -24,9 +18,7 @@ import { schoolDateText } from '@/lib/dates';
  * 27), the login otherwise (decision 14 of #63).
  */
 const personText = (row: Appointment): string =>
-  row.person.name === null
-    ? row.person.login
-    : listName(row.person.name);
+  row.person.name === null ? row.person.login : listName(row.person.name);
 
 /**
  * The Head Teachers of the branch (`02`, Head Teachers and Senior Head

@@ -241,7 +241,13 @@ describe('the branch phone ("Decided ahead for tasks 2.2d and 2.7", item 10)', (
   });
 
   it('refuses any other text on phone', () => {
-    for (const phone of ['71 123 45 67', '+99871123456', '+9987112345678', '+7 495 123 45 67', 'call the office']) {
+    for (const phone of [
+      '71 123 45 67',
+      '+99871123456',
+      '+9987112345678',
+      '+7 495 123 45 67',
+      'call the office',
+    ]) {
       const result = phoneOf(phone);
       expect(result.success).toBe(false);
       expect(result.error?.issues.map((issue) => issue.path)).toEqual([['phone']]);

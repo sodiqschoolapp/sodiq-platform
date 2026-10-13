@@ -143,10 +143,7 @@ export function SubjectPanel({
               [t('setup.subjects.nameRu'), subject.names.ru],
               [t('setup.subjects.nameEn'), subject.names.en],
               [t('setup.subjects.department'), departmentName],
-              [
-                t('setup.subjects.grades'),
-                gradeRanges(subject.grades),
-              ],
+              [t('setup.subjects.grades'), gradeRanges(subject.grades)],
               [
                 t('setup.subjects.journalType'),
                 t(`setup.subjects.journalTypes.${subject.journalType}`),

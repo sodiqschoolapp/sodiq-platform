@@ -8,14 +8,7 @@ import type { TFunction } from 'i18next';
  */
 
 export type BrowserKey =
-  | 'edge'
-  | 'opera'
-  | 'yandex'
-  | 'samsung'
-  | 'firefox'
-  | 'chrome'
-  | 'safari'
-  | 'other';
+  'edge' | 'opera' | 'yandex' | 'samsung' | 'firefox' | 'chrome' | 'safari' | 'other';
 export type SystemKey = 'windows' | 'android' | 'ios' | 'macos' | 'linux' | 'other';
 
 /**

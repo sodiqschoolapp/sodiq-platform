@@ -161,7 +161,10 @@ async function openList({
     [`GET /api/setup/subjects/${MATHS.id}/quarter-weights`]: () => json(answer(quarters)),
     [`GET /api/setup/subjects/${PHYSICS.id}/quarter-weights`]: () => json(answer(quarters)),
     'POST /api/setup/subjects': (body) =>
-      json({ ...MATHS, ...(body as object), id: uid(25), quarterWeightsMissing: 4, quarterCount: 4 }, 201),
+      json(
+        { ...MATHS, ...(body as object), id: uid(25), quarterWeightsMissing: 4, quarterCount: 4 },
+        201,
+      ),
     [`PUT /api/setup/subjects/${MATHS.id}`]: (body) => json({ ...MATHS, ...(body as object) }),
     [`PUT /api/setup/subjects/${PHYSICS.id}`]: (body) => json({ ...PHYSICS, ...(body as object) }),
     [`PUT /api/setup/subjects/${SPIRIT.id}`]: (body) => json({ ...SPIRIT, ...(body as object) }),

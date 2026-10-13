@@ -234,10 +234,15 @@ function StudentParts({ report, words }: { report: StudentReport; words: Words }
           key: relative.id,
           heading: relative.fullName,
           rows: [
-            [t('people.relatives.phone'), words.text(relative.phone === null ? null : phoneText(relative.phone))],
+            [
+              t('people.relatives.phone'),
+              words.text(relative.phone === null ? null : phoneText(relative.phone)),
+            ],
             [
               t('people.relatives.extraPhones'),
-              relative.extraPhones.length === 0 ? words.empty : relative.extraPhones.map(phoneText).join(', '),
+              relative.extraPhones.length === 0
+                ? words.empty
+                : relative.extraPhones.map(phoneText).join(', '),
             ],
             [t('people.relatives.workplace'), words.text(relative.workplace)],
             [t('people.relatives.email'), words.text(relative.email)],

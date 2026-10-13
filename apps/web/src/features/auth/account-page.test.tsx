@@ -270,9 +270,7 @@ describe('the account page', () => {
     const devices = section(en.account.devicesTitle);
     await devices.findAllByRole('row');
 
-    fireEvent.click(
-      devices.getByRole('button', { name: 'Remove Edge on Windows' }),
-    );
+    fireEvent.click(devices.getByRole('button', { name: 'Remove Edge on Windows' }));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog.textContent).toContain(en.account.removeThisText);
     fireEvent.click(within(dialog).getByRole('button', { name: en.account.remove }));

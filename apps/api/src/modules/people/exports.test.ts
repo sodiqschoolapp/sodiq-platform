@@ -1,9 +1,4 @@
-import {
-  BRANCH_HEADER,
-  phoneText,
-  staffDetailSchema,
-  vacancyDetailSchema,
-} from '@sodiq/shared';
+import { BRANCH_HEADER, phoneText, staffDetailSchema, vacancyDetailSchema } from '@sodiq/shared';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -350,7 +345,9 @@ describe('the export of the staff and vacancy lists', () => {
           both.cookie,
         ),
       );
-      expect(withPhone.sheet.rows).toEqual([[`${someone.lastName} Malika`, grouped(someone.phone)]]);
+      expect(withPhone.sheet.rows).toEqual([
+        [`${someone.lastName} Malika`, grouped(someone.phone)],
+      ]);
       expect((await t.entries('staff.export')).at(-1)).toMatchObject({
         assignment_id: viceHeld.id,
         details: { columns: ['name', 'phone'], leftOut: [] },

@@ -284,7 +284,9 @@ function TakenChoices({
               <h4 className="font-semibold">{t('people.relatives.thisRecord')}</h4>
               <p>{relative.fullName}</p>
               <p>
-                {relative.phone === null ? t('people.relatives.noPhone') : phoneText(relative.phone)}
+                {relative.phone === null
+                  ? t('people.relatives.noPhone')
+                  : phoneText(relative.phone)}
               </p>
               <ul className="text-muted-foreground">
                 {relative.students.map((student) => (

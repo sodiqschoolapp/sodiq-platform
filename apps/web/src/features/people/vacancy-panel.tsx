@@ -185,10 +185,7 @@ function Overview({
       vacancy.subjects.length === 0
         ? t('people.staff.none')
         : vacancy.subjects
-            .map(
-              (own) =>
-                `${subjectName(own.subjectId)} (${gradeRanges(own.grades)})`,
-            )
+            .map((own) => `${subjectName(own.subjectId)} (${gradeRanges(own.grades)})`)
             .join('; '),
     ],
     [

@@ -185,8 +185,7 @@ function branchOf(access: Access): string {
   return access.branchId;
 }
 
-const refused = (code: 'no_academic_year'): ApiException =>
-  new ApiException(code, 409);
+const refused = (code: 'no_academic_year'): ApiException => new ApiException(code, 409);
 
 /** The assignment that lets the account read a group of fields in the branch of the request. */
 const readerOf = (access: Access, area: string): string | undefined =>

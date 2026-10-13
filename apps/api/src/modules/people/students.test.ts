@@ -288,7 +288,7 @@ describe('student records', () => {
       refusedWith(refused, 409, 'uid_set_mismatch');
       // The warning names the set of the grade (finding 25; task 2.7b-1, decision 7).
       expect(detailsOf(refused)).toEqual([
-        { path: 'uid', code: 'uid_set', message: expect.any(String), expected: '2607' },
+        { path: 'uid', code: 'uid_set', message: expect.any(String) as string, expected: '2607' },
       ]);
       expect(await snapshot()).toEqual(before);
       const response = await t.post('/api/people/students', t.north, {
@@ -1105,7 +1105,11 @@ describe('student records', () => {
       refusedWith(await correct('2607993', ''), 400, 'validation_failed');
       const outside = await correct('2606993');
       refusedWith(outside, 409, 'uid_set_mismatch');
-      expect(detailsOf(outside)[0]).toMatchObject({ path: 'uid', code: 'uid_set', expected: '2607' });
+      expect(detailsOf(outside)[0]).toMatchObject({
+        path: 'uid',
+        code: 'uid_set',
+        expected: '2607',
+      });
       const here = await correct(holder.uid);
       refusedWith(here, 409, 'student_value_taken');
       expect(detailsOf(here)[0]).toMatchObject({ path: 'uid', recordId: holder.id });

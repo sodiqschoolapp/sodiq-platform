@@ -372,7 +372,7 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
         ? t('people.staff.hidden')
         : (jshshir ?? t('people.staff.notSet')),
     ],
-    [t('people.staff.phone'), staff.phone === null ? null : phoneText(staff.phone)],
+    [t('people.staff.phone'), phoneText(staff.phone)],
     [t('people.staff.email'), staff.email ?? t('people.staff.notSet')],
     [
       t('people.staff.branches'),

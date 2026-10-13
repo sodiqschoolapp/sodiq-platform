@@ -282,7 +282,13 @@ describe('school setup in the database', () => {
         inBranch(north, (transaction) =>
           transaction.updateTable('branches').set({ phone }).where('id', '=', north).execute(),
         );
-      for (const phone of ['+998 71 200 00 00', 'abc', '+99871200000', '+9987120000000', '+74951234567']) {
+      for (const phone of [
+        '+998 71 200 00 00',
+        'abc',
+        '+99871200000',
+        '+9987120000000',
+        '+74951234567',
+      ]) {
         await expect(set(phone)).rejects.toMatchObject({
           code: CHECK_VIOLATION,
           constraint: 'branches_phone_format',
@@ -302,7 +308,9 @@ describe('school setup in the database', () => {
 
     it('bring the phones stored before 0041 into the format, with one audit entry per changed branch', async () => {
       const migration = readFileSync(
-        fileURLToPath(new URL('../../../../../db/migrations/0041_branch_phone_format.sql', import.meta.url)),
+        fileURLToPath(
+          new URL('../../../../../db/migrations/0041_branch_phone_format.sql', import.meta.url),
+        ),
         'utf8',
       );
       const rewrite = migration.split('-- Step 2.')[0] ?? '';
@@ -312,7 +320,9 @@ describe('school setup in the database', () => {
       const seen = await database.migrator
         .transaction()
         .execute(async (transaction) => {
-          await sql`alter table branches drop constraint branches_phone_format`.execute(transaction);
+          await sql`alter table branches drop constraint branches_phone_format`.execute(
+            transaction,
+          );
           const insert = (name: string, phone: string | null) =>
             transaction
               .insertInto('branches')
@@ -365,7 +375,8 @@ describe('school setup in the database', () => {
       expect(phoneOf(right)).toBe('+998712000001');
       expect(phoneOf(none)).toBeNull();
 
-      const entryOf = (id: string | undefined) => seen.entries.filter((row) => row.branch_id === id);
+      const entryOf = (id: string | undefined) =>
+        seen.entries.filter((row) => row.branch_id === id);
       expect(entryOf(right)).toEqual([]);
       expect(entryOf(none)).toEqual([]);
       for (const [id, oldPhone, newPhone] of [
@@ -385,7 +396,7 @@ describe('school setup in the database', () => {
             new_value: { phone: newPhone },
             reason: 'Branch phone format (task 2.7b-1)',
             details: null,
-            occurred_at: expect.any(Date),
+            occurred_at: expect.any(Date) as Date,
           },
         ]);
       }
