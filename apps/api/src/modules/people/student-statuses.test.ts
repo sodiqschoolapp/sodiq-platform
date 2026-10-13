@@ -487,6 +487,10 @@ describe('leaving, return and delete of a student', () => {
       );
       expect(cancelled).toMatchObject({ status: 'active', planned: null, version: 3 });
       expect(await t.entries('student.leave_cancelled', student.id)).toHaveLength(1);
+      // One unbroken line (issue #39, hand test of 13 October 2026, finding 7).
+      expect(cancelled.statuses.map((row) => [row.status, row.from, row.until, row.cause])).toEqual(
+        [['active', '2026-09-02', null, 'start']],
+      );
 
       const again = accepted(await leave(cancelled, '2026-10-10'));
       t.clock.set(NEXT_DAY);
@@ -504,13 +508,28 @@ describe('leaving, return and delete of a student', () => {
         }),
       );
       expect(undone).toMatchObject({ status: 'active', planned: null });
-      expect(undone.statuses.at(-1)).toMatchObject({
-        status: 'active',
-        from: '2026-10-11',
-        until: null,
-        cause: 'undo',
-        reason: 'Entered for the wrong student.',
-      });
+      // The undo leaves no break on the record (finding 7 of the hand test of
+      // 13 October 2026, correction 3 of the review of pull request #77): the
+      // line holds the first day; the undo's row and its reason stay stored
+      // and in the audit log.
+      expect(undone.statuses.map((row) => [row.status, row.from, row.until, row.cause])).toEqual([
+        ['active', '2026-09-02', null, 'start'],
+      ]);
+      const stored = await t.database.migrator
+        .selectFrom('student_statuses')
+        .select(['status', 'valid_from', 'valid_until', 'cause', 'reason'])
+        .where('student_id', '=', student.id)
+        .where('cause', '=', 'undo')
+        .execute();
+      expect(stored).toEqual([
+        {
+          status: 'active',
+          valid_from: '2026-10-11',
+          valid_until: null,
+          cause: 'undo',
+          reason: 'Entered for the wrong student.',
+        },
+      ]);
       const [entry] = await t.entries('student.leave_undone', student.id);
       expect(entry?.reason).toBe('Entered for the wrong student.');
     });

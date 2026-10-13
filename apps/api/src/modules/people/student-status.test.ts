@@ -1,6 +1,7 @@
 import { nextDay as dayAfter } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import {
+  historyLines,
   holdsData,
   planCancelLeaving,
   planLeaving,
@@ -352,5 +353,43 @@ describe('plannedAfter (the "leaves on" badge)', () => {
       row('c', 'active', '2026-10-11', null, 'cancel'),
     ];
     expect(plannedAfter(cancelled, TODAY)).toBeNull();
+  });
+});
+
+// Issue #39, hand test of 13 October 2026, finding 7: one unbroken line.
+describe('the lines of the status history', () => {
+  it('joins the fill of a leaving cancelled before its date', () => {
+    const rows = [
+      row('a', 'active', '2026-09-01', '2026-10-14', 'start'),
+      row('b', 'inactive', '2026-10-14', '2026-10-14', 'leaving'),
+      row('c', 'active', '2026-10-14', null, 'cancel'),
+    ];
+    expect(historyLines(rows)).toEqual([row('a', 'active', '2026-09-01', null, 'start')]);
+  });
+
+  it('joins the fill of an undone leaving', () => {
+    const rows = [
+      row('a', 'active', '2026-09-01', '2026-10-05', 'start'),
+      row('b', 'inactive', '2026-10-05', '2026-10-05', 'leaving'),
+      row('c', 'active', '2026-10-05', null, 'undo'),
+    ];
+    expect(historyLines(rows)).toEqual([row('a', 'active', '2026-09-01', null, 'start')]);
+  });
+
+  it('keeps a real break: a leaving in force, then a return', () => {
+    const rows = [
+      row('a', 'active', '2026-09-01', '2026-10-05', 'start'),
+      row('b', 'inactive', '2026-10-05', '2026-10-08', 'leaving'),
+      row('c', 'active', '2026-10-08', null, 'return'),
+    ];
+    expect(historyLines(rows)).toEqual(rows);
+  });
+
+  it('keeps a scheduled leaving and the active time before it', () => {
+    const rows = [
+      row('a', 'active', '2026-09-01', '2026-10-20', 'start'),
+      row('b', 'inactive', '2026-10-20', null, 'leaving'),
+    ];
+    expect(historyLines(rows)).toEqual(rows);
   });
 });

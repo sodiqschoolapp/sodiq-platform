@@ -34,7 +34,12 @@ import { Audit } from '../audit/audit.service.js';
 import { changesOf, notFound } from '../setup/setup-refusals.js';
 import { refusingRelativeRaces, RelativeWrites } from './relative-writes.js';
 import { exportGroupsOf } from './student-export.js';
-import { holdsData, plannedAfter, type StoredStudentStatus } from './student-status.js';
+import {
+  historyLines,
+  holdsData,
+  plannedAfter,
+  type StoredStudentStatus,
+} from './student-status.js';
 
 const UNIQUE_VIOLATION = '23505';
 
@@ -934,7 +939,9 @@ export class Students {
             consentSignedOn: row.consent_signed_on,
           }
         : null,
-      statuses: statuses.map((status) => ({
+      // A leaving taken back leaves no break in the history (finding 7 of the
+      // hand test of 13 October 2026); the rows and the audit keep it.
+      statuses: historyLines(statuses).map((status) => ({
         status: status.status,
         from: status.validFrom,
         until: status.validUntil,
