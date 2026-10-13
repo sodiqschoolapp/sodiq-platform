@@ -558,10 +558,13 @@ describe('phone owners and merges in the database', () => {
         await linkRelative(transaction, student, south, MOMENT);
         await linkTo(transaction, student, south, merged.relative);
       });
+      // The refusal is awaited from the start: it comes as soon as the merge
+      // commits, before `merging.done` resolves (an unhandled rejection otherwise).
+      const refused = expect(linking).rejects.toMatchObject({ constraint: 'relative_merged' });
       await untilWaiting();
       merging.release();
       await merging.done;
-      await expect(linking).rejects.toMatchObject({ constraint: 'relative_merged' });
+      await refused;
       expect((await stored(merged.relative)).archived_at).not.toBeNull();
     });
   });
