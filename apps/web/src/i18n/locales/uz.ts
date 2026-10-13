@@ -1339,11 +1339,13 @@ export const uz: Texts<'one' | 'other'> = {
       mergeName: 'Qoladigan ism',
       mergePhone: 'Qoladigan telefon',
       mergeTitle: 'Ikki yozuv birlashtirilsinmi?',
-      mergeText_one:
-        'Ikkalasi bitta yozuvga aylanadi; unga {{count}} ta oʻquvchi bogʻlanishi oʻtadi.',
-      mergeText_other:
-        'Ikkalasi bitta yozuvga aylanadi; unga {{count}} ta oʻquvchi bogʻlanishi oʻtadi.',
       merge: 'Birlashtirish',
+      thisRecord: 'Bu yozuv',
+      otherRecord: 'Boshqa yozuv',
+      linkedCount_one: '{{count}} ta oʻquvchiga bogʻlangan',
+      linkedCount_other: '{{count}} ta oʻquvchiga bogʻlangan',
+      mergeText:
+        'Ikkalasi bitta yozuvga aylanadi va ikkalasining barcha oʻquvchilari unga bogʻlanadi. Boshqa yozuv arxivga oʻtadi.',
       giveNumber: 'Raqamni shu qarindoshga berish',
       takenGone: 'Bu telefon boshqa qarindoshga tegishli.',
       hidden: 'Yashirilgan',
@@ -1689,7 +1691,7 @@ export const uz: Texts<'one' | 'other'> = {
         phone_changed:
           'Oʻquvchilaringiz ota-onasi {{fullName}}ning asosiy telefoni boshqa filialda oʻzgartirildi.',
         merged:
-          '{{mergedName}} va {{fullName}} ota-ona yozuvlari boshqa filialda birlashtirildi; {{fullName}} qoldi.',
+          '{{keptName}} va {{mergedName}} ota-ona yozuvlari boshqa filialda birlashtirildi; {{fullName}} ismi qoldi.',
       },
     },
   },

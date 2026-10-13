@@ -66,15 +66,20 @@ create trigger relatives_phone_and_merge
   before update on relatives
   for each row execute function relatives_phone_and_merge();
 
--- A merged record is archived at the commit: every live link of it was moved
--- (`04`: "all links move to one record"). A relative is visible only through
--- a live link, so a merged record still visible has one. Not SECURITY DEFINER.
+-- A merged record is archived at the commit: every live link of it, in every
+-- branch, was moved (`04`: "all links move to one record"). SECURITY DEFINER:
+-- the links of other branches decide it, whatever the row filter of the
+-- writing transaction shows (`.claude/rules/database.md`; spec review of the
+-- build, finding 5).
 create function relatives_merged_archived() returns trigger
 language plpgsql
+security definer
+set search_path = pg_catalog, public
 as $$
 begin
   if new.merged_into is not null and exists (
-    select 1 from relatives where id = new.id and archived_at is null
+    select 1 from public.student_relatives
+    where relative_id = new.id and unlinked_at is null
   ) then
     raise exception 'relative_merged_links'
       using errcode = 'check_violation', constraint = 'relative_merged_links';
@@ -83,10 +88,37 @@ begin
 end
 $$;
 
+revoke execute on function relatives_merged_archived() from public;
+
 create constraint trigger relatives_merged_archived
   after update of merged_into on relatives
   deferrable initially deferred
   for each row execute function relatives_merged_archived();
+
+-- The Parent account of a merged record stays switched off for good
+-- (correction 2), also once Release 2 drops `relative_accounts_switched_off_check`.
+-- SECURITY DEFINER: a merged record is archived and visible to no branch.
+create function relative_accounts_merged_off() returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  if new.switched_on_at is not null and exists (
+    select 1 from public.relatives where id = new.relative_id and merged_into is not null
+  ) then
+    raise exception 'relative_merged'
+      using errcode = 'check_violation', constraint = 'relative_merged';
+  end if;
+  return new;
+end
+$$;
+
+revoke execute on function relative_accounts_merged_off() from public;
+
+create trigger relative_accounts_merged_off
+  before update on relative_accounts
+  for each row execute function relative_accounts_merged_off();
 
 -- A merged relative is never linked again (decision 9, Look first). The
 -- relative's row is locked first, in a statement of its own (the lock
@@ -181,7 +213,8 @@ grant execute on function relative_notice_accounts(uuid, uuid) to sodiq_app;
 -- Look first): the holder of exactly `phone` gets `new_phone`, or "no valid
 -- phone" from the moment of the transaction when it is empty. Its row is
 -- locked first, in a statement of its own, and read again after the lock; a
--- holder whose phone moved, or a merged one, is refused and nothing changes.
+-- holder whose phone moved is refused and nothing changes (a merged record
+-- has no phone, so it is refused the same way).
 -- Only the phone is written. Answers the notice targets of that relative,
 -- which the branch of the request may not see (review finding 1). The branch
 -- of the request must be one of the transaction's (correction 3). A taken
@@ -196,7 +229,6 @@ set search_path = pg_catalog, public
 as $$
 declare
   held text;
-  merged uuid;
   found_id uuid;
   moment timestamptz;
 begin
@@ -205,12 +237,10 @@ begin
       using errcode = 'check_violation', constraint = 'relative_request_branch';
   end if;
   perform 1 from public.relatives r where r.id = relative_release_phone.relative_id for update;
-  select r.id, r.phone, r.merged_into into found_id, held, merged
+  select r.id, r.phone into found_id, held
     from public.relatives r
     where r.id = relative_release_phone.relative_id;
-  if found_id is null or held is distinct from relative_release_phone.phone
-    or merged is not null
-  then
+  if found_id is null or held is distinct from relative_release_phone.phone then
     raise exception 'relative_phone_changed'
       using errcode = 'check_violation', constraint = 'relative_phone_changed';
   end if;

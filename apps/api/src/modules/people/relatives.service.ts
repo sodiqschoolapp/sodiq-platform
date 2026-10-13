@@ -34,7 +34,7 @@ import {
   recordOf,
   writingPhone,
 } from './relative-writes.js';
-import { Students } from './students.service.js';
+import { statusOfStudentOn, Students } from './students.service.js';
 
 function branchOf(access: Access): string {
   if (access.branchId === null) {
@@ -180,14 +180,7 @@ export class Relatives {
         where l.relative_id = relatives.id
           and l.branch_id = ${branchId}::uuid
           and l.unlinked_at is null
-          and (
-            select ss.status from student_statuses ss
-            where ss.student_id = l.student_id
-              and coalesce(ss.valid_until, 'infinity'::date) > ${today}::date
-              and ss.valid_from < coalesce(ss.valid_until, 'infinity'::date)
-            order by ss.valid_from
-            limit 1
-          ) = 'active'
+          and ${statusOfStudentOn(sql.ref('l.student_id'), today)} = 'active'
       )
     )`;
   }
@@ -436,7 +429,20 @@ export class Relatives {
             .where('id', '=', link.id)
             .execute();
           if (keptLink !== undefined) {
-            // The student keeps the kept record's link; the main mark moves to it.
+            // The student keeps the kept record's link: the merged one ends,
+            // with an entry of its own (spec review of the build, finding 3),
+            // and the main mark moves to the kept one.
+            await this.audit.record(transaction, {
+              branchId: link.branch_id,
+              actorId: access.accountId,
+              assignmentId,
+              action: 'relative.unlink',
+              record: { type: 'relative', id: merged.id },
+              oldValue: linkValueOf(link.student_id, link),
+              newValue: { studentId: link.student_id },
+              details: { mergedInto: kept.id },
+              requestId,
+            });
             if (link.main_contact && !keptLink.main_contact) {
               await transaction
                 .updateTable('student_relatives')
@@ -529,7 +535,13 @@ export class Relatives {
           details: { branchId },
           requestId,
         });
-        await this.tell(transaction, access, told, merged.full_name, keptValue.fullName);
+        await this.writes.tell(
+          transaction,
+          access,
+          'relative.merged',
+          { keptName: kept.full_name, mergedName: merged.full_name, fullName: keptValue.fullName },
+          told,
+        );
         const detail = await this.readDetail(transaction, access, kept.id);
         // The students of other branches are counted against the branch of the
         // request, also in the Super Admin's every-branch transaction.
@@ -542,23 +554,6 @@ export class Relatives {
           .executeTakeFirstOrThrow();
         return { ...detail, elsewhere: Number(outside.count) + detail.elsewhere };
       }),
-    );
-  }
-
-  /** The notice of a merge to the other branches of both records. */
-  private async tell(
-    transaction: Transaction,
-    access: Access,
-    accountIds: readonly string[],
-    mergedName: string,
-    fullName: string,
-  ): Promise<void> {
-    await this.writes.tell(
-      transaction,
-      access,
-      'relative.merged',
-      { mergedName, fullName },
-      accountIds,
     );
   }
 

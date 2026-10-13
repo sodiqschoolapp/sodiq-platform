@@ -440,6 +440,42 @@ describe('phone owners and merges in the database', () => {
       expect(await release(north, kept.relative, '+998901140005', '+998901140007')).toEqual([]);
     });
 
+    it('refuses a merge that leaves a live link in a branch the transaction does not see', async () => {
+      const kept = await studentWithRelative(north, '+998901140010');
+      const merged = await studentWithRelative(north, '+998901140011');
+      await inBranch(south, async (transaction) => {
+        const student = await writeStudent(transaction, south);
+        await linkRelative(transaction, student, south, MOMENT);
+        await linkTo(transaction, student, south, merged.relative);
+      });
+      await expect(mergeInto(north, merged, kept.relative)).rejects.toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'relative_merged_links',
+      });
+      expect((await stored(merged.relative)).merged_into).toBeNull();
+    });
+
+    it('is never restored, and its account is never switched on (correction 2)', async () => {
+      const kept = await studentWithRelative(north, '+998901140012');
+      const merged = await studentWithRelative(north, '+998901140013');
+      await mergeInto(north, merged, kept.relative);
+      await expect(
+        database.migrator
+          .updateTable('relatives')
+          .set({ archived_at: null })
+          .where('id', '=', merged.relative)
+          .execute(),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'relative_merged' });
+      // Before the check of 0036, which Release 2 drops.
+      await expect(
+        database.migrator
+          .updateTable('relative_accounts')
+          .set({ switched_on_at: MOMENT })
+          .where('relative_id', '=', merged.relative)
+          .execute(),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'relative_merged' });
+    });
+
     it('refuses a link held open while a merge commits, after the wait', async () => {
       const kept = await studentWithRelative(north, '+998901140008');
       const merged = await studentWithRelative(north, '+998901140009');

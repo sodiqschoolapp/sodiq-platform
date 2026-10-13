@@ -695,6 +695,7 @@ export {
   relativeNameSchema,
   relativeNewOwnerSchema,
   relativeNoValidPhoneSchema,
+  relativePreviousPhoneSchema,
   relativeParamsSchema,
   relativePhoneMatchResultSchema,
   relativePhoneMatchSchema,

@@ -190,6 +190,10 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'The holder of an exact main phone in any branch, archived included: id, full name and the number of students linked live, for the phone typed first and the refused phone change (04, Close relatives: "the system shows the person"; task 2.5a, decision 3 of pull request #72, Look first).',
   'relative_links_elsewhere(uuid)':
     'The number of students of other branches linked live to a relative that the transaction sees, or null (edge/close-relatives: "students of other branches appear as a count"; task 2.5a, decision 3); a count.',
+  'relative_accounts_merged_off()':
+    'The trigger that keeps the Parent account of a merged relative switched off for good (task 2.5b-1, correction 2 of pull request #73); a merged record is archived and visible to no branch.',
+  'relatives_merged_archived()':
+    'The deferred check that a merged relative has no live link left in any branch at the commit (task 2.5b-1, decision 6); the links of other branches decide it, whatever the writing transaction sees.',
   'relative_notice_accounts(uuid,uuid)':
     'The accounts of a current Academic Vice Principal of each other branch where a relative the transaction sees is linked live, ids only, for the notice of a change of name or phone (edge/close-relatives: "the other branch\'s Academic Vice Principal is told"; task 2.5b-1, decision 5 of pull request #73, Look first).',
   'relative_release_phone(uuid,text,text,uuid)':

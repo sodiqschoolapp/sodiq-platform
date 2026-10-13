@@ -1324,9 +1324,13 @@ export const en = {
       mergeName: 'Name that stays',
       mergePhone: 'Phone that stays',
       mergeTitle: 'Merge the two records?',
-      mergeText_one: 'Both become one record; its {{count}} student link moves to it.',
-      mergeText_other: 'Both become one record; all {{count}} student links move to it.',
       merge: 'Merge',
+      thisRecord: 'This record',
+      otherRecord: 'The other record',
+      linkedCount_one: 'Linked to {{count}} student',
+      linkedCount_other: 'Linked to {{count}} students',
+      mergeText:
+        'Both become one record, and every student of both is linked to it. The other record is archived.',
       giveNumber: 'Give the number to this relative',
       takenGone: 'This phone belongs to another relative.',
       hidden: 'Hidden',
@@ -1669,7 +1673,7 @@ export const en = {
         phone_changed:
           'The main phone of {{fullName}}, a parent of your students, was changed in another branch.',
         merged:
-          'The parent records {{mergedName}} and {{fullName}} were merged in another branch; {{fullName}} stays.',
+          'The parent records {{keptName}} and {{mergedName}} were merged in another branch; the name {{fullName}} stays.',
       },
     },
   },

@@ -25,7 +25,7 @@ import {
   type StudentStatus,
   type StudentUidCorrection,
 } from '@sodiq/shared';
-import { sql } from 'kysely';
+import { sql, type RawBuilder } from 'kysely';
 import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import { decide } from '../access/permission-check.js';
@@ -197,15 +197,22 @@ const readerOf = (access: Access, area: string): string | undefined =>
  * before their start date; spec review of the build). A withdrawn row (empty
  * range) never counts.
  */
-const statusOn = (date: SchoolDate) =>
+/**
+ * The status of a student on a school date: its first status row not ended
+ * by then. One fragment for the student list and the relatives with no valid
+ * phone (task 2.5b-1), so the two never drift apart.
+ */
+export const statusOfStudentOn = (student: RawBuilder<unknown>, date: SchoolDate) =>
   sql<string | null>`(
     select ss.status from student_statuses ss
-    where ss.student_id = students.id
+    where ss.student_id = ${student}
       and coalesce(ss.valid_until, 'infinity'::date) > ${date}::date
       and ss.valid_from < coalesce(ss.valid_until, 'infinity'::date)
     order by ss.valid_from
     limit 1
-  )`.as('status');
+  )`;
+
+const statusOn = (date: SchoolDate) => statusOfStudentOn(sql.ref('students.id'), date).as('status');
 
 /** The assignment that lets the account leave, return and delete students in the branch of the request. */
 export const archiverOf = (access: Access): string | undefined =>

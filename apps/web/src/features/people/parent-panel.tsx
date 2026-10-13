@@ -2,25 +2,27 @@ import {
   DEFAULT_PHONE_PREFIX,
   relativeDetailSchema,
   relativeIdentitySchema,
-  relativePhoneSchema,
+  relativePreviousPhoneSchema,
   type RelativeDetail,
   type RelativeEdit,
   type RelativeIdentity,
   type RelativeRecord,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
-import { answerOf } from '@/api/failure';
+import { answerOf, ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { CHECKED, CheckboxField, Field, SelectField } from '@/components/field';
 import { ErrorState, LoadingOutline } from '@/components/states';
+import { useRecordForm } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { invalidateRelatives, phoneMatch, relativeDetailQuery } from './people-api';
+import { asFormSchema } from './form-schema';
 import { RelativeForm, type TakenPhone } from './relative-form';
 
 /** A student as the list of students names them. */
@@ -40,6 +42,7 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
   const queryClient = useQueryClient();
   const detail = useQuery(relativeDetailQuery(branchId, id));
   const [taken, setTaken] = useState<TakenPhone | null>(null);
+  const navigate = useNavigate();
   const edit = useMutation({
     mutationFn: (record: RelativeEdit) =>
       answerOf(
@@ -57,13 +60,35 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
     },
   });
 
-  /** After a merge the record that stays is shown; the list is read again. */
+  /**
+   * After a merge the record that stays is shown, also when it is the other
+   * one (spec review of the build, finding 9): the form of this record goes
+   * first, so its refused phone is no unsent change, then the panel moves to
+   * the record that stays. The list is read again.
+   */
+  const [keptId, setKeptId] = useState<string | null>(null);
   const merged = async (answer: unknown) => {
     const kept = relativeDetailSchema.parse(answer);
     queryClient.setQueryData(relativeDetailQuery(branchId, kept.id).queryKey, kept);
     setTaken(null);
+    if (kept.id !== id) {
+      setKeptId(kept.id);
+    }
     await invalidateRelatives(queryClient);
   };
+  useEffect(() => {
+    if (keptId !== null) {
+      void navigate({
+        to: '/people/parents',
+        search: (previous) => ({ ...previous, open: keptId }),
+        replace: true,
+      });
+    }
+  }, [keptId, navigate]);
+
+  if (keptId !== null) {
+    return <LoadingOutline />;
+  }
 
   if (detail.isError) {
     return (
@@ -140,6 +165,12 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
   );
 }
 
+/** The new phone of the earlier holder, or "unknown" (no valid phone). */
+const PREVIOUS_SCHEMA = asFormSchema<{ previousPhone: string | null }>(
+  relativePreviousPhoneSchema,
+  () => ['previousPhone'],
+);
+
 /**
  * A phone change refused because the number exists (`edge/close-relatives`,
  * rows 2 and 3; task 2.5b-1, decision 8): "Merge" when the holder may be
@@ -164,15 +195,17 @@ function TakenChoices({
   const [phoneOf, setPhoneOf] = useState<'this' | 'other'>(
     relative.phone === null ? 'other' : 'this',
   );
-  const [previousPhone, setPreviousPhone] = useState(`${DEFAULT_PHONE_PREFIX} `);
-  const [unknown, setUnknown] = useState('');
   const holderName = taken.holder.fullName;
   const typed = taken.record.phone;
-  /** The holder's id, read by the phone match (the same holders as the merge and the new owner). */
+  /**
+   * The holder's id, read by the phone match (the same holders as the merge
+   * and the new owner); a phone that has no holder any more is the race of
+   * `relative_phone_changed`.
+   */
   const holderId = async (): Promise<string> => {
     const found = await phoneMatch(typed);
     if (found?.id === undefined || found.id === null) {
-      throw new Error('The phone has no holder any more.');
+      throw new ApiFailure('relative_phone_changed');
     }
     return found.id;
   };
@@ -188,17 +221,17 @@ function TakenChoices({
     },
     onSuccess: onMerged,
   });
-  const owner = useMutation({
-    mutationFn: async () => {
-      const previousId = await holderId();
-      const next = relativePhoneSchema.safeParse(previousPhone);
-      await onEdit({
-        ...taken.record,
-        newOwner: {
-          previousId,
-          previousPhone: unknown === CHECKED ? null : next.success ? next.data : previousPhone,
-        },
-      });
+  const owner = useRecordForm<
+    'previousUnknown' | 'previousPhone',
+    { previousPhone: string | null }
+  >({
+    schema: PREVIOUS_SCHEMA,
+    initial: { previousUnknown: '', previousPhone: `${DEFAULT_PHONE_PREFIX} ` },
+    read: (values) => ({
+      previousPhone: values.previousUnknown === CHECKED ? null : values.previousPhone,
+    }),
+    save: async ({ previousPhone }) => {
+      await onEdit({ ...taken.record, newOwner: { previousId: await holderId(), previousPhone } });
     },
   });
   const bindOf = (name: string, value: string, set: (value: string) => void) => ({
@@ -209,30 +242,52 @@ function TakenChoices({
       set(event.target.value);
     },
   });
+  const choose = (next: 'merge' | 'owner', text: string) => (
+    <Button
+      variant="secondary"
+      aria-pressed={choice === next}
+      onClick={() => {
+        setChoice(next);
+      }}
+    >
+      {text}
+    </Button>
+  );
   return (
     <section className="grid gap-3" aria-label={t('people.relatives.takenTitle')}>
       <div className="flex flex-wrap gap-3">
-        {taken.holder.mergeable && (
-          <Button
-            variant={choice === 'merge' ? 'default' : 'secondary'}
-            onClick={() => {
-              setChoice('merge');
-            }}
-          >
-            {t('people.relatives.mergeWith', { name: holderName })}
-          </Button>
-        )}
-        <Button
-          variant={choice === 'owner' ? 'default' : 'secondary'}
-          onClick={() => {
-            setChoice('owner');
-          }}
-        >
-          {t('people.relatives.newOwner')}
-        </Button>
+        {taken.holder.mergeable &&
+          choose('merge', t('people.relatives.mergeWith', { name: holderName }))}
+        {choose('owner', t('people.relatives.newOwner'))}
       </div>
       {choice === 'merge' && (
         <div className="grid gap-3">
+          {/* Both records side by side, with the students whose links move. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-1 text-sm">
+              <h4 className="font-semibold">{t('people.relatives.thisRecord')}</h4>
+              <p>{relative.fullName}</p>
+              <p>{relative.phone ?? t('people.relatives.noPhone')}</p>
+              <ul className="text-muted-foreground">
+                {relative.students.map((student) => (
+                  <li key={student.id}>{studentName(student)}</li>
+                ))}
+              </ul>
+              {relative.elsewhere > 0 && (
+                <p className="text-muted-foreground">
+                  {t('people.relatives.elsewhereCount', { count: relative.elsewhere })}
+                </p>
+              )}
+            </div>
+            <div className="grid gap-1 text-sm">
+              <h4 className="font-semibold">{t('people.relatives.otherRecord')}</h4>
+              <p>{holderName}</p>
+              <p>{typed}</p>
+              <p className="text-muted-foreground">
+                {t('people.relatives.linkedCount', { count: taken.holder.students })}
+              </p>
+            </div>
+          </div>
           <SelectField
             label={t('people.relatives.mergeName')}
             options={[
@@ -259,10 +314,12 @@ function TakenChoices({
               onClick={() => {
                 void confirm({
                   title: t('people.relatives.mergeTitle'),
-                  text: t('people.relatives.mergeText', {
-                    count: relative.students.length + taken.holder.students,
-                  }),
-                  names: [relative.fullName, holderName],
+                  text: t('people.relatives.mergeText'),
+                  names: [
+                    relative.fullName,
+                    holderName,
+                    ...relative.students.map((student) => studentName(student)),
+                  ],
                   action: t('people.relatives.merge'),
                   destructive: true,
                 }).then((go) => {
@@ -279,31 +336,33 @@ function TakenChoices({
         </div>
       )}
       {choice === 'owner' && (
-        <div className="grid gap-3">
+        <form
+          className="grid gap-3"
+          aria-label={t('people.relatives.newOwner')}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void owner.submit();
+          }}
+        >
           <CheckboxField
             label={t('people.relatives.previousUnknown', { name: holderName })}
-            {...bindOf('previousUnknown', unknown, setUnknown)}
+            {...owner.bind('previousUnknown')}
           />
-          {unknown !== CHECKED && (
+          {owner.bind('previousUnknown').value !== CHECKED && (
             <Field
               label={t('people.relatives.previousPhone', { name: holderName })}
               type="tel"
               autoComplete="off"
-              {...bindOf('previousPhone', previousPhone, setPreviousPhone)}
+              {...owner.bind('previousPhone')}
             />
           )}
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              disabled={owner.isPending}
-              onClick={() => {
-                owner.mutate();
-              }}
-            >
+          <FailureAlert error={owner.failure} />
+          <div>
+            <Button type="submit" disabled={owner.status === 'saving'}>
               {t('people.relatives.giveNumber')}
             </Button>
-            <FailureAlert error={owner.error} />
           </div>
-        </div>
+        </form>
       )}
     </section>
   );

@@ -40,8 +40,15 @@ export const NOTIFICATION_KINDS = {
   'relative.renamed': z.strictObject({ previousName: relativeName, fullName: relativeName }),
   /** The main phone of such a relative was changed in another branch, or the number has a new owner; no phone in the data. */
   'relative.phone_changed': z.strictObject({ fullName: relativeName }),
-  /** Such a relative was merged with another record in another branch; `fullName` is the name that stays. */
-  'relative.merged': z.strictObject({ mergedName: relativeName, fullName: relativeName }),
+  /**
+   * Such a relative was merged with another record in another branch: the
+   * names the two records had, and the name that stays.
+   */
+  'relative.merged': z.strictObject({
+    keptName: relativeName,
+    mergedName: relativeName,
+    fullName: relativeName,
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

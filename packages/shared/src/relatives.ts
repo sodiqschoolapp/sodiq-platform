@@ -114,6 +114,9 @@ export const relativeNewOwnerSchema = z.strictObject({
 
 export type RelativeNewOwner = z.infer<typeof relativeNewOwnerSchema>;
 
+/** The new phone of the earlier relative as typed on the refused phone change; `null` for "unknown". */
+export const relativePreviousPhoneSchema = relativeNewOwnerSchema.pick({ previousPhone: true });
+
 /**
  * One relative linked to a student: a new record, the existing one the
  * phone match showed, with the phone it was found by (decision 18: the save

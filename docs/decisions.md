@@ -232,6 +232,12 @@ Plan approved on pull request #73 with corrections 1 to 3; decisions 1 to 11 con
 | Three notification kinds (`relative.renamed`, `relative.phone_changed`, `relative.merged`) instead of one kind with a list of what changed (decision taken in the build) | A kind's data are the `{{names}}` of its text and choose no text (`NOTIFICATION_KINDS`); one notice per change says what changed in every language |
 | The id of the holder for a merge or a new owner on a refused edit is read by the phone match on the screen (decision taken in the build) | The refused change gives the id only when the holder is visible in the branch (2.5a, correction 7) |
 | The answer of a Super Admin's merge counts the students of other branches against the branch of the request (decision taken in the build) | Its transaction holds every branch |
+| The record of the path of a merge must be linked live in the branch of the request, also for the Super Admin; only the other record may be elsewhere (permission review) | `.claude/rules/api.md`: a path id outside the branch of the request is 404 |
+| A new owner given on an edit needs the phone it takes; otherwise 422 `request_refused` (permission review) | A release that did not happen is never shown |
+| The plan's names changed in the build: the list query is `filter=no_valid_phone` (not `noValidPhone=true`), the answer field `phoneInvalidSince` (not `phoneInvalid`), and `student_relatives_not_merged` locks `for update` (not `for share`) | A filter of the shape of the student list's; the moment says since when; a share lock then the update lock of `relatives_follow_links` would deadlock two links of one relative |
+| The merge notice carries the names both records had and the name that stays (`keptName`, `mergedName`, `fullName`) (spec review of the build) | The other branch knew the kept record by its old name |
+| A merged record's Parent account is held off by a trigger of its own (`relative_accounts_merged_off`), and the check that a merged record has no live link reads every branch (definer) (spec review of the build) | Correction 2 must outlive the check of 0036 that Release 2 drops; a check of a rule must not depend on the row filter |
+| Every link a merge ends is in the log: `relative.link_moved` for a moved one, `relative.unlink` with `mergedInto` for the merged record's link of a student linked to both (spec review of the build) | Every change is audited |
 
 ## 13 October 2026: close relatives, their links and the Parents list (task 2.5a)
 

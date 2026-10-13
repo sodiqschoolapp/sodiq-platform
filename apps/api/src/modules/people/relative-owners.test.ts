@@ -505,7 +505,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
       expect(relativeDetailSchema.parse(given.body).phoneInvalidSince).toBeNull();
     });
 
-    it('is not routed as a relative id', async () => {
+    it('refuses the count to a Teacher', async () => {
       const response = await t.get('/api/people/relatives/no-valid-phone', t.north, t.teacher);
       refusedWith(response, 403, 'permission_denied');
     });
@@ -622,6 +622,13 @@ describe('phone owners, merges and the notice to the other branch', () => {
       expect(await schoolEntries('relative.archive', merged.relativeId)).toHaveLength(1);
       expect(await t.entries('relative.link_moved', kept.relativeId)).toHaveLength(1);
       expect(await t.entries('relative.link_edit', kept.relativeId)).toHaveLength(1);
+      // The merged record's own link of the shared student ends with an entry.
+      expect(await t.entries('relative.unlink', merged.relativeId)).toEqual([
+        expect.objectContaining({
+          old_value: expect.objectContaining({ studentId: both.id, mainContact: true }) as unknown,
+          details: { mergedInto: kept.relativeId },
+        }),
+      ]);
       // The merged record is never linked again.
       const relink = await t.post(
         `/api/people/students/${both.id}/relatives`,
@@ -680,7 +687,11 @@ describe('phone owners, merges and the notice to the other branch', () => {
       expect((await noticesOf(southViceAccount)).slice(noticed)).toEqual([
         {
           kind: 'relative.merged',
-          data: { mergedName: 'Sevara Olimova', fullName: 'Sevara Olimova' },
+          data: {
+            keptName: 'Sevara Olimova',
+            mergedName: 'Sevara Olimova',
+            fullName: 'Sevara Olimova',
+          },
           branch_id: t.north,
         },
       ]);
@@ -1036,6 +1047,259 @@ describe('phone owners, merges and the notice to the other branch', () => {
         ).count;
       expect(await counted(t.south)).toBe((await listed(t.south)).length);
       expect(await counted(t.north)).toBe((await listed(t.north)).length);
+    });
+  });
+
+  describe('the merge and the new owner at the same moment (lock pairs)', () => {
+    const at = new Date('2026-10-10T18:55:00Z');
+
+    /** The writes of a merge of `merged` into `kept` in the north, held open. */
+    const holdMerge = (kept: string, merged: { relativeId: string; student: StudentDetail }) =>
+      holdOpen([t.north], async (transaction) => {
+        await transaction
+          .selectFrom('students')
+          .select('id')
+          .where('id', '=', merged.student.id)
+          .forUpdate()
+          .execute();
+        await transaction
+          .selectFrom('relatives')
+          .select('id')
+          .where('id', 'in', [kept, merged.relativeId])
+          .orderBy('id')
+          .forUpdate()
+          .execute();
+        await transaction
+          .updateTable('relatives')
+          .set({ phone: null, merged_into: kept })
+          .where('id', '=', merged.relativeId)
+          .execute();
+        await transaction
+          .updateTable('student_relatives')
+          .set({ main_contact: false, unlinked_at: at })
+          .where('relative_id', '=', merged.relativeId)
+          .execute();
+        await transaction
+          .insertInto('student_relatives')
+          .values({
+            student_id: merged.student.id,
+            branch_id: t.north,
+            relative_id: kept,
+            relationship: 'mother',
+            main_contact: true,
+            linked_at: at,
+          })
+          .execute();
+      });
+
+    const pair = async () => {
+      const keptPhone = phone();
+      const mergedPhone = phone();
+      const kept = await withRelative(keptPhone, t.north);
+      const merged = await withRelative(mergedPhone, t.north);
+      const body = {
+        otherId: merged.relativeId,
+        thisPhone: keptPhone,
+        otherPhone: mergedPhone,
+        phoneOf: 'this',
+        nameOf: 'this',
+      };
+      return { keptPhone, mergedPhone, kept, merged, body };
+    };
+
+    it('a merge that waited on an edit of the kept phone is refused relative_changed', async () => {
+      const { kept, merged, body } = await pair();
+      const held = await holdOpen([t.north], async (transaction) => {
+        await transaction
+          .selectFrom('relatives')
+          .select('id')
+          .where('id', '=', kept.relativeId)
+          .forUpdate()
+          .execute();
+        await transaction
+          .updateTable('relatives')
+          .set({ phone: phone() })
+          .where('id', '=', kept.relativeId)
+          .execute();
+      });
+      const merging = merge(kept.relativeId, body, t.north).then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      refusedWith(await merging, 409, 'relative_changed');
+      expect((await stored(merged.relativeId)).merged_into).toBeNull();
+    });
+
+    it('an edit of the kept phone that waited on a merge is made on the merged record', async () => {
+      const { kept, merged } = await pair();
+      const held = await holdMerge(kept.relativeId, merged);
+      const next = phone();
+      const editing = t
+        .patch(`/api/people/relatives/${kept.relativeId}`, t.north, {
+          fullName: 'Dilfuza Karimova',
+          phone: next,
+          workplace: 'Toshkent shahar shifoxonasi',
+          email: 'd.karimova@example.uz',
+        })
+        .then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      const response = await editing;
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(relativeDetailSchema.parse(response.body).students.map((one) => one.id)).toContain(
+        merged.student.id,
+      );
+      expect((await stored(kept.relativeId)).phone).toBe(next);
+    });
+
+    it('a merge that waited on a new owner of the merged phone is refused relative_changed', async () => {
+      const { mergedPhone, kept, merged, body } = await pair();
+      const held = await holdOpen([t.north], async (transaction) => {
+        await sql`select * from relative_release_phone(
+          ${merged.relativeId}::uuid, ${mergedPhone}, ${null}, ${t.north}::uuid
+        )`.execute(transaction);
+      });
+      const merging = merge(kept.relativeId, body, t.north).then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      refusedWith(await merging, 409, 'relative_changed');
+    });
+
+    it('a new owner that waited on a merge of the holder is refused relative_phone_changed', async () => {
+      const { mergedPhone, kept, merged } = await pair();
+      const target = await withRelative(phone(), t.north);
+      const held = await holdMerge(kept.relativeId, merged);
+      const owning = t
+        .post(
+          `/api/people/students/${target.student.id}/relatives`,
+          t.north,
+          newOwner(mergedPhone, merged.relativeId, null, false),
+        )
+        .then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      refusedWith(await owning, 409, 'relative_phone_changed');
+    });
+
+    it('an edit of the holder that waited on a new owner is made after it', async () => {
+      const number = phone();
+      const holder = await withRelative(number, t.north);
+      const held = await holdOpen([t.north], async (transaction) => {
+        await sql`select * from relative_release_phone(
+          ${holder.relativeId}::uuid, ${number}, ${null}, ${t.north}::uuid
+        )`.execute(transaction);
+      });
+      const next = phone();
+      const editing = t
+        .patch(`/api/people/relatives/${holder.relativeId}`, t.north, {
+          fullName: 'Dilfuza Karimova',
+          phone: next,
+          workplace: 'Toshkent shahar shifoxonasi',
+          email: 'd.karimova@example.uz',
+        })
+        .then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      expect((await editing).status).toBe(200);
+      expect(await stored(holder.relativeId)).toMatchObject({
+        phone: next,
+        phone_invalid_since: null,
+      });
+    });
+
+    it('a merge that waited on another merge of the same record is refused relative_changed', async () => {
+      const { kept, merged } = await pair();
+      const thirdPhone = phone();
+      const third = await withRelative(thirdPhone, t.north);
+      const held = await holdMerge(kept.relativeId, merged);
+      const second = merge(
+        third.relativeId,
+        {
+          otherId: merged.relativeId,
+          thisPhone: thirdPhone,
+          otherPhone: (await stored(merged.relativeId)).phone,
+          phoneOf: 'this',
+          nameOf: 'this',
+        },
+        t.north,
+      ).then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      refusedWith(await second, 409, 'relative_changed');
+    });
+
+    it('two new owners swapping numbers at once answer 409 or succeed, never a fault', async () => {
+      const first = phone();
+      const second = phone();
+      const one = await withRelative(first, t.north);
+      const other = await withRelative(second, t.north);
+      const targetA = await withRelative(phone(), t.north);
+      const targetB = await withRelative(phone(), t.north);
+      const answers = await Promise.all([
+        t.post(
+          `/api/people/students/${targetA.student.id}/relatives`,
+          t.north,
+          newOwner(first, one.relativeId, second, false),
+        ),
+        t.post(
+          `/api/people/students/${targetB.student.id}/relatives`,
+          t.north,
+          newOwner(second, other.relativeId, first, false),
+        ),
+      ]);
+      for (const answer of answers) {
+        expect([201, 409], JSON.stringify(answer.body)).toContain(answer.status);
+      }
+    });
+
+    it('refuses a merge of a record with itself, changing nothing', async () => {
+      const { keptPhone, kept } = await pair();
+      const before = await snapshot();
+      const response = await merge(
+        kept.relativeId,
+        {
+          otherId: kept.relativeId,
+          thisPhone: keptPhone,
+          otherPhone: keptPhone,
+          phoneOf: 'this',
+          nameOf: 'this',
+        },
+        t.north,
+      );
+      refusedWith(response, 422, 'request_refused');
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('offers no merge for an archived holder, whose number still finds a new owner', async () => {
+      const number = phone();
+      const holder = await withRelative(number, t.north);
+      // A second relative, then the holder unlinked: archived.
+      await t.post(`/api/people/students/${holder.student.id}/relatives`, t.north, {
+        ...newRelative(phone()),
+        mainContact: true,
+      });
+      const unlinked = await t.post(
+        `/api/people/students/${holder.student.id}/relatives/${holder.relativeId}/unlink`,
+        t.north,
+        { newMainContactId: null },
+      );
+      expect(unlinked.status, JSON.stringify(unlinked.body)).toBe(200);
+      expect((await stored(holder.relativeId)).archived_at).not.toBeNull();
+      const edited = await withRelative(phone(), t.north);
+      const record = { fullName: 'Dilfuza Karimova', phone: number, workplace: null, email: null };
+      const refused = await t.patch(`/api/people/relatives/${edited.relativeId}`, t.north, record);
+      refusedWith(refused, 409, 'relative_phone_taken');
+      expect(detailsOf(refused)[0]).toMatchObject({ mergeable: false });
+      const given = await t.patch(`/api/people/relatives/${edited.relativeId}`, t.north, {
+        ...record,
+        newOwner: { previousId: holder.relativeId, previousPhone: null },
+      });
+      expect(given.status, JSON.stringify(given.body)).toBe(200);
     });
   });
 });

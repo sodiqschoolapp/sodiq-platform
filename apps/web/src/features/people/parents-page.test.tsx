@@ -319,6 +319,50 @@ describe('the page of a relative', () => {
       });
     });
 
+    it('opens the record that stays when it is the other one', async () => {
+      const shoira = {
+        ...DILFUZA,
+        id: uid(3),
+        fullName: 'Shoira Nazarova',
+        phone: '+998904445566',
+      };
+      let mergedNow = false;
+      openList('academic_vice_principal', {
+        [`PATCH /api/people/relatives/${DILFUZA.id}`]: takenAnswer(true),
+        'POST /api/people/relatives/phone-match': () =>
+          json({ holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 } }),
+        [`POST /api/people/relatives/${DILFUZA.id}/merge`]: () => {
+          mergedNow = true;
+          return json(detailOf(shoira));
+        },
+        [`GET /api/people/relatives/${uid(3)}`]: () => json(detailOf(shoira)),
+        // After the merge the list holds the record that stays.
+        'GET /api/people/relatives': () =>
+          json({
+            relatives: mergedNow ? [ANVAR, shoira] : [ANVAR, DILFUZA],
+            searchesPhone: true,
+            canEdit: true,
+          }),
+      });
+      const shell = renderApp(PATH);
+      const choices = await refuse();
+      fireEvent.click(
+        within(choices).getByRole('button', {
+          name: en.people.relatives.mergeWith.replace('{{name}}', 'Shoira Nazarova'),
+        }),
+      );
+      fireEvent.change(within(choices).getByLabelText(en.people.relatives.mergePhone), {
+        target: { value: 'other' },
+      });
+      fireEvent.click(within(choices).getByRole('button', { name: en.people.relatives.merge }));
+      const dialog = await screen.findByRole('alertdialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.merge }));
+      await waitFor(() => {
+        expect(shell.router.state.location.search).toMatchObject({ open: uid(3) });
+      });
+      expect(await screen.findByRole('complementary', { name: 'Shoira Nazarova' })).toBeDefined();
+    });
+
     it('offers no merge when the holder may not be merged, and gives the number a new owner', async () => {
       const calls = openList('academic_vice_principal', {
         [`PATCH /api/people/relatives/${DILFUZA.id}`]: takenAnswer(false),
