@@ -241,9 +241,15 @@ export class StudentStatuses {
         );
         const archived: string[] = [];
         for (const link of links) {
-          await this.relatives.lockRelative(transaction, branchId, link.relative_id);
+          const relative = await this.relatives.lockRelative(
+            transaction,
+            branchId,
+            link.relative_id,
+          );
           if ((await this.relatives.liveLinks(transaction, link.relative_id)) === 1) {
             archived.push(link.relative_id);
+            // Its mark "same person" goes before the archive (`unmarkArchived`).
+            await this.relatives.unmarkArchived(transaction, access, relative, requestId);
           }
         }
         await this.audit.record(transaction, {

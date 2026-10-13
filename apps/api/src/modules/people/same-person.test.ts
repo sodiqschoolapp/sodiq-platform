@@ -76,8 +76,11 @@ describe('the mark "same person" of a relative and a staff record', () => {
   }
 
   /** A relative linked to a new student of a branch. */
-  async function relative(branch: string): Promise<{ id: string; studentId: string }> {
-    const created = await t.post('/api/people/students', branch, body(phone()), t.admin);
+  async function relative(
+    branch: string,
+  ): Promise<{ id: string; studentId: string; phone: string; version: number }> {
+    const number = phone();
+    const created = await t.post('/api/people/students', branch, body(number), t.admin);
     expect(created.status, JSON.stringify(created.body)).toBe(201);
     const student = studentDetailSchema.parse(created.body);
     const tab = studentRelativesSchema.parse(
@@ -87,7 +90,7 @@ describe('the mark "same person" of a relative and a staff record', () => {
     if (id === undefined) {
       throw new Error('A student is created with a relative.');
     }
-    return { id, studentId: student.id };
+    return { id, studentId: student.id, phone: number, version: student.version };
   }
 
   /** A staff person with a main branch and further branches, or a vacancy, written by the migrator. */
@@ -455,6 +458,100 @@ describe('the mark "same person" of a relative and a staff record', () => {
       expect(JSON.stringify(fromSouth.body)).not.toContain(holder.id);
       expect(JSON.stringify(fromSouth.body)).not.toContain('Rustam Nazarov');
       expect(await snapshot()).toEqual(before);
+    });
+  });
+
+  // Code review of the build, round 1: an archived relative is reached by no
+  // branch, so a mark it kept could never be removed and would hold its staff
+  // member for good. The last link that goes removes the mark, with its entry.
+  describe('a relative archived when its last link goes', () => {
+    it('loses its mark on the last unlink, so the staff member is marked again, and is restored without it', async () => {
+      const parent = await relative(t.north);
+      const teacher = await staffMember(t.north);
+      expect((await mark(parent.id, teacher, t.north)).status).toBe(200);
+      const second = await t.post(`/api/people/students/${parent.studentId}/relatives`, t.north, {
+        kind: 'new',
+        relative: { fullName: 'Dilfuza Nazarova', phone: phone(), workplace: null, email: null },
+        relationship: 'mother',
+        mainContact: true,
+        portalAccess: true,
+        receivesNotices: true,
+      });
+      expect(second.status, JSON.stringify(second.body)).toBe(201);
+      const unlinked = await t.post(
+        `/api/people/students/${parent.studentId}/relatives/${parent.id}/unlink`,
+        t.north,
+        { newMainContactId: null },
+        t.vicePrincipal,
+      );
+      expect(unlinked.status, JSON.stringify(unlinked.body)).toBe(200);
+      expect(await markOf(parent.id)).toBeNull();
+      expect(await schoolEntries('relative.same_person_removed', parent.id)).toEqual([
+        expect.objectContaining({
+          assignment_id: t.viceAssignment,
+          old_value: { staffId: teacher },
+          new_value: { staffId: null },
+          details: { branchId: t.north, staffId: teacher, archived: true },
+        }),
+      ]);
+      expect(await schoolEntries('relative.archive', parent.id)).toHaveLength(1);
+
+      // Another record of the same person takes the mark.
+      const correct = await relative(t.north);
+      const marked = await mark(correct.id, teacher, t.north);
+      expect(marked.status, JSON.stringify(marked.body)).toBe(200);
+      expect(await markOf(correct.id)).toBe(teacher);
+
+      // The archived record, linked again by its phone, comes back unmarked,
+      // and the staff member is named as held by the other record.
+      count += 1;
+      const restored = await t.post('/api/people/students', t.north, {
+        ...body(phone()),
+        relatives: [
+          {
+            kind: 'existing',
+            relativeId: parent.id,
+            phone: parent.phone,
+            relationship: 'father',
+            mainContact: true,
+            portalAccess: true,
+            receivesNotices: true,
+          },
+        ],
+      });
+      expect(restored.status, JSON.stringify(restored.body)).toBe(201);
+      expect(await schoolEntries('relative.restore', parent.id)).toHaveLength(1);
+      const detail = relativeDetailSchema.parse(
+        (await t.get(`/api/people/relatives/${parent.id}`, t.north, t.vicePrincipal)).body,
+      );
+      expect(detail).toMatchObject({ samePerson: null, samePersonElsewhere: false });
+      const again = await mark(parent.id, teacher, t.north);
+      refusedWith(again, 409, 'same_person_taken');
+      expect(apiErrorSchema.parse(again.body).error.details?.[0]).toMatchObject({
+        recordId: correct.id,
+      });
+    });
+
+    it('loses its mark when its only student is deleted as created twice', async () => {
+      const parent = await relative(t.north);
+      const teacher = await staffMember(t.north);
+      expect((await mark(parent.id, teacher, t.north)).status).toBe(200);
+      const deleted = await t.post(
+        `/api/people/students/${parent.studentId}/delete`,
+        t.north,
+        { reason: 'Created twice by mistake.', version: parent.version },
+        t.vicePrincipal,
+      );
+      expect(deleted.status, JSON.stringify(deleted.body)).toBe(204);
+      expect(await markOf(parent.id)).toBeNull();
+      expect(await schoolEntries('relative.same_person_removed', parent.id)).toEqual([
+        expect.objectContaining({
+          old_value: { staffId: teacher },
+          details: { branchId: t.north, staffId: teacher, archived: true },
+        }),
+      ]);
+      const other = await relative(t.north);
+      expect((await mark(other.id, teacher, t.north)).status).toBe(200);
     });
   });
 

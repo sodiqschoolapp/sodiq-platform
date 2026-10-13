@@ -806,7 +806,8 @@ export class Relatives {
    * student does not affect their other students"). The last relative stays
    * (`04`, Always connected); the main contact names the next one in the same
    * request (`edge`). A relative left with no live link anywhere is archived
-   * by `relatives_follow_links`, and the entry says so.
+   * by `relatives_follow_links`, and the entry says so; its mark "same
+   * person" is removed first, with its own entry (`unmarkArchived`).
    */
   unlink(
     access: Access,
@@ -840,8 +841,11 @@ export class Relatives {
       }
       // The relative's row, then its live links in every branch, in statements
       // of their own (the order of `relatives_follow_links`).
-      await this.writes.lockRelative(transaction, branchId, relativeId);
+      const relative = await this.writes.lockRelative(transaction, branchId, relativeId);
       const archives = (await this.writes.liveLinks(transaction, relativeId)) === 1;
+      if (archives) {
+        await this.writes.unmarkArchived(transaction, access, relative, requestId);
+      }
       await transaction
         .updateTable('student_relatives')
         .set({ main_contact: false, unlinked_at: await transactionMoment(transaction) })

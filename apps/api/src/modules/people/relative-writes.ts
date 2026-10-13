@@ -553,6 +553,41 @@ export class RelativeWrites {
   }
 
   /**
+   * Removes the mark "same person" of a relative its last live link leaves
+   * (review of 2.5b-2, code round 1): an archived relative is reached by no
+   * branch, so a mark it kept could never be removed, and its staff member
+   * could never be marked again (`relatives_staff_idx`). Called under the
+   * relative's lock while it is still linked, so that the transaction sees its
+   * row; the school-wide entry keeps the staff member.
+   */
+  async unmarkArchived(
+    transaction: Transaction,
+    access: Access,
+    relative: RelativeRow,
+    requestId: string,
+  ): Promise<void> {
+    if (relative.staff_id === null) {
+      return;
+    }
+    await transaction
+      .updateTable('relatives')
+      .set({ staff_id: null })
+      .where('id', '=', relative.id)
+      .execute();
+    await this.audit.record(transaction, {
+      branchId: null,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      action: 'relative.same_person_removed',
+      record: { type: 'relative', id: relative.id },
+      oldValue: { staffId: relative.staff_id },
+      newValue: { staffId: null },
+      details: { branchId: branchOf(access), staffId: relative.staff_id, archived: true },
+      requestId,
+    });
+  }
+
+  /**
    * The live links of a relative in every branch: those of the branch, which
    * the transaction sees, and the count of the others.
    */
