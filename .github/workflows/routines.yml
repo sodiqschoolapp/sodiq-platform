@@ -8,6 +8,11 @@ name: Routines
 # their hourly schedules stay as a second net, and a duplicate run finds
 # nothing to do, because reviews compare shas. Each job only sends a POST; no
 # code is checked out or run.
+#
+# The repository is public since 13 October 2026 (docs/decisions.md): a job
+# fires only for a pull request whose head is a branch of this repository, never
+# a fork's, and wake-builder only for a comment by the owner's account abbosc,
+# the account every session and routine acts as.
 
 on:
   pull_request:
@@ -23,7 +28,10 @@ jobs:
   # A new pull request, a push, a reopened one or one marked ready: the review
   # routine reviews it (or skips it, as .claude/skills/review-pr says).
   review:
-    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.action != 'closed'
+      && github.event.pull_request.head.repo.full_name == 'sodiqschoolapp/sodiq-platform'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     # One group per pull request, never cancelled: two pushes in a row fire two
@@ -75,6 +83,7 @@ jobs:
       github.event_name == 'pull_request'
       && github.event.action == 'closed'
       && github.event.pull_request.merged == true
+      && github.event.pull_request.head.repo.full_name == 'sodiqschoolapp/sodiq-platform'
       && startsWith(github.event.pull_request.head.ref, 'task/')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -110,39 +119,47 @@ jobs:
           fi
           echo "Session: $(jq -r '.claude_code_session_url // "(no session address in the answer)"' "$RUNNER_TEMP/response.json")"
 
-  # A [review] approved or changes needed on a task pull request: the builder
-  # should wake now. The start routine watches for "Acting on the review." for
+  # A [review] approved or changes needed by abbosc on a task pull request of
+  # this repository: the builder should wake now. The start routine watches for "Acting on the review." for
   # ten minutes and resumes the task when it does not come (cloud-loop.md, §6).
   wake-builder:
     if: >-
       github.event_name == 'issue_comment'
       && github.event.issue.pull_request
+      && github.event.comment.user.login == 'abbosc'
       && (startsWith(github.event.comment.body, '[review] approved')
       || startsWith(github.event.comment.body, '[review] changes needed'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    # Only to read the head branch of the pull request; the comment event does
-    # not carry it.
+    # Only to read the head branch and head repository of the pull request; the
+    # comment event carries neither.
     permissions:
       pull-requests: read
     steps:
-      - name: Read the head branch of the pull request
+      - name: Read the head branch and head repository of the pull request
         id: pr
         env:
           GH_TOKEN: ${{ github.token }}
           PR_API_URL: ${{ github.api_url }}/repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}
         run: |
-          set -o pipefail
-          head_ref=$(curl --fail-with-body --silent --show-error --max-time 30 \
+          curl --fail-with-body --silent --show-error --max-time 30 \
             --retry 3 --retry-all-errors \
+            --output "$RUNNER_TEMP/pull.json" \
             --header "Authorization: Bearer $GH_TOKEN" \
             --header "Accept: application/vnd.github+json" \
             --header "X-GitHub-Api-Version: 2022-11-28" \
-            "$PR_API_URL" | jq -r '.head.ref')
+            "$PR_API_URL"
+          head_ref=$(jq -r '.head.ref' "$RUNNER_TEMP/pull.json")
+          # A fork that was deleted leaves head.repo null.
+          head_repo=$(jq -r '.head.repo.full_name // ""' "$RUNNER_TEMP/pull.json")
           echo "Head branch: $head_ref"
+          echo "Head repository: $head_repo"
           echo "head_ref=$head_ref" >> "$GITHUB_OUTPUT"
+          echo "head_repo=$head_repo" >> "$GITHUB_OUTPUT"
       - name: Fire the start routine
-        if: startsWith(steps.pr.outputs.head_ref, 'task/')
+        if: >-
+          steps.pr.outputs.head_repo == 'sodiqschoolapp/sodiq-platform'
+          && startsWith(steps.pr.outputs.head_ref, 'task/')
         env:
           ROUTINE_URL: ${{ secrets.START_ROUTINE_URL }}
           ROUTINE_TOKEN: ${{ secrets.START_ROUTINE_TOKEN }}
