@@ -208,6 +208,13 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   and read on the Relatives tab under `student_contact` `view`. A new area
  *   for new routes, decided without the owner on pull request #72 (decision
  *   4, Look first), confirmed at its review and flagged on issue #42.
+ * - `audit_log` (`edge/people-roles-accounts`, Personal data and the audit
+ *   log: "The Super Admin reads all; the Principal and Academic Vice
+ *   Principal read their branch"; task 2.6a): the Audit log page and the
+ *   logged show of its hidden fields. Which entries each reads, and the
+ *   scopes of the Super Admin, are decided in the route from every current
+ *   assignment. A new area for new routes, decided without the owner on pull
+ *   request #75 (decision 2), confirmed at its review and flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -319,6 +326,11 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],
     academic_vice_principal: ['view', 'create', 'edit'],
+  }),
+  audit_log: rows({
+    super_admin: ['view'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
   }),
   current_period: rows({
     super_admin: ['view'],

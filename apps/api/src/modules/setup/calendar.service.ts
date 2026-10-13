@@ -14,6 +14,7 @@ import {
   type ErrorCode,
   type ErrorDetail,
   type Weekday,
+  type AuditAction,
 } from '@sodiq/shared';
 import { dayOn, weekdayOf, type CalendarSettings, type DayResult } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
@@ -221,7 +222,7 @@ export class Calendar {
 
   private record(
     context: Context,
-    action: string,
+    action: AuditAction,
     id: string,
     values: { oldValue?: JsonValue; newValue?: JsonValue },
   ): Promise<void> {

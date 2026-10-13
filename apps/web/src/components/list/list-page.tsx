@@ -126,6 +126,12 @@ interface ListPageProps<Row> {
   exportExtras?: readonly ExportExtra[] | undefined;
   /** The record of a row, shown in the side panel. Needs a column with `opens`. */
   panel?: ((row: Row) => ReactNode) | undefined;
+  /**
+   * Server paging (task 2.6a): `rows` are the pages loaded so far, and this
+   * asks the server for the next one; left out once there is none. The search
+   * box and the filters of the list work on the rows loaded.
+   */
+  more?: { onMore: () => void; loading: boolean } | undefined;
 }
 
 const NO_FILTERS: readonly never[] = [];
@@ -140,8 +146,8 @@ const NO_EXTRAS: readonly ExportExtra[] = [];
  * The whole list of a branch is loaded, and searching, sorting and filtering
  * happen in the browser (decided by the owner, task 0.8b: such lists are small
  * and the search must answer while typing). A list too long for that (the
- * audit log, 2.6) keeps the same `ListSearch` in its address and asks the
- * server instead.
+ * audit log, 2.6a) keeps the same `ListSearch` in its address, asks the
+ * server with filters of its own and loads the next page with `more`.
  */
 export function ListPage<Row>({
   listId,
@@ -161,6 +167,7 @@ export function ListPage<Row>({
   exportState,
   exportExtras = NO_EXTRAS,
   panel,
+  more,
 }: ListPageProps<Row>) {
   const { t, i18n } = useTranslation();
   const searchId = useId();
@@ -645,6 +652,13 @@ export function ListPage<Row>({
                   }}
                 >
                   {t('list.showMore')}
+                </Button>
+              </div>
+            )}
+            {more !== undefined && matching.length <= count && (
+              <div>
+                <Button variant="secondary" disabled={more.loading} onClick={more.onMore}>
+                  {more.loading ? t('app.loading') : t('list.loadMore')}
                 </Button>
               </div>
             )}

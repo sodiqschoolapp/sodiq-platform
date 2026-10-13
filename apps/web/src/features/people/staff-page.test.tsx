@@ -698,3 +698,15 @@ describe('staff photos', () => {
     vi.restoreAllMocks();
   });
 });
+
+// Task 2.6a, pull request #75: "History" on the panel of a staff member.
+describe('the History link of a staff member', () => {
+  it('opens the log about the person for the Academic Vice Principal', async () => {
+    openList('academic_vice_principal');
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const link = await within(panel).findByRole('link', { name: en.audit.history });
+    expect(link.getAttribute('href')).toBe(`/audit?person=staff%3A${AKMAL.id}`);
+  });
+});

@@ -5,6 +5,7 @@ import { PasswordSection } from './account/password-section';
 import { PhotoSection } from './account/photo-section';
 import { SecondStepSection } from './account/second-step-section';
 import { SessionsSection } from './account/sessions-section';
+import { SignInHistorySection } from './account/sign-in-history-section';
 import { TrustedDevicesSection } from './account/trusted-devices-section';
 
 /**
@@ -13,7 +14,8 @@ import { TrustedDevicesSection } from './account/trusted-devices-section';
  * devices, each removable; `02`, Rules: the second step is optional for most
  * roles; `12`, Language: the choice is remembered). Decided by the owner: at
  * `/account`, in every role's menu as "Account"; notification settings,
- * phone, email and name are not here. The own photo since task 2.3c-2.
+ * phone, email and name are not here. The own photo since task 2.3c-2, the
+ * own sign-in history since task 2.6a.
  */
 export function AccountPage() {
   const { t } = useTranslation();
@@ -25,6 +27,7 @@ export function AccountPage() {
         <LanguageSection />
         <PasswordSection />
         <SessionsSection />
+        <SignInHistorySection />
         <TrustedDevicesSection />
         <SecondStepSection />
       </div>

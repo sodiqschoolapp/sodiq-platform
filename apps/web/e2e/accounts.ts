@@ -38,6 +38,8 @@ export type AccountKey =
   | 'students'
   | 'leaving'
   | 'studentExport'
+  | 'auditVice'
+  | 'auditPrincipal'
   | 'relatives'
   | 'phoneOwners'
   | 'phoneOwnersOther'

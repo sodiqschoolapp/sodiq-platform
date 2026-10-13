@@ -213,6 +213,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 13 October 2026: the audit log screen, its reading rights and the own sign-in history (task 2.6a)
+
+Plan approved on pull request #75 with corrections 1 to 4; decisions 1 to 13 confirmed there; 1, 3 and 12 marked Look first. The decisions after 13 came from the build and its reviews. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Task 2.6 is split: 2.6a (the log screen, its rights, hidden fields, own sign-in history, export rules) and 2.6b (the personal data report per person) | Decision 1; the report draws on every people record |
+| **Look first** (personal data across branches). The Principal and the Academic Vice Principal read the branch's `audit_log`, the `audit_log_school` entries whose `details.branchId` is the branch, and the record entries of a relative made while a link of that relative to a student of the branch was live; not sign-ins, school-wide account events or school setup. Proposed `/spec-change` for `edge/people-roles-accounts`, "Who may read the audit log": "… the Principal and Academic Vice Principal read their branch, including the changes of a relative made while the relative is linked to a student of the branch; sign-ins and school-wide settings are read by the Super Admin" | Decision 3 with correction 1; `edge/close-relatives`, row 1 |
+| **Look first** (personal data across branches). `audit_names(uuid[])`, security definer, answers first and last name only for an account or staff id of any branch; the route calls it with the actor and person ids of the entries it answers | Decision 12; `13`: "who, when" |
+| New area `audit_log`, view for the Super Admin, the Principal and the Academic Vice Principal; menu item `audit_log`, icon `history` | Decisions 2 and 9 |
+| The Super Admin chooses the log (this branch, all branches, school-wide) from a current Super Admin assignment; the answer says `chooseScope` and the page follows it, not the role on display; dates read in the time zone of the branch of the request | Decision 4; spec review of the build |
+| Search by person: a staff member as actor or person, a student or relative by record or person; by record; by school dates, at most 366 days, last 30 by default, the limit checked also when one end is left out | Decision 5; permission review of the build |
+| Identity inside an entry is hidden from a reader whose current assignments in the branch do not read `student_identity`, failing closed (every key not known to be outside Identity, nested and snake_case included), and an export's typed search; a Show is logged as `audit.entry_shown` with the shown entry's record and person; nothing is logged when nothing was hidden | Decision 6 |
+| The free-text `reason` of an entry is shown to every reader of the entry | An administrator's note, not an Identity field; the Principal already reads the reason of a student's status (permission review of the build) |
+| The Show is held to the branch of the request for every reader, the Super Admin included (404 otherwise) | Permission review of the build; `.claude/rules/api.md` |
+| Values are shown field by field with the label of the record's form, and stored codes (a sex, a role, a relationship, a status) in the language of the page; keys with no label (ids, technical keys) as stored | Decision 7 as changed by correction 2; spec review of the build |
+| Paging: 50 entries, newest first, keyset on `(occurred_at, id)`, "Load more" (`more` of `ListPage`); the list's own search and sorting work on the pages loaded; reading the log is not logged | Decision 8 |
+| The own sign-in history reads both logs through `own_sign_in_history`: `auth.*` by actor or account record, `account.*` by account record only; 25 events; the administrator's name but not a lock's reason; refused while a sign-in step is owed | Decisions 10 and 11, correction 3 |
+| Every export route is pinned in `exports-logged.test.ts` (routes that require `export` and paths ending in `/export`) and proved to write one entry | Decision 13, correction 4 |
+| `AuditEntry.action` is typed `AuditAction` (and `test.*` for the tests of the log, which a test keeps out of the application's code) | Plan review; spec review of the build |
+
 ## 13 October 2026: extra phones, the same person and relatives in the export (task 2.5b-2)
 
 Plan approved on pull request #74 with corrections 1 and 2; decisions 1 to 9 confirmed there; 1, 4 and 9 marked Look first. The decisions after 9 came from the build. Flagged on issue #42.

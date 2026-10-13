@@ -51,7 +51,7 @@ class SubjectSampleController {
         branchId: access.branchId,
         actorId: access.accountId,
         assignmentId: allowed.id,
-        action: 'sample.subject',
+        action: 'test.sample_subject',
         record: { type: 'subject', id: params.subjectId },
       }),
     );
@@ -102,7 +102,7 @@ describe('a route with subject scope', () => {
     return database.migrator
       .selectFrom('audit_log')
       .select(['assignment_id'])
-      .where('action', '=', 'sample.subject')
+      .where('action', '=', 'test.sample_subject')
       .where('record_id', '=', subject)
       .execute();
   }

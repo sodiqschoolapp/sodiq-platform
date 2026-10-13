@@ -1395,3 +1395,23 @@ describe('student photos', () => {
     expect(within(panel).queryByRole('button', { name: en.people.staff.photo.add })).toBeNull();
   });
 });
+
+// Task 2.6a, pull request #75: "History" opens the Audit log about the
+// student, for the readers of the log only.
+describe('the History link of a student', () => {
+  it('opens the log about the student for the Academic Vice Principal', async () => {
+    openList('academic_vice_principal');
+    renderApp(`${PATH}?open=${OTKIR.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const link = await within(panel).findByRole('link', { name: en.audit.history });
+    expect(link.getAttribute('href')).toBe(`/audit?person=student%3A${OTKIR.id}`);
+  });
+
+  it('is not shown to a role that does not read the log', async () => {
+    openList('spiritual_vice_principal');
+    renderApp(`${PATH}?open=${OTKIR.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('region', { name: en.people.staff.photo.title });
+    expect(within(panel).queryByRole('link', { name: en.audit.history })).toBeNull();
+  });
+});

@@ -3,7 +3,10 @@ import { freezeTable, type PermissionRows, type PermissionTable } from './permis
 import { HOME_KIND, MENU, MENU_ITEMS, MENU_MAX_ITEMS, visibleMenu, type MenuItem } from './menu.js';
 import { ROLES, type Role } from './roles.js';
 
-/** Written out by hand from the approved table of pull request #27. */
+/**
+ * Written out by hand from the approved table of pull request #27, with the
+ * Audit log of task 2.6a (decision 9 of pull request #75).
+ */
 const EXPECTED: Record<Role, MenuItem[]> = {
   super_admin: [
     'home',
@@ -15,8 +18,19 @@ const EXPECTED: Record<Role, MenuItem[]> = {
     'results',
     'plans',
     'requests',
+    'audit_log',
   ],
-  principal: ['home', 'setup', 'people', 'classes', 'timetable', 'journal', 'results', 'plans'],
+  principal: [
+    'home',
+    'setup',
+    'people',
+    'classes',
+    'timetable',
+    'journal',
+    'results',
+    'plans',
+    'audit_log',
+  ],
   academic_vice_principal: [
     'home',
     'setup',
@@ -27,6 +41,7 @@ const EXPECTED: Record<Role, MenuItem[]> = {
     'results',
     'plans',
     'requests',
+    'audit_log',
   ],
   spiritual_vice_principal: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   head_tutor: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],

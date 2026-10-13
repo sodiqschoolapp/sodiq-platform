@@ -25,6 +25,7 @@ import {
   type TemplatePreview,
   type TemplateTable,
   type Weekday,
+  type AuditAction,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
@@ -189,7 +190,7 @@ export class DayTemplates {
 
   private record(
     context: Context,
-    action: string,
+    action: AuditAction,
     record: { type: string; id: string },
     values: { oldValue?: JsonValue; newValue?: JsonValue },
   ): Promise<void> {

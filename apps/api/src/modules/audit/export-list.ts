@@ -7,6 +7,7 @@ import {
   type ExportSelection,
   type ExportTexts,
   type Language,
+  type AuditAction,
 } from '@sodiq/shared';
 import type { Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -33,7 +34,7 @@ export interface ExportRequest<Column extends string> {
 export interface ExportInput<Row, Column extends string> {
   list: ExportList;
   /** The audit action, singular as the other actions of the record: `staff.export`, `room.export`. */
-  action: string;
+  action: AuditAction;
   request: ExportRequest<Column>;
   /** Every row the list of this reader holds, by id, read as the list route reads them. */
   rows: ReadonlyMap<string, Row>;
