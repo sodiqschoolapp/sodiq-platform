@@ -136,22 +136,23 @@ export function CommandSearch() {
   return (
     <Dialog open={open} onOpenChange={change}>
       {/* docs/design-system.md, Layout shell, Top bar: the search field with "Ctrl K"
-          as plain text at its right; at phone width the search button. */}
+          as plain text at its right; below 1280 px the search button with its name read
+          out (task 2.7b-2, finding 14: one top bar row at laptop width). */}
       <DialogTrigger
         render={
           <button
             type="button"
             className={cn(
               FIELD,
-              'flex items-center gap-2 text-left text-muted-foreground sm:w-64',
-              'max-sm:size-11 max-sm:justify-center max-sm:border-0 max-sm:bg-transparent max-sm:px-0 max-sm:text-foreground max-sm:hover:bg-accent',
+              'flex items-center gap-2 text-left text-muted-foreground xl:w-64',
+              'max-xl:size-11 max-xl:justify-center max-xl:border-0 max-xl:bg-transparent max-xl:px-0 max-xl:text-foreground max-xl:hover:bg-accent',
             )}
           />
         }
       >
         <SearchIcon aria-hidden />
-        <span className="max-sm:sr-only">{t('search.label')}</span>
-        <span aria-hidden className="ml-auto text-xs max-sm:hidden">
+        <span className="max-xl:sr-only">{t('search.label')}</span>
+        <span aria-hidden className="ml-auto text-xs max-xl:hidden">
           {t(onMac() ? 'search.shortcutMac' : 'search.shortcut')}
         </span>
       </DialogTrigger>

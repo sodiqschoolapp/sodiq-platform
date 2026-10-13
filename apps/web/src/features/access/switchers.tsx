@@ -16,10 +16,10 @@ export function RoleSwitcher() {
     return null;
   }
   return (
-    <label className="flex items-center gap-1.5 text-sm">
+    <label className="flex min-w-0 items-center gap-1.5 text-sm">
       <span className="sr-only">{t('switcher.role')}</span>
       <Select
-        className="max-w-48"
+        className="max-w-48 min-w-0"
         value={role}
         onChange={(event) => {
           if (isRole(event.target.value)) {
@@ -60,10 +60,10 @@ export function BranchSwitcher() {
     );
   }
   return (
-    <label className="flex items-center gap-1.5 text-sm">
+    <label className="flex min-w-0 items-center gap-1.5 text-sm">
       <span className="sr-only">{t('switcher.branch')}</span>
       <Select
-        className="max-w-48"
+        className="max-w-48 min-w-0"
         value={branchId}
         onChange={(event) => {
           chooseBranch(event.target.value);

@@ -136,6 +136,9 @@ export function RoomsPage() {
         cell: (row) => row.buildingName,
         sortValue: (row) => row.buildingName,
         searchText: (row) => row.buildingName,
+        // Rooms are found by name; the building and floor are in the side panel
+        // and the export (task 2.7b-2, decision 3).
+        narrow: true,
       },
       {
         key: 'floor',
@@ -143,6 +146,7 @@ export function RoomsPage() {
         cell: (row) => row.floorName,
         sortValue: (row) => row.floorName,
         searchText: (row) => row.floorName,
+        narrow: true,
       },
       {
         key: 'type',
@@ -153,26 +157,31 @@ export function RoomsPage() {
       {
         key: 'capacity',
         header: t('setup.rooms.capacity'),
-        cell: (row) => number.format(row.capacity),
+        cell: (row) => <span className="whitespace-nowrap">{number.format(row.capacity)}</span>,
         sortValue: (row) => row.capacity,
         numeric: true,
       },
       {
         key: 'status',
         header: t('setup.rooms.status'),
-        cell: (row) => t(`setup.rooms.statuses.${row.status}`),
+        cell: (row) => (
+          <span className="whitespace-nowrap">{t(`setup.rooms.statuses.${row.status}`)}</span>
+        ),
         sortValue: (row) => ROOM_STATUSES.indexOf(row.status),
       },
       {
         key: 'shared',
         header: t('setup.rooms.shared'),
-        cell: (row) =>
-          row.shared && row.maxSimultaneousLessons !== null
-            ? t('setup.rooms.sharedCount', {
-                count: row.maxSimultaneousLessons,
-                n: number.format(row.maxSimultaneousLessons),
-              })
-            : t('setup.rooms.notShared'),
+        cell: (row) => (
+          <span className="whitespace-nowrap">
+            {row.shared && row.maxSimultaneousLessons !== null
+              ? t('setup.rooms.sharedCount', {
+                  count: row.maxSimultaneousLessons,
+                  n: number.format(row.maxSimultaneousLessons),
+                })
+              : t('setup.rooms.notShared')}
+          </span>
+        ),
         sortValue: (row) => row.maxSimultaneousLessons ?? 0,
       },
     ],

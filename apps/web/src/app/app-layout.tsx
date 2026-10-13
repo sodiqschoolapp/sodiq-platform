@@ -6,8 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { setBranchInUse } from '@/api/branch-in-use';
 import { PhoneTabBar, SideMenu, type PersonActions } from '@/features/access/app-menu';
 import { Logo } from '@/components/brand/logo';
-import { SuperAdminBanner } from '@/features/access/super-admin-banner';
-import { BranchesWithoutViceBanner } from '@/features/access/vice-principal-banner';
+import { AttentionAlerts } from '@/features/access/attention-line';
 import { BranchSwitcher, RoleSwitcher } from '@/features/access/switchers';
 import { useView } from '@/features/access/use-view';
 import { CommandSearch } from '@/components/search/command-search';
@@ -107,12 +106,15 @@ export function AppLayout() {
       <UnsentGuard />
       <SideMenu actions={actions} />
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* 64 high, white (dark: the top bar navy), a bottom border. On a phone the
-            year and quarter wrap under the other tools. */}
+        {/* 64 high, white (dark: the top bar navy), a bottom border. From 1024 px one
+            row: the branch, the period, the unsent pill and the role shorten their
+            text instead (task 2.7b-2, finding 14). Below it the bar may wrap, never
+            scroll sideways; on a phone the year and quarter wrap under the other
+            tools. */}
         <header
           aria-label={t('layout.topBar')}
           data-print="hide"
-          className="sticky top-0 z-30 flex min-h-16 shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b bg-top-bar px-8 py-3 max-sm:px-4 max-sm:py-2"
+          className="sticky top-0 z-30 flex min-h-16 shrink-0 flex-wrap items-center lg:flex-nowrap gap-x-4 gap-y-1 border-b bg-top-bar px-8 py-3 max-sm:px-4 max-sm:py-2"
         >
           <Link to="/" className="shrink-0 rounded-lg sm:hidden">
             {/* The colour shield on white, the on-dark one on the dark top bar (Logo). */}
@@ -124,7 +126,7 @@ export function AppLayout() {
             <CurrentPeriod />
           </div>
           <UnsentBanner />
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex min-w-0 items-center gap-2">
             <CommandSearch />
             <NotificationsButton />
             <div className="max-sm:hidden">
@@ -134,8 +136,7 @@ export function AppLayout() {
           </div>
         </header>
         <main className="min-w-0 flex-1 p-8 max-sm:p-4 max-sm:pb-24">
-          <SuperAdminBanner />
-          <BranchesWithoutViceBanner />
+          <AttentionAlerts />
           <NotTrustedNote trusted={session?.trustedUntil != null} />
           <FailureAlert error={signOut.error ?? accountLanguage.error} />
           <Outlet />

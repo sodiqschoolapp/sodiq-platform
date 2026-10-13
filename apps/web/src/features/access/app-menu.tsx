@@ -453,7 +453,7 @@ export function PhoneTabBar({ actions }: { actions: PersonActions }) {
           <div className="grid gap-3 border-t pt-3">
             <ThemeSwitch />
             <LanguageChooser onChange={actions.chooseLanguage} />
-            <FeedbackButton />
+            <FeedbackButton withWord />
           </div>
           <div className="flex flex-wrap gap-2 border-t pt-3">
             <Button

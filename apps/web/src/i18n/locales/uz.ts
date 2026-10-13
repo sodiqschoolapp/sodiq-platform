@@ -247,8 +247,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Ishdan ketmagan oʻqituvchilarda yoki ochiq vakansiyalarda bu fan shu sinflar bilan shu kafedrada bor. Avval ularning fanlarini, keyin fanni oʻzgartiring.',
     department_has_staff:
       'Bu kafedrada ishdan ketmagan xodimlar yoki ochiq vakansiyalar bor. Avval ularni boshqa kafedraga oʻtkazing yoki vakansiyalarni yoping.',
-    photo_invalid:
-      'Bu fayl tomoni 800 pikseldan oshmaydigan JPEG yoki PNG surat emas. Boshqa surat tanlang.',
+    photo_invalid: 'JPEG yoki PNG formatidagi, 5 MB gacha boʻlgan surat tanlang.',
     photo_too_large: 'Surat 5 MB dan katta. Kichikroq surat tanlang.',
     photos_not_configured: 'Suratlar hali sozlanmagan. Administratorga murojaat qiling.',
     photos_unavailable: 'Suratlar hozir mavjud emas. Keyinroq qayta urinib koʻring.',
@@ -375,6 +374,10 @@ export const uz: Texts<'one' | 'other'> = {
     notTrusted:
       'Bu qurilma ishonchli deb belgilanmadi: kirishda bir martalik parol ishlatilgan. Unga ishonish uchun tizimdan chiqing va «Bu qurilmaga ishonish»ni yoqib, qaytadan kiring.',
     dismiss: 'Yopish',
+    attentionLine_one: 'Eʼtiboringizni talab qiladi: {{n}}',
+    attentionLine_other: 'Eʼtiboringizni talab qiladi: {{n}}',
+    attentionShow: 'Koʻrsatish',
+    attentionHide: 'Yashirish',
   },
   search: {
     label: 'Qidiruv',
@@ -439,6 +442,9 @@ export const uz: Texts<'one' | 'other'> = {
     saved: 'Saqlandi.',
     notSaved: 'Saqlanmadi: hech narsa oʻzgarmadi.',
     required: 'Bu maydonni toʻldiring.',
+    chooseOne: 'Kamida bittasini tanlang.',
+    chooseGrade: 'Kamida bitta sinfni tanlang.',
+    chooseSubject: 'Kamida bitta fanni tanlang.',
     tooShort_one: 'Kamida {{n}} ta belgi kiriting.',
     tooShort_other: 'Kamida {{n}} ta belgi kiriting.',
     tooLong_one: 'Koʻpi bilan {{n}} ta belgi kiriting.',
@@ -1257,6 +1263,7 @@ export const uz: Texts<'one' | 'other'> = {
         'Oʻquvchi oxirgi kundan keyingi kundan faol emas boʻladi. Barcha maʼlumotlar saqlanadi.',
       leaveAction: 'Ketishni qayd etish',
       cancelLeaving: 'Rejalashtirilgan ketishni bekor qilish',
+      keepLeaving: 'Ketishni qoldirish',
       cancelConfirmTitle: 'Rejalashtirilgan ketish bekor qilinsinmi?',
       cancelConfirmText: 'Oʻquvchi faol qoladi.',
       undoTitle: 'Ketishni bekor qilish',

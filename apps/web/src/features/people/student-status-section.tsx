@@ -86,6 +86,9 @@ export function StatusSection({
         text: t('people.students.cancelConfirmText'),
         names: [label],
         action: t('people.students.cancelLeaving'),
+        // Finding 26: two buttons that both say "Cancel" do not tell which one
+        // keeps the leaving.
+        cancel: t('people.students.keepLeaving'),
         destructive: false,
       });
       if (!go) {
@@ -157,7 +160,8 @@ export function StatusSection({
               <FailureAlert error={cancel.error} />
             </div>
           )}
-          {(student.status === 'active' || student.status === null) && (
+          {/* A scheduled leaving is cancelled first, not recorded again (finding 29). */}
+          {(student.status === 'active' || student.status === null) && !scheduled && (
             <LeavingForm
               key={`leave-${String(student.version)}`}
               student={student}

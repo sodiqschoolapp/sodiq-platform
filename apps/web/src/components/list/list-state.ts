@@ -14,6 +14,12 @@ export interface Column<Row> {
   opens?: boolean;
   /** The column cannot be hidden in the column chooser. */
   fixed?: boolean;
+  /**
+   * Less important: left out below 1280 px unless ticked in the column chooser,
+   * kept in the export and the side panel (task 2.7b-2, finding 14). An `opens`
+   * or `fixed` column is never left out.
+   */
+  narrow?: boolean;
   /** Numbers: set to the end of the cell. */
   numeric?: boolean;
   /** `false`: not a cell of the Excel file (a photo, task 2.2c-2); the export never asks for it. */
@@ -222,5 +228,31 @@ export function storeHiddenColumns(listId: string, keys: readonly string[]): voi
     window.localStorage.setItem(hiddenKey(listId), JSON.stringify(keys));
   } catch {
     // Nothing to do: see above.
+  }
+}
+
+const shownKey = (listId: string): string => `sodiq.list.${listId}.shown`;
+
+/**
+ * The narrow columns the person ticked in the column chooser below 1280 px:
+ * shown at every width from then on, until hidden again. Kept in the browser
+ * like the hidden columns.
+ */
+export function readShownColumns(listId: string): string[] {
+  try {
+    const stored: unknown = JSON.parse(window.localStorage.getItem(shownKey(listId)) ?? '[]');
+    return Array.isArray(stored)
+      ? stored.filter((key): key is string => typeof key === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function storeShownColumns(listId: string, keys: readonly string[]): void {
+  try {
+    window.localStorage.setItem(shownKey(listId), JSON.stringify(keys));
+  } catch {
+    // Nothing to do: see readHiddenColumns.
   }
 }

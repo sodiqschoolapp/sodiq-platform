@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { useMinWidth, XL } from '@/lib/use-min-width';
 import { DataTable, DataTableOutline } from './data-table';
 import {
   addressKey,
@@ -24,8 +25,10 @@ import {
   matchingRows,
   nextSort,
   readHiddenColumns,
+  readShownColumns,
   sortOf,
   storeHiddenColumns,
+  storeShownColumns,
   type Column,
   type Filter,
   type ListSearch,
@@ -239,10 +242,26 @@ export function ListPage<Row>({
   const current = useMemo(() => listSearch({ ...state, q: typed }), [state, typed]);
 
   const [hidden, setHidden] = useState(() => readHiddenColumns(listId));
+  // Narrow columns ticked in the chooser below 1280 px (task 2.7b-2, finding 14).
+  const [shownNarrow, setShownNarrow] = useState(() => readShownColumns(listId));
+  const wide = useMinWidth(XL);
   const canHide = hideable(columns);
-  const shownColumns = columns.filter(
-    (column) => !hidden.includes(column.key) || !canHide.includes(column),
-  );
+  /** Not hidden by the person: in the export at every width. */
+  const chosen = (column: Column<Row>): boolean =>
+    !hidden.includes(column.key) || !canHide.includes(column);
+  /**
+   * On screen: below 1280 px a list leaves out its less important columns
+   * first, unless the person ticked them in the column chooser (the owner's
+   * confirmation of 13 October 2026, issue #39, finding 14).
+   */
+  const onScreen = (column: Column<Row>): boolean =>
+    chosen(column) &&
+    (wide ||
+      column.narrow !== true ||
+      !canHide.includes(column) ||
+      shownNarrow.includes(column.key));
+  const shownColumns = columns.filter(onScreen);
+  const exportedColumns = columns.filter(chosen);
 
   const matching = useMemo(
     () => matchingRows(rows ?? [], columns, filters, current, i18n.language),
@@ -272,6 +291,12 @@ export function ListPage<Row>({
   const matchingIds = matching.map(rowId);
   const tickedMatching = matchingIds.filter((id) => ticked.has(id)).length;
   const notShown = ticked.size - tickedMatching;
+  const selectedText = [
+    t('list.selected', { count: ticked.size, n: number.format(ticked.size) }),
+    ...(notShown > 0
+      ? [t('list.selectedNotShown', { count: notShown, n: number.format(notShown) })]
+      : []),
+  ].join(' ');
   // Ticked rows in the order shown, then those the search and filters hide now.
   const shownIds = new Set(matchingIds);
   const exportRows =
@@ -457,13 +482,24 @@ export function ListPage<Row>({
                   {canHide.map((column) => (
                     <DropdownMenuCheckboxItem
                       key={column.key}
-                      checked={!hidden.includes(column.key)}
+                      checked={onScreen(column)}
                       onCheckedChange={(shown) => {
                         const next = shown
                           ? hidden.filter((key) => key !== column.key)
                           : [...hidden, column.key];
                         setHidden(next);
                         storeHiddenColumns(listId, next);
+                        // Shown on a narrow screen: a choice that outlasts the width.
+                        // Hidden: hidden at every width.
+                        const nextNarrow = shown
+                          ? !wide && column.narrow === true
+                            ? [...shownNarrow, column.key]
+                            : shownNarrow
+                          : shownNarrow.filter((key) => key !== column.key);
+                        if (nextNarrow !== shownNarrow) {
+                          setShownNarrow(nextNarrow);
+                          storeShownColumns(listId, nextNarrow);
+                        }
                       }}
                     >
                       {column.header}
@@ -511,7 +547,7 @@ export function ListPage<Row>({
                   onExport(
                     exportRows,
                     [
-                      ...shownColumns
+                      ...exportedColumns
                         .filter((column) => column.exported !== false)
                         .map((column) => column.key),
                       ...exportExtras
@@ -555,19 +591,23 @@ export function ListPage<Row>({
           </p>
         )}
 
-        {/* Always there, also with nothing ticked: the table does not move
-            under the pointer at the first tick. */}
-        {selection !== undefined && rows !== undefined && rows.length > 0 && (
+        {/* The one live region of the selection: always in the page, so the
+            count is read out at the first tick, and empty with nothing ticked. */}
+        {selection !== undefined && (
+          <p role="status" className="sr-only" data-slot="selection-status">
+            {ticked.size > 0 && selectedText}
+          </p>
+        )}
+        {/* Only once a row is ticked (issue #39, hand test of 13 October 2026,
+            finding 13): with nothing ticked the bar said nothing useful. */}
+        {selection !== undefined && rows !== undefined && rows.length > 0 && ticked.size > 0 && (
           <div
             role="group"
             aria-label={t('list.bulkActions')}
             className="flex flex-wrap items-center gap-2 rounded-lg bg-today px-3 py-2 text-sm"
           >
-            <p role="status" className={cn(ticked.size > 0 && 'font-medium')}>
-              {t('list.selected', { count: ticked.size, n: number.format(ticked.size) })}
-              {notShown > 0 && (
-                <> {t('list.selectedNotShown', { count: notShown, n: number.format(notShown) })}</>
-              )}
+            <p className="font-medium" data-slot="selection-count">
+              {selectedText}
             </p>
             <div className="ml-auto flex flex-wrap items-center gap-2">
               {bulkActions.map((action) => (
@@ -575,7 +615,6 @@ export function ListPage<Row>({
                   key={action.key}
                   variant="secondary"
                   size="sm"
-                  disabled={ticked.size === 0}
                   onClick={() => {
                     if (action.confirm === undefined) {
                       action.run(tickedRows);
@@ -597,7 +636,6 @@ export function ListPage<Row>({
               <Button
                 variant="ghost"
                 size="sm"
-                disabled={ticked.size === 0}
                 onClick={() => {
                   setTickedIds(new Set());
                   focusOn('thead input[type="checkbox"]');
