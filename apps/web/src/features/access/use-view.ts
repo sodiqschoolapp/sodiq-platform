@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createContext, useContext, useMemo, useSyncExternalStore } from 'react';
 import type { Role } from '@sodiq/shared';
 import { sessionQuery } from '@/features/auth/session';
-import { resolveView, type View } from './view';
+import { mayView, resolveView, type View } from './view';
 import type { ViewStore } from './view-store';
 
 export const ViewContext = createContext<ViewStore | null>(null);
@@ -35,4 +35,11 @@ export function useView(): UseView {
       store.chooseBranch(branchId);
     },
   };
+}
+
+/** Whether the page of an area may be opened in the branch of the tab (`mayView`). */
+export function useMayView(area: string): boolean {
+  const { data: session } = useQuery(sessionQuery);
+  const { branchId } = useView();
+  return mayView(session ?? null, branchId, area);
 }

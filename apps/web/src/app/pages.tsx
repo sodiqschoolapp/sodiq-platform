@@ -83,20 +83,7 @@ export function ErrorPage({ error }: ErrorComponentProps) {
     </Link>
   );
   if (error instanceof ApiFailure && error.code === 'permission_denied') {
-    return (
-      <FullPage>
-        <BrandMoment
-          heading="h1"
-          title={t('problems.noAccessTitle')}
-          text={t('problems.noAccessText')}
-          action={
-            <Link to="/" className={buttonVariants()}>
-              {t('problems.toHome')}
-            </Link>
-          }
-        />
-      </FullPage>
-    );
+    return <NoAccessPage />;
   }
   return (
     <FullPage>
@@ -115,6 +102,28 @@ export function ErrorPage({ error }: ErrorComponentProps) {
           </Button>
         }
         secondAction={toHome}
+      />
+    </FullPage>
+  );
+}
+
+/**
+ * The full-page "no access" screen: a page the role may not open (task 2.7a,
+ * finding 4: "Try again" cannot help a refusal of the role).
+ */
+export function NoAccessPage() {
+  const { t } = useTranslation();
+  return (
+    <FullPage>
+      <BrandMoment
+        heading="h1"
+        title={t('problems.noAccessTitle')}
+        text={t('problems.noAccessText')}
+        action={
+          <Link to="/" className={buttonVariants()}>
+            {t('problems.toHome')}
+          </Link>
+        }
       />
     </FullPage>
   );

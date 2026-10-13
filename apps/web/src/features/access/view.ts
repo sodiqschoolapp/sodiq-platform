@@ -1,4 +1,6 @@
 import {
+  PERMISSIONS,
+  permits,
   ROLES,
   SCHOOL_WIDE_ROLES,
   roleSchema,
@@ -51,6 +53,26 @@ export function resolveView(
       ? chosen.branchId
       : (branches[0]?.id ?? null);
   return { roles, role, branches, branchId };
+}
+
+/**
+ * Whether the page of an area may be opened in the branch of the tab: the
+ * server's own reading (`.claude/rules/api.md`: "The guard allows a request
+ * when any current assignment of the account permits it"), so a person with
+ * two roles is never refused here what the server serves, whatever role is on
+ * display. Display only: the server checks every call (task 2.7a, finding 4).
+ */
+export function mayView(
+  session: Pick<SessionResponse, 'assignments'> | null,
+  branchId: string | null,
+  area: string,
+): boolean {
+  return (session?.assignments ?? []).some(
+    (assignment) =>
+      permits(PERMISSIONS, assignment.role, area, 'view') &&
+      ((assignment.branchId === null && SCHOOL_WIDE_ROLES.includes(assignment.role)) ||
+        (branchId !== null && assignment.branchId === branchId)),
+  );
 }
 
 export const isRole = (value: unknown): value is Role => roleSchema.safeParse(value).success;
