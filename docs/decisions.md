@@ -213,6 +213,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 13 October 2026: phone owners, merge and the notice to the other branch (task 2.5b-1)
+
+Plan approved on pull request #73 with corrections 1 to 3; decisions 1 to 11 confirmed there; 1, 2, 5 to 9 marked Look first. The decisions after 11 came from the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Task 2.5b split into 2.5b-1 (new owner, no valid phone, merge, the notice) and 2.5b-2 (extra phones, the same person, relatives in the export) | Decision 1; each is a flow of its own; 2.5b-1 carries the whole done-when |
+| **Look first.** `relative_release_phone` (definer) gives the holder of an exact phone, visible to the branch or not, a new phone or "no valid phone", and nothing else of the record; it answers the notice targets; the branch of the request must be one of the transaction's | Decision 2, correction 3; `edge`, row 2 |
+| **Look first.** `relative_notice_accounts` (definer) names a current Academic Vice Principal of each other branch where the relative is linked live, ids only, compared with the branch of the request | Decision 5; `edge`, row 1 |
+| **Look first.** The record whose phone stays stays (id and Parent account); the name is chosen; workplace and email filled from the other when empty; links moved as an unlink and a new link with the same fields; a student linked to both keeps the kept link, the main mark on it; the merged record emptied, `merged_into`, archived, its account off, never linked again; the kept phone must be a phone | Decision 6, corrections 1 and 2; `edge`, row 3 |
+| **Look first.** A merge is across branches when either record has a live link outside the branch of the request: only the Super Admin, with every branch in the transaction; each moved link's entry in its own branch's log | Decision 7; `edge`, row 3 |
+| **Look first.** On a refused phone change: "Merge" when the holder is linked live in the branch (any branch for the Super Admin), and always "the number has a new owner"; proposed `/spec-change` for `edge/close-relatives`, row 3: "When a phone change is refused because the number exists, 'Merge' is offered while the holder is linked to a student, and 'different person, the number has a new owner' always." | Decision 8 |
+| **Look first.** `student_relatives_not_merged` (definer trigger) locks the relative, then reads `merged_into`; a merge that meets a link of a student it did not lock, or a phone other than shown, is refused `relative_changed` | Decision 9 |
+| "No valid phone" is `phone_invalid_since` with an empty phone, set only by the definer function and cleared by a trigger when a phone is written; listed (Parents filter, home tile) while a student of the branch is active today | Decision 3; `edge`, row 2 |
+| The new-owner choice is for the holders of `relatives` create; the entry names that assignment | Decisions 4 and 11 |
+| The new owner runs after the student's lock; the earlier relative's new number is claimed before the matched one; a deadlock is answered 409 `relative_changed` | Decision 10 |
+| Three notification kinds (`relative.renamed`, `relative.phone_changed`, `relative.merged`) instead of one kind with a list of what changed (decision taken in the build) | A kind's data are the `{{names}}` of its text and choose no text (`NOTIFICATION_KINDS`); one notice per change says what changed in every language |
+| The id of the holder for a merge or a new owner on a refused edit is read by the phone match on the screen (decision taken in the build) | The refused change gives the id only when the holder is visible in the branch (2.5a, correction 7) |
+| The answer of a Super Admin's merge counts the students of other branches against the branch of the request (decision taken in the build) | Its transaction holds every branch |
+
 ## 13 October 2026: close relatives, their links and the Parents list (task 2.5a)
 
 Plan approved on pull request #72 with corrections 1 and 2; decisions 1 to 16 and 18 confirmed there, decision 17 changed by correction 1; 1 to 6 marked Look first. The decisions after 18 came from the build. Flagged on issue #42.
