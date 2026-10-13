@@ -257,9 +257,11 @@ export function CheckboxGroupField({
         {options.map((option) => (
           <label
             key={option.value}
+            htmlFor={`${id}-${option.value}`}
             className="flex items-center gap-2 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50 max-sm:min-h-11"
           >
             <input
+              id={`${id}-${option.value}`}
               type="checkbox"
               name={name}
               value={option.value}

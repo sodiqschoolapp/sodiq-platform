@@ -26,6 +26,7 @@ export function SignInPage() {
   const navigate = useNavigate();
   const { reason } = useSearch({ from: '/sign-in' });
   const trustId = useId();
+  const trustBoxId = useId();
 
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
@@ -106,8 +107,15 @@ export function SignInPage() {
           }}
         />
         <div className="grid gap-1">
-          <label className="flex items-center gap-2 text-sm font-medium max-sm:min-h-11">
+          {/* The label is tied to the input by its id as well (issue #39, hand test
+              of 13 October 2026, finding 32: announced as "on"). */}
+          <label
+            htmlFor={trustBoxId}
+            className="flex items-center gap-2 text-sm font-medium max-sm:min-h-11"
+          >
             <input
+              id={trustBoxId}
+              name="trustDevice"
               type="checkbox"
               className={CHECKBOX}
               checked={trust}

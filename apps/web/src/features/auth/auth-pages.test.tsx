@@ -28,6 +28,10 @@ describe('the sign-in page', () => {
 
     const trust = screen.getByRole<HTMLInputElement>('checkbox', { name: en.signIn.trust });
     expect(trust.checked).toBe(false);
+    // Finding 32 of the hand test of 13 October 2026: the label is tied to the
+    // input by its id, so it is announced by its words, never as "on".
+    expect(trust.id).not.toBe('');
+    expect(document.querySelector(`label[for="${trust.id}"]`)?.textContent).toBe(en.signIn.trust);
     expect(screen.getByText(en.signIn.trustNote)).toBeDefined();
     expect(en.signIn.trustNote).toContain('Do not use on a shared computer');
   });
