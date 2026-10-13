@@ -10,3 +10,12 @@ export function formatMoment(language: string, iso: string): string {
     new Date(iso),
   );
 }
+
+/** A stored moment in the language of the page and a given time zone: the branch's, on a printout (task 2.6b). */
+export function formatMomentIn(language: string, iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(language, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone,
+  }).format(new Date(iso));
+}

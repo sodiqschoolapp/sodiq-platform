@@ -710,3 +710,25 @@ describe('the History link of a staff member', () => {
     expect(link.getAttribute('href')).toBe(`/audit?person=staff%3A${AKMAL.id}`);
   });
 });
+
+// Task 2.6b, pull request #76: "Personal data report" on the panel, for the
+// Super Admin only (decision 3).
+describe('the personal data report link of a staff member', () => {
+  it('opens the report of the person for the Super Admin', async () => {
+    openList('super_admin');
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const link = await within(panel).findByRole('link', { name: en.people.report.link });
+    expect(link.getAttribute('href')).toBe(`/people/report/staff/${AKMAL.id}`);
+  });
+
+  it('is not shown to the Academic Vice Principal', async () => {
+    openList('academic_vice_principal');
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    await within(panel).findByRole('link', { name: en.audit.history });
+    expect(within(panel).queryByRole('link', { name: en.people.report.link })).toBeNull();
+  });
+});

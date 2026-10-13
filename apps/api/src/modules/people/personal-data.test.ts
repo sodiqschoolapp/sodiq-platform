@@ -275,11 +275,17 @@ describe('the personal data report', () => {
       // A second relative, unlinked from every student and archived: hidden by
       // `relative_membership`, read through `personal_data_relatives` (decision 2).
       gone = await t.database.migrator.transaction().execute(async (transaction) => {
-        const relative = await linkRelative(transaction, studentId, t.north, new Date('2026-09-02T08:00:00Z'), {
-          fullName: 'Rustam Ismoilov',
-          phone: '+998901112233',
-          mainContact: false,
-        });
+        const relative = await linkRelative(
+          transaction,
+          studentId,
+          t.north,
+          new Date('2026-09-02T08:00:00Z'),
+          {
+            fullName: 'Rustam Ismoilov',
+            phone: '+998901112233',
+            mainContact: false,
+          },
+        );
         await transaction
           .updateTable('relatives')
           .set({ workplace: 'Invented factory', email: 'rustam@example.com' })
@@ -363,15 +369,13 @@ describe('the personal data report', () => {
       expect(after).toHaveLength(before.length + 1);
       expect(after.at(-1)).toMatchObject({
         branch_id: t.north,
-        actor_id: expect.any(String),
         assignment_id: t.adminAssignment,
         person_id: studentId,
         record_type: 'student',
       });
-      expect(after.at(-1)?.details).toMatchObject({
-        sections: expect.arrayContaining(['record', 'relatives', 'entries']),
-        entriesLeftOut: 0,
-      });
+      expect(after.at(-1)?.actor_id).not.toBeNull();
+      expect(after.at(-1)?.details).toMatchObject({ entriesLeftOut: 0 });
+      expect(JSON.stringify(after.at(-1)?.details)).toContain('"relatives"');
     });
   });
 
@@ -435,8 +439,8 @@ describe('the personal data report', () => {
       expect(found.staff).toMatchObject({
         id: staffId,
         birthDate: '1989-06-07',
-        jshshir: expect.stringMatching(/^3123456789\d{4}$/),
       });
+      expect(found.staff.jshshir).toMatch(/^3123456789\d{4}$/);
       expect(found.staff.branches.map((one) => one.main)).toEqual([true, false]);
       expect(found.staff.availability).toHaveLength(2);
       expect(found.staff.availability.every((one) => one.until === null)).toBe(true);

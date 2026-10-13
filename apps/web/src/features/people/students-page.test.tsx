@@ -1415,3 +1415,23 @@ describe('the History link of a student', () => {
     expect(within(panel).queryByRole('link', { name: en.audit.history })).toBeNull();
   });
 });
+
+// Task 2.6b, pull request #76: "Personal data report" on the panel, for the
+// Super Admin only (decision 3).
+describe('the personal data report link of a student', () => {
+  it('opens the report of the student for the Super Admin', async () => {
+    openList('super_admin');
+    renderApp(`${PATH}?open=${OTKIR.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const link = await within(panel).findByRole('link', { name: en.people.report.link });
+    expect(link.getAttribute('href')).toBe(`/people/report/student/${OTKIR.id}`);
+  });
+
+  it.each(['principal', 'academic_vice_principal'] as const)('is not shown to %s', async (role) => {
+    openList(role);
+    renderApp(`${PATH}?open=${OTKIR.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('link', { name: en.audit.history });
+    expect(within(panel).queryByRole('link', { name: en.people.report.link })).toBeNull();
+  });
+});

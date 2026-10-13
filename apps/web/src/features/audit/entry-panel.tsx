@@ -1,7 +1,7 @@
 import { isAuditAction, type AuditEntryAnswer } from '@sodiq/shared';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import type { ParseKeys, TFunction } from 'i18next';
+import type { i18n as I18n, ParseKeys, TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
@@ -75,27 +75,34 @@ function leavesOf(value: unknown): Map<string, unknown> {
   return found;
 }
 
-/**
- * One entry of the log in the side panel (task 2.6a): who acted, with the
- * role of the assignment that allowed it, about whom, the record, the reason,
- * the old and new values field by field with the labels of the record's form
- * (correction 2), the details (an export's list, filters and row count), and
- * the logged "Show" of the values hidden from this reader (decision 6).
- */
-export function EntryPanel({ entry }: { entry: AuditEntryAnswer }) {
-  const { t, i18n } = useTranslation();
-  const { branches } = useView();
-  const [shown, setShown] = useState<AuditEntryAnswer | null>(null);
-  const show = useMutation({
-    mutationFn: () => showEntry(entry.id),
-    onSuccess: (answer) => {
-      setShown(answer);
-    },
-  });
-  const current = shown ?? entry;
-  const hidden = new Set(current.hidden);
-  const type = fieldsTypeOf(current.action, current.record?.type ?? null);
+/** The old and new values and the details of an entry, each leaf by its path. */
+export function valueLeavesOf(entry: AuditEntryAnswer) {
+  const before = leavesOf(entry.oldValue);
+  const after = leavesOf(entry.newValue);
+  return {
+    before,
+    after,
+    paths: [...new Set([...before.keys(), ...after.keys()])],
+    details: leavesOf(entry.details),
+  };
+}
 
+/**
+ * The label of a value's path, with the label of the record's form
+ * (correction 2 of #75), and the value in the language of the page, a
+ * stored code by its name; shared by the side panel and the personal data
+ * report (task 2.6b).
+ */
+export function entryFormatOf(
+  t: TFunction,
+  i18n: Pick<I18n, 'exists'>,
+  entry: AuditEntryAnswer,
+): {
+  labelOf: (path: string, kind: 'oldValue' | 'newValue' | 'details') => string;
+  valueOf: (value: unknown, path: string) => string;
+} {
+  const hidden = new Set(entry.hidden);
+  const type = fieldsTypeOf(entry.action, entry.record?.type ?? null);
   const labelOf = (path: string, kind: 'oldValue' | 'newValue' | 'details'): string => {
     if (path === '') {
       return t(
@@ -144,10 +151,31 @@ export function EntryPanel({ entry }: { entry: AuditEntryAnswer }) {
     return JSON.stringify(value);
   };
 
-  const before = leavesOf(current.oldValue);
-  const after = leavesOf(current.newValue);
-  const paths = [...new Set([...before.keys(), ...after.keys()])];
-  const details = leavesOf(current.details);
+  return { labelOf, valueOf };
+}
+
+/**
+ * One entry of the log in the side panel (task 2.6a): who acted, with the
+ * role of the assignment that allowed it, about whom, the record, the reason,
+ * the old and new values field by field with the labels of the record's form
+ * (correction 2), the details (an export's list, filters and row count), and
+ * the logged "Show" of the values hidden from this reader (decision 6).
+ */
+export function EntryPanel({ entry }: { entry: AuditEntryAnswer }) {
+  const { t, i18n } = useTranslation();
+  const { branches } = useView();
+  const [shown, setShown] = useState<AuditEntryAnswer | null>(null);
+  const show = useMutation({
+    mutationFn: () => showEntry(entry.id),
+    onSuccess: (answer) => {
+      setShown(answer);
+    },
+  });
+  const current = shown ?? entry;
+
+  const { labelOf, valueOf } = entryFormatOf(t, i18n, current);
+
+  const { before, after, paths, details } = valueLeavesOf(current);
   const branch =
     current.branchId === null
       ? t('audit.schoolWide')

@@ -757,3 +757,25 @@ describe('the History link of a parent', () => {
     expect(link.getAttribute('href')).toBe(`/audit?person=relative%3A${DILFUZA.id}`);
   });
 });
+
+// Task 2.6b, pull request #76: "Personal data report" on the panel, for the
+// Super Admin only (decision 3).
+describe('the personal data report link of a parent', () => {
+  it('opens the report of the parent for the Super Admin', async () => {
+    openList('super_admin');
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Dilfuza Rahimova', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Dilfuza Rahimova' });
+    const link = await within(panel).findByRole('link', { name: en.people.report.link });
+    expect(link.getAttribute('href')).toBe(`/people/report/relative/${DILFUZA.id}`);
+  });
+
+  it('is not shown to the Principal', async () => {
+    openList('principal');
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Dilfuza Rahimova', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Dilfuza Rahimova' });
+    await within(panel).findByRole('link', { name: en.audit.history });
+    expect(within(panel).queryByRole('link', { name: en.people.report.link })).toBeNull();
+  });
+});

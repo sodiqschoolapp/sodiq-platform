@@ -210,7 +210,6 @@ export class AuditEntries {
       return entry;
     });
   }
-
 }
 
 /**
@@ -311,9 +310,7 @@ export async function entryAnswers(
       branchId: row.branch_id,
       action: row.action,
       actor:
-        row.actor_id === null
-          ? null
-          : { id: row.actor_id, name: names.get(row.actor_id) ?? null },
+        row.actor_id === null ? null : { id: row.actor_id, name: names.get(row.actor_id) ?? null },
       assignment:
         row.assignment_id !== null && parsedRole?.success === true
           ? { id: row.assignment_id, role: parsedRole.data }

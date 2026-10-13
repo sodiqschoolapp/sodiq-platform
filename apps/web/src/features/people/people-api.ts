@@ -4,6 +4,7 @@ import {
   availabilitySchema,
   loginSuggestionSchema,
   neverUsedListSchema,
+  personalDataReportSchema,
   relativeDetailSchema,
   relativeListSchema,
   relativeNoValidPhoneSchema,
@@ -17,6 +18,8 @@ import {
   studentRelativesSchema,
   vacancyDetailSchema,
   vacancyListSchema,
+  type PersonalDataKind,
+  type PersonalDataReport,
   type RelativeHolder,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
@@ -460,4 +463,24 @@ export async function phoneMatch(phone: string): Promise<RelativeHolder | null> 
     ),
   );
   return answer.holder;
+}
+
+/**
+ * Produces the personal data report of a person (task 2.6b): an export of
+ * the Super Admin, logged by the server at each call (decision 8). Called only
+ * from a mutation that keeps the answer in no cache and outside the offline
+ * queue, since it holds Identity.
+ */
+export async function producePersonalDataReport(
+  kind: PersonalDataKind,
+  id: string,
+): Promise<PersonalDataReport> {
+  const params = { params: { header: branchHeader(), path: { id } } };
+  const answer =
+    kind === 'student'
+      ? await answerOf(api.POST('/api/people/students/{id}/report', params))
+      : kind === 'staff'
+        ? await answerOf(api.POST('/api/people/staff/{id}/report', params))
+        : await answerOf(api.POST('/api/people/relatives/{id}/report', params));
+  return personalDataReportSchema.parse(answer);
 }
