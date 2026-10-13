@@ -61,7 +61,7 @@ export function TemplateAssignmentPanel({
   const endable = canEdit && assignment.level !== 'default';
 
   return (
-    <div ref={panel.root} className="grid gap-6">
+    <div className="grid gap-6">
       {endable && panel.editing === 'end' ? (
         <section className="grid gap-3">
           <h3 className={SECTION_TITLE}>{t('setup.templateSettings.endTitle')}</h3>

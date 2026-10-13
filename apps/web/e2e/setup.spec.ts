@@ -131,6 +131,39 @@ async function checkSuperAdminPages(page: Page): Promise<void> {
     await expect(heading(page, title)).toBeVisible();
     await checkNewRecord(page, name, add, newTitle);
   }
+  // Task 2.7c-2b-1: the records only the Super Admin changes, read with their
+  // actions at the bottom and with Edit pressed. Nothing is saved.
+  for (const [name, address, title, record] of [
+    ['setup-buildings', '/setup/buildings', en.setup.buildings.title, 'Main building'],
+    ['setup-rooms', '/setup/rooms', en.setup.rooms.title, '201'],
+    ['setup-divisions', '/setup/divisions', en.setup.divisions.title, 'Pages division'],
+  ] as const) {
+    await page.goto(address);
+    await expect(heading(page, title)).toBeVisible();
+    await page.getByRole('button', { name: record, exact: true }).first().click();
+    const panel = page.getByRole('complementary', { name: record });
+    await expect(panel.locator('[data-slot="panel-actions"]')).toBeVisible();
+    await checkPage(page, `${name}-record-super-admin`);
+    await panel.getByRole('button', { name: en.form.edit, exact: true }).click();
+    await expect(panel.getByRole('form', { name: record })).toBeVisible();
+    await checkPage(page, `${name}-edit`);
+  }
+  await page.goto('/setup/years');
+  await expect(heading(page, en.setup.years.title)).toBeVisible();
+  await page
+    .locator('table')
+    .last()
+    .locator('tbody tr')
+    .first()
+    .getByRole('button')
+    .first()
+    .click();
+  const year = page.getByRole('complementary');
+  await expect(year.locator('[data-slot="panel-actions"]')).toBeVisible();
+  await checkPage(page, 'setup-years-record-super-admin');
+  await year.getByRole('button', { name: en.form.edit, exact: true }).click();
+  await expect(year.getByRole('form')).toBeVisible();
+  await checkPage(page, 'setup-years-edit');
 }
 
 /**
@@ -202,6 +235,8 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
   await newBuilding.getByRole('button', { name: en.form.save, exact: true }).click();
   await page.getByRole('button', { name: 'Main building', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Main building' });
+  // Task 2.7c-2b-1: the forms of a panel open behind a button.
+  await panel.getByRole('button', { name: en.setup.buildings.addFloor, exact: true }).click();
   const newFloor = panel.getByRole('form', { name: en.setup.buildings.newFloor });
   await newFloor.getByLabel(en.setup.buildings.floorName, { exact: true }).fill('Ground');
   await newFloor.getByRole('button', { name: en.form.save, exact: true }).click();
@@ -234,10 +269,12 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
   // Closed, the room no longer stands in the way.
   await openSetupPage(page, en.setup.roomsLink, en.setup.rooms.title);
   await page.getByRole('button', { name: '101', exact: true }).click();
-  const roomForm = page.getByRole('complementary', { name: '101' }).getByRole('form');
+  const roomPanel = page.getByRole('complementary', { name: '101' });
+  await roomPanel.getByRole('button', { name: en.form.edit, exact: true }).click();
+  const roomForm = roomPanel.getByRole('form');
   await roomForm.getByLabel(en.setup.rooms.status, { exact: true }).selectOption('closed');
   await roomForm.getByRole('button', { name: en.form.save, exact: true }).click();
-  await expect(saved(roomForm)).toBeVisible();
+  await expect(saved(roomPanel)).toBeVisible();
 
   await openSetupPage(page, en.setup.buildingsLink, en.setup.buildings.title);
   await page.getByRole('button', { name: 'Main building', exact: true }).click();
@@ -286,6 +323,7 @@ test('the Super Admin sees Academic as built in, adds a division with a departme
   await newDivision.getByRole('button', { name: en.form.save, exact: true }).click();
   await page.getByRole('button', { name: 'Sports', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Sports' });
+  await panel.getByRole('button', { name: en.setup.divisions.addDepartment, exact: true }).click();
   const newDepartment = panel.getByRole('form', { name: en.setup.divisions.newDepartment });
   await newDepartment.getByLabel(en.setup.divisions.nameUz, { exact: true }).fill('Suzish');
   await newDepartment.getByLabel(en.setup.divisions.nameRu, { exact: true }).fill('Плавание');
@@ -553,6 +591,7 @@ test('the Super Admin adds a year, dates its quarters, sets the go-live date and
   // The four quarters, today in quarter 1.
   await page.getByRole('button', { name, exact: true }).click();
   const panel = page.getByRole('complementary', { name });
+  await panel.getByRole('button', { name: en.setup.years.changeQuarters, exact: true }).click();
   const quarters = panel.getByRole('form', { name: en.setup.years.quartersTitle });
   const dates: [string, string][] = [
     [start, schoolDay(30)],
@@ -833,15 +872,18 @@ test('the Academic Vice Principal adds a graded subject, is refused at 99, saves
 
   await row.getByRole('button', { name: 'Astronomy' }).click();
   const panel = page.getByRole('complementary', { name: 'Astronomy' });
-  const first = panel.getByRole('form', { name: texts.quarter.replace('{{n}}', '1') });
+  const quarterOne = texts.quarter.replace('{{n}}', '1');
+  await panel
+    .getByRole('button', { name: texts.changeWeightsOf.replace('{{name}}', quarterOne) })
+    .click();
+  const first = panel.getByRole('form', { name: quarterOne });
   await first.getByLabel(texts.parts.attendance, { exact: true }).fill('10');
   await first.getByLabel(texts.parts.classwork, { exact: true }).fill('30');
   await first.getByLabel(texts.parts.homework, { exact: true }).fill('20');
   await first.getByLabel(texts.parts.ratingExam, { exact: true }).fill('40');
   await first.getByRole('button', { name: en.form.save, exact: true }).click();
-  await expect(saved(first)).toBeVisible();
+  await expect(saved(panel)).toBeVisible();
 
   await panel.getByRole('button', { name: texts.copy, exact: true }).click();
-  const fourth = panel.getByRole('form', { name: texts.quarter.replace('{{n}}', '4') });
-  await expect(fourth.getByLabel(texts.parts.ratingExam, { exact: true })).toHaveValue('40');
+  await expect(panel.locator('[data-quarter="4"]')).toContainText('10 · 30 · 20 · 40');
 });

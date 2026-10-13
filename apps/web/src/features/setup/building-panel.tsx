@@ -10,7 +10,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
-import { failureText } from '@/api/failure-text';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { Field } from '@/components/field';
@@ -197,7 +196,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
   const archived = building.archivedAt !== null;
 
   return (
-    <div ref={panel.root} className="grid gap-6">
+    <div className="grid gap-6">
       {panel.editing === 'record' ? (
         // The form takes the read view's place and its Save and Cancel are last.
         <BuildingForm

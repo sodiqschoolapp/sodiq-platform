@@ -285,7 +285,7 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
   const statusText = t(`setup.years.${year.status}`);
 
   return (
-    <div ref={panel.root} className="grid gap-6">
+    <div className="grid gap-6">
       <section className="grid gap-3">
         <h3 className={SECTION_TITLE}>{t('setup.years.datesTitle')}</h3>
         {canEditYear && !closed && panel.editing === 'record' ? (

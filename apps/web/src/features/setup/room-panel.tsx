@@ -26,7 +26,7 @@ export function RoomPanel({ room, floors, columns, canEdit, onSave }: RoomPanelP
   const { t } = useTranslation();
   const panel = usePanelEditing();
   return (
-    <div ref={panel.root} className="grid gap-6">
+    <div className="grid gap-6">
       {canEdit && panel.editing === 'record' ? (
         <RoomForm
           room={room}

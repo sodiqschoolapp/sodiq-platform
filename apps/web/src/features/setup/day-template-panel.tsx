@@ -137,7 +137,7 @@ export function DayTemplatePanel({
   const editing = canEdit && !archived ? panel.editing : null;
 
   return (
-    <div ref={panel.root} className="grid gap-6">
+    <div className="grid gap-6">
       {editing === 'record' ? (
         // A form of the record takes the read view's place: its Save and Cancel are last.
         <RecordForm form={renameForm} label={summary.name} onCancel={close}>

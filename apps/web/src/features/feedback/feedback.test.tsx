@@ -187,7 +187,10 @@ describe('the feedback dialog', () => {
 
   it('closes with Cancel and leaves an open side panel open when Escape closes it', async () => {
     const { dialog } = await openDialog('/dev/patterns?q=abdullayev&open=sample-0002');
-    expect(screen.getByRole('complementary', { name: 'Bekzod Abdullayev' })).toBeDefined();
+    // Behind the open dialog the panel is hidden from the accessibility tree
+    // (task 2.7c-2b-1: the panel reads first and holds no live region of a form
+    // that kept it in the tree before).
+    expect(document.querySelector('aside[aria-label="Bekzod Abdullayev"]')).not.toBeNull();
 
     fireEvent.keyDown(field(), { key: 'Escape' });
     await noDialog();

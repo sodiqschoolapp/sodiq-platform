@@ -23,7 +23,7 @@ export function SamplePanel({ row, columns, onSave }: SamplePanelProps) {
   const { t } = useTranslation();
   const panel = usePanelEditing();
   return (
-    <div ref={panel.root} className="grid gap-6">
+    <div className="grid gap-6">
       {panel.editing === 'record' ? (
         <SampleForm
           row={row}

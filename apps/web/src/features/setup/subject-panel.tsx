@@ -124,7 +124,7 @@ export function SubjectPanel({
   const yes = (on: boolean) => (on ? t('setup.subjects.yes') : t('setup.subjects.no'));
 
   return (
-    <div ref={panel.root} className="grid gap-6">
+    <div className="grid gap-6">
       {editable && panel.editing === 'record' ? (
         // The form takes the read view's place; a refusal that names the
         // teachers who keep the subject follows it.

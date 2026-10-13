@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLeave } from '@/components/unsent/unsent-changes';
 
 /** Which form of a side panel is open, and the moves between them (task 2.7c-2b-1). */
@@ -13,8 +13,6 @@ export interface PanelEditing {
   stop: (how?: { saved?: boolean }) => void;
   /** Put on the button that opens a form: the focus comes back to it. */
   opener: (key: string) => { 'data-opens': string };
-  /** Put on the root of the panel: where the opener and the form's fields are looked for. */
-  root: RefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -28,7 +26,6 @@ export function usePanelEditing(): PanelEditing {
   const leave = useLeave();
   const [editing, setEditing] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
   // Where the focus goes once the next render is drawn.
   const focus = useRef<{ to: 'field' } | { to: 'opener'; key: string } | null>(null);
   const open = useRef<string | null>(null);
@@ -36,17 +33,19 @@ export function usePanelEditing(): PanelEditing {
   useEffect(() => {
     const next = focus.current;
     focus.current = null;
-    if (next === null || root.current === null) {
+    // The side panel of the list: one is open at a time (`SidePanel`).
+    const panel = document.querySelector('aside');
+    if (next === null || panel === null) {
       return;
     }
     if (next.to === 'field') {
-      root.current
+      panel
         .querySelector<HTMLElement>(
           'form[data-slot="record-form"] input:not([type="hidden"]), form[data-slot="record-form"] select, form[data-slot="record-form"] textarea',
         )
         ?.focus();
     } else {
-      root.current.querySelector<HTMLElement>(`[data-opens="${CSS.escape(next.key)}"]`)?.focus();
+      panel.querySelector<HTMLElement>(`[data-opens="${CSS.escape(next.key)}"]`)?.focus();
     }
   }, [editing]);
 
@@ -82,7 +81,7 @@ export function usePanelEditing(): PanelEditing {
   const opener = useCallback((key: string) => ({ 'data-opens': key }), []);
 
   return useMemo(
-    () => ({ editing, saved, start, stop, opener, root }),
+    () => ({ editing, saved, start, stop, opener }),
     [editing, saved, start, stop, opener],
   );
 }

@@ -73,7 +73,7 @@ const VIEWS = [
 ] as const;
 
 /** Where `checkPage` saves its screenshots with SCREENSHOTS=1, for the report. */
-const PAGE_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.7c-2a');
+const PAGE_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.7c-2b-1');
 
 interface Measured {
   h1: number;
@@ -85,6 +85,11 @@ interface Measured {
   buttons: { height: number; text: string }[];
   /** Each visible checkbox: the size of its target (its label, or the box without one). */
   checkboxes: { height: number; width: number; text: string }[];
+  /**
+   * Each visible side panel: its name, the words of its primary buttons, and
+   * what of it follows its bottom row of actions (task 2.7c-2b-1).
+   */
+  panels: { name: string; primaries: string[]; afterActions: string[] }[];
 }
 
 /**
@@ -94,14 +99,23 @@ interface Measured {
  * button is one of the sizes of Buttons: 32 or 40 high on a desktop, 44 at
  * phone width, and 48 only on the sign-in frame. The theme follows the
  * device (the account never chose one), so the dark view is the device's.
- * At phone width every checkbox's target is 44 px (task 2.7c-2a).
- * With SCREENSHOTS=1 it saves docs/screens/2.7c-2a/<name>-<view>.png. The page
+ * At phone width every checkbox's target is 44 px (task 2.7c-2a). A side
+ * panel shows at most one primary button, and nothing of it follows its row of
+ * actions (task 2.7c-2b-1).
+ * With SCREENSHOTS=1 it saves docs/screens/2.7c-2b-1/<name>-<view>.png. The page
  * is left in light at 1440 x 900.
  */
 export async function checkPage(
   page: Page,
   name: string,
-  { signInFrame = false }: { signInFrame?: boolean } = {},
+  {
+    signInFrame = false,
+    panelActionsLater = false,
+  }: {
+    signInFrame?: boolean;
+    /** A People panel, pinned in `PANEL_ACTIONS_LATER` until task 2.7c-2b-2. */
+    panelActionsLater?: boolean;
+  } = {},
 ): Promise<void> {
   for (const view of VIEWS) {
     await page.setViewportSize({ width: view.width, height: view.height });
@@ -128,6 +142,21 @@ export async function checkPage(
           height: Math.round(button.getBoundingClientRect().height),
           text: (button.getAttribute('aria-label') ?? button.textContent ?? '').trim(),
         })),
+        panels: [...document.querySelectorAll('aside')].filter(visible).map((panel) => {
+          const actions = [...panel.querySelectorAll('[data-slot="panel-actions"]')].find(visible);
+          return {
+            name: panel.getAttribute('aria-label') ?? '',
+            primaries: [...panel.querySelectorAll('[data-variant="default"], a[class*="bg-primary"]')]
+              .filter(visible)
+              .map((button) => (button.getAttribute('aria-label') ?? button.textContent ?? '').trim()),
+            afterActions: actions === undefined
+              ? []
+              : [...panel.querySelectorAll('*')]
+                  .filter((element) => visible(element) && !actions.contains(element) && (actions.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0)
+                  .slice(0, 3)
+                  .map((element) => element.tagName.toLowerCase() + ' "' + (element.textContent ?? '').trim().slice(0, 40) + '"'),
+          };
+        }),
         checkboxes: [...document.querySelectorAll('input[type="checkbox"]')].filter(visible).map((box) => {
           const target = (box.closest('label') ?? box).getBoundingClientRect();
           return {
@@ -155,6 +184,20 @@ export async function checkPage(
     if (view.name === 'phone') {
       const small = measured.checkboxes.filter((box) => box.height < 44 || box.width < 44);
       expect(small, `${where}: checkbox targets of 44 px`).toEqual([]);
+    }
+    // Principle: one primary per area; Layout shell, Lists: the side panel's
+    // actions at the bottom (task 2.7c-2b-1).
+    if (!panelActionsLater) {
+      for (const panel of measured.panels) {
+        expect(
+          panel.primaries.length,
+          `${where}: one primary in the side panel "${panel.name}" (${panel.primaries.join(', ')})`,
+        ).toBeLessThanOrEqual(1);
+        expect(
+          panel.afterActions,
+          `${where}: the actions of the side panel "${panel.name}" are its last part`,
+        ).toEqual([]);
+      }
     }
     if (process.env.SCREENSHOTS === '1') {
       mkdirSync(PAGE_SCREENS, { recursive: true });

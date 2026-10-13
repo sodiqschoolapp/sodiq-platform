@@ -205,7 +205,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
   const editable = canEdit && !division.builtIn && !archived;
 
   return (
-    <div ref={panel.root} className="grid gap-6">
+    <div className="grid gap-6">
       {editable && panel.editing === 'record' ? (
         // The form takes the read view's place and its Save and Cancel are last.
         <NamesForm

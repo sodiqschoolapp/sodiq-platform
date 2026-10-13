@@ -107,7 +107,7 @@ export function CalendarEntryPanel({
   const archivable = canArchive && (!started || archived) && !past;
 
   return (
-    <div ref={panel.root} className="grid gap-6">
+    <div className="grid gap-6">
       {editable && panel.editing === 'record' ? (
         // The form takes the read view's place: its Save and Cancel are last.
         <CalendarEntryForm
