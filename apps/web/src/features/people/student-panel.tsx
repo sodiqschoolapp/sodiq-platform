@@ -165,7 +165,12 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
           options={tabs.map((one) => ({ value: one.key, label: one.title }))}
           value={shownTab}
           onChange={(next) => {
-            // Another tab takes the forms of this one away: ask first.
+            // Another tab takes the forms of this one away: ask first when
+            // something is unsaved; otherwise the tab changes at once.
+            if (!leave.unsent()) {
+              setTab(next);
+              return;
+            }
             void leave.leave().then((leaves) => {
               if (leaves) {
                 setTab(next);

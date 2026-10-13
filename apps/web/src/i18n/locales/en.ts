@@ -1411,6 +1411,7 @@ export const en = {
       unlinkTitle: 'Unlink this relative?',
       unlinkText: 'The relative stays linked to their other students.',
       newMain: 'New main contact',
+      chooseMainFirst: 'Choose who becomes the main contact first.',
       choose: 'Choose',
       needsRelative: 'Add a relative before editing this record.',
       stepTitle: 'Relative',

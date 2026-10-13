@@ -1425,6 +1425,7 @@ export const uz: Texts<'one' | 'other'> = {
       unlinkTitle: 'Bu qarindosh bogʻlanishini olib tashlaysizmi?',
       unlinkText: 'Qarindosh boshqa oʻquvchilari bilan bogʻliq qoladi.',
       newMain: 'Yangi asosiy aloqa',
+      chooseMainFirst: 'Avval asosiy aloqa kim boʻlishini tanlang.',
       choose: 'Tanlang',
       needsRelative: 'Yozuvni oʻzgartirishdan oldin qarindosh qoʻshing.',
       stepTitle: 'Qarindosh',
