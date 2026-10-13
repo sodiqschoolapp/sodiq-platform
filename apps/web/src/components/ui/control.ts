@@ -16,8 +16,12 @@ export const QUICK = 'transition-colors duration-120 ease-out';
  */
 export const FIELD = `h-10 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm text-foreground ${QUICK} placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-2 aria-invalid:border-destructive max-sm:h-11 ${FOCUS_RING}`;
 
-/** A checkbox: the navy accent colour (the foreground in the dark theme). */
-export const CHECKBOX = `size-4 accent-checkbox ${FOCUS_RING}`;
+/**
+ * A checkbox: the navy accent colour (the foreground in the dark theme);
+ * greyed like a field when it is switched off (issue #39, hand test of 13
+ * October 2026, finding 2).
+ */
+export const CHECKBOX = `size-4 accent-checkbox disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS_RING}`;
 
 /**
  * A panel: white on the grey canvas, corner 12, padding 24 (16 at phone

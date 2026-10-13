@@ -202,6 +202,9 @@ export function CheckboxField({
           aria-invalid={error !== undefined}
           aria-describedby={describedBy}
           onChange={(event) => {
+            if (disabled === true) {
+              return;
+            }
             onChange({ target: { value: event.target.checked ? CHECKED : '' } });
           }}
         />
@@ -252,14 +255,23 @@ export function CheckboxGroupField({
       <legend className="mb-1.5 text-sm font-medium">{label}</legend>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {options.map((option) => (
-          <label key={option.value} className="flex items-center gap-2 text-sm max-sm:min-h-11">
+          <label
+            key={option.value}
+            className="flex items-center gap-2 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50 max-sm:min-h-11"
+          >
             <input
               type="checkbox"
               name={name}
               value={option.value}
               className={CHECKBOX}
+              disabled={disabled}
               checked={ticked.has(option.value)}
               onChange={(event) => {
+                // A switched-off group never changes the form, whatever event
+                // reaches it (issue #39, hand test of 13 October 2026, finding 2).
+                if (disabled === true) {
+                  return;
+                }
                 const next = new Set(ticked);
                 if (event.target.checked) {
                   next.add(option.value);
