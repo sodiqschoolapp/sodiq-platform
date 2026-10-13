@@ -25,7 +25,7 @@ const newLink = (phone: string | null, mainContact: boolean) => ({
 describe('relative records', () => {
   it('stores a name as typed on the document, Latin or Cyrillic, and folds it for search', () => {
     const parsed = relativeRecordSchema.parse({
-      fullName: "  Gʻulom  Oʻtkirov ",
+      fullName: '  Gʻulom  Oʻtkirov ',
       phone: '+998 90 123-45-67',
       workplace: '  Toshkent shahar shifoxonasi ',
       email: ' A.Otkirov@Example.UZ ',
@@ -45,8 +45,7 @@ describe('relative records', () => {
   it('refuses a mixed script, an empty name and one past 120 letters', () => {
     for (const fullName of ['Gulom Ўткиров', ' ', `A${'a'.repeat(120)}`, 'Gulom 2']) {
       expect(
-        relativeRecordSchema.safeParse({ fullName, phone: null, workplace: '', email: '' })
-          .success,
+        relativeRecordSchema.safeParse({ fullName, phone: null, workplace: '', email: '' }).success,
         fullName,
       ).toBe(false);
     }
@@ -54,8 +53,12 @@ describe('relative records', () => {
 
   it('takes "no phone of their own" as an empty phone and refuses a phone without its code', () => {
     expect(
-      relativeRecordSchema.parse({ fullName: 'Aziz Karimov', phone: null, workplace: '', email: '' })
-        .phone,
+      relativeRecordSchema.parse({
+        fullName: 'Aziz Karimov',
+        phone: null,
+        workplace: '',
+        email: '',
+      }).phone,
     ).toBeNull();
     expect(
       relativeRecordSchema.safeParse({
@@ -103,11 +106,12 @@ describe('notices (decision 8)', () => {
 });
 
 describe('the relatives of a new student (04, Always connected)', () => {
-  it('wants at least one relative and exactly one main contact', () => {
+  it('wants exactly one main contact, and leaves an empty list to the route', () => {
     expect(studentRelativesInputSchema.safeParse([newLink('+998901234567', true)]).success).toBe(
       true,
     );
-    expect(studentRelativesInputSchema.safeParse([]).success).toBe(false);
+    // The route answers it `student_needs_relative` (relatives.test.ts).
+    expect(studentRelativesInputSchema.safeParse([]).success).toBe(true);
     expect(studentRelativesInputSchema.safeParse([newLink('+998901234567', false)]).success).toBe(
       false,
     );
@@ -148,9 +152,8 @@ describe('the relatives of a new student (04, Always connected)', () => {
     ).toBe(true);
   });
 
-  it('is required on the create of a student', () => {
-    const shape = studentCreateSchema.safeParse({ relatives: [] });
-    expect(shape.success).toBe(false);
+  it('is a field of the create of a student', () => {
+    const shape = studentCreateSchema.safeParse({});
     expect(shape.error?.issues.some((issue) => issue.path[0] === 'relatives')).toBe(true);
   });
 });

@@ -404,6 +404,9 @@ export class Students {
    */
   create(access: Access, input: StudentCreate, requestId: string): Promise<StudentDetail> {
     const branchId = branchOf(access);
+    if (input.relatives.length === 0) {
+      throw new ApiException('student_needs_relative', 422);
+    }
     return this.refusingTaken(access, () =>
       this.relatives.refusingHeldPhone(access, () =>
         this.transactions.run(access.branchIds, async (transaction) => {

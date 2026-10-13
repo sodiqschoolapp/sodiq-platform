@@ -37,13 +37,7 @@ export type Relationship = z.infer<typeof relationshipSchema>;
 export const relativeNameSchema = z
   .string()
   .transform(storedStudentName)
-  .pipe(
-    z
-      .string()
-      .min(1)
-      .max(RELATIVE_NAME_MAX_LENGTH)
-      .refine(validName),
-  );
+  .pipe(z.string().min(1).max(RELATIVE_NAME_MAX_LENGTH).refine(validName));
 
 /** The folded name, as `relatives.name_key` stores it and the search compares it. */
 export function relativeNameKey(fullName: string): string {
@@ -125,15 +119,14 @@ export const relativeLinkInputSchema = z.discriminatedUnion('kind', [
 export type RelativeLinkInput = z.infer<typeof relativeLinkInputSchema>;
 
 /**
- * The relatives of a new student (`04`: "A student cannot be saved without at
- * least one relative"): one or more, exactly one main contact (`edge`), no
- * person twice.
+ * The relatives of a new student: exactly one main contact (`edge`), no
+ * person twice. None is refused by the route as `student_needs_relative`
+ * (`04`: "A student cannot be saved without at least one relative").
  */
 export const studentRelativesInputSchema = z
   .array(relativeLinkInputSchema)
-  .min(1)
   .max(STUDENT_RELATIVES_MAX)
-  .refine((links) => links.filter((link) => link.mainContact).length === 1, {
+  .refine((links) => links.length === 0 || links.filter((link) => link.mainContact).length === 1, {
     message: 'Exactly one main contact.',
   })
   .refine(
