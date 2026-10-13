@@ -197,6 +197,10 @@ export const staffReportSchema = z.strictObject({
     .strictObject({
       login: z.string(),
       createdAt: z.iso.datetime(),
+      /** The latest sign-in that opened a session; `null` when there was none. */
+      lastSignInAt: z.iso.datetime().nullable(),
+      /** No sign-in since the start of the current employment period (task 2.3c-1). */
+      neverUsed: z.boolean(),
       language: z.string(),
       lockedAt: z.iso.datetime().nullable(),
       lockReason: z.string().nullable(),
@@ -212,7 +216,14 @@ export const staffReportSchema = z.strictObject({
           branch: z.string().nullable(),
           from: z.iso.datetime(),
           until: z.iso.datetime().nullable(),
-          subjects: z.array(namesSchema),
+          /** The subjects of a Head Teacher's appointment, each with its own dates. */
+          subjects: z.array(
+            z.strictObject({
+              subject: namesSchema,
+              from: z.iso.datetime(),
+              until: z.iso.datetime().nullable(),
+            }),
+          ),
         }),
       ),
     })

@@ -20,7 +20,7 @@ import { Audit } from '../audit/audit.service.js';
 import { ApiException } from '../../http/api-exception.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { readPersonEntries, type ReportPerson } from './personal-data.query.js';
-import { branchOf } from './staff-account-records.js';
+import { branchOf, neverUsedAccounts } from './staff-account-records.js';
 
 /** An open end is stored as `infinity` (`staff_availability.valid_until`, 0025). */
 const openEnd = (date: string): string | null => (date === 'infinity' ? null : date);
@@ -155,9 +155,21 @@ export class PersonalData {
         { kind: 'student', id, accountId: null, assignmentIds: [] },
         requestId,
       );
+      // A relative with no live link left is hidden from `entryAnswers`'s
+      // name lookup; its name comes from `personal_data_relatives` (decision 2).
+      const relativeNames = new Map(relatives.rows.map((row) => [row.id, row.full_name]));
+      const entries = frame.entries.map((entry) =>
+        entry.record?.type === 'relative' && entry.record.name === null
+          ? {
+              ...entry,
+              record: { ...entry.record, name: relativeNames.get(entry.record.id) ?? null },
+            }
+          : entry,
+      );
       return {
         kind: 'student',
         ...frame,
+        entries,
         student: {
           id: student.id,
           uid: student.uid,
@@ -359,14 +371,37 @@ export class PersonalData {
           : await transaction
               .selectFrom('assignment_subjects as s')
               .innerJoin('subjects as j', 'j.id', 's.subject_id')
-              .select(['s.assignment_id', 'j.name_uz', 'j.name_ru', 'j.name_en'])
+              .select([
+                's.assignment_id',
+                'j.name_uz',
+                'j.name_ru',
+                'j.name_en',
+                's.valid_from',
+                's.valid_until',
+              ])
               .where(
                 's.assignment_id',
                 'in',
                 roles.map((role) => role.id),
               )
+              .orderBy('s.valid_from')
               .orderBy('j.name_en')
               .execute();
+      // The latest sign-in, and "never used" as the account section and the
+      // report of accounts never used say it (task 2.3c-1).
+      const lastSession =
+        person.account_id === null
+          ? undefined
+          : await transaction
+              .selectFrom('sessions')
+              .select((eb) => eb.fn.max('created_at').as('at'))
+              .where('account_id', '=', person.account_id)
+              .executeTakeFirst();
+      const neverUsed =
+        person.account_id !== null &&
+        (await neverUsedAccounts(transaction, [{ staffId: id, accountId: person.account_id }])).has(
+          person.account_id,
+        );
       const secondStep =
         person.account_id === null
           ? undefined
@@ -450,6 +485,11 @@ export class PersonalData {
             : {
                 login: account.login,
                 createdAt: account.created_at.toISOString(),
+                lastSignInAt:
+                  lastSession?.at === null || lastSession?.at === undefined
+                    ? null
+                    : new Date(lastSession.at).toISOString(),
+                neverUsed,
                 language: account.language,
                 lockedAt: iso(account.locked_at),
                 lockReason: account.lock_reason,
@@ -465,9 +505,9 @@ export class PersonalData {
                   subjects: roleSubjects
                     .filter((subject) => subject.assignment_id === role.id)
                     .map((subject) => ({
-                      uz: subject.name_uz,
-                      ru: subject.name_ru,
-                      en: subject.name_en,
+                      subject: { uz: subject.name_uz, ru: subject.name_ru, en: subject.name_en },
+                      from: subject.valid_from.toISOString(),
+                      until: iso(subject.valid_until),
                     })),
                 })),
               },
@@ -619,13 +659,14 @@ export class PersonalData {
     const found = await readPersonEntries(transaction, person, PERSONAL_DATA_ENTRY_LIMIT);
     // In a relative's report, an entry whose record is another relative (a
     // phone given to someone else, a merge) is about this person through its
-    // details only: its values are the other person's and are left out.
+    // details only: its values and its name are the other person's and are
+    // left out.
     const entries = (await entryAnswers(transaction, branches, found.rows, false)).map((entry) =>
       person.kind === 'relative' &&
       entry.record !== null &&
       entry.record.type === 'relative' &&
       entry.record.id !== person.id
-        ? { ...entry, oldValue: null, newValue: null }
+        ? { ...entry, record: { ...entry.record, name: null }, oldValue: null, newValue: null }
         : entry,
     );
     const leftOut = found.total - found.rows.length;

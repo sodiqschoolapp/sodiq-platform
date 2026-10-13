@@ -1082,6 +1082,8 @@ export const en = {
       main: '{{name}} (main)',
       mainShort: 'main',
       language: 'Language',
+      lastSignInAt: 'Last sign-in',
+      neverUsed: 'Never used',
       lockedAt: 'Locked',
       lockReason: 'Reason of the lock',
       mustChangePassword: 'Must change the password',

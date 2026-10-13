@@ -287,12 +287,8 @@
   [data-report-sheet] thead {
     display: table-header-group;
   }
-  [data-report-sheet] dd,
-  [data-report-sheet] dt,
-  [data-report-sheet] h1,
-  [data-report-sheet] h2,
-  [data-report-sheet] h3,
-  [data-report-sheet] p {
-    color: oklch(0.2026 0.0841 266.73);
+  /* Every text of the sheet in the navy of the printout, set on `body` above. */
+  [data-report-sheet] * {
+    color: inherit;
   }
 }

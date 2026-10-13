@@ -79,7 +79,7 @@ describe('the personal data report', () => {
     ];
   }
 
-  async function student(branch: string): Promise<string> {
+  async function student(branch: string, consent: string | null = '2026-08-25'): Promise<string> {
     count += 1;
     const response = await t.post('/api/people/students', branch, {
       uid: String(2607700 + count),
@@ -101,7 +101,7 @@ describe('the personal data report', () => {
       previousSchool: null,
       diagnosticScore: 71,
       scholarship: { type: 'none', coverage: null, amount: null },
-      consentSignedOn: '2026-08-25',
+      consentSignedOn: consent,
       contract: { number: `PD-2026/${String(count)}`, signedOn: '2026-08-20' },
       relatives: relativesInput(),
     });
@@ -390,6 +390,35 @@ describe('the personal data report', () => {
       expect(actions).toContain('relative.link');
       expect(actions).toContain('relative.unlink');
       expect(actions).toContain('student.create');
+      // The relative has no live link left: named all the same (decision 2).
+      expect(
+        found.entries.filter((one) => one.record?.id === gone).map((one) => one.record?.name),
+      ).toEqual(['Rustam Ismoilov', 'Rustam Ismoilov']);
+    });
+
+    it('holds the status history with the cause and reason of a leaving, and a consent not recorded', async () => {
+      const leaving = await student(t.north, null);
+      const detail = studentDetailSchema.parse(
+        ok(await t.get(`/api/people/students/${leaving}`, t.north)),
+      );
+      ok(
+        await t.post(`/api/people/students/${leaving}/leaving`, t.north, {
+          lastDay: '2026-10-20',
+          reason: 'The family moved to another city',
+          version: detail.version,
+        }),
+      );
+      const left = studentReportSchema.parse(ok(await report('students', leaving)));
+      expect(left.student.consentSignedOn).toBeNull();
+      expect(left.student.statuses).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            status: 'inactive',
+            cause: 'leaving',
+            reason: 'The family moved to another city',
+          }),
+        ]),
+      );
     });
 
     it('writes one export entry in the log of the branch of the request', async () => {
@@ -420,7 +449,20 @@ describe('the personal data report', () => {
       accountId = browser.account.id;
       await t.kit.giveRole(accountId, { role: 'teacher', branchId: t.north });
       await t.kit.giveRole(accountId, { role: 'teacher', branchId: t.south });
+      // A Head Teacher's appointment: its subjects are dated (assignment_subjects).
+      await t.kit.giveRole(accountId, { role: 'head_teacher', branchId: t.north });
       staffId = await person(accountId, [t.north, t.south]);
+      // A reset link with a stored token: never in the report.
+      await t.database.migrator
+        .insertInto('password_reset_links')
+        .values({
+          account_id: accountId,
+          requested_at: new Date('2026-10-09T05:00:00Z'),
+          token_hash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          sent_at: new Date('2026-10-09T05:01:00Z'),
+          valid_until: new Date('2026-10-09T06:01:00Z'),
+        })
+        .execute();
       for (const branch of [t.north, t.south]) {
         const entryId = await newId();
         await t.database.migrator
@@ -477,8 +519,21 @@ describe('the personal data report', () => {
       expect(
         found.staff.availability.flatMap((one) => one.ranges.map((r) => r.weekday)).sort(),
       ).toEqual([1, 3]);
-      expect(found.account?.roles.map((one) => one.role)).toEqual(['teacher', 'teacher']);
+      expect(found.account?.roles.map((one) => one.role)).toEqual([
+        'teacher',
+        'teacher',
+        'head_teacher',
+      ]);
       expect(found.account?.secondStepOn).toBe(true);
+    });
+
+    it('holds the last sign-in, "never used", and the dated subjects of an appointment (plan, Staff)', () => {
+      expect(found.account?.lastSignInAt).not.toBeNull();
+      expect(found.account?.neverUsed).toBe(false);
+      const appointment = found.account?.roles.find((one) => one.role === 'head_teacher');
+      expect(appointment?.subjects).toHaveLength(1);
+      expect(appointment?.subjects[0]).toMatchObject({ until: null });
+      expect(appointment?.subjects[0]?.from).toEqual(expect.any(String));
     });
 
     it('holds the entries about the person: record, account, assignments, own sign-in and the same-person mark (correction 1)', () => {
@@ -501,8 +556,32 @@ describe('the personal data report', () => {
         .select('password_hash')
         .where('id', '=', accountId)
         .executeTakeFirstOrThrow();
+      const step = await t.database.migrator
+        .selectFrom('account_second_steps')
+        .select('secret')
+        .where('account_id', '=', accountId)
+        .executeTakeFirstOrThrow();
+      const codes = await t.database.migrator
+        .selectFrom('second_step_recovery_codes')
+        .select('code_hash')
+        .where('account_id', '=', accountId)
+        .execute();
+      const sessions = await t.database.migrator
+        .selectFrom('sessions')
+        .select('token_hash')
+        .where('account_id', '=', accountId)
+        .execute();
+      expect(codes.length).toBeGreaterThan(0);
       const text = JSON.stringify(found);
-      expect(text).not.toContain(stored.password_hash);
+      for (const value of [
+        stored.password_hash,
+        step.secret,
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        ...codes.map((row) => row.code_hash),
+        ...sessions.map((row) => row.token_hash),
+      ]) {
+        expect(text).not.toContain(value);
+      }
       expect(text).not.toMatch(/password_?hash|secret|recovery|token/i);
     });
   });
@@ -557,6 +636,7 @@ describe('the personal data report', () => {
         oldValue: null,
         newValue: null,
       });
+      expect(other?.record?.name).toBeNull();
       expect(JSON.stringify(found)).not.toContain('+998907776655');
     });
 
@@ -596,6 +676,69 @@ describe('the personal data report', () => {
         ),
       ].sort();
       expect(matched).toEqual(byValues);
+    });
+
+    it('reads an entry by each kind of match, and none where the person is only the actor', async () => {
+      const staffId = await newId();
+      const accountId = await newId();
+      const assignmentId = await newId();
+      const other = await newId();
+      const by: Record<string, string> = {
+        record: await entry({
+          branch: t.north,
+          action: 'staff.edit',
+          record: { type: 'staff', id: staffId },
+        }),
+        person: await entry({
+          branch: t.north,
+          action: 'account.locked',
+          person: staffId,
+          record: { type: 'account', id: other },
+        }),
+        account: await entry({
+          branch: null,
+          action: 'auth.sign_in_failed',
+          record: { type: 'account', id: accountId },
+        }),
+        assignment: await entry({
+          branch: null,
+          action: 'assignment.given',
+          record: { type: 'assignment', id: assignmentId },
+        }),
+        ownAuth: await entry({
+          branch: null,
+          action: 'auth.sign_in',
+          actor: accountId,
+          record: { type: 'session', id: other },
+        }),
+        values: await entry({
+          branch: null,
+          action: 'relative.same_person',
+          record: { type: 'relative', id: other },
+          details: { staffId },
+        }),
+      };
+      const notAbout = await entry({
+        branch: t.north,
+        action: 'room.edit',
+        actor: accountId,
+        record: { type: 'room', id: other },
+      });
+      const read = await t.database.migrator
+        .transaction()
+        .execute((transaction) =>
+          readPersonEntries(
+            transaction,
+            { kind: 'staff', id: staffId, accountId, assignmentIds: [assignmentId] },
+            100,
+          ),
+        );
+      const ids = read.rows.map((row) => row.id);
+      for (const [kind, id] of Object.entries(by)) {
+        expect(ids, kind).toContain(id);
+      }
+      expect(ids).not.toContain(notAbout);
+      expect(read.total).toBe(Object.keys(by).length);
     });
 
     it('reads the newest entries up to the limit and counts the rest with the oldest moment', async () => {

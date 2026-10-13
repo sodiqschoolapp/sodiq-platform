@@ -409,6 +409,8 @@ function StaffParts({ report, words }: { report: StaffReport; words: Words }) {
             : [
                 [t('people.account.login'), account.login],
                 [t('people.report.createdAt'), words.moment(account.createdAt)],
+                [t('people.report.lastSignInAt'), words.moment(account.lastSignInAt)],
+                [t('people.report.neverUsed'), words.yesNo(account.neverUsed)],
                 [
                   t('people.report.language'),
                   isLanguage(account.language)
@@ -437,7 +439,19 @@ function StaffParts({ report, words }: { report: StaffReport; words: Words }) {
                     from: words.moment(role.from),
                     until: words.moment(role.until),
                   }),
-              role.subjects.map((subject) => nameOf(subject, language)).join(', ') || null,
+              role.subjects
+                .map(
+                  (subject) =>
+                    `${nameOf(subject.subject, language)} (${
+                      subject.until === null
+                        ? t('people.report.fromDate', { from: words.moment(subject.from) })
+                        : t('people.report.period', {
+                            from: words.moment(subject.from),
+                            until: words.moment(subject.until),
+                          })
+                    })`,
+                )
+                .join(', ') || null,
             ]
               .filter((part) => part !== null)
               .join('; '),
@@ -472,13 +486,12 @@ function RelativeParts({ report, words }: { report: RelativeReport; words: Words
         title={t('people.report.samePersonTitle')}
         rows={[
           [
-            t('people.staff.staffId'),
-            report.samePerson === null
-              ? t('people.report.none')
-              : [report.samePerson.name, report.samePerson.staffId]
-                  .filter((part) => part !== null)
-                  .join(', '),
+            t('people.relatives.fullName'),
+            report.samePerson === null ? t('people.report.none') : report.samePerson.name,
           ],
+          ...(report.samePerson === null
+            ? []
+            : [[t('people.staff.staffId'), words.text(report.samePerson.staffId)] as Row]),
         ]}
       />
       <Part
@@ -617,31 +630,34 @@ function ReportSheet({ report }: { report: PersonalDataReport }) {
       </thead>
       <tbody>
         <tr>
-          <td className="grid gap-6">
-            <header className="flex flex-wrap items-center gap-4">
-              {photo !== undefined && (
-                <PersonPhoto
-                  name={name}
-                  initials={initialsOf(first, last)}
-                  photo={photo}
-                  size="lg"
-                />
-              )}
-              <div className="grid gap-1">
-                <h2 className="text-2xl font-semibold">{name}</h2>
-                <p className="text-sm">
-                  {t('people.report.produced', {
-                    moment: words.moment(report.producedAt),
-                    name: report.producedBy ?? t('audit.unnamed'),
-                    branch: report.branch.name,
-                  })}
-                </p>
-              </div>
-            </header>
-            {report.kind === 'student' && <StudentParts report={report} words={words} />}
-            {report.kind === 'staff' && <StaffParts report={report} words={words} />}
-            {report.kind === 'relative' && <RelativeParts report={report} words={words} />}
-            <Entries report={report} words={words} />
+          <td>
+            {/* A table cell stays a cell, so that the header group repeats in print. */}
+            <div className="grid gap-6">
+              <header className="flex flex-wrap items-center gap-4">
+                {photo !== undefined && (
+                  <PersonPhoto
+                    name={name}
+                    initials={initialsOf(first, last)}
+                    photo={photo}
+                    size="lg"
+                  />
+                )}
+                <div className="grid gap-1">
+                  <h2 className="text-2xl font-semibold">{name}</h2>
+                  <p className="text-sm">
+                    {t('people.report.produced', {
+                      moment: words.moment(report.producedAt),
+                      name: report.producedBy ?? t('audit.unnamed'),
+                      branch: report.branch.name,
+                    })}
+                  </p>
+                </div>
+              </header>
+              {report.kind === 'student' && <StudentParts report={report} words={words} />}
+              {report.kind === 'staff' && <StaffParts report={report} words={words} />}
+              {report.kind === 'relative' && <RelativeParts report={report} words={words} />}
+              <Entries report={report} words={words} />
+            </div>
           </td>
         </tr>
       </tbody>

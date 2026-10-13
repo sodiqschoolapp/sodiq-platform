@@ -213,6 +213,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 13 October 2026: the personal data report per person (task 2.6b)
+
+Plan approved on pull request #76 with corrections 1 to 3; decisions 1 to 11 confirmed there (7 changed by correction 1); 1 and 2 marked Look first. The decisions after 11 came from the build and its reviews. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (personal data across branches). A staff member's or relative's report produced in one branch holds their data of every branch (availability and roles; links to students of other branches with name, UID and branch) | Decision 1; `edge`: "a personal data report per person", "The Super Admin reads all" |
+| **Look first** (security definer). `personal_data_relatives(student)` answers every relative ever linked to a student, live link or not, called only after the student is found in the branch of the request; the relative with no live link has no report of their own | Decision 2; `edge`: "a copy of everything held about their child" |
+| New area `personal_data_report`, `export` for the Super Admin only; the routes also require a current Super Admin assignment, which the entry names | Decision 3; permission review of the build |
+| The path id is checked against the branch of the request (a student of it, a staff member linked to it, a relative live-linked in it), 404 otherwise, a vacancy included | Decision 4 |
+| The report's entry is in the branch's `audit_log` with the person's record and `person_id`; details hold the parts and the entry counts, not the content | Decision 5 |
+| Every field and history of the record, ended links and roles, dated subjects of an appointment, last sign-in and "never used"; no hash, secret, recovery code or token; sessions and trusted devices left out | Decision 6; spec review of the build |
+| Entries about the person: `person_id`, the person's record, a staff member's account and assignments, their own `auth.*`, and the person's id in the values (`VALUE_MATCHES`); not the entries where they are only the actor | Decision 7 as changed by correction 1 |
+| In a relative's report, an entry whose record is another relative shows neither that relative's values nor their name | Permission review of the build: the report is handed to the person |
+| One open of the page, one report and one entry; the answer in no cache and outside the offline queue | Decision 8 |
+| A4, the letterhead in the header group of the sheet's table, repeated on each printed page; Golos Text, navy | Decision 9 |
+| The language of the page; moments in the time zone of the branch of the request | Decision 10 |
+| At most 2,000 entries, newest first, with the count and the oldest moment of the rest | Decision 11, correction 2 |
+| The browser test runs as the second half of the first setup test's session | The seed holds at most three Super Admins (`MAX_SUPER_ADMINS`), all taken by setup tests (as `createAccountAndSignIn`) |
+
 ## 13 October 2026: the audit log screen, its reading rights and the own sign-in history (task 2.6a)
 
 Plan approved on pull request #75 with corrections 1 to 4; decisions 1 to 13 confirmed there; 1, 3 and 12 marked Look first. The decisions after 13 came from the build and its reviews. Flagged on issue #42.

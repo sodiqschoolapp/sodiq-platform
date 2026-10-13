@@ -278,6 +278,8 @@ describe('the personal data report of a staff member', () => {
       account: {
         login: 's.yusupova',
         createdAt: '2026-09-01T05:00:00.000Z',
+        lastSignInAt: '2026-10-09T04:00:00.000Z',
+        neverUsed: false,
         language: 'uz',
         lockedAt: null,
         lockReason: null,

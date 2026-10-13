@@ -1157,6 +1157,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       main: '{{name}} (основной)',
       mainShort: 'основное',
       language: 'Язык',
+      lastSignInAt: 'Последний вход',
+      neverUsed: 'Ни разу не использована',
       lockedAt: 'Заблокирована',
       lockReason: 'Причина блокировки',
       mustChangePassword: 'Нужно сменить пароль',

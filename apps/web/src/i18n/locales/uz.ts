@@ -1095,6 +1095,8 @@ export const uz: Texts<'one' | 'other'> = {
       main: '{{name}} (asosiy)',
       mainShort: 'asosiy',
       language: 'Til',
+      lastSignInAt: 'Oxirgi kirish',
+      neverUsed: 'Hech qachon foydalanilmagan',
       lockedAt: 'Bloklangan',
       lockReason: 'Bloklash sababi',
       mustChangePassword: 'Parolni almashtirishi kerak',
