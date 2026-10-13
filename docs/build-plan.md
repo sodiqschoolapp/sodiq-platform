@@ -274,7 +274,7 @@ How to read the task lines:
   - Build: the ten "Fix first" findings (sign-in sideways scroll, locked further divisions, the full-page "no access", the student panel tabs, the main contact message, one history line after a cancelled leaving, the People tabs on a phone, "You are signed out.", the "Save failed" pill); every date and time from `apps/web/src/lib/dates.ts` (Uzbek names from i18n keys, English day-first and 24-hour); the first-password slip's dates; findings 32–34; the decided Uzbek and Russian wording (35–36).
   - Done when: each of those findings is done, Uzbek dates read "8-dekabr, 2026" with the browser's `Intl` trimmed, and a lint rule keeps dates in `lib/dates.ts`.
 
-- [ ] **2.7b-1 Formats** (split from 2.7b on pull request #78, decision 1)
+- [x] **2.7b-1 Formats** (split from 2.7b on pull request #78, decision 1)
   - Read: issue #39 (findings 11, 15, 16, 19, 20, 24, 25, 27 and the owner's answers), `04`, `edge/close-relatives`, `edge/system-behaviour`, `docs/design-system.md`, `.claude/rules/web.md`, `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7", item 10).
   - Build: browser names in Sessions and Trusted devices; the Shared column of the rooms export; a day past midnight shown as such; grade ranges ("5–11"); "4 of 4 not set"; phones shown and exported as "+998 90 111 22 33"; the UID set in its warning; surname first in every list and export (owner's answer to 27); the branch phone as "Decided ahead for tasks 2.2d and 2.7", item 10 says.
   - Done when: each of those findings is done, every screen and export shows phones and grades in one format, and a branch phone outside the format is refused by the database.

@@ -213,6 +213,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 13 October 2026: formats (task 2.7b-1)
+
+Plan approved on pull request #78 with corrections 1 to 5; decisions 1 to 10 confirmed there; 1 to 3 marked Look first. The decisions after 10 came from the build and its review. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (split). 2.7b is split into 2.7b-1 (formats, this) and 2.7b-2 (smaller UX) | Decision 1 |
+| **Look first** (spec text, `04`). Grades are shown as ranges ("5–11; 1–4, 7"); people are surname first in every list, picker and export | Decisions 2 and 3; findings 19 and 27, the owner's answer to 27 |
+| **Look first** (tests changed by a decision). The expected names, grades, phones, the rooms export's Shared cells and "Quarters not set" texts of the web, API and browser tests became the new formats; no assertion was removed | Owner's answer to 27, findings 15, 19, 20, 24 |
+| A phone is grouped only when it is "+998" and nine digits; any other is shown as stored | Decision 4 |
+| A branch phone is "+998" and nine digits; migration 0041 rewrote the stored ones (cleared what was not a number) with a `branch.edit` entry of the system each, then a valid `branches_phone_format` | Decision 5, "Decided ahead for tasks 2.2d and 2.7", item 10 |
+| Browser names come from a small function, no library; the raw string when neither part is known | Decision 6 |
+| The UID set comes from the server as `expected` on the `uid_set` detail; the year rule is `uidYearOf` in `packages/shared` | Decision 7 |
+| Exports keep real numbers: "Quarters not set" stays a number, the rooms' lessons at once a number column beside Shared (Yes/No) | Decisions 8 and 10 |
+| A time after midnight reads "00:15 (next day)"; the form refuses such a day before sending, with the rule engine's `dayEndsAfterMidnight` | Decision 9 |
+| `ListPage` takes `panelName`: the side panel and the sentences inside it keep "First name Surname" while the row is surname first | Spec review of the build |
+| Relatives' names are not reordered: one "Full name" field, stored as typed | Decision 3 |
+
 ## 13 October 2026: "Fix first" findings, dates in the app, accessibility and wording (task 2.7a)
 
 Plan approved on pull request #77 with corrections 1 to 3; decisions 1 to 11 confirmed there; 1 and 2 marked Look first. The decisions after 11 came from the build and its review. Flagged on issue #42.
