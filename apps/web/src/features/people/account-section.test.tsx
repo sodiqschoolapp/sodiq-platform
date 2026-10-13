@@ -12,6 +12,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { uz } from '@/i18n/locales/uz';
 import { accountAccessKey } from './people-api';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
@@ -148,7 +149,7 @@ const noAccount: StaffAccount = { account: null, canEdit: true, left: false, tod
 function open(
   role: Role,
   handlers: Record<string, (body: unknown) => Response>,
-  language: 'en' | 'ru' = 'en',
+  language: 'en' | 'ru' | 'uz' = 'en',
 ) {
   return fakeApi({
     'GET /api/auth/session': () =>
@@ -172,9 +173,9 @@ function open(
 
 let shell: ReturnType<typeof renderApp>;
 
-async function section(language: 'en' | 'ru' = 'en') {
+async function section(language: 'en' | 'ru' | 'uz' = 'en') {
   shell = renderApp(PATH, language);
-  const texts = language === 'en' ? en : ru;
+  const texts = { en, ru, uz }[language];
   fireEvent.click(await screen.findByText('Lola Tursunova', { selector: 'button' }));
   const panel = await screen.findByRole('complementary', { name: 'Lola Tursunova' });
   return within(panel).findByRole('region', { name: texts.people.account.title });
@@ -497,6 +498,52 @@ describe('the account section', () => {
       }),
     ).toBeDefined();
   });
+
+  // Issue #39, hand test of 13 October 2026, finding 23: "Issued" and "Valid
+  // until" in one style, the long month, "Valid until" in the branch's time zone.
+  it.each([
+    ['en', en, '10 October 2026', '17 October 2026, 23:55'],
+    ['ru', ru, '10 октября 2026 г.', '17 октября 2026 г., 23:55'],
+    ['uz', uz, '10-oktabr, 2026', '17-oktabr, 2026, 23:55'],
+  ] as const)(
+    'writes both dates of the slip in one style in %s',
+    async (language, texts, issued, valid) => {
+      open(
+        'super_admin',
+        {
+          'GET /api/setup/branch': () =>
+            json({
+              id: NORTH.id,
+              name: 'North',
+              address: null,
+              phone: null,
+              email: null,
+              workingWeekdays: [1, 2, 3, 4, 5],
+              timeZone: 'Asia/Tashkent',
+              goLiveDate: null,
+            }),
+          [`GET /api/people/staff/${LOLA.id}/account`]: () => json(noAccount),
+          [`GET /api/people/staff/${LOLA.id}/account/suggestion`]: () =>
+            json({ login: 'l.tursunova' }),
+          [`POST /api/people/staff/${LOLA.id}/account`]: () => json(SLIP, 201),
+        },
+        language,
+      );
+      const found = await section(language);
+      const form = await within(found).findByRole('form', {
+        name: texts.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
+      });
+      fireEvent.click(within(form).getByRole('button', { name: texts.form.save }));
+      const dialog = await screen.findByRole('dialog', { name: texts.people.account.slipTitle });
+      const value = (label: string) =>
+        [...dialog.querySelectorAll('dt')].find((term) => term.textContent === label)
+          ?.nextElementSibling?.textContent;
+      expect(value(texts.people.account.issued)).toBe(issued);
+      await waitFor(() => {
+        expect(value(texts.people.account.validUntil)).toBe(valid);
+      });
+    },
+  );
 
   // Decision 7: a re-hire answers a slip, shown once like the first one.
   it('shows the slip of a re-hire after the status change', async () => {
