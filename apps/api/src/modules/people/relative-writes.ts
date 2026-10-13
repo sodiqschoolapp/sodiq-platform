@@ -331,7 +331,9 @@ export class RelativeWrites {
           message: 'Another relative has this main phone.',
           holder: { fullName: holder.fullName, students: holder.students },
           ...(visible && holder.id !== null ? { recordId: holder.id } : {}),
-          ...(error.code === 'relative_phone_taken'
+          // Only for the record's own phone: a merge means nothing for the new
+          // phone of an earlier relative (permission review, finding 6).
+          ...(error.code === 'relative_phone_taken' && error.path === 'phone'
             ? { mergeable: here || (superAdmin && holder.students > 0) }
             : {}),
         };

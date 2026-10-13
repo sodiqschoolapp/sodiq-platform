@@ -225,11 +225,15 @@ export class Relatives {
       refusingRelativeRaces(() =>
         this.transactions.run(access.branchIds, async (transaction) => {
           const row = await this.writes.lockRelative(transaction, branchId, id);
+          const owner = newOwner ?? null;
+          // A new owner is given only with the phone it takes (permission review, finding 5).
+          if (owner !== null && (record.phone === null || record.phone === row.phone)) {
+            throw new ApiException('request_refused', 422);
+          }
           const changes = changesOf({ ...recordOf(row) }, { ...record });
           if (changes === null) {
             return this.readDetail(transaction, access, id);
           }
-          const owner = newOwner ?? null;
           const released =
             owner !== null && record.phone !== null && record.phone !== row.phone
               ? await this.writes.releasePhone(transaction, access, record.phone, owner, 'newOwner')
@@ -348,6 +352,11 @@ export class Relatives {
         // Both records are live and visible in the transaction: the branch
         // of the request, or every branch for the Super Admin.
         const before = await liveLinks();
+        // The record of the path is one of the branch of the request; only the
+        // other may be linked elsewhere (permission review, finding 2).
+        if (!before.some((link) => link.relative_id === id && link.branch_id === branchId)) {
+          throw notFound();
+        }
         for (const one of ids) {
           if (!before.some((link) => link.relative_id === one)) {
             throw notFound();

@@ -887,4 +887,155 @@ describe('phone owners, merges and the notice to the other branch', () => {
       refusedWith(await merge(one.relativeId, input, t.north, southVice), 403, 'permission_denied');
     });
   });
+
+  describe('the ids of a new owner and a merge (permission review)', () => {
+    it('answers 404 to a new owner on a relative or a student of another branch and an unknown one', async () => {
+      const number = phone();
+      const holder = await withRelative(number, t.south);
+      const southern = await withRelative(phone(), t.south);
+      const before = await snapshot();
+      for (const id of [southern.relativeId, UNKNOWN]) {
+        const response = await t.patch(
+          `/api/people/relatives/${id}`,
+          t.north,
+          {
+            fullName: 'Dilfuza Karimova',
+            phone: number,
+            workplace: null,
+            email: null,
+            newOwner: { previousId: holder.relativeId, previousPhone: null },
+          },
+          t.vicePrincipal,
+        );
+        refusedWith(response, 404, 'not_found');
+      }
+      for (const id of [southern.student.id, UNKNOWN]) {
+        const response = await t.post(
+          `/api/people/students/${id}/relatives`,
+          t.north,
+          newOwner(number, holder.relativeId, null, false),
+          t.vicePrincipal,
+        );
+        refusedWith(response, 404, 'not_found');
+      }
+      expect(await snapshot()).toEqual(before);
+      expect((await stored(holder.relativeId)).phone).toBe(number);
+    });
+
+    it('answers relative_phone_changed to a previousId that is unknown or does not hold the phone, on the edit and the link', async () => {
+      const number = phone();
+      await withRelative(number, t.north);
+      const other = await withRelative(phone(), t.north);
+      const edited = await withRelative(phone(), t.north);
+      const target = await withRelative(phone(), t.north);
+      const before = await snapshot();
+      for (const previousId of [UNKNOWN, other.relativeId]) {
+        refusedWith(
+          await t.patch(`/api/people/relatives/${edited.relativeId}`, t.north, {
+            fullName: 'Dilfuza Karimova',
+            phone: number,
+            workplace: null,
+            email: null,
+            newOwner: { previousId, previousPhone: null },
+          }),
+          409,
+          'relative_phone_changed',
+        );
+        refusedWith(
+          await t.post(
+            `/api/people/students/${target.student.id}/relatives`,
+            t.north,
+            newOwner(number, previousId, null, false),
+          ),
+          409,
+          'relative_phone_changed',
+        );
+      }
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('refuses a new owner sent without the phone it takes', async () => {
+      const edited = await withRelative(phone(), t.north);
+      const holder = await withRelative(phone(), t.north);
+      const before = await snapshot();
+      const response = await t.patch(`/api/people/relatives/${edited.relativeId}`, t.north, {
+        fullName: 'Dilfuza Karimova',
+        phone: (await stored(edited.relativeId)).phone,
+        workplace: 'Toshkent shahar shifoxonasi',
+        email: 'd.karimova@example.uz',
+        newOwner: { previousId: holder.relativeId, previousPhone: null },
+      });
+      refusedWith(response, 422, 'request_refused');
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('lets the Academic Vice Principal give the number of a relative of another branch on the edit', async () => {
+      const number = phone();
+      const holder = await withRelative(number, t.south, { fullName: 'Saodat Nurmatova' });
+      const edited = await withRelative(phone(), t.north);
+      const noticed = (await noticesOf(southViceAccount)).length;
+      const response = await t.patch(
+        `/api/people/relatives/${edited.relativeId}`,
+        t.north,
+        {
+          fullName: 'Dilfuza Karimova',
+          phone: number,
+          workplace: 'Toshkent shahar shifoxonasi',
+          email: 'd.karimova@example.uz',
+          newOwner: { previousId: holder.relativeId, previousPhone: null },
+        },
+        t.vicePrincipal,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const [entry] = await schoolEntries('relative.phone_released', holder.relativeId);
+      expect(entry).toMatchObject({ assignment_id: t.viceAssignment });
+      expect((await noticesOf(southViceAccount)).slice(noticed)).toEqual([
+        {
+          kind: 'relative.phone_changed',
+          data: { fullName: 'Saodat Nurmatova' },
+          branch_id: t.north,
+        },
+      ]);
+    });
+
+    it('answers 404 to the Super Admin for a path id outside the branch of the request and unknown ids', async () => {
+      const here = await withRelative(phone(), t.north);
+      const there = await withRelative(phone(), t.south);
+      const herePhone = (await stored(here.relativeId)).phone;
+      const therePhone = (await stored(there.relativeId)).phone;
+      const before = await snapshot();
+      for (const [id, otherId, thisPhone, otherPhone] of [
+        [there.relativeId, here.relativeId, therePhone, herePhone],
+        [UNKNOWN, here.relativeId, therePhone, herePhone],
+        [here.relativeId, UNKNOWN, herePhone, therePhone],
+      ] as const) {
+        const response = await merge(
+          id,
+          { otherId, thisPhone, otherPhone, phoneOf: 'other', nameOf: 'this' },
+          t.north,
+          t.admin,
+        );
+        refusedWith(response, 404, 'not_found');
+      }
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('counts and lists no valid phone only in its own branch, also for the Super Admin', async () => {
+      const number = phone();
+      const southern = await withRelative(number, t.south, { fullName: 'Kumush Ergasheva' });
+      await student([newOwner(number, southern.relativeId, null)], t.south);
+      const listed = async (branch: string) =>
+        relativeListSchema
+          .parse((await t.get('/api/people/relatives?filter=no_valid_phone', branch)).body)
+          .relatives.map((row) => row.id);
+      expect(await listed(t.south)).toContain(southern.relativeId);
+      expect(await listed(t.north)).not.toContain(southern.relativeId);
+      const counted = async (branch: string) =>
+        relativeNoValidPhoneSchema.parse(
+          (await t.get('/api/people/relatives/no-valid-phone', branch)).body,
+        ).count;
+      expect(await counted(t.south)).toBe((await listed(t.south)).length);
+      expect(await counted(t.north)).toBe((await listed(t.north)).length);
+    });
+  });
 });
