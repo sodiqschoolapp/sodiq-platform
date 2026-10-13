@@ -148,6 +148,9 @@ export const AUDIT_ACTION_GROUPS = {
     'staff.export',
     'vacancy.export',
     'student.export',
+    'student.personal_data_report',
+    'staff.personal_data_report',
+    'relative.personal_data_report',
   ],
   shows: ['staff.identity_shown', 'student.identity_shown', 'relative.show', 'audit.entry_shown'],
 } as const;

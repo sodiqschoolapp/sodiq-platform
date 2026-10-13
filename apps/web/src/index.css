@@ -275,4 +275,20 @@
   body[data-printing='slip'] > [data-slip-sheet] {
     display: block !important;
   }
+  /* The personal data report prints alone (task 2.6b), from its copy beside
+     the page; the letterhead sits in the header group of its table, which
+     the browser repeats at the top of each printed page (decision 9). */
+  body[data-printing='report'] > :not([data-report-sheet]) {
+    display: none !important;
+  }
+  body[data-printing='report'] > [data-report-sheet] {
+    display: block !important;
+  }
+  [data-report-sheet] thead {
+    display: table-header-group;
+  }
+  /* Every text of the sheet in the navy of the printout, set on `body` above. */
+  [data-report-sheet] * {
+    color: inherit;
+  }
 }

@@ -168,6 +168,14 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the personal data report to the Super Admin alone, as an export (task 2.6b)', () => {
+    for (const role of ROLES) {
+      expect(PERMISSIONS.personal_data_report[role], role).toEqual(
+        role === 'super_admin' ? ['export'] : [],
+      );
+    }
+  });
+
   it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
     expect(Object.keys(PERMISSIONS).sort()).toEqual([
       'academic_years',
@@ -180,6 +188,7 @@ describe('a frozen permission table', () => {
       'day_templates',
       'divisions',
       'head_teachers',
+      'personal_data_report',
       'quarters',
       'relatives',
       'rooms',

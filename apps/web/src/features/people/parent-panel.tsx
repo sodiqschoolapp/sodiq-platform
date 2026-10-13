@@ -22,6 +22,7 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
 import { HistoryLink } from '@/features/audit/history-link';
+import { ReportLink } from './report-link';
 import { useView } from '@/features/access/use-view';
 import {
   invalidateRelatives,
@@ -116,6 +117,7 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
     <div className="grid gap-6">
       <RelativeTerms relative={relative} />
       <HistoryLink kind="relative" id={relative.id} />
+      <ReportLink kind="relative" id={relative.id} />
       <section className="grid gap-2">
         <h3 className="text-base font-semibold">{t('people.relatives.students')}</h3>
         <ul className="grid gap-1 text-sm">

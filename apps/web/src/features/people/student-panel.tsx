@@ -22,6 +22,7 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { Segmented } from '@/components/ui/segmented';
 import { HistoryLink } from '@/features/audit/history-link';
+import { ReportLink } from './report-link';
 import { useView } from '@/features/access/use-view';
 import { schoolDateText } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
@@ -155,6 +156,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     <div className="grid gap-6">
       <StudentPhotoSection student={student} name={name} />
       <HistoryLink kind="student" id={student.id} />
+      <ReportLink kind="student" id={student.id} />
       {tabs.length > 1 && (
         <Segmented
           label={t('people.students.tabs.label')}

@@ -190,6 +190,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'The email of the person record of an account while a reset link may be sent, for the mail job only, which runs with no branch (task 2.3c-2, correction 2 of #66).',
   'password_reset_allowed(uuid,timestamp with time zone)':
     'Whether a reset link may be made for an account (not locked, not inactive or left, an email on record, written last by a Super Admin or by an Academic Vice Principal of a branch of its roles, read from audit_log through last_email_change), a yes or no for the public request before any branch is known (task 2.3c-2).',
+  'personal_data_relatives(uuid)':
+    "Every relative ever linked to one student, live link or not, the record's fields and its Parent account's state, for the student's personal data report, called only after the route found the student in the branch of the request (task 2.6b, decision 2 of pull request #76, Look first); relative_membership hides a relative with no live link from every transaction.",
   'relative_by_phone(text)':
     'The holder of an exact main phone in any branch, archived included: id, full name and the number of students linked live, for the phone typed first and the refused phone change (04, Close relatives: "the system shows the person"; task 2.5a, decision 3 of pull request #72, Look first).',
   'relative_links_elsewhere(uuid)':

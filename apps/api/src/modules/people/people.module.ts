@@ -10,6 +10,8 @@ import { AvailabilityController } from './availability.controller.js';
 import { StaffAvailability } from './availability.service.js';
 import { HeadTeachersController } from './head-teachers.controller.js';
 import { HeadTeachers } from './head-teachers.service.js';
+import { PersonalDataController } from './personal-data.controller.js';
+import { PersonalData } from './personal-data.service.js';
 import { PHOTO_STORE, photoStoreOf } from './photo-store.js';
 import { RelativeWrites } from './relative-writes.js';
 import { RelativesController } from './relatives.controller.js';
@@ -37,7 +39,7 @@ import { Vacancies } from './vacancies.service.js';
  * the account section of a record (task 2.3a), the Head Teacher appointments
  * (task 2.3b-1), the sign-in access of an account (task 2.3c-1), student
  * records (task 2.4a), their leaving, return and delete (task 2.4b-1), their
- * export and photos (task 2.4b-2), their close relatives (task 2.5a).
+ * export and photos (task 2.4b-2), their close relatives (task 2.5a), the personal data report (task 2.6b).
  */
 @Module({
   imports: [AccessModule, AuthModule, NotificationsModule],
@@ -54,8 +56,10 @@ import { Vacancies } from './vacancies.service.js';
     StudentStatusesController,
     StudentPhotosController,
     RelativesController,
+    PersonalDataController,
   ],
   providers: [
+    PersonalData,
     Staff,
     StaffAccounts,
     AccountAccess,

@@ -53,15 +53,51 @@ const confirmWith = async (page: Page, action: string): Promise<void> => {
   await expect(dialog).toBeHidden();
 };
 
+/**
+ * Task 2.6b, done when: "the Super Admin prints the report of a student and
+ * the log holds the entry". The student of the Audit log's seed, in a branch
+ * of its own; the print itself is stubbed, the print mode is read. The seed
+ * holds at most three Super Admins, all taken by the setup tests, so this
+ * runs as the second half of the first test's session.
+ */
+async function printPersonalDataReport(page: Page): Promise<void> {
+  await page.goto('/people/students');
+  await page
+    .getByRole('combobox', { name: en.switcher.branch, exact: true })
+    .selectOption({ label: 'Audit browser test branch' });
+  await expect(heading(page, en.people.students.title)).toBeVisible();
+  await page.getByRole('row').filter({ hasText: 'Murodova' }).getByRole('button').first().click();
+  const panel = page.getByRole('complementary', { name: 'Oydin Murodova' });
+  await panel.getByRole('link', { name: en.people.report.link, exact: true }).click();
+
+  await expect(heading(page, en.people.report.title)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Murodova Oydin', level: 2 })).toBeVisible();
+  // Identity plainly, and the relative of the student.
+  await expect(page.getByText('Bodomzor 9').first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Feruza Murodova', level: 4 })).toBeVisible();
+  // The browser's print dialog is replaced by a note of the print mode it saw.
+  await page.evaluate(
+    "window.print = () => { document.body.dataset.printed = document.body.dataset.printing ?? ''; }",
+  );
+  await page.getByRole('button', { name: en.people.report.print, exact: true }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-printed', 'report');
+
+  await page.goto('/audit');
+  await expect(heading(page, en.audit.title)).toBeVisible();
+  await expect(
+    page.getByRole('row').filter({ hasText: en.audit.actions.student.personal_data_report }),
+  ).toHaveCount(1);
+}
+
 // docs/build-plan.md, task 1.1, done when: "the Super Admin can create and
 // edit them". docs/spec/03-school-setup.md: the branch record; buildings,
 // floors and rooms ("Rooms are added floor by floor"). Archive refused while
 // a room on the floor is in use, allowed once it is closed (decided by the
 // owner, pull request #37, answer 7).
-test('the Super Admin edits the branch, adds a building, a floor and a room, and archives the floor once its room is closed', async ({
+test('the Super Admin edits the branch, adds a building, a floor and a room, and archives the floor once its room is closed, then prints a personal data report', async ({
   page,
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   await signInAsSuperAdmin(page);
 
   // The branch: a working Saturday is ticked and saved.
@@ -130,6 +166,8 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
   await expect(panel.getByRole('row').filter({ hasText: 'Ground' })).toContainText(
     en.setup.buildings.archived,
   );
+
+  await printPersonalDataReport(page);
 });
 
 // docs/build-plan.md, task 1.2, done when: "Academic cannot be renamed or

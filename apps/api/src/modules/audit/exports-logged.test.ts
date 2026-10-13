@@ -182,6 +182,69 @@ describe('every export is logged', () => {
     },
   };
 
+  /** A student of `north` with a relative of its own, created by the route. */
+  const reportStudent = async (uid: string, contract: string): Promise<string> =>
+    studentDetailSchema.parse(
+      created(
+        await t.post('/api/people/students', t.north, {
+          uid,
+          confirmUidSet: true,
+          firstName: 'Nodira',
+          lastName: 'Tursunova',
+          paternalName: null,
+          sex: 'female',
+          birthDate: '2013-05-06',
+          grade: 7,
+          startsOn: '2026-09-02',
+          documentType: null,
+          documentNumber: null,
+          jshshir: null,
+          phone: null,
+          email: null,
+          address: null,
+          region: null,
+          previousSchool: null,
+          diagnosticScore: null,
+          scholarship: { type: 'none', coverage: null, amount: null },
+          consentSignedOn: null,
+          contract: { number: contract, signedOn: '2026-08-20' },
+          relatives: relativesInput(),
+        }),
+      ),
+    ).id;
+
+  /**
+   * The personal data report of each kind of person (task 2.6b, pull request
+   * #76, decision 3): an export of the Super Admin, logged as one entry with
+   * the person's record, in the branch of the request.
+   */
+  const REPORTS: Record<string, { action: string; type: string; row: () => Promise<string> }> = {
+    'POST /api/people/students/:id/report': {
+      action: 'student.personal_data_report',
+      type: 'student',
+      row: () => reportStudent('2607911', 'PD-2026/1'),
+    },
+    'POST /api/people/staff/:id/report': {
+      action: 'staff.personal_data_report',
+      type: 'staff',
+      row: () => EXPORTS['POST /api/people/staff/export']?.row() ?? Promise.reject(new Error()),
+    },
+    'POST /api/people/relatives/:id/report': {
+      action: 'relative.personal_data_report',
+      type: 'relative',
+      row: async () => {
+        const student = await reportStudent('2607912', 'PD-2026/2');
+        return (
+          await t.database.migrator
+            .selectFrom('student_relatives')
+            .select('relative_id')
+            .where('student_id', '=', student)
+            .executeTakeFirstOrThrow()
+        ).relative_id;
+      },
+    },
+  };
+
   /** The entries of an action in both logs. */
   const countOf = async (action: string): Promise<number> => {
     const found = await sql<{ count: number }>`
@@ -248,8 +311,47 @@ describe('every export is logged', () => {
       )
       .map((route) => route.name)
       .sort();
-    expect(exports).toEqual(Object.keys(EXPORTS).sort());
+    expect(exports).toEqual([...Object.keys(EXPORTS), ...Object.keys(REPORTS)].sort());
   });
+
+  it.each(Object.entries(REPORTS))(
+    '%s writes one entry with the person and the counts',
+    async (route, spec) => {
+      const path = route.replace('POST ', '');
+      const row = await spec.row();
+      const before = await countOf(spec.action);
+      const response = await request(t.kit.server)
+        .post(path.replace(':id', row))
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, t.north)
+        .send({});
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(await countOf(spec.action)).toBe(before + 1);
+      const [entry] = await t.database.migrator
+        .selectFrom('audit_log')
+        .select(['details', 'actor_id', 'branch_id', 'record_type', 'record_id', 'person_id'])
+        .where('action', '=', spec.action)
+        .orderBy('occurred_at', 'desc')
+        .orderBy('id', 'desc')
+        .limit(1)
+        .execute();
+      expect(entry).toMatchObject({
+        branch_id: t.north,
+        record_type: spec.type,
+        record_id: row,
+        person_id: row,
+      });
+      expect(entry?.details).toMatchObject({ entriesLeftOut: 0 });
+
+      const refused = await request(t.kit.server)
+        .post(path.replace(':id', UNKNOWN))
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, t.north)
+        .send({});
+      expect(refused.status).toBe(404);
+      expect(await countOf(spec.action)).toBe(before + 1);
+    },
+  );
 
   it.each(Object.entries(EXPORTS))(
     '%s writes one entry with its filters, columns and row count',

@@ -65826,6 +65826,2690 @@
         ]
       }
     },
+    "/api/people/students/{id}/report": {
+      "post": {
+        "operationId": "PersonalDataController_student",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "student"
+                      ]
+                    },
+                    "producedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "producedBy": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "branch": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "timeZone": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "timeZone"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "entries": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "occurredAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "branchId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "assignment": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "super_admin",
+                                  "principal",
+                                  "academic_vice_principal",
+                                  "spiritual_vice_principal",
+                                  "head_tutor",
+                                  "tutor",
+                                  "senior_head_teacher",
+                                  "head_teacher",
+                                  "teacher",
+                                  "student",
+                                  "parent",
+                                  "hr",
+                                  "nurse",
+                                  "psychologist",
+                                  "librarian"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "person": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "record": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "oldValue": {},
+                          "newValue": {},
+                          "details": {},
+                          "reason": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "hidden": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "occurredAt",
+                          "branchId",
+                          "action",
+                          "actor",
+                          "assignment",
+                          "person",
+                          "record",
+                          "oldValue",
+                          "newValue",
+                          "details",
+                          "reason",
+                          "hidden"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "entriesLeftOut": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "oldestAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "oldestAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "student": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "uid": {
+                          "type": "string"
+                        },
+                        "uids": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "uid": {
+                                "type": "string"
+                              },
+                              "heldFrom": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "releasedAt": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "uid",
+                              "heldFrom",
+                              "releasedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "firstName": {
+                          "type": "string"
+                        },
+                        "lastName": {
+                          "type": "string"
+                        },
+                        "paternalName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "sex": {
+                          "type": "string",
+                          "enum": [
+                            "male",
+                            "female"
+                          ]
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "startsOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "photoId": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "email": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "birthDate": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "documentType": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "passport",
+                            "id_card",
+                            "birth_certificate"
+                          ]
+                        },
+                        "documentNumber": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "jshshir": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "address": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "region": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "andijan",
+                            "bukhara",
+                            "fergana",
+                            "jizzakh",
+                            "kashkadarya",
+                            "khorezm",
+                            "namangan",
+                            "navoi",
+                            "samarkand",
+                            "surkhandarya",
+                            "syrdarya",
+                            "tashkent_region",
+                            "karakalpakstan",
+                            "tashkent_city",
+                            "other"
+                          ]
+                        },
+                        "previousSchool": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "diagnosticScore": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "consentSignedOn": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "scholarship": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "none",
+                                "merit",
+                                "financial_aid",
+                                "gift"
+                              ]
+                            },
+                            "coverage": {
+                              "nullable": true,
+                              "type": "string",
+                              "enum": [
+                                "full",
+                                "partial"
+                              ]
+                            },
+                            "amount": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1000000000
+                            }
+                          },
+                          "required": [
+                            "type",
+                            "coverage",
+                            "amount"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "contracts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "number": {
+                                "type": "string"
+                              },
+                              "signedOn": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              }
+                            },
+                            "required": [
+                              "number",
+                              "signedOn"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "statuses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "active",
+                                  "inactive",
+                                  "graduated"
+                                ]
+                              },
+                              "from": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "until": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "cause": {
+                                "type": "string",
+                                "enum": [
+                                  "start",
+                                  "leaving",
+                                  "return",
+                                  "undo",
+                                  "cancel",
+                                  "graduation",
+                                  "restore"
+                                ]
+                              },
+                              "reason": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "status",
+                              "from",
+                              "until",
+                              "cause",
+                              "reason"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "account": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "switchedOn": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "createdAt",
+                            "switchedOn"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "uid",
+                        "uids",
+                        "firstName",
+                        "lastName",
+                        "paternalName",
+                        "sex",
+                        "grade",
+                        "startsOn",
+                        "photoId",
+                        "phone",
+                        "email",
+                        "birthDate",
+                        "documentType",
+                        "documentNumber",
+                        "jshshir",
+                        "address",
+                        "region",
+                        "previousSchool",
+                        "diagnosticScore",
+                        "consentSignedOn",
+                        "scholarship",
+                        "contracts",
+                        "statuses",
+                        "account"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "relatives": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "fullName": {
+                            "type": "string"
+                          },
+                          "phone": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "extraPhones": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "workplace": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "email": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "phoneInvalidSince": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "archivedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "merged": {
+                            "type": "boolean"
+                          },
+                          "account": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "switchedOn": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "createdAt",
+                              "switchedOn"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "links": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "relationship": {
+                                  "type": "string",
+                                  "enum": [
+                                    "father",
+                                    "mother",
+                                    "grandfather",
+                                    "grandmother",
+                                    "uncle",
+                                    "aunt",
+                                    "brother",
+                                    "sister",
+                                    "guardian",
+                                    "other"
+                                  ]
+                                },
+                                "mainContact": {
+                                  "type": "boolean"
+                                },
+                                "portalAccess": {
+                                  "type": "boolean"
+                                },
+                                "receivesNotices": {
+                                  "type": "boolean"
+                                },
+                                "linkedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "unlinkedAt": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "relationship",
+                                "mainContact",
+                                "portalAccess",
+                                "receivesNotices",
+                                "linkedAt",
+                                "unlinkedAt"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fullName",
+                          "phone",
+                          "extraPhones",
+                          "workplace",
+                          "email",
+                          "phoneInvalidSince",
+                          "archivedAt",
+                          "merged",
+                          "account",
+                          "links"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "producedAt",
+                    "producedBy",
+                    "branch",
+                    "entries",
+                    "entriesLeftOut",
+                    "student",
+                    "relatives"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "subject_department_archived",
+                            "subject_move_super_admin",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "staff_id_exhausted",
+                            "staff_department_required",
+                            "subject_outside_department",
+                            "grade_not_in_subject",
+                            "languages_required",
+                            "division_archived",
+                            "status_from_past",
+                            "status_before_admission",
+                            "status_unchanged",
+                            "own_status",
+                            "account_inactive",
+                            "subject_has_teachers",
+                            "department_has_staff",
+                            "availability_overlap",
+                            "photo_invalid",
+                            "photo_too_large",
+                            "photos_not_configured",
+                            "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
+                            "head_teacher_taken",
+                            "subject_unknown",
+                            "role_not_appointment",
+                            "appointment_ends_by_then",
+                            "own_account",
+                            "account_already_locked",
+                            "account_not_locked",
+                            "second_step_off",
+                            "account_missing",
+                            "uid_set_mismatch",
+                            "student_value_taken",
+                            "no_academic_year",
+                            "student_not_active",
+                            "leaving_before_start",
+                            "leaving_not_planned",
+                            "leaving_in_force",
+                            "student_not_inactive",
+                            "undo_not_leaving",
+                            "return_too_early",
+                            "status_date_future",
+                            "student_not_graduated",
+                            "restore_before_graduation",
+                            "date_in_closed_year",
+                            "student_has_data",
+                            "student_changed",
+                            "student_needs_relative",
+                            "relative_phone_taken",
+                            "relative_phone_exists",
+                            "relative_phone_changed",
+                            "last_relative",
+                            "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
+                            "same_person_taken",
+                            "same_person_held_elsewhere",
+                            "same_person_elsewhere",
+                            "same_person_vacancy",
+                            "merge_marks_differ",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "recordId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "holder": {
+                                "type": "object",
+                                "properties": {
+                                  "fullName": {
+                                    "type": "string"
+                                  },
+                                  "students": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "fullName",
+                                  "students"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PersonalData"
+        ]
+      }
+    },
+    "/api/people/staff/{id}/report": {
+      "post": {
+        "operationId": "PersonalDataController_staff",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "staff"
+                      ]
+                    },
+                    "producedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "producedBy": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "branch": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "timeZone": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "timeZone"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "entries": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "occurredAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "branchId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "assignment": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "super_admin",
+                                  "principal",
+                                  "academic_vice_principal",
+                                  "spiritual_vice_principal",
+                                  "head_tutor",
+                                  "tutor",
+                                  "senior_head_teacher",
+                                  "head_teacher",
+                                  "teacher",
+                                  "student",
+                                  "parent",
+                                  "hr",
+                                  "nurse",
+                                  "psychologist",
+                                  "librarian"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "person": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "record": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "oldValue": {},
+                          "newValue": {},
+                          "details": {},
+                          "reason": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "hidden": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "occurredAt",
+                          "branchId",
+                          "action",
+                          "actor",
+                          "assignment",
+                          "person",
+                          "record",
+                          "oldValue",
+                          "newValue",
+                          "details",
+                          "reason",
+                          "hidden"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "entriesLeftOut": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "oldestAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "oldestAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "staff": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "staffId": {
+                          "type": "string",
+                          "pattern": "^S-[0-9]{6}$"
+                        },
+                        "firstName": {
+                          "type": "string"
+                        },
+                        "lastName": {
+                          "type": "string"
+                        },
+                        "fatherName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "sex": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "male",
+                            "female"
+                          ]
+                        },
+                        "birthDate": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "jshshir": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "educationLevel": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "secondary",
+                            "specialised_secondary",
+                            "bachelor",
+                            "master",
+                            "phd",
+                            "other"
+                          ]
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "email": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "admissionDate": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "contractType": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "full_time",
+                            "part_time"
+                          ]
+                        },
+                        "contractDate": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "weeklyLessons": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "dailyLessons": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "photoId": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "main": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "main"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "divisions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "division": {
+                                "type": "object",
+                                "properties": {
+                                  "uz": {
+                                    "type": "string"
+                                  },
+                                  "ru": {
+                                    "type": "string"
+                                  },
+                                  "en": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "uz",
+                                  "ru",
+                                  "en"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "department": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "uz": {
+                                    "type": "string"
+                                  },
+                                  "ru": {
+                                    "type": "string"
+                                  },
+                                  "en": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "uz",
+                                  "ru",
+                                  "en"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "main": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "division",
+                              "department",
+                              "main"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "subjects": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "subject": {
+                                "type": "object",
+                                "properties": {
+                                  "uz": {
+                                    "type": "string"
+                                  },
+                                  "ru": {
+                                    "type": "string"
+                                  },
+                                  "en": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "uz",
+                                  "ru",
+                                  "en"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "grades": {
+                                "type": "array",
+                                "items": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              }
+                            },
+                            "required": [
+                              "subject",
+                              "grades"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "languages": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "uz",
+                              "ru"
+                            ]
+                          }
+                        },
+                        "statuses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "active",
+                                  "inactive",
+                                  "left"
+                                ]
+                              },
+                              "from": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "until": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              }
+                            },
+                            "required": [
+                              "status",
+                              "from",
+                              "until"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "availability": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "branch": {
+                                "type": "string"
+                              },
+                              "from": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "until": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "ranges": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "weekday": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 7
+                                    },
+                                    "startMinutes": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "endMinutes": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "weekday",
+                                    "startMinutes",
+                                    "endMinutes"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "branch",
+                              "from",
+                              "until",
+                              "ranges"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "staffId",
+                        "firstName",
+                        "lastName",
+                        "fatherName",
+                        "sex",
+                        "birthDate",
+                        "jshshir",
+                        "educationLevel",
+                        "phone",
+                        "email",
+                        "admissionDate",
+                        "contractType",
+                        "contractDate",
+                        "weeklyLessons",
+                        "dailyLessons",
+                        "photoId",
+                        "branches",
+                        "divisions",
+                        "subjects",
+                        "languages",
+                        "statuses",
+                        "availability"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "sameAsRelative": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "fullName"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "account": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "login": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "lastSignInAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "neverUsed": {
+                          "type": "boolean"
+                        },
+                        "language": {
+                          "type": "string"
+                        },
+                        "lockedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "lockReason": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "mustChangePassword": {
+                          "type": "boolean"
+                        },
+                        "passwordChangedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "passwordResetAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "secondStepOn": {
+                          "type": "boolean"
+                        },
+                        "roles": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "super_admin",
+                                  "principal",
+                                  "academic_vice_principal",
+                                  "spiritual_vice_principal",
+                                  "head_tutor",
+                                  "tutor",
+                                  "senior_head_teacher",
+                                  "head_teacher",
+                                  "teacher",
+                                  "student",
+                                  "parent",
+                                  "hr",
+                                  "nurse",
+                                  "psychologist",
+                                  "librarian"
+                                ]
+                              },
+                              "branch": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "from": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "until": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "subjects": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "subject": {
+                                      "type": "object",
+                                      "properties": {
+                                        "uz": {
+                                          "type": "string"
+                                        },
+                                        "ru": {
+                                          "type": "string"
+                                        },
+                                        "en": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "uz",
+                                        "ru",
+                                        "en"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "from": {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    "until": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    }
+                                  },
+                                  "required": [
+                                    "subject",
+                                    "from",
+                                    "until"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "role",
+                              "branch",
+                              "from",
+                              "until",
+                              "subjects"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "login",
+                        "createdAt",
+                        "lastSignInAt",
+                        "neverUsed",
+                        "language",
+                        "lockedAt",
+                        "lockReason",
+                        "mustChangePassword",
+                        "passwordChangedAt",
+                        "passwordResetAt",
+                        "secondStepOn",
+                        "roles"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "producedAt",
+                    "producedBy",
+                    "branch",
+                    "entries",
+                    "entriesLeftOut",
+                    "staff",
+                    "sameAsRelative",
+                    "account"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "subject_department_archived",
+                            "subject_move_super_admin",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "staff_id_exhausted",
+                            "staff_department_required",
+                            "subject_outside_department",
+                            "grade_not_in_subject",
+                            "languages_required",
+                            "division_archived",
+                            "status_from_past",
+                            "status_before_admission",
+                            "status_unchanged",
+                            "own_status",
+                            "account_inactive",
+                            "subject_has_teachers",
+                            "department_has_staff",
+                            "availability_overlap",
+                            "photo_invalid",
+                            "photo_too_large",
+                            "photos_not_configured",
+                            "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
+                            "head_teacher_taken",
+                            "subject_unknown",
+                            "role_not_appointment",
+                            "appointment_ends_by_then",
+                            "own_account",
+                            "account_already_locked",
+                            "account_not_locked",
+                            "second_step_off",
+                            "account_missing",
+                            "uid_set_mismatch",
+                            "student_value_taken",
+                            "no_academic_year",
+                            "student_not_active",
+                            "leaving_before_start",
+                            "leaving_not_planned",
+                            "leaving_in_force",
+                            "student_not_inactive",
+                            "undo_not_leaving",
+                            "return_too_early",
+                            "status_date_future",
+                            "student_not_graduated",
+                            "restore_before_graduation",
+                            "date_in_closed_year",
+                            "student_has_data",
+                            "student_changed",
+                            "student_needs_relative",
+                            "relative_phone_taken",
+                            "relative_phone_exists",
+                            "relative_phone_changed",
+                            "last_relative",
+                            "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
+                            "same_person_taken",
+                            "same_person_held_elsewhere",
+                            "same_person_elsewhere",
+                            "same_person_vacancy",
+                            "merge_marks_differ",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "recordId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "holder": {
+                                "type": "object",
+                                "properties": {
+                                  "fullName": {
+                                    "type": "string"
+                                  },
+                                  "students": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "fullName",
+                                  "students"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PersonalData"
+        ]
+      }
+    },
+    "/api/people/relatives/{id}/report": {
+      "post": {
+        "operationId": "PersonalDataController_relative",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "relative"
+                      ]
+                    },
+                    "producedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "producedBy": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "branch": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "timeZone": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "timeZone"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "entries": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "occurredAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "branchId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "assignment": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "super_admin",
+                                  "principal",
+                                  "academic_vice_principal",
+                                  "spiritual_vice_principal",
+                                  "head_tutor",
+                                  "tutor",
+                                  "senior_head_teacher",
+                                  "head_teacher",
+                                  "teacher",
+                                  "student",
+                                  "parent",
+                                  "hr",
+                                  "nurse",
+                                  "psychologist",
+                                  "librarian"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "person": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "record": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "oldValue": {},
+                          "newValue": {},
+                          "details": {},
+                          "reason": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "hidden": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "occurredAt",
+                          "branchId",
+                          "action",
+                          "actor",
+                          "assignment",
+                          "person",
+                          "record",
+                          "oldValue",
+                          "newValue",
+                          "details",
+                          "reason",
+                          "hidden"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "entriesLeftOut": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "oldestAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "oldestAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "relative": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "extraPhones": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "workplace": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "email": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "phoneInvalidSince": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "archivedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "account": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "switchedOn": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "createdAt",
+                            "switchedOn"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "fullName",
+                        "phone",
+                        "extraPhones",
+                        "workplace",
+                        "email",
+                        "phoneInvalidSince",
+                        "archivedAt",
+                        "account"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "samePerson": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "staffId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^S-[0-9]{6}$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "staffId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "links": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "relationship": {
+                            "type": "string",
+                            "enum": [
+                              "father",
+                              "mother",
+                              "grandfather",
+                              "grandmother",
+                              "uncle",
+                              "aunt",
+                              "brother",
+                              "sister",
+                              "guardian",
+                              "other"
+                            ]
+                          },
+                          "mainContact": {
+                            "type": "boolean"
+                          },
+                          "portalAccess": {
+                            "type": "boolean"
+                          },
+                          "receivesNotices": {
+                            "type": "boolean"
+                          },
+                          "linkedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "unlinkedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "student": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "uid": {
+                                "type": "string"
+                              },
+                              "firstName": {
+                                "type": "string"
+                              },
+                              "lastName": {
+                                "type": "string"
+                              },
+                              "branch": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "uid",
+                              "firstName",
+                              "lastName",
+                              "branch"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "relationship",
+                          "mainContact",
+                          "portalAccess",
+                          "receivesNotices",
+                          "linkedAt",
+                          "unlinkedAt",
+                          "student"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "producedAt",
+                    "producedBy",
+                    "branch",
+                    "entries",
+                    "entriesLeftOut",
+                    "relative",
+                    "samePerson",
+                    "links"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "subject_department_archived",
+                            "subject_move_super_admin",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "staff_id_exhausted",
+                            "staff_department_required",
+                            "subject_outside_department",
+                            "grade_not_in_subject",
+                            "languages_required",
+                            "division_archived",
+                            "status_from_past",
+                            "status_before_admission",
+                            "status_unchanged",
+                            "own_status",
+                            "account_inactive",
+                            "subject_has_teachers",
+                            "department_has_staff",
+                            "availability_overlap",
+                            "photo_invalid",
+                            "photo_too_large",
+                            "photos_not_configured",
+                            "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
+                            "account_exists",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
+                            "head_teacher_taken",
+                            "subject_unknown",
+                            "role_not_appointment",
+                            "appointment_ends_by_then",
+                            "own_account",
+                            "account_already_locked",
+                            "account_not_locked",
+                            "second_step_off",
+                            "account_missing",
+                            "uid_set_mismatch",
+                            "student_value_taken",
+                            "no_academic_year",
+                            "student_not_active",
+                            "leaving_before_start",
+                            "leaving_not_planned",
+                            "leaving_in_force",
+                            "student_not_inactive",
+                            "undo_not_leaving",
+                            "return_too_early",
+                            "status_date_future",
+                            "student_not_graduated",
+                            "restore_before_graduation",
+                            "date_in_closed_year",
+                            "student_has_data",
+                            "student_changed",
+                            "student_needs_relative",
+                            "relative_phone_taken",
+                            "relative_phone_exists",
+                            "relative_phone_changed",
+                            "last_relative",
+                            "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
+                            "same_person_taken",
+                            "same_person_held_elsewhere",
+                            "same_person_elsewhere",
+                            "same_person_vacancy",
+                            "merge_marks_differ",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "recordId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "holder": {
+                                "type": "object",
+                                "properties": {
+                                  "fullName": {
+                                    "type": "string"
+                                  },
+                                  "students": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "fullName",
+                                  "students"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PersonalData"
+        ]
+      }
+    },
     "/api/feedback": {
       "post": {
         "operationId": "FeedbackController_send",

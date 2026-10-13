@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: task 2.6b The personal data report per person
+
+- Built: migration 0040 (`personal_data_relatives`, security definer); `POST people/{students,staff,relatives}/:id/report` (area `personal_data_report`, Super Admin `export`), each one `*.personal_data_report` entry; `readPersonEntries` with the pinned `ENTRY_ABOUT` map and `VALUE_MATCHES`.
+- Screens: the report page `/people/report/$kind/$id` (letterhead in a repeated table header, print mode `report`), "Personal data report" on the student, staff and parent panels; the browser test runs in the first setup test's session.
+- Left out: marks and attendance in the report (6.1); the own report of a relative with no live link (not asked; their data is in the students' reports); medical data (Release 3).
+
+The next sessions must know:
+
+- A new people audit action goes into `ENTRY_ABOUT` (`personal-data.query.ts`) with what puts it into a report; an action that names a person only inside its values also gets a line of `VALUE_MATCHES`. A test compares both with `AUDIT_ACTIONS`.
+- A new field of a student, staff or relative record goes into the report schema of `packages/shared/src/personal-data.ts` and its page.
+- The next task is 2.7.
+
 ## 13 October 2026: task 2.6a Audit log screen, reading rights and the own sign-in history
 
 - Built: migration 0039 (search indexes, `own_sign_in_history` and `audit_names`, both security definer); `GET /audit/entries`, `POST /audit/entries/:id/show`, `GET /auth/sign-in-history`; the area `audit_log`; `AUDIT_ACTIONS` typing every action the API writes; `hideIdentity`, fail closed.

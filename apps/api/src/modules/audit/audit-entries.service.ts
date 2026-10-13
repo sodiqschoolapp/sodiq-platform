@@ -151,7 +151,7 @@ export class AuditEntries {
         limit: AUDIT_PAGE_SIZE + 1,
       });
       const page = rows.slice(0, AUDIT_PAGE_SIZE);
-      const entries = await this.answers(transaction, branchIds, page, !readsIdentity(access));
+      const entries = await entryAnswers(transaction, branchIds, page, !readsIdentity(access));
       const last = entries.at(-1);
       return {
         entries,
@@ -188,8 +188,8 @@ export class AuditEntries {
       if (row === undefined) {
         throw notFound();
       }
-      const [hiddenView] = await this.answers(transaction, branchIds, [row], true);
-      const [entry] = await this.answers(transaction, branchIds, [row], false);
+      const [hiddenView] = await entryAnswers(transaction, branchIds, [row], true);
+      const [entry] = await entryAnswers(transaction, branchIds, [row], false);
       if (entry === undefined || hiddenView === undefined) {
         throw notFound();
       }
@@ -210,126 +210,124 @@ export class AuditEntries {
       return entry;
     });
   }
+}
 
-  /**
-   * The entries as the page shows them: names through `audit_names` (decision
-   * 12, the actor and the person of these entries only), the role of the
-   * assignment when it belongs to a branch of the transaction or to none,
-   * the name of a student or relative record the transaction sees, and the
-   * values hidden when `hide`.
-   */
-  private async answers(
-    transaction: Transaction,
-    branchIds: readonly string[],
-    rows: readonly StoredEntry[],
-    hide: boolean,
-  ): Promise<AuditEntryAnswer[]> {
-    if (rows.length === 0) {
-      return [];
-    }
-    const nameIds = [
-      ...new Set(
-        rows.flatMap((row) => [
-          row.actor_id,
-          row.person_id,
-          row.record_type === 'staff' ? row.record_id : null,
-        ]),
-      ),
-    ].filter((value): value is string => value !== null);
-    const names = new Map<string, string>();
-    if (nameIds.length > 0) {
-      const found = await sql<{ id: string; first_name: string | null; last_name: string | null }>`
-        select id, first_name, last_name from audit_names(${nameIds}::uuid[])
-      `.execute(transaction);
-      for (const row of found.rows) {
-        names.set(row.id, [row.last_name, row.first_name].filter(Boolean).join(' '));
-      }
-    }
-    const recordIds = (type: string) => [
-      ...new Set(
-        rows
-          .filter((row) => row.record_type === type)
-          .map((row) => row.record_id)
-          .filter((value): value is string => value !== null),
-      ),
-    ];
-    const students = recordIds('student');
-    if (students.length > 0) {
-      for (const row of await transaction
-        .selectFrom('students')
-        .select(['id', 'first_name', 'last_name'])
-        .where('id', 'in', students)
-        .execute()) {
-        names.set(row.id, `${row.last_name} ${row.first_name}`);
-      }
-    }
-    const relatives = recordIds('relative');
-    if (relatives.length > 0) {
-      for (const row of await transaction
-        .selectFrom('relatives')
-        .select(['id', 'full_name'])
-        .where('id', 'in', relatives)
-        .execute()) {
-        names.set(row.id, row.full_name);
-      }
-    }
-    const assignmentIds = [
-      ...new Set(rows.map((row) => row.assignment_id).filter((value) => value !== null)),
-    ];
-    const roles = new Map<string, string>();
-    if (assignmentIds.length > 0) {
-      // `assignments` has no row filter: kept here to the branches of the
-      // transaction and to the roles with none (`.claude/rules/database.md`).
-      for (const row of await transaction
-        .selectFrom('assignments')
-        .select(['id', 'role', 'branch_id'])
-        .where('id', 'in', assignmentIds)
-        .execute()) {
-        if (row.branch_id === null || branchIds.includes(row.branch_id)) {
-          roles.set(row.id, row.role);
-        }
-      }
-    }
-    return rows.map((row) => {
-      const values = hide
-        ? hideIdentity({
-            action: row.action,
-            recordType: row.record_type,
-            personId: row.person_id,
-            oldValue: row.old_value,
-            newValue: row.new_value,
-            details: row.details,
-          })
-        : { oldValue: row.old_value, newValue: row.new_value, details: row.details, hidden: [] };
-      const role = row.assignment_id === null ? undefined : roles.get(row.assignment_id);
-      const parsedRole = role === undefined ? undefined : roleSchema.safeParse(role);
-      return {
-        id: row.id,
-        occurredAt: row.occurred_at.toISOString(),
-        branchId: row.branch_id,
-        action: row.action,
-        actor:
-          row.actor_id === null
-            ? null
-            : { id: row.actor_id, name: names.get(row.actor_id) ?? null },
-        assignment:
-          row.assignment_id !== null && parsedRole?.success === true
-            ? { id: row.assignment_id, role: parsedRole.data }
-            : null,
-        person:
-          row.person_id === null
-            ? null
-            : { id: row.person_id, name: names.get(row.person_id) ?? null },
-        record:
-          row.record_type === null || row.record_id === null
-            ? null
-            : { type: row.record_type, id: row.record_id, name: names.get(row.record_id) ?? null },
-        oldValue: values.oldValue,
-        newValue: values.newValue,
-        details: values.details,
-        reason: row.reason,
-        hidden: values.hidden,
-      };
-    });
+/**
+ * The entries as the page shows them: names through `audit_names` (decision
+ * 12, the actor and the person of these entries only), the role of the
+ * assignment when it belongs to a branch of the transaction or to none,
+ * the name of a student or relative record the transaction sees, and the
+ * values hidden when `hide`.
+ */
+export async function entryAnswers(
+  transaction: Transaction,
+  branchIds: readonly string[],
+  rows: readonly StoredEntry[],
+  hide: boolean,
+): Promise<AuditEntryAnswer[]> {
+  if (rows.length === 0) {
+    return [];
   }
+  const nameIds = [
+    ...new Set(
+      rows.flatMap((row) => [
+        row.actor_id,
+        row.person_id,
+        row.record_type === 'staff' ? row.record_id : null,
+      ]),
+    ),
+  ].filter((value): value is string => value !== null);
+  const names = new Map<string, string>();
+  if (nameIds.length > 0) {
+    const found = await sql<{ id: string; first_name: string | null; last_name: string | null }>`
+      select id, first_name, last_name from audit_names(${nameIds}::uuid[])
+    `.execute(transaction);
+    for (const row of found.rows) {
+      names.set(row.id, [row.last_name, row.first_name].filter(Boolean).join(' '));
+    }
+  }
+  const recordIds = (type: string) => [
+    ...new Set(
+      rows
+        .filter((row) => row.record_type === type)
+        .map((row) => row.record_id)
+        .filter((value): value is string => value !== null),
+    ),
+  ];
+  const students = recordIds('student');
+  if (students.length > 0) {
+    for (const row of await transaction
+      .selectFrom('students')
+      .select(['id', 'first_name', 'last_name'])
+      .where('id', 'in', students)
+      .execute()) {
+      names.set(row.id, `${row.last_name} ${row.first_name}`);
+    }
+  }
+  const relatives = recordIds('relative');
+  if (relatives.length > 0) {
+    for (const row of await transaction
+      .selectFrom('relatives')
+      .select(['id', 'full_name'])
+      .where('id', 'in', relatives)
+      .execute()) {
+      names.set(row.id, row.full_name);
+    }
+  }
+  const assignmentIds = [
+    ...new Set(rows.map((row) => row.assignment_id).filter((value) => value !== null)),
+  ];
+  const roles = new Map<string, string>();
+  if (assignmentIds.length > 0) {
+    // `assignments` has no row filter: kept here to the branches of the
+    // transaction and to the roles with none (`.claude/rules/database.md`).
+    for (const row of await transaction
+      .selectFrom('assignments')
+      .select(['id', 'role', 'branch_id'])
+      .where('id', 'in', assignmentIds)
+      .execute()) {
+      if (row.branch_id === null || branchIds.includes(row.branch_id)) {
+        roles.set(row.id, row.role);
+      }
+    }
+  }
+  return rows.map((row) => {
+    const values = hide
+      ? hideIdentity({
+          action: row.action,
+          recordType: row.record_type,
+          personId: row.person_id,
+          oldValue: row.old_value,
+          newValue: row.new_value,
+          details: row.details,
+        })
+      : { oldValue: row.old_value, newValue: row.new_value, details: row.details, hidden: [] };
+    const role = row.assignment_id === null ? undefined : roles.get(row.assignment_id);
+    const parsedRole = role === undefined ? undefined : roleSchema.safeParse(role);
+    return {
+      id: row.id,
+      occurredAt: row.occurred_at.toISOString(),
+      branchId: row.branch_id,
+      action: row.action,
+      actor:
+        row.actor_id === null ? null : { id: row.actor_id, name: names.get(row.actor_id) ?? null },
+      assignment:
+        row.assignment_id !== null && parsedRole?.success === true
+          ? { id: row.assignment_id, role: parsedRole.data }
+          : null,
+      person:
+        row.person_id === null
+          ? null
+          : { id: row.person_id, name: names.get(row.person_id) ?? null },
+      record:
+        row.record_type === null || row.record_id === null
+          ? null
+          : { type: row.record_type, id: row.record_id, name: names.get(row.record_id) ?? null },
+      oldValue: values.oldValue,
+      newValue: values.newValue,
+      details: values.details,
+      reason: row.reason,
+      hidden: values.hidden,
+    };
+  });
 }

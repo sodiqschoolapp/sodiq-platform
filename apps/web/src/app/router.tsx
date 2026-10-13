@@ -8,6 +8,7 @@ import {
   redirect,
   type RouterHistory,
 } from '@tanstack/react-router';
+import { personalDataKindSchema } from '@sodiq/shared';
 import { HomePage } from '@/features/access/home-page';
 import { AccountPage } from '@/features/auth/account-page';
 import { AuditPage } from '@/features/audit/audit-page';
@@ -26,6 +27,7 @@ import { SubjectsPage } from '@/features/setup/subjects-page';
 import { HeadTeachersPage } from '@/features/people/head-teachers-page';
 import { NeverUsedPage } from '@/features/people/never-used-page';
 import { PeoplePage } from '@/features/people/people-page';
+import { PersonalDataReportPage } from '@/features/people/personal-data-report-page';
 import { StaffPage } from '@/features/people/staff-page';
 import { StudentsPage } from '@/features/people/students-page';
 import { ParentsPage } from '@/features/people/parents-page';
@@ -255,6 +257,27 @@ const headTeachersRoute = createRoute({
   component: HeadTeachersPage,
 });
 
+/**
+ * The personal data report of a student, a staff member or a parent (task
+ * 2.6b): opened from the panel by the Super Admin; the server decides who
+ * reaches it. An unknown kind is no page.
+ */
+const personalDataRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/people/report/$kind/$id',
+  component: PersonalDataRouteView,
+});
+
+function PersonalDataRouteView() {
+  const { kind, id } = personalDataRoute.useParams();
+  const parsed = personalDataKindSchema.safeParse(kind);
+  if (!parsed.success) {
+    return <NotFoundPage />;
+  }
+  // A new person is a new page: the report is produced once per person.
+  return <PersonalDataReportPage key={`${parsed.data}:${id}`} kind={parsed.data} id={id} />;
+}
+
 // The Audit log (task 2.6a): the list state and the search the server answers.
 const auditRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -368,6 +391,7 @@ const routeTree = rootRoute.addChildren([
     headTeachersRoute,
     neverUsedRoute,
     auditRoute,
+    personalDataRoute,
     patternsRoute,
   ]),
 ]);

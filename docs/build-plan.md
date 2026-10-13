@@ -264,7 +264,7 @@ How to read the task lines:
   - From 2.5a (pull request #72, decision 17 as changed by correction 1): the entries of a relative's record (`relative.create`, `relative.edit`, `relative.archive`, `relative.restore`) are in `audit_log_school` with the branch of the request in `details`; the link entries are in the branch's log. Decide which branches read the record entries of a relative.
   - From 2.4b-1 (pull request #68): the audit entries `student.create`, `student.edit` and `student.delete` hold the identity fields of the student; a reader without the Identity group (the Principal) sees them hidden, with a logged show, as on the record.
 
-- [ ] **2.6b The personal data report per person** (split from 2.6 on pull request #75, decision 1)
+- [x] **2.6b The personal data report per person** (split from 2.6 on pull request #75, decision 1)
   - Read: `edge/people-roles-accounts` (Personal data and the audit log: "The Super Admin can produce a personal data report per person"), `13` (Security), "Decided ahead for tasks 2.1 to 2.6" (answer 25: a printable page, no PDF library), `docs/design-system.md` (Printouts), the plan and the decisions of pull request #75.
   - Build: for the Super Admin, the personal data report of a student, a relative or a staff member on screen as a printable page: every field of the record in every group, the links (relatives, students), the account and its roles, the photo, the consent and statuses, and the audit entries about the person; producing it is an export and leaves an audit entry.
   - Done when: the Super Admin prints the report of a student and the log holds the entry; no other role reaches it.
@@ -434,6 +434,7 @@ How to read the task lines:
   - Read: `07`, `edge/journal`, `edge/developer-rules`.
   - Build: cells unique on lesson, student and work, each with a version number; history per cell; who is expected in a lesson on its date.
   - From 2.3 (pull request #62): the report of entries made within 48 hours of a password reset (`edge/people-roles-accounts`, Accounts and sign-in: "A report lists entries made within 48 hours of a reset"), once cells exist.
+  - From 2.6b (pull request #76, Left out): the student's marks and attendance join the personal data report (`personal-data.service.ts`), once cells exist.
   - From 2.3c-2 (pull request #66, decision 6): the report also counts a password reset by email (`auth.password_reset_by_email`), and marks one that follows an email change by somebody else (the entry's `lastEmailChange`).
   - Done when: a stale save is refused and history records who changed what.
   - From 2.4b-1 (pull request #68): every table of student data (cells, attendance, comments) references `students` with no action, never `on delete cascade`, so the key refuses the delete of a student with data whatever the branch filter sees; the service of the delete maps `23503` on such a key to `student_has_data` (`edge/students-classes-groups`: "A student is created twice by mistake").
