@@ -119,6 +119,11 @@ describe('the Parents list', () => {
     await waitFor(() => {
       expect(rowsDrawn().map((row) => row[0])).toEqual(['Dilfuza Rahimova']);
     });
+    // Typed as it is shown, with spaces (finding 24).
+    search('90 111 22 33');
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row[0])).toEqual(['Dilfuza Rahimova']);
+    });
   });
 
   it('leaves the phone out of the search of the Principal (edge/people-roles-accounts)', async () => {
