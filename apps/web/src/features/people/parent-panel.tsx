@@ -628,8 +628,7 @@ function StaffPicker({
     return <LoadingOutline />;
   }
   const words = searchWords(typed);
-  const nameOf = (person: { firstName: string; lastName: string }) =>
-    `${person.lastName} ${person.firstName}`;
+  const nameOf = (person: { firstName: string; lastName: string }) => listName(person);
   const matches = staff.data.staff
     .filter((person) => person.id !== current)
     .filter((person) => {

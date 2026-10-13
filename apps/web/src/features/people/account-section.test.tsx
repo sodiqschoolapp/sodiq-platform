@@ -178,7 +178,7 @@ async function section(language: 'en' | 'ru' | 'uz' = 'en') {
   shell = renderApp(PATH, language);
   const texts = { en, ru, uz }[language];
   fireEvent.click(await screen.findByText('Tursunova Lola', { selector: 'button' }));
-  const panel = await screen.findByRole('complementary', { name: 'Tursunova Lola' });
+  const panel = await screen.findByRole('complementary', { name: 'Lola Tursunova' });
   return within(panel).findByRole('region', { name: texts.people.account.title });
 }
 
@@ -196,7 +196,7 @@ describe('the account section', () => {
     });
     const found = await section();
     const form = await within(found).findByRole('form', {
-      name: en.people.account.createOf.replace('{{name}}', 'Tursunova Lola'),
+      name: en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
     });
     const login = within(form).getByLabelText(en.people.account.login);
     expect((login as HTMLInputElement).value).toBe('l.tursunova');
@@ -259,7 +259,7 @@ describe('the account section', () => {
     });
     const found = await section();
     const form = await within(found).findByRole('form', {
-      name: en.people.account.createOf.replace('{{name}}', 'Tursunova Lola'),
+      name: en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
     });
     const login = within(form).getByLabelText(en.people.account.login);
     expect((login as HTMLInputElement).value).toBe('');
@@ -281,7 +281,7 @@ describe('the account section', () => {
     expect(row?.textContent).toContain(en.roles.teacher);
     expect(row?.textContent).toContain('Aziza Karimova');
     const form = within(found).getByRole('form', {
-      name: en.people.account.giveOf.replace('{{name}}', 'Tursunova Lola'),
+      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
     });
     fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
       target: { value: 'tutor' },
@@ -321,7 +321,7 @@ describe('the account section', () => {
     });
     const found = await section();
     const form = within(found).getByRole('form', {
-      name: en.people.account.giveOf.replace('{{name}}', 'Tursunova Lola'),
+      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
     });
     expect(within(form).queryByRole('group', { name: en.people.account.subjects })).toBeNull();
     fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
@@ -419,7 +419,7 @@ describe('the account section', () => {
     });
     const found = await section();
     const form = within(found).getByRole('form', {
-      name: en.people.account.giveOf.replace('{{name}}', 'Tursunova Lola'),
+      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
     });
     fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
       target: { value: 'head_teacher' },
@@ -450,7 +450,7 @@ describe('the account section', () => {
     });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     const dialog = await screen.findByRole('alertdialog');
-    expect(within(dialog).getByText(`Tursunova Lola: ${en.roles.teacher}, North`)).toBeDefined();
+    expect(within(dialog).getByText(`Lola Tursunova: ${en.roles.teacher}, North`)).toBeDefined();
     expect(calls.some((call) => call.route.endsWith('/end'))).toBe(false);
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.account.end }));
     await waitFor(() => {
@@ -495,7 +495,7 @@ describe('the account section', () => {
     expect(found.querySelector('tr[data-role="teacher"]')?.textContent).toContain(ru.roles.teacher);
     expect(
       within(found).getByRole('form', {
-        name: ru.people.account.giveOf.replace('{{name}}', 'Tursunova Lola'),
+        name: ru.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
       }),
     ).toBeDefined();
   });
@@ -532,7 +532,7 @@ describe('the account section', () => {
       );
       const found = await section(language);
       const form = await within(found).findByRole('form', {
-        name: texts.people.account.createOf.replace('{{name}}', 'Tursunova Lola'),
+        name: texts.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
       });
       fireEvent.click(within(form).getByRole('button', { name: texts.form.save }));
       const dialog = await screen.findByRole('dialog', { name: texts.people.account.slipTitle });
@@ -568,7 +568,7 @@ describe('the account section', () => {
     });
     const found = await section();
     const form = await within(found).findByRole('form', {
-      name: en.people.account.createOf.replace('{{name}}', 'Tursunova Lola'),
+      name: en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
     });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     const dialog = await screen.findByRole('dialog', { name: en.people.account.slipTitle });
@@ -603,9 +603,9 @@ describe('the account section', () => {
     });
     shell = renderApp(PATH);
     fireEvent.click(await screen.findByText('Tursunova Lola', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Tursunova Lola' });
+    const panel = await screen.findByRole('complementary', { name: 'Lola Tursunova' });
     const status = await within(panel).findByRole('form', {
-      name: en.people.staff.statusOf.replace('{{name}}', 'Tursunova Lola'),
+      name: en.people.staff.statusOf.replace('{{name}}', 'Lola Tursunova'),
     });
     fireEvent.change(within(status).getByLabelText(en.people.staff.newStatus), {
       target: { value: 'active' },

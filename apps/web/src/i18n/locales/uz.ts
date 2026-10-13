@@ -691,7 +691,7 @@ export const uz: Texts<'one' | 'other'> = {
         'Bu yerda filialning oʻquv kunlari: boshlanish vaqti va tartibdagi slotlar. Hozircha yoʻq.',
       needLessonType: 'Avval dars turini qoʻshing.',
       // A time of a day template after midnight (task 2.7b-1, finding 16).
-      nextDay: '{{time}} (keyingi kun)',
+      nextDay: '{{time}} (ertasi kuni)',
       slots: 'Tartibdagi slotlar',
       startTime: 'Boshlanish vaqti',
       from: 'Dan',

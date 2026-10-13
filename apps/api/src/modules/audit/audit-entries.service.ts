@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  listName,
   AUDIT_ACTION_GROUPS,
   AUDIT_DEFAULT_RANGE_DAYS,
   AUDIT_MAX_RANGE_DAYS,
@@ -261,7 +262,7 @@ export async function entryAnswers(
       .select(['id', 'first_name', 'last_name'])
       .where('id', 'in', students)
       .execute()) {
-      names.set(row.id, `${row.last_name} ${row.first_name}`);
+      names.set(row.id, listName({ firstName: row.first_name, lastName: row.last_name }));
     }
   }
   const relatives = recordIds('relative');

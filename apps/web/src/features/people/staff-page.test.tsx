@@ -225,9 +225,9 @@ describe('the staff page', () => {
     await screen.findByRole('heading', { name: en.people.staff.title });
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
 
-    const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
     const status = await within(panel).findByRole('form', {
-      name: en.people.staff.statusOf.replace('{{name}}', 'Karimov Akmal'),
+      name: en.people.staff.statusOf.replace('{{name}}', 'Akmal Karimov'),
     });
     fireEvent.change(within(status).getByLabelText(en.people.staff.newStatus), {
       target: { value: 'left' },
@@ -240,7 +240,7 @@ describe('the staff page', () => {
     // A status change asks first, naming the person; "left" says that the roles end.
     const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText(en.people.staff.statusConfirmLeft)).toBeDefined();
-    expect(within(dialog).getByText('Karimov Akmal')).toBeDefined();
+    expect(within(dialog).getByText('Akmal Karimov')).toBeDefined();
     expect(calls.some((call) => call.route.endsWith('/status'))).toBe(false);
     fireEvent.click(
       within(dialog).getByRole('button', { name: en.people.staff.statusConfirmAction }),
@@ -278,8 +278,8 @@ describe('the staff page', () => {
     renderApp(PATH);
     await screen.findByRole('heading', { name: en.people.staff.title });
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
-    const record = await within(panel).findByRole('form', { name: 'Karimov Akmal' });
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const record = await within(panel).findByRole('form', { name: 'Akmal Karimov' });
 
     const email = within(record).getByLabelText<HTMLInputElement>(en.people.staff.email);
     expect(email.disabled).toBe(true);
@@ -304,8 +304,8 @@ describe('the staff page', () => {
     renderApp(PATH);
     await screen.findByRole('heading', { name: en.people.staff.title });
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
-    const record = await within(panel).findByRole('form', { name: 'Karimov Akmal' });
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const record = await within(panel).findByRole('form', { name: 'Akmal Karimov' });
 
     expect(within(record).getByLabelText<HTMLInputElement>(en.people.staff.phone).disabled).toBe(
       false,
@@ -345,8 +345,8 @@ describe('the staff page', () => {
     );
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
-    const record = await within(panel).findByRole('form', { name: 'Karimov Akmal' });
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const record = await within(panel).findByRole('form', { name: 'Akmal Karimov' });
     const management = within(record).getByRole<HTMLInputElement>('checkbox', {
       name: 'Management',
     });
@@ -374,8 +374,8 @@ describe('the staff page', () => {
     });
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
-    const record = await within(panel).findByRole('form', { name: 'Karimov Akmal' });
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const record = await within(panel).findByRole('form', { name: 'Akmal Karimov' });
     const management = within(record).getByRole<HTMLInputElement>('checkbox', {
       name: 'Management',
     });
@@ -420,7 +420,7 @@ describe('the staff page', () => {
     await screen.findByRole('heading', { name: en.people.staff.title });
     expect(screen.queryByRole('button', { name: en.people.staff.add })).toBeNull();
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
 
     await within(panel).findByRole('button', { name: en.people.staff.showIdentity });
     expect(within(panel).queryByRole('form')).toBeNull();
@@ -437,7 +437,7 @@ describe('the staff page', () => {
     openList('academic_vice_principal', {}, 'en', { sameAsRelative: parent });
     const shell = renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
     const term = await within(panel).findByText(en.people.staff.alsoParent, { selector: 'dt' });
     const link = within(term.parentElement ?? panel).getByRole('link', {
       name: 'Dilnoza Karimova',
@@ -453,9 +453,45 @@ describe('the staff page', () => {
     openList('academic_vice_principal');
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
     await within(panel).findByText(en.people.staff.staffId, { selector: 'dt' });
     expect(within(panel).queryByText(en.people.staff.alsoParent)).toBeNull();
+  });
+
+  // Owner's answer to finding 27 (task 2.7b-1, decision 3): a list of names
+  // inside a message is a list, surname first.
+  it('names the matches of the duplicate warning surname first', async () => {
+    openList('super_admin', {
+      'POST /api/people/staff/check': () =>
+        json({
+          sameNameAndBirth: [
+            { id: uid(41), staffId: 'S-260041', firstName: 'Oʻtkir', lastName: 'Rahimov' },
+          ],
+          samePhone: [
+            { id: uid(42), staffId: 'S-260042', firstName: 'Bobur', lastName: 'Toshmatov' },
+          ],
+          elsewhere: false,
+        }),
+    });
+    renderApp(PATH);
+    await screen.findByRole('heading', { name: en.people.staff.title });
+    fireEvent.click(await screen.findByRole('button', { name: en.people.staff.add }));
+    const form = await screen.findByRole('form', { name: en.people.staff.newTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.staff.firstName, "O'tkir");
+    type(en.people.staff.lastName, 'Rahimov');
+    type(en.people.staff.sex, 'male');
+    type(en.people.staff.birthDate, '1985-02-03');
+    type(en.people.staff.phone, '+998 90 111 22 33');
+    type(en.people.staff.admissionDate, '2026-09-01');
+    type(en.people.staff.department, uid(11));
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Rahimov Oʻtkir (S-260041)')).toBeDefined();
+    expect(within(dialog).getByText('Toshmatov Bobur (S-260042)')).toBeDefined();
   });
 
   it('warns about a person of the same name in another branch before adding, and saves when told to', async () => {
@@ -647,7 +683,7 @@ describe('staff photos', () => {
   async function openPanel() {
     await screen.findByRole('heading', { name: en.people.staff.title });
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-    return screen.findByRole('complementary', { name: 'Karimov Akmal' });
+    return screen.findByRole('complementary', { name: 'Akmal Karimov' });
   }
 
   it('gives the Principal no photo buttons', async () => {
@@ -709,7 +745,7 @@ describe('staff photos', () => {
     renderApp(PATH, 'ru');
     await screen.findByRole('heading', { name: ru.people.staff.title });
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
     const input = await within(panel).findByLabelText(ru.people.staff.photo.change);
     fireEvent.change(input, {
       target: { files: [new File(['GIF89a'], 'photo.gif', { type: 'image/gif' })] },
@@ -777,7 +813,7 @@ describe('the History link of a staff member', () => {
     openList('academic_vice_principal');
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
     const link = await within(panel).findByRole('link', { name: en.audit.history });
     expect(link.getAttribute('href')).toBe(`/audit?person=staff%3A${AKMAL.id}`);
   });
@@ -790,7 +826,7 @@ describe('the personal data report link of a staff member', () => {
     openList('super_admin');
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
     const link = await within(panel).findByRole('link', { name: en.people.report.link });
     expect(link.getAttribute('href')).toBe(`/people/report/staff/${AKMAL.id}`);
   });
@@ -799,7 +835,7 @@ describe('the personal data report link of a staff member', () => {
     openList('academic_vice_principal');
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
     await within(panel).findByRole('link', { name: en.audit.history });
     expect(within(panel).queryByRole('link', { name: en.people.report.link })).toBeNull();
   });

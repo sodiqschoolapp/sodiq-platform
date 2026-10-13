@@ -36,12 +36,14 @@ import { StaffForm } from './staff-form';
 import { StaffPanel } from './staff-panel';
 
 /**
- * A member of staff in the list, its side panel, a picker or a list inside a
- * message: surname first (owner's answer to finding 27; the side panel's
- * title is the list's name of the row).
+ * A member of staff in the list, a picker or a list inside a message: surname first
+ * (owner's answer to finding 27).
  */
 const fullName = (row: Pick<StaffListItem, 'firstName' | 'lastName'>) => listName(row);
-/** The name in the order it is often typed, for the search only. */
+/**
+ * "First name Surname": the title of the side panel and the sentences inside
+ * it (decision 3), and the search, so a name is found however it is typed.
+ */
 const typedName = (row: Pick<StaffListItem, 'firstName' | 'lastName'>) =>
   `${row.firstName} ${row.lastName}`;
 
@@ -363,6 +365,7 @@ export function StaffPage() {
         }}
         rowId={(row) => row.id}
         rowName={fullName}
+        panelName={typedName}
         columns={columns}
         filters={filters}
         onExport={canExport ? exporter.onExport : undefined}
@@ -379,7 +382,7 @@ export function StaffPage() {
             <StaffPanel
               key={row.id}
               id={row.id}
-              name={fullName(row)}
+              name={typedName(row)}
               divisions={divisions.data}
               subjects={subjects.data?.subjects ?? []}
             />

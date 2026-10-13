@@ -49,12 +49,14 @@ import { StudentPanel } from './student-panel';
 import { schoolDateText } from '@/lib/dates';
 
 /**
- * A student in the list, its side panel, a picker or a list inside a
- * message: surname first (owner's answer to finding 27; the side panel's
- * title is the list's name of the row).
+ * A student in the list, a picker or a list inside a message: surname first
+ * (owner's answer to finding 27).
  */
 const fullName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) => listName(row);
-/** The name in the order it is often typed, for the search only. */
+/**
+ * "First name Surname": the title of the side panel and the sentences inside
+ * it (decision 3), and the search, so a name is found however it is typed.
+ */
 const typedName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) =>
   `${row.firstName} ${row.lastName}`;
 
@@ -543,6 +545,7 @@ export function StudentsPage() {
         }}
         rowId={(row) => row.id}
         rowName={fullName}
+        panelName={typedName}
         columns={columns}
         filters={filters}
         search={search}
@@ -559,7 +562,7 @@ export function StudentsPage() {
         exportState={exporter.state}
         exportExtras={exportExtras}
         panel={(row) => (
-          <StudentPanel key={row.id} id={row.id} name={fullName(row)} holderText={holderText} />
+          <StudentPanel key={row.id} id={row.id} name={typedName(row)} holderText={holderText} />
         )}
       />
     </>

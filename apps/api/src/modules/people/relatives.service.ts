@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  listName,
   PERMISSIONS,
   type Action,
   relativeNameKey,
@@ -1131,7 +1132,7 @@ export class Relatives {
     return {
       staffId: row.id,
       // Surname first, as the same-person picker lists staff (finding 27).
-      name: `${row.last_name ?? ''} ${row.first_name ?? ''}`.trim(),
+      name: listName({ firstName: row.first_name ?? '', lastName: row.last_name ?? '' }).trim(),
       staffNumber: row.staff_id,
     };
   }

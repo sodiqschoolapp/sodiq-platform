@@ -189,7 +189,7 @@ async function openAkmal() {
   renderApp('/people/staff');
   await screen.findByRole('heading', { name: en.people.staff.title });
   fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
-  const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
+  const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
   await within(panel).findByRole('heading', { name: en.people.availability.title });
   return panel;
 }
@@ -221,7 +221,7 @@ describe('availability', () => {
       await within(panel).findByRole('button', { name: en.people.availability.change }),
     );
     const form = await within(panel).findByRole('form', {
-      name: en.people.availability.changeOf.replace('{{name}}', 'Karimov Akmal'),
+      name: en.people.availability.changeOf.replace('{{name}}', 'Akmal Karimov'),
     });
     expect(within(form).getByLabelText<HTMLInputElement>('Monday').value).toBe('08:00–13:00');
     fireEvent.change(within(form).getByLabelText('Tuesday'), {
@@ -261,7 +261,7 @@ describe('availability', () => {
       await within(panel).findByRole('button', { name: en.people.availability.change }),
     );
     const form = await within(panel).findByRole('form', {
-      name: en.people.availability.changeOf.replace('{{name}}', 'Karimov Akmal'),
+      name: en.people.availability.changeOf.replace('{{name}}', 'Akmal Karimov'),
     });
     fireEvent.change(within(form).getByLabelText('Tuesday'), { target: { value: '15:00-14:00' } });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));

@@ -103,7 +103,7 @@ function openList(
 
 const openPanel = async () => {
   fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
-  return screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
+  return screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
 };
 
 const tabOf = (panel: HTMLElement, name: string) =>
@@ -275,7 +275,7 @@ describe("the student's Relatives tab", () => {
       name: en.people.relatives.unlinkTitle,
     });
     expect(within(dialog).getByText('Dilfuza Rahimova')).toBeDefined();
-    expect(within(dialog).getByText('Rahimov Oʻtkir')).toBeDefined();
+    expect(within(dialog).getByText('Oʻtkir Rahimov')).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.unlink }));
     await waitFor(() => {
       expect(calls.find((call) => call.route.endsWith('/unlink'))?.body).toEqual({
@@ -292,7 +292,7 @@ describe("the student's Relatives tab", () => {
     fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
     fireEvent.click(await within(panel).findByRole('button', { name: en.people.relatives.add }));
     const form = await within(panel).findByRole('form', {
-      name: en.people.relatives.formLabel.replace('{{name}}', 'Rahimov Oʻtkir'),
+      name: en.people.relatives.formLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
     });
     const notices = within(form).getByRole<HTMLInputElement>('checkbox', {
       name: en.people.relatives.receivesNotices,
@@ -344,7 +344,7 @@ describe('the extra phones of a relative', () => {
     fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
     fireEvent.click(await within(panel).findByRole('button', { name: en.people.relatives.add }));
     const form = await within(panel).findByRole('form', {
-      name: en.people.relatives.formLabel.replace('{{name}}', 'Rahimov Oʻtkir'),
+      name: en.people.relatives.formLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
     });
     const type = (label: string, value: string) => {
       fireEvent.change(within(form).getByLabelText(label), { target: { value } });

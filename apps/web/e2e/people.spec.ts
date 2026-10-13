@@ -44,8 +44,8 @@ test('an Academic Vice Principal gives a teacher of the branch a subject', async
   await expect(row).toContainText(texts.statuses.active);
 
   await row.getByRole('button', { name: 'Qoʻchqorov Oybek' }).click();
-  const panel = page.getByRole('complementary', { name: 'Qoʻchqorov Oybek' });
-  const record = panel.getByRole('form', { name: 'Qoʻchqorov Oybek', exact: true });
+  const panel = page.getByRole('complementary', { name: 'Oybek Qoʻchqorov' });
+  const record = panel.getByRole('form', { name: 'Oybek Qoʻchqorov', exact: true });
   await expect(record.getByLabel(texts.sex, { exact: true })).toBeDisabled();
   await record.getByLabel(texts.phone, { exact: true }).fill('+998 93 555 44 34');
   await record.getByRole('button', { name: en.form.save, exact: true }).click();
@@ -53,7 +53,7 @@ test('an Academic Vice Principal gives a teacher of the branch a subject', async
   await expect(row).toContainText('+998 93 555 44 34');
 
   const teaching = panel.getByRole('form', {
-    name: texts.teachingOf.replace('{{name}}', 'Qoʻchqorov Oybek'),
+    name: texts.teachingOf.replace('{{name}}', 'Oybek Qoʻchqorov'),
   });
   await teaching.getByLabel('Geometry', { exact: true }).check();
   await teaching
@@ -70,7 +70,7 @@ test('an Academic Vice Principal gives a teacher of the branch a subject', async
   const hours = en.people.availability;
   await panel.getByRole('button', { name: hours.change, exact: true }).click();
   const week = panel.getByRole('form', {
-    name: hours.changeOf.replace('{{name}}', 'Qoʻchqorov Oybek'),
+    name: hours.changeOf.replace('{{name}}', 'Oybek Qoʻchqorov'),
   });
   await week.getByLabel('Monday', { exact: true }).fill('08:00–13:00');
   await week.getByRole('button', { name: en.form.save, exact: true }).click();
@@ -163,7 +163,7 @@ test('an Academic Vice Principal adds the photo of a person of the branch', asyn
   await expect(row.getByRole('cell').first()).toHaveText('SM');
 
   await row.getByRole('button', { name: 'Mirzayev Shahzod' }).click();
-  const panel = page.getByRole('complementary', { name: 'Mirzayev Shahzod' });
+  const panel = page.getByRole('complementary', { name: 'Shahzod Mirzayev' });
   const sent = page.waitForRequest(
     (request) => request.method() === 'PUT' && request.url().endsWith('/photo'),
   );
@@ -222,14 +222,14 @@ test('an Academic Vice Principal locks, unlocks and resets a teacher’s passwor
   await page.getByRole('link', { name: 'Valiyev Sherzod', exact: true }).click();
   await expect(heading(page, en.people.staff.title)).toBeVisible();
 
-  const panel = page.getByRole('complementary', { name: 'Valiyev Sherzod' });
+  const panel = page.getByRole('complementary', { name: 'Sherzod Valiyev' });
   const access = panel.getByRole('region', { name: en.people.access.title });
   await expect(access.getByText(en.people.access.neverUsed, { exact: true })).toBeVisible();
 
   const texts = en.people.access;
   await access.getByRole('button', { name: texts.lock, exact: true }).click();
   const lock = page.getByRole('dialog', {
-    name: texts.lockTitle.replace('{{name}}', 'Valiyev Sherzod'),
+    name: texts.lockTitle.replace('{{name}}', 'Sherzod Valiyev'),
   });
   await lock.getByLabel(texts.reason, { exact: true }).fill('Laptop lost on the bus');
   await lock.getByRole('button', { name: texts.lock, exact: true }).click();
@@ -338,7 +338,7 @@ test('an Academic Vice Principal adds a student and is refused a second with the
   await studentScreenshot(page, 'list');
 
   await page.getByRole('button', { name: 'Rahimov Oʻtkir', exact: true }).click();
-  const panel = page.getByRole('complementary', { name: 'Rahimov Oʻtkir' });
+  const panel = page.getByRole('complementary', { name: 'Oʻtkir Rahimov' });
   await expect(panel.getByRole('radio', { name: texts.tabs.overview })).toBeVisible();
   await panel.getByText(texts.tabs.contract, { exact: true }).click();
   await expect(panel.getByText(/E2E-STUDENT-1/)).toBeVisible();
@@ -423,7 +423,7 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
 
   await add('9998001', 'Yoqubova', 'E2E-LEAVE-1');
   await page.getByRole('button', { name: 'Yoqubova Madina', exact: true }).click();
-  const panel = page.getByRole('complementary', { name: 'Yoqubova Madina' });
+  const panel = page.getByRole('complementary', { name: 'Madina Yoqubova' });
 
   async function leave(lastDay: string) {
     const form = panel.getByRole('form', { name: texts.leaveTitle });
@@ -487,7 +487,7 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   // A student created twice by mistake, deleted with a reason.
   await add('9998002', 'Yoqubovaa', 'E2E-LEAVE-2');
   await page.getByRole('button', { name: 'Yoqubovaa Madina', exact: true }).click();
-  const twice = page.getByRole('complementary', { name: 'Yoqubovaa Madina' });
+  const twice = page.getByRole('complementary', { name: 'Madina Yoqubovaa' });
   const remove = twice.getByRole('form', { name: texts.deleteTitle });
   await remove.getByLabel(texts.reason, { exact: true }).fill('Created twice by mistake.');
   await remove.getByRole('button', { name: en.form.save, exact: true }).click();
@@ -607,7 +607,7 @@ test('an Academic Vice Principal exports students with their documents, adds a p
   // A photo, shrunk by the browser and shown in the photo column.
   const row = page.locator('tbody tr').filter({ hasText: '9997001' });
   await row.getByRole('button', { name: 'Ergasheva Kamola' }).click();
-  const panel = page.getByRole('complementary', { name: 'Ergasheva Kamola' });
+  const panel = page.getByRole('complementary', { name: 'Kamola Ergasheva' });
   await panel.getByLabel(en.people.staff.photo.add).setInputFiles({
     name: 'photo.png',
     mimeType: 'image/png',
@@ -851,7 +851,7 @@ test('an Academic Vice Principal gives a parent an extra phone and marks them as
   // The teacher's panel, opened from the Parent panel, names the parent.
   await link.click();
   await expect(heading(page, en.people.staff.title)).toBeVisible();
-  const staffPanel = page.getByRole('complementary', { name: 'Yusupov Farrux' });
+  const staffPanel = page.getByRole('complementary', { name: 'Farrux Yusupov' });
   await expect(
     staffPanel
       .locator('dt', { hasText: en.people.staff.alsoParent })

@@ -1,4 +1,4 @@
-import { gradeRanges, phoneText } from '@sodiq/shared';
+import { gradeRanges, listName, phoneText } from '@sodiq/shared';
 import type {
   AuditEntryAnswer,
   PersonalDataKind,
@@ -506,7 +506,7 @@ function RelativeParts({ report, words }: { report: RelativeReport; words: Words
           linkRow(
             words,
             link,
-            `${link.student.lastName} ${link.student.firstName}, ${link.student.uid}, ${link.student.branch}`,
+            `${listName(link.student)}, ${link.student.uid}, ${link.student.branch}`,
           ),
         )}
       />
@@ -591,10 +591,10 @@ function Entries({ report, words }: { report: PersonalDataReport; words: Words }
 /** The name of the person, as the title of the report. */
 function personName(report: PersonalDataReport): string {
   if (report.kind === 'student') {
-    return `${report.student.lastName} ${report.student.firstName}`;
+    return listName(report.student);
   }
   if (report.kind === 'staff') {
-    return `${report.staff.lastName} ${report.staff.firstName}`;
+    return listName(report.staff);
   }
   return report.relative.fullName;
 }

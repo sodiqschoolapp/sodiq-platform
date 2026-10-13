@@ -67,7 +67,7 @@ async function printPersonalDataReport(page: Page): Promise<void> {
     .selectOption({ label: 'Audit browser test branch' });
   await expect(heading(page, en.people.students.title)).toBeVisible();
   await page.getByRole('row').filter({ hasText: 'Murodova' }).getByRole('button').first().click();
-  const panel = page.getByRole('complementary', { name: 'Murodova Oydin' });
+  const panel = page.getByRole('complementary', { name: 'Oydin Murodova' });
   await panel.getByRole('link', { name: en.people.report.link, exact: true }).click();
 
   await expect(heading(page, en.people.report.title)).toBeVisible();
@@ -259,10 +259,10 @@ async function createAccountAndSignIn(page: Page): Promise<void> {
     .selectOption({ label: 'Accounts browser test branch' });
   await expect(heading(page, en.people.staff.title)).toBeVisible();
   await page.getByRole('button', { name: 'Aminova Feruza', exact: true }).click();
-  const panel = page.getByRole('complementary', { name: 'Aminova Feruza' });
+  const panel = page.getByRole('complementary', { name: 'Feruza Aminova' });
   const section = panel.getByRole('region', { name: en.people.account.title });
   const create = section.getByRole('form', {
-    name: en.people.account.createOf.replace('{{name}}', 'Aminova Feruza'),
+    name: en.people.account.createOf.replace('{{name}}', 'Feruza Aminova'),
   });
   await expect(create.getByLabel(en.people.account.login, { exact: true })).toHaveValue(
     'f.aminova',
@@ -283,7 +283,7 @@ async function createAccountAndSignIn(page: Page): Promise<void> {
   await expect(page.getByText(password)).toHaveCount(0);
 
   const give = section.getByRole('form', {
-    name: en.people.account.giveOf.replace('{{name}}', 'Aminova Feruza'),
+    name: en.people.account.giveOf.replace('{{name}}', 'Feruza Aminova'),
   });
   await give.getByLabel(en.people.account.newRole, { exact: true }).selectOption('teacher');
   await give.getByRole('button', { name: en.form.save, exact: true }).click();
@@ -339,7 +339,7 @@ async function appointHeadTeachers(page: Page): Promise<void> {
     .selectOption({ label: 'Accounts browser test branch' });
   await expect(heading(page, en.people.staff.title)).toBeVisible();
 
-  const first = await giveFormOf(page, 'Nazarov Rustam');
+  const first = await giveFormOf(page, 'Rustam Nazarov');
   await first.give
     .getByLabel(en.people.account.newRole, { exact: true })
     .selectOption('head_teacher');
@@ -355,7 +355,7 @@ async function appointHeadTeachers(page: Page): Promise<void> {
     await first.section.screenshot({ path: path.join(APPOINTMENT_SCREENS, 'appointment.png') });
   }
 
-  const second = await giveFormOf(page, 'Yusupova Saida');
+  const second = await giveFormOf(page, 'Saida Yusupova');
   await second.give
     .getByLabel(en.people.account.newRole, { exact: true })
     .selectOption('head_teacher');

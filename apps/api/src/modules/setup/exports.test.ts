@@ -251,6 +251,16 @@ describe('the export of the setup lists', () => {
       );
       expect(russian.sheet.headings).toEqual(['Общий', 'Уроков одновременно']);
       expect(russian.sheet.rows).toEqual([['Да', 2]]);
+
+      await speak('uz');
+      const uzbek = await fileOf(
+        await exportOf('/api/setup/rooms/export', send([hall.id, lab.id], ['shared']), t.principal),
+      );
+      expect(uzbek.sheet.headings).toEqual(['Umumiy', 'Bir vaqtdagi darslar']);
+      expect(uzbek.sheet.rows).toEqual([
+        ['Ha', 2],
+        ['Yoʻq', null],
+      ]);
     });
 
     it('answers 404 for a room of another branch and an unknown id, with nothing changed', async () => {

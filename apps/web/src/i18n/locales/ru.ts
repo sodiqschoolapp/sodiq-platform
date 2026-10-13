@@ -726,7 +726,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       empty: 'Здесь перечислены учебные дни филиала: время начала и слоты по порядку. Пока их нет.',
       needLessonType: 'Сначала добавьте тип урока.',
       // A time of a day template after midnight (task 2.7b-1, finding 16).
-      nextDay: '{{time}} (следующий день)',
+      nextDay: '{{time}} (следующего дня)',
       slots: 'Слоты по порядку',
       startTime: 'Время начала',
       from: 'С',

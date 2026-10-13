@@ -1,4 +1,4 @@
-import { phoneText, type RelativeListItem } from '@sodiq/shared';
+import { listName, phoneText, type RelativeListItem } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
@@ -40,7 +40,7 @@ export function ParentsPage() {
 
   const columns = useMemo((): Column<RelativeListItem>[] => {
     const students = (row: RelativeListItem) =>
-      row.students.map((student) => `${student.lastName} ${student.firstName}`).join(', ');
+      row.students.map((student) => listName(student)).join(', ');
     return [
       {
         key: 'name',

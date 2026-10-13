@@ -1,4 +1,5 @@
 import {
+  listName,
   AUDIT_GROUPS,
   AUDIT_PERSON_KINDS,
   AUDIT_SCOPES,
@@ -44,12 +45,12 @@ function usePeople(kind: AuditPersonKind | undefined, branchId: string | null) {
     kind === 'staff'
       ? staff.data?.staff.map((person) => ({
           id: person.id,
-          name: `${person.lastName} ${person.firstName}`,
+          name: listName(person),
         }))
       : kind === 'student'
         ? students.data?.students.map((one) => ({
             id: one.id,
-            name: `${one.lastName} ${one.firstName}`,
+            name: listName(one),
           }))
         : kind === 'relative'
           ? relatives.data?.relatives.map((one) => ({ id: one.id, name: one.fullName }))

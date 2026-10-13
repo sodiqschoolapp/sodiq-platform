@@ -128,7 +128,7 @@ async function section(language: 'en' | 'ru' = 'en') {
   shell = renderApp(PATH, language);
   const texts = language === 'en' ? en : ru;
   fireEvent.click(await screen.findByText('Nazarov Odil', { selector: 'button' }));
-  const panel = await screen.findByRole('complementary', { name: 'Nazarov Odil' });
+  const panel = await screen.findByRole('complementary', { name: 'Odil Nazarov' });
   return within(panel).findByRole('region', { name: texts.people.access.title });
 }
 
@@ -222,7 +222,7 @@ describe('the sign-in access section', () => {
     const found = await section();
     fireEvent.click(within(found).getByRole('button', { name: en.people.access.lock }));
     const dialog = await screen.findByRole('dialog', {
-      name: en.people.access.lockTitle.replace('{{name}}', 'Nazarov Odil'),
+      name: en.people.access.lockTitle.replace('{{name}}', 'Odil Nazarov'),
     });
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.access.lock }));
     expect(await within(dialog).findByText(en.people.access.reasonNeeded)).toBeDefined();
