@@ -290,6 +290,8 @@ describe('the mark "same person" of a relative and a staff record', () => {
       const detail = relativeDetailSchema.parse(response.body);
       expect(detail.samePerson).toMatchObject({ staffId: teacher });
       expect(detail.samePerson?.staffNumber).toMatch(/^S-[0-9]{6}$/);
+      // Surname first, as the staff lists (owner's answer to finding 27).
+      expect(detail.samePerson?.name).toMatch(/^Nazarov[a-z]* Rustam$/);
       expect(await markOf(parent.id)).toBe(teacher);
       const [entry] = await schoolEntries('relative.same_person', parent.id);
       expect(entry).toMatchObject({

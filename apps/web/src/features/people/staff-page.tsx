@@ -1,4 +1,7 @@
 import {
+  listName,
+  phoneText,
+  gradeRanges,
   INSTRUCTION_LANGUAGES,
   PERMISSIONS,
   permits,
@@ -32,7 +35,16 @@ import { PeopleTabs } from './people-tabs';
 import { StaffForm } from './staff-form';
 import { StaffPanel } from './staff-panel';
 
-const fullName = (row: Pick<StaffListItem, 'firstName' | 'lastName'>) =>
+/**
+ * A member of staff in the list, a picker or a list inside a message: surname first
+ * (owner's answer to finding 27).
+ */
+const fullName = (row: Pick<StaffListItem, 'firstName' | 'lastName'>) => listName(row);
+/**
+ * "First name Surname": the title of the side panel and the sentences inside
+ * it (decision 3), and the search, so a name is found however it is typed.
+ */
+const typedName = (row: Pick<StaffListItem, 'firstName' | 'lastName'>) =>
   `${row.firstName} ${row.lastName}`;
 
 /**
@@ -164,7 +176,9 @@ export function StaffPage() {
         header: t('people.staff.name'),
         cell: (row) => fullName(row),
         sortValue: (row) => `${row.lastName} ${row.firstName}`,
-        searchText: (row) => `${fullName(row)} ${row.fatherName ?? ''} ${row.staffId}`,
+        // Both orders, so a name is found however it is typed.
+        searchText: (row) =>
+          `${fullName(row)} ${typedName(row)} ${row.fatherName ?? ''} ${row.staffId}`,
         opens: true,
       },
       {
@@ -198,10 +212,7 @@ export function StaffPage() {
       {
         key: 'grades',
         header: t('people.staff.grades'),
-        cell: (row) =>
-          grades(row)
-            .map((grade) => t('setup.subjects.grade', { grade }))
-            .join(', '),
+        cell: (row) => gradeRanges(grades(row)),
       },
       {
         key: 'languages',
@@ -211,7 +222,7 @@ export function StaffPage() {
       {
         key: 'phone',
         header: t('people.staff.phone'),
-        cell: (row) => row.phone,
+        cell: (row) => (row.phone === null ? '' : phoneText(row.phone)),
       },
       {
         key: 'status',
@@ -354,6 +365,7 @@ export function StaffPage() {
         }}
         rowId={(row) => row.id}
         rowName={fullName}
+        panelName={typedName}
         columns={columns}
         filters={filters}
         onExport={canExport ? exporter.onExport : undefined}
@@ -370,7 +382,7 @@ export function StaffPage() {
             <StaffPanel
               key={row.id}
               id={row.id}
-              name={fullName(row)}
+              name={typedName(row)}
               divisions={divisions.data}
               subjects={subjects.data?.subjects ?? []}
             />

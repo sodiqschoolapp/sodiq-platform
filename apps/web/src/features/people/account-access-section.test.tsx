@@ -127,7 +127,7 @@ let shell: ReturnType<typeof renderApp>;
 async function section(language: 'en' | 'ru' = 'en') {
   shell = renderApp(PATH, language);
   const texts = language === 'en' ? en : ru;
-  fireEvent.click(await screen.findByText('Odil Nazarov', { selector: 'button' }));
+  fireEvent.click(await screen.findByText('Nazarov Odil', { selector: 'button' }));
   const panel = await screen.findByRole('complementary', { name: 'Odil Nazarov' });
   return within(panel).findByRole('region', { name: texts.people.access.title });
 }

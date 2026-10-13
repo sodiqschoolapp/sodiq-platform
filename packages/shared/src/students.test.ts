@@ -8,7 +8,9 @@ import {
   studentRecordSchema,
   studentUidCorrectionSchema,
   uidOutsideSet,
+  uidSetFor,
   uidSetOf,
+  uidYearOf,
 } from './students.js';
 
 const record = {
@@ -198,5 +200,29 @@ describe('the student record', () => {
       studentUidCorrectionSchema.safeParse({ uid: '2607002', reason: '  ', confirmUidSet: false })
         .success,
     ).toBe(false);
+  });
+});
+
+describe('uidYearOf and uidSetFor (task 2.7b-1, decision 7)', () => {
+  const years = [
+    { startDate: '2027-09-01', endDate: '2028-05-31' },
+    { startDate: '2026-09-01', endDate: '2027-05-31' },
+  ];
+
+  it('takes the year that holds the start date', () => {
+    expect(uidYearOf('2026-10-13', years)?.startDate).toBe('2026-09-01');
+  });
+
+  it('takes the first year after a date between years', () => {
+    expect(uidYearOf('2027-07-01', years)?.startDate).toBe('2027-09-01');
+  });
+
+  it('finds none after the last year', () => {
+    expect(uidYearOf('2028-07-01', years)).toBeUndefined();
+  });
+
+  it('names the set of the grade in that year', () => {
+    expect(uidSetFor(5, { startDate: '2026-09-01' })).toBe('2605');
+    expect(uidSetFor(6, { startDate: '2027-09-01' })).toBe('2605');
   });
 });

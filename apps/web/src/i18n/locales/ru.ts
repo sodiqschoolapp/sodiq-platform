@@ -436,6 +436,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Этой записи больше нет в списке. Введённое осталось здесь: сохраните его или закройте панель.',
   },
   form: {
+    // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
+    phoneFormat: 'Введите телефон в виде +998 71 123 45 67.',
     add: 'Добавить',
     addChoice: 'Выберите, что добавить в «{{label}}»',
     moveUp: 'Переместить {{name}} (место {{place}}) вверх',
@@ -723,6 +725,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       cancel: 'Отмена',
       empty: 'Здесь перечислены учебные дни филиала: время начала и слоты по порядку. Пока их нет.',
       needLessonType: 'Сначала добавьте тип урока.',
+      // A time of a day template after midnight (task 2.7b-1, finding 16).
+      nextDay: '{{time}} (следующего дня)',
       slots: 'Слоты по порядку',
       startTime: 'Время начала',
       from: 'С',
@@ -831,6 +835,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       daily: 'Ежедневное распределение',
       quarterly: 'Распределение по четвертям',
       quarterlyMissing: 'Четверти без весов',
+      // The cell of the column (finding 20; task 2.7b-1, decision 8).
+      quartersNotSet: '{{missing}} из {{total}} без весов',
+      allSet: 'Все заданы',
       parts: {
         attendance: 'Посещаемость',
         classwork: 'Классная работа',
@@ -1351,6 +1358,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       setTitle: 'UID из набора другой параллели',
       setText:
         'Первые четыре цифры не совпадают с набором этой параллели. Сохраняйте, только если ученик сохраняет UID другой параллели, например после повторного года.',
+      // The set of the grade named (task 2.7b-1, finding 25).
+      setTextNamed:
+        'UID {{grade}}-й параллели начинаются с {{set}}. Сохраняйте, только если ученик сохраняет UID другой параллели, например после повторного года.',
       recordTitle: 'Запись',
       uidTitle: 'Исправить UID',
       uidLabel: 'UID: {{name}}',
@@ -1713,6 +1723,28 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       duplicateElsewhere:
         'Сотрудник с тем же именем и датой рождения или с тем же телефоном работает в другом филиале.',
       saveAnyway: 'Всё равно сохранить',
+    },
+  },
+  devices: {
+    name: '{{browser}} на {{os}}',
+    browsers: {
+      edge: 'Edge',
+      opera: 'Opera',
+      yandex: 'Яндекс Браузер',
+      samsung: 'Samsung Internet',
+      firefox: 'Firefox',
+      chrome: 'Chrome',
+      safari: 'Safari',
+      other: 'Другой браузер',
+    },
+    // The place after "на" (prepositional case of "другая система").
+    systems: {
+      windows: 'Windows',
+      android: 'Android',
+      ios: 'iOS',
+      macos: 'macOS',
+      linux: 'Linux',
+      other: 'другой системе',
     },
   },
   dates: {

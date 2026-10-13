@@ -43,13 +43,14 @@ test('an Academic Vice Principal gives a teacher of the branch a subject', async
   await expect(row).toContainText('S-269001');
   await expect(row).toContainText(texts.statuses.active);
 
-  await row.getByRole('button', { name: 'Oybek Qoʻchqorov' }).click();
+  await row.getByRole('button', { name: 'Qoʻchqorov Oybek' }).click();
   const panel = page.getByRole('complementary', { name: 'Oybek Qoʻchqorov' });
   const record = panel.getByRole('form', { name: 'Oybek Qoʻchqorov', exact: true });
   await expect(record.getByLabel(texts.sex, { exact: true })).toBeDisabled();
   await record.getByLabel(texts.phone, { exact: true }).fill('+998 93 555 44 34');
   await record.getByRole('button', { name: en.form.save, exact: true }).click();
-  await expect(row).toContainText('+998935554434');
+  // The phone grouped (finding 24).
+  await expect(row).toContainText('+998 93 555 44 34');
 
   const teaching = panel.getByRole('form', {
     name: texts.teachingOf.replace('{{name}}', 'Oybek Qoʻchqorov'),
@@ -62,7 +63,8 @@ test('an Academic Vice Principal gives a teacher of the branch a subject', async
   await teaching.getByRole('button', { name: en.form.save, exact: true }).click();
 
   await expect(row).toContainText('Geometry');
-  await expect(row).toContainText(en.setup.subjects.grade.replace('{{grade}}', '8'));
+  // Grades as ranges (finding 19): the one grade 8.
+  await expect(row.getByRole('cell', { name: '8', exact: true })).toBeVisible();
 
   // Task 2.2b: the hours of the branch, from today (the first entry).
   const hours = en.people.availability;
@@ -160,7 +162,7 @@ test('an Academic Vice Principal adds the photo of a person of the branch', asyn
   // No photo yet: the initials.
   await expect(row.getByRole('cell').first()).toHaveText('SM');
 
-  await row.getByRole('button', { name: 'Shahzod Mirzayev' }).click();
+  await row.getByRole('button', { name: 'Mirzayev Shahzod' }).click();
   const panel = page.getByRole('complementary', { name: 'Shahzod Mirzayev' });
   const sent = page.waitForRequest(
     (request) => request.method() === 'PUT' && request.url().endsWith('/photo'),
@@ -173,7 +175,7 @@ test('an Academic Vice Principal adds the photo of a person of the branch', asyn
   expect((await sent).headers()['content-type']).toBe('image/jpeg');
   await expect(panel.getByRole('button', { name: en.people.staff.photo.change })).toBeVisible();
 
-  const shown = row.getByRole('img', { name: 'Shahzod Mirzayev' });
+  const shown = row.getByRole('img', { name: 'Mirzayev Shahzod' });
   await expect(shown).toHaveAttribute('src', /^data:image\/jpeg;base64,/);
   const address = (await shown.getAttribute('src')) ?? '';
   const sentPhoto = Buffer.from(address.slice(address.indexOf(',') + 1), 'base64');
@@ -217,7 +219,7 @@ test('an Academic Vice Principal locks, unlocks and resets a teacher’s passwor
   // The teacher has never signed in: listed among the accounts never used.
   await page.goto('/people/never-used');
   await expect(heading(page, en.people.neverUsed.title)).toBeVisible();
-  await page.getByRole('link', { name: 'Sherzod Valiyev', exact: true }).click();
+  await page.getByRole('link', { name: 'Valiyev Sherzod', exact: true }).click();
   await expect(heading(page, en.people.staff.title)).toBeVisible();
 
   const panel = page.getByRole('complementary', { name: 'Sherzod Valiyev' });
@@ -248,6 +250,7 @@ test('an Academic Vice Principal locks, unlocks and resets a teacher’s passwor
     .getByRole('button', { name: texts.resetPassword, exact: true })
     .click();
   const slip = page.getByRole('dialog', { name: texts.slipTitle });
+  // The slip keeps "First name Surname" (task 2.7b-1, decision 3).
   await expect(slip.getByText('Sherzod Valiyev')).toBeVisible();
   await expect(slip.locator('dd.font-mono').nth(1)).toHaveText(/^[A-Za-z0-9]{16}$/);
   await accessScreenshot(page, 'slip');
@@ -334,7 +337,7 @@ test('an Academic Vice Principal adds a student and is refused a second with the
   await expect(page.locator('tbody tr').first()).toContainText('9999001');
   await studentScreenshot(page, 'list');
 
-  await page.getByRole('button', { name: 'Oʻtkir Rahimov', exact: true }).click();
+  await page.getByRole('button', { name: 'Rahimov Oʻtkir', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Oʻtkir Rahimov' });
   await expect(panel.getByRole('radio', { name: texts.tabs.overview })).toBeVisible();
   await panel.getByText(texts.tabs.contract, { exact: true }).click();
@@ -344,7 +347,7 @@ test('an Academic Vice Principal adds a student and is refused a second with the
 
   const form = await add('Qodirov', 'E2E-STUDENT-2');
   await expect(
-    form.getByText(texts.takenHere.replace('{{student}}', 'Oʻtkir Rahimov (9999001)')),
+    form.getByText(texts.takenHere.replace('{{student}}', 'Rahimov Oʻtkir (9999001)')),
   ).toBeVisible();
   await form.getByLabel(texts.uid, { exact: true }).scrollIntoViewIfNeeded();
   await studentScreenshot(page, 'uid-taken');
@@ -419,7 +422,7 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   }
 
   await add('9998001', 'Yoqubova', 'E2E-LEAVE-1');
-  await page.getByRole('button', { name: 'Madina Yoqubova', exact: true }).click();
+  await page.getByRole('button', { name: 'Yoqubova Madina', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Madina Yoqubova' });
 
   async function leave(lastDay: string) {
@@ -483,7 +486,7 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
 
   // A student created twice by mistake, deleted with a reason.
   await add('9998002', 'Yoqubovaa', 'E2E-LEAVE-2');
-  await page.getByRole('button', { name: 'Madina Yoqubovaa', exact: true }).click();
+  await page.getByRole('button', { name: 'Yoqubovaa Madina', exact: true }).click();
   const twice = page.getByRole('complementary', { name: 'Madina Yoqubovaa' });
   const remove = twice.getByRole('form', { name: texts.deleteTitle });
   await remove.getByLabel(texts.reason, { exact: true }).fill('Created twice by mistake.');
@@ -576,7 +579,7 @@ test('an Academic Vice Principal exports students with their documents, adds a p
   // Answer 23: the active students without consent.
   await page.getByRole('combobox', { name: texts.consent }).selectOption('missing');
   await expect(page.locator('tbody tr')).toHaveCount(1);
-  await expect(page.locator('tbody tr')).toContainText('Kamola Ergasheva');
+  await expect(page.locator('tbody tr')).toContainText('Ergasheva Kamola');
   await page.getByRole('button', { name: en.list.clearSearch, exact: true }).click();
   await expect(page.locator('tbody tr')).toHaveCount(2);
 
@@ -603,7 +606,7 @@ test('an Academic Vice Principal exports students with their documents, adds a p
 
   // A photo, shrunk by the browser and shown in the photo column.
   const row = page.locator('tbody tr').filter({ hasText: '9997001' });
-  await row.getByRole('button', { name: 'Kamola Ergasheva' }).click();
+  await row.getByRole('button', { name: 'Ergasheva Kamola' }).click();
   const panel = page.getByRole('complementary', { name: 'Kamola Ergasheva' });
   await panel.getByLabel(en.people.staff.photo.add).setInputFiles({
     name: 'photo.png',
@@ -611,7 +614,7 @@ test('an Academic Vice Principal exports students with their documents, adds a p
     buffer: pngOf(1600, 1200),
   });
   await expect(panel.getByRole('button', { name: en.people.staff.photo.change })).toBeVisible();
-  await expect(row.getByRole('img', { name: 'Kamola Ergasheva' })).toHaveAttribute(
+  await expect(row.getByRole('img', { name: 'Ergasheva Kamola' })).toHaveAttribute(
     'src',
     /^data:image\/jpeg;base64,/,
   );
@@ -827,7 +830,7 @@ test('an Academic Vice Principal gives a parent an extra phone and marks them as
     .fill('+998 93 555 01 42');
   await form.getByRole('button', { name: en.form.save, exact: true }).click();
   await expect(panel.locator('dt', { hasText: relatives.extraPhones }).locator('+ dd')).toHaveText(
-    '+998935550142',
+    '+998 93 555 01 42',
   );
 
   // The same person as a teacher of the branch, found by name.
@@ -838,7 +841,7 @@ test('an Academic Vice Principal gives a parent an extra phone and marks them as
     .getByLabel(relatives.staffChoice, { exact: true })
     .selectOption({ label: 'Yusupov Farrux (S-269401)' });
   await same.getByRole('button', { name: relatives.markSave, exact: true }).click();
-  const link = same.getByRole('link', { name: 'Farrux Yusupov', exact: true });
+  const link = same.getByRole('link', { name: 'Yusupov Farrux', exact: true });
   await expect(link).toBeVisible();
   await expect(
     same.getByText(relatives.staffIdOf.replace('{{staffId}}', 'S-269401'), { exact: true }),

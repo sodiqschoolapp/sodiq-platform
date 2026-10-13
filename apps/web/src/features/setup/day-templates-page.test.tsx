@@ -153,6 +153,42 @@ describe('the day templates page', () => {
     expect(rowsDrawn()[0]?.[3]).toBe(ru.setup.dayTemplates.inUse);
   });
 
+  // Finding 16 of the hand test of 13 October 2026 (task 2.7b-1, decision 9).
+  it('says at once that a day runs past midnight, shows the time as the next day, and sends nothing', async () => {
+    const calls = await openList('academic_vice_principal', {
+      'POST /api/setup/day-templates': () => json(MAIN_DETAIL, 201),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: en.setup.dayTemplates.add }));
+    const form = await screen.findByRole('form', { name: en.setup.dayTemplates.newTitle });
+    type(within(form).getByLabelText(en.setup.dayTemplates.name), 'Late');
+    type(within(form).getByLabelText(en.setup.dayTemplates.startTime), '23:15');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.add })); // Lesson 45
+
+    // Ends at midnight: allowed, and read as 24:00.
+    expect(slotsOf(form)).toEqual(['1Lesson 45 · Lesson23:15–24:00']);
+    expect(within(form).queryByText(en.errors.day_past_midnight)).toBeNull();
+
+    type(within(form).getByLabelText(en.setup.dayTemplates.startTime), '23:30');
+    expect(slotsOf(form)).toEqual(['1Lesson 45 · Lesson23:30–00:15 (next day)']);
+    expect(within(form).getByText(en.errors.day_past_midnight)).toBeTruthy();
+
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(calls.filter((call) => call.route === 'POST /api/setup/day-templates')).toEqual([]);
+
+    type(within(form).getByLabelText(en.setup.dayTemplates.startTime), '23:15');
+    expect(within(form).queryByText(en.errors.day_past_midnight)).toBeNull();
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === 'POST /api/setup/day-templates')?.body).toEqual({
+        name: 'Late',
+        startTime: '23:15',
+        slotTypeIds: [LESSON.id],
+      });
+    });
+  });
+
   it('builds a new template: the times follow the start, the order and the lengths, and move when a slot is moved', async () => {
     const calls = await openList('academic_vice_principal', {
       'POST /api/setup/day-templates': () => json(MAIN_DETAIL, 201),

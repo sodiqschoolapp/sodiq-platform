@@ -83,7 +83,9 @@ export function TemplateTableView({
                     ) : (
                       <span className="grid">
                         <span>{template.name}</span>
-                        <span className="text-xs">{rangeText(template.start, template.end)}</span>
+                        <span className="text-xs">
+                          {rangeText(t, template.start, template.end)}
+                        </span>
                       </span>
                     )}
                     {marked && <span className="sr-only">{t('setup.templateTable.changed')}</span>}

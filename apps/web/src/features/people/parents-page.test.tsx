@@ -100,7 +100,8 @@ describe('the Parents list', () => {
     });
     expect(rowsDrawn()).toEqual([
       ['Anvar Saidov', en.people.relatives.noPhone, 'Saidova Zarina', ''],
-      ['Dilfuza Rahimova', '+998901112233', 'Rahimov Oʻtkir', '1'],
+      // The phone grouped (finding 24).
+      ['Dilfuza Rahimova', '+998 90 111 22 33', 'Rahimov Oʻtkir', '1'],
     ]);
   });
 
@@ -115,6 +116,11 @@ describe('the Parents list', () => {
       expect(rowsDrawn().map((row) => row[0])).toEqual(['Dilfuza Rahimova']);
     });
     search('1112233');
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row[0])).toEqual(['Dilfuza Rahimova']);
+    });
+    // Typed as it is shown, with spaces (finding 24).
+    search('90 111 22 33');
     await waitFor(() => {
       expect(rowsDrawn().map((row) => row[0])).toEqual(['Dilfuza Rahimova']);
     });
@@ -172,7 +178,7 @@ describe('the page of a relative', () => {
     openList('academic_vice_principal');
     renderApp(PATH);
     const panel = await openPanel();
-    expect(await within(panel).findByRole('link', { name: 'Oʻtkir Rahimov' })).toBeDefined();
+    expect(await within(panel).findByRole('link', { name: 'Rahimov Oʻtkir' })).toBeDefined();
     expect(
       within(panel).getByText(en.people.relatives.elsewhereCount_one.replace('{{count}}', '1')),
     ).toBeDefined();
@@ -445,7 +451,7 @@ describe('the extra phones and the same person of a relative', () => {
     lastName: 'Yusupova',
     phone: '+998907770012',
   };
-  const SAME = { staffId: BAHODIR.id, name: 'Bahodir Karimov', staffNumber: 'S-260012' };
+  const SAME = { staffId: BAHODIR.id, name: 'Karimov Bahodir', staffNumber: 'S-260012' };
 
   const openPanel = async () => {
     fireEvent.click(await screen.findByText('Dilfuza Rahimova', { selector: 'button' }));
@@ -463,9 +469,10 @@ describe('the extra phones and the same person of a relative', () => {
     });
     renderApp(PATH);
     const panel = await openPanel();
-    expect(await valueOf(panel, en.people.relatives.phone)).toBe('+998901112233');
+    // Grouped when Uzbek, a foreign number as stored (finding 24, decision 4).
+    expect(await valueOf(panel, en.people.relatives.phone)).toBe('+998 90 111 22 33');
     expect(await valueOf(panel, en.people.relatives.extraPhones)).toBe(
-      '+998935556677, +79161234567',
+      '+998 93 555 66 77, +79161234567',
     );
   });
 
@@ -547,7 +554,7 @@ describe('the extra phones and the same person of a relative', () => {
       within(form).getByLabelText<HTMLInputElement>(
         en.people.relatives.extraPhone.replace('{{n}}', '1'),
       ).value,
-    ).toBe('+998935556677');
+    ).toBe('+998 93 555 66 77');
     fireEvent.click(
       within(form).getByRole('button', {
         name: en.people.relatives.removeExtraPhone.replace('{{n}}', '1'),
@@ -571,7 +578,7 @@ describe('the extra phones and the same person of a relative', () => {
     expect(
       within(section).getByText(en.people.relatives.staffIdOf.replace('{{staffId}}', 'S-260012')),
     ).toBeDefined();
-    fireEvent.click(within(section).getByRole('link', { name: 'Bahodir Karimov' }));
+    fireEvent.click(within(section).getByRole('link', { name: 'Karimov Bahodir' }));
     await waitFor(() => {
       expect(shell.router.state.location.pathname).toBe('/people/staff');
     });
@@ -612,7 +619,7 @@ describe('the extra phones and the same person of a relative', () => {
     expect(calls.find((call) => call.route.endsWith('/same-person'))?.route).toBe(
       `PUT /api/people/relatives/${DILFUZA.id}/same-person`,
     );
-    expect(await within(section).findByRole('link', { name: 'Bahodir Karimov' })).toBeDefined();
+    expect(await within(section).findByRole('link', { name: 'Karimov Bahodir' })).toBeDefined();
   });
 
   it('says why a mark is refused', async () => {
@@ -655,7 +662,7 @@ describe('the extra phones and the same person of a relative', () => {
       name: en.people.relatives.removeMarkTitle,
     });
     expect(within(dialog).getByText('Dilfuza Rahimova')).toBeDefined();
-    expect(within(dialog).getByText('Bahodir Karimov')).toBeDefined();
+    expect(within(dialog).getByText('Karimov Bahodir')).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.removeMark }));
     await waitFor(() => {
       expect(calls.some((call) => call.route.startsWith('DELETE'))).toBe(true);
@@ -699,7 +706,7 @@ describe('the extra phones and the same person of a relative', () => {
     const section = await within(panel).findByRole('region', {
       name: en.people.relatives.sameTitle,
     });
-    expect(within(section).getByRole('link', { name: 'Bahodir Karimov' })).toBeDefined();
+    expect(within(section).getByRole('link', { name: 'Karimov Bahodir' })).toBeDefined();
     for (const name of [
       en.people.relatives.markStaff,
       en.people.relatives.changeStaff,
@@ -733,7 +740,7 @@ describe('the extra phones and the same person of a relative', () => {
     expect(
       within(section).getByRole('button', { name: ru.people.relatives.changeStaff }),
     ).toBeDefined();
-    expect(await valueOf(panel, ru.people.relatives.extraPhones)).toBe('+998935556677');
+    expect(await valueOf(panel, ru.people.relatives.extraPhones)).toBe('+998 93 555 66 77');
     const form = await within(panel).findByRole('form', {
       name: ru.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
     });

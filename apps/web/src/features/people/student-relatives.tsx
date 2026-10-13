@@ -1,4 +1,5 @@
 import {
+  phoneText,
   DEFAULT_PHONE_PREFIX,
   RELATIONSHIPS,
   relativeLinkEditSchema,
@@ -164,10 +165,13 @@ function RelativeRow({ relative }: { relative: StudentRelative }) {
       t('people.relatives.relationship'),
       t(`people.relatives.relationships.${relative.relationship}`),
     ],
-    [t('people.relatives.phone'), relative.phone ?? t('people.relatives.noPhone')],
+    [
+      t('people.relatives.phone'),
+      relative.phone === null ? t('people.relatives.noPhone') : phoneText(relative.phone),
+    ],
   ];
   if (relative.extraPhones.length > 0) {
-    rows.push([t('people.relatives.extraPhones'), relative.extraPhones.join(', ')]);
+    rows.push([t('people.relatives.extraPhones'), relative.extraPhones.map(phoneText).join(', ')]);
   }
   if (relative.identity !== null) {
     rows.push(

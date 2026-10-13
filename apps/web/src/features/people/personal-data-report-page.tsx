@@ -1,3 +1,4 @@
+import { gradeRanges, listName, phoneText } from '@sodiq/shared';
 import type {
   AuditEntryAnswer,
   PersonalDataKind,
@@ -146,7 +147,7 @@ function StudentParts({ report, words }: { report: StudentReport; words: Words }
           [t('people.students.sex'), t(`people.staff.sexes.${s.sex}`)],
           [t('people.students.grade'), String(s.grade)],
           [t('people.students.startsOn'), words.date(s.startsOn)],
-          [t('people.students.phone'), words.text(s.phone)],
+          [t('people.students.phone'), words.text(s.phone === null ? null : phoneText(s.phone))],
           [t('people.students.email'), words.text(s.email)],
           [t('people.students.birthDate'), words.date(s.birthDate)],
           [
@@ -233,10 +234,15 @@ function StudentParts({ report, words }: { report: StudentReport; words: Words }
           key: relative.id,
           heading: relative.fullName,
           rows: [
-            [t('people.relatives.phone'), words.text(relative.phone)],
+            [
+              t('people.relatives.phone'),
+              words.text(relative.phone === null ? null : phoneText(relative.phone)),
+            ],
             [
               t('people.relatives.extraPhones'),
-              relative.extraPhones.length === 0 ? words.empty : relative.extraPhones.join(', '),
+              relative.extraPhones.length === 0
+                ? words.empty
+                : relative.extraPhones.map(phoneText).join(', '),
             ],
             [t('people.relatives.workplace'), words.text(relative.workplace)],
             [t('people.relatives.email'), words.text(relative.email)],
@@ -311,7 +317,7 @@ function StaffParts({ report, words }: { report: StaffReport; words: Words }) {
               ? words.empty
               : t(`people.staff.educationLevels.${s.educationLevel}`),
           ],
-          [t('people.staff.phone'), words.text(s.phone)],
+          [t('people.staff.phone'), words.text(s.phone === null ? null : phoneText(s.phone))],
           [t('people.staff.email'), words.text(s.email)],
           [t('people.staff.admissionDate'), words.date(s.admissionDate)],
           [
@@ -347,7 +353,7 @@ function StaffParts({ report, words }: { report: StaffReport; words: Words }) {
           ]),
           ...s.subjects.map((subject): Row => [
             t('people.staff.subjects'),
-            `${nameOf(subject.subject, language)}: ${subject.grades.join(', ')}`,
+            `${nameOf(subject.subject, language)}: ${gradeRanges(subject.grades)}`,
           ]),
           [
             t('people.staff.languagesTitle'),
@@ -471,10 +477,10 @@ function RelativeParts({ report, words }: { report: RelativeReport; words: Words
         title={t('people.report.recordTitle')}
         rows={[
           [t('people.relatives.fullName'), r.fullName],
-          [t('people.relatives.phone'), words.text(r.phone)],
+          [t('people.relatives.phone'), words.text(r.phone === null ? null : phoneText(r.phone))],
           [
             t('people.relatives.extraPhones'),
-            r.extraPhones.length === 0 ? words.empty : r.extraPhones.join(', '),
+            r.extraPhones.length === 0 ? words.empty : r.extraPhones.map(phoneText).join(', '),
           ],
           [t('people.relatives.workplace'), words.text(r.workplace)],
           [t('people.relatives.email'), words.text(r.email)],
@@ -500,7 +506,7 @@ function RelativeParts({ report, words }: { report: RelativeReport; words: Words
           linkRow(
             words,
             link,
-            `${link.student.lastName} ${link.student.firstName}, ${link.student.uid}, ${link.student.branch}`,
+            `${listName(link.student)}, ${link.student.uid}, ${link.student.branch}`,
           ),
         )}
       />
@@ -585,10 +591,10 @@ function Entries({ report, words }: { report: PersonalDataReport; words: Words }
 /** The name of the person, as the title of the report. */
 function personName(report: PersonalDataReport): string {
   if (report.kind === 'student') {
-    return `${report.student.lastName} ${report.student.firstName}`;
+    return listName(report.student);
   }
   if (report.kind === 'staff') {
-    return `${report.staff.lastName} ${report.staff.firstName}`;
+    return listName(report.staff);
   }
   return report.relative.fullName;
 }

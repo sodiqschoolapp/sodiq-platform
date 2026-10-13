@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: task 2.7b-1 Formats
+
+- Built: `phoneText`, `gradeRanges`, `listName`, `uidYearOf`/`uidSetFor` in `packages/shared`; migration 0041 (branch phones rewritten with audit entries, then `branches_phone_format`); `quarterCount` on the subjects list; `expected` on the `uid_set_mismatch` detail; the rooms export's Shared split into Yes/No and a number column.
+- Screens: phones grouped and grades as ranges on every screen and export; "4 of 4 not set"; "00:15 (next day)" and the midnight message at once in the day-template form; browser names ("Edge on Windows"); the UID set named in its warning; surname first in lists, pickers and exports (`ListPage` takes `panelName` for the panel title).
+- Left out: findings 13, 14, 17, 18, 21, 22, 26, 28–31 (2.7b-2); relatives' names are not reordered (one "Full name" field).
+
+The next sessions must know:
+
+- A phone on a screen or in an export goes through `phoneText`, grades through `gradeRanges`, a person in a list or export through `listName`; panel titles and sentences keep "First name Surname".
+- A branch phone is "+998" and nine digits (`branchPhoneSchema`, `branches_phone_format`).
+- The next task is 2.7b-2.
+
 ## 13 October 2026: task 2.7a "Fix first" findings, dates in the app, accessibility and wording
 
 - Built: findings 1–10, 23 and 32–36 of the hand test of 13 October 2026 (issue #39); `apps/web/src/lib/dates.ts` with a lint rule; English day-first and 24-hour (answer 38).

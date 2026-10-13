@@ -89,6 +89,12 @@ interface ListPageProps<Row> {
   rowId: (row: Row) => string;
   /** What a person calls the row, for example the name of the student. */
   rowName: (row: Row) => string;
+  /**
+   * The title of the side panel of a row, when it differs from `rowName`: a
+   * person's name in the list is surname first, the panel's title "First name
+   * Surname" (owner's answer to finding 27; task 2.7b-1, decision 3).
+   */
+  panelName?: (row: Row) => string;
   /** Keep the same array between renders (`useMemo`): the rows are matched again when it changes. */
   columns: readonly Column<Row>[];
   /** As `columns`: the same array between renders. */
@@ -157,6 +163,7 @@ export function ListPage<Row>({
   onRetry,
   rowId,
   rowName,
+  panelName = rowName,
   columns,
   filters = NO_FILTERS,
   search,
@@ -674,8 +681,8 @@ export function ListPage<Row>({
               : openRow === undefined
                 ? goneRow === undefined
                   ? t('list.recordGoneTitle')
-                  : rowName(goneRow)
-                : rowName(openRow)
+                  : panelName(goneRow)
+                : panelName(openRow)
           }
           recordKey={openId}
           onClose={() => {

@@ -112,11 +112,17 @@ const ROOM_EXPORT: Record<RoomExportColumn, ExportColumn<Room>> = {
     (texts) => texts.rooms.columns.status,
     (row, texts) => texts.roomStatuses[row.status],
   ),
-  shared: oneCell(
-    (texts) => texts.rooms.columns.shared,
-    (row, texts) =>
-      row.shared && row.maxSimultaneousLessons !== null ? row.maxSimultaneousLessons : texts.no,
-  ),
+  // Two cells (finding 15 of the hand test of 13 October 2026; task 2.7b-1,
+  // decision 10): Shared says Yes or No for every room, and the lessons a
+  // shared room takes at once stay a number, empty for a room that is not
+  // shared ("Excel exports contain real numbers", edge/system-behaviour).
+  shared: {
+    headings: (texts) => [texts.rooms.columns.shared, texts.lessonsAtOnce],
+    cells: (row, texts) => [
+      row.shared ? texts.yes : texts.no,
+      row.shared ? row.maxSimultaneousLessons : null,
+    ],
+  },
 };
 
 /**

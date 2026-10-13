@@ -102,7 +102,7 @@ function openList(
 }
 
 const openPanel = async () => {
-  fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
+  fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
   return screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
 };
 
@@ -328,7 +328,8 @@ describe('the extra phones of a relative', () => {
         : within(item).queryByText(en.people.relatives.extraPhones, { selector: 'dt' })
             ?.nextElementSibling?.textContent;
     };
-    expect(valueIn('Dilfuza Rahimova')).toBe('+998935556677, +79161234567');
+    // Grouped when Uzbek, a foreign number as stored (finding 24, decision 4).
+    expect(valueIn('Dilfuza Rahimova')).toBe('+998 93 555 66 77, +79161234567');
     // None for a relative with none.
     expect(valueIn('Anvar Rahimov')).toBeUndefined();
   });

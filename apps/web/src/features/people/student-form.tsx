@@ -1,5 +1,6 @@
 import {
   DEFAULT_PHONE_PREFIX,
+  phoneText,
   DOCUMENT_TYPES,
   REGIONS,
   RELATIONSHIPS,
@@ -254,7 +255,10 @@ export function StudentForm({
       documentType: student?.identity?.documentType ?? '',
       documentNumber: student?.identity?.documentNumber ?? '',
       jshshir: student?.identity?.jshshir ?? '',
-      phone: student?.contact?.phone ?? `${DEFAULT_PHONE_PREFIX} `,
+      phone:
+        student?.contact?.phone === null || student?.contact?.phone === undefined
+          ? `${DEFAULT_PHONE_PREFIX} `
+          : phoneText(student.contact.phone),
       email: student?.contact?.email ?? '',
       address: student?.identity?.address ?? '',
       region: student?.identity?.region ?? '',

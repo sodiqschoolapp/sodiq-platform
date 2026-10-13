@@ -120,6 +120,7 @@ const subjectOf = (n: number, en: string, uz: string, ru: string, archived = fal
   archivedAt: archived ? '2026-10-01T00:00:00.000Z' : null,
   daily: null,
   quarterWeightsMissing: null,
+  quarterCount: null,
 });
 
 const MATHEMATICS = subjectOf(61, 'Mathematics', 'Matematika', 'Математика');
@@ -176,7 +177,7 @@ let shell: ReturnType<typeof renderApp>;
 async function section(language: 'en' | 'ru' | 'uz' = 'en') {
   shell = renderApp(PATH, language);
   const texts = { en, ru, uz }[language];
-  fireEvent.click(await screen.findByText('Lola Tursunova', { selector: 'button' }));
+  fireEvent.click(await screen.findByText('Tursunova Lola', { selector: 'button' }));
   const panel = await screen.findByRole('complementary', { name: 'Lola Tursunova' });
   return within(panel).findByRole('region', { name: texts.people.account.title });
 }
@@ -601,7 +602,7 @@ describe('the account section', () => {
         }),
     });
     shell = renderApp(PATH);
-    fireEvent.click(await screen.findByText('Lola Tursunova', { selector: 'button' }));
+    fireEvent.click(await screen.findByText('Tursunova Lola', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Lola Tursunova' });
     const status = await within(panel).findByRole('form', {
       name: en.people.staff.statusOf.replace('{{name}}', 'Lola Tursunova'),

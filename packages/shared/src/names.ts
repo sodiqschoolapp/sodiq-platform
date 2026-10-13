@@ -93,3 +93,14 @@ export function spellingKey(text: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+/**
+ * A person's name in a list, an export or a picker: surname first, as on
+ * school registers (owner's answer to finding 27 of the hand test of
+ * 13 October 2026). Titles of panels and pages, the own name and sentences
+ * keep "First name Surname" (task 2.7b-1, decision 3).
+ */
+export const listName = (person: {
+  readonly firstName: string;
+  readonly lastName: string;
+}): string => `${person.lastName} ${person.firstName}`;

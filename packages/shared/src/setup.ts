@@ -51,12 +51,28 @@ export const workingWeekdaysSchema = z
     message: 'Each weekday once, Monday first.',
   });
 
+/**
+ * The phone of a branch ("Decided ahead for tasks 2.2d and 2.7", item 10):
+ * "+998" and nine digits, stored as the digits, shown grouped by `phoneText`.
+ * Spaces, brackets and hyphens are dropped first; empty means none. Any other
+ * text is refused on `phone` (the form's text shows the format); the database
+ * keeps the same rule (`branches_phone_format`, migration 0041).
+ */
+export const BRANCH_PHONE_FORMAT = /^\+998[0-9]{9}$/;
+
+export const branchPhoneSchema = z
+  .string()
+  .transform((typed) => typed.replace(/[\s()-]/g, ''))
+  .transform((digits) => (digits === '' ? null : digits))
+  .pipe(z.string().regex(BRANCH_PHONE_FORMAT).nullable())
+  .nullable();
+
 /** What is typed for a branch, as the create and the edit routes take it. */
 export const branchRecordSchema = z.object({
   name: z.string().trim().min(1).max(BRANCH_NAME_MAX_LENGTH),
   address: optionalText(BRANCH_ADDRESS_MAX_LENGTH),
   /** The contacts of the branch: one phone and one email, both optional (decided by the owner, answer 1). */
-  phone: optionalText(BRANCH_PHONE_MAX_LENGTH),
+  phone: branchPhoneSchema,
   email: z
     .string()
     .trim()

@@ -1,5 +1,6 @@
 import {
   DEFAULT_PHONE_PREFIX,
+  phoneText,
   RELATIVE_EXTRA_PHONES_MAX,
   relativeRecordSchema,
   receivesNotices,
@@ -300,11 +301,11 @@ export function RelativeForm({
     schema: SCHEMA,
     initial: {
       fullName: relative.fullName,
-      phone: relative.phone ?? `${DEFAULT_PHONE_PREFIX} `,
+      phone: relative.phone === null ? `${DEFAULT_PHONE_PREFIX} ` : phoneText(relative.phone),
       noPhone: relative.phone === null ? CHECKED : '',
       workplace: relative.identity?.workplace ?? '',
       email: relative.identity?.email ?? '',
-      ...extraPhonesInitial(EXTRA_FIELDS, relative.extraPhones),
+      ...extraPhonesInitial(EXTRA_FIELDS, relative.extraPhones.map(phoneText)),
     },
     read: (typed) => ({
       fullName: typed.fullName,

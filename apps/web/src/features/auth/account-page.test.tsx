@@ -27,11 +27,15 @@ async function confirmDialog(action: string): Promise<void> {
   fireEvent.click(within(dialog).getByRole('button', { name: action }));
 }
 
+/** The string Edge on Windows sends (finding 11 of the hand test of 13 October 2026). */
+const EDGE_ON_WINDOWS =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0';
+
 const LAPTOP = {
   id: '0199a000-0000-7000-8000-000000000001',
   startedAt: '2026-10-07T04:00:00.000Z',
   lastUsedAt: '2026-10-07T05:30:00.000Z',
-  userAgent: 'Invented Browser 12 on a laptop',
+  userAgent: EDGE_ON_WINDOWS,
   current: true,
   trusted: true,
 };
@@ -101,6 +105,12 @@ describe('the account page', () => {
     expect(rows[1]?.textContent).not.toContain('2026-10-07T04:00');
     expect(rows[1]?.textContent).toMatch(/2026/);
     expect(rows[2]?.textContent).not.toContain(en.account.trusted);
+    // The browser and the system by name, the browser's own string kept in the
+    // title; a string that names neither is shown as sent (task 2.7b-1).
+    const laptopCell = rows[1]?.querySelector('td');
+    expect(laptopCell?.textContent).toBe('Edge on Windows');
+    expect(laptopCell?.getAttribute('title')).toBe(EDGE_ON_WINDOWS);
+    expect(rows[3]?.querySelector('td')?.textContent).toBe('Invented Browser 12 in a classroom');
 
     const devices = section(en.account.devicesTitle);
     const deviceRows = await devices.findAllByRole('row');
@@ -260,9 +270,7 @@ describe('the account page', () => {
     const devices = section(en.account.devicesTitle);
     await devices.findAllByRole('row');
 
-    fireEvent.click(
-      devices.getByRole('button', { name: 'Remove Invented Browser 12 on a laptop' }),
-    );
+    fireEvent.click(devices.getByRole('button', { name: 'Remove Edge on Windows' }));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog.textContent).toContain(en.account.removeThisText);
     fireEvent.click(within(dialog).getByRole('button', { name: en.account.remove }));

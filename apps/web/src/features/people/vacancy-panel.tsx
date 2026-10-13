@@ -1,4 +1,5 @@
 import {
+  gradeRanges,
   PERMISSIONS,
   permits,
   vacancyDetailSchema,
@@ -184,12 +185,7 @@ function Overview({
       vacancy.subjects.length === 0
         ? t('people.staff.none')
         : vacancy.subjects
-            .map(
-              (own) =>
-                `${subjectName(own.subjectId)} (${own.grades
-                  .map((grade) => t('setup.subjects.grade', { grade }))
-                  .join(', ')})`,
-            )
+            .map((own) => `${subjectName(own.subjectId)} (${gradeRanges(own.grades)})`)
             .join('; '),
     ],
     [

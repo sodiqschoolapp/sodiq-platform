@@ -1,4 +1,6 @@
 import { ROOM_STATUSES, ROOM_TYPES, WEEKDAYS } from '@sodiq/shared';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
@@ -12,6 +14,13 @@ const FOREIGN_KEY_VIOLATION = '23503';
 const UNIQUE_VIOLATION = '23505';
 
 const MOMENT = new Date('2026-10-10T09:00:00+05:00');
+
+/** What the rewrite of migration 0041 left, read inside its rolled-back transaction. */
+interface Seen {
+  ids: string[];
+  branches: { id: string; phone: string | null }[];
+  entries: { branch_id: string }[];
+}
 
 // The rules of school setup that the database itself keeps
 // (db/migrations/0014), also when the application has a fault: a building, a
@@ -265,6 +274,132 @@ describe('school setup in the database', () => {
         code: CHECK_VIOLATION,
       });
       await expect(set({ address: null, phone: null, email: null })).resolves.toBeDefined();
+    });
+
+    // "Decided ahead for tasks 2.2d and 2.7", item 10 (task 2.7b-1, migration 0041).
+    it('refuse a branch phone that is not "+998" and nine digits, written by the application', async () => {
+      const set = (phone: string | null) =>
+        inBranch(north, (transaction) =>
+          transaction.updateTable('branches').set({ phone }).where('id', '=', north).execute(),
+        );
+      for (const phone of [
+        '+998 71 200 00 00',
+        'abc',
+        '+99871200000',
+        '+9987120000000',
+        '+74951234567',
+      ]) {
+        await expect(set(phone)).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'branches_phone_format',
+        });
+      }
+      await expect(set('+998712000000')).resolves.toBeDefined();
+      await expect(set(null)).resolves.toBeDefined();
+      await expect(
+        transactions.run([], (transaction) =>
+          transaction
+            .insertInto('branches')
+            .values({ name: 'East', phone: '71 200 00 00' })
+            .execute(),
+        ),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'branches_phone_format' });
+    });
+
+    it('bring the phones stored before 0041 into the format, with one audit entry per changed branch', async () => {
+      const migration = readFileSync(
+        fileURLToPath(
+          new URL('../../../../../db/migrations/0041_branch_phone_format.sql', import.meta.url),
+        ),
+        'utf8',
+      );
+      const rewrite = migration.split('-- Step 2.')[0] ?? '';
+      expect(rewrite).toContain('update branches');
+
+      const rolledBack = new Error('roll back');
+      const seen = await database.migrator
+        .transaction()
+        .execute(async (transaction) => {
+          await sql`alter table branches drop constraint branches_phone_format`.execute(
+            transaction,
+          );
+          const insert = (name: string, phone: string | null) =>
+            transaction
+              .insertInto('branches')
+              .values({ name, phone })
+              .returning('id')
+              .executeTakeFirstOrThrow()
+              .then((row) => row.id);
+          const spaced = await insert('Old spaced', '+998 71 200-00-00');
+          const local = await insert('Old local', '71 200 00 00');
+          const right = await insert('Old right', '+998712000001');
+          const none = await insert('Old none', null);
+          await sql.raw(rewrite).execute(transaction);
+          const ids = [spaced, local, right, none];
+          const branches = await transaction
+            .selectFrom('branches')
+            .select(['id', 'phone'])
+            .where('id', 'in', ids)
+            .execute();
+          const entries = await transaction
+            .selectFrom('audit_log')
+            .select([
+              'branch_id',
+              'actor_id',
+              'person_id',
+              'assignment_id',
+              'action',
+              'record_type',
+              'record_id',
+              'old_value',
+              'new_value',
+              'reason',
+              'details',
+              'occurred_at',
+            ])
+            .where('branch_id', 'in', ids)
+            .execute();
+          throw Object.assign(rolledBack, { seen: { ids, branches, entries } });
+        })
+        .catch((error: unknown) => {
+          if (error !== rolledBack) {
+            throw error;
+          }
+          return (rolledBack as Error & { seen: Seen }).seen;
+        });
+
+      const [spaced, local, right, none] = seen.ids;
+      const phoneOf = (id: string | undefined) => seen.branches.find((row) => row.id === id)?.phone;
+      expect(phoneOf(spaced)).toBe('+998712000000');
+      expect(phoneOf(local)).toBeNull();
+      expect(phoneOf(right)).toBe('+998712000001');
+      expect(phoneOf(none)).toBeNull();
+
+      const entryOf = (id: string | undefined) =>
+        seen.entries.filter((row) => row.branch_id === id);
+      expect(entryOf(right)).toEqual([]);
+      expect(entryOf(none)).toEqual([]);
+      for (const [id, oldPhone, newPhone] of [
+        [spaced, '+998 71 200-00-00', '+998712000000'],
+        [local, '71 200 00 00', null],
+      ] as const) {
+        expect(entryOf(id)).toEqual([
+          {
+            branch_id: id,
+            actor_id: null,
+            person_id: null,
+            assignment_id: null,
+            action: 'branch.edit',
+            record_type: 'branch',
+            record_id: id,
+            old_value: { phone: oldPhone },
+            new_value: { phone: newPhone },
+            reason: 'Branch phone format (task 2.7b-1)',
+            details: null,
+            occurred_at: expect.any(Date) as Date,
+          },
+        ]);
+      }
     });
   });
 

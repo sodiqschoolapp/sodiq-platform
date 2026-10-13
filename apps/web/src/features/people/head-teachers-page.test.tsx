@@ -79,7 +79,7 @@ describe('the Head Teachers of the branch', () => {
     const [head, senior] = rows().map(cellsOf);
     expect(head).toEqual(
       expect.arrayContaining([
-        'Nodira Rahimova',
+        'Rahimova Nodira',
         en.roles.head_teacher,
         'Mathematics, Physics (archived)',
         en.people.headTeachers.states.current,

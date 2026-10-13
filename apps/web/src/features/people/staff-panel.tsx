@@ -1,4 +1,6 @@
 import {
+  phoneText,
+  gradeRanges,
   STAFF_STATUSES,
   staffBranchesSchema,
   staffDetailSchema,
@@ -370,7 +372,7 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
         ? t('people.staff.hidden')
         : (jshshir ?? t('people.staff.notSet')),
     ],
-    [t('people.staff.phone'), staff.phone],
+    [t('people.staff.phone'), phoneText(staff.phone)],
     [t('people.staff.email'), staff.email ?? t('people.staff.notSet')],
     [
       t('people.staff.branches'),
@@ -477,8 +479,7 @@ function TeachingSection({
     const found = subjects.find((subject) => subject.id === id);
     return found === undefined ? '' : nameOf(found.names, language);
   };
-  const gradeText = (grades: readonly number[]) =>
-    grades.map((grade) => t('setup.subjects.grade', { grade })).join(', ');
+  const gradeText = (grades: readonly number[]) => gradeRanges(grades);
   const languageText = (languages: readonly InstructionLanguage[]) =>
     languages.length === 0
       ? t('people.staff.none')

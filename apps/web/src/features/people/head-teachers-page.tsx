@@ -1,4 +1,4 @@
-import { APPOINTMENT_ROLES, PERMISSIONS, permits, type Appointment } from '@sodiq/shared';
+import { APPOINTMENT_ROLES, listName, PERMISSIONS, permits, type Appointment } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
@@ -13,11 +13,12 @@ import { headTeachersQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
 import { schoolDateText } from '@/lib/dates';
 
-/** The holder: the name when the server could read it, the login otherwise (decision 14 of #63). */
+/**
+ * The holder: the name when the server could read it, surname first (finding
+ * 27), the login otherwise (decision 14 of #63).
+ */
 const personText = (row: Appointment): string =>
-  row.person.name === null
-    ? row.person.login
-    : `${row.person.name.firstName} ${row.person.name.lastName}`;
+  row.person.name === null ? row.person.login : listName(row.person.name);
 
 /**
  * The Head Teachers of the branch (`02`, Head Teachers and Senior Head

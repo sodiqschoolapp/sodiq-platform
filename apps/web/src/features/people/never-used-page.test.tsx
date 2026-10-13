@@ -59,8 +59,8 @@ describe('the accounts never used', () => {
     await waitFor(() => {
       expect(rows()).toHaveLength(2);
     });
-    const old = rows().find((row) => row.textContent.includes('Ravshan Qodirov'));
-    const fresh = rows().find((row) => row.textContent.includes('Kamola Ismoilova'));
+    const old = rows().find((row) => row.textContent.includes('Qodirov Ravshan'));
+    const fresh = rows().find((row) => row.textContent.includes('Ismoilova Kamola'));
     expect(old?.querySelector('[data-expired] svg')).not.toBeNull();
     expect(old?.querySelector('[data-expired]')?.textContent).toContain('Ran out on');
     expect(old?.textContent).toContain(en.people.neverUsed.locked);
@@ -68,7 +68,7 @@ describe('the accounts never used', () => {
     expect(fresh?.textContent).toContain('Valid until');
     // A name opens the record in the staff list.
     const link = within((old ?? document.body) as HTMLElement).getByRole('link', {
-      name: 'Ravshan Qodirov',
+      name: 'Qodirov Ravshan',
     });
     expect(link.getAttribute('href')).toContain(`/people/staff?open=${OLD.staffId}`);
   });

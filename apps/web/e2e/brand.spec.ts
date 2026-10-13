@@ -140,7 +140,7 @@ test('the shell and the brand moments: sign-in, a list with its side panel and a
     'page',
   );
   const row = page.getByRole('row').filter({ hasText: 'Oʻrinboyev' });
-  await row.getByRole('button', { name: 'Gʻayrat Oʻrinboyev' }).click();
+  await row.getByRole('button', { name: 'Oʻrinboyev Gʻayrat' }).click();
   await expect(page.getByRole('complementary', { name: 'Gʻayrat Oʻrinboyev' })).toBeVisible();
   await screenshot(page, 'staff-list-light');
   await chooseTheme(page, uz, 'dark');

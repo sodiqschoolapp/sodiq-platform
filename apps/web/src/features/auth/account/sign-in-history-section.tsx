@@ -14,6 +14,7 @@ import { signInHistoryQuery } from '@/features/audit/audit-api';
 import { actionName } from '@/features/audit/entry-panel';
 import { AccountSection } from './account-section';
 import { formatMoment } from '@/lib/dates';
+import { deviceName } from '@/lib/device-name';
 
 /**
  * The own sign-in history (edge cases, Personal data and the audit log:
@@ -50,7 +51,7 @@ export function SignInHistorySection() {
                 <TableCell>{actionName(t, event.action)}</TableCell>
                 <TableCell>{event.by ?? ''}</TableCell>
                 <TableCell className="max-w-xs truncate" title={event.browser ?? undefined}>
-                  {event.browser ?? ''}
+                  {deviceName(t, event.browser) ?? ''}
                 </TableCell>
               </TableRow>
             ))}

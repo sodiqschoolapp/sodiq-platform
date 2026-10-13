@@ -1,4 +1,5 @@
 import {
+  gradeRanges,
   INSTRUCTION_LANGUAGES,
   PERMISSIONS,
   permits,
@@ -109,10 +110,7 @@ export function VacanciesPage() {
       {
         key: 'grades',
         header: t('people.staff.grades'),
-        cell: (row) =>
-          grades(row)
-            .map((grade) => t('setup.subjects.grade', { grade }))
-            .join(', '),
+        cell: (row) => gradeRanges(grades(row)),
       },
       {
         key: 'languages',

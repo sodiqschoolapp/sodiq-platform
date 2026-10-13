@@ -1,4 +1,6 @@
 import {
+  listName,
+  phoneText,
   DEFAULT_PHONE_PREFIX,
   relativeDetailSchema,
   relativeIdentitySchema,
@@ -35,9 +37,8 @@ import { asFormSchema } from './form-schema';
 import { RelativeForm, type TakenPhone } from './relative-form';
 import { momentDateText } from '@/lib/dates';
 
-/** A student as the list of students names them. */
-const studentName = (student: { firstName: string; lastName: string }) =>
-  `${student.firstName} ${student.lastName}`;
+/** A student as the list of students names them: surname first (finding 27). */
+const studentName = (student: { firstName: string; lastName: string }) => listName(student);
 
 /**
  * A relative in the side panel of the Parents list (`04`, Close relatives:
@@ -282,7 +283,11 @@ function TakenChoices({
             <div className="grid gap-1 text-sm">
               <h4 className="font-semibold">{t('people.relatives.thisRecord')}</h4>
               <p>{relative.fullName}</p>
-              <p>{relative.phone ?? t('people.relatives.noPhone')}</p>
+              <p>
+                {relative.phone === null
+                  ? t('people.relatives.noPhone')
+                  : phoneText(relative.phone)}
+              </p>
               <ul className="text-muted-foreground">
                 {relative.students.map((student) => (
                   <li key={student.id}>{studentName(student)}</li>
@@ -297,7 +302,7 @@ function TakenChoices({
             <div className="grid gap-1 text-sm">
               <h4 className="font-semibold">{t('people.relatives.otherRecord')}</h4>
               <p>{holderName}</p>
-              <p>{typed}</p>
+              <p>{phoneText(typed)}</p>
               <p className="text-muted-foreground">
                 {t('people.relatives.linkedCount', { count: taken.holder.students })}
               </p>
@@ -316,8 +321,10 @@ function TakenChoices({
           <SelectField
             label={t('people.relatives.mergePhone')}
             options={[
-              ...(relative.phone === null ? [] : [{ value: 'this', label: relative.phone }]),
-              { value: 'other', label: typed },
+              ...(relative.phone === null
+                ? []
+                : [{ value: 'this', label: phoneText(relative.phone) }]),
+              { value: 'other', label: phoneText(typed) },
             ]}
             {...bindOf('mergePhone', phoneOf, (value) => {
               setPhoneOf(value === 'other' ? 'other' : 'this');
@@ -404,7 +411,7 @@ function RelativeTerms({ relative }: { relative: RelativeDetail }) {
     [t('people.relatives.fullName'), relative.fullName],
     [
       t('people.relatives.phone'),
-      relative.phone ??
+      (relative.phone === null ? null : phoneText(relative.phone)) ??
         (relative.phoneInvalidSince === null
           ? t('people.relatives.noPhone')
           : t('people.relatives.noValidPhoneSince', {
@@ -414,7 +421,7 @@ function RelativeTerms({ relative }: { relative: RelativeDetail }) {
   ];
   // Contact, under the main phone (task 2.5b-2).
   if (relative.extraPhones.length > 0) {
-    rows.push([t('people.relatives.extraPhones'), relative.extraPhones.join(', ')]);
+    rows.push([t('people.relatives.extraPhones'), relative.extraPhones.map(phoneText).join(', ')]);
   }
   if (identity !== null) {
     rows.push(
@@ -621,8 +628,7 @@ function StaffPicker({
     return <LoadingOutline />;
   }
   const words = searchWords(typed);
-  const nameOf = (person: { firstName: string; lastName: string }) =>
-    `${person.lastName} ${person.firstName}`;
+  const nameOf = (person: { firstName: string; lastName: string }) => listName(person);
   const matches = staff.data.staff
     .filter((person) => person.id !== current)
     .filter((person) => {

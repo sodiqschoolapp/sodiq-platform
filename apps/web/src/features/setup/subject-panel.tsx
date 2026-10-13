@@ -1,4 +1,10 @@
-import type { Subject, SubjectQuarter, SubjectRecord } from '@sodiq/shared';
+import {
+  listName,
+  gradeRanges,
+  type Subject,
+  type SubjectQuarter,
+  type SubjectRecord,
+} from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -137,10 +143,7 @@ export function SubjectPanel({
               [t('setup.subjects.nameRu'), subject.names.ru],
               [t('setup.subjects.nameEn'), subject.names.en],
               [t('setup.subjects.department'), departmentName],
-              [
-                t('setup.subjects.grades'),
-                subject.grades.map((grade) => t('setup.subjects.grade', { grade })).join(', '),
-              ],
+              [t('setup.subjects.grades'), gradeRanges(subject.grades)],
               [
                 t('setup.subjects.journalType'),
                 t(`setup.subjects.journalTypes.${subject.journalType}`),
@@ -446,7 +449,8 @@ function TeachersOutside({ error }: { error: unknown }) {
   const names = [
     ...ids.map((id) => {
       const person = staff.data?.staff.find((one) => one.id === id);
-      return person === undefined ? '' : `${person.firstName} ${person.lastName}`;
+      // Surname first, as the staff list (finding 27).
+      return person === undefined ? '' : listName(person);
     }),
     ...vacancyIds.map((id) => vacancies.data?.vacancies.find((one) => one.id === id)?.name ?? ''),
   ];

@@ -53,6 +53,7 @@ const MATHS: Subject = {
   archivedAt: null,
   daily: { attendance: 10, classwork: 50, homework: 40 },
   quarterWeightsMissing: 3,
+  quarterCount: 4,
 };
 
 const PHYSICS: Subject = {
@@ -64,6 +65,7 @@ const PHYSICS: Subject = {
   demanding: false,
   daily: null,
   quarterWeightsMissing: 4,
+  quarterCount: 4,
 };
 
 const SPIRIT: Subject = {
@@ -78,6 +80,7 @@ const SPIRIT: Subject = {
   demanding: false,
   daily: null,
   quarterWeightsMissing: null,
+  quarterCount: null,
 };
 
 const OLD: Subject = {
@@ -85,6 +88,7 @@ const OLD: Subject = {
   id: uid(24),
   names: { uz: 'Chizmachilik', ru: 'Черчение', en: 'Drawing' },
   archivedAt: ARCHIVED_AT,
+  quarterWeightsMissing: 0,
 };
 
 const YEAR: AcademicYear = {
@@ -157,7 +161,10 @@ async function openList({
     [`GET /api/setup/subjects/${MATHS.id}/quarter-weights`]: () => json(answer(quarters)),
     [`GET /api/setup/subjects/${PHYSICS.id}/quarter-weights`]: () => json(answer(quarters)),
     'POST /api/setup/subjects': (body) =>
-      json({ ...MATHS, ...(body as object), id: uid(25), quarterWeightsMissing: 4 }, 201),
+      json(
+        { ...MATHS, ...(body as object), id: uid(25), quarterWeightsMissing: 4, quarterCount: 4 },
+        201,
+      ),
     [`PUT /api/setup/subjects/${MATHS.id}`]: (body) => json({ ...MATHS, ...(body as object) }),
     [`PUT /api/setup/subjects/${PHYSICS.id}`]: (body) => json({ ...PHYSICS, ...(body as object) }),
     [`PUT /api/setup/subjects/${SPIRIT.id}`]: (body) => json({ ...SPIRIT, ...(body as object) }),
@@ -200,25 +207,26 @@ describe('the subjects page', () => {
       [
         'Mathematics',
         'STEAM',
-        '5, 6, 7',
+        // Grades as ranges, quarters "n of N" (findings 19 and 20).
+        '5–7',
         subjectsText.journalTypes.graded,
         subjectsText.yes,
         '10 · 50 · 40',
-        '3',
+        '3 of 4 not set',
       ],
       [
         'Physics',
         'STEAM',
-        '5, 6, 7',
+        '5–7',
         subjectsText.journalTypes.graded,
         subjectsText.no,
         subjectsText.notSet,
-        '4',
+        '4 of 4 not set',
       ],
       [
         'Spiritual hour',
         'Tutors',
-        '1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11',
+        '1–11',
         subjectsText.journalTypes.attendance_only,
         subjectsText.no,
         subjectsText.none,
@@ -227,11 +235,11 @@ describe('the subjects page', () => {
       [
         'Drawing',
         'STEAM',
-        '5, 6, 7',
+        '5–7',
         subjectsText.journalTypes.graded,
         subjectsText.no,
         subjectsText.notSet,
-        '4',
+        subjectsText.allSet,
       ],
     ]);
   });
@@ -496,7 +504,7 @@ describe('the subjects page', () => {
 
     expect(
       await within(panel).findByText(
-        subjectsText.teachersHere.replace('{{names}}', 'Zarina Hamidova'),
+        subjectsText.teachersHere.replace('{{names}}', 'Hamidova Zarina'),
       ),
     ).toBeDefined();
     expect(

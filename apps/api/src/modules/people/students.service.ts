@@ -4,6 +4,8 @@ import {
   schoolDateOf,
   studentNameKey,
   uidOutsideSet,
+  uidSetFor,
+  uidYearOf,
   type DocumentType,
   type ErrorDetail,
   type Region,
@@ -183,8 +185,7 @@ function branchOf(access: Access): string {
   return access.branchId;
 }
 
-const refused = (code: 'uid_set_mismatch' | 'no_academic_year'): ApiException =>
-  new ApiException(code, 409);
+const refused = (code: 'no_academic_year'): ApiException => new ApiException(code, 409);
 
 /** The assignment that lets the account read a group of fields in the branch of the request. */
 const readerOf = (access: Access, area: string): string | undefined =>
@@ -713,18 +714,26 @@ export class Students {
     startsOn: SchoolDate,
     input: { confirmUidSet: boolean },
   ): Promise<void> {
-    const year = await transaction
+    const years = await transaction
       .selectFrom('academic_years')
-      .select('start_date')
+      .select(['start_date as startDate', 'end_date as endDate'])
       .where('branch_id', '=', branchId)
-      .where('end_date', '>=', startsOn)
-      .orderBy('start_date')
-      .executeTakeFirst();
+      .execute();
+    const year = uidYearOf(startsOn, years);
     if (year === undefined) {
       throw refused('no_academic_year');
     }
-    if (!input.confirmUidSet && uidOutsideSet(uid, grade, Number(year.start_date.slice(0, 4)))) {
-      throw refused('uid_set_mismatch');
+    if (!input.confirmUidSet && uidOutsideSet(uid, grade, Number(year.startDate.slice(0, 4)))) {
+      // The warning names the set of the grade (finding 25; task 2.7b-1,
+      // decision 7); a UID is outside a set only when the grade has one.
+      throw new ApiException('uid_set_mismatch', 409, undefined, [
+        {
+          path: 'uid',
+          code: 'uid_set',
+          message: 'The UID is outside the set of the grade.',
+          expected: uidSetFor(grade, year) ?? undefined,
+        },
+      ]);
     }
   }
 

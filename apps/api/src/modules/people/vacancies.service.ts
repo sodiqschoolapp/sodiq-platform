@@ -764,7 +764,7 @@ function vacancyExportColumns(
     ),
     grades: oneCell(
       (texts) => texts.vacancies.columns.grades,
-      (row, texts) => gradesOf(row.subjects, texts),
+      (row) => gradesOf(row.subjects),
     ),
     languages: oneCell(
       (texts) => texts.vacancies.columns.languages,

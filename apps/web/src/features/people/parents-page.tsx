@@ -1,4 +1,4 @@
-import { type RelativeListItem } from '@sodiq/shared';
+import { listName, phoneText, type RelativeListItem } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
@@ -40,7 +40,7 @@ export function ParentsPage() {
 
   const columns = useMemo((): Column<RelativeListItem>[] => {
     const students = (row: RelativeListItem) =>
-      row.students.map((student) => `${student.lastName} ${student.firstName}`).join(', ');
+      row.students.map((student) => listName(student)).join(', ');
     return [
       {
         key: 'name',
@@ -48,14 +48,17 @@ export function ParentsPage() {
         cell: (row) => row.fullName,
         sortValue: (row) => row.fullName,
         searchText: (row) =>
-          searchesPhone && row.phone !== null ? `${row.fullName} ${row.phone}` : row.fullName,
+          // The phone as stored and as shown, so it is found typed with or without spaces.
+          searchesPhone && row.phone !== null
+            ? `${row.fullName} ${row.phone} ${phoneText(row.phone)}`
+            : row.fullName,
         opens: true,
       },
       {
         key: 'phone',
         header: t('people.relatives.phone'),
         cell: (row) =>
-          row.phone ??
+          (row.phone === null ? null : phoneText(row.phone)) ??
           t(
             row.phoneInvalidSince === null
               ? 'people.relatives.noPhone'

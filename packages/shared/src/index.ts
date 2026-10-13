@@ -280,7 +280,9 @@ export {
   BRANCH_ADDRESS_MAX_LENGTH,
   BRANCH_EMAIL_MAX_LENGTH,
   BRANCH_NAME_MAX_LENGTH,
+  BRANCH_PHONE_FORMAT,
   BRANCH_PHONE_MAX_LENGTH,
+  branchPhoneSchema,
   branchRecordSchema,
   branchSchema,
   BUILDING_NAME_MAX_LENGTH,
@@ -336,6 +338,9 @@ export {
   type SetupIdParams,
   type Weekday,
 } from './setup.js';
+export { gradeRanges } from './grades.js';
+export { phoneDigits, phoneText } from './phones.js';
+export { listName } from './names.js';
 export {
   CALENDAR_ENTRY_KINDS,
   CALENDAR_ENTRY_NAME_MAX_LENGTH,
@@ -544,7 +549,9 @@ export {
   UID_REASON_MAX_LENGTH,
   UID_SETS_2026,
   uidOutsideSet,
+  uidSetFor,
   uidSetOf,
+  uidYearOf,
   type DocumentType,
   type Region,
   type Scholarship,

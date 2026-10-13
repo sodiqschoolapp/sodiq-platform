@@ -7,12 +7,68 @@ import {
   type DayTemplateVersionRecord,
   type SlotType,
 } from '@sodiq/shared';
-import { dayTimes } from '@sodiq/timetable-rules';
+import { dayEndsAfterMidnight, dayTimes } from '@sodiq/timetable-rules';
 import { useTranslation } from 'react-i18next';
 import { DateField, Field, listValue, listValues, OrderedListField } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
+import type { FormSchema } from '@/components/form/form-messages';
 import { useRecordForm, type FieldBinding } from '@/components/form/use-record-form';
 import { lengthOn, rangeText } from './templates-api';
+
+/**
+ * The times of a day as typed, by the rule engine's `dayTimes`; `null` while
+ * the start time is not a time or a slot type has no length on the date.
+ */
+function typedDay(
+  startTime: string,
+  ids: readonly string[],
+  date: string,
+  slotTypes: readonly SlotType[],
+) {
+  const known = new Map(slotTypes.map((slotType) => [slotType.id, slotType]));
+  const lengths = ids.map((id) => {
+    const slotType = known.get(id);
+    return slotType === undefined ? null : lengthOn(slotType, date);
+  });
+  return timeOfDaySchema.safeParse(startTime).success && lengths.every((length) => length !== null)
+    ? dayTimes(
+        minutesOf(startTime),
+        ids.map((id, index) => ({
+          kind: known.get(id)?.kind ?? 'lesson',
+          lengthMinutes: lengths[index] ?? 0,
+        })),
+      )
+    : null;
+}
+
+/**
+ * The record's schema, and a day that runs past midnight refused on the
+ * slots before anything is sent (finding 16; task 2.7b-1, decision 9): the
+ * rule engine's `dayEndsAfterMidnight`, which the server also applies.
+ */
+function withinTheDay<Values extends { startTime: string; slotTypeIds: readonly string[] }>(
+  schema: FormSchema<Values>,
+  slotTypes: readonly SlotType[],
+  dateOf: (values: Values) => string,
+): FormSchema<Values> {
+  return {
+    safeParse: (input) => {
+      const parsed = schema.safeParse(input);
+      if (!parsed.success) {
+        return parsed;
+      }
+      const day = typedDay(
+        parsed.data.startTime,
+        parsed.data.slotTypeIds,
+        dateOf(parsed.data),
+        slotTypes,
+      );
+      return day !== null && dayEndsAfterMidnight(day)
+        ? { success: false, error: { issues: [{ code: 'custom', path: ['slotTypeIds'] }] } }
+        : parsed;
+    },
+  };
+}
 
 interface SlotsProps {
   binding: FieldBinding;
@@ -33,20 +89,9 @@ function SlotsField({ binding, startTime, date, slotTypes }: SlotsProps) {
   const { t } = useTranslation();
   const ids = listValues(binding.value);
   const known = new Map(slotTypes.map((slotType) => [slotType.id, slotType]));
-  const lengths = ids.map((id) => {
-    const slotType = known.get(id);
-    return slotType === undefined ? null : lengthOn(slotType, date);
-  });
-  const timed =
-    timeOfDaySchema.safeParse(startTime).success && lengths.every((length) => length !== null)
-      ? dayTimes(
-          minutesOf(startTime),
-          ids.map((id, index) => ({
-            kind: known.get(id)?.kind ?? 'lesson',
-            lengthMinutes: lengths[index] ?? 0,
-          })),
-        )
-      : null;
+  const timed = typedDay(startTime, ids, date, slotTypes);
+  // Said as soon as the day runs past midnight, before Save (finding 16).
+  const pastMidnight = timed !== null && dayEndsAfterMidnight(timed);
   const active = slotTypes.filter((slotType) => slotType.archivedAt === null);
   const label = (slotType: SlotType) =>
     `${slotType.name} · ${t(`setup.slotTypes.kinds.${slotType.kind}`)}`;
@@ -67,9 +112,10 @@ function SlotsField({ binding, startTime, date, slotTypes }: SlotsProps) {
       addable={active.map((slotType) => slotType.id)}
       detail={(_id, index) => {
         const slot = timed?.slots[index];
-        return slot === undefined ? '' : rangeText(slot.start, slot.end);
+        return slot === undefined ? '' : rangeText(t, slot.start, slot.end);
       }}
       {...binding}
+      error={pastMidnight ? t('errors.day_past_midnight') : binding.error}
     />
   );
 }
@@ -85,7 +131,7 @@ interface NewTemplateFormProps {
 export function NewTemplateForm({ slotTypes, today, onSave }: NewTemplateFormProps) {
   const { t } = useTranslation();
   const form = useRecordForm({
-    schema: dayTemplateRecordSchema,
+    schema: withinTheDay(dayTemplateRecordSchema, slotTypes, () => today),
     initial: { name: '', startTime: '08:00', slotTypeIds: '' },
     read: (typed) => ({
       name: typed.name,
@@ -124,7 +170,7 @@ interface VersionFormProps {
 export function VersionForm({ slotTypes, initial, label, onSave }: VersionFormProps) {
   const { t } = useTranslation();
   const form = useRecordForm({
-    schema: dayTemplateVersionRecordSchema,
+    schema: withinTheDay(dayTemplateVersionRecordSchema, slotTypes, (values) => values.from),
     initial: {
       from: initial.from,
       startTime: initial.startTime,

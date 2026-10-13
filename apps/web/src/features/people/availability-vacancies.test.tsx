@@ -41,6 +41,7 @@ const MATHEMATICS: Subject = {
   archivedAt: null,
   daily: { attendance: 10, classwork: 50, homework: 40 },
   quarterWeightsMissing: null,
+  quarterCount: null,
 };
 
 // All names are invented.
@@ -187,7 +188,7 @@ function api(
 async function openAkmal() {
   renderApp('/people/staff');
   await screen.findByRole('heading', { name: en.people.staff.title });
-  fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
+  fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
   const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
   await within(panel).findByRole('heading', { name: en.people.availability.title });
   return panel;
@@ -299,7 +300,8 @@ describe('the vacancies', () => {
       'English vacancy 2',
       'STEAM',
       'Mathematics',
-      en.setup.subjects.grade.replace('{{grade}}', '7'),
+      // Grades as ranges (finding 19).
+      '7',
       en.people.staff.languages.uz,
       '18',
       en.people.vacancies.statuses.open,

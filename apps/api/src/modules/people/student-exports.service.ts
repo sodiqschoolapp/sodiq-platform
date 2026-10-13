@@ -1,5 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  listName,
+  phoneText,
   STUDENT_EXPORT_GROUPS,
   type Clock,
   type DocumentType,
@@ -197,7 +199,7 @@ const mainContactOf = (row: ExportRow): ExportRelative | undefined =>
 
 /** The phones of a relative in one cell, separated by commas; empty without any. */
 const phonesOf = (phones: readonly string[]): string | null =>
-  phones.length === 0 ? null : phones.join(', ');
+  phones.length === 0 ? null : phones.map(phoneText).join(', ');
 
 const date = (value: string | null | undefined) =>
   value === null || value === undefined ? null : { date: value };
@@ -211,7 +213,8 @@ const date = (value: string | null | undefined) =>
  */
 const STUDENT_EXPORT_SPECS: Readonly<Record<StudentExportColumn, ExportColumn<ExportRow>>> = {
   uid: oneCell(heading('uid'), (row) => row.item.uid),
-  name: oneCell(heading('name'), (row) => `${row.item.firstName} ${row.item.lastName}`),
+  // Surname first in every list and export (owner's answer to finding 27).
+  name: oneCell(heading('name'), (row) => listName(row.item)),
   class: oneCell(heading('class'), (row, texts) =>
     texts.student.gradeNoClass.replace(
       '{{grade}}',
@@ -230,7 +233,7 @@ const STUDENT_EXPORT_SPECS: Readonly<Record<StudentExportColumn, ExportColumn<Ex
   sex: oneCell(heading('sex'), (row, texts) => texts.student.sexes[row.item.sex]),
   grade: oneCell(heading('grade'), (row) => row.item.grade),
   startsOn: oneCell(heading('startsOn'), (row) => date(row.item.startsOn)),
-  phone: oneCell(heading('phone'), (row) => row.phone),
+  phone: oneCell(heading('phone'), (row) => (row.phone === null ? null : phoneText(row.phone))),
   email: oneCell(heading('email'), (row) => row.email),
   birthDate: oneCell(heading('birthDate'), (row) => date(row.birth_date)),
   documentType: oneCell(heading('documentType'), (row, texts) =>
@@ -270,10 +273,10 @@ const STUDENT_EXPORT_SPECS: Readonly<Record<StudentExportColumn, ExportColumn<Ex
     const main = mainContactOf(row);
     return main === undefined ? null : texts.student.relationships[main.relationship];
   }),
-  mainContactPhone: oneCell(
-    heading('mainContactPhone'),
-    (row) => mainContactOf(row)?.phone ?? null,
-  ),
+  mainContactPhone: oneCell(heading('mainContactPhone'), (row) => {
+    const phone = mainContactOf(row)?.phone;
+    return phone === null || phone === undefined ? null : phoneText(phone);
+  }),
   mainContactExtraPhones: oneCell(heading('mainContactExtraPhones'), (row) =>
     phonesOf(mainContactOf(row)?.extraPhones ?? []),
   ),

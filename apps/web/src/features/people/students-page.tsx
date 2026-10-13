@@ -1,4 +1,5 @@
 import {
+  listName,
   PERMISSIONS,
   permits,
   STUDENT_EXPORT_COLUMNS,
@@ -19,6 +20,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
+import { uidSetText } from './uid-set';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { DateField, Field } from '@/components/field';
@@ -46,7 +48,16 @@ import { StudentForm } from './student-form';
 import { StudentPanel } from './student-panel';
 import { schoolDateText } from '@/lib/dates';
 
-const fullName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) =>
+/**
+ * A student in the list, a picker or a list inside a message: surname first
+ * (owner's answer to finding 27).
+ */
+const fullName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) => listName(row);
+/**
+ * "First name Surname": the title of the side panel and the sentences inside
+ * it (decision 3), and the search, so a name is found however it is typed.
+ */
+const typedName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) =>
   `${row.firstName} ${row.lastName}`;
 
 /** No class, group or tutor exists before tasks 3.1 and 3.2 (answer 17: "every student shows No class"). */
@@ -269,7 +280,7 @@ export function StudentsPage() {
         }
         const go = await confirm({
           title: t('people.students.setTitle'),
-          text: t('people.students.setText'),
+          text: uidSetText(t, error, record.grade),
           names: [record.uid],
           action: t('people.students.saveAnyway'),
           destructive: false,
@@ -333,7 +344,8 @@ export function StudentsPage() {
         header: t('people.students.name'),
         cell: (row) => fullName(row),
         sortValue: (row) => `${row.lastName} ${row.firstName}`,
-        searchText: (row) => `${fullName(row)} ${row.paternalName ?? ''}`,
+        // Both orders, so a name is found however it is typed.
+        searchText: (row) => `${fullName(row)} ${typedName(row)} ${row.paternalName ?? ''}`,
         opens: true,
       },
       {
@@ -533,6 +545,7 @@ export function StudentsPage() {
         }}
         rowId={(row) => row.id}
         rowName={fullName}
+        panelName={typedName}
         columns={columns}
         filters={filters}
         search={search}
@@ -549,7 +562,7 @@ export function StudentsPage() {
         exportState={exporter.state}
         exportExtras={exportExtras}
         panel={(row) => (
-          <StudentPanel key={row.id} id={row.id} name={fullName(row)} holderText={holderText} />
+          <StudentPanel key={row.id} id={row.id} name={typedName(row)} holderText={holderText} />
         )}
       />
     </>

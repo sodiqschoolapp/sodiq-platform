@@ -226,3 +226,31 @@ describe('the records of a division and a department', () => {
     ).toEqual(['names.en']);
   });
 });
+
+describe('the branch phone ("Decided ahead for tasks 2.2d and 2.7", item 10)', () => {
+  const phoneOf = (phone: string) => branchRecordSchema.safeParse({ ...BRANCH, phone });
+
+  it('stores "+998" and nine digits as the digits', () => {
+    expect(phoneOf('+998 71 123 45 67').data?.phone).toBe('+998711234567');
+    expect(phoneOf('+998 (71) 123-45-67').data?.phone).toBe('+998711234567');
+  });
+
+  it('keeps an empty phone as none', () => {
+    expect(phoneOf('').data?.phone).toBeNull();
+    expect(phoneOf('   ').data?.phone).toBeNull();
+  });
+
+  it('refuses any other text on phone', () => {
+    for (const phone of [
+      '71 123 45 67',
+      '+99871123456',
+      '+9987112345678',
+      '+7 495 123 45 67',
+      'call the office',
+    ]) {
+      const result = phoneOf(phone);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues.map((issue) => issue.path)).toEqual([['phone']]);
+    }
+  });
+});

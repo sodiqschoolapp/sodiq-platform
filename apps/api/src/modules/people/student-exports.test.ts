@@ -1,5 +1,6 @@
 import {
   BRANCH_HEADER,
+  phoneText,
   studentDetailSchema,
   studentListSchema,
   studentNoClassSchema,
@@ -12,6 +13,9 @@ import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/da
 import { relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { binary, dateOfCell, fileOf } from '../../testing/xlsx-kit.js';
+
+/** A stored phone as the file writes it (finding 24). */
+const grouped = (phone: string | null | undefined): string => phoneText(phone ?? '');
 
 // All names are invented. Task 2.4b-2, the plan approved on pull request #70
 // with its corrections: the export of the student list by readers, the
@@ -393,14 +397,19 @@ describe('the student export, the consent list and the "No class" counter', () =
         const cells = row ?? [];
         expect(cells.slice(0, 4)).toEqual([
           student.uid,
-          `Oʻtkir ${student.lastName}`,
+          // Surname first (owner's answer to finding 27).
+          `${student.lastName} Oʻtkir`,
           'Grade 7, no class',
           'Active',
         ]);
         expect(cells.slice(4, 6)).toEqual([null, null]);
         expect(cells.slice(6, 9)).toEqual(['Anvarovich', 'Male', 7]);
         expect(dateOfCell(cells[9])).toBe('2026-09-02');
-        expect(cells.slice(10, 12)).toEqual([student.contact?.phone, student.contact?.email]);
+        // The phone grouped (finding 24).
+        expect(cells.slice(10, 12)).toEqual([
+          grouped(student.contact?.phone),
+          student.contact?.email,
+        ]);
         expect(dateOfCell(cells[12])).toBe(student.identity?.birthDate);
         expect(cells.slice(13, 18)).toEqual([
           'Birth certificate',
@@ -493,7 +502,7 @@ describe('the student export, the consent list and the "No class" counter', () =
       );
       expect(inSouth.columns).toBe('uid,phone,jshshir');
       expect(inSouth.sheet.rows).toEqual([
-        [south.uid, south.contact?.phone, south.identity?.jshshir],
+        [south.uid, grouped(south.contact?.phone), south.identity?.jshshir],
       ]);
       expect((await t.entries('student.export')).at(-1)).toMatchObject({
         branch_id: t.south,
@@ -691,12 +700,12 @@ describe('the student export, the consent list and the "No class" counter', () =
               full.uid,
               'Nargiza Tursunova',
               'Mother',
-              mainPhone,
-              mainExtra.join(', '),
+              grouped(mainPhone),
+              mainExtra.map(grouped).join(', '),
               [
                 'Zafar Tursunov (Father)',
-                `Bobur Tursunov (Brother): ${brotherPhone}, ${brotherExtra}`,
-                `Aziza Tursunova (Aunt): ${auntExtra}`,
+                `Bobur Tursunov (Brother): ${grouped(brotherPhone)}, ${grouped(brotherExtra)}`,
+                `Aziza Tursunova (Aunt): ${grouped(auntExtra)}`,
               ].join('\n'),
             ],
             [bare.uid, 'Laylo Qosimova', 'Grandmother', null, null, null],

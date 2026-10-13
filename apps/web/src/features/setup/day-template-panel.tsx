@@ -135,7 +135,7 @@ export function DayTemplatePanel({
         <ol className="grid gap-1 text-sm">
           {record.slots.map((slot) => (
             <li key={slot.position} className="flex gap-3">
-              <span className="w-24 tabular-nums">{rangeText(slot.start, slot.end)}</span>
+              <span className="w-24 tabular-nums">{rangeText(t, slot.start, slot.end)}</span>
               <span>{slot.name}</span>
               {slot.lessonNumber !== null && (
                 <span className="text-muted-foreground">
