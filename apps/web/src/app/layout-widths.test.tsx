@@ -48,7 +48,7 @@ describe('the alerts of the Super Admin on a phone', () => {
     setWindowWidth(390);
     fakeApi({
       'GET /api/auth/session': () => json(superAdmin()),
-      'GET /api/access/super-admins': () => refusal('no_answer', 500),
+      'GET /api/access/super-admins': () => refusal('internal_error', 500),
       'GET /api/access/branches-without-vice-principal': () => json({ branches: [] }),
     });
     renderApp('/');

@@ -361,6 +361,30 @@ describe('the account section', () => {
     });
   });
 
+  // Issue #39, hand test of 13 October 2026, finding 21 (task 2.7b-2): the
+  // subjects of a new Head Teacher say what is missing on Save, in their words.
+  it('says nothing of the subjects when Head Teacher is chosen after a Save, and asks for one on the next Save', async () => {
+    const calls = open('super_admin', {
+      [`GET /api/people/staff/${LOLA.id}/account`]: () => json(withAccount()),
+    });
+    const found = await section();
+    const form = within(found).getByRole('form', {
+      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
+      target: { value: 'head_teacher' },
+    });
+    const subjects = await within(form).findByRole('group', { name: en.people.account.subjects });
+    expect(within(subjects).queryByText(en.form.required)).toBeNull();
+    expect(within(subjects).queryByText(en.form.chooseSubject)).toBeNull();
+
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+    expect(within(subjects).getByText(en.form.chooseSubject)).toBeDefined();
+    expect(calls.some((call) => call.route.endsWith('/roles'))).toBe(false);
+  });
+
   it('shows the subjects of an appointment and changes them from a date', async () => {
     const calls = open('super_admin', {
       [`GET /api/people/staff/${LOLA.id}/account`]: () =>

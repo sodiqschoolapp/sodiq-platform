@@ -250,6 +250,9 @@ describe('the travel time page', () => {
       });
     });
     expect(await screen.findByText('40 minutes')).toBeDefined();
+    // Issue #39, hand test of 13 October 2026, finding 18: the form is not drawn
+    // again by its own save, so its sign stays.
+    expect(pair.getByRole('status').textContent).toBe(en.form.saved);
   });
 
   it.each(['principal', 'academic_vice_principal'] as const)(

@@ -558,6 +558,60 @@ const headingsDrawn = (): string[] =>
 // Task 2.2c-1: the Export button of the list, for the Principal too (`02`:
 // "Exports are allowed"), and the columns of the file are those of the screen,
 // with the same headings (`EXPORT_TEXTS` of `packages/shared`).
+// Issue #39, hand test of 13 October 2026, findings 18 and 21 (task 2.7b-2).
+describe('the subjects and languages of a staff member', () => {
+  const teachingForm = async () => {
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    return within(panel).findByRole('form', {
+      name: en.people.staff.teachingOf.replace('{{name}}', 'Akmal Karimov'),
+    });
+  };
+  const grades = (form: HTMLElement) =>
+    within(form).getByRole('group', {
+      name: en.people.staff.gradesOf.replace('{{subject}}', 'Mathematics'),
+    });
+
+  it('says nothing as the grades are unticked, and on Save names the grades of that subject', async () => {
+    const calls = openList('academic_vice_principal');
+    const form = await teachingForm();
+    fireEvent.click(within(grades(form)).getByLabelText('Grade 5'));
+    fireEvent.click(within(grades(form)).getByLabelText('Grade 6'));
+    expect(within(grades(form)).queryByText(en.form.chooseGrade)).toBeNull();
+
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+    expect(within(grades(form)).getByText(en.form.chooseGrade)).toBeDefined();
+    const subjects = within(form).getByRole('group', { name: en.people.staff.subjects });
+    expect(within(subjects).queryByText(en.form.chooseGrade)).toBeNull();
+    expect(within(subjects).queryByText(en.form.required)).toBeNull();
+    expect(calls.some((call) => call.route.endsWith('/teaching'))).toBe(false);
+  });
+
+  it('keeps "Saved." after a save that changes the subjects', async () => {
+    let detail = detailOf(AKMAL);
+    openList('academic_vice_principal', {
+      [`GET /api/people/staff/${AKMAL.id}`]: () => json(detail),
+      [`PUT /api/people/staff/${AKMAL.id}/teaching`]: (body) => {
+        detail = { ...detail, ...(body as Partial<StaffDetail>) };
+        return json(detail);
+      },
+    });
+    const form = await teachingForm();
+    fireEvent.click(within(form).getByLabelText('Mathematics'));
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+    await waitFor(() => {
+      expect(detail.subjects).toEqual([]);
+    });
+    await waitFor(() => {
+      expect(within(form).getByRole('status').textContent).toBe(en.form.saved);
+    });
+    expect(form.isConnected).toBe(true);
+  });
+});
+
 describe('the export of the staff list', () => {
   it('is offered, and the columns of the screen are those of the file, with its headings', async () => {
     openList('principal');
