@@ -50,6 +50,7 @@ export function CodePage() {
       <form className="grid gap-4" onSubmit={submit} noValidate>
         <Field
           label={t('code.label')}
+          large
           name="code"
           autoComplete="one-time-code"
           autoCapitalize="none"
@@ -70,6 +71,7 @@ export function CodePage() {
         <Button
           type="button"
           variant="ghost"
+          size="lg"
           disabled={signOut.isPending}
           onClick={() => {
             signOut.mutate();

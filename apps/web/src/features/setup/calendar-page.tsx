@@ -33,6 +33,7 @@ import { CalendarEntryForm } from './calendar-entry-form';
 import { CalendarEntryPanel } from './calendar-entry-panel';
 import { datesText, dayText, gradesText, useCalendarPreview } from './calendar-preview';
 import { dayTemplatesQuery } from './templates-api';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 
 /**
  * "Check a date" (decision 15 of pull request #47): what every grade has on
@@ -46,8 +47,11 @@ function CheckDate({ branchId, initial }: { branchId: string | null; initial: st
   const valid = /^\d{4}-\d{2}-\d{2}$/.test(date);
   const day = useQuery(calendarDayQuery(branchId, valid ? date : null));
   return (
-    <section aria-label={t('setup.calendar.checkTitle')} className="mt-8 grid max-w-3xl gap-3">
-      <h2 className="text-lg font-semibold">{t('setup.calendar.checkTitle')}</h2>
+    <section
+      aria-label={t('setup.calendar.checkTitle')}
+      className={`mt-6 grid max-w-3xl gap-3 ${PANEL}`}
+    >
+      <h2 className={SECTION_TITLE}>{t('setup.calendar.checkTitle')}</h2>
       <div className="max-w-xs">
         <DateField
           label={t('setup.calendar.checkDate')}
@@ -241,9 +245,9 @@ export function CalendarPage() {
       {adding && (
         <section
           aria-label={t('setup.calendar.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6"
         >
-          <h2 className="text-lg font-semibold">{t('setup.calendar.newTitle')}</h2>
+          <h2 className={SECTION_TITLE}>{t('setup.calendar.newTitle')}</h2>
           {today === undefined || templates.isPending ? (
             <LoadingOutline />
           ) : templates.isError ? (

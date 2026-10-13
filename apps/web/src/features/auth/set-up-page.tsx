@@ -31,6 +31,7 @@ export function SetUpPage() {
   return (
     <SecondStepSetUp
       intro={t('setUp.intro')}
+      size="lg"
       stage={({ title, text, children }) => (
         <AuthPage title={title} text={text}>
           {children}
@@ -42,6 +43,7 @@ export function SetUpPage() {
           <Button
             type="button"
             variant="ghost"
+            size="lg"
             disabled={signOut.isPending}
             onClick={() => {
               signOut.mutate();

@@ -244,7 +244,7 @@
   /* A record form straight on the page sits in a white panel (components/ui/control.ts,
      PANEL); one inside a panel, a side panel or a dialog is already on white. */
   main form[data-slot='record-form']:not(aside *, [role='dialog'] *, .bg-card *) {
-    @apply max-w-3xl rounded-xl bg-card p-6 max-sm:p-4;
+    @apply max-w-3xl rounded-xl bg-card p-6;
   }
 }
 

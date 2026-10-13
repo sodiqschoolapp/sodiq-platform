@@ -39,6 +39,7 @@ import {
   templateTableQuery,
 } from './templates-api';
 import { schoolDateText, weekdayName } from '@/lib/dates';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 
 const gradesText = (assignment: Assignment): string =>
   assignment.gradeFrom === null || assignment.gradeTo === null
@@ -192,7 +193,7 @@ function AssignmentPanel({
           </p>
         ) : (
           <section className="grid gap-3">
-            <h3 className="text-base font-semibold">{t('setup.templateSettings.endTitle')}</h3>
+            <h3 className={SECTION_TITLE}>{t('setup.templateSettings.endTitle')}</h3>
             <RecordForm form={form} label={t('setup.templateSettings.endTitle')}>
               <DateField label={t('setup.templateSettings.endFrom')} {...form.bind('from')} />
             </RecordForm>
@@ -337,8 +338,8 @@ export function TemplateSettingsPage() {
           { label: t('setup.title'), to: '/setup' },
         ]}
       />
-      <section aria-label={t('setup.templateTable.title')} className="mb-8 grid gap-3">
-        <h2 className="text-lg font-semibold">{t('setup.templateTable.title')}</h2>
+      <section aria-label={t('setup.templateTable.title')} className={`mb-6 grid gap-3 ${PANEL}`}>
+        <h2 className={SECTION_TITLE}>{t('setup.templateTable.title')}</h2>
         <div className="max-w-xs">
           <DateField
             label={t('setup.templateTable.date')}
@@ -360,9 +361,9 @@ export function TemplateSettingsPage() {
       {canEdit && tomorrow !== null && templates.isError && (
         <section
           aria-label={t('setup.templateSettings.setTitle')}
-          className="mb-8 grid max-w-xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+          className={`mb-6 grid max-w-xl gap-3 ${PANEL}`}
         >
-          <h2 className="text-lg font-semibold">{t('setup.templateSettings.setTitle')}</h2>
+          <h2 className={SECTION_TITLE}>{t('setup.templateSettings.setTitle')}</h2>
           <ErrorState
             error={templates.error}
             onRetry={() => {
@@ -374,9 +375,9 @@ export function TemplateSettingsPage() {
       {canEdit && tomorrow !== null && activeTemplates !== undefined && (
         <section
           aria-label={t('setup.templateSettings.setTitle')}
-          className="mb-8 grid max-w-xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+          className={`mb-6 grid max-w-xl gap-3 ${PANEL}`}
         >
-          <h2 className="text-lg font-semibold">{t('setup.templateSettings.setTitle')}</h2>
+          <h2 className={SECTION_TITLE}>{t('setup.templateSettings.setTitle')}</h2>
           {activeTemplates.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {t('setup.templateSettings.needTemplate')}
@@ -393,7 +394,7 @@ export function TemplateSettingsPage() {
           )}
         </section>
       )}
-      <h2 className="mb-3 text-lg font-semibold">{t('setup.templateSettings.listTitle')}</h2>
+      <h2 className={`mb-3 ${SECTION_TITLE}`}>{t('setup.templateSettings.listTitle')}</h2>
       <ListPage
         listId="day-template-settings"
         caption={t('setup.templateSettings.listTitle')}

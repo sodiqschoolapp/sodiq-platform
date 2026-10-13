@@ -21,6 +21,7 @@ import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
+import { SidePanel } from '@/components/side-panel';
 import { Button } from '@/components/ui/button';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
@@ -28,7 +29,7 @@ import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-
 import { refreshSession } from '@/features/auth/session';
 import { branchQuery, invalidateYears, SETUP_KEY, yearsQuery } from './setup-api';
 import { cn } from 'cn';
-import { PANEL } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 
 interface BranchFormProps {
@@ -207,7 +208,7 @@ function GoLiveSection({ branch, canEdit }: { branch: Branch; canEdit: boolean }
       aria-label={t('setup.branch.goLiveTitle')}
       className={cn(PANEL, 'grid max-w-prose gap-3')}
     >
-      <h2 className="text-[1.0625rem]/6 font-bold">{t('setup.branch.goLiveTitle')}</h2>
+      <h2 className={SECTION_TITLE}>{t('setup.branch.goLiveTitle')}</h2>
       {body}
     </section>
   );
@@ -253,6 +254,16 @@ export function BranchPage() {
       setAdding(false);
     },
   });
+
+  // Closing the panel with typed text asks first (.claude/rules/web.md: whatever
+  // takes a form away without a change of page asks useLeave()).
+  const closeNew = (): void => {
+    void leave.leave().then((leaves) => {
+      if (leaves) {
+        setAdding(false);
+      }
+    });
+  };
 
   let body;
   if (branchId === null) {
@@ -309,40 +320,36 @@ export function BranchPage() {
           ) : undefined
         }
       />
-      <div className="grid max-w-3xl gap-8">
+      {/* "New branch" opens beside the branch in the side panel, as a new
+          record does beside a list (issue #39, item 2 and finding 12; pull
+          request #80, decision 14). On a narrow screen it takes the place of
+          the page, as the side panel of a list does. */}
+      <div className="flex items-start gap-6">
+        <div className={cn('min-w-0 max-w-3xl flex-1 gap-6', adding ? 'hidden lg:grid' : 'grid')}>
+          {body}
+        </div>
         {adding && (
-          <section
-            aria-label={t('setup.branch.newBranchTitle')}
-            className={cn(PANEL, 'grid gap-3')}
+          <SidePanel
+            title={t('setup.branch.newBranchTitle')}
+            recordKey="new-branch"
+            onClose={closeNew}
           >
-            <h2 className="text-[1.0625rem]/6 font-bold">{t('setup.branch.newBranchTitle')}</h2>
-            <p className="max-w-prose text-sm text-muted-foreground">
-              {t('setup.branch.newBranchText')}
-            </p>
-            <BranchForm
-              branch={null}
-              label={t('setup.branch.newBranchTitle')}
-              onSave={async (record) => {
-                await create.mutateAsync(record);
-              }}
-            />
-            <div>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  void leave.leave().then((leaves) => {
-                    if (leaves) {
-                      setAdding(false);
-                    }
-                  });
+            <div className="grid gap-4">
+              <BranchForm
+                branch={null}
+                label={t('setup.branch.newBranchTitle')}
+                onSave={async (record) => {
+                  await create.mutateAsync(record);
                 }}
-              >
-                {t('setup.branch.cancel')}
-              </Button>
+              />
+              <div>
+                <Button variant="ghost" onClick={closeNew}>
+                  {t('setup.branch.cancel')}
+                </Button>
+              </div>
             </div>
-          </section>
+          </SidePanel>
         )}
-        {body}
       </div>
     </>
   );

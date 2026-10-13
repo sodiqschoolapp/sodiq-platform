@@ -266,7 +266,6 @@ export function AuditPage() {
             <span>{t('audit.onlyRecordOf', { name: recordFilter })}</span>
             <Button
               variant="ghost"
-              size="sm"
               onClick={() => {
                 setFilters({ recordType: undefined, recordId: undefined });
               }}

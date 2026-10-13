@@ -12,7 +12,8 @@ import { api } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { Field } from '@/components/field';
 import { FailureAlert } from '@/components/failure-alert';
-import { Button } from '@/components/ui/button';
+import { Button, type buttonVariants } from '@/components/ui/button';
+import type { VariantProps } from 'class-variance-authority';
 import { CHECKBOX } from '@/components/ui/control';
 import { useWaiting } from './form-helpers';
 
@@ -27,7 +28,16 @@ export interface SetUpStage {
   children: ReactNode;
 }
 
+/** The sizes a caller chooses from: large on the sign-in frame, default inside the layout. */
+type StageSize = Extract<VariantProps<typeof buttonVariants>['size'], 'default' | 'lg'>;
+
 interface SecondStepSetUpProps {
+  /**
+   * The size of the buttons, and of the field with it: large on the sign-in
+   * frame, the default inside the layout (docs/design-system.md, Buttons;
+   * pull request #80, decision 13).
+   */
+  size: StageSize;
   /** What the person is told before the start. */
   intro: string;
   /** Draws a stage: the step page draws its card, the account page a section. */
@@ -50,6 +60,7 @@ interface SecondStepSetUpProps {
  * shown once: the page is left only after the person says they are saved.
  */
 export function SecondStepSetUp({
+  size,
   intro,
   stage,
   footer,
@@ -144,7 +155,7 @@ export function SecondStepSetUp({
           </label>
           <FailureAlert error={finish.error} />
           <Button
-            size="lg"
+            size={size}
             disabled={!saved || finish.isPending}
             onClick={() => {
               finish.mutate();
@@ -165,7 +176,7 @@ export function SecondStepSetUp({
         <>
           <FailureAlert error={start.error ?? confirm.error} />
           <Button
-            size="lg"
+            size={size}
             disabled={start.isPending}
             onClick={() => {
               confirm.reset();
@@ -196,6 +207,7 @@ export function SecondStepSetUp({
         <form className="grid gap-4" onSubmit={submitCode} noValidate>
           <Field
             label={t('setUp.code')}
+            large={size !== 'default'}
             name="code"
             inputMode="numeric"
             autoComplete="one-time-code"
@@ -208,7 +220,7 @@ export function SecondStepSetUp({
             }}
           />
           <FailureAlert error={confirm.error} />
-          <Button type="submit" size="lg" disabled={confirm.isPending || waiting}>
+          <Button type="submit" size={size} disabled={confirm.isPending || waiting}>
             {t('setUp.confirm')}
           </Button>
           {footer}

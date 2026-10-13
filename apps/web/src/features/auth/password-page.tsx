@@ -9,7 +9,7 @@ import { Field } from '@/components/field';
 import { PageHeader } from '@/components/page-header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { AuthPage } from './auth-page';
+import { AuthPage, FRAME_BUTTON_SIZE } from './auth-page';
 import { FailureAlert } from '@/components/failure-alert';
 import { useWaiting } from './form-helpers';
 import { refreshSession, sessionQuery, STEP_PATH, stepOf } from './session';
@@ -114,6 +114,9 @@ export function PasswordPage() {
   }
 
   const Frame = forced ? AuthPage : OwnPasswordFrame;
+  // Large on the sign-in frame, the default inside the layout (pull request
+  // #80, decision 13).
+  const size = forced ? FRAME_BUTTON_SIZE : 'default';
 
   return (
     <Frame
@@ -134,6 +137,7 @@ export function PasswordPage() {
           type="password"
           autoComplete="current-password"
           autoFocus
+          large={forced}
           value={current}
           error={currentError}
           onChange={(event) => {
@@ -143,6 +147,7 @@ export function PasswordPage() {
         <Field
           label={t('password.new')}
           name="new-password"
+          large={forced}
           type="password"
           autoComplete="new-password"
           value={next}
@@ -154,6 +159,7 @@ export function PasswordPage() {
         <Field
           label={t('password.repeat')}
           name="new-password-again"
+          large={forced}
           type="password"
           autoComplete="new-password"
           value={repeat}
@@ -168,7 +174,7 @@ export function PasswordPage() {
             {t('password.changed')}
           </p>
         )}
-        <Button type="submit" size="lg" disabled={change.isPending || waiting}>
+        <Button type="submit" size={size} disabled={change.isPending || waiting}>
           {t('password.submit')}
         </Button>
         {forced ? (
@@ -176,6 +182,7 @@ export function PasswordPage() {
           <Button
             type="button"
             variant="ghost"
+            size={size}
             disabled={signOut.isPending}
             onClick={() => {
               signOut.mutate();

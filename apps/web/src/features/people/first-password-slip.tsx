@@ -66,7 +66,6 @@ export function FirstPasswordSlipCard({ slip, issued }: { slip: Slip; issued: st
             <span className="inline-flex flex-wrap items-center gap-2">
               <span role="alert">{failureText(t, branch.error)}</span>
               <Button
-                size="sm"
                 variant="secondary"
                 onClick={() => {
                   void branch.refetch();

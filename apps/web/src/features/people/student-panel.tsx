@@ -34,6 +34,7 @@ import { StudentPhotoSection } from './student-photo-section';
 import { StudentRelativesTab } from './student-relatives';
 import { StatusSection } from './student-status-section';
 import { schoolDateText } from '@/lib/dates';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 type Tab = 'overview' | 'relatives' | 'contract';
 
@@ -206,7 +207,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
           {student.canEdit && (
             <>
               <section className="grid gap-3">
-                <h3 className="text-base font-semibold">{t('people.students.recordTitle')}</h3>
+                <h3 className={SECTION_TITLE}>{t('people.students.recordTitle')}</h3>
                 <StudentForm
                   key={`${student.id}-record`}
                   student={student}
@@ -423,7 +424,7 @@ function UidCorrection({
   const uid = form.bind('uid');
   return (
     <section className="grid gap-3">
-      <h3 className="text-base font-semibold">{t('people.students.uidTitle')}</h3>
+      <h3 className={SECTION_TITLE}>{t('people.students.uidTitle')}</h3>
       <RecordForm form={form} label={t('people.students.uidLabel', { name: label })}>
         <Field
           label={t('people.students.uid')}

@@ -12,7 +12,7 @@ export function LanguageSection() {
   const accountLanguage = useAccountLanguage();
 
   return (
-    <AccountSection title={t('account.languageTitle')} text={t('account.languageText')}>
+    <AccountSection title={t('account.languageTitle')}>
       <div className="max-w-xs">
         <SelectField
           label={t('language.label')}

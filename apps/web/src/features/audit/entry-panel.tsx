@@ -18,6 +18,7 @@ import { useView } from '@/features/access/use-view';
 import { showEntry } from './audit-api';
 import { codesOf, fieldLabel, fieldsTypeOf } from './field-labels';
 import { formatMoment } from '@/lib/dates';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /** The name of an action on the screen; an action the list does not hold shows as stored. */
 export function actionName(t: TFunction, action: string): string {
@@ -250,7 +251,7 @@ export function EntryPanel({ entry }: { entry: AuditEntryAnswer }) {
 
       {details.size > 0 && (
         <section className="grid gap-2">
-          <h3 className="text-base font-semibold">{t('audit.details')}</h3>
+          <h3 className={SECTION_TITLE}>{t('audit.details')}</h3>
           <dl className="grid gap-2 text-sm">
             {[...details.entries()].map(([path, value]) => (
               <div key={path} className="grid gap-0.5">

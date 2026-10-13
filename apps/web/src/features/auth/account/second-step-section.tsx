@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { AccountSection } from './account-section';
 import { useWaiting } from '../form-helpers';
 import { SecondStepSetUp, type SetUpStage } from '../second-step-set-up';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 export const secondStepQuery = queryOptions({
   queryKey: ['account', 'second-step'],
@@ -23,7 +24,7 @@ function Stage({ title, text, children }: SetUpStage) {
   return (
     <div className="grid max-w-sm gap-4 rounded-lg border p-4">
       <div className="grid gap-1">
-        <h3 className="font-medium">{title}</h3>
+        <h3 className={SECTION_TITLE}>{title}</h3>
         <p className="text-sm text-muted-foreground">{text}</p>
       </div>
       {children}
@@ -96,6 +97,7 @@ export function SecondStepSection() {
   } else if (mode === 'turning_on') {
     body = (
       <SecondStepSetUp
+        size="default"
         intro={t('account.setUpIntro')}
         stage={(stage) => <Stage {...stage} />}
         footer={

@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/table';
 import { useView } from '@/features/access/use-view';
 import { travelTimesQuery } from './settings-api';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 
 interface Pair {
   branchId: string;
@@ -105,34 +106,32 @@ export function TravelTimesPage() {
     body = <EmptyState text={t('setup.travelTimes.oneBranch')} />;
   } else if (canEdit) {
     body = list.data.pairs.map((pair) => (
-      <section
-        key={pair.branchId}
-        aria-label={pair.branchName}
-        className="grid gap-2 rounded-xl bg-card p-6 max-sm:p-4"
-      >
-        <h2 className="text-base font-semibold">{pair.branchName}</h2>
+      <section key={pair.branchId} aria-label={pair.branchName} className={`grid gap-2 ${PANEL}`}>
+        <h2 className={SECTION_TITLE}>{pair.branchName}</h2>
         <p className="text-sm text-muted-foreground">{shown(pair.minutes)}</p>
         <PairForm key={pair.branchId} pair={pair} />
       </section>
     ));
   } else {
     body = (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t('setup.travelTimes.branch')}</TableHead>
-            <TableHead>{t('setup.travelTimes.minutes')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {list.data.pairs.map((pair) => (
-            <TableRow key={pair.branchId}>
-              <TableCell>{pair.branchName}</TableCell>
-              <TableCell>{shown(pair.minutes)}</TableCell>
+      <div className={PANEL}>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t('setup.travelTimes.branch')}</TableHead>
+              <TableHead>{t('setup.travelTimes.minutes')}</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {list.data.pairs.map((pair) => (
+              <TableRow key={pair.branchId}>
+                <TableCell>{pair.branchName}</TableCell>
+                <TableCell>{shown(pair.minutes)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     );
   }
 
@@ -145,7 +144,7 @@ export function TravelTimesPage() {
           { label: t('setup.title'), to: '/setup' },
         ]}
       />
-      <div className="grid max-w-3xl gap-4">{body}</div>
+      <div className="grid max-w-3xl gap-6">{body}</div>
     </>
   );
 }

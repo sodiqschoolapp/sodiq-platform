@@ -30,6 +30,7 @@ import {
 import { usePreview } from './template-table';
 import { invalidateTemplates } from './templates-api';
 import { schoolDateText } from '@/lib/dates';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 interface SlotTypePanelProps {
   slotType: SlotType;
@@ -126,7 +127,7 @@ export function SlotTypePanel({ slotType, today, canEdit, canArchive }: SlotType
             />
           </RecordForm>
           <section className="grid gap-3">
-            <h3 className="text-base font-semibold">{t('setup.slotTypes.changeLength')}</h3>
+            <h3 className={SECTION_TITLE}>{t('setup.slotTypes.changeLength')}</h3>
             <RecordForm form={lengthForm} label={t('setup.slotTypes.changeLength')}>
               <NumberField
                 label={t('setup.slotTypes.length')}
@@ -142,7 +143,7 @@ export function SlotTypePanel({ slotType, today, canEdit, canArchive }: SlotType
         </>
       )}
       <section className="grid gap-3">
-        <h3 className="text-base font-semibold">{t('setup.slotTypes.lengths')}</h3>
+        <h3 className={SECTION_TITLE}>{t('setup.slotTypes.lengths')}</h3>
         <Table>
           <TableHeader>
             <TableRow>

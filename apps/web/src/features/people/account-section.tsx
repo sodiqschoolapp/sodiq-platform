@@ -51,6 +51,7 @@ import {
   staffAccountQuery,
 } from './people-api';
 import { schoolDateText } from '@/lib/dates';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /** Who gave or ended a role: the name when the server could read it, the login otherwise. */
 const actorText = (actor: Actor): string =>
@@ -117,7 +118,7 @@ export function AccountSection({ staff, label }: { staff: StaffDetail; label: st
 
   return (
     <section className="grid gap-3" aria-labelledby={`account-${staff.id}`}>
-      <h3 id={`account-${staff.id}`} className="text-base font-semibold">
+      <h3 id={`account-${staff.id}`} className={SECTION_TITLE}>
         {t('people.account.title')}
       </h3>
       {body}
@@ -417,7 +418,6 @@ function SubjectsField({
         {t('people.account.subjectsFailed')}{' '}
         <Button
           type="button"
-          size="sm"
           variant="ghost"
           onClick={() => {
             void subjects.refetch();
@@ -437,7 +437,6 @@ function SubjectsField({
       <div>
         <Button
           type="button"
-          size="sm"
           variant="secondary"
           onClick={() => {
             bound.onChange({ target: { value: listValue(options.map((option) => option.value)) } });

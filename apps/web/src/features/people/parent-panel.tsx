@@ -36,6 +36,7 @@ import {
 import { asFormSchema } from './form-schema';
 import { RelativeForm, type TakenPhone } from './relative-form';
 import { momentDateText } from '@/lib/dates';
+import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 
 /** A student as the list of students names them: surname first (finding 27). */
 const studentName = (student: { firstName: string; lastName: string }) => listName(student);
@@ -121,7 +122,7 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
       <HistoryLink kind="relative" id={relative.id} />
       <ReportLink kind="relative" id={relative.id} />
       <section className="grid gap-2">
-        <h3 className="text-base font-semibold">{t('people.relatives.students')}</h3>
+        <h3 className={SECTION_TITLE}>{t('people.relatives.students')}</h3>
         <ul className="grid gap-1 text-sm">
           {relative.students.map((student) => (
             <li key={student.id} className="flex flex-wrap gap-x-2">
@@ -152,7 +153,7 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
       )}
       {relative.canEdit && (
         <section className="grid gap-3">
-          <h3 className="text-base font-semibold">{t('people.relatives.recordTitle')}</h3>
+          <h3 className={SECTION_TITLE}>{t('people.relatives.recordTitle')}</h3>
           <RelativeForm
             key={`${relative.id}-record`}
             relative={relative}
@@ -318,7 +319,7 @@ function TakenChoices({
           {/* Both records side by side, with the students whose links move. */}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1 text-sm">
-              <h4 className="font-semibold">{t('people.relatives.thisRecord')}</h4>
+              <h4 className={SUBSECTION_TITLE}>{t('people.relatives.thisRecord')}</h4>
               <p>{relative.fullName}</p>
               <p>
                 {relative.phone === null
@@ -337,7 +338,7 @@ function TakenChoices({
               )}
             </div>
             <div className="grid gap-1 text-sm">
-              <h4 className="font-semibold">{t('people.relatives.otherRecord')}</h4>
+              <h4 className={SUBSECTION_TITLE}>{t('people.relatives.otherRecord')}</h4>
               <p>{holderName}</p>
               <p>{phoneText(typed)}</p>
               <p className="text-muted-foreground">
@@ -552,7 +553,7 @@ function SamePersonSection({ relative }: { relative: RelativeDetail }) {
   const marked = same !== null || relative.samePersonElsewhere;
   return (
     <section className="grid gap-3" aria-label={t('people.relatives.sameTitle')}>
-      <h3 className="text-base font-semibold">{t('people.relatives.sameTitle')}</h3>
+      <h3 className={SECTION_TITLE}>{t('people.relatives.sameTitle')}</h3>
       {same === null ? (
         <p className="text-sm text-muted-foreground">
           {t(

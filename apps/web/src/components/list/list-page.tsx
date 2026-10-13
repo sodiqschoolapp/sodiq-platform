@@ -402,7 +402,7 @@ export function ListPage<Row>({
   const failed = error !== undefined && error !== null;
 
   return (
-    <div ref={root} className="flex items-start gap-4">
+    <div ref={root} className="flex items-start gap-6">
       {/* On a narrow screen the open record takes the place of the list. */}
       <div className={cn('min-w-0 flex-1 gap-3', openId === undefined ? 'grid' : 'hidden lg:grid')}>
         <div className="flex flex-wrap items-end gap-2">

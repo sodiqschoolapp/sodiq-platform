@@ -2,6 +2,7 @@ import { CloseIcon } from '@/components/icons';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 interface SidePanelProps {
   title: string;
@@ -68,17 +69,13 @@ export function SidePanel({ title, recordKey, onClose, children }: SidePanelProp
       aria-label={title}
       // A white panel on the canvas with a 1 px left border in --border
       // (docs/design-system.md, Patterns, Lists), padding 24.
-      className="w-full min-w-0 rounded-xl border-l bg-card p-6 max-sm:p-4 lg:w-96 lg:shrink-0"
+      className="w-full min-w-0 rounded-xl border-l bg-card p-6 lg:w-96 lg:shrink-0"
     >
       <div className="mb-3 flex items-start gap-2">
-        <h2
-          ref={heading}
-          tabIndex={-1}
-          className="min-w-0 flex-1 text-[1.0625rem]/6 font-bold outline-none"
-        >
+        <h2 ref={heading} tabIndex={-1} className={`min-w-0 flex-1 outline-none ${SECTION_TITLE}`}>
           {title}
         </h2>
-        <Button variant="ghost" size="icon-sm" aria-label={t('list.closePanel')} onClick={onClose}>
+        <Button variant="ghost" size="icon" aria-label={t('list.closePanel')} onClick={onClose}>
           <CloseIcon aria-hidden />
         </Button>
       </div>

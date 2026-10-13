@@ -6,6 +6,7 @@ import {
 } from '@sodiq/shared';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EditIcon } from '@/components/icons';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { Button } from '@/components/ui/button';
 import {
@@ -76,13 +77,25 @@ export function TemplateTableView({
                   <TableCell
                     key={weekday}
                     data-changed={marked ? 'true' : undefined}
-                    className={marked ? 'border-2 border-primary font-semibold' : undefined}
+                    // The info tint with the edit icon and a hidden word: orange is
+                    // never a marker and no information is shown by colour alone
+                    // (docs/design-system.md, What we never do 9, Accessibility;
+                    // pull request #80, decision 5).
+                    className={marked ? 'bg-info-bg font-semibold text-info' : undefined}
                   >
                     {template == null ? (
-                      <span className="text-muted-foreground">{t('setup.templateTable.none')}</span>
+                      <span
+                        className={marked ? 'flex items-center gap-1' : 'text-muted-foreground'}
+                      >
+                        {marked && <EditIcon className="size-4" />}
+                        {t('setup.templateTable.none')}
+                      </span>
                     ) : (
                       <span className="grid">
-                        <span>{template.name}</span>
+                        <span className="flex items-center gap-1">
+                          {marked && <EditIcon className="size-4" />}
+                          {template.name}
+                        </span>
                         <span className="text-xs">
                           {rangeText(t, template.start, template.end)}
                         </span>
@@ -96,6 +109,12 @@ export function TemplateTableView({
           ))}
         </TableBody>
       </Table>
+      {changed.length > 0 && (
+        <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+          <EditIcon className="size-4" />
+          {t('setup.templateTable.changedLegend')}
+        </p>
+      )}
       {showDate && table.weekdays.length > 0 && (
         <p className="mt-2 text-xs text-muted-foreground">
           {t('setup.templateTable.on', { date: schoolDateText(table.date, i18n.language) })}

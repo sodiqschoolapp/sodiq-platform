@@ -7,7 +7,7 @@ import { AccountSection } from './account-section';
 export function PasswordSection() {
   const { t } = useTranslation();
   return (
-    <AccountSection title={t('account.passwordTitle')} text={t('account.passwordText')}>
+    <AccountSection title={t('account.passwordTitle')}>
       <div>
         <Link to="/account/password" className={buttonVariants({ variant: 'secondary' })}>
           {t('layout.changePassword')}

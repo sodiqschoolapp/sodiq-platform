@@ -40,6 +40,7 @@ import {
   smsWarning,
   type ExtraPhoneFields,
 } from './relative-form';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 type AddField =
   | 'owner'
@@ -468,7 +469,7 @@ function AddRelative({
   const option = (value: string, text: string) => ({ value, label: text });
   return (
     <section className="grid gap-3">
-      <h3 className="text-base font-semibold">{t('people.relatives.add')}</h3>
+      <h3 className={SECTION_TITLE}>{t('people.relatives.add')}</h3>
       <RecordForm form={form} label={t('people.relatives.formLabel', { name: studentName })}>
         <CheckboxField
           label={t('people.relatives.noPhone')}

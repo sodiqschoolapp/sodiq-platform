@@ -23,6 +23,7 @@ import { AvailabilitySection } from './availability-section';
 import { invalidateVacancies, vacancyDetailQuery } from './people-api';
 import { VacancyForm } from './vacancy-form';
 import { schoolDateText } from '@/lib/dates';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /**
  * A vacancy in the side panel of the vacancy list (`04`, Vacancy; task 2.2b):
@@ -94,7 +95,7 @@ export function VacancyPanel({
   return (
     <div className="grid gap-6">
       <section className="grid gap-3">
-        <h3 className="text-base font-semibold">{t('people.vacancies.recordTitle')}</h3>
+        <h3 className={SECTION_TITLE}>{t('people.vacancies.recordTitle')}</h3>
         {canEdit ? (
           <VacancyForm
             key={`${vacancy.id}-record`}
@@ -112,14 +113,13 @@ export function VacancyPanel({
       </section>
       <AvailabilitySection id={vacancy.id} label={name} />
       <section className="grid gap-3">
-        <h3 className="text-base font-semibold">{t('people.vacancies.statusTitle')}</h3>
+        <h3 className={SECTION_TITLE}>{t('people.vacancies.statusTitle')}</h3>
         <p className="text-sm">{t(`people.vacancies.statuses.${vacancy.status}`)}</p>
         <History vacancy={vacancy} />
         {canArchive && (
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="secondary"
-              size="sm"
               disabled={status.isPending}
               onClick={() => {
                 status.mutate(vacancy.status === 'open' ? 'close' : 'reopen');
@@ -131,7 +131,6 @@ export function VacancyPanel({
             </Button>
             <Button
               variant="destructive"
-              size="sm"
               disabled={remove.isPending}
               onClick={() => {
                 void confirm({

@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/table';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { invalidateDivisions, nameOf } from './setup-api';
+import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 
 type NameField = keyof Names;
 
@@ -252,7 +253,6 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant={division.archivedAt === null ? 'destructive' : 'secondary'}
-            size="sm"
             disabled={archiveDivision.isPending}
             onClick={() => {
               void askDivision();
@@ -275,7 +275,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
       )}
 
       <section className="grid gap-3">
-        <h3 className="text-base font-semibold">{t('setup.divisions.departmentsTitle')}</h3>
+        <h3 className={SECTION_TITLE}>{t('setup.divisions.departmentsTitle')}</h3>
         {division.departments.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('setup.divisions.noDepartments')}</p>
         ) : (
@@ -346,7 +346,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
                         )}
                       {division.archivedAt === null && (
                         <Button
-                          variant="secondary"
+                          variant={department.archivedAt === null ? 'destructive' : 'secondary'}
                           size="sm"
                           disabled={archiveDepartment.isPending}
                           aria-label={
@@ -373,7 +373,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
         <FailureAlert error={archiveDepartment.error} />
         {canEdit && division.archivedAt === null && (
           <div className="grid gap-2 rounded-lg border p-3">
-            <h4 className="text-sm font-semibold">{t('setup.divisions.addDepartment')}</h4>
+            <h4 className={SUBSECTION_TITLE}>{t('setup.divisions.addDepartment')}</h4>
             <NamesForm
               key={added}
               names={null}

@@ -292,7 +292,7 @@ function PersonalDataRouteView() {
   const { kind, id } = personalDataRoute.useParams();
   const parsed = personalDataKindSchema.safeParse(kind);
   if (!parsed.success) {
-    return <NotFoundPage />;
+    return <NotFoundPage inLayout />;
   }
   // A new person is a new page: the report is produced once per person.
   return <PersonalDataReportPage key={`${parsed.data}:${id}`} kind={parsed.data} id={id} />;

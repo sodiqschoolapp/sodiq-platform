@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/table';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { SETUP_KEY } from './setup-api';
+import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 
 interface BuildingFormProps {
   /** The record as saved; `null` for a new building. */
@@ -219,7 +220,6 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant={building.archivedAt === null ? 'destructive' : 'secondary'}
-            size="sm"
             disabled={archiveBuilding.isPending}
             onClick={() => {
               void askBuilding();
@@ -239,7 +239,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
       )}
 
       <section className="grid gap-3">
-        <h3 className="text-base font-semibold">{t('setup.buildings.floorsTitle')}</h3>
+        <h3 className={SECTION_TITLE}>{t('setup.buildings.floorsTitle')}</h3>
         {building.floors.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('setup.buildings.noFloors')}</p>
         ) : (
@@ -309,7 +309,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
                       )}
                       {building.archivedAt === null && (
                         <Button
-                          variant="secondary"
+                          variant={floor.archivedAt === null ? 'destructive' : 'secondary'}
                           size="sm"
                           disabled={archiveFloor.isPending}
                           aria-label={
@@ -336,7 +336,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
         <FailureAlert error={archiveFloor.error} />
         {canEdit && building.archivedAt === null && (
           <div className="grid gap-2 rounded-lg border p-3">
-            <h4 className="text-sm font-semibold">{t('setup.buildings.addFloor')}</h4>
+            <h4 className={SUBSECTION_TITLE}>{t('setup.buildings.addFloor')}</h4>
             <FloorForm
               key={added}
               floor={null}

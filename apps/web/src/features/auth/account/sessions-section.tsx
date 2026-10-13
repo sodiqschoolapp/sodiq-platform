@@ -128,7 +128,7 @@ export function SessionsSection() {
   }
 
   return (
-    <AccountSection title={t('account.sessionsTitle')} text={t('account.sessionsText')}>
+    <AccountSection title={t('account.sessionsTitle')}>
       {body}
       <FailureAlert error={signOutEverywhere.error} />
       {signedOut !== null && (

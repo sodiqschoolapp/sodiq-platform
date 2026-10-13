@@ -242,8 +242,22 @@ describe('the page of where day templates apply', () => {
       kind: 'assignment_set',
       change: record,
     });
-    expect(dialog.querySelectorAll('[data-changed="true"]')).toHaveLength(11);
-    expect(within(dialog).getByText('11 cells change; they are outlined.')).toBeDefined();
+    const changed = dialog.querySelectorAll('[data-changed="true"]');
+    expect(changed).toHaveLength(11);
+    expect(within(dialog).getByText('11 cells change.')).toBeDefined();
+    // A changed cell is the info tint with the edit icon and a hidden word,
+    // explained by a legend; never an orange outline (pull request #80,
+    // decision 5).
+    for (const cell of changed) {
+      expect(cell.className).toContain('bg-info-bg');
+      expect(cell.className).not.toMatch(/primary/);
+      expect(cell.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+      expect(cell.querySelector('.sr-only')?.textContent).toBe(en.setup.templateTable.changed);
+    }
+    const legend = within(dialog).getByText(en.setup.templateTable.changedLegend);
+    expect(legend.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    const unchanged = dialog.querySelector('td:not([data-changed])');
+    expect(unchanged?.querySelector('svg')).toBeNull();
     fireEvent.click(within(dialog).getByRole('button', { name: en.setup.templateTable.save }));
 
     await waitFor(() => {

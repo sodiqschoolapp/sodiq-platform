@@ -36,7 +36,7 @@ import {
 import { useView } from '@/features/access/use-view';
 import { attendanceValuesQuery, invalidateSettings, settingsQuery } from './settings-api';
 import { cn } from 'cn';
-import { PANEL } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { schoolDateText } from '@/lib/dates';
 
 /** The four grade bands of `03`, Grade bands, in the order the page lists them. */
@@ -45,7 +45,7 @@ const GRADE_BANDS = ['two', 'three', 'four', 'five'] as const;
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section aria-label={title} className={cn(PANEL, 'grid max-w-prose gap-3')}>
-      <h2 className="text-[1.0625rem]/6 font-bold">{title}</h2>
+      <h2 className={SECTION_TITLE}>{title}</h2>
       {children}
     </section>
   );
@@ -234,7 +234,7 @@ function AttendanceValuesSection({ branchId, canEdit }: { branchId: string; canE
   } else {
     body = list.data.years.map((year) => (
       <div key={year.id} className="grid gap-3">
-        <h3 className="text-base font-semibold">{year.name}</h3>
+        <h3 className={SECTION_TITLE}>{year.name}</h3>
         {canEdit ? (
           year.quarters.map((quarter) => {
             const label = t('setup.settings.quarter', { number: quarter.number });

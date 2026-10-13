@@ -14,6 +14,7 @@ import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { DivisionPanel, NamesForm } from './division-panel';
 import { divisionsQuery, invalidateDivisions, nameOf } from './setup-api';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /**
  * What a bulk archive or restore did: how many went through, which were
@@ -217,9 +218,9 @@ export function DivisionsPage() {
       {adding && (
         <section
           aria-label={t('setup.divisions.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6"
         >
-          <h2 className="text-lg font-semibold">{t('setup.divisions.newTitle')}</h2>
+          <h2 className={SECTION_TITLE}>{t('setup.divisions.newTitle')}</h2>
           <NamesForm
             names={null}
             label={t('setup.divisions.newTitle')}

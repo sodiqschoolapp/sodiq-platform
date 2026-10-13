@@ -27,6 +27,7 @@ import { SubjectForm, type DepartmentChoice } from './subject-form';
 import { SubjectPanel } from './subject-panel';
 import { invalidateSubjects, subjectsQuery } from './subjects-api';
 import { weightsText } from './weights-form';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /** What a bulk archive or restore did: how many went through, and the names refused, by reason. */
 interface Outcome {
@@ -310,9 +311,9 @@ export function SubjectsPage() {
       {adding && (
         <section
           aria-label={t('setup.subjects.newTitle')}
-          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6"
         >
-          <h2 className="text-lg font-semibold">{t('setup.subjects.newTitle')}</h2>
+          <h2 className={SECTION_TITLE}>{t('setup.subjects.newTitle')}</h2>
           <SubjectForm
             subject={null}
             departments={choices}

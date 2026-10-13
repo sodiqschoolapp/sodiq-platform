@@ -9,7 +9,6 @@ interface PeopleLink {
   key: string;
   to: LinkProps['to'];
   title: string;
-  text: string;
   /** The area of the permission table the page belongs to. */
   area: string;
 }
@@ -28,14 +27,12 @@ export function PeoplePage() {
       key: 'staff',
       to: '/people/staff',
       title: t('people.staffLink'),
-      text: t('people.staffLinkText'),
       area: 'staff',
     },
     {
       key: 'students',
       to: '/people/students',
       title: t('people.studentsLink'),
-      text: t('people.studentsLinkText'),
       area: 'students',
     },
     // Task 2.5a: the relatives of the students of the branch.
@@ -43,28 +40,24 @@ export function PeoplePage() {
       key: 'parents',
       to: '/people/parents',
       title: t('people.parentsLink'),
-      text: t('people.parentsLinkText'),
       area: 'relatives',
     },
     {
       key: 'vacancies',
       to: '/people/vacancies',
       title: t('people.vacanciesLink'),
-      text: t('people.vacanciesLinkText'),
       area: 'vacancies',
     },
     {
       key: 'head-teachers',
       to: '/people/head-teachers',
       title: t('people.headTeachersLink'),
-      text: t('people.headTeachersLinkText'),
       area: 'head_teachers',
     },
     {
       key: 'never-used',
       to: '/people/never-used',
       title: t('people.neverUsedLink'),
-      text: t('people.neverUsedLinkText'),
       area: 'account_access',
     },
   ];
@@ -77,16 +70,15 @@ export function PeoplePage() {
       {links.length === 0 ? (
         <EmptyState title={t('people.noneTitle')} text={t('people.none')} />
       ) : (
-        <ul aria-label={t('people.title')} className="grid max-w-3xl gap-3">
+        <ul aria-label={t('people.title')} className="grid max-w-3xl gap-6">
           {links.map((link) => (
-            <li key={link.key} className="rounded-xl bg-card p-6 max-sm:p-4">
+            <li key={link.key} className="rounded-xl bg-card p-6">
               <Link
                 to={link.to}
                 className="font-semibold text-link underline-offset-4 hover:underline"
               >
                 {link.title}
               </Link>
-              <p className="mt-1 text-sm text-muted-foreground">{link.text}</p>
             </li>
           ))}
         </ul>

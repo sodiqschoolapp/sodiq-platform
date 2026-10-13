@@ -22,7 +22,7 @@ export function AccountPage() {
   return (
     <>
       <PageHeader title={t('account.title')} />
-      <div className="grid gap-10">
+      <div className="grid gap-6">
         <PhotoSection />
         <LanguageSection />
         <PasswordSection />

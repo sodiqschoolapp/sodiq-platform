@@ -23,6 +23,7 @@ import { useView } from '@/features/access/use-view';
 import { isNamedRefusal } from './building-panel';
 import { RoomForm } from './room-form';
 import { activeFloorsOf, buildingsQuery, roomsQuery, SETUP_KEY } from './setup-api';
+import { SECTION_TITLE } from '@/components/ui/control';
 
 /** The fields of a room as the edit route takes them. */
 const recordOf = (room: Room, status: RoomStatus): RoomRecord => ({
@@ -293,9 +294,9 @@ export function RoomsPage() {
       {adding && (
         <section
           aria-label={t('setup.rooms.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6"
         >
-          <h2 className="text-lg font-semibold">{t('setup.rooms.newTitle')}</h2>
+          <h2 className={SECTION_TITLE}>{t('setup.rooms.newTitle')}</h2>
           <RoomForm
             room={null}
             floors={floors}
