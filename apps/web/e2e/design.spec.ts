@@ -174,8 +174,8 @@ test('the top bar is one row at laptop width, Rooms fits, and More shows Send fe
   ] as const) {
     await page.setViewportSize({ width, height });
     const measured = await widths(page);
-    // One row: no taller than a row of 44 px controls and its padding.
-    expect(measured.bar, `top bar at ${String(width)} px`).toBeLessThanOrEqual(69);
+    // One row, 64 high and its bottom border (docs/design-system.md, Top bar).
+    expect(measured.bar, `top bar at ${String(width)} px`).toBeLessThanOrEqual(65);
     expect(measured.barFits).toBe(true);
     expect(measured.pageFits).toBe(true);
     await screenshot(page, `top-bar-${String(width)}`, SCREENS_27B2);

@@ -555,9 +555,6 @@ const headingsDrawn = (): string[] =>
     .filter((cell) => cell.querySelector('input') === null)
     .map((cell) => cell.textContent ?? '');
 
-// Task 2.2c-1: the Export button of the list, for the Principal too (`02`:
-// "Exports are allowed"), and the columns of the file are those of the screen,
-// with the same headings (`EXPORT_TEXTS` of `packages/shared`).
 // Issue #39, hand test of 13 October 2026, findings 18 and 21 (task 2.7b-2).
 describe('the subjects and languages of a staff member', () => {
   const teachingForm = async () => {
@@ -589,6 +586,26 @@ describe('the subjects and languages of a staff member', () => {
     expect(calls.some((call) => call.route.endsWith('/teaching'))).toBe(false);
   });
 
+  // Review of the build: the languages are a group that must hold one choice.
+  it('says nothing of the languages as they are unticked after a Save, and asks on the next Save', async () => {
+    const calls = openList('academic_vice_principal');
+    const form = await teachingForm();
+    const languages = () =>
+      within(form).getByRole('group', { name: en.people.staff.languagesTitle });
+    fireEvent.click(within(grades(form)).getByLabelText('Grade 5'));
+    fireEvent.click(within(grades(form)).getByLabelText('Grade 6'));
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(within(languages()).getByLabelText(en.people.staff.languages.uz));
+    fireEvent.click(within(languages()).getByLabelText(en.people.staff.languages.ru));
+    expect(within(languages()).queryByText(en.form.required)).toBeNull();
+    expect(within(languages()).queryByText(en.form.chooseOne)).toBeNull();
+
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+    expect(within(languages()).getByText(en.form.chooseOne)).toBeDefined();
+    expect(calls.some((call) => call.route.endsWith('/teaching'))).toBe(false);
+  });
+
   it('keeps "Saved." after a save that changes the subjects', async () => {
     let detail = detailOf(AKMAL);
     openList('academic_vice_principal', {
@@ -612,6 +629,9 @@ describe('the subjects and languages of a staff member', () => {
   });
 });
 
+// Task 2.2c-1: the Export button of the list, for the Principal too (`02`:
+// "Exports are allowed"), and the columns of the file are those of the screen,
+// with the same headings (`EXPORT_TEXTS` of `packages/shared`).
 describe('the export of the staff list', () => {
   it('is offered, and the columns of the screen are those of the file, with its headings', async () => {
     openList('principal');

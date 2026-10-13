@@ -560,8 +560,14 @@ function TeachingForm({
     }),
     // Finding 21: a subject's grades say what is missing on Save, under that
     // subject's grades.
-    checkedOnSave: (Object.keys(initial) as Fields[]).filter(isGradesField),
-    message: (field) => (isGradesField(field) ? t('form.chooseGrade') : undefined),
+    // The languages too: a subject needs one (review of the build, must fix 1).
+    checkedOnSave: [...(Object.keys(initial) as Fields[]).filter(isGradesField), 'languages'],
+    message: (field) =>
+      isGradesField(field)
+        ? t('form.chooseGrade')
+        : field === 'languages'
+          ? t('form.chooseOne')
+          : undefined,
     save: onSave,
   });
   const chosen = listValues(form.bind('subjects').value);

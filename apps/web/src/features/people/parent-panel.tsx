@@ -304,7 +304,12 @@ function TakenChoices({
         {taken.holder.mergeable &&
           choose('merge', t('people.relatives.mergeWith', { name: holderName }))}
         {choose('owner', t('people.relatives.newOwner'))}
-        <Button variant="secondary" onClick={cancel}>
+        {/* Off while a merge or a new owner is on its way: it would land after Cancel. */}
+        <Button
+          variant="secondary"
+          disabled={merge.isPending || owner.status === 'saving'}
+          onClick={cancel}
+        >
           {t('confirm.cancel')}
         </Button>
       </div>

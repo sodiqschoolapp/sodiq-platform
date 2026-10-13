@@ -135,6 +135,23 @@ describe('a field checked on Save', () => {
   });
 });
 
+describe('a field checked on Save, taken away and drawn again', () => {
+  // Review of the build of task 2.7b-2: the group waits for the next Save.
+  it('waits for the next Save', async () => {
+    render(
+      <Wrap>
+        <DaysForm onSave={() => Promise.resolve()} />
+      </Wrap>,
+    );
+    set('more', 'on');
+    await pressSave();
+    expect(message('days')).toBe(en.form.chooseOne);
+    set('more', '');
+    set('more', 'on');
+    expect(message('days')).toBe('');
+  });
+});
+
 /** A record kept by its page; the form follows it and saves into it. */
 function Following({ start }: { start: string }) {
   const [note, setNote] = useState(start);
@@ -156,6 +173,9 @@ function Following({ start }: { start: string }) {
         }}
       >
         elsewhere
+      </button>
+      <button type="button" onClick={form.reset}>
+        reset
       </button>
       <RecordForm form={form} label="Note">
         <Input label="note" binding={form.bind('note')} />
@@ -200,5 +220,19 @@ describe('a form that follows what it shows', () => {
     set('note', 'typing');
     fireEvent.click(screen.getByRole('button', { name: 'elsewhere' }));
     expect(note()).toBe('typing');
+  });
+
+  // Review of the build of task 2.7b-2: a value skipped while typing is taken
+  // once the typing is dropped.
+  it('takes the skipped value once what was typed is dropped', () => {
+    render(
+      <Wrap>
+        <Following start="first" />
+      </Wrap>,
+    );
+    set('note', 'typing');
+    fireEvent.click(screen.getByRole('button', { name: 'elsewhere' }));
+    fireEvent.click(screen.getByRole('button', { name: 'reset' }));
+    expect(note()).toBe('changed elsewhere');
   });
 });

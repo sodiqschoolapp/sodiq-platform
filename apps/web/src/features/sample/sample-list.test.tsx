@@ -61,13 +61,15 @@ const selectedText = (count: number): string =>
 /**
  * The status of the page. The top bar has one of its own (the sign of unsaved
  * changes, task 0.8b-2), so a test looks inside `main`; the selection has its
- * own (`selectionStatus`, task 2.7b-2), so this is the one that is busy.
+ * own (`selectionStatus`, task 2.7b-2), so this is the other one.
  */
-const pageStatus = () =>
-  within(screen.getByRole('main'))
+const pageStatus = (): HTMLElement => {
+  const found = within(screen.getByRole('main'))
     .getAllByRole('status')
-    .filter((status) => status.getAttribute('aria-busy') === 'true')
-    .at(0) ?? null;
+    .filter((status) => status.dataset.slot !== 'selection-status');
+  expect(found).toHaveLength(1);
+  return found[0] as HTMLElement;
+};
 
 /**
  * The one live region of the selection (task 2.7b-2, finding 13): visually
@@ -628,10 +630,6 @@ describe('the states of a list', () => {
     await openList(`${PATH}?demo=loading`);
 
     const outline = pageStatus();
-    expect(outline).not.toBeNull();
-    if (outline === null) {
-      return;
-    }
     expect(outline.getAttribute('aria-busy')).toBe('true');
     expect(within(outline).getByRole('columnheader', { name: en.sample.name })).toBeDefined();
     expect(within(outline).getAllByRole('row')).toHaveLength(9);

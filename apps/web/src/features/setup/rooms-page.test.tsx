@@ -128,7 +128,7 @@ describe('the room list', () => {
 
   // Issue #39, hand test of 13 October 2026, finding 14 (task 2.7b-2, decision
   // 3): at a laptop width the list leaves out Building and Floor first.
-  it('leaves out Building and Floor below 1280 px, and draws them from 1280 px', async () => {
+  it('leaves out Building and Floor below 1280 px', async () => {
     setWindowWidth(1047);
     await openList();
     await waitFor(() => {
@@ -139,6 +139,19 @@ describe('the room list', () => {
       [...document.querySelectorAll('thead th')].map((cell) => cell.textContent ?? '');
     expect(headers()).not.toContain(en.setup.rooms.building);
     expect(headers()).not.toContain(en.setup.rooms.floor);
+  });
+
+  it('draws Building and Floor from 1280 px', async () => {
+    setWindowWidth(1280);
+    await openList();
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(3);
+    });
+    const headers = [...document.querySelectorAll('thead th')].map(
+      (cell) => cell.textContent ?? '',
+    );
+    expect(headers).toContain(en.setup.rooms.building);
+    expect(headers).toContain(en.setup.rooms.floor);
   });
 
   it('filters by status and by floor', async () => {

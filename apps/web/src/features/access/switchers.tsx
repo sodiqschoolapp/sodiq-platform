@@ -18,8 +18,9 @@ export function RoleSwitcher() {
   return (
     <label className="flex min-w-0 items-center gap-1.5 text-sm">
       <span className="sr-only">{t('switcher.role')}</span>
+      {/* Room for the longest role name; shorter only when the bar has no room. */}
       <Select
-        className="max-w-48 min-w-0"
+        className="max-w-72 min-w-0"
         value={role}
         onChange={(event) => {
           if (isRole(event.target.value)) {

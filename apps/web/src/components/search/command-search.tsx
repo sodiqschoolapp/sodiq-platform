@@ -145,7 +145,7 @@ export function CommandSearch() {
             className={cn(
               FIELD,
               'flex items-center gap-2 text-left text-muted-foreground xl:w-64',
-              'max-xl:size-11 max-xl:justify-center max-xl:border-0 max-xl:bg-transparent max-xl:px-0 max-xl:text-foreground max-xl:hover:bg-accent',
+              'max-xl:size-10 max-sm:size-11 max-xl:justify-center max-xl:border-0 max-xl:bg-transparent max-xl:px-0 max-xl:text-foreground max-xl:hover:bg-accent',
             )}
           />
         }

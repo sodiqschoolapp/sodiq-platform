@@ -53,7 +53,12 @@ export function FeedbackButton({ withWord = false }: { withWord?: boolean }) {
         }
       }}
     >
-      <DialogTrigger render={<Button variant="ghost" />}>
+      {/* Icon only below 1280 px: square, as every icon button (docs/design-system.md, Buttons). */}
+      <DialogTrigger
+        render={
+          <Button variant="ghost" className={withWord ? undefined : 'max-xl:size-10 max-xl:px-0'} />
+        }
+      >
         <FeedbackIcon aria-hidden />
         <span className={withWord ? undefined : 'sr-only xl:not-sr-only'}>
           {t('feedback.button')}

@@ -107,19 +107,22 @@ export function AvailabilitySection({ id, label }: { id: string; label: string }
     body = (
       <>
         <Entries entries={data.entries} today={data.today} days={days} />
-        {canEdit && !changing && (
+        {/* The sign is always in the page, so it is read out when it arrives. */}
+        {canEdit && (
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setChanging(true);
-                setSavedFor(null);
-              }}
-            >
-              {t('people.availability.change')}
-            </Button>
-            <SavedSign saved={savedFor === id} />
+            {!changing && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setChanging(true);
+                  setSavedFor(null);
+                }}
+              >
+                {t('people.availability.change')}
+              </Button>
+            )}
+            <SavedSign saved={savedFor === id && !changing} />
           </div>
         )}
         {canEdit && changing && (

@@ -426,6 +426,10 @@ describe('the vacancies', () => {
         closed = true;
         return json(vacancyDetail({ ...OPEN, status: 'closed' }));
       },
+      [`POST /api/people/vacancies/${OPEN.id}/reopen`]: () => {
+        closed = false;
+        return json(vacancyDetail(OPEN));
+      },
       [`POST /api/people/vacancies/${OPEN.id}/delete`]: () => nothing(),
     });
     renderApp(`/people/vacancies?open=${OPEN.id}`);
@@ -434,6 +438,17 @@ describe('the vacancies', () => {
     const reopen = await within(panel).findByRole('button', { name: en.people.vacancies.reopen });
     // Finding 18: the close is said to be saved, beside its button.
     expect(reopen.parentElement?.querySelector('[role="status"]')?.textContent).toBe(en.form.saved);
+    // Reopened: the sign goes while it is on its way and comes with the answer.
+    fireEvent.click(reopen);
+    const closeAgain = await within(panel).findByRole('button', {
+      name: en.people.vacancies.close,
+    });
+    await waitFor(() => {
+      expect(closeAgain.parentElement?.querySelector('[role="status"]')?.textContent).toBe(
+        en.form.saved,
+      );
+    });
+    expect(calls.some((call) => call.route.endsWith('/reopen'))).toBe(true);
     fireEvent.click(within(panel).getByRole('button', { name: en.people.vacancies.delete }));
     const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText(OPEN.name)).toBeDefined();

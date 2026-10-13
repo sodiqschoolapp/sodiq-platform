@@ -23,7 +23,9 @@ interface RecordFormOptions<Field extends string, Values> {
    * Fields that say what is wrong only after a Save pressed while they were
    * drawn, never as they are ticked: the checkbox groups that must hold one
    * choice (issue #39, hand test of 13 October 2026, finding 21; task 2.7b-2,
-   * decision 2). A group drawn after Save was pressed waits for the next Save.
+   * decision 2). Only a field drawn and wrong at the press shows its message;
+   * a group drawn, or turned wrong, after Save was pressed waits for the next
+   * Save, and so does one taken away and drawn again.
    */
   checkedOnSave?: readonly NoInfer<Field>[];
   /**
@@ -84,7 +86,11 @@ export function useRecordForm<Field extends string, Values>({
   const [touched, setTouched] = useState<ReadonlySet<Field>>(new Set());
   const [pressed, setPressed] = useState(false);
   // The fields drawn when Save was last pressed (`checkedOnSave`).
-  const [pressedDrawn, setPressedDrawn] = useState<ReadonlySet<Field>>(new Set());
+  const pressedDrawn = useRef<Set<Field>>(new Set());
+  // Each press of Save draws the form again, so `pressedDrawn` is read.
+  const [, setPresses] = useState(0);
+  // How often the form was reset, for `followInitial` to look again.
+  const [resetCount, setResetCount] = useState(0);
   const [status, setStatus] = useState<FormStatus>('idle');
   const [failure, setFailure] = useState<unknown>(null);
 
@@ -95,7 +101,7 @@ export function useRecordForm<Field extends string, Values>({
 
   const errorOf = (field: Field): string | undefined => {
     const shows = checkedOnSave.includes(field)
-      ? pressedDrawn.has(field)
+      ? pressedDrawn.current.has(field)
       : pressed || touched.has(field);
     if (checked.success || !shows) {
       return undefined;
@@ -144,17 +150,30 @@ export function useRecordForm<Field extends string, Values>({
     setSaved(next);
     setTouched(new Set());
     setPressed(false);
-    setPressedDrawn(new Set());
+    pressedDrawn.current = new Set();
     // Read again once a save is over (`status`): the answer may hold what was
     // sent in the server's own order.
-  }, [followInitial, initialText, status]);
+  }, [followInitial, initialText, status, resetCount]);
 
   // The fields bound in this render: what is drawn when Save is pressed.
   const drawn = new Set<Field>();
+  // A group taken away after a Save waits for the next Save when it is drawn
+  // again: it leaves `pressedDrawn` once a render no longer binds it.
+  // `boundNow` collects the binds of a render; read and emptied once it is on screen.
+  const boundNow = useRef<Set<Field>>(new Set());
+  useEffect(() => {
+    for (const field of pressedDrawn.current) {
+      if (!boundNow.current.has(field)) {
+        pressedDrawn.current.delete(field);
+      }
+    }
+    boundNow.current = new Set();
+  });
 
   return {
     bind: (field) => {
       drawn.add(field);
+      boundNow.current.add(field);
       return {
         name: field,
         value: typed[field],
@@ -184,7 +203,13 @@ export function useRecordForm<Field extends string, Values>({
         return true;
       }
       setPressed(true);
-      setPressedDrawn(new Set(drawn));
+      // Only what was drawn and wrong at this press: a group that turns wrong
+      // later (a subject ticked after a Save) waits for the next Save.
+      const wrong = new Set(
+        checked.success ? [] : checked.error.issues.map((issue) => issue.path[0]),
+      );
+      pressedDrawn.current = new Set([...drawn].filter((field) => wrong.has(field)));
+      setPresses((before) => before + 1);
       if (!checked.success) {
         return false;
       }
@@ -223,11 +248,12 @@ export function useRecordForm<Field extends string, Values>({
     settled: () => flight.current ?? Promise.resolve(),
     reset: () => {
       resets.current += 1;
+      setResetCount((before) => before + 1);
       typedNow.current = savedNow.current;
       setTyped(savedNow.current);
       setTouched(new Set());
       setPressed(false);
-      setPressedDrawn(new Set());
+      pressedDrawn.current = new Set();
       setStatus('idle');
       setFailure(null);
     },
