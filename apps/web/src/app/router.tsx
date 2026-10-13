@@ -10,6 +10,8 @@ import {
 } from '@tanstack/react-router';
 import { HomePage } from '@/features/access/home-page';
 import { AccountPage } from '@/features/auth/account-page';
+import { AuditPage } from '@/features/audit/audit-page';
+import { auditSearch } from '@/features/audit/audit-search';
 import { CodePage } from '@/features/auth/code-page';
 import { ForgotPasswordPage } from '@/features/auth/forgot-password-page';
 import { ResetPasswordPage } from '@/features/auth/reset-password-page';
@@ -254,6 +256,14 @@ const headTeachersRoute = createRoute({
 });
 
 /** The accounts never used of the branch, a section of People (task 2.3c-1). */
+// The Audit log (task 2.6a): the list state and the search the server answers.
+const auditRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/audit',
+  validateSearch: auditSearch,
+  component: AuditPage,
+});
+
 const neverUsedRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/people/never-used',
@@ -357,6 +367,7 @@ const routeTree = rootRoute.addChildren([
     vacanciesRoute,
     headTeachersRoute,
     neverUsedRoute,
+    auditRoute,
     patternsRoute,
   ]),
 ]);

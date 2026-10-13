@@ -8,6 +8,7 @@ import ChevronLeftSvg from '@material-symbols/svg-500/rounded/chevron_left-fill.
 import DarkModeSvg from '@material-symbols/svg-500/rounded/dark_mode-fill.svg?react';
 import ForumSvg from '@material-symbols/svg-500/rounded/forum-fill.svg?react';
 import GridViewSvg from '@material-symbols/svg-500/rounded/grid_view-fill.svg?react';
+import HistorySvg from '@material-symbols/svg-500/rounded/history-fill.svg?react';
 import GroupSvg from '@material-symbols/svg-500/rounded/group-fill.svg?react';
 import HomeSvg from '@material-symbols/svg-500/rounded/home-fill.svg?react';
 import LightModeSvg from '@material-symbols/svg-500/rounded/light_mode-fill.svg?react';
@@ -70,6 +71,7 @@ export const DarkModeIcon = icon(DarkModeSvg);
 export const ForumIcon = icon(ForumSvg);
 export const GridViewIcon = icon(GridViewSvg);
 export const GroupIcon = icon(GroupSvg);
+export const HistoryIcon = icon(HistorySvg);
 export const HomeIcon = icon(HomeSvg);
 export const LightModeIcon = icon(LightModeSvg);
 export const LogoutIcon = icon(LogoutSvg);

@@ -8,6 +8,7 @@ import {
   ForumIcon,
   GridViewIcon,
   GroupIcon,
+  HistoryIcon,
   HomeIcon,
   MenuBookIcon,
   TuneIcon,
@@ -32,6 +33,8 @@ export const MENU_ICONS: Record<MenuItem, Icon> = {
   results: BarChartIcon,
   plans: AssignmentIcon,
   requests: ForumIcon,
+  // Task 2.6a, decision 9 of pull request #75.
+  audit_log: HistoryIcon,
 };
 
 export interface MenuPage {
@@ -51,7 +54,8 @@ export interface MenuPage {
  * The pages of the menu that are built. A menu item appears only when its page
  * exists (decided by the owner at the plan of task 0.8c); each later task adds
  * its item here with its page, and the menu table of `packages/shared` already
- * says which roles see it. `setup` came with task 1.1, `people` with 2.2a.
+ * says which roles see it. `setup` came with task 1.1, `people` with 2.2a,
+ * `audit_log` with 2.6a.
  */
 export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
   home: { titleKey: 'menu.home', to: '/', icon: MENU_ICONS.home },
@@ -66,6 +70,8 @@ export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
     // Tutor only the students (task 2.4a).
     areas: ['staff', 'head_teachers', 'students'],
   },
+  // The Audit log (task 2.6a): the area `audit_log` of the same name decides who sees it.
+  audit_log: { titleKey: 'menu.audit_log', to: '/audit', icon: MENU_ICONS.audit_log },
 };
 
 export const BUILT_ITEMS: ReadonlySet<MenuItem> = new Set(

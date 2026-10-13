@@ -308,9 +308,11 @@ export const auditEntrySchema = z.object({
   assignment: z.object({ id: z.uuid(), role: roleSchema }).nullable(),
   person: namedSchema.nullable(),
   record: z.object({ type: z.string(), id: z.uuid(), name: z.string().nullable() }).nullable(),
-  oldValue: z.json().nullable(),
-  newValue: z.json().nullable(),
-  details: z.json().nullable(),
+  // Stored JSON as written by each route; `z.json()` is recursive, which the
+  // generated client of OpenAPI cannot follow.
+  oldValue: z.unknown(),
+  newValue: z.unknown(),
+  details: z.unknown(),
   reason: z.string().nullable(),
   /** The paths of the values hidden from this reader, `oldValue.birthDate`; a Show reveals them. */
   hidden: z.array(z.string()),

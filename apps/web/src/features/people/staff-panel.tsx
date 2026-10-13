@@ -38,6 +38,7 @@ import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
+import { HistoryLink } from '@/features/audit/history-link';
 import { useView } from '@/features/access/use-view';
 import { nameOf, schoolDateText } from '@/features/setup/setup-api';
 import { AccountAccessSection } from './account-access-section';
@@ -147,6 +148,7 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
     <div className="grid gap-6">
       <PhotoSection staff={staff} name={name} onChange={refresh} />
       <Overview staff={staff} divisions={divisions} />
+      <HistoryLink kind="staff" id={staff.id} />
       {staff.rights.contact && (
         <section className="grid gap-3">
           <h3 className="text-base font-semibold">{t('people.staff.recordTitle')}</h3>

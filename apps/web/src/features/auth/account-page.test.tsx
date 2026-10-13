@@ -71,6 +71,7 @@ function openAccount(handlers: Record<string, Handler> = {}) {
     'GET /api/auth/sessions': () => json({ sessions: [LAPTOP, PHONE, CLASSROOM] }),
     'GET /api/auth/trusted-devices': () => json({ devices: [device(LAPTOP), device(CLASSROOM)] }),
     'GET /api/auth/second-step': () => json(OFF),
+    'GET /api/auth/sign-in-history': () => json({ events: [], next: null }),
     ...handlers,
   });
   const shell = renderApp('/account');
@@ -619,5 +620,65 @@ describe('the own photo on the account page', () => {
     await screen.findByRole('region', { name: en.account.languageTitle });
     expect(screen.queryByRole('region', { name: en.account.photoTitle })).toBeNull();
     expect(calls.some((call) => call.route === 'GET /api/auth/photo')).toBe(false);
+  });
+});
+
+// Edge cases, Personal data and the audit log: "every user sees their own
+// sign-in history" (task 2.6a, decisions 10 and 11). All names are invented.
+describe('the sign-in history on the account page', () => {
+  const event = (n: number, action: string, by: string | null = null) => ({
+    id: `0199a000-0000-7000-8000-0000000001${String(n).padStart(2, '0')}`,
+    occurredAt: `2026-10-0${String((n % 9) + 1)}T06:00:00.000Z`,
+    action,
+    by,
+    browser: action === 'auth.sign_in' ? 'Firefox on a laptop' : null,
+  });
+
+  it('lists the events with the administrator who acted, and loads the next page', async () => {
+    let asked = 0;
+    const { calls } = openAccount({
+      'GET /api/auth/sign-in-history': () =>
+        (asked += 1) === 1
+          ? json({
+              events: [
+                event(1, 'auth.sign_in'),
+                event(2, 'account.password_reset', 'Saidova Dilnoza'),
+              ],
+              next: '2026-10-03T06:00:00.000Z_0199a000-0000-7000-8000-000000000102',
+            })
+          : json({ events: [event(3, 'auth.sign_out')], next: null }),
+    });
+    await heading(en.account.title);
+    const history = section(en.account.signInHistoryTitle);
+    const rows = await history.findAllByRole('row');
+    expect(rows).toHaveLength(3);
+    const cells = (row: HTMLElement | undefined) =>
+      [...(row?.querySelectorAll('td') ?? [])].map((cell) => cell.textContent);
+    expect(cells(rows[1]).slice(1)).toEqual([
+      en.audit.actions.auth.sign_in,
+      '',
+      'Firefox on a laptop',
+    ]);
+    expect(cells(rows[2]).slice(1)).toEqual([
+      en.audit.actions.account.password_reset,
+      'Saidova Dilnoza',
+      '',
+    ]);
+    fireEvent.click(history.getByRole('button', { name: en.list.loadMore }));
+    expect(await history.findByText(en.audit.actions.auth.sign_out)).toBeDefined();
+    expect(history.queryByRole('button', { name: en.list.loadMore })).toBeNull();
+    const asks = calls.filter((call) => call.route === 'GET /api/auth/sign-in-history');
+    expect(asks.map((call) => call.query)).toEqual([
+      undefined,
+      '?before=2026-10-03T06%3A00%3A00.000Z_0199a000-0000-7000-8000-000000000102',
+    ]);
+  });
+
+  it('says when nothing is recorded', async () => {
+    openAccount();
+    await heading(en.account.title);
+    expect(
+      await section(en.account.signInHistoryTitle).findByText(en.account.signInEmpty),
+    ).toBeDefined();
   });
 });

@@ -50,6 +50,7 @@ interface HarnessProps {
   exportExtras?: ExportExtra[];
   actions?: BulkAction<Room>[];
   panel?: (row: Room) => React.ReactNode;
+  more?: { onMore: () => void; loading: boolean };
 }
 
 /** A list whose address is a piece of state. */
@@ -62,6 +63,7 @@ function Harness({
   exportExtras,
   actions,
   panel,
+  more,
 }: HarnessProps) {
   const [search, setSearch] = useState(start);
   return (
@@ -81,6 +83,7 @@ function Harness({
       exportState={exportState}
       exportExtras={exportExtras}
       panel={panel}
+      more={more}
     />
   );
 }
@@ -324,5 +327,28 @@ describe('the export-only columns of a list', () => {
   it('draws no "Also export" without groups', () => {
     show({ rows: ROOMS, onExport: () => undefined });
     expect(screen.queryByRole('button', { name: en.list.exportAlso })).toBeNull();
+  });
+});
+
+// Task 2.6a: a list whose rows come from the server a page at a time.
+describe('a list with server paging', () => {
+  it('asks for the next page, and says so while it comes', () => {
+    const onMore = vi.fn();
+    const { rerender } = show({ rows: ROOMS, more: { onMore, loading: false } });
+    fireEvent.click(screen.getByRole('button', { name: en.list.loadMore }));
+    expect(onMore).toHaveBeenCalledTimes(1);
+    rerender(
+      <I18nextProvider i18n={i18n}>
+        <Harness rows={ROOMS} more={{ onMore, loading: true }} />
+      </I18nextProvider>,
+    );
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: en.app.loading }).disabled).toBe(
+      true,
+    );
+  });
+
+  it('offers no next page without one', () => {
+    show({ rows: ROOMS });
+    expect(screen.queryByRole('button', { name: en.list.loadMore })).toBeNull();
   });
 });

@@ -311,9 +311,9 @@ export class AuditEntries {
           row.record_type === null || row.record_id === null
             ? null
             : { type: row.record_type, id: row.record_id, name: names.get(row.record_id) ?? null },
-        oldValue: values.oldValue as AuditEntryAnswer['oldValue'],
-        newValue: values.newValue as AuditEntryAnswer['newValue'],
-        details: values.details as AuditEntryAnswer['details'],
+        oldValue: values.oldValue,
+        newValue: values.newValue,
+        details: values.details,
         reason: row.reason,
         hidden: values.hidden,
       };

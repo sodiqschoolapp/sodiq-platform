@@ -1424,30 +1424,9 @@
                             ],
                             "additionalProperties": false
                           },
-                          "oldValue": {
-                            "nullable": true,
-                            "allOf": [
-                              {
-                                "$ref": "#/definitions/__schema0"
-                              }
-                            ]
-                          },
-                          "newValue": {
-                            "nullable": true,
-                            "allOf": [
-                              {
-                                "$ref": "#/definitions/__schema1"
-                              }
-                            ]
-                          },
-                          "details": {
-                            "nullable": true,
-                            "allOf": [
-                              {
-                                "$ref": "#/definitions/__schema2"
-                              }
-                            ]
-                          },
+                          "oldValue": {},
+                          "newValue": {},
+                          "details": {},
                           "reason": {
                             "nullable": true,
                             "type": "string"
@@ -1498,105 +1477,7 @@
                     "from",
                     "to"
                   ],
-                  "additionalProperties": false,
-                  "definitions": {
-                    "__schema0": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "string",
-                          "nullable": true,
-                          "enum": [
-                            null
-                          ]
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/definitions/__schema0"
-                          }
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "$ref": "#/definitions/__schema0"
-                          }
-                        }
-                      ]
-                    },
-                    "__schema1": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "string",
-                          "nullable": true,
-                          "enum": [
-                            null
-                          ]
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/definitions/__schema1"
-                          }
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "$ref": "#/definitions/__schema1"
-                          }
-                        }
-                      ]
-                    },
-                    "__schema2": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "string",
-                          "nullable": true,
-                          "enum": [
-                            null
-                          ]
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/definitions/__schema2"
-                          }
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "$ref": "#/definitions/__schema2"
-                          }
-                        }
-                      ]
-                    }
-                  }
+                  "additionalProperties": false
                 }
               }
             }
@@ -2003,30 +1884,9 @@
                       ],
                       "additionalProperties": false
                     },
-                    "oldValue": {
-                      "nullable": true,
-                      "allOf": [
-                        {
-                          "$ref": "#/definitions/__schema0"
-                        }
-                      ]
-                    },
-                    "newValue": {
-                      "nullable": true,
-                      "allOf": [
-                        {
-                          "$ref": "#/definitions/__schema1"
-                        }
-                      ]
-                    },
-                    "details": {
-                      "nullable": true,
-                      "allOf": [
-                        {
-                          "$ref": "#/definitions/__schema2"
-                        }
-                      ]
-                    },
+                    "oldValue": {},
+                    "newValue": {},
+                    "details": {},
                     "reason": {
                       "nullable": true,
                       "type": "string"
@@ -2053,105 +1913,7 @@
                     "reason",
                     "hidden"
                   ],
-                  "additionalProperties": false,
-                  "definitions": {
-                    "__schema0": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "string",
-                          "nullable": true,
-                          "enum": [
-                            null
-                          ]
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/definitions/__schema0"
-                          }
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "$ref": "#/definitions/__schema0"
-                          }
-                        }
-                      ]
-                    },
-                    "__schema1": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "string",
-                          "nullable": true,
-                          "enum": [
-                            null
-                          ]
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/definitions/__schema1"
-                          }
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "$ref": "#/definitions/__schema1"
-                          }
-                        }
-                      ]
-                    },
-                    "__schema2": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "string",
-                          "nullable": true,
-                          "enum": [
-                            null
-                          ]
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/definitions/__schema2"
-                          }
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "$ref": "#/definitions/__schema2"
-                          }
-                        }
-                      ]
-                    }
-                  }
+                  "additionalProperties": false
                 }
               }
             }
