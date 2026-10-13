@@ -186,8 +186,7 @@ describe('the branch page', () => {
     });
     renderApp(PATH);
     await screen.findByRole('form', { name: 'North' });
-    const days = () =>
-      within(form()).getByRole('group', { name: en.setup.branch.workingWeekdays });
+    const days = () => within(form()).getByRole('group', { name: en.setup.branch.workingWeekdays });
 
     for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']) {
       fireEvent.click(within(form()).getByLabelText(day));

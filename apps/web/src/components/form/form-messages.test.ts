@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { wholeNumber } from './form-messages';
+import { createI18n } from '@/i18n/i18n';
+import { en } from '@/i18n/locales/en';
+import { formMessage, wholeNumber } from './form-messages';
 
 // CLAUDE.md: typed scores and totals are whole numbers.
 describe('what is typed into a field for a whole number', () => {
@@ -21,5 +23,16 @@ describe('what is typed into a field for a whole number', () => {
     }
     // Too long to be held exactly.
     expect(wholeNumber('1234567890123456')).toBe('1234567890123456');
+  });
+});
+
+// Issue #39, hand test of 13 October 2026, finding 21: a checkbox group with
+// too few choices said "Fill in this field." or "Enter at least … characters".
+describe('the message of a group of choices with too few', () => {
+  it('says to choose at least one', () => {
+    const t = createI18n('en').t;
+    const issue = { code: 'too_small', origin: 'array', minimum: 1, path: ['grades'] };
+    expect(formMessage(t, 'en', issue, '')).toBe(en.form.chooseOne);
+    expect(formMessage(t, 'en', { ...issue, minimum: 2 }, '5')).toBe(en.form.chooseOne);
   });
 });

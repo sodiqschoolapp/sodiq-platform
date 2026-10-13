@@ -2,6 +2,7 @@ import { EXPORT_TEXTS, ROOM_EXPORT_COLUMNS, type Building, type Room } from '@so
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import { setWindowWidth } from '@/testing/window-width';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const PATH = '/setup/rooms';
@@ -123,6 +124,21 @@ describe('the room list', () => {
       ['102', 'Main', '1', 'Laboratory', '28', 'Under repair', 'No'],
       ['Sports hall', 'Main', 'Ground', 'Sports hall', '120', 'Closed', '2 lessons at once'],
     ]);
+  });
+
+  // Issue #39, hand test of 13 October 2026, finding 14 (task 2.7b-2, decision
+  // 3): at a laptop width the list leaves out Building and Floor first.
+  it('leaves out Building and Floor below 1280 px, and draws them from 1280 px', async () => {
+    setWindowWidth(1047);
+    await openList();
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(3);
+    });
+    expect(rowsDrawn()[0]?.slice(1)).toEqual(['101', 'Classroom', '28', 'In use', 'No']);
+    const headers = () =>
+      [...document.querySelectorAll('thead th')].map((cell) => cell.textContent ?? '');
+    expect(headers()).not.toContain(en.setup.rooms.building);
+    expect(headers()).not.toContain(en.setup.rooms.floor);
   });
 
   it('filters by status and by floor', async () => {

@@ -374,9 +374,7 @@ describe('the checkboxes and bulk actions of a list', () => {
     expect(selectionStatus().textContent).toBe(selectedText(2));
     // The count in the bar is plain text, not a second status.
     expect(within(bar()).queryByRole('status')).toBeNull();
-    expect(bar().querySelector('[data-slot="selection-count"]')?.textContent).toBe(
-      selectedText(2),
-    );
+    expect(bar().querySelector('[data-slot="selection-count"]')?.textContent).toBe(selectedText(2));
     expect(archive().disabled).toBe(false);
     expect(clear().disabled).toBe(false);
     expect(tickAll().indeterminate).toBe(true);
