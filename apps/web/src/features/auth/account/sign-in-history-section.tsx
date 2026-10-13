@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { ErrorState, LoadingOutline } from '@/components/states';
+import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -32,7 +32,7 @@ export function SignInHistorySection() {
   if (events !== undefined) {
     body =
       events.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('account.signInEmpty')}</p>
+        <EmptyState text={t('account.signInEmpty')} />
       ) : (
         <Table>
           <TableHeader>

@@ -1460,6 +1460,9 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "chooseScope": {
+                      "type": "boolean"
+                    },
                     "from": {
                       "type": "string",
                       "format": "date",
@@ -1474,6 +1477,7 @@
                   "required": [
                     "entries",
                     "next",
+                    "chooseScope",
                     "from",
                     "to"
                   ],

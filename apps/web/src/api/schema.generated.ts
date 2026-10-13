@@ -3015,6 +3015,7 @@ export interface operations {
                             hidden: string[];
                         }[];
                         next: string | null;
+                        chooseScope: boolean;
                         /** Format: date */
                         from: string;
                         /** Format: date */

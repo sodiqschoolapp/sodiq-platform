@@ -745,3 +745,15 @@ describe('the extra phones and the same person of a relative', () => {
     ).toBeDefined();
   });
 });
+
+// Task 2.6a, pull request #75: "History" on the panel of a parent.
+describe('the History link of a parent', () => {
+  it('opens the log about the parent for the Principal', async () => {
+    openList('principal');
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Dilfuza Rahimova', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Dilfuza Rahimova' });
+    const link = await within(panel).findByRole('link', { name: en.audit.history });
+    expect(link.getAttribute('href')).toBe(`/audit?person=relative%3A${DILFUZA.id}`);
+  });
+});

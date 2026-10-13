@@ -15,6 +15,7 @@ import { DateField, SelectField } from '@/components/field';
 import { ListPage } from '@/components/list/list-page';
 import { type Column, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
+import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { formatMoment } from '@/features/auth/moments';
@@ -53,7 +54,15 @@ function usePeople(kind: AuditPersonKind | undefined, branchId: string | null) {
         : kind === 'relative'
           ? relatives.data?.relatives.map((one) => ({ id: one.id, name: one.fullName }))
           : [];
-  return (people ?? []).sort((a, b) => a.name.localeCompare(b.name));
+  // The list the filter reads, so that it tells loading from failure.
+  const active = kind === 'staff' ? staff : kind === 'student' ? students : relatives;
+  return {
+    people: people?.sort((a, b) => a.name.localeCompare(b.name)),
+    error: kind === undefined ? null : active.error,
+    retry: () => {
+      void active.refetch();
+    },
+  };
 }
 
 /**
@@ -68,15 +77,24 @@ export function AuditPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const search: AuditSearch = useSearch({ from: '/app/audit' });
-  const { branchId, branches, role } = useView();
+  const { branchId, branches } = useView();
   const filters = filtersOf(search);
   const entries = useInfiniteQuery(auditEntriesQuery(branchId, filters));
   const first = entries.data?.pages[0];
   const rows = useMemo(() => entries.data?.pages.flatMap((page) => page.entries), [entries.data]);
-  const superAdmin = role === 'super_admin';
+  // The server says whether the reader may choose the log (not the role shown).
+  const superAdmin = first?.chooseScope === true;
   const person = personOf(search.person);
   const kind = person?.kind ?? search.personKind;
   const people = usePeople(kind, branchId);
+  const options = people.people ?? [];
+  // A person of the address that the list does not hold (another branch's,
+  // or one who left it) stays chosen, named as such: the field shows what the
+  // server searches.
+  const elsewhere =
+    person !== undefined &&
+    people.people !== undefined &&
+    !options.some((one) => one.id === person.id);
 
   const setFilters = (patch: Partial<AuditSearch>): void => {
     const next: Record<string, unknown> = { ...search, ...patch, open: undefined };
@@ -220,9 +238,17 @@ export function AuditPage() {
           <SelectField
             label={t('audit.person')}
             value={person?.id ?? ''}
+            disabled={people.people === undefined && people.error === null}
             options={[
-              { value: '', label: t('audit.choose') },
-              ...people.map((one) => ({ value: one.id, label: one.name })),
+              {
+                value: '',
+                label:
+                  people.people === undefined && people.error === null
+                    ? t('app.loading')
+                    : t('audit.choose'),
+              },
+              ...(elsewhere ? [{ value: person.id, label: t('audit.personElsewhere') }] : []),
+              ...options.map((one) => ({ value: one.id, label: one.name })),
             ]}
             onChange={(event) => {
               setFilters(
@@ -233,6 +259,7 @@ export function AuditPage() {
             }}
           />
         )}
+        {people.error !== null && <ErrorState error={people.error} onRetry={people.retry} />}
         {recordFilter !== null && (
           <div className="flex items-center gap-2 text-sm">
             <span>{t('audit.onlyRecordOf', { name: recordFilter })}</span>

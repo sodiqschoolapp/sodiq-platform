@@ -1,7 +1,11 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   apiErrorSchema,
   auditEntrySchema,
   auditPageSchema,
+  SIGN_IN_HISTORY_ACTIONS,
   signInHistorySchema,
   studentDetailSchema,
   type AuditEntryAnswer,
@@ -15,7 +19,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import type { Json } from '../../database/types.generated.js';
 import { relativesInput } from '../../testing/relatives-kit.js';
-import { errorCode, NEW_PASSWORD } from '../../testing/sign-in-kit.js';
+import { cookieOf, errorCode, NEW_PASSWORD } from '../../testing/sign-in-kit.js';
+import { createTestDatabase } from '../../testing/test-database.js';
 import { staffIdOf } from '../people/staff-numbers.js';
 
 // All names, numbers and addresses are invented. docs/spec/edge-cases/
@@ -282,6 +287,11 @@ describe('the audit log page', () => {
     });
 
     it('gives the Super Admin every branch and the school-wide log by scope', async () => {
+      // The page follows this answer for the choice of log, not the role shown.
+      expect(page(await t.get('/api/audit/entries', t.north, t.admin)).chooseScope).toBe(true);
+      expect(page(await t.get('/api/audit/entries', t.north, principalAndVice)).chooseScope).toBe(
+        false,
+      );
       expect(ids(await readAll({ ...ofRecord(record), scope: 'all' }, t.admin))).toEqual(
         [northEntry, southEntry, schoolEntry].sort(),
       );
@@ -957,18 +967,85 @@ describe('the audit log page', () => {
     });
 
     it('answers no name while a sign-in step is still owed, and nothing without a session', async () => {
-      const browser = await t.kit.firstSession('Kamola', 'Hasanova');
-      const vice = await viceAccount();
-      await entry({
-        branch: t.north,
-        action: 'account.password_reset',
-        actor: vice,
-        record: { type: 'account', id: browser.account.id },
-      });
-      const owed = await t.kit.get('/api/auth/sign-in-history', browser.cookie);
-      expect(owed.status).not.toBe(200);
-      expect(JSON.stringify(owed.body)).not.toContain('Saidova');
+      // An administrator with a name of their own, written here: the refusal
+      // must hold no name whatever ran before.
+      const admin = (await t.kit.newAccount('Gavhar', 'Jalilova')).id;
+      await personOf(admin, t.north, 'Gavhar', 'Jalilova');
+      const resetOf = (accountId: string) =>
+        entry({
+          branch: t.north,
+          action: 'account.password_reset',
+          actor: admin,
+          record: { type: 'account', id: accountId },
+        });
+
+      // A first password not yet changed.
+      const first = await t.kit.firstSession('Kamola', 'Hasanova');
+      await resetOf(first.account.id);
+      const owedPassword = await t.kit.get('/api/auth/sign-in-history', first.cookie);
+      refusedWith(owedPassword, 403, 'password_change_required');
+      expect(JSON.stringify(owedPassword.body)).not.toContain('Jalilova');
+
+      // A second step set up and not yet passed at a new sign-in.
+      const complete = await t.kit.completeSession('Doniyor', 'Saidov');
+      await resetOf(complete.account.id);
+      const again = await t.kit.signIn(complete.account.login, NEW_PASSWORD);
+      expect(again.status).toBe(200);
+      const pending = cookieOf(again);
+      if (pending === undefined) {
+        throw new Error('The sign-in gives a session cookie.');
+      }
+      const owedStep = await t.kit.get('/api/auth/sign-in-history', pending);
+      refusedWith(owedStep, 403, 'second_step_required');
+      expect(JSON.stringify(owedStep.body)).not.toContain('Jalilova');
+      // The same account, its step passed, reads the name.
+      const passed = await history(complete.cookie);
+      expect(passed.events.some((event) => event.by === 'Jalilova Gavhar')).toBe(true);
+
       refusedWith(await t.kit.get('/api/auth/sign-in-history'), 401, 'not_signed_in');
     });
+  });
+});
+
+// Pull request #75, spec review of the build: the two copies of the events of
+// the own history, the SQL of 0039 and SIGN_IN_HISTORY_ACTIONS, are the same;
+// and only the tests write the `test.*` actions that have no name on screen.
+describe('the lists of the audit log', () => {
+  it('holds the same events of the own history in the database and in packages/shared', async () => {
+    const database = await createTestDatabase();
+    try {
+      const found = await sql<{ definition: string }>`
+        select pg_get_functiondef('own_sign_in_history'::regproc) as definition
+      `.execute(database.migrator);
+      const definition = found.rows[0]?.definition ?? '';
+      const listed = definition.slice(definition.indexOf('e.action in ('));
+      const actions = [...listed.slice(0, listed.indexOf(')')).matchAll(/'([a-z_.]+)'/g)].map(
+        (match) => match[1],
+      );
+      expect([...actions].sort()).toEqual([...SIGN_IN_HISTORY_ACTIONS].sort());
+    } finally {
+      await database.destroy();
+    }
+  });
+
+  it('writes a test action from the tests only', () => {
+    const root = fileURLToPath(new URL('../..', import.meta.url));
+    const offending: string[] = [];
+    const walk = (folder: string): void => {
+      for (const item of readdirSync(folder, { withFileTypes: true })) {
+        const full = path.join(folder, item.name);
+        if (item.isDirectory()) {
+          if (item.name !== 'testing') {
+            walk(full);
+          }
+        } else if (item.name.endsWith('.ts') && !item.name.endsWith('.test.ts')) {
+          if (/action:\s*[`'"]test\./.test(readFileSync(full, 'utf8'))) {
+            offending.push(path.relative(root, full));
+          }
+        }
+      }
+    };
+    walk(root);
+    expect(offending).toEqual([]);
   });
 });

@@ -255,7 +255,6 @@ const headTeachersRoute = createRoute({
   component: HeadTeachersPage,
 });
 
-/** The accounts never used of the branch, a section of People (task 2.3c-1). */
 // The Audit log (task 2.6a): the list state and the search the server answers.
 const auditRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -264,6 +263,7 @@ const auditRoute = createRoute({
   component: AuditPage,
 });
 
+/** The accounts never used of the branch, a section of People (task 2.3c-1). */
 const neverUsedRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/people/never-used',

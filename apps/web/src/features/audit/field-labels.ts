@@ -95,17 +95,135 @@ const SUBJECT: Record<string, ParseKeys> = {
   journalType: 'setup.subjects.journalType',
 };
 
+const YEAR: Record<string, ParseKeys> = {
+  name: 'setup.years.name',
+  startDate: 'setup.years.startDate',
+  endDate: 'setup.years.endDate',
+  status: 'setup.years.status',
+  quarters: 'setup.years.quarters',
+};
+
+const CALENDAR: Record<string, ParseKeys> = {
+  name: 'setup.calendar.name',
+  kind: 'setup.calendar.kind',
+  firstDate: 'setup.calendar.firstDate',
+  lastDate: 'setup.calendar.lastDate',
+  gradeFrom: 'setup.calendar.gradeFrom',
+  gradeTo: 'setup.calendar.gradeTo',
+  examWeek: 'setup.calendar.examWeek',
+};
+
+const SLOT_TYPE: Record<string, ParseKeys> = {
+  name: 'setup.slotTypes.name',
+  kind: 'setup.slotTypes.kind',
+  length: 'setup.slotTypes.length',
+  validFrom: 'setup.slotTypes.from',
+  validUntil: 'setup.slotTypes.until',
+};
+
+const DAY_TEMPLATE: Record<string, ParseKeys> = {
+  name: 'setup.dayTemplates.name',
+  slots: 'setup.dayTemplates.slots',
+  startTime: 'setup.dayTemplates.startTime',
+  validFrom: 'setup.dayTemplates.from',
+  validUntil: 'setup.dayTemplates.until',
+  weekday: 'setup.templateSettings.weekday',
+  gradeFrom: 'setup.templateSettings.gradeFrom',
+  gradeTo: 'setup.templateSettings.gradeTo',
+};
+
+const BRANCH: Record<string, ParseKeys> = {
+  name: 'setup.branch.name',
+  address: 'setup.branch.address',
+  phone: 'setup.branch.phone',
+  email: 'setup.branch.email',
+  workingWeekdays: 'setup.branch.workingWeekdays',
+  timeZone: 'setup.branch.timeZone',
+  goLiveDate: 'setup.branch.goLiveDate',
+  minutes: 'setup.travelTimes.minutes',
+};
+
+const SETTINGS: Record<string, ParseKeys> = {
+  editDays: 'setup.settings.editDays',
+  lateValue: 'setup.settings.lateValue',
+  skippedValue: 'setup.settings.skippedValue',
+};
+
+const VACANCY: Record<string, ParseKeys> = {
+  name: 'people.vacancies.name',
+  department: 'people.vacancies.department',
+  departmentId: 'people.vacancies.department',
+  subjects: 'people.vacancies.subjects',
+  weeklyLessons: 'people.staff.weeklyLessons',
+  dailyLessons: 'people.staff.dailyLessons',
+  languages: 'people.staff.languagesTitle',
+  status: 'people.vacancies.statusTitle',
+};
+
+const ACCOUNT: Record<string, ParseKeys> = {
+  login: 'people.account.login',
+  role: 'people.account.role',
+  branchId: 'people.account.branch',
+  validUntil: 'people.account.validUntil',
+};
+
 const LABELS: Record<string, Record<string, ParseKeys>> = {
   student: STUDENT,
   staff: STAFF,
   relative: RELATIVE,
   room: ROOM,
   building: { name: 'setup.buildings.name', status: 'setup.buildings.status' },
-  floor: { name: 'setup.buildings.name' },
+  floor: { name: 'setup.rooms.floor' },
   division: NAMED,
   department: NAMED,
   subject: SUBJECT,
+  subject_daily_weights: SUBJECT,
+  subject_quarter_weights: SUBJECT,
+  academic_year: YEAR,
+  quarters: YEAR,
+  calendar_entry: CALENDAR,
+  slot_type: SLOT_TYPE,
+  day_template: DAY_TEMPLATE,
+  day_template_assignment: DAY_TEMPLATE,
+  branch: BRANCH,
+  travel_time: BRANCH,
+  settings: SETTINGS,
+  quarter: SETTINGS,
+  vacancy: VACANCY,
+  account: ACCOUNT,
+  assignment: ACCOUNT,
 };
+
+/**
+ * The stored codes of a field shown in the language of the page (spec review
+ * of the build: a code is not a word): the field's key to the place of its
+ * names in the locale files. Codes of other fields are shown as stored.
+ */
+const CODES: Record<string, string> = {
+  sex: 'people.staff.sexes',
+  relationship: 'people.relatives.relationships',
+  role: 'roles',
+  educationLevel: 'people.staff.educationLevels',
+  contractType: 'people.staff.contractTypes',
+  documentType: 'people.students.documentTypes',
+  region: 'people.students.regions',
+  scholarshipType: 'people.students.scholarshipTypes',
+  scholarshipCoverage: 'people.students.scholarshipCoverages',
+  journalType: 'setup.subjects.journalTypes',
+};
+
+/** Where the names of the stored codes of a field are, for a record type. */
+export function codesOf(type: string, key: string): string | undefined {
+  const field = camelCase(key);
+  if (field === 'status') {
+    return type === 'student'
+      ? 'people.students.statuses'
+      : type === 'staff'
+        ? 'people.staff.statuses'
+        : undefined;
+  }
+  return CODES[field];
+}
 
 /** The record type of the fields of an entry: its record, else the start of its action. */
 export function fieldsTypeOf(action: string, recordType: string | null): string {

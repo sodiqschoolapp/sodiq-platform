@@ -324,6 +324,11 @@ export const auditPageSchema = z.object({
   entries: z.array(auditEntrySchema),
   /** The cursor of the next page, `null` on the last. */
   next: z.string().nullable(),
+  /**
+   * Whether the reader may choose the log (a current Super Admin assignment,
+   * decision 4): the page follows this answer, not the role on display.
+   */
+  chooseScope: z.boolean(),
   /** The dates searched, as the server read them (the defaults filled in). */
   from: schoolDateSchema,
   to: schoolDateSchema,
@@ -533,9 +538,18 @@ const NOT_IDENTITY_KEYS = new Set([
   'columns',
   'leftOut',
   'rows',
-  // Sign-in
+  // Sign-in, accounts and roles: counts, moments and ids, nothing of a person
   'secondStep',
   'trustRequested',
+  'trustedUntil',
+  'endedSessions',
+  'with',
+  'left',
+  'subjectIds',
+  'mergedId',
+  // A logged show: which entry and which fields were shown
+  'entryAction',
+  'fields',
 ]);
 
 /** A relative's email is Identity (task 2.5a, decision 5); a student's or staff member's is Contact. */

@@ -155,6 +155,7 @@ export class AuditEntries {
       const last = entries.at(-1);
       return {
         entries,
+        chooseScope: superAdmin !== undefined,
         next: rows.length > AUDIT_PAGE_SIZE && last !== undefined ? auditCursorOf(last) : null,
         from,
         to,

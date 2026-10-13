@@ -1,7 +1,7 @@
 import { isAuditAction, type AuditEntryAnswer } from '@sodiq/shared';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import type { TFunction } from 'i18next';
+import type { ParseKeys, TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
@@ -17,7 +17,7 @@ import {
 import { useView } from '@/features/access/use-view';
 import { formatMoment } from '@/features/auth/moments';
 import { showEntry } from './audit-api';
-import { fieldLabel, fieldsTypeOf } from './field-labels';
+import { codesOf, fieldLabel, fieldsTypeOf } from './field-labels';
 
 /** The name of an action on the screen; an action the list does not hold shows as stored. */
 export function actionName(t: TFunction, action: string): string {
@@ -128,7 +128,14 @@ export function EntryPanel({ entry }: { entry: AuditEntryAnswer }) {
     if (typeof value === 'boolean') {
       return value ? t('audit.yes') : t('audit.no');
     }
-    if (typeof value === 'string' || typeof value === 'number') {
+    if (typeof value === 'string') {
+      // A stored code (a sex, a role, a relationship) in the language of the page.
+      const codes = codesOf(type, path.split('.').at(-1) ?? '');
+      const key = codes === undefined ? undefined : `${codes}.${value}`;
+      // The key is read only after i18n says it exists, so the cast names a real text.
+      return key !== undefined && i18n.exists(key) ? t(key as ParseKeys) : value;
+    }
+    if (typeof value === 'number') {
       return String(value);
     }
     if (Array.isArray(value) && value.every((item) => typeof item !== 'object' || item === null)) {
@@ -240,7 +247,6 @@ export function EntryPanel({ entry }: { entry: AuditEntryAnswer }) {
           >
             {t('audit.show')}
           </Button>
-          <p className="text-sm text-muted-foreground">{t('audit.showNote')}</p>
           <FailureAlert error={show.error} />
         </div>
       )}

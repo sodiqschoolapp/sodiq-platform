@@ -59,9 +59,14 @@ const OLDER: AuditEntryAnswer = {
   details: null,
 };
 
-const page = (entries: AuditEntryAnswer[], next: string | null = null): AuditPage => ({
+const page = (
+  entries: AuditEntryAnswer[],
+  next: string | null = null,
+  chooseScope = false,
+): AuditPage => ({
   entries,
   next,
+  chooseScope,
   from: '2026-09-11',
   to: '2026-10-10',
 });
@@ -80,12 +85,13 @@ function openLog(
   language: 'en' | 'ru' = 'en',
 ) {
   let asked = 0;
+  const chooses = role === 'super_admin';
   return fakeApi({
     'GET /api/auth/session': () => json(sessionAs(role, language)),
     'GET /api/audit/entries': () =>
       (asked += 1) === 1
-        ? json(page([EDIT, EXPORT], `2026-10-09T05:00:00.000Z_${uid(2)}`))
-        : json(page([OLDER])),
+        ? json(page([EDIT, EXPORT], `2026-10-09T05:00:00.000Z_${uid(2)}`, chooses))
+        : json(page([OLDER], null, chooses)),
     ...extra,
   });
 }
@@ -238,5 +244,59 @@ describe('the audit log page', () => {
     await waitFor(() => {
       expect(asks(calls).at(-1)).toBeUndefined();
     });
+  });
+});
+
+// Correction 2 of the plan review and the spec review of the build: the
+// fields of other records are named as their forms name them, and a stored
+// code is shown in the language of the page.
+describe('the values of an entry', () => {
+  const YEAR: AuditEntryAnswer = {
+    ...EDIT,
+    id: uid(4),
+    action: 'academic_year.edit',
+    record: { type: 'academic_year', id: uid(42), name: null },
+    oldValue: { startDate: '2026-09-01' },
+    newValue: { startDate: '2026-09-02' },
+    hidden: [],
+  };
+  const GIVEN: AuditEntryAnswer = {
+    ...EDIT,
+    id: uid(5),
+    action: 'assignment.given',
+    record: { type: 'assignment', id: uid(43), name: null },
+    oldValue: null,
+    newValue: { role: 'head_tutor', sex: 'female' },
+    hidden: [],
+  };
+
+  const panelRows = async () => {
+    const panel = await screen.findByRole('complementary');
+    const rows = await within(panel).findAllByRole('row');
+    return rows
+      .slice(1)
+      .map((row) => [...row.querySelectorAll('td')].map((cell) => cell.textContent));
+  };
+
+  it('names the fields of an academic year as its form does', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('principal')),
+      'GET /api/audit/entries': () => json(page([YEAR])),
+    });
+    renderApp(`${PATH}?open=${uid(4)}`);
+    expect(await panelRows()).toEqual([[en.setup.years.startDate, '2026-09-01', '2026-09-02']]);
+  });
+
+  it('shows a role and a sex in the language of the account', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('principal', 'ru')),
+      'GET /api/audit/entries': () => json(page([GIVEN])),
+    });
+    renderApp(`${PATH}?open=${uid(5)}`);
+    await screen.findByRole('heading', { name: ru.audit.title, level: 1 });
+    expect(await panelRows()).toEqual([
+      [ru.people.account.role, '', ru.roles.head_tutor],
+      ['sex', '', ru.people.staff.sexes.female],
+    ]);
   });
 });
