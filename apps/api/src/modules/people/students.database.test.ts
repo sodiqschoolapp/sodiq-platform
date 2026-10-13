@@ -429,6 +429,28 @@ describe('student records in the database', () => {
       await refusedUpdate({ phone: '998901234567' });
       await refusedUpdate({ region: 'moscow' });
     });
+
+    // Task 2.4b-2 (db/migrations/0035): a photo is a JPEG or PNG, its id and type together.
+    it('couples the photo and its type, JPEG or PNG only', async () => {
+      const photo = '0199a000-0000-7000-8000-0000000000bb';
+      await refusedUpdate({ photo_id: photo });
+      await refusedUpdate({ photo_type: 'image/jpeg' });
+      await refusedUpdate({ photo_id: photo, photo_type: 'image/gif' });
+      const id = await createStudent({ branch: north, uid: '2308977' });
+      await inBranch(north, (transaction) =>
+        transaction
+          .updateTable('students')
+          .set({ photo_id: photo, photo_type: 'image/png' })
+          .where('id', '=', id)
+          .execute(),
+      );
+      const stored = await database.migrator
+        .selectFrom('students')
+        .select(['photo_id', 'photo_type'])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      expect(stored).toEqual({ photo_id: photo, photo_type: 'image/png' });
+    });
   });
 
   describe('the branch filter', () => {
