@@ -297,6 +297,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     loginMissing: 'Введите логин.',
     passwordMissing: 'Введите пароль.',
     sessionEnded: 'Сеанс завершён. Войдите снова.',
+    signedOut: 'Вы вышли из системы.',
     forgot: 'Забыли пароль?',
     passwordChanged: 'Пароль изменён. Войдите с новым паролем.',
   },

@@ -268,6 +268,9 @@ describe('the account page', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: en.account.remove }));
 
     expect(await heading(en.signIn.title)).toBeDefined();
+    // Finding 9 of the hand test of 13 October 2026: left by the person's own act.
+    expect((await screen.findByRole('status')).textContent).toBe(en.signIn.signedOut);
+    expect(screen.queryByText(en.signIn.sessionEnded)).toBeNull();
     expect(shell.queryClient.getQueryData(['session'])).toBeNull();
     expect(calls.map((call) => call.route)).toContain(
       'DELETE /api/auth/trusted-devices/0199a000-0000-7000-8000-000000000001',

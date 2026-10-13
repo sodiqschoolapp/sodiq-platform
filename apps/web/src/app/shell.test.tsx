@@ -1,5 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { api } from '@/api/client';
+import { answerOf } from '@/api/failure';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, nothing, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
@@ -204,6 +206,63 @@ describe('a session that ended or changed on the server', () => {
     await waitFor(() => {
       expect(calls.map((call) => call.route)).toContain('POST /api/auth/sign-out');
     });
+  });
+});
+
+describe('the sign-in page after leaving', () => {
+  // Issue #39, hand test of 13 October 2026, finding 9: a chosen sign-out
+  // says "You are signed out.", even when a query of the page still on its
+  // way is refused once the session is gone.
+  it('says "You are signed out." after a chosen sign-out', async () => {
+    let signedOut = false;
+    fakeApi({
+      'GET /api/auth/session': () =>
+        signedOut
+          ? refusal('not_signed_in', 401)
+          : json(sessionOf({ assignments: [{ role: 'super_admin', branchId: null }] })),
+      'GET /api/access/super-admins': () =>
+        signedOut ? refusal('not_signed_in', 401) : json({ active: 2 }),
+      'POST /api/auth/sign-out': () => {
+        signedOut = true;
+        return nothing();
+      },
+    });
+    const { queryClient, router } = renderApp('/');
+    await heading(en.home.title);
+
+    fireEvent.click(await screen.findByRole('button', { name: en.layout.signOut }));
+
+    expect(await heading(en.signIn.title)).toBeDefined();
+    expect((await screen.findByRole('status')).textContent).toBe(en.signIn.signedOut);
+    // A query of the page that was still on its way is refused afterwards.
+    await queryClient
+      .fetchQuery({
+        queryKey: ['on its way'],
+        queryFn: () => answerOf(api.GET('/api/access/super-admins')),
+      })
+      .catch(() => undefined);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(router.state.location.search).toEqual({ reason: 'signed_out' });
+    expect(screen.getByRole('status').textContent).toBe(en.signIn.signedOut);
+    expect(screen.queryByText(en.signIn.sessionEnded)).toBeNull();
+  });
+
+  it('still says "Your session has ended." when a call finds the session over', async () => {
+    let ended = false;
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionOf()),
+      'GET /api/notifications': () =>
+        ended ? refusal('not_signed_in', 401) : json({ notifications: [], unread: 0 }),
+    });
+    const { queryClient } = renderApp('/');
+    await heading(en.home.title);
+    ended = true;
+
+    await queryClient.refetchQueries({ queryKey: ['notifications'] });
+
+    expect(await heading(en.signIn.title)).toBeDefined();
+    expect(await screen.findByText(en.signIn.sessionEnded)).toBeDefined();
+    expect(screen.queryByText(en.signIn.signedOut)).toBeNull();
   });
 });
 

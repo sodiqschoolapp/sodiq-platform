@@ -57,6 +57,12 @@ export function createShell(
       return;
     }
     if (error.code === 'not_signed_in') {
+      // The tab already knows it is signed out (the person signed out, and a
+      // query of the page was still on its way): nothing ended unexpectedly,
+      // and the sign-in page keeps the reason it was opened with (2.7a).
+      if (queryClient.getQueryData(SESSION_KEY) === null) {
+        return;
+      }
       forgetSession(queryClient);
       view.clear();
       // Nothing can be saved without a session, so the warning before leaving

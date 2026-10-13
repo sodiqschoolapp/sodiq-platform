@@ -288,6 +288,7 @@ export const en = {
     loginMissing: 'Enter your login.',
     passwordMissing: 'Enter your password.',
     sessionEnded: 'Your session has ended. Sign in again.',
+    signedOut: 'You are signed out.',
     forgot: 'Forgot your password?',
     passwordChanged: 'Your password was changed. Sign in with the new one.',
   },

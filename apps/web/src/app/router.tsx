@@ -74,9 +74,14 @@ const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sign-in',
   // `ended`: the session was over when the person tried to go on;
-  // `password_changed`: a new password was chosen with a reset link (2.3c-2).
-  validateSearch: (search: Record<string, unknown>): { reason?: 'ended' | 'password_changed' } =>
-    search.reason === 'ended' || search.reason === 'password_changed'
+  // `password_changed`: a new password was chosen with a reset link (2.3c-2);
+  // `signed_out`: the person signed out, or removed this trusted device (2.7a).
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { reason?: 'ended' | 'password_changed' | 'signed_out' } =>
+    search.reason === 'ended' ||
+    search.reason === 'password_changed' ||
+    search.reason === 'signed_out'
       ? { reason: search.reason }
       : {},
   beforeLoad: only('sign_in'),

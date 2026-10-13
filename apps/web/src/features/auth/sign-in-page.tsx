@@ -66,6 +66,11 @@ export function SignInPage() {
           <AlertDescription>{t('signIn.sessionEnded')}</AlertDescription>
         </Alert>
       )}
+      {reason === 'signed_out' && signIn.error === null && (
+        <Alert variant="success" role="status">
+          <AlertDescription>{t('signIn.signedOut')}</AlertDescription>
+        </Alert>
+      )}
       {reason === 'password_changed' && signIn.error === null && (
         <Alert variant="success" role="status">
           <AlertDescription>{t('signIn.passwordChanged')}</AlertDescription>

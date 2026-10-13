@@ -299,6 +299,7 @@ export const uz: Texts<'one' | 'other'> = {
     loginMissing: 'Loginni kiriting.',
     passwordMissing: 'Parolni kiriting.',
     sessionEnded: 'Seansingiz tugadi. Qaytadan kiring.',
+    signedOut: 'Siz tizimdan chiqdingiz.',
     forgot: 'Parolni unutdingizmi?',
     passwordChanged: 'Parolingiz oʻzgartirildi. Yangi parol bilan kiring.',
   },
