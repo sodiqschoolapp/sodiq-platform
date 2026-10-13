@@ -181,7 +181,7 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'last_email_change(uuid)':
     'Who changed the email of the person record of an account last, and when (actor id and moment only), for the entry of the public password reset by email, which sees no branch log (task 2.3c-2, correction 1 of #66).',
   'own_sign_in_history(uuid,timestamp with time zone,uuid,integer)':
-    'The sign-in events of the own account from both logs, moment, event, actor and browser only, for the own sign-in history (task 2.6a, decision 10 of pull request #75); an administrator\'s lock or reset sits in the log of their branch, which a route without a branch cannot read.',
+    "The sign-in events of the own account from both logs, moment, event, actor and browser only, for the own sign-in history (task 2.6a, decision 10 of pull request #75); an administrator's lock or reset sits in the log of their branch, which a route without a branch cannot read.",
   'own_staff_record(uuid)':
     'The id of the person record of an account and the branch of its main link, ids only, for the own photo (task 2.3c-2); the person may see none of their branch links through the session.',
   'own_person_name(uuid)':
