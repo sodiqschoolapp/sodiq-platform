@@ -102,6 +102,9 @@ export interface RelativeRow {
   phone: string | null;
   workplace: string | null;
   email: string | null;
+  extra_phones: string[];
+  /** The staff record marked as the same person (task 2.5b-2). */
+  staff_id: string | null;
   phone_invalid_since: Date | null;
 }
 
@@ -116,11 +119,14 @@ export interface LinkRow {
 }
 
 /** The record fields of a relative as the audit entries compare them. */
-export const recordOf = (row: Omit<RelativeRow, 'phone_invalid_since'>): RelativeRecord => ({
+export const recordOf = (
+  row: Omit<RelativeRow, 'phone_invalid_since' | 'staff_id'>,
+): RelativeRecord => ({
   fullName: row.full_name,
   phone: row.phone,
   workplace: row.workplace,
   email: row.email,
+  extraPhones: row.extra_phones,
 });
 
 /** The fields of a link as the audit entries hold them. */
@@ -396,6 +402,7 @@ export class RelativeWrites {
           phone: record.phone,
           workplace: record.workplace,
           email: record.email,
+          extra_phones: record.extraPhones,
         })
         .execute(),
     );
@@ -597,7 +604,16 @@ export class RelativeWrites {
     }
     const row = await transaction
       .selectFrom('relatives')
-      .select(['id', 'full_name', 'phone', 'workplace', 'email', 'phone_invalid_since'])
+      .select([
+        'id',
+        'full_name',
+        'phone',
+        'workplace',
+        'email',
+        'extra_phones',
+        'staff_id',
+        'phone_invalid_since',
+      ])
       .where('id', '=', relativeId)
       .forUpdate()
       .executeTakeFirst();

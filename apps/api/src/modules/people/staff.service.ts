@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   nextDay,
+  PERMISSIONS,
   schoolDateOf,
   STAFF_CATEGORY_ROLES,
   STAFF_CONTACT_EXPORT_COLUMNS,
@@ -37,6 +38,7 @@ import { transactionMoment, Transactions, type Transaction } from '../../databas
 import { ApiException } from '../../http/api-exception.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import { currentAssignments } from '../access/current-assignments.js';
+import { decide } from '../access/permission-check.js';
 import { activeSuperAdmins, lockSuperAdmins } from '../access/super-admins.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
@@ -1439,7 +1441,47 @@ export class Staff {
       })),
       rights,
       today: await this.todayIn(transaction, branchId),
+      sameAsRelative: await this.sameAsRelative(transaction, access, id),
     };
+  }
+
+  /**
+   * The relative marked as the same person (`edge/close-relatives`, row 8;
+   * task 2.5b-2, decision 6): for a reader holding `relatives` view in the
+   * branch of the request, when that relative is linked live in the branch.
+   */
+  private async sameAsRelative(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+  ): Promise<StaffDetail['sameAsRelative']> {
+    const reads =
+      decide(
+        { area: 'relatives', action: 'view', branch: 'request' },
+        access.assignments,
+        access.branchId,
+        PERMISSIONS,
+      ) !== undefined;
+    if (!reads) {
+      return null;
+    }
+    const branchId = branchOf(access);
+    const row = await transaction
+      .selectFrom('relatives')
+      .select(['id', 'full_name'])
+      .where('staff_id', '=', id)
+      .where((eb) =>
+        eb.exists(
+          eb
+            .selectFrom('student_relatives as l')
+            .select('l.id')
+            .whereRef('l.relative_id', '=', 'relatives.id')
+            .where('l.branch_id', '=', branchId)
+            .where('l.unlinked_at', 'is', null),
+        ),
+      )
+      .executeTakeFirst();
+    return row === undefined ? null : { id: row.id, fullName: row.full_name };
   }
 }
 

@@ -212,6 +212,13 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu qarindoshni boshqa kishi oʻzgartirdi. Sahifani yangilab, qayta urinib koʻring.',
     relative_merged:
       'Bu qarindosh boshqa yozuv bilan birlashtirilgan. Qolgan yozuvni topish uchun telefonni qayta kiriting.',
+    same_person_taken:
+      'Bu xodim allaqachon boshqa qarindosh bilan bir shaxs deb belgilangan. Avval oʻsha belgini olib tashlang.',
+    same_person_elsewhere:
+      'Bu qarindosh boshqa filial xodimi bilan bir shaxs deb belgilangan. Belgini oʻzgartirishni Super administratordan soʻrang.',
+    same_person_vacancy: 'Boʻsh oʻrin shaxs emas. Xodimni tanlang.',
+    merge_marks_differ:
+      'Bu qarindoshlar ikki xil xodim deb belgilangan. Belgilardan birini olib tashlang, soʻng birlashtiring.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',

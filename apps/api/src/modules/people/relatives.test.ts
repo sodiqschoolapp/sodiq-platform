@@ -572,6 +572,7 @@ describe('close relatives', () => {
       phone: null,
       workplace: '',
       email: '',
+      extraPhones: [],
       ...values,
     });
 

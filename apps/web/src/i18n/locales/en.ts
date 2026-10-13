@@ -204,6 +204,13 @@ export const en = {
     relative_changed: 'This relative was changed by someone else. Reload and try again.',
     relative_merged:
       'This relative was merged into another record. Type the phone again to find the record that stays.',
+    same_person_taken:
+      'This staff member is already marked as the same person as another relative. Remove that mark first.',
+    same_person_elsewhere:
+      'This relative is marked as the same person as a staff member of another branch. Ask the Super Admin to change it.',
+    same_person_vacancy: 'A vacancy is not a person. Choose a staff member.',
+    merge_marks_differ:
+      'These relatives are marked as two different staff members. Remove one of the marks, then merge.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:

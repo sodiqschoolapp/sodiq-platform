@@ -333,6 +333,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
         phone: number,
         workplace: 'Toshkent shahar shifoxonasi',
         email: 'd.karimova@example.uz',
+        extraPhones: [],
       };
       // The holder is linked in the south only: no merge for the Academic
       // Vice Principal of the north, a merge for the Super Admin.
@@ -491,7 +492,13 @@ describe('phone owners, merges and the notice to the other branch', () => {
       );
       expect(after.relatives.some((one) => one.id === earlier.relativeId)).toBe(false);
       // A name kept, a phone given: no longer invalid.
-      const record = { fullName: 'Feruza Qodirova', phone: null, workplace: null, email: null };
+      const record = {
+        fullName: 'Feruza Qodirova',
+        phone: null,
+        workplace: null,
+        email: null,
+        extraPhones: [],
+      };
       expect(
         (await t.patch(`/api/people/relatives/${earlier.relativeId}`, t.north, record)).status,
       ).toBe(200);
@@ -524,14 +531,26 @@ describe('phone owners, merges and the notice to the other branch', () => {
       const changed = await t.patch(
         `/api/people/relatives/${shared.relativeId}`,
         t.north,
-        { fullName: 'Lola Ismoilova Karimova', phone: phone(), workplace: null, email: null },
+        {
+          fullName: 'Lola Ismoilova Karimova',
+          phone: phone(),
+          workplace: null,
+          email: null,
+          extraPhones: [],
+        },
         t.vicePrincipal,
       );
       expect(changed.status, JSON.stringify(changed.body)).toBe(200);
       const renamedOnly = await t.patch(
         `/api/people/relatives/${only.relativeId}`,
         t.north,
-        { fullName: 'Lola Karimova', phone: phone(), workplace: null, email: null },
+        {
+          fullName: 'Lola Karimova',
+          phone: phone(),
+          workplace: null,
+          email: null,
+          extraPhones: [],
+        },
         t.vicePrincipal,
       );
       expect(renamedOnly.status).toBe(200);
@@ -615,7 +634,13 @@ describe('phone owners, merges and the notice to the other branch', () => {
             phone: mergedPhone,
             fullName: 'Gavhar Toyirova',
           }) as unknown,
-          new_value: { mergedInto: kept.relativeId, phone: null, account: 'off' },
+          new_value: {
+            mergedInto: kept.relativeId,
+            phone: null,
+            account: 'off',
+            extraPhones: [],
+            staffId: null,
+          },
         }),
       ]);
       expect(await schoolEntries('relative.archive', merged.relativeId)).toHaveLength(1);
@@ -751,6 +776,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
         phone: (await stored(holder.relativeId)).phone,
         workplace: null,
         email: null,
+        extraPhones: [],
       });
       refusedWith(refused, 409, 'relative_phone_taken');
       expect(detailsOf(refused)[0]).toMatchObject({ mergeable: true, recordId: holder.relativeId });
@@ -762,6 +788,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
         phone: number,
         workplace: null,
         email: null,
+        extraPhones: [],
       });
       // The holder is linked in the north and in the south.
       const holderPhone = phone();
@@ -944,14 +971,17 @@ describe('phone owners, merges and the notice to the other branch', () => {
       expect((await stored(merged.relativeId)).merged_into).toBeNull();
     });
 
-    it('refuses the second of two merges sharing a record', async () => {
+    // Two merges at the same moment are proved by the lock pair "a merge that
+    // waited on another merge of the same record" below; sent at once, the
+    // second answered 404 or 409 by timing (CI of pull request #74).
+    it('refuses a later merge of a record already merged, changing nothing', async () => {
       const aPhone = phone();
       const bPhone = phone();
       const cPhone = phone();
       const a = await withRelative(aPhone, t.north);
       const b = await withRelative(bPhone, t.north);
       const c = await withRelative(cPhone, t.north);
-      const first = merge(
+      const first = await merge(
         a.relativeId,
         {
           otherId: b.relativeId,
@@ -961,21 +991,26 @@ describe('phone owners, merges and the notice to the other branch', () => {
           nameOf: 'this',
         },
         t.north,
-      ).then((response) => response);
-      const second = merge(
-        c.relativeId,
-        {
-          otherId: b.relativeId,
-          thisPhone: cPhone,
-          otherPhone: bPhone,
-          phoneOf: 'this',
-          nameOf: 'this',
-        },
-        t.north,
-        t.admin,
-      ).then((response) => response);
-      const statuses = [(await first).status, (await second).status].sort();
-      expect(statuses).toEqual([200, 409]);
+      );
+      expect(first.status, JSON.stringify(first.body)).toBe(200);
+      const before = await snapshot();
+      refusedWith(
+        await merge(
+          c.relativeId,
+          {
+            otherId: b.relativeId,
+            thisPhone: cPhone,
+            otherPhone: bPhone,
+            phoneOf: 'this',
+            nameOf: 'this',
+          },
+          t.north,
+          t.admin,
+        ),
+        404,
+        'not_found',
+      );
+      expect(await snapshot()).toEqual(before);
     });
 
     it('is refused to the Principal and the south Academic Vice Principal in the north', async () => {
@@ -1012,6 +1047,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
             phone: number,
             workplace: null,
             email: null,
+            extraPhones: [],
             newOwner: { previousId: holder.relativeId, previousPhone: null },
           },
           t.vicePrincipal,
@@ -1045,6 +1081,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
             phone: number,
             workplace: null,
             email: null,
+            extraPhones: [],
             newOwner: { previousId, previousPhone: null },
           }),
           409,
@@ -1072,6 +1109,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
         phone: (await stored(edited.relativeId)).phone,
         workplace: 'Toshkent shahar shifoxonasi',
         email: 'd.karimova@example.uz',
+        extraPhones: [],
         newOwner: { previousId: holder.relativeId, previousPhone: null },
       });
       refusedWith(response, 422, 'request_refused');
@@ -1091,6 +1129,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
           phone: number,
           workplace: 'Toshkent shahar shifoxonasi',
           email: 'd.karimova@example.uz',
+          extraPhones: [],
           newOwner: { previousId: holder.relativeId, previousPhone: null },
         },
         t.vicePrincipal,
@@ -1238,6 +1277,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
           phone: next,
           workplace: 'Toshkent shahar shifoxonasi',
           email: 'd.karimova@example.uz',
+          extraPhones: [],
         })
         .then((response) => response);
       await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
@@ -1297,6 +1337,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
           phone: next,
           workplace: 'Toshkent shahar shifoxonasi',
           email: 'd.karimova@example.uz',
+          extraPhones: [],
         })
         .then((response) => response);
       await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
@@ -1389,7 +1430,13 @@ describe('phone owners, merges and the notice to the other branch', () => {
       expect(unlinked.status, JSON.stringify(unlinked.body)).toBe(200);
       expect((await stored(holder.relativeId)).archived_at).not.toBeNull();
       const edited = await withRelative(phone(), t.north);
-      const record = { fullName: 'Dilfuza Karimova', phone: number, workplace: null, email: null };
+      const record = {
+        fullName: 'Dilfuza Karimova',
+        phone: number,
+        workplace: null,
+        email: null,
+        extraPhones: [],
+      };
       const refused = await t.patch(`/api/people/relatives/${edited.relativeId}`, t.north, record);
       refusedWith(refused, 409, 'relative_phone_taken');
       expect(detailsOf(refused)[0]).toMatchObject({ mergeable: false });

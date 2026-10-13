@@ -12,6 +12,8 @@ import { spellingKey, storedStudentName, validName } from './names.js';
 /** A relative's full name, one field typed as on the document (decision 15). */
 export const RELATIVE_NAME_MAX_LENGTH = 120;
 export const RELATIVE_WORKPLACE_MAX_LENGTH = 120;
+/** Extra phones of one relative, at most (task 2.5b-2, decision 2; `relative_extra_phones_valid` of 0038). */
+export const RELATIVE_EXTRA_PHONES_MAX = 3;
 /** The relatives a student is created with, at most. */
 export const STUDENT_RELATIVES_MAX = 10;
 
@@ -64,6 +66,19 @@ export function receivesNotices(link: { receivesNotices: boolean }, phone: strin
   return link.receivesNotices && phone !== null;
 }
 
+/**
+ * Extra phones (`edge/close-relatives`, row 5: "Extra phones can be added;
+ * they are not unique and not used for sign-in"; task 2.5b-2, decision 2):
+ * at most three, each of the main phone's shape, none twice. One equal to the
+ * main phone passes, as in the database.
+ */
+export const relativeExtraPhonesSchema = z
+  .array(relativePhoneSchema)
+  .max(RELATIVE_EXTRA_PHONES_MAX)
+  .refine((phones) => new Set(phones).size === phones.length, {
+    message: 'A phone is given twice.',
+  });
+
 const optionalText = (max: number) =>
   z
     .string()
@@ -82,13 +97,15 @@ const optionalEmailSchema = z
 
 /**
  * What is typed for a relative: the full name, the main phone (`null`: "no
- * phone of their own", decision 8), the workplace and the email (`04`).
+ * phone of their own", decision 8), the workplace, the email (`04`) and the
+ * extra phones (task 2.5b-2; none when left out of a new relative).
  */
 export const relativeRecordSchema = z.strictObject({
   fullName: relativeNameSchema,
   phone: relativePhoneSchema.nullable(),
   workplace: optionalText(RELATIVE_WORKPLACE_MAX_LENGTH),
   email: optionalEmailSchema,
+  extraPhones: relativeExtraPhonesSchema.default([]),
 });
 
 export type RelativeRecord = z.infer<typeof relativeRecordSchema>;
@@ -267,8 +284,24 @@ export const relativeIdentitySchema = z.object({
 
 export type RelativeIdentity = z.infer<typeof relativeIdentitySchema>;
 
+/**
+ * The staff record marked as the same person (`edge/close-relatives`, row 8;
+ * task 2.5b-2, decision 4): shown only when that staff record is visible in
+ * the branch of the request (decision 9).
+ */
+export const samePersonSchema = z.object({
+  staffId: z.uuid(),
+  name: z.string(),
+  staffNumber: z.string(),
+});
+
+export type SamePerson = z.infer<typeof samePersonSchema>;
+
 /** A relative's page: the record, the students of the branch and the count of the others. */
 export const relativeDetailSchema = relativeListItemSchema.extend({
+  /** Contact, shown where the main phone is (task 2.5b-2). */
+  extraPhones: z.array(z.string()),
+  samePerson: samePersonSchema.nullable(),
   /** `null` for a reader who sees it hidden (the Principal, with a logged show). */
   identity: relativeIdentitySchema.nullable(),
   identityHidden: z.boolean(),
@@ -283,7 +316,11 @@ export type RelativeDetail = z.infer<typeof relativeDetailSchema>;
  * gets a new phone or "no valid phone" (decision 8 of pull request #73).
  */
 export const relativeEditSchema = relativeRecordSchema
-  .extend({ newOwner: relativeNewOwnerSchema.nullable().optional() })
+  .extend({
+    // The whole list, required: a missing field is refused, never a silent clear (task 2.5b-2).
+    extraPhones: relativeExtraPhonesSchema,
+    newOwner: relativeNewOwnerSchema.nullable().optional(),
+  })
   .refine(
     (edit) =>
       edit.newOwner === undefined ||
@@ -324,6 +361,8 @@ export const studentRelativeSchema = z.object({
   relativeId: z.uuid(),
   fullName: z.string(),
   phone: z.string().nullable(),
+  /** Contact, beside the main phone (task 2.5b-2). */
+  extraPhones: z.array(z.string()),
   relationship: relationshipSchema,
   mainContact: z.boolean(),
   /** The link switches, for the `relatives` view holders; `null` otherwise. */
@@ -354,6 +393,14 @@ export const relativeUnlinkSchema = z.strictObject({
 });
 
 export type RelativeUnlink = z.infer<typeof relativeUnlinkSchema>;
+
+/**
+ * The mark "same person" (`edge/close-relatives`, row 8; task 2.5b-2): the
+ * staff record the relative is the same person as.
+ */
+export const relativeSamePersonSchema = z.strictObject({ staffId: z.uuid() });
+
+export type RelativeSamePerson = z.infer<typeof relativeSamePersonSchema>;
 
 export const relativeParamsSchema = z.strictObject({ id: z.uuid() });
 
