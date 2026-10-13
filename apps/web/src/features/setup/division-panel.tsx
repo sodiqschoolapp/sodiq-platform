@@ -214,7 +214,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
           takenText={t('setup.divisions.nameTaken')}
           onSave={async (record) => {
             await rename.mutateAsync(record);
-            panel.stop({ saved: true });
+            panel.stop({ saved: true, key: 'record' });
           }}
           onCancel={() => {
             panel.stop();
@@ -276,7 +276,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
                             takenText={t('setup.divisions.departmentNameTaken')}
                             onSave={async (record) => {
                               await renameDepartment.mutateAsync({ id: department.id, record });
-                              panel.stop({ saved: true });
+                              panel.stop({ saved: true, key: `department:${department.id}` });
                             }}
                             onCancel={() => {
                               panel.stop();
@@ -348,7 +348,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
                     takenText={t('setup.divisions.departmentNameTaken')}
                     onSave={async (record) => {
                       await addDepartment.mutateAsync(record);
-                      panel.stop({ saved: true });
+                      panel.stop({ saved: true, key: 'department-new' });
                     }}
                     onCancel={() => {
                       panel.stop();

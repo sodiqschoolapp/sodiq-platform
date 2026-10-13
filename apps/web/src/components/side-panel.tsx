@@ -66,6 +66,7 @@ export function SidePanel({ title, recordKey, onClose, children }: SidePanelProp
   return (
     <aside
       ref={panel}
+      data-slot="side-panel"
       aria-label={title}
       // A white panel on the canvas with a 1 px left border in --border
       // (docs/design-system.md, Patterns, Lists), padding 24.

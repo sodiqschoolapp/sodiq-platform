@@ -204,7 +204,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
           label={building.name}
           onSave={async (record) => {
             await rename.mutateAsync(record);
-            panel.stop({ saved: true });
+            panel.stop({ saved: true, key: 'record' });
           }}
           onCancel={() => {
             panel.stop();
@@ -244,7 +244,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
                             label={floor.name}
                             onSave={async (record) => {
                               await renameFloor.mutateAsync({ id: floor.id, record });
-                              panel.stop({ saved: true });
+                              panel.stop({ saved: true, key: `floor:${floor.id}` });
                             }}
                             onCancel={() => {
                               panel.stop();
@@ -310,7 +310,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
                     label={t('setup.buildings.newFloor')}
                     onSave={async (record) => {
                       await addFloor.mutateAsync(record);
-                      panel.stop({ saved: true });
+                      panel.stop({ saved: true, key: 'floor-new' });
                     }}
                     onCancel={() => {
                       panel.stop();

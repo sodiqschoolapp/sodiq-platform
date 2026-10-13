@@ -94,7 +94,7 @@ export function DayTemplatePanel({
     initial: { name: summary.name },
     save: async (record) => {
       await rename.mutateAsync(record);
-      panel.stop({ saved: true });
+      panel.stop({ saved: true, key: 'record' });
     },
   });
 
@@ -166,7 +166,7 @@ export function DayTemplatePanel({
                 change,
               });
               await addVersion.mutateAsync(change);
-              panel.stop({ saved: true });
+              panel.stop({ saved: true, key: 'slots' });
             }}
             onCancel={close}
           />
@@ -229,7 +229,7 @@ export function DayTemplatePanel({
               <Button
                 {...panel.opener('record')}
                 onClick={() => {
-                  panel.start('record');
+                  panel.start('record', renameForm.reset);
                 }}
               >
                 {t('form.edit')}

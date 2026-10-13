@@ -53,7 +53,7 @@ export function TemplateAssignmentPanel({
     save: async (change) => {
       await preview.confirm({ kind: 'assignment_end', assignmentId: assignment.id, change });
       await end.mutateAsync(change);
-      panel.stop({ saved: true });
+      panel.stop({ saved: true, key: 'end' });
     },
   });
   const date = (value: string | null) =>
@@ -103,7 +103,7 @@ export function TemplateAssignmentPanel({
               <Button
                 {...panel.opener('end')}
                 onClick={() => {
-                  panel.start('end');
+                  panel.start('end', form.reset);
                 }}
               >
                 {t('setup.templateSettings.endTitle')}

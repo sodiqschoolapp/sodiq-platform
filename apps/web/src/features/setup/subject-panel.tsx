@@ -137,7 +137,7 @@ export function SubjectPanel({
             label={name}
             onSave={async (record) => {
               await edit.mutateAsync(record);
-              panel.stop({ saved: true });
+              panel.stop({ saved: true, key: 'record' });
             }}
             onCancel={() => {
               panel.stop();
@@ -193,7 +193,7 @@ export function SubjectPanel({
                   label={t('setup.subjects.daily')}
                   onSave={async (weights) => {
                     await setDaily.mutateAsync(weights);
-                    panel.stop({ saved: true });
+                    panel.stop({ saved: true, key: 'weights:daily' });
                   }}
                   onCancel={() => {
                     panel.stop();
@@ -437,7 +437,7 @@ function QuarterWeights({
                   label={label}
                   onSave={async (weights) => {
                     await setQuarter.mutateAsync({ quarterId: row.quarterId, weights });
-                    panel.stop({ saved: true });
+                    panel.stop({ saved: true, key: `weights:${row.quarterId}` });
                   }}
                   onCancel={() => {
                     panel.stop();
@@ -455,9 +455,12 @@ function QuarterWeights({
                   )}
                 </>
               )}
-              {canEdit && !frozen && row.weights !== null && !row.fits && (
-                <p className="text-sm text-muted-foreground">{t('setup.subjects.setAgain')}</p>
-              )}
+              {/* Under the open form only: the read view says it already. */}
+              {panel.editing === `weights:${row.quarterId}` &&
+                row.weights !== null &&
+                !row.fits && (
+                  <p className="text-sm text-muted-foreground">{t('setup.subjects.setAgain')}</p>
+                )}
             </div>
           );
         })}

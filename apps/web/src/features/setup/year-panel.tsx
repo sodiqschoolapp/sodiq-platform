@@ -295,7 +295,7 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
             label={year.name}
             onSave={async (record) => {
               await edit.mutateAsync(record);
-              panel.stop({ saved: true });
+              panel.stop({ saved: true, key: 'record' });
             }}
             onCancel={() => {
               panel.stop();
@@ -327,7 +327,7 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
               year={year}
               onSave={async (form) => {
                 await saveQuarters.mutateAsync(form);
-                panel.stop({ saved: true });
+                panel.stop({ saved: true, key: 'quarters' });
               }}
               onCancel={() => {
                 panel.stop();

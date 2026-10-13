@@ -226,7 +226,10 @@ Plan approved on pull request #83 with corrections 1 and 2; decisions 1 to 12 co
 | Archive is danger at the bottom, Restore secondary; Cancel is in `RecordForm` and asks about that form only; after a save the read view with "Saved." and the focus on the opener | Decisions 7 to 9; build |
 | `data-variant` on the Button part; the Room panel has no danger action; the template setting's one action keeps "End from a date" | Decisions 10 to 12 |
 | A form of the record (a new length, new slots) takes the read view's place like Edit, so its Save and Cancel are the panel's last part | Build |
-| `usePanelEditing` finds the opener and the first field in the open side panel (`aside`), not through a ref: a ref in its state made every read of it during drawing a lint error | Build |
+| `usePanelEditing` finds the opener and the first field in the open side panel (`[data-slot="side-panel"]` of `SidePanel`), not through a ref: a ref in its state made every read of it during drawing a lint error | Build; spec review |
+| A late save closes only its own form (`stop({ saved: true, key })`); a form whose state the panel keeps is reset as it opens again, so it never shows the "Saved." of its last save | Spec review |
+| **Look first** (a test changed by a requirement). `feedback.test.tsx` finds the side panel behind the open feedback dialog by its element: the panel reads first and no longer holds the live region of a form, so the modal dialog hides it from the accessibility tree, as it should | Build |
+| The openers "Add floor" and "Add department" reuse `setup.buildings.addFloor` and `setup.divisions.addDepartment` (also the title of their form) instead of the new keys the plan named | Build |
 | The e2e seed adds to the pages branch a weekday template setting, a day off a month ahead and the division "Pages division", so each panel's form is opened in the browser check | Build |
 
 ## 13 October 2026: new records in the side panel (task 2.7c-2a)

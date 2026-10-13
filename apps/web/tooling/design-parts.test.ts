@@ -351,6 +351,33 @@ const PANEL_FILES = [
 ];
 
 /**
+ * Whether the text after a condition's `?` or `&&` stays inside the branch it
+ * opens: comments and strings left out, no bracket closes one it did not open,
+ * and no `:` starts the other branch of a ternary.
+ */
+function staysInBranch(between: string): boolean {
+  const code = between
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '')
+    .replace(/'[^'\n]*'|"[^"\n]*"|`[^`]*`/g, '');
+  let depth = 0;
+  for (const char of code) {
+    if ('({['.includes(char)) {
+      depth += 1;
+    } else if (')}]'.includes(char)) {
+      depth -= 1;
+      if (depth < 0) {
+        return false;
+      }
+    } else if (char === ':' && depth === 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * The forms of a panel's source drawn without a condition on the open form of
  * `usePanelEditing` (`editing === '…'` or ``editing === `…` `` before `?` or
  * `&&`), as `line: form`. A form inside a function that is itself a form
@@ -366,13 +393,9 @@ function formsOutsideEditing(text: string): string[] {
     }
     const last = [...before.matchAll(condition)].at(-1);
     const between = last === undefined ? null : before.slice((last.index ?? 0) + last[0].length);
-    // Between the condition and the form: no other branch and no closed block.
-    const tied =
-      between !== null &&
-      !/\)\s*:\s*[(<\w]/.test(between) &&
-      !/\)\}\s*\n/.test(between) &&
-      !/^\s*\}\s*$/m.test(between);
-    return tied ? [] : [`${String(before.split('\n').length)}: ${match[1] ?? ''}`];
+    return between !== null && staysInBranch(between)
+      ? []
+      : [`${String(before.split('\n').length)}: ${match[1] ?? ''}`];
   });
 }
 
@@ -412,6 +435,21 @@ describe('the side panels of School setup', () => {
         ),
       ),
     ).toEqual(['8: YearForm']);
+    // A condition closed on one line, and the other branch of a ternary on one line.
+    expect(
+      formsOutsideEditing(
+        panel(
+          "    <div>\n      {panel.editing === 'record' && <p />}\n      <NamesForm names={n} />\n    </div>",
+        ),
+      ),
+    ).toEqual(['6: NamesForm']);
+    expect(
+      formsOutsideEditing(
+        panel(
+          "    <div>\n      {panel.editing === 'record' ? <p /> : <YearForm year={y} />}\n    </div>",
+        ),
+      ),
+    ).toEqual(['5: YearForm']);
     // Accepted: a key of a row in a template, a branch over several lines, a wrapper.
     expect(
       formsOutsideEditing(

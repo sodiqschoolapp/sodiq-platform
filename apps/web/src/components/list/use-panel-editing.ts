@@ -7,10 +7,18 @@ export interface PanelEditing {
   editing: string | null;
   /** A form was saved and closed since the last one opened: the panel says "Saved.". */
   saved: boolean;
-  /** Opens a form; another open form with typed text is asked about first. */
-  start: (key: string) => void;
-  /** Closes the open form; after a save, `saved` says so. The focus goes back to its opener. */
-  stop: (how?: { saved?: boolean }) => void;
+  /**
+   * Opens a form; another open form with typed text is asked about first.
+   * `fresh` runs as it opens: a form whose state the panel keeps starts again
+   * without the "Saved." of its last save.
+   */
+  start: (key: string, fresh?: () => void) => void;
+  /**
+   * Closes the open form; after a save, `saved` says so. The focus goes back
+   * to its opener. With `key`, only when that form is still the open one: a
+   * save that arrives after another form opened closes nothing.
+   */
+  stop: (how?: { saved?: boolean; key?: string }) => void;
   /** Put on the button that opens a form: the focus comes back to it. */
   opener: (key: string) => { 'data-opens': string };
 }
@@ -34,7 +42,7 @@ export function usePanelEditing(): PanelEditing {
     const next = focus.current;
     focus.current = null;
     // The side panel of the list: one is open at a time (`SidePanel`).
-    const panel = document.querySelector('aside');
+    const panel = document.querySelector('[data-slot="side-panel"]');
     if (next === null || panel === null) {
       return;
     }
@@ -50,8 +58,9 @@ export function usePanelEditing(): PanelEditing {
   }, [editing]);
 
   const start = useCallback(
-    (key: string) => {
+    (key: string, fresh?: () => void) => {
       const go = () => {
+        fresh?.();
         open.current = key;
         focus.current = { to: 'field' };
         setSaved(false);
@@ -70,7 +79,10 @@ export function usePanelEditing(): PanelEditing {
     [leave],
   );
 
-  const stop = useCallback((how?: { saved?: boolean }) => {
+  const stop = useCallback((how?: { saved?: boolean; key?: string }) => {
+    if (how?.key !== undefined && how.key !== open.current) {
+      return;
+    }
     const key = open.current;
     open.current = null;
     focus.current = key === null ? null : { to: 'opener', key };

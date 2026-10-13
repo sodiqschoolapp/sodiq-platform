@@ -237,6 +237,9 @@ describe('the slot types page', () => {
     expect(
       calls.find((call) => call.route === `PATCH /api/setup/slot-types/${LUNCH.id}`)?.body,
     ).toEqual({ name: 'Long lunch' });
+    // Opened again, the form says nothing of the last save: the bottom row said it.
+    const again = await edit(panel, 'Lunch');
+    expect(within(again).getByRole('status').textContent).toBe('');
   });
 
   it('shows an archived slot type with Restore and no Edit', async () => {

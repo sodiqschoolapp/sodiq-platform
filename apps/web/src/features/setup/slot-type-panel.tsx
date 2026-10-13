@@ -84,7 +84,7 @@ export function SlotTypePanel({ slotType, today, canEdit, canArchive }: SlotType
     initial: { name: slotType.name },
     save: async (record) => {
       await rename.mutateAsync(record);
-      panel.stop({ saved: true });
+      panel.stop({ saved: true, key: 'record' });
     },
   });
   const lengthForm = useRecordForm({
@@ -94,7 +94,7 @@ export function SlotTypePanel({ slotType, today, canEdit, canArchive }: SlotType
     save: async (change) => {
       await preview.confirm({ kind: 'slot_length', slotTypeId: slotType.id, change });
       await changeLength.mutateAsync(change);
-      panel.stop({ saved: true });
+      panel.stop({ saved: true, key: 'length' });
     },
   });
 
@@ -191,7 +191,7 @@ export function SlotTypePanel({ slotType, today, canEdit, canArchive }: SlotType
               <Button
                 {...panel.opener('record')}
                 onClick={() => {
-                  panel.start('record');
+                  panel.start('record', renameForm.reset);
                 }}
               >
                 {t('form.edit')}
@@ -204,7 +204,7 @@ export function SlotTypePanel({ slotType, today, canEdit, canArchive }: SlotType
                 variant="secondary"
                 {...panel.opener('length')}
                 onClick={() => {
-                  panel.start('length');
+                  panel.start('length', lengthForm.reset);
                 }}
               >
                 {t('setup.slotTypes.changeLength')}

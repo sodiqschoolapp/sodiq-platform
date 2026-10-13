@@ -34,7 +34,7 @@ export function RoomPanel({ room, floors, columns, canEdit, onSave }: RoomPanelP
           label={room.name}
           onSave={async (record) => {
             await onSave(record);
-            panel.stop({ saved: true });
+            panel.stop({ saved: true, key: 'record' });
           }}
           onCancel={() => {
             panel.stop();

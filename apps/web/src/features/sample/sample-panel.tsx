@@ -29,7 +29,7 @@ export function SamplePanel({ row, columns, onSave }: SamplePanelProps) {
           row={row}
           onSave={async (record) => {
             await onSave(record);
-            panel.stop({ saved: true });
+            panel.stop({ saved: true, key: 'record' });
           }}
           onCancel={() => {
             panel.stop();

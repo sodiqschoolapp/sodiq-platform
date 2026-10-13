@@ -76,7 +76,7 @@ export function CalendarEntryPanel({
       await preview.confirm({ action: 'edit', id: entry.id, record });
     }
     await edit.mutateAsync(record);
-    panel.stop({ saved: true });
+    panel.stop({ saved: true, key: 'record' });
   };
 
   const details: [string, string][] = [

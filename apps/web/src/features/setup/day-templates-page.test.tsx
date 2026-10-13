@@ -414,6 +414,20 @@ describe('the day templates page', () => {
     expect(within(panel).getByRole('form', { name: en.setup.dayTemplates.changeSlots })).toBe(form);
   });
 
+  it('shows an archived template with Restore and no Edit', async () => {
+    const archivedAt = '2026-10-01T10:00:00.000Z';
+    await openList('academic_vice_principal', {
+      'GET /api/setup/day-templates': () =>
+        json({ today: TODAY, dayTemplates: [{ ...MAIN, archivedAt }] }),
+      [`GET /api/setup/day-templates/${MAIN.id}`]: () => json({ ...MAIN_DETAIL, archivedAt }),
+    });
+    fireEvent.click(screen.getByText('Main', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Main' });
+    await within(panel).findByText('08:00–08:45');
+    expect(panelActionNames(panel)).toEqual([en.setup.dayTemplates.restore]);
+    expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
+  });
+
   it('shows the Principal the day and the versions without a form', async () => {
     await openList('principal');
 
