@@ -2,6 +2,10 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: the repository is public (process change, no task)
+
+- Owner: the loop trusts only `abbosc` and this repository's branches; the bridge wakes the builder only on a comment by `abbosc` and fires nothing for a fork's pull request, `review-pr`, `next-task` and `finish-task` count only `[review]` comments by `abbosc`, and the reviewer never reviews, comments on or merges a fork's pull request (`docs/decisions.md`, 13 October 2026: the repository is public).
+
 ## 13 October 2026: no silent stalls (process change, no task)
 
 - Owner: after every push the builder checks that CI started and, when GitHub fired no event, calls the owner at once (`@abbosc`, `needs-owner`); a builder may re-run a CI failure outside the code once, and the reviewer then reviews the head whose checks passed, which the start routine treats as waiting for the reviewer; after pull requests #63 and #68 (`docs/decisions.md`, 13 October 2026).
