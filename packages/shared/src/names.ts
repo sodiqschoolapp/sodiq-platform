@@ -25,7 +25,8 @@ export function storedStudentName(typed: string): string {
 const LATIN_NAME = /^[A-Za-zʻʼ]+([ -][A-Za-zʻʼ]+)*$/;
 const CYRILLIC_NAME = /^[А-Яа-яЁёЎўҚқҒғҲҳ]+([ -][А-Яа-яЁёЎўҚқҒғҲҳ]+)*$/;
 
-export const validName = (name: string): boolean => LATIN_NAME.test(name) || CYRILLIC_NAME.test(name);
+export const validName = (name: string): boolean =>
+  LATIN_NAME.test(name) || CYRILLIC_NAME.test(name);
 
 /** Cyrillic letters to the Latin of the Uzbek state alphabet (the Russian ones too). */
 const CYRILLIC_TO_LATIN: Readonly<Record<string, string>> = {

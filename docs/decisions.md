@@ -213,6 +213,38 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 13 October 2026: close relatives, their links and the Parents list (task 2.5a)
+
+Plan approved on pull request #72 with corrections 1 and 2; decisions 1 to 16 and 18 confirmed there, decision 17 changed by correction 1; 1 to 6 marked Look first. The decisions after 18 came from the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Task 2.5 split into 2.5a (record, links, Parents list) and 2.5b (new owner of a phone, merge, the notice to the other branch, extra phones, the same person, relatives in the export) | Decision 1; each is a flow of its own; the precedents of 2.2, 2.3c and 2.4 |
+| **Look first.** `relatives` and `relative_accounts` have no branch and are filtered by membership through the live links of the branch table `student_relatives` (policy `relative_membership`); the pinned check of `MEMBERSHIP_FILTERED_TABLES` names a policy per entry, the staff entries unchanged | Decision 2; `edge`: "Staff can open a relative only if a student of their own branch is linked" |
+| **Look first.** `relative_by_phone` answers the id, name and count of linked students of the holder of an exact phone in any branch (archived included), `relative_links_elsewhere` a count, `relatives_follow_links` archives and restores; a departure from correction 2 of #53, limited to the exact phone in routes held by `relatives` create or edit | Decision 3; `04`: "the system shows the person"; "that relative is shown" |
+| **Look first.** New area `relatives`: Super Admin and Academic Vice Principal view, create, edit; Principal view; the links under `students` edit, the tab under `student_contact` view; the phone search refused to the Principal | Decision 4; `edge/people-roles-accounts`; `04`; `02` |
+| **Look first.** A relative's workplace and email are read as Identity (the Principal with a logged show); proposed `/spec-change` for `edge/people-roles-accounts`: "Identity (document numbers, address, date of birth, relatives' workplaces and emails)" | Decision 5; the row names "relatives' workplaces" among what a Principal must not simply see |
+| **Look first.** A change of name or phone of a relative linked in another branch is saved and logged now; the notice to that branch's Academic Vice Principal comes with 2.5b | Decision 6 |
+| The Parents list shows the main phone; the student list still shows none | Decision 7 |
+| "No phone of their own" is an empty phone: no sign-in and no notices (`receivesNotices` of packages/shared reads the switch and the phone); 2.5b's "no valid phone" is a column of its own | Decision 8 |
+| One phone shape for people (`^\+[0-9]{7,15}$`, +998 offered); the "cannot receive SMS" warning of answer 24 is a warning only | Decision 9 |
+| A link is unlinked once and kept (`student_relatives_unlink_once`); the delete of a student created twice removes its links by cascade and archives a relative left with none | Decision 10 |
+| A student of 2.4a with no relative is refused only the edit of the record (`student_needs_relative`) until one is linked; a photo, a status, a UID correction and the branch move pass | Decision 11 |
+| Exactly one main contact per student; a new main contact moves the mark in one change; unlinking it names the next one in the same request; the only relative is the main contact automatically | Decision 12; `edge` |
+| Portal access and "receives notices" on by default, stored only in Release 1 | Decision 13 |
+| A link restores an archived relative found by phone | Decision 14 |
+| One full-name field, Latin or Cyrillic, folded by `spellingKey` for search (moved with the other name helpers to `packages/shared/src/names.ts`) | Decision 15; answer 18 |
+| A relative with no phone of their own may be the main contact, with a warning | Decision 16 |
+| The record entries of a relative (`relative.create`, `edit`, `archive`, `restore`) go to `audit_log_school` with the branch of the request in `details`; the link entries and `relative.show` to the branch's log | Decision 17 as changed by correction 1; 0.5a: `audit_log_school` holds "relatives" |
+| A link confirmed by phone carries the id the match showed and is refused `relative_phone_changed` when the phone moved | Decision 18 |
+| A relative is committed only with its account and a live link (`relatives_complete_check`) | Correction 2 |
+| The create form of a student takes one relative, the main contact; more are added on the Relatives tab (decision taken in the build) | The spec needs at least one; one form step keeps the create form short |
+| An empty list of relatives is answered 422 `student_needs_relative` by the route; "exactly one main contact" and "no person twice" are schema refusals (decision taken in the build) | The code of the plan for "without one" |
+| A `relative_phone_exists` refusal names the holder (id, name, count); the form then offers that person and the next save links them, in place of a `confirmExisting` flag (decision taken in the build) | One way to link: `kind: 'existing'` with the phone it was found by |
+| The error detail of a refused phone carries `holder` (name and count of linked students) (decision taken in the build) | "that relative is shown" without an id of another branch |
+| The link guard fires on insert and on an update of `main_contact` or `unlinked_at`, not on the branch move's cascade (decision taken in the build) | The move of 3.3 changes no link's state |
+| The archive and restore entries are decided by the service under the relative's lock, counting the live links of every branch (decision taken in the build) | The trigger cannot write an audit entry with the actor and request |
+
 ## 13 October 2026: student export, photos, consent list and the "No class" counter (task 2.4b-2)
 
 Plan approved on pull request #70 with corrections 1 to 3; decisions 1 to 10 confirmed there, 3 with correction 3, 8 with correction 1; 1 to 4 marked Look first. The decisions after 10 came from the build. Flagged on issue #42.

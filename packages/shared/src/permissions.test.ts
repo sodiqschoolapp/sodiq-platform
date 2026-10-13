@@ -149,11 +149,7 @@ describe('a frozen permission table', () => {
       }
       // Task 2.5a, decision 4 of pull request #72: the Parents list and record.
       expect(PERMISSIONS.relatives[role], `relatives ${role}`).toEqual(
-        editors.includes(role)
-          ? ['view', 'create', 'edit']
-          : role === 'principal'
-            ? ['view']
-            : [],
+        editors.includes(role) ? ['view', 'create', 'edit'] : role === 'principal' ? ['view'] : [],
       );
       // Task 2.4b-1: the Super Admin alone restores a graduated student.
       expect(PERMISSIONS.student_graduates[role], role).toEqual(
