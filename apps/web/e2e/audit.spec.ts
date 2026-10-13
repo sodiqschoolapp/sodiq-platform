@@ -28,7 +28,7 @@ test('an Academic Vice Principal opens the history of a student from its panel',
 
   await page.goto('/people/students');
   await page.getByRole('row').filter({ hasText: 'Murodova' }).getByRole('button').first().click();
-  const panel = page.getByRole('complementary', { name: 'Oydin Murodova' });
+  const panel = page.getByRole('complementary', { name: 'Murodova Oydin' });
   await panel.getByRole('link', { name: en.audit.history, exact: true }).click();
 
   await expect(heading(page, en.audit.title)).toBeVisible();

@@ -167,7 +167,7 @@ describe('the student list', () => {
         // The photo column (task 2.4b-2): the initials while there is no photo.
         'OR',
         '2607001',
-        'Oʻtkir Rahimov',
+        'Rahimov Oʻtkir',
         en.people.students.gradeNoClass.replace('{{grade}}', grade(7)),
         '—',
         '—',
@@ -176,7 +176,7 @@ describe('the student list', () => {
       [
         'ZS',
         '2507014',
-        'Zarina Saidova',
+        'Saidova Zarina',
         en.people.students.gradeNoClass.replace('{{grade}}', grade(8)),
         '—',
         '—',
@@ -194,7 +194,7 @@ describe('the student list', () => {
       await waitFor(() => {
         expect(rowsDrawn()).toHaveLength(1);
       });
-      expect(rowsDrawn()[0]?.[2]).toBe('Oʻtkir Rahimov');
+      expect(rowsDrawn()[0]?.[2]).toBe('Rahimov Oʻtkir');
     },
   );
 
@@ -204,7 +204,7 @@ describe('the student list', () => {
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(1);
     });
-    expect(rowsDrawn()[0]?.[2]).toBe('Zarina Saidova');
+    expect(rowsDrawn()[0]?.[2]).toBe('Saidova Zarina');
   });
 
   it('is in Russian', async () => {
@@ -253,8 +253,8 @@ describe('the profile of a student', () => {
       { identity: null, identityHidden: true, canEdit: false },
     );
     renderApp(PATH);
-    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     await within(panel).findByRole('button', { name: en.people.students.showIdentity });
     expect(within(panel).getAllByText(en.people.students.hidden)).toHaveLength(2);
     expect(within(panel).queryByRole('form')).toBeNull();
@@ -272,8 +272,8 @@ describe('the profile of a student', () => {
   it('switches the whole panel with its tabs', async () => {
     openList('academic_vice_principal', {}, 'en', { canEdit: true });
     renderApp(PATH);
-    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     const titles = () => [...panel.querySelectorAll('h3')].map((title) => title.textContent);
     const tabs = await within(panel).findByRole('radiogroup');
 
@@ -304,11 +304,11 @@ describe('the profile of a student', () => {
   it('asks before a tab takes typed changes of the record away', async () => {
     openList('academic_vice_principal', {}, 'en', { canEdit: true });
     renderApp(PATH);
-    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     const tabs = await within(panel).findByRole('radiogroup');
     fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.overview }));
-    const record = await within(panel).findByRole('form', { name: 'Oʻtkir Rahimov' });
+    const record = await within(panel).findByRole('form', { name: 'Rahimov Oʻtkir' });
     const field = within(record).getByLabelText(en.people.students.firstName);
     fireEvent.change(field, { target: { value: 'Oʻtkirbek' } });
 
@@ -330,9 +330,9 @@ describe('the profile of a student', () => {
       canEdit: false,
     });
     renderApp(PATH);
-    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    expect(await within(panel).findByText('+998901234567')).toBeDefined();
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
+    expect(await within(panel).findByText('+998 90 123 45 67')).toBeDefined();
     // The Overview and the Relatives tab (task 2.5a), no contract tab.
     const tabs = await within(panel).findByRole('radiogroup');
     expect(
@@ -473,7 +473,7 @@ describe('adding a student', () => {
     const form = await fillAndSave();
     expect(
       await within(form).findByText(
-        en.people.students.takenHere.replace('{{student}}', 'Oʻtkir Rahimov (2607001)'),
+        en.people.students.takenHere.replace('{{student}}', 'Rahimov Oʻtkir (2607001)'),
       ),
     ).toBeDefined();
     elsewhere = true;
@@ -501,9 +501,9 @@ describe('editing a student', () => {
         ),
     });
     renderApp(PATH);
-    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    const form = await within(panel).findByRole('form', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
+    const form = await within(panel).findByRole('form', { name: 'Rahimov Oʻtkir' });
     const lists = () => calls.filter((call) => call.route === 'GET /api/people/students').length;
     const before = lists();
     fireEvent.change(within(form).getByLabelText(en.people.students.jshshir), {
@@ -550,8 +550,8 @@ describe('leaving, return and delete', () => {
       },
     });
     renderApp(PATH);
-    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     const form = await within(panel).findByRole('form', { name: en.people.students.leaveTitle });
     fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
       target: { value: '2026-10-20' },
@@ -563,7 +563,7 @@ describe('leaving, return and delete', () => {
     const dialog = await screen.findByRole('alertdialog', {
       name: en.people.students.leaveConfirmTitle,
     });
-    expect(within(dialog).getByText('Oʻtkir Rahimov')).toBeDefined();
+    expect(within(dialog).getByText('Rahimov Oʻtkir')).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.leaveAction }));
     await waitFor(() => {
       expect(calls.some((call) => call.route.endsWith('/leaving'))).toBe(true);
@@ -591,8 +591,8 @@ describe('leaving, return and delete', () => {
       ],
     });
     renderApp(PATH);
-    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     expect(await within(panel).findByText(en.people.students.causes.leaving)).toBeDefined();
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(
@@ -657,8 +657,8 @@ describe('leaving, return and delete', () => {
         json(detailOf({ ...LOLA, status: 'active', version: 3 }, { canArchive: true })),
     });
     renderApp(PATH);
-    fireEvent.click(await screen.findByText('Lola Karimova', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
+    fireEvent.click(await screen.findByText('Karimova Lola', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Karimova Lola' });
     expect(
       await within(panel).findByRole('form', { name: en.people.students.undoTitle }),
     ).toBeDefined();
@@ -676,7 +676,7 @@ describe('leaving, return and delete', () => {
       name: en.people.students.returnConfirmTitle,
     });
     expect(calls.some((call) => call.route.endsWith('/return'))).toBe(false);
-    expect(within(dialog).getByText('Lola Karimova')).toBeDefined();
+    expect(within(dialog).getByText('Karimova Lola')).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.returnTitle }));
     await waitFor(() => {
       expect(calls.some((call) => call.route.endsWith('/return'))).toBe(true);
@@ -704,8 +704,8 @@ describe('leaving, return and delete', () => {
         ),
     });
     renderApp(PATH);
-    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     const form = await within(panel).findByRole('form', { name: en.people.students.leaveTitle });
     fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
       target: { value: '2026-10-20' },
@@ -752,11 +752,11 @@ describe('leaving, return and delete', () => {
     });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     const dialog = await screen.findByRole('alertdialog');
-    expect(within(dialog).getByText('Zarina Saidova')).toBeDefined();
+    expect(within(dialog).getByText('Saidova Zarina')).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.leaveAction }));
     expect(
       await screen.findByText(
-        en.people.students.bulkRefused.replace('{{names}}', 'Zarina Saidova'),
+        en.people.students.bulkRefused.replace('{{names}}', 'Saidova Zarina'),
         { exact: false },
       ),
     ).toBeDefined();
@@ -819,7 +819,7 @@ describe('leaving, return and delete', () => {
     fireEvent.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: en.unsent.leave }),
     );
-    expect(await screen.findByRole('complementary', { name: 'Lola Karimova' })).toBeDefined();
+    expect(await screen.findByRole('complementary', { name: 'Karimova Lola' })).toBeDefined();
   });
 
   it('offers no "Restore this student" for an active holder of the document', async () => {
@@ -865,7 +865,7 @@ describe('leaving, return and delete', () => {
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     expect(
       await within(form).findByText(
-        en.people.students.takenHere.replace('{{student}}', 'Oʻtkir Rahimov (2607001)'),
+        en.people.students.takenHere.replace('{{student}}', 'Rahimov Oʻtkir (2607001)'),
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: en.people.students.restoreThis })).toBeNull();
@@ -919,7 +919,7 @@ describe('leaving, return and delete', () => {
       { canArchive: true, deletable: true },
     );
     renderApp(`${PATH}?open=${OTKIR.id}`);
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     const form = await within(panel).findByRole('form', { name: en.people.students.deleteTitle });
     fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
       target: { value: 'Created twice' },
@@ -990,7 +990,7 @@ describe('the Status section', () => {
       },
     );
     renderApp(`${PATH}?open=${GRADUATED.id}`);
-    const panel = await screen.findByRole('complementary', { name: 'Nodira Ergasheva' });
+    const panel = await screen.findByRole('complementary', { name: 'Ergasheva Nodira' });
     const form = await within(panel).findByRole('form', { name: en.people.students.restoreTitle });
     expect(
       within(form).getByLabelText<HTMLInputElement>(en.people.students.restoreFrom).value,
@@ -1002,7 +1002,7 @@ describe('the Status section', () => {
     const dialog = await screen.findByRole('alertdialog', {
       name: en.people.students.restoreConfirmTitle,
     });
-    expect(within(dialog).getByText('Nodira Ergasheva')).toBeDefined();
+    expect(within(dialog).getByText('Ergasheva Nodira')).toBeDefined();
     expect(calls.some((call) => call.route.endsWith('/restore'))).toBe(false);
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.restoreTitle }));
     await waitFor(() => {
@@ -1018,7 +1018,7 @@ describe('the Status section', () => {
   it('draws no restore without canRestoreGraduated in the answer', async () => {
     openOne('academic_vice_principal', GRADUATED, graduatedDetail({ canArchive: true }));
     renderApp(`${PATH}?open=${GRADUATED.id}`);
-    const panel = await screen.findByRole('complementary', { name: 'Nodira Ergasheva' });
+    const panel = await screen.findByRole('complementary', { name: 'Ergasheva Nodira' });
     expect(
       await within(panel).findByRole('heading', { name: en.people.students.statusTitle }),
     ).toBeDefined();
@@ -1038,7 +1038,7 @@ describe('the Status section', () => {
         json(detailOf({ ...LOLA, status: 'active', version: 3 }, { canArchive: true })),
     });
     renderApp(`${PATH}?open=${LOLA.id}`);
-    const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
+    const panel = await screen.findByRole('complementary', { name: 'Karimova Lola' });
     const form = await within(panel).findByRole('form', { name: en.people.students.undoTitle });
     fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
       target: { value: 'Entered for the wrong student' },
@@ -1068,7 +1068,7 @@ describe('the Status section', () => {
         json(detailOf(OTKIR, { canArchive: true, version: 3 })),
     });
     renderApp(`${PATH}?open=${OTKIR.id}`);
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     fireEvent.click(
       await within(panel).findByRole('button', { name: en.people.students.cancelLeaving }),
     );
@@ -1148,7 +1148,7 @@ describe('the Status section', () => {
       fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
       expect(
         await within(form).findByText(
-          en.people.students.takenHere.replace('{{student}}', 'Nodira Ergasheva (2607040)'),
+          en.people.students.takenHere.replace('{{student}}', 'Ergasheva Nodira (2607040)'),
         ),
       ).toBeDefined();
       expect(screen.queryByRole('button', { name: en.people.students.restoreThis }) !== null).toBe(
@@ -1184,7 +1184,7 @@ describe('the Status section', () => {
       'ru',
     );
     renderApp(`${PATH}?open=${LOLA.id}`, 'ru');
-    const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
+    const panel = await screen.findByRole('complementary', { name: 'Karimova Lola' });
     expect(
       await within(panel).findByRole('heading', { name: ru.people.students.statusTitle }),
     ).toBeDefined();
@@ -1394,7 +1394,7 @@ describe('the consent list', () => {
       expect(calls.some((call) => call.query === '?consent=missing')).toBe(true);
     });
     await waitFor(() => {
-      expect(rowsDrawn().map((row) => row[2])).toEqual(['Oʻtkir Rahimov']);
+      expect(rowsDrawn().map((row) => row[2])).toEqual(['Rahimov Oʻtkir']);
     });
     expect(screen.getByRole('combobox', { name: en.people.students.consent })).toBeTruthy();
   });
@@ -1453,12 +1453,12 @@ describe('student photos', () => {
     });
     renderApp(PATH);
     await waitFor(() => {
-      expect(photoCell('Oʻtkir Rahimov')?.querySelector('img')?.getAttribute('src')).toMatch(
+      expect(photoCell('Rahimov Oʻtkir')?.querySelector('img')?.getAttribute('src')).toMatch(
         /^data:image\/png;base64,/,
       );
     });
-    expect(photoCell('Zarina Saidova')?.querySelector('img')).toBeNull();
-    expect(photoCell('Zarina Saidova')?.textContent).toBe('ZS');
+    expect(photoCell('Saidova Zarina')?.querySelector('img')).toBeNull();
+    expect(photoCell('Saidova Zarina')?.textContent).toBe('ZS');
     expect(calls.filter((call) => call.route.endsWith('/photo')).map((call) => call.route)).toEqual(
       [`GET /api/people/students/${OTKIR.id}/photo`],
     );
@@ -1467,16 +1467,16 @@ describe('student photos', () => {
   it('offers to add a photo in the panel to an editor', async () => {
     openList('academic_vice_principal');
     renderApp(PATH);
-    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     expect(within(panel).getByRole('button', { name: en.people.staff.photo.add })).toBeTruthy();
   });
 
   it('gives a reader who may not edit no photo buttons', async () => {
     openList('principal', {}, 'en', { canEdit: false });
     renderApp(PATH);
-    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     await within(panel).findByRole('region', { name: en.people.staff.photo.title });
     expect(within(panel).queryByRole('button', { name: en.people.staff.photo.add })).toBeNull();
   });
@@ -1488,7 +1488,7 @@ describe('the History link of a student', () => {
   it('opens the log about the student for the Academic Vice Principal', async () => {
     openList('academic_vice_principal');
     renderApp(`${PATH}?open=${OTKIR.id}`);
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     const link = await within(panel).findByRole('link', { name: en.audit.history });
     expect(link.getAttribute('href')).toBe(`/audit?person=student%3A${OTKIR.id}`);
   });
@@ -1496,7 +1496,7 @@ describe('the History link of a student', () => {
   it('is not shown to a role that does not read the log', async () => {
     openList('spiritual_vice_principal');
     renderApp(`${PATH}?open=${OTKIR.id}`);
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     await within(panel).findByRole('region', { name: en.people.staff.photo.title });
     expect(within(panel).queryByRole('link', { name: en.audit.history })).toBeNull();
   });
@@ -1508,7 +1508,7 @@ describe('the personal data report link of a student', () => {
   it('opens the report of the student for the Super Admin', async () => {
     openList('super_admin');
     renderApp(`${PATH}?open=${OTKIR.id}`);
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     const link = await within(panel).findByRole('link', { name: en.people.report.link });
     expect(link.getAttribute('href')).toBe(`/people/report/student/${OTKIR.id}`);
   });
@@ -1516,7 +1516,7 @@ describe('the personal data report link of a student', () => {
   it.each(['principal', 'academic_vice_principal'] as const)('is not shown to %s', async (role) => {
     openList(role);
     renderApp(`${PATH}?open=${OTKIR.id}`);
-    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const panel = await screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
     await within(panel).findByRole('link', { name: en.audit.history });
     expect(within(panel).queryByRole('link', { name: en.people.report.link })).toBeNull();
   });

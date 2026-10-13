@@ -1,4 +1,5 @@
 import {
+  listName,
   gradeRanges,
   type Subject,
   type SubjectQuarter,
@@ -451,7 +452,8 @@ function TeachersOutside({ error }: { error: unknown }) {
   const names = [
     ...ids.map((id) => {
       const person = staff.data?.staff.find((one) => one.id === id);
-      return person === undefined ? '' : `${person.firstName} ${person.lastName}`;
+      // Surname first, as the staff list (finding 27).
+      return person === undefined ? '' : listName(person);
     }),
     ...vacancyIds.map((id) => vacancies.data?.vacancies.find((one) => one.id === id)?.name ?? ''),
   ];

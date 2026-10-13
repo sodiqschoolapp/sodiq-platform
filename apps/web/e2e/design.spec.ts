@@ -70,8 +70,8 @@ test('the staff list and its side panel are drawn with the design system in ligh
   await expect(heading(page, en.people.staff.title)).toBeVisible();
 
   const row = page.getByRole('row').filter({ hasText: 'Qoʻchqorov' });
-  await row.getByRole('button', { name: 'Oybek Qoʻchqorov' }).click();
-  await expect(page.getByRole('complementary', { name: 'Oybek Qoʻchqorov' })).toBeVisible();
+  await row.getByRole('button', { name: 'Qoʻchqorov Oybek' }).click();
+  await expect(page.getByRole('complementary', { name: 'Qoʻchqorov Oybek' })).toBeVisible();
 
   const body = page.locator('body');
 

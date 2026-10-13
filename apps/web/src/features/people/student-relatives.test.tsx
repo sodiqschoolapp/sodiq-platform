@@ -102,8 +102,8 @@ function openList(
 }
 
 const openPanel = async () => {
-  fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
-  return screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+  fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+  return screen.findByRole('complementary', { name: 'Rahimov Oʻtkir' });
 };
 
 const tabOf = (panel: HTMLElement, name: string) =>
@@ -275,7 +275,7 @@ describe("the student's Relatives tab", () => {
       name: en.people.relatives.unlinkTitle,
     });
     expect(within(dialog).getByText('Dilfuza Rahimova')).toBeDefined();
-    expect(within(dialog).getByText('Oʻtkir Rahimov')).toBeDefined();
+    expect(within(dialog).getByText('Rahimov Oʻtkir')).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.unlink }));
     await waitFor(() => {
       expect(calls.find((call) => call.route.endsWith('/unlink'))?.body).toEqual({
@@ -292,7 +292,7 @@ describe("the student's Relatives tab", () => {
     fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
     fireEvent.click(await within(panel).findByRole('button', { name: en.people.relatives.add }));
     const form = await within(panel).findByRole('form', {
-      name: en.people.relatives.formLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
+      name: en.people.relatives.formLabel.replace('{{name}}', 'Rahimov Oʻtkir'),
     });
     const notices = within(form).getByRole<HTMLInputElement>('checkbox', {
       name: en.people.relatives.receivesNotices,
@@ -328,7 +328,8 @@ describe('the extra phones of a relative', () => {
         : within(item).queryByText(en.people.relatives.extraPhones, { selector: 'dt' })
             ?.nextElementSibling?.textContent;
     };
-    expect(valueIn('Dilfuza Rahimova')).toBe('+998935556677, +79161234567');
+    // Grouped when Uzbek, a foreign number as stored (finding 24, decision 4).
+    expect(valueIn('Dilfuza Rahimova')).toBe('+998 93 555 66 77, +79161234567');
     // None for a relative with none.
     expect(valueIn('Anvar Rahimov')).toBeUndefined();
   });
@@ -343,7 +344,7 @@ describe('the extra phones of a relative', () => {
     fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
     fireEvent.click(await within(panel).findByRole('button', { name: en.people.relatives.add }));
     const form = await within(panel).findByRole('form', {
-      name: en.people.relatives.formLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
+      name: en.people.relatives.formLabel.replace('{{name}}', 'Rahimov Oʻtkir'),
     });
     const type = (label: string, value: string) => {
       fireEvent.change(within(form).getByLabelText(label), { target: { value } });

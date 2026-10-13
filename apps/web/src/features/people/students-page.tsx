@@ -1,4 +1,5 @@
 import {
+  listName,
   PERMISSIONS,
   permits,
   STUDENT_EXPORT_COLUMNS,
@@ -47,7 +48,14 @@ import { StudentForm } from './student-form';
 import { StudentPanel } from './student-panel';
 import { schoolDateText } from '@/lib/dates';
 
-const fullName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) =>
+/**
+ * A student in the list, its side panel, a picker or a list inside a
+ * message: surname first (owner's answer to finding 27; the side panel's
+ * title is the list's name of the row).
+ */
+const fullName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) => listName(row);
+/** The name in the order it is often typed, for the search only. */
+const typedName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) =>
   `${row.firstName} ${row.lastName}`;
 
 /** No class, group or tutor exists before tasks 3.1 and 3.2 (answer 17: "every student shows No class"). */
@@ -334,7 +342,8 @@ export function StudentsPage() {
         header: t('people.students.name'),
         cell: (row) => fullName(row),
         sortValue: (row) => `${row.lastName} ${row.firstName}`,
-        searchText: (row) => `${fullName(row)} ${row.paternalName ?? ''}`,
+        // Both orders, so a name is found however it is typed.
+        searchText: (row) => `${fullName(row)} ${typedName(row)} ${row.paternalName ?? ''}`,
         opens: true,
       },
       {

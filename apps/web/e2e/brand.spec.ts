@@ -140,12 +140,12 @@ test('the shell and the brand moments: sign-in, a list with its side panel and a
     'page',
   );
   const row = page.getByRole('row').filter({ hasText: 'Oʻrinboyev' });
-  await row.getByRole('button', { name: 'Gʻayrat Oʻrinboyev' }).click();
-  await expect(page.getByRole('complementary', { name: 'Gʻayrat Oʻrinboyev' })).toBeVisible();
+  await row.getByRole('button', { name: 'Oʻrinboyev Gʻayrat' }).click();
+  await expect(page.getByRole('complementary', { name: 'Oʻrinboyev Gʻayrat' })).toBeVisible();
   await screenshot(page, 'staff-list-light');
   await chooseTheme(page, uz, 'dark');
   await expect(html).toHaveClass(/dark/);
-  await expect(page.getByRole('complementary', { name: 'Gʻayrat Oʻrinboyev' })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Oʻrinboyev Gʻayrat' })).toBeVisible();
   await screenshot(page, 'staff-list-dark');
 
   // An empty page as a brand moment: the vacancies of a branch that has none.

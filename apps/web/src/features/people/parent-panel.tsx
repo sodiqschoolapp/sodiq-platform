@@ -1,4 +1,5 @@
 import {
+  listName,
   phoneText,
   DEFAULT_PHONE_PREFIX,
   relativeDetailSchema,
@@ -36,9 +37,8 @@ import { asFormSchema } from './form-schema';
 import { RelativeForm, type TakenPhone } from './relative-form';
 import { momentDateText } from '@/lib/dates';
 
-/** A student as the list of students names them. */
-const studentName = (student: { firstName: string; lastName: string }) =>
-  `${student.firstName} ${student.lastName}`;
+/** A student as the list of students names them: surname first (finding 27). */
+const studentName = (student: { firstName: string; lastName: string }) => listName(student);
 
 /**
  * A relative in the side panel of the Parents list (`04`, Close relatives:

@@ -1,4 +1,4 @@
-import type { NeverUsedAccount } from '@sodiq/shared';
+import { listName, type NeverUsedAccount } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
@@ -12,7 +12,8 @@ import { neverUsedQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
 import { formatMoment } from '@/lib/dates';
 
-const nameOfRow = (row: NeverUsedAccount): string => `${row.firstName} ${row.lastName}`;
+/** Surname first, as every list (owner's answer to finding 27). */
+const nameOfRow = (row: NeverUsedAccount): string => listName(row);
 
 /**
  * The accounts never used (edge cases, Accounts and sign-in: "A report lists

@@ -120,6 +120,7 @@ const subjectOf = (n: number, en: string, uz: string, ru: string, archived = fal
   archivedAt: archived ? '2026-10-01T00:00:00.000Z' : null,
   daily: null,
   quarterWeightsMissing: null,
+  quarterCount: null,
 });
 
 const MATHEMATICS = subjectOf(61, 'Mathematics', 'Matematika', 'Математика');
@@ -176,8 +177,8 @@ let shell: ReturnType<typeof renderApp>;
 async function section(language: 'en' | 'ru' | 'uz' = 'en') {
   shell = renderApp(PATH, language);
   const texts = { en, ru, uz }[language];
-  fireEvent.click(await screen.findByText('Lola Tursunova', { selector: 'button' }));
-  const panel = await screen.findByRole('complementary', { name: 'Lola Tursunova' });
+  fireEvent.click(await screen.findByText('Tursunova Lola', { selector: 'button' }));
+  const panel = await screen.findByRole('complementary', { name: 'Tursunova Lola' });
   return within(panel).findByRole('region', { name: texts.people.account.title });
 }
 
@@ -195,7 +196,7 @@ describe('the account section', () => {
     });
     const found = await section();
     const form = await within(found).findByRole('form', {
-      name: en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
+      name: en.people.account.createOf.replace('{{name}}', 'Tursunova Lola'),
     });
     const login = within(form).getByLabelText(en.people.account.login);
     expect((login as HTMLInputElement).value).toBe('l.tursunova');
@@ -258,7 +259,7 @@ describe('the account section', () => {
     });
     const found = await section();
     const form = await within(found).findByRole('form', {
-      name: en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
+      name: en.people.account.createOf.replace('{{name}}', 'Tursunova Lola'),
     });
     const login = within(form).getByLabelText(en.people.account.login);
     expect((login as HTMLInputElement).value).toBe('');
@@ -280,7 +281,7 @@ describe('the account section', () => {
     expect(row?.textContent).toContain(en.roles.teacher);
     expect(row?.textContent).toContain('Aziza Karimova');
     const form = within(found).getByRole('form', {
-      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+      name: en.people.account.giveOf.replace('{{name}}', 'Tursunova Lola'),
     });
     fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
       target: { value: 'tutor' },
@@ -320,7 +321,7 @@ describe('the account section', () => {
     });
     const found = await section();
     const form = within(found).getByRole('form', {
-      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+      name: en.people.account.giveOf.replace('{{name}}', 'Tursunova Lola'),
     });
     expect(within(form).queryByRole('group', { name: en.people.account.subjects })).toBeNull();
     fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
@@ -418,7 +419,7 @@ describe('the account section', () => {
     });
     const found = await section();
     const form = within(found).getByRole('form', {
-      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+      name: en.people.account.giveOf.replace('{{name}}', 'Tursunova Lola'),
     });
     fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
       target: { value: 'head_teacher' },
@@ -449,7 +450,7 @@ describe('the account section', () => {
     });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     const dialog = await screen.findByRole('alertdialog');
-    expect(within(dialog).getByText(`Lola Tursunova: ${en.roles.teacher}, North`)).toBeDefined();
+    expect(within(dialog).getByText(`Tursunova Lola: ${en.roles.teacher}, North`)).toBeDefined();
     expect(calls.some((call) => call.route.endsWith('/end'))).toBe(false);
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.account.end }));
     await waitFor(() => {
@@ -494,7 +495,7 @@ describe('the account section', () => {
     expect(found.querySelector('tr[data-role="teacher"]')?.textContent).toContain(ru.roles.teacher);
     expect(
       within(found).getByRole('form', {
-        name: ru.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+        name: ru.people.account.giveOf.replace('{{name}}', 'Tursunova Lola'),
       }),
     ).toBeDefined();
   });
@@ -531,7 +532,7 @@ describe('the account section', () => {
       );
       const found = await section(language);
       const form = await within(found).findByRole('form', {
-        name: texts.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
+        name: texts.people.account.createOf.replace('{{name}}', 'Tursunova Lola'),
       });
       fireEvent.click(within(form).getByRole('button', { name: texts.form.save }));
       const dialog = await screen.findByRole('dialog', { name: texts.people.account.slipTitle });
@@ -567,7 +568,7 @@ describe('the account section', () => {
     });
     const found = await section();
     const form = await within(found).findByRole('form', {
-      name: en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
+      name: en.people.account.createOf.replace('{{name}}', 'Tursunova Lola'),
     });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     const dialog = await screen.findByRole('dialog', { name: en.people.account.slipTitle });
@@ -601,10 +602,10 @@ describe('the account section', () => {
         }),
     });
     shell = renderApp(PATH);
-    fireEvent.click(await screen.findByText('Lola Tursunova', { selector: 'button' }));
-    const panel = await screen.findByRole('complementary', { name: 'Lola Tursunova' });
+    fireEvent.click(await screen.findByText('Tursunova Lola', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Tursunova Lola' });
     const status = await within(panel).findByRole('form', {
-      name: en.people.staff.statusOf.replace('{{name}}', 'Lola Tursunova'),
+      name: en.people.staff.statusOf.replace('{{name}}', 'Tursunova Lola'),
     });
     fireEvent.change(within(status).getByLabelText(en.people.staff.newStatus), {
       target: { value: 'active' },

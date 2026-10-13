@@ -41,6 +41,7 @@ const MATHEMATICS: Subject = {
   archivedAt: null,
   daily: { attendance: 10, classwork: 50, homework: 40 },
   quarterWeightsMissing: null,
+  quarterCount: null,
 };
 
 // All names are invented.
@@ -187,8 +188,8 @@ function api(
 async function openAkmal() {
   renderApp('/people/staff');
   await screen.findByRole('heading', { name: en.people.staff.title });
-  fireEvent.click(await screen.findByText('Akmal Karimov', { selector: 'button' }));
-  const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+  fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
+  const panel = await screen.findByRole('complementary', { name: 'Karimov Akmal' });
   await within(panel).findByRole('heading', { name: en.people.availability.title });
   return panel;
 }
@@ -220,7 +221,7 @@ describe('availability', () => {
       await within(panel).findByRole('button', { name: en.people.availability.change }),
     );
     const form = await within(panel).findByRole('form', {
-      name: en.people.availability.changeOf.replace('{{name}}', 'Akmal Karimov'),
+      name: en.people.availability.changeOf.replace('{{name}}', 'Karimov Akmal'),
     });
     expect(within(form).getByLabelText<HTMLInputElement>('Monday').value).toBe('08:00–13:00');
     fireEvent.change(within(form).getByLabelText('Tuesday'), {
@@ -260,7 +261,7 @@ describe('availability', () => {
       await within(panel).findByRole('button', { name: en.people.availability.change }),
     );
     const form = await within(panel).findByRole('form', {
-      name: en.people.availability.changeOf.replace('{{name}}', 'Akmal Karimov'),
+      name: en.people.availability.changeOf.replace('{{name}}', 'Karimov Akmal'),
     });
     fireEvent.change(within(form).getByLabelText('Tuesday'), { target: { value: '15:00-14:00' } });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
@@ -299,7 +300,8 @@ describe('the vacancies', () => {
       'English vacancy 2',
       'STEAM',
       'Mathematics',
-      en.setup.subjects.grade.replace('{{grade}}', '7'),
+      // Grades as ranges (finding 19).
+      '7',
       en.people.staff.languages.uz,
       '18',
       en.people.vacancies.statuses.open,

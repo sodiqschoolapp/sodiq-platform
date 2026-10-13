@@ -67,7 +67,7 @@ async function printPersonalDataReport(page: Page): Promise<void> {
     .selectOption({ label: 'Audit browser test branch' });
   await expect(heading(page, en.people.students.title)).toBeVisible();
   await page.getByRole('row').filter({ hasText: 'Murodova' }).getByRole('button').first().click();
-  const panel = page.getByRole('complementary', { name: 'Oydin Murodova' });
+  const panel = page.getByRole('complementary', { name: 'Murodova Oydin' });
   await panel.getByRole('link', { name: en.people.report.link, exact: true }).click();
 
   await expect(heading(page, en.people.report.title)).toBeVisible();
@@ -258,11 +258,11 @@ async function createAccountAndSignIn(page: Page): Promise<void> {
     .getByRole('combobox', { name: en.switcher.branch, exact: true })
     .selectOption({ label: 'Accounts browser test branch' });
   await expect(heading(page, en.people.staff.title)).toBeVisible();
-  await page.getByRole('button', { name: 'Feruza Aminova', exact: true }).click();
-  const panel = page.getByRole('complementary', { name: 'Feruza Aminova' });
+  await page.getByRole('button', { name: 'Aminova Feruza', exact: true }).click();
+  const panel = page.getByRole('complementary', { name: 'Aminova Feruza' });
   const section = panel.getByRole('region', { name: en.people.account.title });
   const create = section.getByRole('form', {
-    name: en.people.account.createOf.replace('{{name}}', 'Feruza Aminova'),
+    name: en.people.account.createOf.replace('{{name}}', 'Aminova Feruza'),
   });
   await expect(create.getByLabel(en.people.account.login, { exact: true })).toHaveValue(
     'f.aminova',
@@ -283,7 +283,7 @@ async function createAccountAndSignIn(page: Page): Promise<void> {
   await expect(page.getByText(password)).toHaveCount(0);
 
   const give = section.getByRole('form', {
-    name: en.people.account.giveOf.replace('{{name}}', 'Feruza Aminova'),
+    name: en.people.account.giveOf.replace('{{name}}', 'Aminova Feruza'),
   });
   await give.getByLabel(en.people.account.newRole, { exact: true }).selectOption('teacher');
   await give.getByRole('button', { name: en.form.save, exact: true }).click();
@@ -327,8 +327,8 @@ async function giveFormOf(page: Page, name: string) {
 }
 
 /**
- * The Super Admin appoints Rustam Nazarov Head Teacher of Algebra and
- * Trigonometry in the branch, and is refused Saida Yusupova as a second Head
+ * The Super Admin appoints Nazarov Rustam Head Teacher of Algebra and
+ * Trigonometry in the branch, and is refused Yusupova Saida as a second Head
  * Teacher of Algebra (`02`, One per subject per branch). Runs in the session
  * of the divisions test, after the account test, for the same reason.
  */
@@ -339,7 +339,7 @@ async function appointHeadTeachers(page: Page): Promise<void> {
     .selectOption({ label: 'Accounts browser test branch' });
   await expect(heading(page, en.people.staff.title)).toBeVisible();
 
-  const first = await giveFormOf(page, 'Rustam Nazarov');
+  const first = await giveFormOf(page, 'Nazarov Rustam');
   await first.give
     .getByLabel(en.people.account.newRole, { exact: true })
     .selectOption('head_teacher');
@@ -355,7 +355,7 @@ async function appointHeadTeachers(page: Page): Promise<void> {
     await first.section.screenshot({ path: path.join(APPOINTMENT_SCREENS, 'appointment.png') });
   }
 
-  const second = await giveFormOf(page, 'Saida Yusupova');
+  const second = await giveFormOf(page, 'Yusupova Saida');
   await second.give
     .getByLabel(en.people.account.newRole, { exact: true })
     .selectOption('head_teacher');
@@ -404,7 +404,7 @@ async function headTeachersAndAlert(page: Page): Promise<void> {
   await page.goto('/people');
   await page.getByRole('link', { name: en.people.headTeachersLink, exact: true }).click();
   await expect(heading(page, en.people.headTeachers.title)).toBeVisible();
-  const row = page.locator('tbody tr').filter({ hasText: 'Rustam Nazarov' });
+  const row = page.locator('tbody tr').filter({ hasText: 'Nazarov Rustam' });
   await expect(row).toContainText('Algebra, Trigonometry');
   await expect(row).toContainText(en.roles.head_teacher);
   await expect(row).toContainText(en.people.headTeachers.states.current);

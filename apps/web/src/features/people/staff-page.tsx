@@ -1,4 +1,5 @@
 import {
+  listName,
   phoneText,
   gradeRanges,
   INSTRUCTION_LANGUAGES,
@@ -34,7 +35,14 @@ import { PeopleTabs } from './people-tabs';
 import { StaffForm } from './staff-form';
 import { StaffPanel } from './staff-panel';
 
-const fullName = (row: Pick<StaffListItem, 'firstName' | 'lastName'>) =>
+/**
+ * A member of staff in the list, its side panel, a picker or a list inside a
+ * message: surname first (owner's answer to finding 27; the side panel's
+ * title is the list's name of the row).
+ */
+const fullName = (row: Pick<StaffListItem, 'firstName' | 'lastName'>) => listName(row);
+/** The name in the order it is often typed, for the search only. */
+const typedName = (row: Pick<StaffListItem, 'firstName' | 'lastName'>) =>
   `${row.firstName} ${row.lastName}`;
 
 /**
@@ -166,7 +174,9 @@ export function StaffPage() {
         header: t('people.staff.name'),
         cell: (row) => fullName(row),
         sortValue: (row) => `${row.lastName} ${row.firstName}`,
-        searchText: (row) => `${fullName(row)} ${row.fatherName ?? ''} ${row.staffId}`,
+        // Both orders, so a name is found however it is typed.
+        searchText: (row) =>
+          `${fullName(row)} ${typedName(row)} ${row.fatherName ?? ''} ${row.staffId}`,
         opens: true,
       },
       {
