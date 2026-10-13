@@ -187,10 +187,11 @@ describe('the setup checklist', () => {
     expect(items.map((item) => item.getAttribute('data-item'))).toEqual(
       CHECKLIST.items.map((item) => item.key),
     );
-    expect(within(items[0] as HTMLElement).getByLabelText(en.setup.checklist.done)).toBeDefined();
-    expect(
-      within(items[1] as HTMLElement).getByLabelText(en.setup.checklist.missing),
-    ).toBeDefined();
+    // Finding 17: the word beside the icon, as visible text, not a label alone.
+    const mark = (item: HTMLElement | undefined) =>
+      item?.querySelector('li > span:first-child')?.textContent;
+    expect(mark(items[0])).toBe(en.setup.checklist.done);
+    expect(mark(items[1])).toBe(en.setup.checklist.missing);
     expect(items[4]?.textContent).toContain('2026–2027');
     expect(items[2]?.textContent).toContain(en.setup.checklist.wholeSchool);
     expect(items[7]?.textContent).toContain('3 entries');

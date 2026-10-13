@@ -19,7 +19,7 @@ import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { nameOf } from '@/features/setup/setup-api';
-import { asFormSchema } from './form-schema';
+import { asFormSchema, isGradesField, subjectsFieldOf } from './form-schema';
 
 type Fields =
   | 'name'
@@ -75,10 +75,7 @@ export function VacancyForm({
     );
   }
   const form = useRecordForm<Fields, VacancyRecord>({
-    schema: asFormSchema<VacancyRecord>(vacancyRecordSchema, (path) => {
-      const [first] = path;
-      return first === 'subjects' ? ['subjects'] : [...path];
-    }),
+    schema: asFormSchema<VacancyRecord>(vacancyRecordSchema, subjectsFieldOf),
     initial: initial,
     read: (typed) => ({
       name: typed.name,
@@ -93,6 +90,10 @@ export function VacancyForm({
       weeklyLessons: numberOrNull(typed.weeklyLessons),
       dailyLessons: numberOrNull(typed.dailyLessons),
     }),
+    // Finding 21: a subject's grades say what is missing on Save, under that
+    // subject's grades.
+    checkedOnSave: (Object.keys(initial) as Fields[]).filter(isGradesField),
+    message: (field) => (isGradesField(field) ? t('form.chooseGrade') : undefined),
     save: onSave,
   });
   const department = form.bind('departmentId').value;

@@ -55,7 +55,9 @@ export function FeedbackButton({ withWord = false }: { withWord?: boolean }) {
     >
       <DialogTrigger render={<Button variant="ghost" />}>
         <FeedbackIcon aria-hidden />
-        <span className={withWord ? undefined : 'sr-only xl:not-sr-only'}>{t('feedback.button')}</span>
+        <span className={withWord ? undefined : 'sr-only xl:not-sr-only'}>
+          {t('feedback.button')}
+        </span>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

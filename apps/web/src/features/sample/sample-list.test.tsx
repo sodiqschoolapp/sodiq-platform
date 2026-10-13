@@ -60,9 +60,30 @@ const selectedText = (count: number): string =>
 
 /**
  * The status of the page. The top bar has one of its own (the sign of unsaved
- * changes, task 0.8b-2), so a test looks inside `main`.
+ * changes, task 0.8b-2), so a test looks inside `main`; the selection has its
+ * own (`selectionStatus`, task 2.7b-2), so this is the one that is busy.
  */
-const pageStatus = () => within(screen.getByRole('main')).getByRole('status');
+const pageStatus = () =>
+  within(screen.getByRole('main'))
+    .getAllByRole('status')
+    .filter((status) => status.getAttribute('aria-busy') === 'true')
+    .at(0) ?? null;
+
+/**
+ * The one live region of the selection (task 2.7b-2, finding 13): visually
+ * hidden, always in the page, empty with nothing ticked. Read from that one
+ * element, never by its words, which the bar shows too.
+ */
+const selectionStatus = (): HTMLElement => {
+  const found = within(screen.getByRole('main'))
+    .getAllByRole('status')
+    .filter((status) => status.dataset.slot === 'selection-status');
+  expect(found).toHaveLength(1);
+  return found[0] as HTMLElement;
+};
+
+/** The bar of the bulk actions, there only while a row is ticked. */
+const bulkBar = () => screen.queryByRole('group', { name: en.list.bulkActions });
 
 const tickAll = () => screen.getByRole<HTMLInputElement>('checkbox', { name: en.list.selectAll });
 
@@ -330,30 +351,42 @@ describe('the column chooser of a list', () => {
 // the owner (task 0.8b): "tick all" means every row that matches the search
 // and filters.
 describe('the checkboxes and bulk actions of a list', () => {
-  it('offers no action while nothing is ticked, and says the count when rows are', async () => {
+  // Issue #39, hand test of 13 October 2026, finding 13 (task 2.7b-2, decision
+  // 1): the bar with disabled actions and "0 rows selected." is gone.
+  it('shows the bar only once a row is ticked, and says the count in one status', async () => {
     await openList();
-    // The bar is there from the start, so the table does not move at the first tick.
-    const bar = screen.getByRole('group', { name: en.list.bulkActions });
-    const archive = () =>
-      within(bar).getByRole<HTMLButtonElement>('button', { name: en.sample.archive });
-    const clear = () =>
-      within(bar).getByRole<HTMLButtonElement>('button', { name: en.list.clearSelection });
-    expect(within(bar).getByRole('status').textContent).toBe(selectedText(0));
-    expect(archive().disabled).toBe(true);
-    expect(clear().disabled).toBe(true);
+    expect(bulkBar()).toBeNull();
+    expect(selectionStatus().textContent).toBe('');
+    expect(screen.queryByRole('button', { name: en.sample.archive })).toBeNull();
 
     fireEvent.click(tickRow('Aziza Abdullayev'));
     fireEvent.click(tickRow('Bekzod Abdullayev'));
 
-    expect(within(bar).getByRole('status').textContent).toBe(selectedText(2));
+    const bar = () => {
+      const found = bulkBar();
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    };
+    const archive = () =>
+      within(bar()).getByRole<HTMLButtonElement>('button', { name: en.sample.archive });
+    const clear = () =>
+      within(bar()).getByRole<HTMLButtonElement>('button', { name: en.list.clearSelection });
+    expect(selectionStatus().textContent).toBe(selectedText(2));
+    // The count in the bar is plain text, not a second status.
+    expect(within(bar()).queryByRole('status')).toBeNull();
+    expect(bar().querySelector('[data-slot="selection-count"]')?.textContent).toBe(
+      selectedText(2),
+    );
     expect(archive().disabled).toBe(false);
+    expect(clear().disabled).toBe(false);
     expect(tickAll().indeterminate).toBe(true);
 
     fireEvent.click(tickRow('Aziza Abdullayev'));
-    expect(within(bar).getByRole('status').textContent).toBe(selectedText(1));
+    expect(selectionStatus().textContent).toBe(selectedText(1));
 
     fireEvent.click(clear());
-    expect(within(bar).getByRole('status').textContent).toBe(selectedText(0));
+    expect(bulkBar()).toBeNull();
+    expect(selectionStatus().textContent).toBe('');
     expect(tickRow('Bekzod Abdullayev').checked).toBe(false);
     // The button turned itself off: the keyboard goes on from "tick all".
     expect(document.activeElement).toBe(tickAll());
@@ -365,12 +398,12 @@ describe('the checkboxes and bulk actions of a list', () => {
 
     fireEvent.click(tickAll());
 
-    expect(pageStatus().textContent).toBe(selectedText(20));
+    expect(selectionStatus().textContent).toBe(selectedText(20));
     expect(tickAll().checked).toBe(true);
 
     type('');
 
-    expect(pageStatus().textContent).toBe(selectedText(20));
+    expect(selectionStatus().textContent).toBe(selectedText(20));
     expect(tickAll().checked).toBe(false);
     expect(tickAll().indeterminate).toBe(true);
     expect(tickRow('Aziza Abdullayev').checked).toBe(false);
@@ -384,11 +417,12 @@ describe('the checkboxes and bulk actions of a list', () => {
     fireEvent.click(tickAll());
 
     // docs/spec/12-ux-standards.md, Language: numbers follow the chosen language.
-    expect(pageStatus().textContent).toBe(en.list.selected_other.replace('{{n}}', '2,500'));
+    expect(selectionStatus().textContent).toBe(en.list.selected_other.replace('{{n}}', '2,500'));
 
     fireEvent.click(tickAll());
 
-    expect(pageStatus().textContent).toBe(selectedText(0));
+    expect(selectionStatus().textContent).toBe('');
+    expect(bulkBar()).toBeNull();
   });
 
   it('says how many ticked rows the search does not show', async () => {
@@ -398,7 +432,7 @@ describe('the checkboxes and bulk actions of a list', () => {
 
     type('bekzod');
 
-    expect(pageStatus().textContent).toBe(
+    expect(selectionStatus().textContent).toBe(
       `${selectedText(2)} ${en.list.selectedNotShown_one.replace('{{n}}', '1')}`,
     );
   });
@@ -438,7 +472,7 @@ describe('the checkboxes and bulk actions of a list', () => {
       fireEvent.click(box);
     }
 
-    expect(pageStatus().textContent).toBe(ru.list.selected_few.replace('{{n}}', '2'));
+    expect(selectionStatus().textContent).toBe(ru.list.selected_few.replace('{{n}}', '2'));
   });
 });
 
@@ -596,6 +630,10 @@ describe('the states of a list', () => {
     await openList(`${PATH}?demo=loading`);
 
     const outline = pageStatus();
+    expect(outline).not.toBeNull();
+    if (outline === null) {
+      return;
+    }
     expect(outline.getAttribute('aria-busy')).toBe('true');
     expect(within(outline).getByRole('columnheader', { name: en.sample.name })).toBeDefined();
     expect(within(outline).getAllByRole('row')).toHaveLength(9);

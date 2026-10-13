@@ -173,6 +173,9 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
                 setTaken(null);
               }}
               onMerged={merged}
+              onCancel={() => {
+                setTaken(null);
+              }}
             />
           )}
         </section>
@@ -198,11 +201,14 @@ function TakenChoices({
   taken,
   onEdit,
   onMerged,
+  onCancel,
 }: {
   relative: RelativeDetail;
   taken: TakenPhone;
   onEdit: (body: RelativeEdit) => Promise<void>;
   onMerged: (answer: unknown) => Promise<void>;
+  /** Closes the choices; the phone typed into the edit stays as it is. */
+  onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const confirm = useConfirm();
@@ -269,12 +275,38 @@ function TakenChoices({
       {text}
     </Button>
   );
+  /**
+   * Leaves the choice, not the edit (issue #39, hand test of 13 October 2026,
+   * finding 28; task 2.7b-2, decision 9). A previous phone typed into the new
+   * owner's form is asked about first (`.claude/rules/web.md`).
+   */
+  const cancel = () => {
+    if (choice !== 'owner' || !owner.dirty) {
+      onCancel();
+      return;
+    }
+    void confirm({
+      title: t('unsent.leaveTitle'),
+      text: t('unsent.leaveText'),
+      names: [t('people.relatives.newOwner')],
+      action: t('unsent.leave'),
+      cancel: t('unsent.stay'),
+      destructive: true,
+    }).then((leaves) => {
+      if (leaves) {
+        onCancel();
+      }
+    });
+  };
   return (
     <section className="grid gap-3" aria-label={t('people.relatives.takenTitle')}>
       <div className="flex flex-wrap gap-3">
         {taken.holder.mergeable &&
           choose('merge', t('people.relatives.mergeWith', { name: holderName }))}
         {choose('owner', t('people.relatives.newOwner'))}
+        <Button variant="secondary" onClick={cancel}>
+          {t('confirm.cancel')}
+        </Button>
       </div>
       {choice === 'merge' && (
         <div className="grid gap-3">

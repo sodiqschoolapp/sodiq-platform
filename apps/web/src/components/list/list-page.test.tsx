@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiFailure } from '@/api/failure';
 import { createI18n } from '@/i18n/i18n';
 import { en } from '@/i18n/locales/en';
+import { setWindowWidth } from '@/testing/window-width';
 import { ListPage, type BulkAction, type ExportExtra, type ExportState } from './list-page';
 import type { Column, ListSearch } from './list-state';
 
@@ -51,6 +52,7 @@ interface HarnessProps {
   actions?: BulkAction<Room>[];
   panel?: (row: Room) => React.ReactNode;
   more?: { onMore: () => void; loading: boolean };
+  columns?: Column<Room>[];
 }
 
 /** A list whose address is a piece of state. */
@@ -64,6 +66,7 @@ function Harness({
   actions,
   panel,
   more,
+  columns = COLUMNS,
 }: HarnessProps) {
   const [search, setSearch] = useState(start);
   return (
@@ -74,7 +77,7 @@ function Harness({
       error={error}
       rowId={(row) => row.id}
       rowName={(row) => row.name}
-      columns={COLUMNS}
+      columns={columns}
       search={search}
       onSearchChange={setSearch}
       empty={{ title: 'No rooms yet', text: 'Rooms are listed here.' }}
@@ -100,8 +103,14 @@ const show = (props: HarnessProps) =>
 const selected = (count: number): string =>
   (count === 1 ? en.list.selected_one : en.list.selected_other).replace('{{n}}', String(count));
 
-const status = () =>
-  within(screen.getByRole('group', { name: en.list.bulkActions })).getByRole('status');
+/** The one live region of the selection, read from that element (task 2.7b-2, finding 13). */
+const status = (): HTMLElement => {
+  const found = screen
+    .getAllByRole('status')
+    .filter((one) => one.dataset.slot === 'selection-status');
+  expect(found).toHaveLength(1);
+  return found[0] as HTMLElement;
+};
 
 const tick = (name: string) =>
   screen.getByLabelText<HTMLInputElement>(en.list.selectRow.replace('{{name}}', name));
@@ -350,5 +359,79 @@ describe('a list with server paging', () => {
   it('offers no next page without one', () => {
     show({ rows: ROOMS });
     expect(screen.queryByRole('button', { name: en.list.loadMore })).toBeNull();
+  });
+});
+
+// Issue #39, hand test of 13 October 2026, finding 13 (task 2.7b-2): the bar
+// of the bulk actions only once a row is ticked.
+describe('the bar of the bulk actions', () => {
+  it('is not there with nothing ticked, comes with a tick and goes with "Clear selection"', () => {
+    show({ rows: ROOMS });
+    const bar = () => screen.queryByRole('group', { name: en.list.bulkActions });
+    expect(bar()).toBeNull();
+    expect(status().textContent).toBe('');
+
+    fireEvent.click(tick('Room 12'));
+    expect(bar()).not.toBeNull();
+    expect(status().textContent).toBe(selected(1));
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Close the rooms' }).disabled,
+    ).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: en.list.clearSelection }));
+    expect(bar()).toBeNull();
+    expect(status().textContent).toBe('');
+  });
+});
+
+// Issue #39, finding 14, and the owner's confirmation of 13 October 2026:
+// "tables that hide less important columns first" (task 2.7b-2, decision 3).
+describe('the narrow columns of a list', () => {
+  const WITH_FLOOR: Column<Room>[] = [
+    ...COLUMNS,
+    { key: 'floor', header: 'Floor', cell: () => 'Ground floor', narrow: true },
+  ];
+  const headers = (): string[] =>
+    [...document.querySelectorAll('thead th')].map((cell) => cell.textContent);
+
+  it('are left out of the table below 1280 px, unticked in the chooser and kept in the export', async () => {
+    setWindowWidth(1047);
+    const onExport = vi.fn<(rows: Room[], columnKeys: string[]) => void>();
+    show({ rows: ROOMS, columns: WITH_FLOOR, onExport });
+
+    expect(headers()).not.toContain('Floor');
+    expect(headers()).toContain('Seats');
+
+    fireEvent.click(screen.getByRole('button', { name: en.list.export }));
+    expect(onExport.mock.calls[0]?.[1]).toEqual(['name', 'seats', 'floor']);
+
+    fireEvent.click(screen.getByRole('button', { name: en.list.columns }));
+    const floor = await screen.findByRole('menuitemcheckbox', { name: 'Floor' });
+    expect(floor.getAttribute('aria-checked')).toBe('false');
+
+    // Ticked in the chooser: shown at this width, and kept for the next visit.
+    fireEvent.click(floor);
+    expect(headers()).toContain('Floor');
+    expect(window.localStorage.getItem('sodiq.list.rooms.shown')).toBe('["floor"]');
+  });
+
+  it('are left out of the outline while the rows are on the way', () => {
+    setWindowWidth(1047);
+    show({ rows: undefined, columns: WITH_FLOOR });
+    expect(headers()).toContain('Seats');
+    expect(headers()).not.toContain('Floor');
+  });
+
+  it('are drawn from 1280 px', () => {
+    setWindowWidth(1280);
+    show({ rows: ROOMS, columns: WITH_FLOOR });
+    expect(headers()).toContain('Floor');
+  });
+
+  it('stay hidden at every width once the person hid them', () => {
+    window.localStorage.setItem('sodiq.list.rooms.hidden', '["floor"]');
+    setWindowWidth(1440);
+    show({ rows: ROOMS, columns: WITH_FLOOR });
+    expect(headers()).not.toContain('Floor');
   });
 });

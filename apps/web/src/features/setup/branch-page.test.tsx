@@ -171,9 +171,33 @@ describe('the branch page', () => {
     fireEvent.click(within(form()).getByRole('button', { name: en.form.save }));
 
     const days = within(form()).getByRole('group', { name: en.setup.branch.workingWeekdays });
-    expect(within(days).getByText(en.form.required)).toBeDefined();
+    // Finding 21: a group of choices says to choose, not to fill in a field.
+    expect(within(days).getByText(en.form.chooseOne)).toBeDefined();
     expect(field(form(), en.setup.branch.email).getAttribute('aria-invalid')).toBe('true');
     expect(calls.some((call) => call.route === 'PUT /api/setup/branch')).toBe(false);
+  });
+
+  // Issue #39, hand test of 13 October 2026, finding 21, and the review of task
+  // 2.7b-2 (correction 2): the weekdays say what is missing on Save only.
+  it('says nothing of the weekdays as they are ticked and unticked, until Save', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(superAdmin()),
+      'GET /api/setup/branch': () => json(BRANCH),
+    });
+    renderApp(PATH);
+    await screen.findByRole('form', { name: 'North' });
+    const days = () =>
+      within(form()).getByRole('group', { name: en.setup.branch.workingWeekdays });
+
+    for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']) {
+      fireEvent.click(within(form()).getByLabelText(day));
+    }
+    fireEvent.click(within(form()).getByLabelText('Monday'));
+    fireEvent.click(within(form()).getByLabelText('Monday'));
+    expect(within(days()).queryByText(en.form.chooseOne)).toBeNull();
+
+    fireEvent.click(within(form()).getByRole('button', { name: en.form.save }));
+    expect(within(days()).getByText(en.form.chooseOne)).toBeDefined();
   });
 
   // "Decided ahead for tasks 2.2d and 2.7", item 10 (task 2.7b-1).

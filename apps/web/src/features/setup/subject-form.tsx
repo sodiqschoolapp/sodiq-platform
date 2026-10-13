@@ -124,6 +124,8 @@ export function SubjectForm({
   const switchValue = (on: boolean) => (on ? CHECKED : '');
   const form = useRecordForm<SubjectField, SubjectRecord>({
     schema: formSchema(subject === null),
+    // Keyed by the subject alone: its own save keeps "Saved." (finding 18).
+    followInitial: subject !== null,
     initial: {
       nameUz: subject?.names.uz ?? '',
       nameRu: subject?.names.ru ?? '',
@@ -165,6 +167,8 @@ export function SubjectForm({
       };
     },
     message: (field) => (field === 'dailytotal' ? t('setup.subjects.totalWrong') : undefined),
+    // Finding 21: the grades say what is missing on Save, not as they are ticked.
+    checkedOnSave: ['grades'],
     save: onSave,
   });
   const taken = takenNameOf(form.failure);

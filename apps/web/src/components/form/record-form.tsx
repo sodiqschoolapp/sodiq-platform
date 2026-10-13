@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
 import { Button } from '@/components/ui/button';
 import { useUnsentEntry } from '@/components/unsent/unsent-changes';
+import { SavedSign } from './saved-sign';
 import type { RecordFormState } from './use-record-form';
 
 interface RecordFormProps<Field extends string> {
@@ -84,10 +85,7 @@ export function RecordForm<Field extends string>({
         <Button type="submit" disabled={form.status === 'saving'}>
           {t('form.save')}
         </Button>
-        {/* Always there, so it is read out when the text arrives. */}
-        <p role="status" className="text-sm font-medium">
-          {form.status === 'saved' && t('form.saved')}
-        </p>
+        <SavedSign saved={form.status === 'saved'} />
       </div>
     </form>
   );

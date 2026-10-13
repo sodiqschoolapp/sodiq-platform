@@ -487,6 +487,10 @@ function GiveRoleForm({
         ? { subjectIds: listValues(typed.subjectIds) }
         : {}),
     }),
+    // Finding 21: the subjects say what is missing on Save, in their own words,
+    // not as soon as Head Teacher is chosen after a Save.
+    checkedOnSave: ['subjectIds'],
+    message: (field) => (field === 'subjectIds' ? t('form.chooseSubject') : undefined),
     save: async (role) => {
       await give.mutateAsync(role);
       await onGiven();
@@ -562,6 +566,8 @@ function ChangeSubjectsForm({
       from: today,
     },
     read: (typed) => ({ subjectIds: listValues(typed.subjectIds), from: typed.from }),
+    checkedOnSave: ['subjectIds'],
+    message: (field) => (field === 'subjectIds' ? t('form.chooseSubject') : undefined),
     save: async (changed) => {
       await change.mutateAsync(changed);
       await onChanged();

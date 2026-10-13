@@ -9,6 +9,7 @@ import {
   type VacancyRecord,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { SavedSign } from '@/components/form/saved-sign';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
@@ -115,7 +116,7 @@ export function VacancyPanel({
         <p className="text-sm">{t(`people.vacancies.statuses.${vacancy.status}`)}</p>
         <History vacancy={vacancy} />
         {canArchive && (
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="secondary"
               size="sm"
@@ -148,6 +149,8 @@ export function VacancyPanel({
             >
               {t('people.vacancies.delete')}
             </Button>
+            {/* After a close or reopen, until another action starts (finding 18). */}
+            <SavedSign saved={status.isSuccess && remove.isIdle} />
           </div>
         )}
         <FailureAlert error={status.error ?? remove.error} />

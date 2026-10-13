@@ -9,6 +9,7 @@ import {
   type Weekday,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { SavedSign } from '@/components/form/saved-sign';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
@@ -58,6 +59,10 @@ export function AvailabilitySection({ id, label }: { id: string; label: string }
   const hours = useQuery(availabilityQuery(branchId, id));
   const branch = useQuery(branchQuery(branchId));
   const [changing, setChanging] = useState(false);
+  // The record whose change was saved last: "Saved." beside "Change
+  // availability" until the next change starts or the panel shows another
+  // record (finding 18).
+  const [savedFor, setSavedFor] = useState<string | null>(null);
   const canEdit = role !== null && permits(PERMISSIONS, role, 'staff_teaching', 'edit');
   const set = useMutation({
     mutationFn: (input: AvailabilitySet) =>
@@ -73,6 +78,7 @@ export function AvailabilitySection({ id, label }: { id: string; label: string }
         availabilitySchema.parse(answer),
       );
       setChanging(false);
+      setSavedFor(id);
     },
   });
 
@@ -102,16 +108,18 @@ export function AvailabilitySection({ id, label }: { id: string; label: string }
       <>
         <Entries entries={data.entries} today={data.today} days={days} />
         {canEdit && !changing && (
-          <div>
+          <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="secondary"
               size="sm"
               onClick={() => {
                 setChanging(true);
+                setSavedFor(null);
               }}
             >
               {t('people.availability.change')}
             </Button>
+            <SavedSign saved={savedFor === id} />
           </div>
         )}
         {canEdit && changing && (

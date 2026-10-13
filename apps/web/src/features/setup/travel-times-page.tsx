@@ -50,6 +50,8 @@ function PairForm({ pair }: { pair: Pair }) {
     schema: travelTimeRecordSchema,
     initial: { minutes: pair.minutes === null ? '' : String(pair.minutes) },
     read: (typed) => ({ otherBranchId: pair.branchId, minutes: wholeNumber(typed.minutes) }),
+    // Keyed by the pair alone: its own save keeps "Saved." (finding 18).
+    followInitial: true,
     save: async (record) => {
       await save.mutateAsync(record.minutes);
     },
@@ -110,7 +112,7 @@ export function TravelTimesPage() {
       >
         <h2 className="text-base font-semibold">{pair.branchName}</h2>
         <p className="text-sm text-muted-foreground">{shown(pair.minutes)}</p>
-        <PairForm key={`${pair.branchId}-${String(pair.minutes)}`} pair={pair} />
+        <PairForm key={pair.branchId} pair={pair} />
       </section>
     ));
   } else {

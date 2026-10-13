@@ -20,7 +20,16 @@ function fakeDevice(dark: boolean) {
   vi.stubGlobal(
     'matchMedia',
     vi.fn((media: string) => {
-      expect(media).toBe(DARK_QUERY);
+      // The layout also asks for widths (task 2.7b-2): a wide window that never changes.
+      if (media !== DARK_QUERY) {
+        expect(media).toMatch(/^\(min-width: \d+px\)$/);
+        return {
+          matches: true,
+          media,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        } as unknown as MediaQueryList;
+      }
       return query as unknown as MediaQueryList;
     }),
   );
