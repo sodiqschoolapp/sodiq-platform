@@ -213,6 +213,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 13 October 2026: smaller UX (task 2.7b-2)
+
+Plan approved on pull request #79 with corrections 1 to 3; decisions 1 to 10 confirmed there; 1, 2 and 4 marked Look first. The decisions after 10 came from the build and its review. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (tests changed by a requirement). The sample-list and list tests of a bar with disabled actions and "0 rows selected." were replaced by tests of no bar until a tick; `patterns.spec.ts` reads the count from the bar's own element; the checklist and weekday tests read the new words; every replaced assertion has one for the new behaviour | Decision 1; findings 13, 17, 21 |
+| **Look first** (spec text, `12`, No lost work). A checkbox group that must hold one choice says so on Save, not as it is ticked; typed fields still check as typed. Proposed `/spec-change`: "Forms check each field as it is typed and say in plain words what to fix; a choice that must hold at least one item says so when the form is saved." | Decision 2; the owner's confirmation of 13 October |
+| **Look first** (the owner's design system). Below 1280 px the search and feedback buttons of the top bar are icons named by their words; `docs/design-system.md` is not edited. Line the owner may add to Top bar: "Below 1280 px the search and any button with a word become icon buttons." | Decision 4 |
+| A list leaves out its `narrow` columns below 1280 px unless ticked in the column chooser (kept in `sodiq.list.<id>.shown`); they stay in the export and the side panel. Only Rooms (Building, Floor) has them | Decision 3 |
+| `photo_invalid` reads "Choose a JPEG or PNG photo, up to 5 MB." | Decision 5 |
+| On a phone the Super Admin's alerts are one line with Show/Hide, open only while the tab lives | Decision 6 |
+| A form keyed by the record follows a new `initial` while nothing is typed (`followInitial`); typing is never overwritten | Decision 7, correction 3 |
+| Closing and reopening a vacancy ask nothing; they show "Saved." | Decision 8 |
+| Cancel in the phone-taken choices keeps the edit's phone and asks before dropping a typed previous phone | Decision 9 |
+| A group with too few choices says "Choose at least one."; the grades of a staff or vacancy subject "Choose at least one grade." under that subject; the subjects of an appointment "Choose at least one subject." | Decision 10, correction 2 |
+| The e2e account `topBar` is an Academic Vice Principal and a Teacher of two branches, not a Super Admin: the seed already holds the three Super Admins allowed. The alerts line is proved by the unit tests | Build |
+
 ## 13 October 2026: formats (task 2.7b-1)
 
 Plan approved on pull request #78 with corrections 1 to 5; decisions 1 to 10 confirmed there; 1 to 3 marked Look first. The decisions after 10 came from the build and its review. Flagged on issue #42.

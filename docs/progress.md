@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: task 2.7b-2 Smaller UX
+
+- Built: `useRecordForm` options `checkedOnSave` (a checkbox group says what is missing on Save only) and `followInitial` (a form follows what it shows instead of a remounting key); `SavedSign`; `Column.narrow` with `useMinWidth` (`lib/use-min-width.ts`); `AttentionAlerts` for the phone; the e2e account `topBar` with three rooms.
+- Screens: no selection bar until a row is ticked; Rooms leaves out Building and Floor below 1280 px; one-row top bar from 1024 px with icon-only search and feedback below 1280 px; "Done"/"Missing" in the checklist; "Saved." stays on travel time, subjects and weights, teaching, UID correction, availability, vacancy close/reopen; "Choose at least one grade/subject." on Save; the new photo text; "Keep the leaving"; Cancel in the phone-taken choices; no "Leave school" form while a leaving is scheduled; the alerts line on phones; "Send feedback" with its word in More.
+- Left out: narrow columns of other lists and the page sweep (2.7c); the Super Admin's own record (2.7d); the alerts line in a browser test (the seed holds the three Super Admins allowed, so the unit tests prove it).
+
+The next sessions must know:
+
+- A form whose own save changes what defines its `key` loses "Saved.": key it by the record and pass `followInitial`. A checkbox group that must hold one choice is `checkedOnSave`.
+- A list column that matters less is `narrow: true`; a test sets the window with `setWindowWidth` (`testing/window-width.ts`), without it the window counts as wide.
+- The selection count is read from `[data-slot="selection-status"]` or the bar's `[data-slot="selection-count"]`, never by its words.
+- The next task is 2.7c.
+
 ## 13 October 2026: task 2.7b-1 Formats
 
 - Built: `phoneText`, `gradeRanges`, `listName`, `uidYearOf`/`uidSetFor` in `packages/shared`; migration 0041 (branch phones rewritten with audit entries, then `branches_phone_format`); `quarterCount` on the subjects list; `expected` on the `uid_set_mismatch` detail; the rooms export's Shared split into Yes/No and a number column.
