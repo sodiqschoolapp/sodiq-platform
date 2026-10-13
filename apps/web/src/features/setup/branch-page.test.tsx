@@ -369,7 +369,7 @@ describe('the branch page', () => {
       });
       renderApp(PATH);
 
-      expect(await screen.findByText('November 10, 2026')).toBeDefined();
+      expect(await screen.findByText('10 November 2026')).toBeDefined();
       expect(screen.queryByRole('form', { name: en.setup.branch.goLiveTitle })).toBeNull();
     });
   });

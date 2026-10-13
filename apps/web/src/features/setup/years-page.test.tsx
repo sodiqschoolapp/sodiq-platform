@@ -118,9 +118,9 @@ describe('the academic years page', () => {
     await openList();
 
     expect(rowsDrawn()).toEqual([
-      ['2027–2028', 'September 2, 2027', 'May 25, 2028', en.setup.years.planned, '0 of 4 dated'],
-      ['2026–2027', 'September 2, 2026', 'May 25, 2027', en.setup.years.current, '2 of 4 dated'],
-      ['2025–2026', 'September 2, 2025', 'May 25, 2026', en.setup.years.closed, '0 of 4 dated'],
+      ['2027–2028', '2 September 2027', '25 May 2028', en.setup.years.planned, '0 of 4 dated'],
+      ['2026–2027', '2 September 2026', '25 May 2027', en.setup.years.current, '2 of 4 dated'],
+      ['2025–2026', '2 September 2025', '25 May 2026', en.setup.years.closed, '0 of 4 dated'],
     ]);
   });
 
@@ -277,7 +277,7 @@ describe('the academic years page', () => {
     expect(screen.queryByRole('button', { name: en.setup.years.add })).toBeNull();
     const panel = await openYear('2026–2027');
     expect(within(panel).queryByRole('form')).toBeNull();
-    expect(within(panel).getByText('November 10, 2026')).toBeDefined();
+    expect(within(panel).getByText('10 November 2026')).toBeDefined();
     expect(within(panel).getAllByText(en.setup.years.notDated)).toHaveLength(4);
   });
 

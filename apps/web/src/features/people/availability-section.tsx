@@ -20,9 +20,10 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
-import { branchQuery, schoolDateText, weekdayName } from '@/features/setup/setup-api';
+import { branchQuery } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import { availabilityQuery } from './people-api';
+import { schoolDateText, weekdayName } from '@/lib/dates';
 
 type DayField = `day${Weekday}`;
 type Fields = 'from' | DayField;

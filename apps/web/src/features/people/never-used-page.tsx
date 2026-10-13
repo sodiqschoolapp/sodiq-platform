@@ -8,9 +8,9 @@ import { ListPage } from '@/components/list/list-page';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { useView } from '@/features/access/use-view';
-import { formatMoment } from '@/features/auth/moments';
 import { neverUsedQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
+import { formatMoment } from '@/lib/dates';
 
 const nameOfRow = (row: NeverUsedAccount): string => `${row.firstName} ${row.lastName}`;
 

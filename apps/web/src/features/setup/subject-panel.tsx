@@ -11,11 +11,12 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { staffQuery, vacanciesQuery } from '@/features/people/people-api';
-import { nameOf, schoolDateText, yearsQuery } from './setup-api';
+import { nameOf, yearsQuery } from './setup-api';
 import { SubjectChip } from './subject-colour';
 import { SubjectForm, type DepartmentChoice } from './subject-form';
 import { invalidateSubjects, quarterWeightsQuery } from './subjects-api';
 import { WeightsForm, weightsText, type WeightPart, type Weights } from './weights-form';
+import { schoolDateText } from '@/lib/dates';
 
 const THREE: readonly WeightPart[] = ['attendance', 'classwork', 'homework'];
 const FOUR: readonly WeightPart[] = ['attendance', 'classwork', 'homework', 'ratingExam'];

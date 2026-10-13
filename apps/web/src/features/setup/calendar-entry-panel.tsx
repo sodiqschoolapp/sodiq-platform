@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { hasStarted, invalidateCalendar, isPast } from './calendar-api';
 import { CalendarEntryForm } from './calendar-entry-form';
 import { datesText, gradesText, useCalendarPreview } from './calendar-preview';
-import { weekdayName } from './setup-api';
+import { weekdayName } from '@/lib/dates';
 
 interface CalendarEntryPanelProps {
   entry: CalendarEntry;

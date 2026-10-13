@@ -33,6 +33,7 @@ import {
 } from './people-api';
 import { asFormSchema } from './form-schema';
 import { RelativeForm, type TakenPhone } from './relative-form';
+import { momentDateText } from '@/lib/dates';
 
 /** A student as the list of students names them. */
 const studentName = (student: { firstName: string; lastName: string }) =>
@@ -407,7 +408,7 @@ function RelativeTerms({ relative }: { relative: RelativeDetail }) {
         (relative.phoneInvalidSince === null
           ? t('people.relatives.noPhone')
           : t('people.relatives.noValidPhoneSince', {
-              date: new Date(relative.phoneInvalidSince).toLocaleDateString(i18n.language),
+              date: momentDateText(i18n.language, relative.phoneInvalidSince),
             })),
     ],
   ];

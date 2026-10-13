@@ -38,7 +38,7 @@ import { Button } from '@/components/ui/button';
 import { SUPER_ADMINS_KEY } from '@/features/access/super-admin-banner';
 import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
 import { useView } from '@/features/access/use-view';
-import { nameOf, schoolDateText } from '@/features/setup/setup-api';
+import { nameOf } from '@/features/setup/setup-api';
 import { subjectsQuery } from '@/features/setup/subjects-api';
 import { FirstPasswordSlipDialog } from './first-password-slip';
 import { asFormSchema } from './form-schema';
@@ -50,6 +50,7 @@ import {
   neverUsedKey,
   staffAccountQuery,
 } from './people-api';
+import { schoolDateText } from '@/lib/dates';
 
 /** Who gave or ended a role: the name when the server could read it, the login otherwise. */
 const actorText = (actor: Actor): string =>

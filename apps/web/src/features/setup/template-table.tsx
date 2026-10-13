@@ -24,8 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { schoolDateText, weekdayName } from './setup-api';
 import { previewOf, rangeText } from './templates-api';
+import { schoolDateText, weekdayName } from '@/lib/dates';
 
 interface TemplateTableViewProps {
   table: TemplateTable;

@@ -52,7 +52,7 @@ describe('the top bar', () => {
         quarter: q(1, '2026-09-02', '2026-10-31'),
         next: q(2, '2026-11-10', '2026-12-27'),
       }),
-    ).toBe('2026–2027 · Vacation, quarter 2 starts on November 10');
+    ).toBe('2026–2027 · Vacation, quarter 2 starts on 10 November');
   });
 
   it('shows a vacation alone after the last quarter', async () => {
@@ -76,7 +76,7 @@ describe('the top bar', () => {
         quarter: null,
         next: q(1, '2027-09-02', '2027-10-31'),
       }),
-    ).toBe('2027–2028 (planned) · Quarter 1 starts on September 2');
+    ).toBe('2027–2028 (planned) · Quarter 1 starts on 2 September');
   });
 
   it('says when the quarters are not dated', async () => {

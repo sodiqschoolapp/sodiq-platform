@@ -27,7 +27,6 @@ import {
 import { SUPER_ADMINS_KEY } from '@/features/access/super-admin-banner';
 import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
 import { useView } from '@/features/access/use-view';
-import { formatMoment } from '@/features/auth/moments';
 import { FirstPasswordSlipDialog } from './first-password-slip';
 import {
   accountAccessKey,
@@ -36,6 +35,7 @@ import {
   neverUsedKey,
   staffAccountKey,
 } from './people-api';
+import { formatMoment } from '@/lib/dates';
 
 /** Who locked or reset: the name when the server could read it, the login otherwise. */
 const actorText = (actor: Actor | null): string =>

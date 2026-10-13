@@ -411,10 +411,7 @@ describe('the page of a relative', () => {
       const panel = await openPanel();
       expect(
         await within(panel).findByText(
-          en.people.relatives.noValidPhoneSince.replace(
-            '{{date}}',
-            new Date('2026-10-01T07:00:00.000Z').toLocaleDateString('en'),
-          ),
+          en.people.relatives.noValidPhoneSince.replace('{{date}}', '1 Oct 2026'),
         ),
       ).toBeDefined();
     });

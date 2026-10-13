@@ -17,8 +17,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AccountSection } from './account-section';
-import { formatMoment } from '../moments';
 import { refreshSession, sessionQuery } from '../session';
+import { formatMoment } from '@/lib/dates';
 
 export const sessionsQuery = queryOptions({
   queryKey: ['account', 'sessions'],

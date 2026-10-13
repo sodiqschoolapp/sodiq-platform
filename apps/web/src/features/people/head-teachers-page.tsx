@@ -8,9 +8,10 @@ import { type Column, type Filter, type ListSearch } from '@/components/list/lis
 import { PageHeader } from '@/components/page-header';
 import { buttonVariants } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
-import { nameOf, schoolDateText } from '@/features/setup/setup-api';
+import { nameOf } from '@/features/setup/setup-api';
 import { headTeachersQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
+import { schoolDateText } from '@/lib/dates';
 
 /** The holder: the name when the server could read it, the login otherwise (decision 14 of #63). */
 const personText = (row: Appointment): string =>

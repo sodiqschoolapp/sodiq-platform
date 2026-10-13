@@ -24,13 +24,13 @@ import { Segmented } from '@/components/ui/segmented';
 import { HistoryLink } from '@/features/audit/history-link';
 import { ReportLink } from './report-link';
 import { useView } from '@/features/access/use-view';
-import { schoolDateText } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import { invalidateStudents, studentDetailQuery, studentRelativesQuery } from './people-api';
 import { StudentForm, takenOf, takenText } from './student-form';
 import { StudentPhotoSection } from './student-photo-section';
 import { StudentRelativesTab } from './student-relatives';
 import { StatusSection } from './student-status-section';
+import { schoolDateText } from '@/lib/dates';
 
 type Tab = 'overview' | 'relatives' | 'contract';
 

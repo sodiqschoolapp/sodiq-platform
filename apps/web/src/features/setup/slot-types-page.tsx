@@ -24,9 +24,9 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
-import { schoolDateText } from './setup-api';
 import { SlotTypePanel } from './slot-type-panel';
 import { invalidateTemplates, slotTypesQuery } from './templates-api';
+import { schoolDateText } from '@/lib/dates';
 
 /** The next length planned after today, if any. */
 export const plannedLength = (slotType: SlotType, today: string) =>

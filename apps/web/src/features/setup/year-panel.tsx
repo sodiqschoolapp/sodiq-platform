@@ -28,7 +28,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { invalidateYears, monthsText, schoolDateText } from './setup-api';
+import { invalidateYears } from './setup-api';
+import { monthsText, schoolDateText } from '@/lib/dates';
 
 /** The reason a custom issue of a shared schema names (`params.reason`), if any. */
 function reasonOf(issue: FormIssue): string | undefined {

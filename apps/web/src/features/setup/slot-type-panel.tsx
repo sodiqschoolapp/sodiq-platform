@@ -27,9 +27,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { schoolDateText } from './setup-api';
 import { usePreview } from './template-table';
 import { invalidateTemplates } from './templates-api';
+import { schoolDateText } from '@/lib/dates';
 
 interface SlotTypePanelProps {
   slotType: SlotType;

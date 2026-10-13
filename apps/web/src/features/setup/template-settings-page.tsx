@@ -31,7 +31,6 @@ import { type Column, type Filter, type ListSearch } from '@/components/list/lis
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { useView } from '@/features/access/use-view';
-import { schoolDateText, weekdayName } from './setup-api';
 import { TemplateTableView, usePreview } from './template-table';
 import {
   assignmentsQuery,
@@ -39,6 +38,7 @@ import {
   invalidateTemplates,
   templateTableQuery,
 } from './templates-api';
+import { schoolDateText, weekdayName } from '@/lib/dates';
 
 const gradesText = (assignment: Assignment): string =>
   assignment.gradeFrom === null || assignment.gradeTo === null

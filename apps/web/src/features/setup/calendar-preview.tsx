@@ -29,7 +29,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { calendarPreviewOf } from './calendar-api';
-import { schoolDateText, weekdayName } from './setup-api';
+import { schoolDateText, weekdayName } from '@/lib/dates';
 
 /** "14 October" or "14 – 16 October 2026". */
 export function datesText(first: string, last: string, language: string): string {

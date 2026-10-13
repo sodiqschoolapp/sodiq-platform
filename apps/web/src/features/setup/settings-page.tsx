@@ -34,10 +34,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useView } from '@/features/access/use-view';
-import { schoolDateText } from './setup-api';
 import { attendanceValuesQuery, invalidateSettings, settingsQuery } from './settings-api';
 import { cn } from 'cn';
 import { PANEL } from '@/components/ui/control';
+import { schoolDateText } from '@/lib/dates';
 
 /** The four grade bands of `03`, Grade bands, in the order the page lists them. */
 const GRADE_BANDS = ['two', 'three', 'four', 'five'] as const;

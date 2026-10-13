@@ -25,10 +25,10 @@ import {
   recordTypeName,
   valueLeavesOf,
 } from '@/features/audit/entry-panel';
-import { formatMomentIn } from '@/features/auth/moments';
 import { isLanguage, LANGUAGE_NAMES } from '@/i18n/languages';
-import { nameOf, schoolDateText, weekdayName } from '@/features/setup/setup-api';
+import { nameOf } from '@/features/setup/setup-api';
 import { producePersonalDataReport, staffPhotoQuery, studentPhotoQuery } from './people-api';
+import { formatMomentIn, schoolDateText, weekdayName } from '@/lib/dates';
 
 /** The body attribute that prints the report alone (index.css). */
 const PRINTING = 'report';

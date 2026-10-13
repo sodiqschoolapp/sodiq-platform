@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useView } from '@/features/access/use-view';
-import { currentPeriodQuery, schoolDateText } from './setup-api';
+import { currentPeriodQuery } from './setup-api';
+import { schoolDateText } from '@/lib/dates';
 
 /** The year part of the label: its name, marked when it is planned (`edge/academic-year`: "The top bar labels a planned year"). */
 function yearText(t: TFunction, period: Period): string {

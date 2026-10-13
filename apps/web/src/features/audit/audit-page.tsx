@@ -18,11 +18,11 @@ import { PageHeader } from '@/components/page-header';
 import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
-import { formatMoment } from '@/features/auth/moments';
 import { relativesQuery, staffQuery, studentsQuery } from '@/features/people/people-api';
 import { auditEntriesQuery } from './audit-api';
 import { filtersOf, personOf, type AuditSearch } from './audit-search';
 import { actionName, EntryPanel, recordTypeName } from './entry-panel';
+import { formatMoment } from '@/lib/dates';
 
 /** The people of one kind the reader may open in the branch, by name, for the person filter. */
 function usePeople(kind: AuditPersonKind | undefined, branchId: string | null) {

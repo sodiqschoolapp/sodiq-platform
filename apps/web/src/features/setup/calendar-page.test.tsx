@@ -158,17 +158,17 @@ describe('the calendar page', () => {
     const { table } = await openList();
 
     expect(rowsDrawn(table())).toEqual([
-      ['Autumn holiday', 'October 1 – October 2, 2026', 'Day off', 'Whole branch', '', 'Active'],
+      ['Autumn holiday', '1 October – 2 October 2026', 'Day off', 'Whole branch', '', 'Active'],
       [
         'Seniors exams',
-        'October 5 – October 16, 2026',
+        '5 October – 16 October 2026',
         'Special day',
         'Grades 9–11',
         'Short',
         'Active',
       ],
-      ['Teachers day', 'October 14, 2026', 'Day off', 'Whole branch', '', 'Active'],
-      ['Working Saturday', 'October 17, 2026', 'Special day', 'Whole branch', 'Short', 'Active'],
+      ['Teachers day', '14 October 2026', 'Day off', 'Whole branch', '', 'Active'],
+      ['Working Saturday', '17 October 2026', 'Special day', 'Whole branch', 'Short', 'Active'],
     ]);
   });
 
@@ -203,7 +203,7 @@ describe('the calendar page', () => {
     const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
     expect(rowsDrawn(dialog)).toEqual([
       [
-        'October 17, 2026',
+        '17 October 2026',
         'Whole branch',
         en.setup.calendar.reasons.not_working_day,
         'Short · lessons of Monday · Working Saturday',

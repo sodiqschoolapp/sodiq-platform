@@ -24,16 +24,10 @@ import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
 import { refreshSession } from '@/features/auth/session';
-import {
-  branchQuery,
-  invalidateYears,
-  schoolDateText,
-  SETUP_KEY,
-  weekdayName,
-  yearsQuery,
-} from './setup-api';
+import { branchQuery, invalidateYears, SETUP_KEY, yearsQuery } from './setup-api';
 import { cn } from 'cn';
 import { PANEL } from '@/components/ui/control';
+import { schoolDateText, weekdayName } from '@/lib/dates';
 
 interface BranchFormProps {
   /** The record as saved; `null` for a new branch. */

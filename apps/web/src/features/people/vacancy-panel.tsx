@@ -16,10 +16,11 @@ import { FailureAlert } from '@/components/failure-alert';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
-import { nameOf, schoolDateText } from '@/features/setup/setup-api';
+import { nameOf } from '@/features/setup/setup-api';
 import { AvailabilitySection } from './availability-section';
 import { invalidateVacancies, vacancyDetailQuery } from './people-api';
 import { VacancyForm } from './vacancy-form';
+import { schoolDateText } from '@/lib/dates';
 
 /**
  * A vacancy in the side panel of the vacancy list (`04`, Vacancy; task 2.2b):

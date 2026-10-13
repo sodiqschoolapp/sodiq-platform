@@ -12,8 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { formatMoment } from '@/features/auth/moments';
-import { schoolDateText } from '@/features/setup/setup-api';
+import { formatMoment, schoolDateText } from '@/lib/dates';
 
 /** The body attribute that prints the slip alone (index.css). */
 const PRINTING = 'slip';
