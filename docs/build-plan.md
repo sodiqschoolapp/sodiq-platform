@@ -289,10 +289,15 @@ How to read the task lines:
   - Build: every page of Phases 0 to 2 checked against the design system and "What we never do" and brought into line (one section title style, button sizes and kinds, a 24 gap between panels, content in white panels, the changed cell of the template table without orange, the shell); the text rule on School setup, Branch, People, Home and Account (#39 item 4); the "New branch" form in the side panel (#39 item 2, finding 12); the browser test that visits every page in light, dark and at 390 px.
   - Done when: every page passes the browser check in light, dark and at 390 px with the screenshots in the report; #39 items 1 and 5 are named as left out (2.7c-3).
 
-- [ ] **2.7c-2 New records and record actions in the side panel** (split from 2.7c on pull request #80, decision 1)
-  - Read: `docs/design-system.md` (Layout shell, Lists; Buttons), `.claude/rules/web.md`, the plan of pull request #80 (decisions 14 and 15).
-  - Build: the "New …" forms that open inline above the list on Buildings, Rooms, Divisions, Years, Slot types, Day templates, Calendar, Subjects, Staff, Students (with its bulk "Leave school" form) and Vacancies move into the side panel; the side panels get their actions at the bottom (primary "Edit", secondary actions, danger quiet "Archive") with one primary per area, the staff panel's five Save buttons included; checkboxes with 44 px targets at phone width.
-  - Done when: every list page opens a new record in the side panel, every side panel has its actions at the bottom, and the browser test of 2.7c-1 (`e2e/pages.spec.ts`) passes again with its screenshots in the report.
+- [x] **2.7c-2a New records in the side panel and checkboxes at phone width** (2.7c-2 split in two, pull request #81, decision 1)
+  - Read: `docs/design-system.md` (Layout shell, Lists; Buttons; Accessibility), `.claude/rules/web.md`, the plan of pull request #80 (decisions 14 and 15), the plan of pull request #81.
+  - Build: the "New …" forms that open inline above the list on Buildings, Rooms, Divisions, Years, Slot types, Day templates, Calendar, Subjects, Staff, Students (with its bulk "Leave school" form) and Vacancies move into the side panel; the saved record then opens there; checkboxes with 44 px targets at phone width.
+  - Done when: every list page opens a new record in the side panel, every checkbox has a 44 px target at phone width, and `e2e/pages.spec.ts` passes again with its screenshots in the report.
+
+- [ ] **2.7c-2b Record actions at the bottom of the side panel** (split from 2.7c-2 on pull request #81, decision 1)
+  - Read: `docs/design-system.md` (Layout shell, Lists; Buttons), `.claude/rules/web.md`, the plans of pull requests #80 (decision 14) and #81.
+  - Build: the side panels get their actions at the bottom (primary "Edit", secondary actions, danger quiet "Archive") with one primary per area, the staff panel's five Save buttons included.
+  - Done when: every side panel has its actions at the bottom, one primary per area, and `e2e/pages.spec.ts` passes again with its screenshots in the report.
 
 - [ ] **2.7c-3 Rooms "By floor" and the Branches list** (split from 2.7c on pull request #80, decision 1)
   - Read: `docs/design-system.md`, issue #39 (items 1 and 5), `03` (the Branches list, spec change of 12 October 2026), `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7", item 11), the plan of pull request #77.

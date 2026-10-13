@@ -3,7 +3,14 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf, type AccountKey } from './accounts';
-import { changeFirstPassword, checkPage, heading, languageChooser, signIn } from './steps';
+import {
+  changeFirstPassword,
+  checkNewRecord,
+  checkPage,
+  heading,
+  languageChooser,
+  signIn,
+} from './steps';
 import { codeNow } from './totp';
 
 /**
@@ -75,6 +82,55 @@ async function checkSuperAdminPages(page: Page): Promise<void> {
   await page.goto('/audit');
   await expect(heading(page, en.audit.title)).toBeVisible();
   await checkPage(page, 'audit-super-admin');
+  // Task 2.7c-2a: the lists only the Super Admin adds to, with the new record
+  // in the side panel. Nothing is saved.
+  // In the branch of the pages test, which keeps an active floor: the floor
+  // of this test's branch is archived by now, and "Add room" needs one.
+  await page.goto('/setup/buildings');
+  await page
+    .getByRole('combobox', { name: en.switcher.branch, exact: true })
+    .selectOption({ label: 'Pages browser test branch' });
+  for (const [name, address, title, add, newTitle] of [
+    [
+      'setup-buildings',
+      '/setup/buildings',
+      en.setup.buildings.title,
+      en.setup.buildings.add,
+      en.setup.buildings.newTitle,
+    ],
+    [
+      'setup-rooms',
+      '/setup/rooms',
+      en.setup.rooms.title,
+      en.setup.rooms.add,
+      en.setup.rooms.newTitle,
+    ],
+    [
+      'setup-divisions',
+      '/setup/divisions',
+      en.setup.divisions.title,
+      en.setup.divisions.add,
+      en.setup.divisions.newTitle,
+    ],
+    [
+      'setup-years',
+      '/setup/years',
+      en.setup.years.title,
+      en.setup.years.add,
+      en.setup.years.newTitle,
+    ],
+    [
+      'people-staff',
+      '/people/staff',
+      en.people.staff.title,
+      en.people.staff.add,
+      en.people.staff.newTitle,
+    ],
+  ] as const) {
+    await page.goto(address);
+    await expect(heading(page, title)).toBeVisible();
+    await checkNewRecord(page, name, add, newTitle);
+  }
 }
 
 /**
