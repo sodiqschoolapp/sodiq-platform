@@ -19,6 +19,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
+import { uidSetText } from './uid-set';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { DateField, Field } from '@/components/field';
@@ -269,7 +270,7 @@ export function StudentsPage() {
         }
         const go = await confirm({
           title: t('people.students.setTitle'),
-          text: t('people.students.setText'),
+          text: uidSetText(t, error, record.grade),
           names: [record.uid],
           action: t('people.students.saveAnyway'),
           destructive: false,

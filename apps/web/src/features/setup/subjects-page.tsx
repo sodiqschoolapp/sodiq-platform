@@ -2,6 +2,7 @@ import {
   JOURNAL_TYPES,
   PERMISSIONS,
   permits,
+  gradeRanges,
   SUBJECT_GRADES,
   type Subject,
   type SubjectRecord,
@@ -141,7 +142,7 @@ export function SubjectsPage() {
       {
         key: 'grades',
         header: t('setup.subjects.grades'),
-        cell: (row) => row.grades.map((grade) => number.format(grade)).join(', '),
+        cell: (row) => gradeRanges(row.grades),
         sortValue: (row) => row.grades[0] ?? 0,
       },
       {
@@ -173,11 +174,15 @@ export function SubjectsPage() {
         cell: (row) =>
           row.journalType !== 'graded'
             ? t('setup.subjects.none')
-            : row.quarterWeightsMissing === null
+            : row.quarterWeightsMissing === null || row.quarterCount === null
               ? t('setup.subjects.none')
-              : number.format(row.quarterWeightsMissing),
+              : row.quarterWeightsMissing === 0
+                ? t('setup.subjects.allSet')
+                : t('setup.subjects.quartersNotSet', {
+                    missing: number.format(row.quarterWeightsMissing),
+                    total: number.format(row.quarterCount),
+                  }),
         sortValue: (row) => row.quarterWeightsMissing ?? -1,
-        numeric: true,
       },
       {
         key: 'switches',

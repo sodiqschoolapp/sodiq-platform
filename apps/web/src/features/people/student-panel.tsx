@@ -1,4 +1,5 @@
 import {
+  phoneText,
   studentDetailSchema,
   studentIdentitySchema,
   studentUidCorrectionSchema,
@@ -12,6 +13,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
+import { uidSetText } from './uid-set';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { Field } from '@/components/field';
@@ -102,7 +104,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
         }
         const go = await confirm({
           title: t('people.students.setTitle'),
-          text: t('people.students.setText'),
+          text: uidSetText(t, error, student.grade),
           names: [input.uid],
           action: t('people.students.saveAnyway'),
           destructive: false,
@@ -283,7 +285,10 @@ function Overview({ student }: { student: StudentDetail }) {
   ];
   if (student.contact !== null) {
     rows.push(
-      [t('people.students.phone'), student.contact.phone ?? notSet],
+      [
+        t('people.students.phone'),
+        student.contact.phone === null ? notSet : phoneText(student.contact.phone),
+      ],
       [t('people.students.email'), student.contact.email ?? notSet],
     );
   }

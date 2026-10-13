@@ -436,6 +436,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Этой записи больше нет в списке. Введённое осталось здесь: сохраните его или закройте панель.',
   },
   form: {
+    // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
+    phoneFormat: 'Введите телефон в виде +998 71 123 45 67.',
     add: 'Добавить',
     addChoice: 'Выберите, что добавить в «{{label}}»',
     moveUp: 'Переместить {{name}} (место {{place}}) вверх',
@@ -833,6 +835,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       daily: 'Ежедневное распределение',
       quarterly: 'Распределение по четвертям',
       quarterlyMissing: 'Четверти без весов',
+      // The cell of the column (finding 20; task 2.7b-1, decision 8).
+      quartersNotSet: '{{missing}} из {{total}} без весов',
+      allSet: 'Все заданы',
       parts: {
         attendance: 'Посещаемость',
         classwork: 'Классная работа',
@@ -1353,6 +1358,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       setTitle: 'UID из набора другой параллели',
       setText:
         'Первые четыре цифры не совпадают с набором этой параллели. Сохраняйте, только если ученик сохраняет UID другой параллели, например после повторного года.',
+      // The set of the grade named (task 2.7b-1, finding 25).
+      setTextNamed:
+        'UID {{grade}}-й параллели начинаются с {{set}}. Сохраняйте, только если ученик сохраняет UID другой параллели, например после повторного года.',
       recordTitle: 'Запись',
       uidTitle: 'Исправить UID',
       uidLabel: 'UID: {{name}}',

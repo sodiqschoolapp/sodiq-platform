@@ -1,4 +1,6 @@
 import {
+  phoneText,
+  gradeRanges,
   INSTRUCTION_LANGUAGES,
   PERMISSIONS,
   permits,
@@ -198,10 +200,7 @@ export function StaffPage() {
       {
         key: 'grades',
         header: t('people.staff.grades'),
-        cell: (row) =>
-          grades(row)
-            .map((grade) => t('setup.subjects.grade', { grade }))
-            .join(', '),
+        cell: (row) => gradeRanges(grades(row)),
       },
       {
         key: 'languages',
@@ -211,7 +210,7 @@ export function StaffPage() {
       {
         key: 'phone',
         header: t('people.staff.phone'),
-        cell: (row) => row.phone,
+        cell: (row) => (row.phone === null ? '' : phoneText(row.phone)),
       },
       {
         key: 'status',

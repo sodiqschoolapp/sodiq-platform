@@ -1,4 +1,6 @@
 import {
+  DEFAULT_PHONE_PREFIX,
+  phoneText,
   branchRecordSchema,
   goLiveRecordSchema,
   DEFAULT_WORKING_WEEKDAYS,
@@ -48,7 +50,11 @@ export function BranchForm({ branch, label, onSave }: BranchFormProps) {
     initial: {
       name: branch?.name ?? '',
       address: branch?.address ?? '',
-      phone: branch?.phone ?? '',
+      // "+998" and nine digits ("Decided ahead for tasks 2.2d and 2.7", item 10).
+      phone:
+        branch?.phone === null || branch?.phone === undefined
+          ? `${DEFAULT_PHONE_PREFIX} `
+          : phoneText(branch.phone),
       email: branch?.email ?? '',
       workingWeekdays: listValue(
         (branch?.workingWeekdays ?? DEFAULT_WORKING_WEEKDAYS).map((day) => String(day)),
@@ -56,9 +62,14 @@ export function BranchForm({ branch, label, onSave }: BranchFormProps) {
     },
     read: (typed) => ({
       ...typed,
+      // The country code alone is no phone, as on the student form.
+      phone: typed.phone.trim() === DEFAULT_PHONE_PREFIX ? '' : typed.phone,
       workingWeekdays: listValues(typed.workingWeekdays).map((day) => Number(day)),
     }),
     save: onSave,
+    // A phone not in the format says the format (item 10).
+    message: (field, issue) =>
+      field === 'phone' ? t('form.phoneFormat') : undefined,
   });
 
   return (
@@ -96,7 +107,7 @@ function BranchDetails({ branch }: { branch: Branch }) {
   const rows: [string, string][] = [
     [t('setup.branch.name'), branch.name],
     [t('setup.branch.address'), branch.address ?? none],
-    [t('setup.branch.phone'), branch.phone ?? none],
+    [t('setup.branch.phone'), branch.phone === null ? none : phoneText(branch.phone)],
     [t('setup.branch.email'), branch.email ?? none],
     [
       t('setup.branch.workingWeekdays'),

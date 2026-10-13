@@ -415,6 +415,8 @@ export const en = {
       'This record is no longer in the list. What you typed is still here; save it or close the panel.',
   },
   form: {
+    // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
+    phoneFormat: 'Enter the phone as +998 71 123 45 67.',
     add: 'Add',
     addChoice: 'Choose what to add to {{label}}',
     moveUp: 'Move {{name}} (place {{place}}) up',
@@ -784,6 +786,9 @@ export const en = {
       daily: 'Daily distribution',
       quarterly: 'Quarterly distribution',
       quarterlyMissing: 'Quarters not set',
+      // The cell of the column (finding 20; task 2.7b-1, decision 8).
+      quartersNotSet: '{{missing}} of {{total}} not set',
+      allSet: 'All set',
       parts: {
         attendance: 'Attendance',
         classwork: 'Classwork',
@@ -1270,6 +1275,9 @@ export const en = {
       setTitle: 'The UID is from another grade',
       setText:
         'Its first four digits are not the set of this grade. Save it only if the student keeps a UID from another grade, for example after repeating one.',
+      // The set of the grade named (task 2.7b-1, finding 25).
+      setTextNamed:
+        'Grade {{grade}} UIDs start with {{set}}. Save it only if the student keeps a UID from another grade, for example after repeating one.',
       recordTitle: 'Record',
       uidTitle: 'Correct the UID',
       uidLabel: 'UID of {{name}}',

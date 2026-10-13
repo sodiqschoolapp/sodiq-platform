@@ -428,6 +428,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu yozuv endi roʻyxatda yoʻq. Kiritganingiz shu yerda qoldi: saqlang yoki panelni yoping.',
   },
   form: {
+    // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
+    phoneFormat: 'Telefonni +998 71 123 45 67 koʻrinishida kiriting.',
     add: 'Qoʻshish',
     addChoice: '«{{label}}»ga nima qoʻshishni tanlang',
     moveUp: '{{name}}ni ({{place}}-oʻrin) yuqoriga surish',
@@ -796,6 +798,9 @@ export const uz: Texts<'one' | 'other'> = {
       daily: 'Kunlik taqsimot',
       quarterly: 'Choraklik taqsimot',
       quarterlyMissing: 'Vaznsiz choraklar',
+      // The cell of the column (finding 20; task 2.7b-1, decision 8).
+      quartersNotSet: '{{total}} tadan {{missing}} tasi vaznsiz',
+      allSet: 'Hammasi belgilangan',
       parts: {
         attendance: 'Davomat',
         classwork: 'Sinf ishi',
@@ -1283,6 +1288,9 @@ export const uz: Texts<'one' | 'other'> = {
       setTitle: 'UID boshqa sinf toʻplamidan',
       setText:
         'Uning dastlabki toʻrt raqami bu sinf toʻplamiga mos emas. Faqat oʻquvchi boshqa sinf UIDsini saqlasa, masalan sinfni takrorlaganda, saqlang.',
+      // The set of the grade named (task 2.7b-1, finding 25).
+      setTextNamed:
+        '{{grade}}-sinf UIDlari {{set}} bilan boshlanadi. Faqat oʻquvchi boshqa sinf UIDsini saqlasa, masalan sinfni takrorlaganda, saqlang.',
       recordTitle: 'Yozuv',
       uidTitle: 'UIDni tuzatish',
       uidLabel: '{{name}} UIDsi',

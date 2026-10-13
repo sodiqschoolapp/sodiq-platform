@@ -1,6 +1,7 @@
 import {
   CONTRACT_TYPES,
   DEFAULT_PHONE_PREFIX,
+  phoneText,
   EDUCATION_LEVELS,
   SEXES,
   STAFF_CONTACT_FIELDS,
@@ -110,7 +111,10 @@ export function StaffForm({ staff, divisions, contactOnly, label, onSave }: Staf
       sex: staff?.sex ?? '',
       birthDate: staff?.birthDate ?? '',
       educationLevel: staff?.educationLevel ?? '',
-      phone: staff?.phone ?? `${DEFAULT_PHONE_PREFIX} `,
+      phone:
+        staff?.phone === null || staff?.phone === undefined
+          ? `${DEFAULT_PHONE_PREFIX} `
+          : phoneText(staff.phone),
       email: staff?.email ?? '',
       jshshir: staff?.jshshir ?? '',
       admissionDate: staff?.admissionDate ?? '',

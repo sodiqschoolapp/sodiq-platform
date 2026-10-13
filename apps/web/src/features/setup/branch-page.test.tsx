@@ -50,7 +50,8 @@ describe('the branch page', () => {
 
     expect(field(form(), en.setup.branch.name).value).toBe('North');
     expect(field(form(), en.setup.branch.address).value).toBe('Chilonzor, 12');
-    expect(field(form(), en.setup.branch.phone).value).toBe('');
+    // An empty phone starts with the country code (task 2.7b-1).
+    expect(field(form(), en.setup.branch.phone).value).toBe('+998 ');
     const days = within(form()).getByRole('group', { name: en.setup.branch.workingWeekdays });
     const boxes = within(days).getAllByRole<HTMLInputElement>('checkbox');
     expect(boxes.map((box) => box.value)).toEqual(['1', '2', '3', '4', '5', '6', '7']);
@@ -175,6 +176,31 @@ describe('the branch page', () => {
     expect(calls.some((call) => call.route === 'PUT /api/setup/branch')).toBe(false);
   });
 
+  // "Decided ahead for tasks 2.2d and 2.7", item 10 (task 2.7b-1).
+  it('refuses a phone that is not "+998" and nine digits with the format, and sends a phone in it as typed', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(superAdmin()),
+      'GET /api/setup/branch': () => json(BRANCH),
+      'PUT /api/setup/branch': (body) => json({ ...BRANCH, ...(body as object) }),
+    });
+    renderApp(PATH);
+    await screen.findByRole('form', { name: 'North' });
+
+    const phone = field(form(), en.setup.branch.phone);
+    type(phone, '71 123 45 67');
+    fireEvent.click(within(form()).getByRole('button', { name: en.form.save }));
+    expect(phone.getAttribute('aria-invalid')).toBe('true');
+    expect(within(form()).getByText(en.form.phoneFormat)).toBeDefined();
+    expect(calls.some((call) => call.route === 'PUT /api/setup/branch')).toBe(false);
+
+    type(phone, '+998 71 123 45 67');
+    fireEvent.click(within(form()).getByRole('button', { name: en.form.save }));
+    await within(form()).findByText(en.form.saved);
+    expect(calls.find((call) => call.route === 'PUT /api/setup/branch')?.body).toMatchObject({
+      phone: '+998711234567',
+    });
+  });
+
   it('shows a refused save as its text and keeps what was typed', async () => {
     fakeApi({
       'GET /api/auth/session': () => json(superAdmin()),
@@ -194,7 +220,7 @@ describe('the branch page', () => {
   it('shows the Principal the record read only, with the weekdays by name, and no way to add a branch', async () => {
     fakeApi({
       'GET /api/auth/session': () => json(principal()),
-      'GET /api/setup/branch': () => json({ ...BRANCH, phone: '+998 71 000 00 00' }),
+      'GET /api/setup/branch': () => json({ ...BRANCH, phone: '+998710000000' }),
     });
     renderApp(PATH);
     await screen.findByRole('heading', { name: en.setup.branch.title });

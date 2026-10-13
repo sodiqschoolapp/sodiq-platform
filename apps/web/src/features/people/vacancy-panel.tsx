@@ -1,4 +1,5 @@
 import {
+  gradeRanges,
   PERMISSIONS,
   permits,
   vacancyDetailSchema,
@@ -186,9 +187,7 @@ function Overview({
         : vacancy.subjects
             .map(
               (own) =>
-                `${subjectName(own.subjectId)} (${own.grades
-                  .map((grade) => t('setup.subjects.grade', { grade }))
-                  .join(', ')})`,
+                `${subjectName(own.subjectId)} (${gradeRanges(own.grades)})`,
             )
             .join('; '),
     ],

@@ -371,6 +371,34 @@ describe('adding a student', () => {
     return form;
   }
 
+  // Finding 25 of the hand test of 13 October 2026 (task 2.7b-1, decision 7).
+  it('names the set of the grade in the UID warning when the server names it', async () => {
+    openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/students': () =>
+        Response.json(
+          {
+            error: {
+              code: 'uid_set_mismatch',
+              message: 'x',
+              requestId: 'r',
+              details: [{ path: 'uid', code: 'uid_set', message: 'x', expected: '2607' }],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    await fillAndSave();
+
+    const dialog = await screen.findByRole('alertdialog', { name: en.people.students.setTitle });
+    expect(
+      within(dialog).getByText(
+        en.people.students.setTextNamed.replace('{{grade}}', '7').replace('{{set}}', '2607'),
+      ),
+    ).toBeDefined();
+  });
+
   it('warns about a student of the same name elsewhere, then about the UID set, and saves when told to', async () => {
     let posts = 0;
     const calls = openList('academic_vice_principal', {
@@ -396,6 +424,8 @@ describe('adding a student', () => {
     const second = await screen.findByRole('alertdialog', {
       name: en.people.students.setTitle,
     });
+    // No set named by the server: the text without it (task 2.7b-1).
+    expect(within(second).getByText(en.people.students.setText)).toBeDefined();
     fireEvent.click(within(second).getByRole('button', { name: en.people.students.saveAnyway }));
     await waitFor(() => {
       expect(posts).toBe(2);

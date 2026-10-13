@@ -1,4 +1,9 @@
-import type { Subject, SubjectQuarter, SubjectRecord } from '@sodiq/shared';
+import {
+  gradeRanges,
+  type Subject,
+  type SubjectQuarter,
+  type SubjectRecord,
+} from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -139,7 +144,7 @@ export function SubjectPanel({
               [t('setup.subjects.department'), departmentName],
               [
                 t('setup.subjects.grades'),
-                subject.grades.map((grade) => t('setup.subjects.grade', { grade })).join(', '),
+                gradeRanges(subject.grades),
               ],
               [
                 t('setup.subjects.journalType'),
