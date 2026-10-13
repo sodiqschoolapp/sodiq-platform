@@ -706,3 +706,84 @@ test('an Academic Vice Principal links one relative to students of two branches'
   ).toBeVisible();
   await studentScreenshot(page, 'parents');
 });
+
+// Task 2.5b-1, pull request #73 (edge/close-relatives, rows 1 and 2): the
+// Academic Vice Principal of branch A types a phone held by a relative of
+// branch B, chooses "the number has a new owner" with "no valid phone"; the
+// Academic Vice Principal of branch B is told in the app and finds that
+// relative under "No valid phone". All names and phones are invented.
+test('the number of a relative of another branch gets a new owner, and that branch is told', async ({
+  page,
+}) => {
+  const relatives = en.people.relatives;
+  const texts = en.people.students;
+  async function firstSignIn(who: 'phoneOwners' | 'phoneOwnersOther') {
+    const account = accountOf(who);
+    await page.goto('/sign-in');
+    await languageChooser(page).selectOption('en');
+    await signIn(page, en, account.login, account.password);
+    await changeFirstPassword(page, en, account);
+    await expect(heading(page, en.setUp.title)).toBeVisible();
+    await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+    const key = await page.locator('dd').innerText();
+    await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+    await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+    await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+    await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+    await expect(heading(page, en.home.title)).toBeVisible();
+  }
+
+  await firstSignIn('phoneOwners');
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(Date.now());
+  await page.goto('/people/students');
+  await expect(heading(page, texts.title)).toBeVisible();
+  await page.getByRole('button', { name: texts.add, exact: true }).first().click();
+  const form = page.getByRole('form', { name: texts.newTitle });
+  await form.getByLabel(texts.uid, { exact: true }).fill('9999302');
+  await form.getByLabel(texts.lastName, { exact: true }).fill('Rasulova');
+  await form.getByLabel(texts.firstName, { exact: true }).fill('Madina');
+  await form.getByLabel(texts.sex, { exact: true }).selectOption('female');
+  await form.getByLabel(texts.birthDate, { exact: true }).fill('2014-06-02');
+  await form.getByLabel(texts.grade, { exact: true }).selectOption('7');
+  await form.getByLabel(texts.startsOn, { exact: true }).fill(today);
+  await form.getByLabel(texts.contractNumber, { exact: true }).fill('E2E-OWNERS-2');
+  await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(today);
+  await form.getByLabel(relatives.phone, { exact: true }).fill('+998 90 555 01 37');
+  await form.getByLabel(relatives.phone, { exact: true }).blur();
+  const choice = form.getByLabel(relatives.ownerChoice.replace('{{name}}', 'Zarina Aliyeva'), {
+    exact: true,
+  });
+  await expect(choice).toBeVisible();
+  await choice.selectOption('new_owner');
+  await form.getByLabel(relatives.fullName, { exact: true }).fill('Nodira Rasulova');
+  await form
+    .getByRole('checkbox', {
+      name: relatives.previousUnknown.replace('{{name}}', 'Zarina Aliyeva'),
+    })
+    .check();
+  await form.getByLabel(relatives.relationship, { exact: true }).selectOption('mother');
+  await form.getByRole('button', { name: en.form.save, exact: true }).click();
+  const question = page.getByRole('alertdialog', { name: texts.setTitle });
+  await expect(question).toBeVisible();
+  await question.getByRole('button', { name: texts.saveAnyway, exact: true }).click();
+  await expect(page.getByRole('form', { name: texts.newTitle })).toHaveCount(0);
+
+  // The other branch's Academic Vice Principal.
+  await page.context().clearCookies();
+  await firstSignIn('phoneOwnersOther');
+  const bell = page.getByRole('button', { name: 'Notifications, 1 unread', exact: true });
+  await expect(bell).toBeVisible();
+  await bell.click();
+  const dialog = page.getByRole('dialog', { name: en.notifications.title });
+  await expect(
+    dialog.getByText(
+      en.notifications.kinds.relative.phone_changed.replace('{{fullName}}', 'Zarina Aliyeva'),
+    ),
+  ).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.goto('/people/parents?f=%7B%22phone%22%3A%22no_valid_phone%22%7D');
+  await expect(heading(page, relatives.title)).toBeVisible();
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await expect(page.locator('tbody tr').first()).toContainText('Zarina Aliyeva');
+  await expect(page.locator('tbody tr').first()).toContainText(relatives.noValidPhone);
+});

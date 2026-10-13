@@ -190,6 +190,14 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'The holder of an exact main phone in any branch, archived included: id, full name and the number of students linked live, for the phone typed first and the refused phone change (04, Close relatives: "the system shows the person"; task 2.5a, decision 3 of pull request #72, Look first).',
   'relative_links_elsewhere(uuid)':
     'The number of students of other branches linked live to a relative that the transaction sees, or null (edge/close-relatives: "students of other branches appear as a count"; task 2.5a, decision 3); a count.',
+  'relative_accounts_merged_off()':
+    'The trigger that keeps the Parent account of a merged relative switched off for good (task 2.5b-1, correction 2 of pull request #73); a merged record is archived and visible to no branch.',
+  'relatives_merged_archived()':
+    'The deferred check that a merged relative has no live link left in any branch at the commit (task 2.5b-1, decision 6); the links of other branches decide it, whatever the writing transaction sees.',
+  'relative_notice_accounts(uuid,uuid)':
+    'The accounts of a current Academic Vice Principal of each other branch where a relative the transaction sees is linked live, ids only, for the notice of a change of name or phone (edge/close-relatives: "the other branch\'s Academic Vice Principal is told"; task 2.5b-1, decision 5 of pull request #73, Look first).',
+  'relative_release_phone(uuid,text,text,uuid)':
+    'Gives the holder of an exact main phone, visible to the branch or not, a new phone or "no valid phone", and nothing else of the record, answering the notice targets as ids (edge/close-relatives: "the number has a new owner"; task 2.5b-1, decision 2 of pull request #73, Look first).',
   'relatives_follow_links()':
     'The trigger that archives a relative with no live link in any branch and restores it on a new one (04: "A relative with no linked students is archived"; task 2.5a, decisions 3, 10 and 14); the links of other branches decide it, and an archived relative is visible to no branch.',
   'reset_by_person_name(uuid)':
@@ -198,6 +206,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'Whether a student of another branch has the same folded name and birth date (the duplicate warning across all branches, edge/students-classes-groups; task 2.4a, decision 16 of pull request #67); a yes or no.',
   'super_admin_active_count(timestamp with time zone)':
     "The number of active Super Admins (the last Super Admin rule and its banner); a Super Admin's record may be in any branch.",
+  'student_relatives_not_merged()':
+    'The trigger that refuses a link to a merged relative after locking its row, which the linking branch may not see (task 2.5b-1, decision 9 of pull request #73, Look first).',
   'staff_account_blocked(uuid,timestamp with time zone)':
     'Whether the staff record of an account is inactive or left today: sign-in and every request run before a branch is known.',
   'staff_availability_elsewhere(uuid)':

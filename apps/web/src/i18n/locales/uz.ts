@@ -206,6 +206,12 @@ export const uz: Texts<'one' | 'other'> = {
     relative_phone_changed: 'Tanlangan qarindoshda endi bu telefon yoʻq. Telefonni qayta kiriting.',
     last_relative: 'Oʻquvchida kamida bitta qarindosh qolishi kerak. Avval boshqasini qoʻshing.',
     main_contact_needed: 'Boshqa qarindoshni asosiy aloqa qilib tanlang.',
+    merge_needs_super_admin:
+      'Bu qarindoshlardan biri boshqa filial oʻquvchilariga bogʻlangan. Ularni faqat Super administrator birlashtiradi.',
+    relative_changed:
+      'Bu qarindoshni boshqa kishi oʻzgartirdi. Sahifani yangilab, qayta urinib koʻring.',
+    relative_merged:
+      'Bu qarindosh boshqa yozuv bilan birlashtirilgan. Qolgan yozuvni topish uchun telefonni qayta kiriting.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
@@ -1320,6 +1326,27 @@ export const uz: Texts<'one' | 'other'> = {
         'Topildi: {{name}}, {{count}} ta oʻquvchiga bogʻlangan. Saqlanganda shu kishi bogʻlanadi.',
       takenBy_one: 'Bu telefon egasi: {{name}}, {{count}} ta oʻquvchiga bogʻlangan.',
       takenBy_other: 'Bu telefon egasi: {{name}}, {{count}} ta oʻquvchiga bogʻlangan.',
+      ownerChoice: '{{name}} kim?',
+      samePerson: 'Oʻsha odam: bogʻlash',
+      newOwner: 'Boshqa odam: raqamning yangi egasi bor',
+      previousPhone: '{{name}}ning yangi telefoni',
+      previousUnknown: '{{name}}ning yangi telefoni nomaʼlum: amaldagi telefon yoʻq',
+      noValidPhone: 'Amaldagi telefon yoʻq',
+      noValidPhoneSince: '{{date}} dan beri amaldagi telefon yoʻq',
+      noValidPhoneFilter: 'Amaldagi telefon yoʻq',
+      takenTitle: 'Telefon boshqa qarindoshga tegishli',
+      mergeWith: '{{name}} bilan birlashtirish',
+      mergeName: 'Qoladigan ism',
+      mergePhone: 'Qoladigan telefon',
+      mergeTitle: 'Ikki yozuv birlashtirilsinmi?',
+      merge: 'Birlashtirish',
+      thisRecord: 'Bu yozuv',
+      otherRecord: 'Boshqa yozuv',
+      linkedCount_one: '{{count}} ta oʻquvchiga bogʻlangan',
+      linkedCount_other: '{{count}} ta oʻquvchiga bogʻlangan',
+      mergeText:
+        'Ikkalasi bitta yozuvga aylanadi va ikkalasining barcha oʻquvchilari unga bogʻlanadi. Boshqa yozuv arxivga oʻtadi.',
+      giveNumber: 'Raqamni shu qarindoshga berish',
       takenGone: 'Bu telefon boshqa qarindoshga tegishli.',
       hidden: 'Yashirilgan',
       show: 'Ish joyi va pochtani koʻrsatish',
@@ -1529,6 +1556,7 @@ export const uz: Texts<'one' | 'other'> = {
   home: {
     title: 'Bosh sahifa',
     noClass: { title: 'Sinfsiz oʻquvchilar', link: 'Roʻyxatni ochish' },
+    noValidPhone: { title: 'Amaldagi telefoni yoʻq ota-onalar', link: 'Roʻyxatni ochish' },
     empty:
       'Bu sahifada bugun bajarishingiz kerak boʻlgan ishlar koʻrsatiladi. Menyu va vazifalar platforma boʻlimlari ochilgani sari shu yerda paydo boʻladi.',
     teaching:
@@ -1656,6 +1684,14 @@ export const uz: Texts<'one' | 'other'> = {
         'Ilovaning bu versiyasi hali koʻrsata olmaydigan bildirishnoma. Sahifani qayta yuklang.',
       sample: {
         message: 'Namuna: {{text}}',
+      },
+      relative: {
+        renamed:
+          'Oʻquvchilaringiz ota-onasi {{previousName}} boshqa filialda {{fullName}} deb qayta nomlandi.',
+        phone_changed:
+          'Oʻquvchilaringiz ota-onasi {{fullName}}ning asosiy telefoni boshqa filialda oʻzgartirildi.',
+        merged:
+          '{{keptName}} va {{mergedName}} ota-ona yozuvlari boshqa filialda birlashtirildi; {{fullName}} ismi qoldi.',
       },
     },
   },

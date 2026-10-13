@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: task 2.5b-1 Phone owners, merge and the notice to the other branch
+
+- Built: migration 0037 (`phone_invalid_since`, `merged_into`, the triggers `relatives_phone_and_merge`, `relatives_merged_archived`, `student_relatives_not_merged`; the definer functions `relative_release_phone` and `relative_notice_accounts`); the link kind `new_owner` on the create and the link, `newOwner` on the edit, `POST people/relatives/:id/merge`, `GET people/relatives/no-valid-phone` and `filter=no_valid_phone`; the notification kinds `relative.renamed`, `relative.phone_changed`, `relative.merged`.
+- Screens: "Who is …?" on a phone match (same person or a new owner), the merge and new-owner choices on a refused phone change in the Parent panel, the "No valid phone" filter of People → Parents, the tile "Parents with no valid phone" on the Academic Vice Principal's home; browser test in `people.spec.ts`.
+- Tests: `relative-owners.database.test.ts`, `relative-owners.test.ts`, `no-valid-phone-tile.test.tsx`, `parents-page.test.tsx`, `student-relatives.test.tsx`.
+- Left out: extra phones, the same person, relatives in the export (2.5b-2); who reads `audit_log_school` (2.6); the parent portal and SMS (Release 2).
+
+The next sessions must know:
+
+- A notice to another branch goes through `RelativeWrites.tell`: labelled with the branch of the request, the actor left out; the accounts come from `relative_notice_accounts` (or `relative_release_phone`), compared with the branch of the request.
+- A merged relative is never linked again (`student_relatives_not_merged` locks it first); a route that links maps `relative_merged`, `relative_phone_changed` and a deadlock through `refusingRelativeRaces`.
+- A test whose routes send a notice needs `dayTemplatesKit({ jobs: true })`.
+- The next task is 2.5b-2.
+
 ## 13 October 2026: task 2.5a Relative record, links and the Parents list
 
 - Built: migration 0036 (`relatives`, `student_relatives`, `relative_accounts`; the phone unique across the school; the membership policy `relative_membership`; the guards of one main contact and at least one relative, the unlink once, the archive that follows the links, a relative committed whole; `relative_by_phone`, `relative_links_elsewhere`); the area `relatives`; nine routes of `RelativesController` and the create of a student with its relatives.

@@ -247,10 +247,15 @@ How to read the task lines:
   - Done when: a student cannot be saved without at least one relative and phone uniqueness holds across branches.
   - From 2.4a (pull request #67, decision 10): the students saved by 2.4a have no relative yet; the rule "at least one relative" refuses the edit of such a record until one is linked, and the student form of 2.4a gains the relative step.
 
-- [ ] **2.5b Phone owners, merge, extra phones and the same person** (split from 2.5 on pull request #72, decision 1)
+- [x] **2.5b-1 Phone owners, merge and the notice to the other branch** (2.5b split in two, pull request #73, decision 1)
   - Read: `04` (Close relatives), `edge/close-relatives`, `edge/people-roles-accounts` (Personal data and the audit log), the plan and the decisions of pull request #72.
-  - Build: on a phone match, "different person, the number has a new owner" with the earlier relative's new phone or "no valid phone" (a column of its own, `phone_invalid_since`; sign-in blocked; listed for the Academic Vice Principal while a linked student is active); "Merge" offered on a refused phone change (the Academic Vice Principal in the branch, the Super Admin across branches); a change of name or phone of a relative linked in another branch told to that branch's Academic Vice Principal (a notification kind); extra phones (not unique, not for sign-in); a staff record and a relative record marked as the same person; relatives in the student export.
+  - Build: on a phone match, "different person, the number has a new owner" with the earlier relative's new phone or "no valid phone" (a column of its own, `phone_invalid_since`; sign-in blocked; listed for the Academic Vice Principal while a linked student is active); "Merge" offered on a refused phone change (the Academic Vice Principal in the branch, the Super Admin across branches); a change of name or phone of a relative linked in another branch told to that branch's Academic Vice Principal (a notification kind).
   - Done when: a phone match offers the new owner and a merge, and the other branch's Academic Vice Principal is told of a change.
+
+- [ ] **2.5b-2 Extra phones, the same person and relatives in the export** (split from 2.5b on pull request #73, decision 1)
+  - Read: `04` (Close relatives, Student record), `edge/close-relatives` (the foreign number and the teacher-parent rows), `edge/people-roles-accounts` (Personal data and the audit log), the plans and the decisions of pull requests #70, #72 and #73.
+  - Build: extra phones of a relative (not unique, not used for a match or for sign-in; Contact); a staff record and a relative record marked as the same person (the report of marks a staff member enters for their own child comes with the journal); the relatives of a student in the student export (Contact columns for the Contact exporters only).
+  - Done when: an extra phone is never unique nor used for a match, and the export holds relatives only for the Contact exporters.
 
 - [ ] **2.6 Audit log screen and personal data tools**
   - Read: `edge/people-roles-accounts` (Personal data and the audit log), `13` (Security).

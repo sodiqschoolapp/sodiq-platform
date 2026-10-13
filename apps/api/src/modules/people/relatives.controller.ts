@@ -1,29 +1,33 @@
 import { Controller, Get, HttpCode, Patch, Post } from '@nestjs/common';
 import {
   relativeDetailSchema,
+  relativeEditSchema,
   relativeIdentitySchema,
   relativeLinkEditSchema,
   relativeLinkInputSchema,
   relativeListQuerySchema,
   relativeListSchema,
+  relativeMergeSchema,
+  relativeNoValidPhoneSchema,
   relativeParamsSchema,
   relativePhoneMatchResultSchema,
   relativePhoneMatchSchema,
-  relativeRecordSchema,
   relativeUnlinkSchema,
   studentParamsSchema,
   studentRelativeParamsSchema,
   studentRelativesSchema,
   type RelativeDetail,
+  type RelativeEdit,
   type RelativeIdentity,
   type RelativeLinkEdit,
   type RelativeLinkInput,
   type RelativeList,
   type RelativeListQuery,
+  type RelativeMerge,
+  type RelativeNoValidPhone,
   type RelativeParams,
   type RelativePhoneMatch,
   type RelativePhoneMatchResult,
-  type RelativeRecord,
   type RelativeUnlink,
   type StudentParams,
   type StudentRelativeParams,
@@ -58,6 +62,18 @@ export class RelativesController {
     return this.relatives.list(access, query);
   }
 
+  /**
+   * The number of relatives of the branch with "no valid phone" and an
+   * active student, for the Academic Vice Principal's home (task 2.5b-1).
+   * Declared before `relatives/:id`.
+   */
+  @Get('relatives/no-valid-phone')
+  @Requires('relatives', 'view')
+  @Returns(relativeNoValidPhoneSchema)
+  noValidPhone(@CurrentAccess() access: Access): Promise<RelativeNoValidPhone> {
+    return this.relatives.noValidPhone(access);
+  }
+
   /** The phone typed first: the holder of that exact phone, or none. */
   @Post('relatives/phone-match')
   @HttpCode(200)
@@ -86,10 +102,28 @@ export class RelativesController {
   edit(
     @CurrentAccess() access: Access,
     @ValidParams(relativeParamsSchema) params: RelativeParams,
-    @ValidBody(relativeRecordSchema) record: RelativeRecord,
+    @ValidBody(relativeEditSchema) record: RelativeEdit,
     @RequestId() requestId: string,
   ): Promise<RelativeDetail> {
     return this.relatives.edit(access, params.id, record, requestId);
+  }
+
+  /**
+   * Merges the other record into one (`edge/close-relatives`, row 3; task
+   * 2.5b-1): the Academic Vice Principal in the branch, the Super Admin
+   * across branches.
+   */
+  @Post('relatives/:id/merge')
+  @HttpCode(200)
+  @Requires('relatives', 'edit')
+  @Returns(relativeDetailSchema)
+  merge(
+    @CurrentAccess() access: Access,
+    @ValidParams(relativeParamsSchema) params: RelativeParams,
+    @ValidBody(relativeMergeSchema) input: RelativeMerge,
+    @RequestId() requestId: string,
+  ): Promise<RelativeDetail> {
+    return this.relatives.merge(access, params.id, input, requestId);
   }
 
   /** The Principal's logged show of workplace and email (decision 5). */

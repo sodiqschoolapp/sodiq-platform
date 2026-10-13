@@ -283,6 +283,12 @@ export const ERROR_CODES = [
   'last_relative',
   /** A student keeps exactly one main contact: unlinking or clearing it names another (`edge/close-relatives`; task 2.5a). */
   'main_contact_needed',
+  /** A merge of relatives linked in another branch is for the Super Admin (`edge/close-relatives`: "Across branches, only the Super Admin merges"; task 2.5b-1). */
+  'merge_needs_super_admin',
+  /** A relative changed (a phone, a link, a merge) between the read and the change: read again (task 2.5b-1). */
+  'relative_changed',
+  /** The relative was merged into another record and is not linked again (task 2.5b-1, decision 9). */
+  'relative_merged',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
@@ -312,6 +318,12 @@ export const errorDetailSchema = z.object({
    * the name and the number of students linked in every branch.
    */
   holder: z.object({ fullName: z.string(), students: z.int().min(0) }).optional(),
+  /**
+   * For a refused phone change: whether the two records may be merged by this
+   * reader (task 2.5b-1, decision 8: the holder live and visible in the
+   * branch, or in any branch for the Super Admin).
+   */
+  mergeable: z.boolean().optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

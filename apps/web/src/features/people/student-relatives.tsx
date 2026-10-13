@@ -26,9 +26,19 @@ import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { asFormSchema } from './form-schema';
 import { invalidateRelatives, phoneMatch, studentRelativesQuery } from './people-api';
-import { NoticesField, phoneHolderOf, smsWarning } from './relative-form';
+import {
+  NEW_OWNER,
+  NoticesField,
+  OwnerChoice,
+  phoneHolderOf,
+  SAME_PERSON,
+  smsWarning,
+} from './relative-form';
 
 type AddField =
+  | 'owner'
+  | 'previousPhone'
+  | 'previousUnknown'
   | 'phone'
   | 'noPhone'
   | 'fullName'
@@ -340,6 +350,9 @@ function AddRelative({
   const form = useRecordForm<AddField, RelativeLinkInput>({
     schema: ADD_SCHEMA,
     initial: {
+      owner: SAME_PERSON,
+      previousPhone: `${DEFAULT_PHONE_PREFIX} `,
+      previousUnknown: '',
       phone: `${DEFAULT_PHONE_PREFIX} `,
       noPhone: '',
       fullName: '',
@@ -359,8 +372,25 @@ function AddRelative({
         portalAccess: typed.portalAccess === CHECKED,
         receivesNotices: typed.receivesNotices === CHECKED,
       };
-      return match !== null && phoneNow === match.phone && match.holder.id !== null
-        ? { kind: 'existing', relativeId: match.holder.id, phone: match.phone, ...link }
+      const matched =
+        match !== null && phoneNow === match.phone && match.holder.id !== null ? match : null;
+      if (matched !== null && matched.holder.id !== null && typed.owner === NEW_OWNER) {
+        // "Different person, the number has a new owner" (task 2.5b-1).
+        return {
+          kind: 'new_owner',
+          relative: {
+            fullName: typed.fullName,
+            phone: typed.phone,
+            workplace: typed.workplace,
+            email: typed.email,
+          },
+          previousId: matched.holder.id,
+          previousPhone: typed.previousUnknown === CHECKED ? null : typed.previousPhone,
+          ...link,
+        };
+      }
+      return matched !== null && matched.holder.id !== null
+        ? { kind: 'existing', relativeId: matched.holder.id, phone: matched.phone, ...link }
         : {
             kind: 'new',
             relative: {
@@ -432,11 +462,15 @@ function AddRelative({
             }}
           />
         )}
-        {found !== null ? (
-          <p role="status" className="text-sm">
-            {t('people.relatives.found', { name: found.fullName, count: found.students })}
-          </p>
-        ) : (
+        {found !== null && (
+          <OwnerChoice
+            found={found}
+            owner={form.bind('owner')}
+            previousPhone={form.bind('previousPhone')}
+            previousUnknown={form.bind('previousUnknown')}
+          />
+        )}
+        {(found === null || form.bind('owner').value === NEW_OWNER) && (
           <>
             <Field
               label={t('people.relatives.fullName')}

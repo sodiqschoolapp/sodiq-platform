@@ -102,19 +102,47 @@ const linkFields = {
 };
 
 /**
- * One relative linked to a student: a new record, or the existing one the
- * phone match showed, with the phone it was found by (decision 18: the save
- * is refused `relative_phone_changed` when that phone moved meanwhile).
+ * "Different person, the number has a new owner" (`edge/close-relatives`,
+ * row 2; task 2.5b-1): the earlier relative, as the phone match showed it,
+ * and their new phone, or `null` for "no valid phone". The new phone is
+ * never the number that changed hands.
  */
-export const relativeLinkInputSchema = z.discriminatedUnion('kind', [
-  z.strictObject({ kind: z.literal('new'), relative: relativeRecordSchema, ...linkFields }),
-  z.strictObject({
-    kind: z.literal('existing'),
-    relativeId: z.uuid(),
-    phone: relativePhoneSchema,
-    ...linkFields,
-  }),
-]);
+export const relativeNewOwnerSchema = z.strictObject({
+  previousId: z.uuid(),
+  previousPhone: relativePhoneSchema.nullable(),
+});
+
+export type RelativeNewOwner = z.infer<typeof relativeNewOwnerSchema>;
+
+/** The new phone of the earlier relative as typed on the refused phone change; `null` for "unknown". */
+export const relativePreviousPhoneSchema = relativeNewOwnerSchema.pick({ previousPhone: true });
+
+/**
+ * One relative linked to a student: a new record, the existing one the
+ * phone match showed, with the phone it was found by (decision 18: the save
+ * is refused `relative_phone_changed` when that phone moved meanwhile), or a
+ * new record that takes the phone of the one the match showed (task 2.5b-1).
+ */
+export const relativeLinkInputSchema = z
+  .discriminatedUnion('kind', [
+    z.strictObject({ kind: z.literal('new'), relative: relativeRecordSchema, ...linkFields }),
+    z.strictObject({
+      kind: z.literal('existing'),
+      relativeId: z.uuid(),
+      phone: relativePhoneSchema,
+      ...linkFields,
+    }),
+    z.strictObject({
+      kind: z.literal('new_owner'),
+      relative: relativeRecordSchema.extend({ phone: relativePhoneSchema }),
+      ...relativeNewOwnerSchema.shape,
+      ...linkFields,
+    }),
+  ])
+  .refine((link) => link.kind !== 'new_owner' || link.previousPhone !== link.relative.phone, {
+    message: 'The earlier relative needs another phone.',
+    path: ['previousPhone'],
+  });
 
 export type RelativeLinkInput = z.infer<typeof relativeLinkInputSchema>;
 
@@ -131,13 +159,19 @@ export const studentRelativesInputSchema = z
   })
   .refine(
     (links) => {
-      const keys = links.flatMap((link) =>
-        link.kind === 'existing'
-          ? [link.relativeId, link.phone]
-          : link.relative.phone === null
-            ? []
-            : [link.relative.phone],
-      );
+      const keys = links.flatMap((link) => {
+        if (link.kind === 'existing') {
+          return [link.relativeId, link.phone];
+        }
+        if (link.kind === 'new_owner') {
+          return [
+            link.previousId,
+            link.relative.phone,
+            ...(link.previousPhone === null ? [] : [link.previousPhone]),
+          ];
+        }
+        return link.relative.phone === null ? [] : [link.relative.phone];
+      });
       return new Set(keys).size === keys.length;
     },
     { message: 'A person or a phone is given twice.' },
@@ -188,6 +222,8 @@ export const relativeListItemSchema = z.object({
   students: z.array(relativeStudentSchema),
   /** Students of other branches, as a count (`edge`). */
   elsewhere: z.int().min(0),
+  /** "No valid phone" since this moment (task 2.5b-1, decision 3); `null` otherwise. */
+  phoneInvalidSince: z.string().nullable(),
 });
 
 export type RelativeListItem = z.infer<typeof relativeListItemSchema>;
@@ -201,8 +237,13 @@ export const relativeListSchema = z.object({
 
 export type RelativeList = z.infer<typeof relativeListSchema>;
 
-/** `search` by name; `phone` by the main phone, for the readers that may (403 otherwise). */
+/**
+ * `search` by name; `phone` by the main phone, for the readers that may (403
+ * otherwise); `filter=no_valid_phone`: the relatives with no valid phone and
+ * a student of the branch active today (`edge`, row 2; task 2.5b-1).
+ */
 export const relativeListQuerySchema = z.strictObject({
+  filter: z.enum(['no_valid_phone']).optional(),
   search: z.string().trim().max(RELATIVE_NAME_MAX_LENGTH).optional(),
   phone: z
     .string()
@@ -212,6 +253,11 @@ export const relativeListQuerySchema = z.strictObject({
 });
 
 export type RelativeListQuery = z.infer<typeof relativeListQuerySchema>;
+
+/** The number of relatives of the branch with no valid phone and an active student, for the home tile. */
+export const relativeNoValidPhoneSchema = z.object({ count: z.int().min(0) });
+
+export type RelativeNoValidPhone = z.infer<typeof relativeNoValidPhoneSchema>;
 
 /** Workplace and email, read as Identity (decision 5, Look first). */
 export const relativeIdentitySchema = z.object({
@@ -230,6 +276,48 @@ export const relativeDetailSchema = relativeListItemSchema.extend({
 });
 
 export type RelativeDetail = z.infer<typeof relativeDetailSchema>;
+
+/**
+ * The edit of a relative's record (`04`, Changing a phone). A phone refused
+ * as taken may be given with `newOwner`: the holder the phone match shows
+ * gets a new phone or "no valid phone" (decision 8 of pull request #73).
+ */
+export const relativeEditSchema = relativeRecordSchema
+  .extend({ newOwner: relativeNewOwnerSchema.nullable().optional() })
+  .refine(
+    (edit) =>
+      edit.newOwner === undefined ||
+      edit.newOwner === null ||
+      (edit.phone !== null && edit.newOwner.previousPhone !== edit.phone),
+    {
+      message: 'The new owner needs the phone typed, and the earlier relative another one.',
+      path: ['newOwner'],
+    },
+  );
+
+export type RelativeEdit = z.infer<typeof relativeEditSchema>;
+
+/**
+ * The merge of two records of one person (`edge/close-relatives`, row 3;
+ * task 2.5b-1, decision 6): the other record, the two phones as the screen
+ * showed them (a change meanwhile is refused `relative_changed`), whose
+ * phone stays (that record stays, with its id and its Parent account) and
+ * whose name. The phone that stays is a phone (correction 1).
+ */
+export const relativeMergeSchema = z
+  .strictObject({
+    otherId: z.uuid(),
+    thisPhone: relativePhoneSchema.nullable(),
+    otherPhone: relativePhoneSchema.nullable(),
+    phoneOf: z.enum(['this', 'other']),
+    nameOf: z.enum(['this', 'other']),
+  })
+  .refine((merge) => (merge.phoneOf === 'this' ? merge.thisPhone : merge.otherPhone) !== null, {
+    message: 'The phone that stays is a phone.',
+    path: ['phoneOf'],
+  });
+
+export type RelativeMerge = z.infer<typeof relativeMergeSchema>;
 
 /** A relative as the student's Relatives tab answers it (`02`: "name, relationship and phones of a relative"). */
 export const studentRelativeSchema = z.object({

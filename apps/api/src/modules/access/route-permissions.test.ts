@@ -263,6 +263,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/people/relatives/phone-match': { branch: 'request', roles: STUDENT_EDITORS },
   'PATCH /api/people/relatives/:id': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/relatives/:id/show': { branch: 'request', roles: SETUP_VIEWERS },
+  // Task 2.5b-1 (pull request #73): the count of "no valid phone" for the home
+  // tile under `relatives` `view`; the merge under `relatives` `edit`, refused
+  // across branches to all but the Super Admin by the route (relative-owners.test.ts).
+  'GET /api/people/relatives/no-valid-phone': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/people/relatives/:id/merge': { branch: 'request', roles: STUDENT_EDITORS },
   'GET /api/people/students/:id/relatives': {
     branch: 'request',
     roles: [

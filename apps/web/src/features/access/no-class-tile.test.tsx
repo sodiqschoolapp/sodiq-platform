@@ -22,6 +22,8 @@ describe('the "No class" counter of the home page', () => {
   it('shows the Academic Vice Principal the count, linking to the list it counts', async () => {
     const calls = fakeApi({
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      // The parents with no valid phone, the second tile (task 2.5b-1), hidden at 0.
+      'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
       'GET /api/people/students/no-class': () => json({ count: 1234 }),
       'GET /api/people/students': () =>
         json({
@@ -50,6 +52,8 @@ describe('the "No class" counter of the home page', () => {
   it('is hidden at 0', async () => {
     const calls = fakeApi({
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      // The parents with no valid phone, the second tile (task 2.5b-1), hidden at 0.
+      'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
       'GET /api/people/students/no-class': () => json({ count: 0 }),
     });
     renderApp('/');
@@ -67,6 +71,8 @@ describe('the "No class" counter of the home page', () => {
     let answers = 0;
     fakeApi({
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      // The parents with no valid phone, the second tile (task 2.5b-1), hidden at 0.
+      'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
       'GET /api/people/students/no-class': () => {
         answers += 1;
         return answers === 1 ? refusal('internal_error', 500) : json({ count: 7 });

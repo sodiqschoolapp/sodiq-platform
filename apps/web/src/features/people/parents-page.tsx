@@ -4,12 +4,15 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListPage } from '@/components/list/list-page';
-import { type Column, type ListSearch } from '@/components/list/list-state';
+import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { useView } from '@/features/access/use-view';
 import { ParentPanel } from './parent-panel';
 import { relativesQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
+
+/** The one option of the phone filter (`edge/close-relatives`, row 2; task 2.5b-1). */
+const NO_VALID_PHONE = 'no_valid_phone';
 
 /**
  * The Parents of the branch (`04`, Close relatives: "The Academic Vice
@@ -24,8 +27,16 @@ export function ParentsPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: '/app/people/parents' });
   const { branchId } = useView();
-  const relatives = useQuery(relativesQuery(branchId));
-  const searchesPhone = relatives.data?.searchesPhone === true;
+  const all = useQuery(relativesQuery(branchId));
+  // "No valid phone" comes from the server, which knows the active students
+  // of the branch (task 2.5b-1, decision 3).
+  const wantsInvalid = search.f?.phone === NO_VALID_PHONE;
+  const invalid = useQuery({
+    ...relativesQuery(branchId, NO_VALID_PHONE),
+    enabled: branchId !== null && wantsInvalid,
+  });
+  const relatives = wantsInvalid ? invalid : all;
+  const searchesPhone = all.data?.searchesPhone === true;
 
   const columns = useMemo((): Column<RelativeListItem>[] => {
     const students = (row: RelativeListItem) =>
@@ -43,7 +54,13 @@ export function ParentsPage() {
       {
         key: 'phone',
         header: t('people.relatives.phone'),
-        cell: (row) => row.phone ?? t('people.relatives.noPhone'),
+        cell: (row) =>
+          row.phone ??
+          t(
+            row.phoneInvalidSince === null
+              ? 'people.relatives.noPhone'
+              : 'people.relatives.noValidPhone',
+          ),
       },
       {
         key: 'students',
@@ -60,6 +77,18 @@ export function ParentsPage() {
       },
     ];
   }, [t, searchesPhone]);
+
+  const filters = useMemo(
+    (): Filter<RelativeListItem>[] => [
+      {
+        key: 'phone',
+        label: t('people.relatives.phone'),
+        options: [{ value: NO_VALID_PHONE, label: t('people.relatives.noValidPhoneFilter') }],
+        matches: (row) => row.phoneInvalidSince !== null,
+      },
+    ],
+    [t],
+  );
 
   const open = (next: ListSearch, how: 'push' | 'replace'): void => {
     void navigate({ to: '/people/parents', search: next, replace: how === 'replace' });
@@ -86,6 +115,7 @@ export function ParentsPage() {
         rowId={(row) => row.id}
         rowName={(row) => row.fullName}
         columns={columns}
+        filters={filters}
         search={search}
         onSearchChange={open}
         empty={{ title: t('people.relatives.emptyTitle'), text: t('people.relatives.empty') }}

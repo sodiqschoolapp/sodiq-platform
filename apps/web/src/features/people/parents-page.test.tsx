@@ -25,6 +25,7 @@ const DILFUZA: RelativeListItem = {
     },
   ],
   elsewhere: 1,
+  phoneInvalidSince: null,
 };
 
 const ANVAR: RelativeListItem = {
@@ -42,6 +43,7 @@ const ANVAR: RelativeListItem = {
     },
   ],
   elsewhere: 0,
+  phoneInvalidSince: null,
 };
 
 const detailOf = (row: RelativeListItem, fields: Partial<RelativeDetail> = {}): RelativeDetail => ({
@@ -125,6 +127,26 @@ describe('the Parents list', () => {
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(0);
     });
+  });
+
+  it('asks the server for the relatives with no valid phone (task 2.5b-1)', async () => {
+    const lost = { ...ANVAR, phoneInvalidSince: '2026-10-01T07:00:00.000Z' };
+    const calls = openList('academic_vice_principal', {
+      'GET /api/people/relatives': () =>
+        json({ relatives: [ANVAR, DILFUZA, lost].slice(2), searchesPhone: true, canEdit: true }),
+    });
+    renderApp(`${PATH}?f=%7B%22phone%22%3A%22no_valid_phone%22%7D`);
+    await waitFor(() => {
+      expect(rowsDrawn()).toEqual([
+        ['Anvar Saidov', en.people.relatives.noValidPhone, 'Saidova Zarina', ''],
+      ]);
+    });
+    expect(
+      calls.some(
+        (call) =>
+          call.route === 'GET /api/people/relatives' && call.query === '?filter=no_valid_phone',
+      ),
+    ).toBe(true);
   });
 
   it('speaks Russian', async () => {
@@ -230,5 +252,166 @@ describe('the page of a relative', () => {
     fireEvent.click(within(panel).getByRole('button', { name: en.people.relatives.show }));
     expect(await within(panel).findByText('d.rahimova@example.uz')).toBeDefined();
     expect(calls.some((call) => call.route.endsWith('/show'))).toBe(true);
+  });
+
+  describe('a phone refused as taken (task 2.5b-1)', () => {
+    const takenAnswer = (mergeable: boolean) => () =>
+      Response.json(
+        {
+          error: {
+            code: 'relative_phone_taken',
+            message: 'x',
+            requestId: 'r',
+            details: [
+              {
+                path: 'phone',
+                code: 'already_exists',
+                message: 'x',
+                holder: { fullName: 'Shoira Nazarova', students: 2 },
+                mergeable,
+              },
+            ],
+          },
+        },
+        { status: 409 },
+      );
+
+    const refuse = async () => {
+      const panel = await openPanel();
+      const form = await within(panel).findByRole('form');
+      fireEvent.change(within(form).getByLabelText(en.people.relatives.phone), {
+        target: { value: '+998 90 444 55 66' },
+      });
+      fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+      return within(panel).findByRole('region', { name: en.people.relatives.takenTitle });
+    };
+
+    it('merges the two records with the name and phone chosen, after a confirmation', async () => {
+      const calls = openList('academic_vice_principal', {
+        [`PATCH /api/people/relatives/${DILFUZA.id}`]: takenAnswer(true),
+        'POST /api/people/relatives/phone-match': () =>
+          json({ holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 } }),
+        [`POST /api/people/relatives/${DILFUZA.id}/merge`]: () => json(detailOf(DILFUZA)),
+      });
+      renderApp(PATH);
+      const choices = await refuse();
+      fireEvent.click(
+        within(choices).getByRole('button', {
+          name: en.people.relatives.mergeWith.replace('{{name}}', 'Shoira Nazarova'),
+        }),
+      );
+      fireEvent.change(within(choices).getByLabelText(en.people.relatives.mergeName), {
+        target: { value: 'other' },
+      });
+      fireEvent.click(within(choices).getByRole('button', { name: en.people.relatives.merge }));
+      const dialog = await screen.findByRole('alertdialog');
+      expect(within(dialog).getByText('Shoira Nazarova')).toBeDefined();
+      fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.merge }));
+      await waitFor(() => {
+        expect(calls.some((call) => call.route.endsWith('/merge'))).toBe(true);
+      });
+      expect(calls.find((call) => call.route.endsWith('/merge'))?.body).toEqual({
+        otherId: uid(3),
+        thisPhone: '+998901112233',
+        otherPhone: '+998904445566',
+        phoneOf: 'this',
+        nameOf: 'other',
+      });
+    });
+
+    it('opens the record that stays when it is the other one', async () => {
+      const shoira = {
+        ...DILFUZA,
+        id: uid(3),
+        fullName: 'Shoira Nazarova',
+        phone: '+998904445566',
+      };
+      let mergedNow = false;
+      openList('academic_vice_principal', {
+        [`PATCH /api/people/relatives/${DILFUZA.id}`]: takenAnswer(true),
+        'POST /api/people/relatives/phone-match': () =>
+          json({ holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 } }),
+        [`POST /api/people/relatives/${DILFUZA.id}/merge`]: () => {
+          mergedNow = true;
+          return json(detailOf(shoira));
+        },
+        [`GET /api/people/relatives/${uid(3)}`]: () => json(detailOf(shoira)),
+        // After the merge the list holds the record that stays.
+        'GET /api/people/relatives': () =>
+          json({
+            relatives: mergedNow ? [ANVAR, shoira] : [ANVAR, DILFUZA],
+            searchesPhone: true,
+            canEdit: true,
+          }),
+      });
+      const shell = renderApp(PATH);
+      const choices = await refuse();
+      fireEvent.click(
+        within(choices).getByRole('button', {
+          name: en.people.relatives.mergeWith.replace('{{name}}', 'Shoira Nazarova'),
+        }),
+      );
+      fireEvent.change(within(choices).getByLabelText(en.people.relatives.mergePhone), {
+        target: { value: 'other' },
+      });
+      fireEvent.click(within(choices).getByRole('button', { name: en.people.relatives.merge }));
+      const dialog = await screen.findByRole('alertdialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.merge }));
+      await waitFor(() => {
+        expect(shell.router.state.location.search).toMatchObject({ open: uid(3) });
+      });
+      expect(await screen.findByRole('complementary', { name: 'Shoira Nazarova' })).toBeDefined();
+    });
+
+    it('offers no merge when the holder may not be merged, and gives the number a new owner', async () => {
+      const calls = openList('academic_vice_principal', {
+        [`PATCH /api/people/relatives/${DILFUZA.id}`]: takenAnswer(false),
+        'POST /api/people/relatives/phone-match': () =>
+          json({ holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 } }),
+      });
+      renderApp(PATH);
+      const choices = await refuse();
+      expect(
+        within(choices).queryByRole('button', {
+          name: en.people.relatives.mergeWith.replace('{{name}}', 'Shoira Nazarova'),
+        }),
+      ).toBeNull();
+      fireEvent.click(within(choices).getByRole('button', { name: en.people.relatives.newOwner }));
+      fireEvent.click(
+        within(choices).getByLabelText(
+          en.people.relatives.previousUnknown.replace('{{name}}', 'Shoira Nazarova'),
+        ),
+      );
+      fireEvent.click(
+        within(choices).getByRole('button', { name: en.people.relatives.giveNumber }),
+      );
+      await waitFor(() => {
+        expect(calls.filter((call) => call.route.startsWith('PATCH'))).toHaveLength(2);
+      });
+      expect(calls.filter((call) => call.route.startsWith('PATCH'))[1]?.body).toEqual({
+        fullName: 'Dilfuza Rahimova',
+        phone: '+998904445566',
+        workplace: 'Toshkent shahar shifoxonasi',
+        email: 'd.rahimova@example.uz',
+        newOwner: { previousId: uid(3), previousPhone: null },
+      });
+    });
+
+    it('shows "no valid phone" with its date on the page', async () => {
+      openList('academic_vice_principal', {}, 'en', {
+        phone: null,
+        phoneInvalidSince: '2026-10-01T07:00:00.000Z',
+      });
+      renderApp(PATH);
+      const panel = await openPanel();
+      expect(
+        await within(panel).findByText(
+          en.people.relatives.noValidPhoneSince.replace(
+            '{{date}}',
+            new Date('2026-10-01T07:00:00.000Z').toLocaleDateString('en'),
+          ),
+        ),
+      ).toBeDefined();
+    });
   });
 });
