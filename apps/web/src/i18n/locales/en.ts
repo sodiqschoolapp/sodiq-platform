@@ -677,6 +677,8 @@ export const en = {
       empty:
         'The school days of the branch are listed here: a start time and the slots in order. There is none yet.',
       needLessonType: 'Add a slot type of the kind lesson first.',
+      // A time of a day template after midnight (task 2.7b-1, finding 16).
+      nextDay: '{{time}} (next day)',
       slots: 'Slots in order',
       startTime: 'Start time',
       from: 'From',
@@ -1616,6 +1618,27 @@ export const en = {
       duplicateElsewhere:
         'A staff member with the same name and date of birth, or the same phone, works in another branch.',
       saveAnyway: 'Save anyway',
+    },
+  },
+  devices: {
+    name: '{{browser}} on {{os}}',
+    browsers: {
+      edge: 'Edge',
+      opera: 'Opera',
+      yandex: 'Yandex Browser',
+      samsung: 'Samsung Internet',
+      firefox: 'Firefox',
+      chrome: 'Chrome',
+      safari: 'Safari',
+      other: 'Another browser',
+    },
+    systems: {
+      windows: 'Windows',
+      android: 'Android',
+      ios: 'iOS',
+      macos: 'macOS',
+      linux: 'Linux',
+      other: 'another system',
     },
   },
   dates: {

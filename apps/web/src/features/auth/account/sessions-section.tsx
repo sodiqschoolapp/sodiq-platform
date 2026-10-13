@@ -19,6 +19,7 @@ import {
 import { AccountSection } from './account-section';
 import { refreshSession, sessionQuery } from '../session';
 import { formatMoment } from '@/lib/dates';
+import { deviceName } from '@/lib/device-name';
 
 export const sessionsQuery = queryOptions({
   queryKey: ['account', 'sessions'],
@@ -100,7 +101,7 @@ export function SessionsSection() {
           {sessions.data.sessions.map((row) => (
             <TableRow key={row.id}>
               <TableCell className="max-w-xs truncate" title={row.userAgent ?? undefined}>
-                {row.userAgent ?? t('account.unknownDevice')}
+                {deviceName(t, row.userAgent) ?? t('account.unknownDevice')}
               </TableCell>
               <TableCell>{formatMoment(i18n.language, row.startedAt)}</TableCell>
               <TableCell>{formatMoment(i18n.language, row.lastUsedAt)}</TableCell>

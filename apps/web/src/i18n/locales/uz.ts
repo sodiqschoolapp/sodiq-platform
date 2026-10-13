@@ -688,6 +688,8 @@ export const uz: Texts<'one' | 'other'> = {
       empty:
         'Bu yerda filialning oʻquv kunlari: boshlanish vaqti va tartibdagi slotlar. Hozircha yoʻq.',
       needLessonType: 'Avval dars turini qoʻshing.',
+      // A time of a day template after midnight (task 2.7b-1, finding 16).
+      nextDay: '{{time}} (keyingi kun)',
       slots: 'Tartibdagi slotlar',
       startTime: 'Boshlanish vaqti',
       from: 'Dan',
@@ -1632,6 +1634,28 @@ export const uz: Texts<'one' | 'other'> = {
       duplicateElsewhere:
         'Ismi va tugʻilgan sanasi yoki telefoni bir xil xodim boshqa filialda ishlaydi.',
       saveAnyway: 'Baribir saqlash',
+    },
+  },
+  devices: {
+    // No locative suffix on a brand name (review of the plan, decision 6).
+    name: '{{browser}}, {{os}}',
+    browsers: {
+      edge: 'Edge',
+      opera: 'Opera',
+      yandex: 'Yandex Browser',
+      samsung: 'Samsung Internet',
+      firefox: 'Firefox',
+      chrome: 'Chrome',
+      safari: 'Safari',
+      other: 'Boshqa brauzer',
+    },
+    systems: {
+      windows: 'Windows',
+      android: 'Android',
+      ios: 'iOS',
+      macos: 'macOS',
+      linux: 'Linux',
+      other: 'boshqa tizim',
     },
   },
   dates: {

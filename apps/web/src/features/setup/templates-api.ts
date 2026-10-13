@@ -10,7 +10,8 @@ import {
   type TemplateChange,
   type TemplatePreview,
 } from '@sodiq/shared';
-import { inForceOn } from '@sodiq/timetable-rules';
+import { inForceOn, MINUTES_PER_DAY } from '@sodiq/timetable-rules';
+import type { TFunction } from 'i18next';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
@@ -107,6 +108,16 @@ export function lengthOn(slotType: SlotType, date: string): number | null {
   return inForceOn(slotType.lengths, date)[0]?.lengthMinutes ?? null;
 }
 
+/**
+ * A time of a day template; a time after midnight reads "00:15 (next day)"
+ * (finding 16 of the hand test of 13 October 2026; task 2.7b-1, decision 9).
+ * The end of a day at midnight stays `24:00`.
+ */
+export const slotTimeText = (t: TFunction, minutes: number): string =>
+  minutes > MINUTES_PER_DAY
+    ? t('setup.dayTemplates.nextDay', { time: timeText(minutes - MINUTES_PER_DAY) })
+    : timeText(minutes);
+
 /** `08:30–09:15`. */
-export const rangeText = (start: number, end: number): string =>
-  `${timeText(start)}–${timeText(end)}`;
+export const rangeText = (t: TFunction, start: number, end: number): string =>
+  `${slotTimeText(t, start)}–${slotTimeText(t, end)}`;

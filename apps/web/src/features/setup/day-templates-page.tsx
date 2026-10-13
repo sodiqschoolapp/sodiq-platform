@@ -79,7 +79,7 @@ export function DayTemplatesPage() {
         key: 'day',
         header: t('setup.dayTemplates.day'),
         cell: (row) =>
-          row.start === null || row.end === null ? '' : rangeText(row.start, row.end),
+          row.start === null || row.end === null ? '' : rangeText(t, row.start, row.end),
         sortValue: (row) => row.start,
       },
       {

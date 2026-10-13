@@ -20,6 +20,7 @@ import { refreshSession } from '../session';
 import { useLeaveSignedOut } from '../use-sign-out';
 import { DEVICES_KEY, sessionsQuery } from './sessions-section';
 import { formatMoment } from '@/lib/dates';
+import { deviceName } from '@/lib/device-name';
 
 export const devicesQuery = queryOptions({
   queryKey: DEVICES_KEY,
@@ -64,7 +65,7 @@ export function TrustedDevicesSection() {
       await confirm({
         title: t('account.removeTitle'),
         text: device.current ? t('account.removeThisText') : t('account.removeText'),
-        names: [device.userAgent ?? t('account.unknownDevice')],
+        names: [deviceName(t, device.userAgent) ?? t('account.unknownDevice')],
         action: t('account.remove'),
         destructive: true,
       })
@@ -94,7 +95,7 @@ export function TrustedDevicesSection() {
             {devices.data.devices.map((device) => (
               <TableRow key={device.id}>
                 <TableCell className="max-w-xs truncate" title={device.userAgent ?? undefined}>
-                  {device.userAgent ?? t('account.unknownDevice')}
+                  {deviceName(t, device.userAgent) ?? t('account.unknownDevice')}
                 </TableCell>
                 <TableCell>{formatMoment(i18n.language, device.startedAt)}</TableCell>
                 <TableCell>{formatMoment(i18n.language, device.trustedUntil)}</TableCell>
@@ -107,7 +108,7 @@ export function TrustedDevicesSection() {
                     size="sm"
                     disabled={remove.isPending}
                     aria-label={t('account.removeNamed', {
-                      name: device.userAgent ?? t('account.unknownDevice'),
+                      name: deviceName(t, device.userAgent) ?? t('account.unknownDevice'),
                     })}
                     onClick={() => {
                       void ask(device);

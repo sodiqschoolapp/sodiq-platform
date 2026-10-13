@@ -723,6 +723,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       cancel: 'Отмена',
       empty: 'Здесь перечислены учебные дни филиала: время начала и слоты по порядку. Пока их нет.',
       needLessonType: 'Сначала добавьте тип урока.',
+      // A time of a day template after midnight (task 2.7b-1, finding 16).
+      nextDay: '{{time}} (следующий день)',
       slots: 'Слоты по порядку',
       startTime: 'Время начала',
       from: 'С',
@@ -1713,6 +1715,28 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       duplicateElsewhere:
         'Сотрудник с тем же именем и датой рождения или с тем же телефоном работает в другом филиале.',
       saveAnyway: 'Всё равно сохранить',
+    },
+  },
+  devices: {
+    name: '{{browser}} на {{os}}',
+    browsers: {
+      edge: 'Edge',
+      opera: 'Opera',
+      yandex: 'Яндекс Браузер',
+      samsung: 'Samsung Internet',
+      firefox: 'Firefox',
+      chrome: 'Chrome',
+      safari: 'Safari',
+      other: 'Другой браузер',
+    },
+    // The place after "на" (prepositional case of "другая система").
+    systems: {
+      windows: 'Windows',
+      android: 'Android',
+      ios: 'iOS',
+      macos: 'macOS',
+      linux: 'Linux',
+      other: 'другой системе',
     },
   },
   dates: {
