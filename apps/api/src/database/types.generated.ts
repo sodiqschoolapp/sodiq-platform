@@ -483,6 +483,8 @@ export interface Students {
   name_key: string;
   paternal_name: string | null;
   phone: string | null;
+  photo_id: string | null;
+  photo_type: string | null;
   previous_school: string | null;
   region: string | null;
   scholarship_amount: number | null;

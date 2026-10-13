@@ -44,7 +44,24 @@ export const OWN_PHOTO_ROUTE: FileRoute = {
   tooLarge: 'photo_too_large',
 };
 
-export const FILE_ROUTES: readonly FileRoute[] = [STAFF_PHOTO_ROUTE, OWN_PHOTO_ROUTE];
+/**
+ * A student's photo (task 2.4b-2, decision 4 of pull request #70, Look
+ * first; answer 2: "one upload route per photo kind"): the same types and
+ * size as the staff photo.
+ */
+export const STUDENT_PHOTO_ROUTE: FileRoute = {
+  method: 'PUT',
+  path: '/api/people/students/:id/photo',
+  types: PHOTO_TYPES,
+  maxBytes: PHOTO_MAX_BYTES,
+  tooLarge: 'photo_too_large',
+};
+
+export const FILE_ROUTES: readonly FileRoute[] = [
+  STAFF_PHOTO_ROUTE,
+  OWN_PHOTO_ROUTE,
+  STUDENT_PHOTO_ROUTE,
+];
 
 /**
  * The body of a file route as `fileBodyMiddleware` read it. A class of its

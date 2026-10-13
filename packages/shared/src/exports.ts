@@ -3,7 +3,15 @@ import type { Language } from './language.js';
 import type { Role } from './roles.js';
 import type { InstructionLanguage } from './settings.js';
 import type { RoomStatus, RoomType } from './setup.js';
-import type { StaffStatus } from './staff.js';
+import type { Sex, StaffStatus } from './staff.js';
+import type {
+  DocumentType,
+  Region,
+  ScholarshipCoverage,
+  ScholarshipType,
+  StudentFieldGroup,
+  StudentStatus,
+} from './students.js';
 import type { JournalType } from './subjects.js';
 import type { VacancyStatus } from './vacancies.js';
 
@@ -18,6 +26,7 @@ export const EXPORT_LISTS = [
   'rooms',
   'divisions',
   'subjects',
+  'students',
 ] as const;
 
 export type ExportList = (typeof EXPORT_LISTS)[number];
@@ -75,6 +84,81 @@ export const SUBJECT_EXPORT_COLUMNS = [
   'switches',
   'status',
 ] as const;
+
+/**
+ * The column keys of the student list's file (task 2.4b-2, pull request #70):
+ * the one exception to "equal to the `key`s of the columns of its page". The
+ * first part is the page's exported columns, in its order (its photo, groups
+ * and tutor columns are not exported: `groups` and `tutor` have no data
+ * before tasks 3.1 and 3.2); the rest are export-only columns, chosen by
+ * group under the Export button, because the list shows no phone or document
+ * (`04`: "Phone numbers are not shown in the list"; decision 2). A web test
+ * pins both parts.
+ */
+export const STUDENT_EXPORT_COLUMNS = [
+  'uid',
+  'name',
+  'class',
+  'status',
+  'paternalName',
+  'sex',
+  'grade',
+  'startsOn',
+  'phone',
+  'email',
+  'birthDate',
+  'documentType',
+  'documentNumber',
+  'jshshir',
+  'address',
+  'region',
+  'contractNumber',
+  'contractSignedOn',
+  'scholarshipType',
+  'scholarshipCoverage',
+  'scholarshipAmount',
+  'previousSchool',
+  'diagnosticScore',
+  'consentSignedOn',
+] as const;
+
+export type StudentExportColumn = (typeof STUDENT_EXPORT_COLUMNS)[number];
+
+/** The page's exported columns: every reader of the list sees them. */
+export const STUDENT_LIST_EXPORT_COLUMNS = [
+  'uid',
+  'name',
+  'class',
+  'status',
+] as const satisfies readonly StudentExportColumn[];
+
+/** The group each column of the student file belongs to; a column is exported only by a reader of its group. */
+export const STUDENT_EXPORT_GROUPS: Readonly<Record<StudentExportColumn, StudentFieldGroup>> = {
+  uid: 'basic',
+  name: 'basic',
+  class: 'basic',
+  status: 'basic',
+  paternalName: 'basic',
+  sex: 'basic',
+  grade: 'basic',
+  startsOn: 'basic',
+  phone: 'contact',
+  email: 'contact',
+  birthDate: 'identity',
+  documentType: 'identity',
+  documentNumber: 'identity',
+  jshshir: 'identity',
+  address: 'identity',
+  region: 'identity',
+  contractNumber: 'financial',
+  contractSignedOn: 'financial',
+  scholarshipType: 'financial',
+  scholarshipCoverage: 'financial',
+  scholarshipAmount: 'financial',
+  previousSchool: 'financial',
+  diagnosticScore: 'financial',
+  consentSignedOn: 'financial',
+};
 
 export type StaffExportColumn = (typeof STAFF_EXPORT_COLUMNS)[number];
 export type VacancyExportColumn = (typeof VACANCY_EXPORT_COLUMNS)[number];
@@ -151,6 +235,7 @@ export const buildingExportSchema = exportRequestSchema(BUILDING_EXPORT_COLUMNS)
 export const roomExportSchema = exportRequestSchema(ROOM_EXPORT_COLUMNS);
 export const divisionExportSchema = exportRequestSchema(DIVISION_EXPORT_COLUMNS);
 export const subjectExportSchema = exportRequestSchema(SUBJECT_EXPORT_COLUMNS);
+export const studentExportSchema = exportRequestSchema(STUDENT_EXPORT_COLUMNS);
 
 export type StaffExport = z.infer<typeof staffExportSchema>;
 export type VacancyExport = z.infer<typeof vacancyExportSchema>;
@@ -158,6 +243,7 @@ export type BuildingExport = z.infer<typeof buildingExportSchema>;
 export type RoomExport = z.infer<typeof roomExportSchema>;
 export type DivisionExport = z.infer<typeof divisionExportSchema>;
 export type SubjectExport = z.infer<typeof subjectExportSchema>;
+export type StudentExport = z.infer<typeof studentExportSchema>;
 
 /** The texts of one list's file: its name (sheet and file) and the heading of each column. */
 export interface ExportListTexts<Column extends string> {
@@ -178,6 +264,20 @@ export interface ExportTexts {
   rooms: ExportListTexts<RoomExportColumn>;
   divisions: ExportListTexts<DivisionExportColumn>;
   subjects: ExportListTexts<SubjectExportColumn>;
+  students: ExportListTexts<StudentExportColumn>;
+  /** The texts of the cells of the student file, as the student list and profile write them. */
+  student: {
+    statuses: Record<StudentStatus, string>;
+    /** A student before the start date (`status` null). */
+    notStarted: string;
+    /** The class cell until classes exist (task 3.1), with `{{grade}}` for the grade's text. */
+    gradeNoClass: string;
+    sexes: Record<Sex, string>;
+    documentTypes: Record<DocumentType, string>;
+    regions: Record<Region, string>;
+    scholarshipTypes: Record<ScholarshipType, string>;
+    scholarshipCoverages: Record<ScholarshipCoverage, string>;
+  };
   /** The two headings the status column of the staff file adds: a planned status and its first day. */
   plannedStatus: string;
   plannedFrom: string;
@@ -260,6 +360,80 @@ const en: ExportTexts = {
       quarterly: 'Quarters not set',
       switches: 'Switches',
       status: 'Status',
+    },
+  },
+  students: {
+    name: 'Students',
+    columns: {
+      uid: 'UID',
+      name: 'Name and surname',
+      class: 'Class',
+      status: 'Status',
+      paternalName: 'Paternal name',
+      sex: 'Sex',
+      grade: 'Grade',
+      startsOn: 'Start date',
+      phone: 'Phone',
+      email: 'Email',
+      birthDate: 'Date of birth',
+      documentType: 'Document',
+      documentNumber: 'Document number',
+      jshshir: 'JSHSHIR',
+      address: 'Address',
+      region: 'Region',
+      contractNumber: 'Contract number',
+      contractSignedOn: 'Contract date',
+      scholarshipType: 'Scholarship',
+      scholarshipCoverage: 'Coverage',
+      scholarshipAmount: 'Amount in soʻm',
+      previousSchool: 'Previous school',
+      diagnosticScore: 'Diagnostic test score',
+      consentSignedOn: 'Consent signed on',
+    },
+  },
+  student: {
+    statuses: {
+      active: 'Active',
+      inactive: 'Inactive',
+      graduated: 'Graduated',
+    },
+    notStarted: 'Starts later',
+    gradeNoClass: '{{grade}}, no class',
+    sexes: {
+      male: 'Male',
+      female: 'Female',
+    },
+    documentTypes: {
+      passport: 'Passport',
+      id_card: 'ID card',
+      birth_certificate: 'Birth certificate',
+    },
+    regions: {
+      andijan: 'Andijan Region',
+      bukhara: 'Bukhara Region',
+      fergana: 'Fergana Region',
+      jizzakh: 'Jizzakh Region',
+      kashkadarya: 'Kashkadarya Region',
+      khorezm: 'Khorezm Region',
+      namangan: 'Namangan Region',
+      navoi: 'Navoi Region',
+      samarkand: 'Samarkand Region',
+      surkhandarya: 'Surkhandarya Region',
+      syrdarya: 'Syrdarya Region',
+      tashkent_region: 'Tashkent Region',
+      karakalpakstan: 'Republic of Karakalpakstan',
+      tashkent_city: 'Tashkent city',
+      other: 'Other',
+    },
+    scholarshipTypes: {
+      none: 'Not a scholarship student',
+      merit: 'Merit',
+      financial_aid: 'Financial aid',
+      gift: 'Gift',
+    },
+    scholarshipCoverages: {
+      full: 'Full',
+      partial: 'Partial',
     },
   },
   plannedStatus: 'Planned status',
@@ -374,6 +548,80 @@ const ru: ExportTexts = {
       status: 'Статус',
     },
   },
+  students: {
+    name: 'Ученики',
+    columns: {
+      uid: 'UID',
+      name: 'Имя и фамилия',
+      class: 'Класс',
+      status: 'Статус',
+      paternalName: 'Отчество',
+      sex: 'Пол',
+      grade: 'Параллель',
+      startsOn: 'Дата начала',
+      phone: 'Телефон',
+      email: 'Электронная почта',
+      birthDate: 'Дата рождения',
+      documentType: 'Документ',
+      documentNumber: 'Номер документа',
+      jshshir: 'ПИНФЛ',
+      address: 'Адрес',
+      region: 'Регион',
+      contractNumber: 'Номер договора',
+      contractSignedOn: 'Дата договора',
+      scholarshipType: 'Стипендия',
+      scholarshipCoverage: 'Покрытие',
+      scholarshipAmount: 'Сумма в сумах',
+      previousSchool: 'Предыдущая школа',
+      diagnosticScore: 'Балл диагностического теста',
+      consentSignedOn: 'Согласие подписано',
+    },
+  },
+  student: {
+    statuses: {
+      active: 'Учится',
+      inactive: 'Неактивен',
+      graduated: 'Выпускник',
+    },
+    notStarted: 'Начнёт позже',
+    gradeNoClass: '{{grade}}, без класса',
+    sexes: {
+      male: 'Мужской',
+      female: 'Женский',
+    },
+    documentTypes: {
+      passport: 'Паспорт',
+      id_card: 'ID-карта',
+      birth_certificate: 'Свидетельство о рождении',
+    },
+    regions: {
+      andijan: 'Андижанская область',
+      bukhara: 'Бухарская область',
+      fergana: 'Ферганская область',
+      jizzakh: 'Джизакская область',
+      kashkadarya: 'Кашкадарьинская область',
+      khorezm: 'Хорезмская область',
+      namangan: 'Наманганская область',
+      navoi: 'Навоийская область',
+      samarkand: 'Самаркандская область',
+      surkhandarya: 'Сурхандарьинская область',
+      syrdarya: 'Сырдарьинская область',
+      tashkent_region: 'Ташкентская область',
+      karakalpakstan: 'Республика Каракалпакстан',
+      tashkent_city: 'город Ташкент',
+      other: 'Другое',
+    },
+    scholarshipTypes: {
+      none: 'Не стипендиат',
+      merit: 'За успехи',
+      financial_aid: 'Материальная помощь',
+      gift: 'Подарок',
+    },
+    scholarshipCoverages: {
+      full: 'Полное',
+      partial: 'Частичное',
+    },
+  },
   plannedStatus: 'Запланированный статус',
   plannedFrom: 'Запланирован с',
   roles: {
@@ -483,6 +731,80 @@ const uz: ExportTexts = {
       quarterly: 'Vaznsiz choraklar',
       switches: 'Belgilar',
       status: 'Holati',
+    },
+  },
+  students: {
+    name: 'Oʻquvchilar',
+    columns: {
+      uid: 'UID',
+      name: 'Ism va familiya',
+      class: 'Sinf',
+      status: 'Holat',
+      paternalName: 'Otasining ismi',
+      sex: 'Jinsi',
+      grade: 'Sinf darajasi',
+      startsOn: 'Boshlanish sanasi',
+      phone: 'Telefon',
+      email: 'Elektron pochta',
+      birthDate: 'Tugʻilgan sana',
+      documentType: 'Hujjat',
+      documentNumber: 'Hujjat raqami',
+      jshshir: 'JSHSHIR',
+      address: 'Manzil',
+      region: 'Hudud',
+      contractNumber: 'Shartnoma raqami',
+      contractSignedOn: 'Shartnoma sanasi',
+      scholarshipType: 'Grant',
+      scholarshipCoverage: 'Qamrov',
+      scholarshipAmount: 'Miqdori, soʻm',
+      previousSchool: 'Avvalgi maktab',
+      diagnosticScore: 'Diagnostik test bali',
+      consentSignedOn: 'Rozilik imzolangan sana',
+    },
+  },
+  student: {
+    statuses: {
+      active: 'Faol',
+      inactive: 'Nofaol',
+      graduated: 'Bitiruvchi',
+    },
+    notStarted: 'Keyinroq boshlaydi',
+    gradeNoClass: '{{grade}}, sinfsiz',
+    sexes: {
+      male: 'Erkak',
+      female: 'Ayol',
+    },
+    documentTypes: {
+      passport: 'Pasport',
+      id_card: 'ID-karta',
+      birth_certificate: 'Tugʻilganlik haqidagi guvohnoma',
+    },
+    regions: {
+      andijan: 'Andijon viloyati',
+      bukhara: 'Buxoro viloyati',
+      fergana: 'Fargʻona viloyati',
+      jizzakh: 'Jizzax viloyati',
+      kashkadarya: 'Qashqadaryo viloyati',
+      khorezm: 'Xorazm viloyati',
+      namangan: 'Namangan viloyati',
+      navoi: 'Navoiy viloyati',
+      samarkand: 'Samarqand viloyati',
+      surkhandarya: 'Surxondaryo viloyati',
+      syrdarya: 'Sirdaryo viloyati',
+      tashkent_region: 'Toshkent viloyati',
+      karakalpakstan: 'Qoraqalpogʻiston Respublikasi',
+      tashkent_city: 'Toshkent shahri',
+      other: 'Boshqa',
+    },
+    scholarshipTypes: {
+      none: 'Grant oluvchi emas',
+      merit: 'Yutuqlar uchun',
+      financial_aid: 'Moddiy yordam',
+      gift: 'Sovgʻa',
+    },
+    scholarshipCoverages: {
+      full: 'Toʻliq',
+      partial: 'Qisman',
     },
   },
   plannedStatus: 'Rejalashtirilgan holat',

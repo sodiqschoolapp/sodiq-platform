@@ -75,10 +75,12 @@ describe('declared file routes', () => {
         byPath,
       ),
     );
-    // The staff photo (2.2c-2) and the own photo (2.3c-2, decision 2 of #66).
+    // The staff photo (2.2c-2), the own photo (2.3c-2, decision 2 of #66) and
+    // the student photo (2.4b-2, decision 4 of #70).
     expect(FILE_ROUTES.map((route) => route.path).sort()).toEqual([
       '/api/auth/photo',
       '/api/people/staff/:id/photo',
+      '/api/people/students/:id/photo',
     ]);
   });
 

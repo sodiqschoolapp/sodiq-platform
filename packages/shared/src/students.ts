@@ -413,6 +413,17 @@ export const studentCheckResultSchema = z.object({
 
 export type StudentCheckResult = z.infer<typeof studentCheckResultSchema>;
 
+/**
+ * The groups of readers of the student record (`edge/people-roles-accounts`,
+ * Personal data and the audit log; decision 4 of pull request #67): Basic for
+ * all staff of the branch, then Contact, Identity and Financial.
+ */
+export const STUDENT_FIELD_GROUPS = ['basic', 'contact', 'identity', 'financial'] as const;
+
+export const studentFieldGroupSchema = z.enum(STUDENT_FIELD_GROUPS);
+
+export type StudentFieldGroup = z.infer<typeof studentFieldGroupSchema>;
+
 /** A student as the list answers it: the Basic group (edge, Personal data) and the status. */
 export const studentListItemSchema = z.object({
   id: z.uuid(),
@@ -423,6 +434,14 @@ export const studentListItemSchema = z.object({
   sex: sexSchema,
   grade: studentGradeSchema,
   startsOn: schoolDateSchema,
+  /** The current photo (Basic: "name, class, photo, UID"; task 2.4b-2), `null` when there is none. */
+  photoId: z.uuid().nullable(),
+  /**
+   * Whether no enrolment consent is recorded (answer 23: "a list shows active
+   * students without it"); `null` for a reader without the Financial group,
+   * where the consent belongs (decision 4 of pull request #67).
+   */
+  consentMissing: z.boolean().nullable(),
   /** The status in force today in the branch's time zone; `null` before the start date. */
   status: studentStatusSchema.nullable(),
   /**
@@ -445,11 +464,39 @@ export const studentListSchema = z.object({
   students: z.array(studentListItemSchema),
   /** Leave, return and delete: the Super Admin and the Academic Vice Principal (task 2.4b-1). */
   canArchive: z.boolean(),
+  /**
+   * The groups this reader may export in the branch of the request (task
+   * 2.4b-2, decisions 1 to 3): empty without `students` `export`; Contact
+   * and Identity only for the Super Admin and the Academic Vice Principal.
+   */
+  exportGroups: z.array(studentFieldGroupSchema),
+  /** The reader reads the Financial group: the consent filter is offered (answer 23). */
+  readsFinancial: z.boolean(),
   /** Today in the time zone of the branch of the request. */
   today: schoolDateSchema,
 });
 
 export type StudentList = z.infer<typeof studentListSchema>;
+
+/**
+ * The query of the student list: `consent=missing` answers only the active
+ * students without consent (answer 23), and is refused to a reader without
+ * the Financial group (review of pull request #70, correction 1).
+ */
+export const studentListQuerySchema = z.strictObject({
+  consent: z.literal('missing').optional(),
+});
+
+export type StudentListQuery = z.infer<typeof studentListQuerySchema>;
+
+/**
+ * The counter of the Academic Vice Principal's home page (edge: "An active
+ * student with no class ... appear ... in a counter on the Academic Vice
+ * Principal's home page"): the students active today with no class.
+ */
+export const studentNoClassSchema = z.object({ count: z.int().min(0) });
+
+export type StudentNoClass = z.infer<typeof studentNoClassSchema>;
 
 /** The Contact group: "phones of student and relatives" (edge), and the email (decision 4). */
 export const studentContactSchema = z.object({

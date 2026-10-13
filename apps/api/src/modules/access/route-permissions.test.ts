@@ -246,6 +246,15 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/people/students/:id/return': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/restore': { branch: 'request', roles: ['super_admin'] },
   'POST /api/people/students/:id/delete': { branch: 'request', roles: STUDENT_EDITORS },
+  // Task 2.4b-2: the export (decision 1), the photos and the "No class" counter.
+  'POST /api/people/students/export': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'GET /api/people/students/no-class': { branch: 'request', roles: STUDENT_VIEWERS },
+  'PUT /api/people/students/:id/photo': { branch: 'request', roles: STUDENT_EDITORS },
+  'DELETE /api/people/students/:id/photo': { branch: 'request', roles: STUDENT_EDITORS },
+  'GET /api/people/students/:id/photo': { branch: 'request', roles: STUDENT_VIEWERS },
   // Task 2.3a, decision 4 of pull request #62: the account section.
   'GET /api/people/staff/:id/account': { branch: 'request', roles: ['super_admin', 'principal'] },
   'GET /api/people/staff/:id/account/suggestion': { branch: 'request', roles: ['super_admin'] },

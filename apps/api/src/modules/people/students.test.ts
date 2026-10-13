@@ -823,6 +823,9 @@ describe('student records', () => {
           sex: 'male',
           grade: 7,
           startsOn: '2026-09-02',
+          photoId: null,
+          // The consent is with the Financial readers (task 2.4b-2).
+          consentMissing: [t.admin, t.principal, t.vicePrincipal].includes(cookie) ? false : null,
           status: 'active',
           planned: null,
           version: 1,

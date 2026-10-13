@@ -9,6 +9,10 @@ import {
   STAFF_CONTACT_EXPORT_COLUMNS,
   STAFF_EXPORT_COLUMNS,
   staffExportSchema,
+  STUDENT_EXPORT_COLUMNS,
+  STUDENT_EXPORT_GROUPS,
+  STUDENT_LIST_EXPORT_COLUMNS,
+  studentExportSchema,
 } from './exports.js';
 import { LANGUAGES } from './language.js';
 
@@ -78,6 +82,69 @@ describe('the export request', () => {
   // Decision 4: the Principal's staff file leaves out the contact columns.
   it('names the phone as the contact column of the staff list', () => {
     expect(STAFF_CONTACT_EXPORT_COLUMNS).toEqual(['phone']);
+  });
+});
+
+// Task 2.4b-2 (pull request #70): the student file is the page's exported
+// columns followed by the export-only columns of the groups of readers.
+describe('the student export', () => {
+  it('starts with the columns of the list, then the export-only columns', () => {
+    expect(STUDENT_EXPORT_COLUMNS.slice(0, STUDENT_LIST_EXPORT_COLUMNS.length)).toEqual([
+      ...STUDENT_LIST_EXPORT_COLUMNS,
+    ]);
+    for (const column of STUDENT_LIST_EXPORT_COLUMNS) {
+      expect(STUDENT_EXPORT_GROUPS[column], column).toBe('basic');
+    }
+  });
+
+  // edge/people-roles-accounts: Contact is "phones of student and relatives",
+  // Identity "document numbers, address, date of birth", Financial
+  // "contract, scholarship, stipend" (2.4a decision 4 for the rest).
+  it('puts every column in the group of readers of its field', () => {
+    const of = (group: string) =>
+      STUDENT_EXPORT_COLUMNS.filter((column) => STUDENT_EXPORT_GROUPS[column] === group);
+    expect(of('basic')).toEqual([
+      'uid',
+      'name',
+      'class',
+      'status',
+      'paternalName',
+      'sex',
+      'grade',
+      'startsOn',
+    ]);
+    expect(of('contact')).toEqual(['phone', 'email']);
+    expect(of('identity')).toEqual([
+      'birthDate',
+      'documentType',
+      'documentNumber',
+      'jshshir',
+      'address',
+      'region',
+    ]);
+    expect(of('financial')).toEqual([
+      'contractNumber',
+      'contractSignedOn',
+      'scholarshipType',
+      'scholarshipCoverage',
+      'scholarshipAmount',
+      'previousSchool',
+      'diagnosticScore',
+      'consentSignedOn',
+    ]);
+  });
+
+  it('takes the columns of the file and refuses a column it does not know', () => {
+    const request = {
+      ids: [id(1)],
+      columns: ['uid', 'phone', 'jshshir'],
+      selection: 'ticked',
+      search: '',
+      filters: {},
+    };
+    expect(studentExportSchema.parse(request)).toEqual(request);
+    expect(studentExportSchema.safeParse({ ...request, columns: ['groups'] }).success).toBe(false);
+    expect(studentExportSchema.safeParse({ ...request, columns: ['photo'] }).success).toBe(false);
   });
 });
 
