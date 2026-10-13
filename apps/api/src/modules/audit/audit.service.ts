@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { Clock } from '@sodiq/shared';
+import type { AuditAction, Clock } from '@sodiq/shared';
 import { sql, type RawBuilder } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import type { Transaction } from '../../database/transactions.js';
@@ -18,8 +18,12 @@ export interface AuditEntry {
   personId?: string;
   /** The assignment that allowed the action (task 0.7b). */
   assignmentId?: string;
-  /** What happened, for example `branch.create`. */
-  action: string;
+  /**
+   * What happened, for example `branch.create`: one of `AUDIT_ACTIONS`, so
+   * every action has a name on the Audit log page (task 2.6a). The tests of
+   * the log itself write `test.*` actions, which no route writes.
+   */
+  action: AuditAction | `test.${string}`;
   /** The record that changed; left out for events without one (sign-in, export). */
   record?: { type: string; id: string };
   /**

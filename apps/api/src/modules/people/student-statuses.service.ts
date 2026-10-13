@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type {
+  AuditAction,
   StudentCancelLeaving,
   StudentDelete,
   StudentDetail,
@@ -64,7 +65,7 @@ function branchOf(access: Access): string {
 
 /** What a status route adds to the plan: the audit entry, and any other write of the change. */
 interface StatusChange {
-  action: string;
+  action: AuditAction;
   version: number;
   plan: (rows: readonly StoredStudentStatus[], today: string) => StudentStatusOutcome;
   newValue: Record<string, unknown>;

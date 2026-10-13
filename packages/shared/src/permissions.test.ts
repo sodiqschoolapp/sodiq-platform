@@ -158,11 +158,22 @@ describe('a frozen permission table', () => {
     }
   });
 
+  // Task 2.6a, decision 2 of pull request #75: edge/people-roles-accounts,
+  // "The Super Admin reads all; the Principal and Academic Vice Principal
+  // read their branch".
+  it('gives the audit log to its three readers, view only', () => {
+    const readers = ['super_admin', 'principal', 'academic_vice_principal'];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.audit_log[role], role).toEqual(readers.includes(role) ? ['view'] : []);
+    }
+  });
+
   it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
     expect(Object.keys(PERMISSIONS).sort()).toEqual([
       'academic_years',
       'account_access',
       'accounts',
+      'audit_log',
       'branches',
       'calendar',
       'current_period',

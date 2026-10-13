@@ -15,6 +15,7 @@ export const MENU_ITEMS = [
   'results',
   'plans',
   'requests',
+  'audit_log',
 ] as const;
 
 export type MenuItem = (typeof MENU_ITEMS)[number];
@@ -54,9 +55,9 @@ const HEAD_TEACHER: readonly MenuItem[] = [
  * the Principal's items are all view only.
  */
 export const MENU: Readonly<Record<Role, readonly MenuItem[]>> = Object.freeze({
-  super_admin: [...MANAGEMENT, 'requests'],
-  principal: MANAGEMENT,
-  academic_vice_principal: [...MANAGEMENT, 'requests'],
+  super_admin: [...MANAGEMENT, 'requests', 'audit_log'],
+  principal: [...MANAGEMENT, 'audit_log'],
+  academic_vice_principal: [...MANAGEMENT, 'requests', 'audit_log'],
   spiritual_vice_principal: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   head_tutor: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   tutor: ['home', 'people', 'timetable', 'journal', 'results'],

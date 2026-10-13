@@ -11,6 +11,7 @@ import {
   type EditDaysRecord,
   type QuarterAttendanceValues,
   type SetupChecklist,
+  type AuditAction,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
@@ -150,7 +151,7 @@ export class Settings {
     access: Access,
     branchId: string,
     values: SettingsChange,
-    action: string,
+    action: AuditAction,
     requestId: string,
   ): Promise<BranchSettings> {
     return this.transactions.run(access.branchIds, async (transaction) => {

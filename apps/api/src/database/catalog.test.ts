@@ -16,7 +16,7 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'A travel time belongs to a pair of branches equally (task 1.6, decision 4); the Super Admin alone writes it, and the service answers a reader the pairs of its own branch only. A row holds two branch ids and minutes.',
   request_keys: 'A key is unique across the school; a row holds ids and status only.',
   audit_log_school:
-    'Audit entries of events without a branch (sign-ins, relatives); who reads them is decided by the guard (task 2.6).',
+    'Audit entries of events without a branch (sign-ins, relatives); who reads them is decided by the route (task 2.6a, decision 3 of pull request #75).',
   ...auditSchoolPartitions(),
   accounts:
     'One person has one account for every branch, and sign-in happens before a branch is known; a row holds no name.',
@@ -172,12 +172,16 @@ function auditSchoolPartitions(): Record<string, string> {
  * Look first).
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
+  'audit_names(uuid[])':
+    'The first and last name of each person named by an account or staff id, in any branch, for the actor and the person of one page of the audit log (task 2.6a, decision 12 of pull request #75, Look first); the Basic group only.',
   'assignments_subjects_end()':
     'Writes the end of an assignment on its subject rows, which the application cannot update, so the exclusion constraints of one Head Teacher per subject see every end (task 2.3b-1, decision 2 of pull request #63).',
   'branches_without_vice_principal(timestamp with time zone)':
     "The branches (id and name only) where no Academic Vice Principal is active now, for the Super Admin's alert (Who can act); the route is school-wide, where the membership filter hides every staff row.",
   'last_email_change(uuid)':
     'Who changed the email of the person record of an account last, and when (actor id and moment only), for the entry of the public password reset by email, which sees no branch log (task 2.3c-2, correction 1 of #66).',
+  'own_sign_in_history(uuid,timestamp with time zone,uuid,integer)':
+    'The sign-in events of the own account from both logs, moment, event, actor and browser only, for the own sign-in history (task 2.6a, decision 10 of pull request #75); an administrator\'s lock or reset sits in the log of their branch, which a route without a branch cannot read.',
   'own_staff_record(uuid)':
     'The id of the person record of an account and the branch of its main link, ids only, for the own photo (task 2.3c-2); the person may see none of their branch links through the session.',
   'own_person_name(uuid)':

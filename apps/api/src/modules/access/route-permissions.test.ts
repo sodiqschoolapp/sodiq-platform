@@ -98,6 +98,8 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/auth/photo': 'any_signed_in',
   'DELETE /api/auth/photo': 'any_signed_in',
   'GET /api/auth/photo': 'any_signed_in',
+  // The own sign-in history (task 2.6a, decision 10 of pull request #75).
+  'GET /api/auth/sign-in-history': 'any_signed_in',
   'POST /api/auth/second-step': 'any_signed_in',
   'GET /api/auth/second-step': 'any_signed_in',
   'POST /api/auth/second-step/set-up': 'any_signed_in',
@@ -263,6 +265,10 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/people/relatives/phone-match': { branch: 'request', roles: STUDENT_EDITORS },
   'PATCH /api/people/relatives/:id': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/relatives/:id/show': { branch: 'request', roles: SETUP_VIEWERS },
+  // Task 2.6a, decision 2 of pull request #75: the area `audit_log`. Which
+  // entries each reads is decided in the route (audit-entries.test.ts).
+  'GET /api/audit/entries': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/audit/entries/:id/show': { branch: 'request', roles: SETUP_VIEWERS },
   // Task 2.5b-1 (pull request #73): the count of "no valid phone" for the home
   // tile under `relatives` `view`; the merge under `relatives` `edit`, refused
   // across branches to all but the Super Admin by the route (relative-owners.test.ts).

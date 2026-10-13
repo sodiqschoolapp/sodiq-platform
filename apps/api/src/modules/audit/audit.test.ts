@@ -252,7 +252,8 @@ describe('the audit log', () => {
     it('refuses an entry without an action', async () => {
       await expect(
         transactions.run([north], (transaction) =>
-          audit.record(transaction, { branchId: north, actorId: null, action: '' }),
+          // An empty action passes no type: the database refuses it on its own.
+          audit.record(transaction, { branchId: north, actorId: null, action: '' as 'test.' }),
         ),
       ).rejects.toMatchObject({ code: '23514' });
     });
@@ -322,7 +323,7 @@ describe('the audit log', () => {
       ['a moment after the last month', '2030-01-01T00:00:00Z', 'default'],
       ['a moment before the first month', '2026-09-30T23:59:59Z', 'default'],
     ])('puts %s into its partition', async (_name, moment, suffix) => {
-      const action = `test.month.${moment}`;
+      const action = `test.month.${moment}` as const;
       const at = new Audit(new FixedClock(moment));
       await transactions.run([north], async (transaction) => {
         await at.record(transaction, { branchId: north, actorId: null, action });
