@@ -214,6 +214,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu qarindosh boshqa yozuv bilan birlashtirilgan. Qolgan yozuvni topish uchun telefonni qayta kiriting.',
     same_person_taken:
       'Bu xodim allaqachon boshqa qarindosh bilan bir shaxs deb belgilangan. Avval oʻsha belgini olib tashlang.',
+    same_person_held_elsewhere:
+      'Bu xodim allaqachon boshqa filial qarindoshi bilan bir shaxs deb belgilangan. Oʻsha belgini olib tashlashni Super administratordan soʻrang.',
     same_person_elsewhere:
       'Bu qarindosh boshqa filial xodimi bilan bir shaxs deb belgilangan. Belgini oʻzgartirishni Super administratordan soʻrang.',
     same_person_vacancy: 'Boʻsh oʻrin shaxs emas. Xodimni tanlang.',
@@ -1381,6 +1383,7 @@ export const uz: Texts<'one' | 'other'> = {
       extraPhoneTwice: 'Bu telefon roʻyxatda allaqachon bor.',
       sameTitle: 'Xodim bilan bir shaxs',
       sameNone: 'Xodim deb belgilanmagan.',
+      sameElsewhere: 'Boshqa filial xodimi bilan bir shaxs deb belgilangan.',
       staffIdOf: 'Xodim raqami {{staffId}}',
       staffOption: '{{name}} ({{staffId}})',
       markStaff: 'Xodim deb belgilash',

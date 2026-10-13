@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: task 2.5b-2 Extra phones, the same person and relatives in the export
+
+- Built: migration 0038 (`relatives.extra_phones` with `relative_extra_phones_valid`, `relatives.staff_id` with `relatives_staff_idx`, `relatives_merged_empty_check`, the trigger `relatives_same_person_check`); `PUT` and `DELETE people/relatives/:id/same-person`; extra phones on the create, link, new owner and edit; the merge of extra phones and marks; `sameAsRelative` on the staff detail; five Contact columns of relatives in the student file.
+- Screens: extra phones on the relative form, the Parent panel and the Relatives tab; the "Same person" section of the Parent panel with the staff picker; "Also a parent" on the staff panel; browser test in `people.spec.ts`.
+- Left out: the report of marks a staff member enters for their own child (with the journal); sign-in by phone (Release 2); who reads `audit_log_school` (2.6); the Tutor's export of the class (3.1).
+
+The next sessions must know:
+
+- A mark of a staff member not of the branch is shown and changed only by the Super Admin, whose mark routes run with every branch; `samePersonElsewhere` tells the Super Admin it exists.
+- A route that answers a relative from an every-branch transaction counts the students of other branches against the branch of the request (`markAnswer`, the merge).
+- The next task is 2.6.
+
 ## 13 October 2026: task 2.5b-1 Phone owners, merge and the notice to the other branch
 
 - Built: migration 0037 (`phone_invalid_since`, `merged_into`, the triggers `relatives_phone_and_merge`, `relatives_merged_archived`, `student_relatives_not_merged`; the definer functions `relative_release_phone` and `relative_notice_accounts`); the link kind `new_owner` on the create and the link, `newOwner` on the edit, `POST people/relatives/:id/merge`, `GET people/relatives/no-valid-phone` and `filter=no_valid_phone`; the notification kinds `relative.renamed`, `relative.phone_changed`, `relative.merged`.

@@ -252,7 +252,7 @@ How to read the task lines:
   - Build: on a phone match, "different person, the number has a new owner" with the earlier relative's new phone or "no valid phone" (a column of its own, `phone_invalid_since`; sign-in blocked; listed for the Academic Vice Principal while a linked student is active); "Merge" offered on a refused phone change (the Academic Vice Principal in the branch, the Super Admin across branches); a change of name or phone of a relative linked in another branch told to that branch's Academic Vice Principal (a notification kind).
   - Done when: a phone match offers the new owner and a merge, and the other branch's Academic Vice Principal is told of a change.
 
-- [ ] **2.5b-2 Extra phones, the same person and relatives in the export** (split from 2.5b on pull request #73, decision 1)
+- [x] **2.5b-2 Extra phones, the same person and relatives in the export** (split from 2.5b on pull request #73, decision 1)
   - Read: `04` (Close relatives, Student record), `edge/close-relatives` (the foreign number and the teacher-parent rows), `edge/people-roles-accounts` (Personal data and the audit log), the plans and the decisions of pull requests #70, #72 and #73.
   - Build: extra phones of a relative (not unique, not used for a match or for sign-in; Contact); a staff record and a relative record marked as the same person (the report of marks a staff member enters for their own child comes with the journal); the relatives of a student in the student export (Contact columns for the Contact exporters only).
   - Done when: an extra phone is never unique nor used for a match, and the export holds relatives only for the Contact exporters.

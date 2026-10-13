@@ -50,6 +50,7 @@ const detailOf = (row: RelativeListItem, fields: Partial<RelativeDetail> = {}): 
   ...row,
   extraPhones: [],
   samePerson: null,
+  samePersonElsewhere: false,
   identity: { workplace: 'Toshkent shahar shifoxonasi', email: 'd.rahimova@example.uz' },
   identityHidden: false,
   canEdit: true,
@@ -664,6 +665,34 @@ describe('the extra phones and the same person of a relative', () => {
     });
     expect(await within(section).findByText(en.people.relatives.sameNone)).toBeDefined();
     expect(within(section).queryByRole('link')).toBeNull();
+  });
+
+  it('lets the Super Admin remove a mark to a staff member of another branch, unnamed', async () => {
+    let marked = true;
+    const calls = openList('super_admin', {
+      [`GET /api/people/relatives/${DILFUZA.id}`]: () =>
+        json(detailOf(DILFUZA, { samePerson: null, samePersonElsewhere: marked })),
+      [`DELETE /api/people/relatives/${DILFUZA.id}/same-person`]: () => {
+        marked = false;
+        return new Response(null, { status: 204 });
+      },
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    const section = await within(panel).findByRole('region', {
+      name: en.people.relatives.sameTitle,
+    });
+    expect(await within(section).findByText(en.people.relatives.sameElsewhere)).toBeDefined();
+    expect(within(section).queryByRole('link')).toBeNull();
+    fireEvent.click(within(section).getByRole('button', { name: en.people.relatives.removeMark }));
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.relatives.removeMarkTitle,
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.removeMark }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route.startsWith('DELETE'))).toBe(true);
+    });
+    expect(await within(section).findByText(en.people.relatives.sameNone)).toBeDefined();
   });
 
   it('shows the mark without actions to a reader who may not edit', async () => {

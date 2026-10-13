@@ -141,7 +141,7 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
           </p>
         )}
       </section>
-      {(relative.samePerson !== null || relative.canEdit) && (
+      {(relative.samePerson !== null || relative.samePersonElsewhere || relative.canEdit) && (
         <SamePersonSection key={`${relative.id}-same`} relative={relative} />
       )}
       {relative.canEdit && (
@@ -484,7 +484,10 @@ function SamePersonSection({ relative }: { relative: RelativeDetail }) {
     onSuccess: async () => {
       queryClient.setQueryData<RelativeDetail>(
         relativeDetailQuery(branchId, relative.id).queryKey,
-        (before) => (before === undefined ? before : { ...before, samePerson: null }),
+        (before) =>
+          before === undefined
+            ? before
+            : { ...before, samePerson: null, samePersonElsewhere: false },
       );
       await Promise.all([
         queryClient.invalidateQueries({
@@ -495,11 +498,20 @@ function SamePersonSection({ relative }: { relative: RelativeDetail }) {
     },
   });
   const same = relative.samePerson;
+  // A mark to a staff member not of the branch: told to the Super Admin
+  // only, with no name, so that it can be removed (correction 1 of the review).
+  const marked = same !== null || relative.samePersonElsewhere;
   return (
     <section className="grid gap-3" aria-label={t('people.relatives.sameTitle')}>
       <h3 className="text-base font-semibold">{t('people.relatives.sameTitle')}</h3>
       {same === null ? (
-        <p className="text-sm text-muted-foreground">{t('people.relatives.sameNone')}</p>
+        <p className="text-sm text-muted-foreground">
+          {t(
+            relative.samePersonElsewhere
+              ? 'people.relatives.sameElsewhere'
+              : 'people.relatives.sameNone',
+          )}
+        </p>
       ) : (
         <p className="flex flex-wrap gap-x-2 text-sm">
           <Link
@@ -523,9 +535,9 @@ function SamePersonSection({ relative }: { relative: RelativeDetail }) {
               setPicking(true);
             }}
           >
-            {t(same === null ? 'people.relatives.markStaff' : 'people.relatives.changeStaff')}
+            {t(marked ? 'people.relatives.changeStaff' : 'people.relatives.markStaff')}
           </Button>
-          {same !== null && (
+          {marked && (
             <Button
               variant="destructive"
               disabled={remove.isPending}
@@ -533,7 +545,7 @@ function SamePersonSection({ relative }: { relative: RelativeDetail }) {
                 void confirm({
                   title: t('people.relatives.removeMarkTitle'),
                   text: t('people.relatives.removeMarkText'),
-                  names: [relative.fullName, same.name],
+                  names: same === null ? [relative.fullName] : [relative.fullName, same.name],
                   action: t('people.relatives.removeMark'),
                   destructive: true,
                 }).then((go) => {

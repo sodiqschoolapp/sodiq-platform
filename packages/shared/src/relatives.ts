@@ -302,6 +302,11 @@ export const relativeDetailSchema = relativeListItemSchema.extend({
   /** Contact, shown where the main phone is (task 2.5b-2). */
   extraPhones: z.array(z.string()),
   samePerson: samePersonSchema.nullable(),
+  /**
+   * A mark to a staff member not of the branch exists: told to the Super
+   * Admin only, who may remove or change it (correction 1 of the review).
+   */
+  samePersonElsewhere: z.boolean(),
   /** `null` for a reader who sees it hidden (the Principal, with a logged show). */
   identity: relativeIdentitySchema.nullable(),
   identityHidden: z.boolean(),

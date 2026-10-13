@@ -71,7 +71,9 @@ async function refusingMarks<T>(work: () => Promise<T>): Promise<T> {
   } catch (error) {
     const failure = error as { code?: unknown; constraint?: unknown };
     if (failure.code === UNIQUE_VIOLATION && failure.constraint === 'relatives_staff_idx') {
-      throw new ApiException('same_person_taken', 409);
+      // The holder is not linked in the branch: nothing of it is named, and
+      // it cannot be unmarked from here (spec review of the build).
+      throw new ApiException('same_person_held_elsewhere', 409);
     }
     if (failure.constraint === 'relatives_same_person_vacancy') {
       throw new ApiException('same_person_vacancy', 422);
@@ -938,7 +940,7 @@ export class Relatives {
             throw notFound();
           }
           if (row.staff_id === staffId) {
-            return this.readDetail(transaction, access, id);
+            return this.markAnswer(transaction, access, id);
           }
           const assignmentId = await this.markAssignment(transaction, access, row.staff_id);
           if (target.kind !== 'person') {
@@ -966,7 +968,10 @@ export class Relatives {
                 path: 'staffId',
                 code: 'same_person_taken',
                 message: 'Another relative is marked as this staff member.',
-                holder: { fullName: holder.full_name, students: 0 },
+                holder: {
+                  fullName: holder.full_name,
+                  students: await this.writes.liveLinks(transaction, holder.id),
+                },
                 recordId: holder.id,
               },
             ]);
@@ -987,7 +992,7 @@ export class Relatives {
             details: { branchId, staffId },
             requestId,
           });
-          return this.readDetail(transaction, access, id);
+          return this.markAnswer(transaction, access, id);
         }),
       ),
     );
@@ -1003,13 +1008,15 @@ export class Relatives {
         if (row.staff_id === null) {
           return;
         }
-        const assignmentId = await this.markAssignment(transaction, access, row.staff_id);
+        // The staff row first, then its link to the branch read after the
+        // lock (`markAssignment`), as the mark does (spec review of the build).
         await transaction
           .selectFrom('staff')
           .select('id')
           .where('id', '=', row.staff_id)
           .forUpdate()
           .execute();
+        const assignmentId = await this.markAssignment(transaction, access, row.staff_id);
         await transaction
           .updateTable('relatives')
           .set({ staff_id: null })
@@ -1030,6 +1037,27 @@ export class Relatives {
     );
   }
 
+  /**
+   * The answer of a mark: the detail, with the students of other branches
+   * counted against the branch of the request, also in the Super Admin's
+   * every-branch transaction (as the merge; spec review of the build).
+   */
+  private async markAnswer(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+  ): Promise<RelativeDetail> {
+    const detail = await this.readDetail(transaction, access, id);
+    const outside = await transaction
+      .selectFrom('student_relatives')
+      .select((eb) => eb.fn.countAll<string>().as('count'))
+      .where('relative_id', '=', id)
+      .where('unlinked_at', 'is', null)
+      .where('branch_id', '<>', branchOf(access))
+      .executeTakeFirstOrThrow();
+    return { ...detail, elsewhere: Number(outside.count) + detail.elsewhere };
+  }
+
   /** Every branch for the Super Admin (correction 1 of the review), else the branch of the request. */
   private async markBranches(access: Access): Promise<readonly string[]> {
     if (superAdminOf(access) === undefined) {
@@ -1047,14 +1075,26 @@ export class Relatives {
    * route when its staff member is of the branch of the request; else only
    * the Super Admin, named in the entry, and 409 `same_person_elsewhere` for
    * everyone else (decision 9; correction 1 of the review). `undefined` when
-   * nothing is marked or the mark is of the branch.
+   * nothing is marked or the mark is of the branch. Called under the lock
+   * of the staff row; the branch link is read `for share`, kept until the
+   * commit (`.claude/rules/database.md`).
    */
   private async markAssignment(
     transaction: Transaction,
     access: Access,
     current: string | null,
   ): Promise<string | undefined> {
-    if (current === null || (await this.samePersonOf(transaction, branchOf(access), current))) {
+    if (current === null) {
+      return undefined;
+    }
+    const here = await transaction
+      .selectFrom('staff_branches')
+      .select('staff_id')
+      .where('staff_id', '=', current)
+      .where('branch_id', '=', branchOf(access))
+      .forShare()
+      .executeTakeFirst();
+    if (here !== undefined) {
       return undefined;
     }
     const superAdmin = superAdminOf(access);
@@ -1134,12 +1174,17 @@ export class Relatives {
     const row = await this.readRelative(transaction, branchId, id);
     const students = await this.studentsOf(transaction, branchId, [id]);
     const identity = readsIdentity(access);
+    const samePerson = await this.samePersonOf(transaction, branchId, row.staff_id);
     return {
       id: row.id,
       fullName: row.full_name,
       phone: row.phone,
       extraPhones: row.extra_phones,
-      samePerson: await this.samePersonOf(transaction, branchId, row.staff_id),
+      samePerson,
+      // Only the Super Admin, who may change it, learns that a mark to a
+      // staff member not of the branch exists; no name (correction 1).
+      samePersonElsewhere:
+        row.staff_id !== null && samePerson === null && superAdminOf(access) !== undefined,
       students: students.get(id) ?? [],
       elsewhere: await this.writes.elsewhere(transaction, id),
       phoneInvalidSince: row.phone_invalid_since?.toISOString() ?? null,

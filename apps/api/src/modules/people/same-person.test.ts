@@ -349,6 +349,36 @@ describe('the mark "same person" of a relative and a staff record', () => {
       ]);
     });
 
+    it("counts the students of other branches in the Super Admin's answer", async () => {
+      const parent = await relative(t.north);
+      const number = (
+        await t.database.migrator
+          .selectFrom('relatives')
+          .select('phone')
+          .where('id', '=', parent.id)
+          .executeTakeFirstOrThrow()
+      ).phone;
+      const southern = body(phone());
+      southern.relatives = [
+        {
+          kind: 'existing',
+          relativeId: parent.id,
+          phone: number,
+          relationship: 'father',
+          mainContact: true,
+          portalAccess: true,
+          receivesNotices: true,
+        },
+      ];
+      expect((await t.post('/api/people/students', t.south, southern, t.admin)).status).toBe(201);
+      const teacher = await staffMember(t.north);
+      const response = await mark(parent.id, teacher, t.north, t.admin);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(relativeDetailSchema.parse(response.body).elsewhere).toBe(1);
+      const asVice = await mark(parent.id, teacher, t.north);
+      expect(relativeDetailSchema.parse(asVice.body).elsewhere).toBe(1);
+    });
+
     it('answers a repeated mark without a change or an entry', async () => {
       const parent = await relative(t.north);
       const teacher = await staffMember(t.north);
@@ -421,7 +451,7 @@ describe('the mark "same person" of a relative and a staff record', () => {
       expect(await snapshot()).toEqual(before);
       // The north's holder is not named to the south.
       const fromSouth = await mark(southParent.id, teacher, t.south, southVice);
-      refusedWith(fromSouth, 409, 'same_person_taken');
+      refusedWith(fromSouth, 409, 'same_person_held_elsewhere');
       expect(JSON.stringify(fromSouth.body)).not.toContain(holder.id);
       expect(JSON.stringify(fromSouth.body)).not.toContain('Rustam Nazarov');
       expect(await snapshot()).toEqual(before);
@@ -443,11 +473,17 @@ describe('the mark "same person" of a relative and a staff record', () => {
     }
 
     it('is not shown in the branch, and is refused same_person_elsewhere to the Academic Vice Principal', async () => {
-      const { parent } = await markedThenLeft();
+      const { parent, teacher } = await markedThenLeft();
       const detail = relativeDetailSchema.parse(
-        (await t.get(`/api/people/relatives/${parent.id}`, t.north)).body,
+        (await t.get(`/api/people/relatives/${parent.id}`, t.north, t.vicePrincipal)).body,
       );
-      expect(detail.samePerson).toBeNull();
+      expect(detail).toMatchObject({ samePerson: null, samePersonElsewhere: false });
+      // The Super Admin, who may remove it, is told that it exists, with no name.
+      const asAdmin = relativeDetailSchema.parse(
+        (await t.get(`/api/people/relatives/${parent.id}`, t.north, t.admin)).body,
+      );
+      expect(asAdmin).toMatchObject({ samePerson: null, samePersonElsewhere: true });
+      expect(JSON.stringify(asAdmin)).not.toContain(teacher);
       const other = await staffMember(t.north);
       const before = await snapshot();
       refusedWith(await mark(parent.id, other, t.north), 409, 'same_person_elsewhere');
@@ -520,22 +556,6 @@ describe('the mark "same person" of a relative and a staff record', () => {
       await held.done;
       refusedWith(await marking, 409, 'same_person_taken');
       expect(await markOf(second.id)).toBeNull();
-    });
-
-    it('a mark that the other mark waited on wins, and the waiting one is refused', async () => {
-      const teacher = await staffMember(t.north);
-      const first = await relative(t.north);
-      const second = await relative(t.north);
-      // The route holds the staff row first: the held write waits on it.
-      const held = await holdOpen([t.north], async (transaction) => {
-        await lockAsTheMark(transaction, second.id, []);
-      });
-      const marking = mark(first.id, teacher, t.north).then((response) => response);
-      const response = await marking;
-      expect(response.status, JSON.stringify(response.body)).toBe(200);
-      held.release();
-      await held.done;
-      refusedWith(await mark(second.id, teacher, t.north), 409, 'same_person_taken');
     });
 
     it('two relatives crossing marks answer 409, never a fault', async () => {
@@ -672,6 +692,69 @@ describe('the mark "same person" of a relative and a staff record', () => {
       removing.release();
       await removing.done;
       refusedWith(await marking, 404, 'not_found');
+      expect(await markOf(parent.id)).toBeNull();
+    });
+
+    it('a removal of the mark that waited on the removal of the staff member from the branch answers same_person_elsewhere', async () => {
+      const teacher = await staffMember(t.south, [t.north]);
+      const parent = await relative(t.north);
+      expect((await mark(parent.id, teacher, t.north)).status).toBe(200);
+      const removing = await holdOpen([t.north, t.south], async (transaction) => {
+        await transaction
+          .selectFrom('staff')
+          .select('id')
+          .where('id', '=', teacher)
+          .forUpdate()
+          .execute();
+        await transaction
+          .deleteFrom('staff_branches')
+          .where('staff_id', '=', teacher)
+          .where('branch_id', '=', t.north)
+          .execute();
+      });
+      const unmarking = deleteRequest(parent.id, t.north, t.vicePrincipal).then(
+        (response) => response,
+      );
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      removing.release();
+      await removing.done;
+      refusedWith(await unmarking, 409, 'same_person_elsewhere');
+      expect(await markOf(parent.id)).toBe(teacher);
+      expect(await schoolEntries('relative.same_person_removed', parent.id)).toEqual([]);
+    });
+
+    it('the removal of the staff member from the branch that waited on a removal of the mark comes after it', async () => {
+      const teacher = await staffMember(t.south, [t.north]);
+      const parent = await relative(t.north);
+      expect((await mark(parent.id, teacher, t.north)).status).toBe(200);
+      const held = await holdOpen([t.north], async (transaction) => {
+        await lockAsTheMark(transaction, parent.id, [teacher]);
+        await transaction
+          .selectFrom('staff_branches')
+          .select('staff_id')
+          .where('staff_id', '=', teacher)
+          .where('branch_id', '=', t.north)
+          .forShare()
+          .execute();
+        await transaction
+          .updateTable('relatives')
+          .set({ staff_id: null })
+          .where('id', '=', parent.id)
+          .execute();
+      });
+      const removing = t
+        .put(
+          `/api/people/staff/${teacher}/branches`,
+          t.south,
+          { mainBranchId: t.south, furtherBranchIds: [] },
+          t.admin,
+        )
+        .then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      const response = await removing;
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
       expect(await markOf(parent.id)).toBeNull();
     });
 

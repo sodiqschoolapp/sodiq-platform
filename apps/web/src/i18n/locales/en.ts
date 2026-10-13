@@ -206,6 +206,8 @@ export const en = {
       'This relative was merged into another record. Type the phone again to find the record that stays.',
     same_person_taken:
       'This staff member is already marked as the same person as another relative. Remove that mark first.',
+    same_person_held_elsewhere:
+      'This staff member is already marked as the same person as a relative of another branch. Ask the Super Admin to remove that mark.',
     same_person_elsewhere:
       'This relative is marked as the same person as a staff member of another branch. Ask the Super Admin to change it.',
     same_person_vacancy: 'A vacancy is not a person. Choose a staff member.',
@@ -1366,6 +1368,7 @@ export const en = {
       extraPhoneTwice: 'This phone is already in the list.',
       sameTitle: 'Same person as a staff member',
       sameNone: 'Not marked as a staff member.',
+      sameElsewhere: 'Marked as the same person as a staff member of another branch.',
       staffIdOf: 'Staff ID {{staffId}}',
       staffOption: '{{name}} ({{staffId}})',
       markStaff: 'Mark as staff member',
