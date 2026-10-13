@@ -54,6 +54,36 @@ export interface BulkAction<Row> {
 }
 
 /** Where an export started by the list stands: on the way, refused, or done with columns left out. */
+/** What the form of a new record in the side panel may do (`ListPage`, `creating`). */
+export interface NewRecordActions {
+  /**
+   * The record is saved: the panel shows it (`open` = its id), or closes
+   * when there is no record to show (a bulk form). Written through the list,
+   * so what is typed in its search box stays; `also` changes more of the
+   * list's address in the same step (a filter that would hide the record).
+   */
+  saved: (id?: string, also?: Omit<ListSearch, 'open'>) => void;
+  /** The form's own "Cancel": asks first when something is typed. */
+  close: () => void;
+}
+
+/**
+ * A new record in the side panel (pull request #80, decision 14; task
+ * 2.7c-2a): the same place as an opened record, before its first save.
+ * Shown while set; the page keeps whether it is (`useNewRecord`), not the
+ * address.
+ */
+export interface NewRecord {
+  /** Which new form is open: the heading takes the focus when it changes. */
+  key: string;
+  title: string;
+  content: (actions: NewRecordActions) => ReactNode;
+  /** The panel closed without a save (after `useLeave()`), or an opened record took its place. */
+  onClose: () => void;
+  /** The panel closed with a save. */
+  onSaved: () => void;
+}
+
 export interface ExportState {
   pending: boolean;
   /** Why the last export failed; shown above the rows. */
@@ -135,12 +165,25 @@ interface ListPageProps<Row> {
   exportExtras?: readonly ExportExtra[] | undefined;
   /** The record of a row, shown in the side panel. Needs a column with `opens`. */
   panel?: ((row: Row) => ReactNode) | undefined;
+  /** A new record in the side panel, in the place of an opened record. Needs `panel`. */
+  creating?: NewRecord | undefined;
   /**
    * Server paging (task 2.6a): `rows` are the pages loaded so far, and this
    * asks the server for the next one; left out once there is none. The search
    * box and the filters of the list work on the rows loaded.
    */
   more?: { onMore: () => void; loading: boolean } | undefined;
+}
+
+/** The form of a new record, handed what it may do. */
+function NewRecordContent({
+  content,
+  actions,
+}: {
+  content: NewRecord['content'];
+  actions: NewRecordActions;
+}) {
+  return content(actions);
 }
 
 const NO_FILTERS: readonly never[] = [];
@@ -177,6 +220,7 @@ export function ListPage<Row>({
   exportState,
   exportExtras = NO_EXTRAS,
   panel,
+  creating,
   more,
 }: ListPageProps<Row>) {
   const { t, i18n } = useTranslation();
@@ -365,6 +409,59 @@ export function ListPage<Row>({
   };
 
   const openId = panel === undefined ? undefined : state.open;
+  const creatingKey = creating?.key;
+
+  // The newest functions of the page's new record.
+  const latestCreating = useRef(creating);
+  useEffect(() => {
+    latestCreating.current = creating;
+  });
+
+  // "New …" pressed while a record is open (the page has asked to leave it):
+  // the new record takes its place, and the address loses the record without
+  // a step of its own in the history.
+  const creatingBefore = useRef(creatingKey);
+  const latestChange = useRef(change);
+  useEffect(() => {
+    latestChange.current = change;
+  });
+  const hasOpen = state.open !== undefined;
+  useEffect(() => {
+    const started = creatingKey !== undefined && creatingKey !== creatingBefore.current;
+    creatingBefore.current = creatingKey;
+    if (started && hasOpen) {
+      latestChange.current({ open: undefined }, 'replace');
+    }
+  }, [creatingKey, hasOpen]);
+
+  // The address wins over the new record (decision 11): a record that arrives
+  // in it while the new record is shown (a row opened, Back, a link) takes
+  // its place. The row was asked about by `openRecord`, Back by `UnsentGuard`.
+  const openBefore = useRef(state.open);
+  useEffect(() => {
+    const arrived = state.open !== undefined && state.open !== openBefore.current;
+    openBefore.current = state.open;
+    if (arrived && latestCreating.current !== undefined) {
+      latestCreating.current.onClose();
+    }
+  }, [state.open]);
+
+  const closeCreating = (): void => {
+    void leave().then((leaves) => {
+      if (leaves) {
+        creating?.onClose();
+      }
+    });
+  };
+  const newRecordActions: NewRecordActions = {
+    saved: (id, also = {}) => {
+      creating?.onSaved();
+      if (id !== undefined || Object.keys(also).length > 0) {
+        change({ ...also, open: id }, 'push');
+      }
+    },
+    close: closeCreating,
+  };
   const openRow = openId === undefined ? undefined : rows?.find((row) => rowId(row) === openId);
   // The row last shown in the panel. When it leaves the list while it is open
   // (archived by somebody else, a reload of the rows), the panel keeps it with
@@ -390,7 +487,8 @@ export function ListPage<Row>({
   useEffect(() => {
     const before = lastOpen.current;
     lastOpen.current = openId;
-    if (openId === undefined && before !== undefined) {
+    // A new record that took the place of the record has the focus already.
+    if (openId === undefined && before !== undefined && latestCreating.current === undefined) {
       const row = root.current?.querySelector<HTMLElement>(
         `[data-open-row="${CSS.escape(before)}"]`,
       );
@@ -410,7 +508,7 @@ export function ListPage<Row>({
       <div
         className={cn(
           'min-w-0 flex-1 grid-cols-1 gap-3',
-          openId === undefined ? 'grid' : 'hidden lg:grid',
+          openId === undefined && creating === undefined ? 'grid' : 'hidden lg:grid',
         )}
       >
         <div className="flex flex-wrap items-end gap-2">
@@ -719,44 +817,52 @@ export function ListPage<Row>({
         )}
       </div>
 
-      {panel !== undefined && openId !== undefined && !(failed && rows === undefined) && (
-        <SidePanel
-          title={
-            rows === undefined
-              ? t('app.loading')
-              : openRow === undefined
-                ? goneRow === undefined
-                  ? t('list.recordGoneTitle')
-                  : panelName(goneRow)
-                : panelName(openRow)
-          }
-          recordKey={openId}
-          onClose={() => {
-            openRecord(undefined);
-          }}
-        >
-          {rows === undefined ? (
-            // The panel has its place before the rows arrive: the list does not
-            // change its width when they do.
-            failed ? null : (
-              <LoadingOutline />
-            )
-          ) : panelRow === undefined ? (
-            <p>{t('list.recordGone')}</p>
-          ) : (
-            // One wrapper whether the row is in the list or has left it, so the
-            // panel is not drawn anew and keeps what was typed.
-            <div className="grid gap-4">
-              {openRow === undefined && (
-                <p role="status" className="text-sm text-muted-foreground">
-                  {t('list.recordLeft')}
-                </p>
-              )}
-              {panel(panelRow)}
-            </div>
-          )}
+      {creating !== undefined && panel !== undefined && (
+        <SidePanel title={creating.title} recordKey={`new:${creating.key}`} onClose={closeCreating}>
+          <NewRecordContent content={creating.content} actions={newRecordActions} />
         </SidePanel>
       )}
+      {creating === undefined &&
+        panel !== undefined &&
+        openId !== undefined &&
+        !(failed && rows === undefined) && (
+          <SidePanel
+            title={
+              rows === undefined
+                ? t('app.loading')
+                : openRow === undefined
+                  ? goneRow === undefined
+                    ? t('list.recordGoneTitle')
+                    : panelName(goneRow)
+                  : panelName(openRow)
+            }
+            recordKey={openId}
+            onClose={() => {
+              openRecord(undefined);
+            }}
+          >
+            {rows === undefined ? (
+              // The panel has its place before the rows arrive: the list does not
+              // change its width when they do.
+              failed ? null : (
+                <LoadingOutline />
+              )
+            ) : panelRow === undefined ? (
+              <p>{t('list.recordGone')}</p>
+            ) : (
+              // One wrapper whether the row is in the list or has left it, so the
+              // panel is not drawn anew and keeps what was typed.
+              <div className="grid gap-4">
+                {openRow === undefined && (
+                  <p role="status" className="text-sm text-muted-foreground">
+                    {t('list.recordLeft')}
+                  </p>
+                )}
+                {panel(panelRow)}
+              </div>
+            )}
+          </SidePanel>
+        )}
     </div>
   );
 }

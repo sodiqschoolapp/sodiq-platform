@@ -10,6 +10,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
+import { savedRecordPanel } from '@/testing/new-record';
 
 const PATH = '/setup/subjects';
 
@@ -153,18 +154,27 @@ async function openList({
     yearStatus: 'current',
     quarters: rows,
   });
+  // The list read again after a new subject is saved holds it.
+  const listed = [...subjects];
   const calls = fakeApi({
     'GET /api/auth/session': () => json(account),
-    'GET /api/setup/subjects': () => json({ subjects, mayMoveDepartment }),
+    'GET /api/setup/subjects': () => json({ subjects: listed, mayMoveDepartment }),
     'GET /api/setup/divisions': () => json({ divisions, staffCounts: [] }),
     'GET /api/setup/academic-years': () => json({ years }),
     [`GET /api/setup/subjects/${MATHS.id}/quarter-weights`]: () => json(answer(quarters)),
     [`GET /api/setup/subjects/${PHYSICS.id}/quarter-weights`]: () => json(answer(quarters)),
-    'POST /api/setup/subjects': (body) =>
-      json(
-        { ...MATHS, ...(body as object), id: uid(25), quarterWeightsMissing: 4, quarterCount: 4 },
-        201,
-      ),
+    'POST /api/setup/subjects': (body) => {
+      const added: Subject = {
+        ...MATHS,
+        ...(body as object),
+        id: uid(25),
+        quarterWeightsMissing: 4,
+        quarterCount: 4,
+      };
+      listed.push(added);
+      return json(added, 201);
+    },
+    [`GET /api/setup/subjects/${uid(25)}/quarter-weights`]: () => json(answer(quarters)),
     [`PUT /api/setup/subjects/${MATHS.id}`]: (body) => json({ ...MATHS, ...(body as object) }),
     [`PUT /api/setup/subjects/${PHYSICS.id}`]: (body) => json({ ...PHYSICS, ...(body as object) }),
     [`PUT /api/setup/subjects/${SPIRIT.id}`]: (body) => json({ ...SPIRIT, ...(body as object) }),
@@ -256,7 +266,10 @@ describe('the subjects page', () => {
     const { calls } = await openList();
 
     fireEvent.click(screen.getByRole('button', { name: subjectsText.add }));
-    const form = screen.getByRole('form', { name: subjectsText.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: subjectsText.newTitle }),
+    ).getByRole('form', { name: subjectsText.newTitle });
     type(within(form).getByLabelText(subjectsText.nameUz), 'Kimyo');
     type(within(form).getByLabelText(subjectsText.nameRu), 'Химия');
     type(within(form).getByLabelText(subjectsText.nameEn), 'Chemistry');
@@ -290,13 +303,18 @@ describe('the subjects page', () => {
         daily: { attendance: 10, classwork: 50, homework: 40 },
       });
     });
+    // The panel shows the saved record (task 2.7c-2a).
+    await savedRecordPanel(subjectsText.newTitle);
   });
 
   it('sends an attendance-only subject without weights and without a rating exam', async () => {
     const { calls } = await openList();
 
     fireEvent.click(screen.getByRole('button', { name: subjectsText.add }));
-    const form = screen.getByRole('form', { name: subjectsText.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: subjectsText.newTitle }),
+    ).getByRole('form', { name: subjectsText.newTitle });
     type(within(form).getByLabelText(subjectsText.nameUz), 'Uy vazifasi soati');
     type(within(form).getByLabelText(subjectsText.nameRu), 'Час домашнего задания');
     type(within(form).getByLabelText(subjectsText.nameEn), 'Homework slot');

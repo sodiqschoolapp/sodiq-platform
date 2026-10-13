@@ -252,7 +252,10 @@ describe('the room list', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.rooms.add }));
-    const form = screen.getByRole('form', { name: en.setup.rooms.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.rooms.newTitle }),
+    ).getByRole('form', { name: en.setup.rooms.newTitle });
     type(field(form, en.setup.rooms.name), '101');
     type(field(form, en.setup.rooms.building), ANNEX.id);
     type(field(form, en.setup.rooms.floor), uid(21));

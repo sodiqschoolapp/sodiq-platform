@@ -15,15 +15,14 @@ import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { ListPage, type BulkAction } from '@/components/list/list-page';
 import { useExport } from '@/components/list/use-export';
+import { useNewRecord } from '@/components/list/use-new-record';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { isNamedRefusal } from './building-panel';
 import { RoomForm } from './room-form';
 import { activeFloorsOf, buildingsQuery, roomsQuery, SETUP_KEY } from './setup-api';
-import { SECTION_TITLE } from '@/components/ui/control';
 
 /** The fields of a room as the edit route takes them. */
 const recordOf = (room: Room, status: RoomStatus): RoomRecord => ({
@@ -51,8 +50,7 @@ export function RoomsPage() {
   const search = useSearch({ from: '/app/setup/rooms' });
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
-  const [adding, setAdding] = useState(false);
+  const newRecord = useNewRecord();
   const [changed, setChanged] = useState<{ done: number; refused: string[] } | null>(null);
   const canEdit = role !== null && permits(PERMISSIONS, role, 'rooms', 'edit');
   const canCreate = role !== null && permits(PERMISSIONS, role, 'rooms', 'create');
@@ -71,7 +69,6 @@ export function RoomsPage() {
     mutationFn: (record: RoomRecord) =>
       answerOf(api.POST('/api/setup/rooms', { params: { header: branchHeader() }, body: record })),
     onSuccess: async () => {
-      setAdding(false);
       await refresh();
       // The counts of rooms per floor changed.
       await queryClient.invalidateQueries({ queryKey: [...SETUP_KEY, 'buildings', branchId] });
@@ -257,12 +254,13 @@ export function RoomsPage() {
   };
 
   const noFloor = floorsKnown && floors.length === 0;
-  const addButton = canCreate && !adding && (
+  const addButton = canCreate && newRecord.value === null && (
     <div className="flex flex-wrap items-center gap-3">
       <Button
+        id={newRecord.buttonId}
         disabled={!floorsKnown || noFloor}
         onClick={() => {
-          setAdding(true);
+          newRecord.start(true);
         }}
       >
         {t('setup.rooms.add')}
@@ -291,36 +289,6 @@ export function RoomsPage() {
         ]}
         actions={addButton === false ? undefined : addButton}
       />
-      {adding && (
-        <section
-          aria-label={t('setup.rooms.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6"
-        >
-          <h2 className={SECTION_TITLE}>{t('setup.rooms.newTitle')}</h2>
-          <RoomForm
-            room={null}
-            floors={floors}
-            label={t('setup.rooms.newTitle')}
-            onSave={async (record) => {
-              await create.mutateAsync(record);
-            }}
-          />
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void leave.leave().then((leaves) => {
-                  if (leaves) {
-                    setAdding(false);
-                  }
-                });
-              }}
-            >
-              {t('setup.rooms.cancel')}
-            </Button>
-          </div>
-        </section>
-      )}
       {changed !== null && (
         <p role="status" className="mb-3 text-sm">
           {t('setup.rooms.statusChanged', { count: changed.done, n: number.format(changed.done) })}
@@ -352,6 +320,32 @@ export function RoomsPage() {
           action: emptyAction,
         }}
         bulkActions={bulkActions}
+        creating={
+          newRecord.value === null
+            ? undefined
+            : {
+                key: 'room',
+                title: t('setup.rooms.newTitle'),
+                content: ({ saved, close }) => (
+                  <div className="grid gap-4">
+                    <RoomForm
+                      room={null}
+                      floors={floors}
+                      label={t('setup.rooms.newTitle')}
+                      onSave={async (record) => {
+                        saved((await create.mutateAsync(record)).id);
+                      }}
+                    />
+                    <div>
+                      <Button variant="ghost" onClick={close}>
+                        {t('setup.rooms.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                ),
+                ...newRecord.handlers,
+              }
+        }
         panel={(row) =>
           canEdit ? (
             <RoomForm

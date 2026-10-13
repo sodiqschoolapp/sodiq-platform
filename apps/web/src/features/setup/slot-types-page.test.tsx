@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { savedRecordPanel } from '@/testing/new-record';
 
 const PATH = '/setup/slot-types';
 const TODAY = '2026-10-10';
@@ -115,13 +116,22 @@ describe('the slot types page', () => {
   });
 
   it('adds a slot type from its name, kind and length', async () => {
+    // The list read again after the save holds the new slot type.
+    let added: object[] = [];
     const calls = await openList('academic_vice_principal', {
-      'POST /api/setup/slot-types': (body) =>
-        json({ ...LUNCH, ...(body as object), id: uid(3) }, 201),
+      'POST /api/setup/slot-types': (body) => {
+        added = [{ ...LUNCH, ...(body as object), id: uid(3) }];
+        return json(added[0], 201);
+      },
+      'GET /api/setup/slot-types': () =>
+        json({ today: TODAY, slotTypes: [LESSON, LUNCH, ...added] }),
     });
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.slotTypes.add }));
-    const form = await screen.findByRole('form', { name: en.setup.slotTypes.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.slotTypes.newTitle }),
+    ).getByRole('form', { name: en.setup.slotTypes.newTitle });
     type(within(form).getByLabelText(en.setup.slotTypes.name), 'Long break');
     type(within(form).getByLabelText(en.setup.slotTypes.kind), 'break');
     type(within(form).getByLabelText(en.setup.slotTypes.length), '20');
@@ -134,12 +144,17 @@ describe('the slot types page', () => {
         lengthMinutes: 20,
       });
     });
+    // The panel shows the saved record (task 2.7c-2a).
+    await savedRecordPanel(en.setup.slotTypes.newTitle);
   });
 
   it('says what to fix before anything is sent: a length outside 5 to 180', async () => {
     const calls = await openList();
     fireEvent.click(screen.getByRole('button', { name: en.setup.slotTypes.add }));
-    const form = await screen.findByRole('form', { name: en.setup.slotTypes.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.slotTypes.newTitle }),
+    ).getByRole('form', { name: en.setup.slotTypes.newTitle });
     type(within(form).getByLabelText(en.setup.slotTypes.name), 'Too long');
     type(within(form).getByLabelText(en.setup.slotTypes.length), '181');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));

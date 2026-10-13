@@ -7,20 +7,19 @@ import {
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { ListPage } from '@/components/list/list-page';
+import { useNewRecord } from '@/components/list/use-new-record';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { invalidateYears, yearsQuery } from './setup-api';
 import { YearForm, YearPanel } from './year-panel';
 import { schoolDateText } from '@/lib/dates';
-import { SECTION_TITLE } from '@/components/ui/control';
 
 const datedCount = (year: AcademicYear): number =>
   year.quarters.filter((quarter) => quarter.startDate !== null).length;
@@ -38,8 +37,7 @@ export function YearsPage() {
   const search = useSearch({ from: '/app/setup/years' });
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
-  const [adding, setAdding] = useState(false);
+  const newRecord = useNewRecord();
   const canCreate = role !== null && permits(PERMISSIONS, role, 'academic_years', 'create');
   const canEditYear = role !== null && permits(PERMISSIONS, role, 'academic_years', 'edit');
   const canEditQuarters = role !== null && permits(PERMISSIONS, role, 'quarters', 'edit');
@@ -56,7 +54,6 @@ export function YearsPage() {
         }),
       ),
     onSuccess: async () => {
-      setAdding(false);
       await invalidateYears(queryClient);
     },
   });
@@ -122,10 +119,11 @@ export function YearsPage() {
     void navigate({ to: '/setup/years', search: next, replace: how === 'replace' });
   };
 
-  const addButton = canCreate && !adding && (
+  const addButton = canCreate && newRecord.value === null && (
     <Button
+      id={newRecord.buttonId}
       onClick={() => {
-        setAdding(true);
+        newRecord.start(true);
       }}
     >
       {t('setup.years.add')}
@@ -144,35 +142,6 @@ export function YearsPage() {
         ]}
         actions={addButton === false ? undefined : addButton}
       />
-      {adding && (
-        <section
-          aria-label={t('setup.years.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6"
-        >
-          <h2 className={SECTION_TITLE}>{t('setup.years.newTitle')}</h2>
-          <YearForm
-            year={null}
-            label={t('setup.years.newTitle')}
-            onSave={async (record) => {
-              await create.mutateAsync(record);
-            }}
-          />
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void leave.leave().then((leaves) => {
-                  if (leaves) {
-                    setAdding(false);
-                  }
-                });
-              }}
-            >
-              {t('setup.years.cancel')}
-            </Button>
-          </div>
-        </section>
-      )}
       <ListPage
         listId="years"
         caption={t('setup.years.caption')}
@@ -192,6 +161,31 @@ export function YearsPage() {
           text: t('setup.years.empty'),
           action: addButton === false ? undefined : addButton,
         }}
+        creating={
+          newRecord.value === null
+            ? undefined
+            : {
+                key: 'year',
+                title: t('setup.years.newTitle'),
+                content: ({ saved, close }) => (
+                  <div className="grid gap-4">
+                    <YearForm
+                      year={null}
+                      label={t('setup.years.newTitle')}
+                      onSave={async (record) => {
+                        saved((await create.mutateAsync(record)).id);
+                      }}
+                    />
+                    <div>
+                      <Button variant="ghost" onClick={close}>
+                        {t('setup.years.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                ),
+                ...newRecord.handlers,
+              }
+        }
         panel={(row) => (
           <YearPanel
             key={row.id}

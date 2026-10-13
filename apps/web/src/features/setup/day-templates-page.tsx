@@ -6,20 +6,19 @@ import {
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { ListPage } from '@/components/list/list-page';
+import { useNewRecord } from '@/components/list/use-new-record';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { NewTemplateForm } from './day-template-form';
 import { DayTemplatePanel } from './day-template-panel';
 import { dayTemplatesQuery, invalidateTemplates, rangeText, slotTypesQuery } from './templates-api';
-import { SECTION_TITLE } from '@/components/ui/control';
 
 /**
  * The day templates of the branch in use (`03`, Slot types and day templates:
@@ -34,8 +33,7 @@ export function DayTemplatesPage() {
   const search = useSearch({ from: '/app/setup/day-templates' });
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
-  const [adding, setAdding] = useState(false);
+  const newRecord = useNewRecord();
   const can = (action: 'create' | 'edit' | 'archive') =>
     role !== null && permits(PERMISSIONS, role, 'day_templates', action);
   const templates = useQuery(dayTemplatesQuery(branchId));
@@ -61,7 +59,6 @@ export function DayTemplatesPage() {
         api.POST('/api/setup/day-templates', { params: { header: branchHeader() }, body: record }),
       ),
     onSuccess: async () => {
-      setAdding(false);
       await invalidateTemplates(queryClient);
     },
   });
@@ -129,11 +126,12 @@ export function DayTemplatesPage() {
     void navigate({ to: '/setup/day-templates', search: next, replace: how === 'replace' });
   };
 
-  const addButton = can('create') && !adding && (
+  const addButton = can('create') && newRecord.value === null && (
     <Button
+      id={newRecord.buttonId}
       disabled={!hasLessonType}
       onClick={() => {
-        setAdding(true);
+        newRecord.start(true);
       }}
     >
       {t('setup.dayTemplates.add')}
@@ -155,35 +153,6 @@ export function DayTemplatesPage() {
           {t('setup.dayTemplates.needLessonType')}
         </p>
       )}
-      {adding && today !== undefined && allSlotTypes !== undefined && (
-        <section
-          aria-label={t('setup.dayTemplates.newTitle')}
-          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6"
-        >
-          <h2 className={SECTION_TITLE}>{t('setup.dayTemplates.newTitle')}</h2>
-          <NewTemplateForm
-            slotTypes={allSlotTypes}
-            today={today}
-            onSave={async (record) => {
-              await create.mutateAsync(record);
-            }}
-          />
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void leave.leave().then((leaves) => {
-                  if (leaves) {
-                    setAdding(false);
-                  }
-                });
-              }}
-            >
-              {t('setup.dayTemplates.cancel')}
-            </Button>
-          </div>
-        </section>
-      )}
       <ListPage
         listId="day-templates"
         caption={t('setup.dayTemplates.caption')}
@@ -203,6 +172,31 @@ export function DayTemplatesPage() {
           text: t('setup.dayTemplates.empty'),
           action: addButton === false ? undefined : addButton,
         }}
+        creating={
+          newRecord.value === null || today === undefined || allSlotTypes === undefined
+            ? undefined
+            : {
+                key: 'day-template',
+                title: t('setup.dayTemplates.newTitle'),
+                content: ({ saved, close }) => (
+                  <div className="grid gap-4">
+                    <NewTemplateForm
+                      slotTypes={allSlotTypes}
+                      today={today}
+                      onSave={async (record) => {
+                        saved((await create.mutateAsync(record)).id);
+                      }}
+                    />
+                    <div>
+                      <Button variant="ghost" onClick={close}>
+                        {t('setup.dayTemplates.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                ),
+                ...newRecord.handlers,
+              }
+        }
         panel={(row) =>
           today === undefined ? null : (
             <DayTemplatePanel

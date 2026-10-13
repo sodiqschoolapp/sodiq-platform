@@ -198,13 +198,16 @@ describe('the buildings page', () => {
     const { calls } = await openList();
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.buildings.add }));
-    const form = screen.getByRole('form', { name: en.setup.buildings.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const panel = await screen.findByRole('complementary', { name: en.setup.buildings.newTitle });
+    const form = within(panel).getByRole('form', { name: en.setup.buildings.newTitle });
     type(within(form).getByLabelText(en.setup.buildings.name), 'Sports block');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
 
-    await waitFor(() => {
-      expect(screen.queryByRole('form', { name: en.setup.buildings.newTitle })).toBeNull();
-    });
+    // The panel then shows the saved building, never "Record not in the list".
+    expect(await screen.findByRole('complementary', { name: 'Sports block' })).toBeDefined();
+    expect(screen.queryByRole('form', { name: en.setup.buildings.newTitle })).toBeNull();
+    expect(screen.queryByText(en.list.recordGoneTitle)).toBeNull();
     expect(calls.find((call) => call.route === 'POST /api/setup/buildings')?.body).toEqual({
       name: 'Sports block',
     });

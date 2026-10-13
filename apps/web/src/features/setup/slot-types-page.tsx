@@ -10,7 +10,7 @@ import {
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
@@ -19,15 +19,14 @@ import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ListPage } from '@/components/list/list-page';
+import { useNewRecord } from '@/components/list/use-new-record';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { SlotTypePanel } from './slot-type-panel';
 import { invalidateTemplates, slotTypesQuery } from './templates-api';
 import { schoolDateText } from '@/lib/dates';
-import { SECTION_TITLE } from '@/components/ui/control';
 
 /** The next length planned after today, if any. */
 export const plannedLength = (slotType: SlotType, today: string) =>
@@ -83,8 +82,7 @@ export function SlotTypesPage() {
   const search = useSearch({ from: '/app/setup/slot-types' });
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
-  const [adding, setAdding] = useState(false);
+  const newRecord = useNewRecord();
   const can = (action: 'create' | 'edit' | 'archive') =>
     role !== null && permits(PERMISSIONS, role, 'day_templates', action);
   const slotTypes = useQuery(slotTypesQuery(branchId));
@@ -98,7 +96,6 @@ export function SlotTypesPage() {
         api.POST('/api/setup/slot-types', { params: { header: branchHeader() }, body: record }),
       ),
     onSuccess: async () => {
-      setAdding(false);
       await invalidateTemplates(queryClient);
     },
   });
@@ -178,10 +175,11 @@ export function SlotTypesPage() {
     void navigate({ to: '/setup/slot-types', search: next, replace: how === 'replace' });
   };
 
-  const addButton = can('create') && !adding && (
+  const addButton = can('create') && newRecord.value === null && (
     <Button
+      id={newRecord.buttonId}
       onClick={() => {
-        setAdding(true);
+        newRecord.start(true);
       }}
     >
       {t('setup.slotTypes.add')}
@@ -198,33 +196,6 @@ export function SlotTypesPage() {
         ]}
         actions={addButton === false ? undefined : addButton}
       />
-      {adding && (
-        <section
-          aria-label={t('setup.slotTypes.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6"
-        >
-          <h2 className={SECTION_TITLE}>{t('setup.slotTypes.newTitle')}</h2>
-          <SlotTypeForm
-            onSave={async (record) => {
-              await create.mutateAsync(record);
-            }}
-          />
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void leave.leave().then((leaves) => {
-                  if (leaves) {
-                    setAdding(false);
-                  }
-                });
-              }}
-            >
-              {t('setup.slotTypes.cancel')}
-            </Button>
-          </div>
-        </section>
-      )}
       <ListPage
         listId="slot-types"
         caption={t('setup.slotTypes.caption')}
@@ -244,6 +215,29 @@ export function SlotTypesPage() {
           text: t('setup.slotTypes.empty'),
           action: addButton === false ? undefined : addButton,
         }}
+        creating={
+          newRecord.value === null
+            ? undefined
+            : {
+                key: 'slot-type',
+                title: t('setup.slotTypes.newTitle'),
+                content: ({ saved, close }) => (
+                  <div className="grid gap-4">
+                    <SlotTypeForm
+                      onSave={async (record) => {
+                        saved((await create.mutateAsync(record)).id);
+                      }}
+                    />
+                    <div>
+                      <Button variant="ghost" onClick={close}>
+                        {t('setup.slotTypes.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                ),
+                ...newRecord.handlers,
+              }
+        }
         panel={(row) =>
           today === undefined ? null : (
             <SlotTypePanel
