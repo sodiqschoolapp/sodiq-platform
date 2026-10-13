@@ -1172,7 +1172,6 @@ export const uz: Texts<'one' | 'other'> = {
       bulkLeave: 'Maktabdan ketish',
       bulkLeaveTitle_one: 'Maktabdan ketish: {{n}} ta oʻquvchi',
       bulkLeaveTitle_other: 'Maktabdan ketish: {{n}} ta oʻquvchi',
-      bulkLeaveSave: 'Ketishni qayd etish',
       bulkLeft_one: '{{n}} ta ketish qayd etildi.',
       bulkLeft_other: '{{n}} ta ketish qayd etildi.',
       bulkRefused: 'Oʻzgartirilmadi: {{names}}.',

@@ -1158,7 +1158,6 @@ export const en = {
       bulkLeave: 'Leave school',
       bulkLeaveTitle_one: 'Leave school: {{n}} student',
       bulkLeaveTitle_other: 'Leave school: {{n}} students',
-      bulkLeaveSave: 'Record the leaving',
       bulkLeft_one: '{{n}} leaving recorded.',
       bulkLeft_other: '{{n}} leavings recorded.',
       bulkRefused: 'Not changed: {{names}}.',

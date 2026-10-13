@@ -780,3 +780,250 @@ describe('leaving, return and delete', () => {
     });
   });
 });
+
+// Code review of pull request #68, finding 3: every action of the Status
+// section at the web level, the graduated offer by reader, and a Russian case.
+describe('the Status section', () => {
+  const GRADUATED: StudentListItem = {
+    ...LOLA,
+    id: uid(4),
+    uid: '2607040',
+    firstName: 'Nodira',
+    lastName: 'Ergasheva',
+    status: 'graduated',
+  };
+  const graduatedDetail = (fields: Partial<StudentDetail> = {}) =>
+    detailOf(GRADUATED, {
+      statuses: [
+        { status: 'active', from: '2025-09-02', until: '2026-06-01', cause: 'start', reason: null },
+        { status: 'graduated', from: '2026-06-01', until: null, cause: 'graduation', reason: null },
+      ],
+      ...fields,
+    });
+
+  function openOne(
+    role: Role,
+    row: StudentListItem,
+    detail: StudentDetail,
+    extra: Record<string, (body: unknown) => Response> = {},
+    language: 'en' | 'ru' = 'en',
+  ) {
+    return fakeApi({
+      'GET /api/auth/session': () => json(sessionAs(role, language)),
+      'GET /api/people/students': () =>
+        json({ students: [row], canArchive: detail.canArchive, today: '2026-10-10' }),
+      [`GET /api/people/students/${row.id}`]: () => json(detail),
+      ...extra,
+    });
+  }
+
+  it('restores a graduated student for the Super Admin after a confirmation naming the student', async () => {
+    const calls = openOne(
+      'super_admin',
+      GRADUATED,
+      graduatedDetail({ canRestoreGraduated: true }),
+      {
+        [`POST /api/people/students/${GRADUATED.id}/restore`]: () =>
+          json(detailOf({ ...GRADUATED, status: 'active', version: 3 })),
+      },
+    );
+    renderApp(`${PATH}?open=${GRADUATED.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Nodira Ergasheva' });
+    const form = await within(panel).findByRole('form', { name: en.people.students.restoreTitle });
+    expect(
+      within(form).getByLabelText<HTMLInputElement>(en.people.students.restoreFrom).value,
+    ).toBe('2026-06-01');
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Graduated by mistake' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.students.restoreConfirmTitle,
+    });
+    expect(within(dialog).getByText('Nodira Ergasheva')).toBeDefined();
+    expect(calls.some((call) => call.route.endsWith('/restore'))).toBe(false);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.restoreTitle }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route.endsWith('/restore'))).toBe(true);
+    });
+    expect(calls.find((call) => call.route.endsWith('/restore'))?.body).toEqual({
+      from: '2026-06-01',
+      reason: 'Graduated by mistake',
+      version: 2,
+    });
+  });
+
+  it('draws no restore without canRestoreGraduated in the answer', async () => {
+    openOne('academic_vice_principal', GRADUATED, graduatedDetail({ canArchive: true }));
+    renderApp(`${PATH}?open=${GRADUATED.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Nodira Ergasheva' });
+    expect(
+      await within(panel).findByRole('heading', { name: en.people.students.statusTitle }),
+    ).toBeDefined();
+    expect(within(panel).queryByRole('form', { name: en.people.students.restoreTitle })).toBeNull();
+  });
+
+  it('sends "Undo leaving" with its reason and the version read', async () => {
+    const left = detailOf(LOLA, {
+      canArchive: true,
+      statuses: [
+        { status: 'active', from: '2026-09-02', until: '2026-10-01', cause: 'start', reason: null },
+        { status: 'inactive', from: '2026-10-01', until: null, cause: 'leaving', reason: 'Moved' },
+      ],
+    });
+    const calls = openOne('academic_vice_principal', LOLA, left, {
+      [`POST /api/people/students/${LOLA.id}/leaving/undo`]: () =>
+        json(detailOf({ ...LOLA, status: 'active', version: 3 }, { canArchive: true })),
+    });
+    renderApp(`${PATH}?open=${LOLA.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
+    const form = await within(panel).findByRole('form', { name: en.people.students.undoTitle });
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Entered for the wrong student' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route.endsWith('/leaving/undo'))).toBe(true);
+    });
+    expect(calls.find((call) => call.route.endsWith('/leaving/undo'))?.body).toEqual({
+      reason: 'Entered for the wrong student',
+      version: 2,
+    });
+  });
+
+  it('cancels a scheduled leaving through its confirmation', async () => {
+    const scheduled = detailOf(OTKIR, {
+      canArchive: true,
+      planned: { status: 'inactive', from: '2026-10-21' },
+      version: 2,
+      statuses: [
+        { status: 'active', from: '2026-09-02', until: '2026-10-21', cause: 'start', reason: null },
+        { status: 'inactive', from: '2026-10-21', until: null, cause: 'leaving', reason: 'Moved' },
+      ],
+    });
+    const calls = openOne('academic_vice_principal', OTKIR, scheduled, {
+      [`POST /api/people/students/${OTKIR.id}/leaving/cancel`]: () =>
+        json(detailOf(OTKIR, { canArchive: true, version: 3 })),
+    });
+    renderApp(`${PATH}?open=${OTKIR.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(
+      await within(panel).findByRole('button', { name: en.people.students.cancelLeaving }),
+    );
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.students.cancelConfirmTitle,
+    });
+    expect(calls.some((call) => call.route.endsWith('/leaving/cancel'))).toBe(false);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.cancelLeaving }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route.endsWith('/leaving/cancel'))).toBe(true);
+    });
+    expect(calls.find((call) => call.route.endsWith('/leaving/cancel'))?.body).toEqual({
+      version: 2,
+    });
+  });
+
+  it.each([
+    ['super_admin', true],
+    ['academic_vice_principal', false],
+  ] as const)(
+    'offers "Restore this student" for a graduated holder to a %s: %s',
+    async (role, offered) => {
+      fakeApi({
+        'GET /api/auth/session': () => json(sessionAs(role)),
+        'GET /api/people/students': () =>
+          json({ students: [OTKIR, GRADUATED], canArchive: true, today: '2026-10-10' }),
+        'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+        'POST /api/people/students': () =>
+          Response.json(
+            {
+              error: {
+                code: 'student_value_taken',
+                message: 'x',
+                requestId: 'r',
+                details: [
+                  {
+                    path: 'documentNumber',
+                    code: 'already_exists',
+                    message: 'x',
+                    recordId: GRADUATED.id,
+                  },
+                ],
+              },
+            },
+            { status: 409 },
+          ),
+      });
+      renderApp(PATH);
+      await waitFor(() => {
+        expect(rowsDrawn()).toHaveLength(2);
+      });
+      fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
+      const form = await screen.findByRole('form', { name: en.people.students.newTitle });
+      const type = (label: string, value: string) => {
+        fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+      };
+      type(en.people.students.uid, '2607046');
+      type(en.people.students.lastName, 'Ergasheva');
+      type(en.people.students.firstName, 'Nodira');
+      type(en.people.students.sex, 'female');
+      type(en.people.students.birthDate, '2008-04-04');
+      type(en.people.students.grade, '11');
+      type(en.people.students.startsOn, '2026-09-02');
+      type(en.people.students.documentType, 'passport');
+      type(en.people.students.documentNumber, 'AB1234567');
+      type(en.people.students.contractNumber, 'SQ-2026/140');
+      type(en.people.students.contractSignedOn, '2026-08-20');
+      fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+      expect(
+        await within(form).findByText(
+          en.people.students.takenHere.replace('{{student}}', 'Nodira Ergasheva (2607040)'),
+        ),
+      ).toBeDefined();
+      expect(screen.queryByRole('button', { name: en.people.students.restoreThis }) !== null).toBe(
+        offered,
+      );
+    },
+  );
+
+  it('is in Russian', async () => {
+    openOne(
+      'academic_vice_principal',
+      LOLA,
+      detailOf(LOLA, {
+        canArchive: true,
+        statuses: [
+          {
+            status: 'active',
+            from: '2026-09-02',
+            until: '2026-10-01',
+            cause: 'start',
+            reason: null,
+          },
+          {
+            status: 'inactive',
+            from: '2026-10-01',
+            until: null,
+            cause: 'leaving',
+            reason: 'Переезд',
+          },
+        ],
+      }),
+      {},
+      'ru',
+    );
+    renderApp(`${PATH}?open=${LOLA.id}`, 'ru');
+    const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
+    expect(
+      await within(panel).findByRole('heading', { name: ru.people.students.statusTitle }),
+    ).toBeDefined();
+    expect(
+      within(panel).getByText(
+        ru.people.students.causeReason
+          .replace('{{cause}}', ru.people.students.causes.leaving)
+          .replace('{{reason}}', 'Переезд'),
+      ),
+    ).toBeDefined();
+    expect(within(panel).getByRole('form', { name: ru.people.students.returnTitle })).toBeDefined();
+  });
+});

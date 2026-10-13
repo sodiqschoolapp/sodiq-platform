@@ -459,8 +459,16 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
     .getByRole('button', { name: texts.returnTitle, exact: true })
     .click();
   await expect(row).toContainText(texts.statuses.active);
-  await expect(row).toContainText('9998001');
-  await expect(panel.getByText(texts.causes.return, { exact: true })).toBeVisible();
+  // Every row kept: the time before the leaving, the time away and the return (the
+  // undone leaving and the second one share their first day, so one inactive row stays).
+  const history = panel
+    .getByRole('list')
+    .filter({ hasText: texts.causes.start })
+    .getByRole('listitem');
+  await expect(history).toHaveCount(3);
+  for (const [index, cause] of (['start', 'leaving', 'return'] as const).entries()) {
+    await expect(history.nth(index)).toContainText(texts.causes[cause]);
+  }
   await panel.getByRole('heading', { name: texts.statusTitle }).scrollIntoViewIfNeeded();
   await leavingScreenshot(page, 'returned');
   await panel.getByRole('button', { name: en.list.closePanel }).click();

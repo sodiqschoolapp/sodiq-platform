@@ -30,6 +30,8 @@ If the request gives you a plan instead of a branch, skip step 1 and step 4 and 
    - a lock test that proves only an order of locks where the plan promised that the second of two changes sees the first: the held side makes the change and the test shows the second refused (found by the spec review of task 2.3a);
    - a test that creates a fixture under `if (status === 201)` or a similar guard asserts the status instead; a conditional fixture lets a case pass without running (found by the review of task 2.3c-1);
    - a person-wide fact (the time zone of the main branch, an employment period, a status) is never read through the row-filtered `staff_branches` or `branches`; it comes from a SECURITY DEFINER function, so every reader gets the same answer (found by the review of task 2.3c-1);
+   - a branch of a database guard (insert and update, each refused case) without a test that reaches it with nothing before it that refuses first (found by the code review of task 2.4b-1);
+   - a test that a guard lets a case through without the data that the guard would refuse if it were wrong (found by the code review of task 2.4b-1);
 4. Run `pnpm test:changed` if it has not been run and report failures; the full suite runs in CI on the pull request (`docs/decisions.md`, 11 October 2026, decision 5).
 
 Report in this form:

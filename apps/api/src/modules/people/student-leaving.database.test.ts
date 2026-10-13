@@ -297,21 +297,75 @@ describe('leaving, return and delete in the database', () => {
       ).resolves.toBeUndefined();
     });
 
-    it('lets the move to another branch carry rows that end in the closed year', async () => {
-      // The student started in the closed year; its first row ends on 11 October.
-      const other = await insertBranch(database.migrator, 'Receiving branch');
-      await database.migrator
-        .updateTable('students')
-        .set({ branch_id: other })
-        .where('id', '=', student)
-        .execute();
+    it('lets the move to another branch carry rows that start and end in a closed year there', async () => {
+      // The sending branch has its years open; the receiving one has 2025–2026
+      // closed. The student's rows end and start on 1 March 2026, inside it: a
+      // guard that checked every update, or the start of a row on update,
+      // would refuse the move (correction 1; code review, finding 1).
+      const sending = await insertBranch(database.migrator, 'Sending branch');
+      await years(sending, [['2025-09-01', '2026-05-31']]);
+      const receiving = await insertBranch(database.migrator, 'Receiving branch');
+      const [closed] = await years(receiving, [['2025-09-01', '2026-05-31']]);
+      const { id } = await createStudent(sending, { startsOn: '2025-09-02' });
+      await inBranch(sending, (transaction) => leave(transaction, sending, id, '2026-03-01'));
+      await setYear(closed ?? '', 'current');
+      await setYear(closed ?? '', 'closed');
+      await expect(
+        database.migrator
+          .updateTable('students')
+          .set({ branch_id: receiving })
+          .where('id', '=', id)
+          .execute(),
+      ).resolves.toBeDefined();
       const rows = await database.migrator
         .selectFrom('student_statuses')
-        .select(['branch_id', 'valid_from'])
-        .where('student_id', '=', student)
+        .select(['branch_id', 'valid_from', 'valid_until'])
+        .where('student_id', '=', id)
+        .orderBy('valid_from')
         .execute();
-      expect(rows.map((row) => row.branch_id)).toEqual(rows.map(() => other));
-      expect(rows.some((row) => row.valid_from === '2025-09-02')).toBe(true);
+      expect(rows).toEqual([
+        { branch_id: receiving, valid_from: '2025-09-02', valid_until: '2026-03-01' },
+        { branch_id: receiving, valid_from: '2026-03-01', valid_until: null },
+      ]);
+    });
+
+    it('refuses a row inserted to start in it, with no update before it', async () => {
+      // An empty range overlaps nothing: only the insert branch of the guard can refuse it.
+      const insert = (target: Database | Transaction) =>
+        target
+          .insertInto('student_statuses')
+          .values({
+            student_id: student,
+            branch_id: branch,
+            status: 'active',
+            valid_from: '2026-05-16',
+            valid_until: '2026-05-16',
+            cause: 'cancel',
+          })
+          .execute();
+      await expect(inBranch(branch, (transaction) => insert(transaction))).rejects.toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'student_statuses_closed_year',
+      });
+      await expect(insert(database.migrator)).rejects.toMatchObject({
+        constraint: 'student_statuses_closed_year',
+      });
+      // The same row in the open year passes: the refusal is the year's.
+      await expect(
+        inBranch(branch, (transaction) =>
+          transaction
+            .insertInto('student_statuses')
+            .values({
+              student_id: student,
+              branch_id: branch,
+              status: 'active',
+              valid_from: '2026-09-16',
+              valid_until: '2026-09-16',
+              cause: 'cancel',
+            })
+            .execute(),
+        ),
+      ).resolves.toBeDefined();
     });
   });
 
