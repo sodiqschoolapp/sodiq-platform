@@ -147,6 +147,14 @@ describe('a frozen permission table', () => {
         const rowsOfArea = PERMISSIONS[area as keyof typeof PERMISSIONS];
         expect(rowsOfArea[role], `${area} ${role}`).toEqual(readers.includes(role) ? ['view'] : []);
       }
+      // Task 2.5a, decision 4 of pull request #72: the Parents list and record.
+      expect(PERMISSIONS.relatives[role], `relatives ${role}`).toEqual(
+        editors.includes(role)
+          ? ['view', 'create', 'edit']
+          : role === 'principal'
+            ? ['view']
+            : [],
+      );
       // Task 2.4b-1: the Super Admin alone restores a graduated student.
       expect(PERMISSIONS.student_graduates[role], role).toEqual(
         role === 'super_admin' ? ['edit'] : [],
@@ -166,6 +174,7 @@ describe('a frozen permission table', () => {
       'divisions',
       'head_teachers',
       'quarters',
+      'relatives',
       'rooms',
       'settings',
       'staff',

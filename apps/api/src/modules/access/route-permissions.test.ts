@@ -255,6 +255,33 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/people/students/:id/photo': { branch: 'request', roles: STUDENT_EDITORS },
   'DELETE /api/people/students/:id/photo': { branch: 'request', roles: STUDENT_EDITORS },
   'GET /api/people/students/:id/photo': { branch: 'request', roles: STUDENT_VIEWERS },
+  // Task 2.5a, decision 4 of pull request #72: the area `relatives`; the links of a
+  // student under `students` `edit`, the Relatives tab under `student_contact` `view`.
+  // The route refuses the phone search and the show to the readers that may not (relatives.test.ts).
+  'GET /api/people/relatives': { branch: 'request', roles: SETUP_VIEWERS },
+  'GET /api/people/relatives/:id': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/people/relatives/phone-match': { branch: 'request', roles: STUDENT_EDITORS },
+  'PATCH /api/people/relatives/:id': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/relatives/:id/show': { branch: 'request', roles: SETUP_VIEWERS },
+  'GET /api/people/students/:id/relatives': {
+    branch: 'request',
+    roles: [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'spiritual_vice_principal',
+      'head_tutor',
+    ],
+  },
+  'POST /api/people/students/:id/relatives': { branch: 'request', roles: STUDENT_EDITORS },
+  'PATCH /api/people/students/:id/relatives/:relativeId': {
+    branch: 'request',
+    roles: STUDENT_EDITORS,
+  },
+  'POST /api/people/students/:id/relatives/:relativeId/unlink': {
+    branch: 'request',
+    roles: STUDENT_EDITORS,
+  },
   // Task 2.3a, decision 4 of pull request #62: the account section.
   'GET /api/people/staff/:id/account': { branch: 'request', roles: ['super_admin', 'principal'] },
   'GET /api/people/staff/:id/account/suggestion': { branch: 'request', roles: ['super_admin'] },

@@ -9,6 +9,7 @@ import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import { relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { binary, dateOfCell, fileOf } from '../../testing/xlsx-kit.js';
 
@@ -57,6 +58,7 @@ describe('the student export, the consent list and the "No class" counter', () =
       scholarship: { type: 'financial_aid', coverage: 'partial', amount: 750000 },
       consentSignedOn: '2026-08-21',
       contract: { number: `EX-2026/${String(count)}`, signedOn: '2026-08-21' },
+      relatives: relativesInput(),
       ...overrides,
     };
   }

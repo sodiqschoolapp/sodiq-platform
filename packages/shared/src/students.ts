@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
+import { spellingKey, storedStudentName, validName } from './names.js';
+import { studentRelativesInputSchema } from './relatives.js';
 import { jshshirSchema, sexSchema, staffPhoneSchema } from './staff.js';
 
 /**
@@ -98,29 +100,7 @@ export const studentUidSchema = z
   .trim()
   .regex(/^[0-9]{7}$/);
 
-const OKINA = 'ʻ';
-const MODIFIER_APOSTROPHE = 'ʼ';
-/** The apostrophes a keyboard types: ', `, ʻ, ʼ, ’ and ‘. */
-const APOSTROPHES = /['`ʻʼ’‘]/g;
-
-/**
- * A student's name in its stored form: outer spaces dropped, inner runs made
- * one, and in Latin each apostrophe stored as ʻ after o or g and as ʼ
- * elsewhere (as `storedName` of the staff record).
- */
-export function storedStudentName(typed: string): string {
-  const spaced = typed.trim().replace(/\s+/g, ' ');
-  return spaced.replace(APOSTROPHES, (_mark, offset: number) => {
-    const before = spaced.charAt(offset - 1).toLowerCase();
-    return before === 'o' || before === 'g' ? OKINA : MODIFIER_APOSTROPHE;
-  });
-}
-
-/** Latin with ʻ and ʼ, or Cyrillic with ў қ ғ ҳ; one script per name; the check of the database. */
-const LATIN_NAME = /^[A-Za-zʻʼ]+([ -][A-Za-zʻʼ]+)*$/;
-const CYRILLIC_NAME = /^[А-Яа-яЁёЎўҚқҒғҲҳ]+([ -][А-Яа-яЁёЎўҚқҒғҲҳ]+)*$/;
-
-const validName = (name: string): boolean => LATIN_NAME.test(name) || CYRILLIC_NAME.test(name);
+export { spellingKey, storedStudentName };
 
 /** Answer 18: typed as on the student's document, Latin or Cyrillic. */
 export const studentNameSchema = z
@@ -134,72 +114,6 @@ const optionalStudentNameSchema = z
   .transform((name) => (name === '' ? null : name))
   .pipe(z.string().max(STUDENT_NAME_MAX_LENGTH).refine(validName).nullable())
   .nullable();
-
-/** Cyrillic letters to the Latin of the Uzbek state alphabet (the Russian ones too). */
-const CYRILLIC_TO_LATIN: Readonly<Record<string, string>> = {
-  а: 'a',
-  б: 'b',
-  в: 'v',
-  г: 'g',
-  д: 'd',
-  е: 'e',
-  ё: 'yo',
-  ж: 'j',
-  з: 'z',
-  и: 'i',
-  й: 'y',
-  к: 'k',
-  л: 'l',
-  м: 'm',
-  н: 'n',
-  о: 'o',
-  п: 'p',
-  р: 'r',
-  с: 's',
-  т: 't',
-  у: 'u',
-  ф: 'f',
-  х: 'x',
-  ц: 'ts',
-  ч: 'ch',
-  ш: 'sh',
-  щ: 'sh',
-  ъ: '',
-  ы: 'i',
-  ь: '',
-  э: 'e',
-  ю: 'yu',
-  я: 'ya',
-  ў: 'o',
-  қ: 'q',
-  ғ: 'g',
-  ҳ: 'h',
-};
-
-/**
- * A text with its spelling differences removed (answer 18: "Search and the
- * duplicate check treat look-alike spellings as the same (Oʻtkir, O'tkir,
- * Ўткир)"): lower case, Cyrillic written in Latin, every apostrophe and the
- * hard and soft signs dropped (so oʻ is o and gʻ is g), "kh" and every h not
- * after s or c written x (Russian writes Uzbek x and h both as х: Рахимов is
- * Rahimov), runs of spaces made one. The Russian у of an Uzbek ў (Уткир for
- * Ўткир) is not folded: u and o stay apart (decided in the build of 2.4a). The one folding of the platform: the list search and the
- * stored `name_key` of the duplicate check use it; a change to it comes with a
- * migration that rewrites `students.name_key`.
- */
-export function spellingKey(text: string): string {
-  const lower = text.normalize('NFKC').toLocaleLowerCase('en');
-  let latin = '';
-  for (const letter of lower) {
-    latin += CYRILLIC_TO_LATIN[letter] ?? letter;
-  }
-  return latin
-    .replace(APOSTROPHES, '')
-    .replace(/kh/g, 'x')
-    .replace(/(?<![sc])h/g, 'x')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 /** The folded surname and first name, as `students.name_key` stores it. */
 export function studentNameKey(lastName: string, firstName: string): string {
@@ -366,6 +280,8 @@ export const studentCreateSchema = z
     startsOn: schoolDateSchema,
     uid: studentUidSchema,
     confirmUidSet: z.boolean(),
+    /** At least one relative, exactly one main contact (`04`, Close relatives; task 2.5a). */
+    relatives: studentRelativesInputSchema,
   })
   .refine(documentPair, DOCUMENT_PAIR);
 

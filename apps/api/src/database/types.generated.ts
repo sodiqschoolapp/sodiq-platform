@@ -280,6 +280,23 @@ export interface Quarters {
   start_date: string | null;
 }
 
+export interface RelativeAccounts {
+  created_at: Timestamp;
+  relative_id: string;
+  switched_on_at: Timestamp | null;
+}
+
+export interface Relatives {
+  archived_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  email: string | null;
+  full_name: string;
+  id: Generated<string>;
+  name_key: string;
+  phone: string | null;
+  workplace: string | null;
+}
+
 export interface RequestKeys {
   account_id: string | null;
   created_at: Timestamp;
@@ -464,6 +481,19 @@ export interface StudentContracts {
   student_id: string;
 }
 
+export interface StudentRelatives {
+  branch_id: string;
+  id: Generated<string>;
+  linked_at: Timestamp;
+  main_contact: boolean;
+  portal_access: Generated<boolean>;
+  receives_notices: Generated<boolean>;
+  relationship: string;
+  relative_id: string;
+  student_id: string;
+  unlinked_at: Timestamp | null;
+}
+
 export interface Students {
   address: string | null;
   birth_date: string;
@@ -586,6 +616,8 @@ export interface DB {
   notifications: Notifications;
   password_reset_links: PasswordResetLinks;
   quarters: Quarters;
+  relative_accounts: RelativeAccounts;
+  relatives: Relatives;
   request_keys: RequestKeys;
   rooms: Rooms;
   schema_migrations: SchemaMigrations;
@@ -606,6 +638,7 @@ export interface DB {
   staff_subjects: StaffSubjects;
   student_accounts: StudentAccounts;
   student_contracts: StudentContracts;
+  student_relatives: StudentRelatives;
   student_statuses: StudentStatuses;
   student_uids: StudentUids;
   students: Students;

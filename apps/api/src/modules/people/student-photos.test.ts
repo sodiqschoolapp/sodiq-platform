@@ -10,6 +10,7 @@ import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import { relativesInput } from '../../testing/relatives-kit.js';
 import { jpegOf, pngOf } from '../../testing/photos-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { MemoryPhotoStore, type PhotoStore } from './photo-store.js';
@@ -142,6 +143,7 @@ describe('student photos', () => {
       scholarship: { type: 'none', coverage: null, amount: null },
       consentSignedOn: null,
       contract: { number: `PH-2026/${String(count)}`, signedOn: '2026-08-22' },
+      relatives: relativesInput(),
     });
     expect(response.status, JSON.stringify(response.body)).toBe(201);
     return studentDetailSchema.parse(response.body);

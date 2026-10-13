@@ -197,6 +197,16 @@ export const uz: Texts<'one' | 'other'> = {
     student_has_data:
       'Oʻquvchida maʼlumotlar bor (stipendiya, ketish, bitirish yoki ikkinchi shartnoma), uni oʻchirib boʻlmaydi. Bitta oʻquvchining maʼlumotli ikki yozuvini Super Admin birlashtiradi.',
     student_changed: 'Oʻquvchini boshqa kishi oʻzgartirdi. Sahifani yangilang va qayta urining.',
+    student_needs_relative:
+      'Oʻquvchining hali qarindoshi yoʻq. «Qarindoshlar» yorligʻida qarindosh qoʻshing, soʻng yozuvni saqlang.',
+    relative_phone_taken:
+      'Bu telefon boshqa qarindoshga tegishli. Raqamni tekshiring yoki oʻsha qarindoshni oching.',
+    relative_phone_exists:
+      'Bu telefonli qarindosh allaqachon bor. Yangisini yaratish oʻrniga oʻsha kishini bogʻlang.',
+    relative_phone_changed:
+      'Tanlangan qarindoshda endi bu telefon yoʻq. Telefonni qayta kiriting.',
+    last_relative: 'Oʻquvchida kamida bitta qarindosh qolishi kerak. Avval boshqasini qoʻshing.',
+    main_contact_needed: 'Boshqa qarindoshni asosiy aloqa qilib tanlang.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',

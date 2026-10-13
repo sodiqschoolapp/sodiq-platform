@@ -271,6 +271,18 @@ export const ERROR_CODES = [
   'student_has_data',
   /** The student's status changed since the page was read (edge/students-classes-groups: "student changed, reload"; task 2.4b-1). */
   'student_changed',
+  /** A student is saved, or a student of 2.4a edited, without a relative (`04`: "A student cannot be saved without at least one relative"; task 2.5a). */
+  'student_needs_relative',
+  /** The new main phone of a relative belongs to another relative (`04`, Changing a phone; task 2.5a). `details` names the holder. */
+  'relative_phone_taken',
+  /** A new relative is given a main phone that a relative already has: link that person instead (`04`, Adding a relative; task 2.5a). `details` names the holder. */
+  'relative_phone_exists',
+  /** The relative chosen by phone no longer has that phone (task 2.5a, decision 18). */
+  'relative_phone_changed',
+  /** The last relative of a student is not unlinked (`04`: "the last relative of a student cannot be removed"; task 2.5a). */
+  'last_relative',
+  /** A student keeps exactly one main contact: unlinking or clearing it names another (`edge/close-relatives`; task 2.5a). */
+  'main_contact_needed',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
@@ -295,6 +307,11 @@ export const errorDetailSchema = z.object({
    * it (task 2.4a, decision 3: a student of the branch of the request).
    */
   recordId: z.uuid().optional(),
+  /**
+   * The relative that holds a phone refused as taken (task 2.5a, decision 3):
+   * the name and the number of students linked in every branch.
+   */
+  holder: z.object({ fullName: z.string(), students: z.int().min(0) }).optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

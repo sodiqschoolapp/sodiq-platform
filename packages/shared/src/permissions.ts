@@ -198,6 +198,16 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   with the class scope of task 3.1. Which groups a file holds is decided by
  *   the route. Decided without the owner on pull request #70 (decision 1,
  *   Look first), confirmed at its review and flagged on issue #42.
+ * - `relatives` (`04`, Close relatives; `edge/close-relatives`; task 2.5a): the
+ *   Parents list and page, the relative record and the phone typed first.
+ *   The Super Admin and the Academic Vice Principal view, create and edit
+ *   (`edge/people-roles-accounts`: "The Academic Vice Principal creates
+ *   student and relative records"; `04`: "The Academic Vice Principal has a
+ *   Relatives list"); the Principal views (`02`: "Views everything in the
+ *   branch"). The links of a student are written under `students` `edit`
+ *   and read on the Relatives tab under `student_contact` `view`. A new area
+ *   for new routes, decided without the owner on pull request #72 (decision
+ *   4, Look first), confirmed at its review and flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -304,6 +314,11 @@ export const PERMISSIONS = freezeTable({
   }),
   student_graduates: rows({
     super_admin: ['edit'],
+  }),
+  relatives: rows({
+    super_admin: ['view', 'create', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create', 'edit'],
   }),
   current_period: rows({
     super_admin: ['view'],

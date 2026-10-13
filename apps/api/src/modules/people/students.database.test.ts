@@ -17,6 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SystemClock } from '../../clock/system-clock.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { linkRelative } from '../../testing/relatives-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
@@ -119,6 +120,7 @@ describe('student records in the database', () => {
       .insertInto('student_accounts')
       .values({ student_id: id, branch_id: input.branch, created_at: MOMENT })
       .execute();
+    await linkRelative(transaction, id, input.branch, MOMENT);
     return id;
   }
 

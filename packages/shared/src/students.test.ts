@@ -32,6 +32,18 @@ const record = {
   contract: { number: ' SQ-2026/017 ', signedOn: '2026-08-20' },
 };
 
+/** Task 2.5a: a student is created with a relative. */
+const relatives = [
+  {
+    kind: 'new',
+    relative: { fullName: 'Dilfuza Saidova', phone: '+998901234567', workplace: '', email: '' },
+    relationship: 'mother',
+    mainContact: true,
+    portalAccess: true,
+    receivesNotices: true,
+  },
+];
+
 describe('spellingKey (answer 18)', () => {
   it('folds the look-alike spellings of one name into one key', () => {
     const keys = ['Oʻtkir', "O'tkir", 'O’tkir', 'Otkir', 'Ўткир', 'ЎТКИР', 'oʼtkir'].map(
@@ -124,6 +136,7 @@ describe('the student record', () => {
         startsOn: '2026-09-02',
         uid: '2607001',
         confirmUidSet: false,
+        relatives,
       }).success,
     ).toBe(true);
     for (const uid of ['', '260700', '26070011', 'SI26070', '26O7001']) {
@@ -133,6 +146,7 @@ describe('the student record', () => {
           startsOn: '2026-09-02',
           uid,
           confirmUidSet: false,
+          relatives,
         }).success,
         uid,
       ).toBe(false);

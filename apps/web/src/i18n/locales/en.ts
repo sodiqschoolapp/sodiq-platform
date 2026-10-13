@@ -189,6 +189,16 @@ export const en = {
     student_has_data:
       'This student holds data (a scholarship, a leaving, a graduation or a second contract) and cannot be deleted. Two records of one student with data are merged by the Super Admin.',
     student_changed: 'This student was changed by someone else. Reload the page and try again.',
+    student_needs_relative:
+      'This student has no relative yet. Add a relative on the Relatives tab, then save the record.',
+    relative_phone_taken:
+      'This phone belongs to another relative. Check the number, or open that relative.',
+    relative_phone_exists:
+      'A relative with this phone already exists. Link that person instead of creating a new one.',
+    relative_phone_changed:
+      'The relative you chose no longer has that phone. Type the phone again.',
+    last_relative: 'A student keeps at least one relative. Add another relative first.',
+    main_contact_needed: 'Choose another relative as the main contact.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
