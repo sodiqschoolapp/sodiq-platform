@@ -231,18 +231,23 @@ export class Relatives {
             owner !== null && record.phone !== null && record.phone !== row.phone
               ? await this.writes.releasePhone(transaction, access, record.phone, owner, 'newOwner')
               : null;
-          await writingPhone(record.phone, 'phone', 'relative_phone_taken', () =>
-            transaction
-              .updateTable('relatives')
-              .set({
-                full_name: record.fullName,
-                name_key: relativeNameKey(record.fullName),
-                phone: record.phone,
-                workplace: record.workplace,
-                email: record.email,
-              })
-              .where('id', '=', id)
-              .execute(),
+          await writingPhone(
+            record.phone,
+            'phone',
+            'relative_phone_taken',
+            () =>
+              transaction
+                .updateTable('relatives')
+                .set({
+                  full_name: record.fullName,
+                  name_key: relativeNameKey(record.fullName),
+                  phone: record.phone,
+                  workplace: record.workplace,
+                  email: record.email,
+                })
+                .where('id', '=', id)
+                .execute(),
+            id,
           );
           if (released !== null && owner !== null && record.phone !== null) {
             await this.writes.releasedEntry(
@@ -380,8 +385,15 @@ export class Relatives {
           .execute();
         const links = await liveLinks();
         const self = rows.find((row) => row.id === id);
+        // The record of the path is still linked live in the branch of the
+        // request: an unlink may have committed before the locks (code review
+        // 1, finding 3).
+        const stillHere = links.some(
+          (link) => link.relative_id === id && link.branch_id === branchId,
+        );
         const other = rows.find((row) => row.id === input.otherId);
         if (
+          !stillHere ||
           self === undefined ||
           other === undefined ||
           self.merged_into !== null ||

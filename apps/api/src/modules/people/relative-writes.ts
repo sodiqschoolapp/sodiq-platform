@@ -65,6 +65,8 @@ export class PhoneHeld extends Error {
     readonly phone: string,
     readonly path: string,
     readonly code: 'relative_phone_taken' | 'relative_phone_exists',
+    /** The relative whose own phone change was refused, when there is one. */
+    readonly recordId?: string,
   ) {
     super('The main phone belongs to another relative.');
   }
@@ -76,6 +78,7 @@ export async function writingPhone<T>(
   path: string,
   code: PhoneHeld['code'],
   work: () => Promise<T>,
+  recordId?: string,
 ): Promise<T> {
   try {
     return await work();
@@ -86,7 +89,7 @@ export async function writingPhone<T>(
       failure.code === UNIQUE_VIOLATION &&
       failure.constraint === 'relatives_phone_idx'
     ) {
-      throw new PhoneHeld(phone, path, code);
+      throw new PhoneHeld(phone, path, code, recordId);
     }
     throw error;
   }
@@ -325,6 +328,28 @@ export class RelativeWrites {
         const superAdmin = access.assignments.some(
           (assignment) => assignment.role === 'super_admin',
         );
+        // Anyone but the Super Admin is offered it only when neither record is
+        // linked live outside the branch of the request, the test the merge
+        // applies (`edge`, row 3; plan decision 7; code review 1, finding 2).
+        const onlyHere = async (relativeId: string) =>
+          (await transaction
+            .selectFrom('student_relatives')
+            .select('id')
+            .where('relative_id', '=', relativeId)
+            .where('branch_id', '<>', branchId)
+            .where('unlinked_at', 'is', null)
+            .executeTakeFirst()) === undefined &&
+          (await this.elsewhere(transaction, relativeId)) === 0;
+        const offered = error.code === 'relative_phone_taken' && error.path === 'phone';
+        const mergeable =
+          offered && holder.id !== null
+            ? superAdmin
+              ? here || holder.students > 0
+              : here &&
+                error.recordId !== undefined &&
+                (await onlyHere(holder.id)) &&
+                (await onlyHere(error.recordId))
+            : false;
         const found: ErrorDetail = {
           path: error.path,
           code: 'already_exists',
@@ -333,9 +358,7 @@ export class RelativeWrites {
           ...(visible && holder.id !== null ? { recordId: holder.id } : {}),
           // Only for the record's own phone: a merge means nothing for the new
           // phone of an earlier relative (permission review, finding 6).
-          ...(error.code === 'relative_phone_taken' && error.path === 'phone'
-            ? { mergeable: here || (superAdmin && holder.students > 0) }
-            : {}),
+          ...(offered ? { mergeable } : {}),
         };
         return found;
       });

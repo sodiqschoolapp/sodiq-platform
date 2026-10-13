@@ -394,7 +394,6 @@ describe('phone owners, merges and the notice to the other branch', () => {
         holder: { fullName: 'Shoira Nazarova', students: 1 },
       });
       expect(await snapshot()).toEqual(before);
-      // Two numbers swapped one after the other: the second meets the first.
     });
 
     it('is refused validation when the earlier relative would keep the number', async () => {
@@ -456,7 +455,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
       refusedWith(await waiting, 409, 'relative_phone_changed');
     });
 
-    it('answers a deadlock of two crossing changes, never a fault (decision 10)', async () => {
+    it('turns a deadlock error (40P01) into relative_changed, never a fault (decision 10)', async () => {
       await expect(
         refusingRelativeRaces(() =>
           Promise.reject(Object.assign(new Error('x'), { code: '40P01' })),
@@ -757,6 +756,105 @@ describe('phone owners, merges and the notice to the other branch', () => {
       expect(detailsOf(refused)[0]).toMatchObject({ mergeable: true, recordId: holder.relativeId });
     });
 
+    it('offers the merge to the Academic Vice Principal only when neither record is linked in another branch', async () => {
+      const record = (number: string | null) => ({
+        fullName: 'Dilfuza Karimova',
+        phone: number,
+        workplace: null,
+        email: null,
+      });
+      // The holder is linked in the north and in the south.
+      const holderPhone = phone();
+      const holder = await withRelative(holderPhone, t.north);
+      await student([{ ...existing(holder.relativeId, holderPhone), mainContact: true }], t.south);
+      const edited = await withRelative(phone(), t.north);
+      const refused = await t.patch(
+        `/api/people/relatives/${edited.relativeId}`,
+        t.north,
+        record(holderPhone),
+        t.vicePrincipal,
+      );
+      refusedWith(refused, 409, 'relative_phone_taken');
+      expect(detailsOf(refused)[0]).toMatchObject({
+        mergeable: false,
+        recordId: holder.relativeId,
+      });
+      const asAdmin = await t.patch(
+        `/api/people/relatives/${edited.relativeId}`,
+        t.north,
+        record(holderPhone),
+      );
+      expect(detailsOf(asAdmin)[0]).toMatchObject({ mergeable: true });
+      // The edited record is linked in the south too, the holder in the north only.
+      const northOnlyPhone = phone();
+      const northOnly = await withRelative(northOnlyPhone, t.north);
+      const sharedPhone = phone();
+      const shared = await withRelative(sharedPhone, t.north);
+      await student([{ ...existing(shared.relativeId, sharedPhone), mainContact: true }], t.south);
+      const refusedShared = await t.patch(
+        `/api/people/relatives/${shared.relativeId}`,
+        t.north,
+        record(northOnlyPhone),
+        t.vicePrincipal,
+      );
+      refusedWith(refusedShared, 409, 'relative_phone_taken');
+      expect(detailsOf(refusedShared)[0]).toMatchObject({
+        mergeable: false,
+        recordId: northOnly.relativeId,
+      });
+      const sharedAsAdmin = await t.patch(
+        `/api/people/relatives/${shared.relativeId}`,
+        t.north,
+        record(northOnlyPhone),
+      );
+      expect(detailsOf(sharedAsAdmin)[0]).toMatchObject({ mergeable: true });
+    });
+
+    it('is refused relative_changed when the path record was unlinked from the branch while it waited', async () => {
+      // The path record is linked in the south and, not as main contact, to a
+      // student of the north; the other record in the north.
+      const pathPhone = phone();
+      const path = await withRelative(pathPhone, t.south);
+      const northStudent = await student(
+        [newRelative(phone()), { ...existing(path.relativeId, pathPhone), mainContact: false }],
+        t.north,
+      );
+      const otherPhone = phone();
+      const other = await withRelative(otherPhone, t.north);
+      // An unlink of the northern link, held open with the student locked.
+      const held = await holdOpen([t.north], async (transaction) => {
+        await transaction
+          .selectFrom('students')
+          .select('id')
+          .where('id', '=', northStudent.id)
+          .forUpdate()
+          .execute();
+        await transaction
+          .updateTable('student_relatives')
+          .set({ unlinked_at: new Date('2026-10-10T18:55:00Z') })
+          .where('relative_id', '=', path.relativeId)
+          .where('student_id', '=', northStudent.id)
+          .execute();
+      });
+      const merging = merge(
+        path.relativeId,
+        {
+          otherId: other.relativeId,
+          thisPhone: pathPhone,
+          otherPhone,
+          phoneOf: 'other',
+          nameOf: 'other',
+        },
+        t.north,
+        t.admin,
+      ).then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      await held.done;
+      refusedWith(await merging, 409, 'relative_changed');
+      expect(await stored(path.relativeId)).toMatchObject({ phone: pathPhone, merged_into: null });
+    });
+
     it('makes a link to the merged record wait and refuses it relative_merged', async () => {
       const keptPhone = phone();
       const mergedPhone = phone();
@@ -846,7 +944,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
       expect((await stored(merged.relativeId)).merged_into).toBeNull();
     });
 
-    it('refuses the second of two merges sharing a record, without a deadlock', async () => {
+    it('refuses the second of two merges sharing a record', async () => {
       const aPhone = phone();
       const bPhone = phone();
       const cPhone = phone();

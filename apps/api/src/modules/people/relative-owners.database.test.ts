@@ -270,6 +270,52 @@ describe('phone owners and merges in the database', () => {
       expect((await stored(holder.relative)).phone).toBeNull();
     });
 
+    it('refuses an unknown relative, changing nothing', async () => {
+      const holder = await studentWithRelative(south, '+998901120010');
+      await expect(
+        release(north, '00000000-0000-7000-8000-000000000000', '+998901120010', null),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'relative_phone_changed' });
+      expect(await stored(holder.relative)).toMatchObject({
+        phone: '+998901120010',
+        phone_invalid_since: null,
+      });
+    });
+
+    it('refuses an empty branch of the request, changing nothing', async () => {
+      const holder = await studentWithRelative(south, '+998901120011');
+      await expect(
+        inBranch(north, (transaction) =>
+          sql`
+            select * from relative_release_phone(
+              ${holder.relative}::uuid, ${'+998901120011'}, ${null}, ${null}::uuid
+            )
+          `.execute(transaction),
+        ),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'relative_request_branch' });
+      expect(await stored(holder.relative)).toMatchObject({
+        phone: '+998901120011',
+        phone_invalid_since: null,
+      });
+    });
+
+    it('refuses "no valid phone" in a transaction without a moment, changing nothing', async () => {
+      const holder = await studentWithRelative(south, '+998901120012');
+      await expect(
+        inBranch(north, async (transaction) => {
+          await sql`select set_config('app.now', '', true)`.execute(transaction);
+          await sql`
+            select * from relative_release_phone(
+              ${holder.relative}::uuid, ${'+998901120012'}, ${null}, ${north}::uuid
+            )
+          `.execute(transaction);
+        }),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'relatives_archive_moment' });
+      expect(await stored(holder.relative)).toMatchObject({
+        phone: '+998901120012',
+        phone_invalid_since: null,
+      });
+    });
+
     it('refuses a branch of the request outside the transaction (correction 3)', async () => {
       const holder = await studentWithRelative(south, '+998901120009');
       await expect(
@@ -370,19 +416,24 @@ describe('phone owners and merges in the database', () => {
     it('is archived with its account off, and the kept record keeps its own', async () => {
       const kept = await studentWithRelative(north, '+998901140001');
       const merged = await studentWithRelative(north, '+998901140002');
+      const accountsOf = () =>
+        database.migrator
+          .selectFrom('relative_accounts')
+          .selectAll()
+          .where('relative_id', 'in', [kept.relative, merged.relative])
+          .orderBy('relative_id')
+          .execute();
+      const before = await accountsOf();
+      expect(before).toHaveLength(2);
       await mergeInto(north, merged, kept.relative);
       expect(await stored(merged.relative)).toMatchObject({
         phone: null,
         merged_into: kept.relative,
       });
       expect((await stored(merged.relative)).archived_at).not.toBeNull();
-      const accounts = await database.migrator
-        .selectFrom('relative_accounts')
-        .select(['relative_id', 'switched_on_at'])
-        .where('relative_id', 'in', [kept.relative, merged.relative])
-        .execute();
-      expect(accounts).toHaveLength(2);
-      expect(accounts.every((one) => one.switched_on_at === null)).toBe(true);
+      // Each record keeps its own account row, unchanged: the merged one's
+      // stays with it, the kept one's is not replaced (correction 2).
+      expect(await accountsOf()).toEqual(before);
     });
 
     it('refuses a merged record with a phone, into itself, and one left linked at the commit', async () => {
@@ -548,6 +599,17 @@ describe('phone owners and merges in the database', () => {
       await expect(noticeAccounts([north], only.relative, south)).rejects.toMatchObject({
         constraint: 'relative_request_branch',
       });
+    });
+
+    it('refuses an empty branch of the request', async () => {
+      const shared = await studentWithRelative(north, '+998901150003');
+      await expect(
+        inBranch(north, (transaction) =>
+          sql`
+            select * from relative_notice_accounts(${shared.relative}::uuid, ${null}::uuid)
+          `.execute(transaction),
+        ),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'relative_request_branch' });
     });
   });
 });
