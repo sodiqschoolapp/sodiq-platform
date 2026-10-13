@@ -71,6 +71,13 @@ export function nextDay(date: string): string {
   return day.toISOString().slice(0, 10);
 }
 
+/** The school date before the one given: the last day of a row that ends at it (task 2.4b-1). */
+export function previousDay(date: string): string {
+  const day = new Date(`${date}T00:00:00Z`);
+  day.setUTCDate(day.getUTCDate() - 1);
+  return day.toISOString().slice(0, 10);
+}
+
 /** Minutes after midnight as `HH:MM`; the end of a day may be `24:00`. */
 export function timeText(minutes: number): string {
   const hours = Math.floor(minutes / MINUTES_PER_HOUR);

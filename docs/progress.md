@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 12 October 2026: task 2.4b-1 Leaving, return and delete
+
+- Built: migrations 0033 and 0034 (`cause` and `reason` of `student_statuses`, `student_statuses_closed_year_guard`, `students_delete_guard`, the children `on delete cascade`, `student_uids.released_at` with `student_uids_release`, `student_uids_insert_guard`); six routes in `StudentStatusesController` (leaving, cancel, undo, return, restore, delete) planned by the pure `student-status.ts`; `archive` on `students` and the area `student_graduates`; `version`, `planned`, `canArchive`, `canRestoreGraduated`, `deletable` in the answers.
+- Screens: the Status section of the student panel (history, leave, cancel, undo, return, restore, delete), the "Inactive from" badge and the bulk "Leave school" of the list, "Restore this student" on a document match; browser test in `people.spec.ts` (screenshots in `docs/screens/2.4b-1/`).
+- Tests: `student-status.test.ts`, `student-leaving.database.test.ts`, `student-statuses.test.ts` (every route, role, 404, refusal and race), `students-page.test.tsx`.
+- Left out: export, photos, consent list, "No class" counter (2.4b-2); classes on leaving and return, scheduled moves (3.3); exemptions (8.5); closed quarters (9.2b); journals after the last day (8.6); graduation (9.5a).
+
+The next sessions must know:
+
+- Every status change locks the student row first and is refused `student_changed` when the `version` sent (the number of status rows) is not the one read after the lock; every change writes at least one status row.
+- A new table of student data references `students` with no action (never cascade): its key refuses the delete; map `23503` to `student_has_data` in `StudentStatuses.delete`.
+- A status row dated in a closed year is refused by the database (`date_in_closed_year`); a graduation must write its rows before its year is closed.
+- The next task is 2.4b-2.
+
 ## 12 October 2026: task 2.4a Student record, UID and readers
 
 - Built: migration 0032 (`students`, `student_uids` reserved for good, `student_contracts`, `student_statuses`, `student_accounts` switched off, `student_duplicate_elsewhere`); seven routes under `people/students` in `Students` with the areas `students`, `student_contact`, `student_identity`, `student_financial`; `spellingKey`, `uidSetOf` and the student schemas in `packages/shared/src/students.ts`; the error codes `uid_set_mismatch`, `no_academic_year`, `student_value_taken`.

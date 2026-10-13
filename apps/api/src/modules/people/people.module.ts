@@ -17,6 +17,8 @@ import { StaffPhotosController } from './staff-photos.controller.js';
 import { StaffPhotos } from './staff-photos.service.js';
 import { StaffController } from './staff.controller.js';
 import { Staff } from './staff.service.js';
+import { StudentStatusesController } from './student-statuses.controller.js';
+import { StudentStatuses } from './student-statuses.service.js';
 import { StudentsController } from './students.controller.js';
 import { Students } from './students.service.js';
 import { VacanciesController } from './vacancies.controller.js';
@@ -27,7 +29,7 @@ import { Vacancies } from './vacancies.service.js';
  * 2.2a), availability and vacancies (task 2.2b), staff photos (task 2.2c-2),
  * the account section of a record (task 2.3a), the Head Teacher appointments
  * (task 2.3b-1), the sign-in access of an account (task 2.3c-1), student
- * records (task 2.4a).
+ * records (task 2.4a), their leaving, return and delete (task 2.4b-1).
  */
 @Module({
   imports: [AccessModule, AuthModule],
@@ -41,6 +43,7 @@ import { Vacancies } from './vacancies.service.js';
     AvailabilityController,
     VacanciesController,
     StudentsController,
+    StudentStatusesController,
   ],
   providers: [
     Staff,
@@ -51,6 +54,7 @@ import { Vacancies } from './vacancies.service.js';
     StaffAvailability,
     Vacancies,
     Students,
+    StudentStatuses,
     {
       provide: PHOTO_STORE,
       useFactory: (config: AppConfig) => photoStoreOf(config.photos),

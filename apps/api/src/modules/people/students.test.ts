@@ -210,7 +210,9 @@ describe('student records', () => {
         grade: 7,
         startsOn: '2026-09-02',
         status: 'active',
-        statuses: [{ status: 'active', from: '2026-09-02', until: null }],
+        statuses: [
+          { status: 'active', from: '2026-09-02', until: null, cause: 'start', reason: null },
+        ],
         canEdit: true,
       });
       const uid = await t.database.migrator
@@ -219,7 +221,13 @@ describe('student records', () => {
         .where('student_id', '=', student.id)
         .execute();
       expect(uid).toEqual([
-        { uid: input.uid, student_id: student.id, branch_id: t.north, held_from: MOMENT },
+        {
+          uid: input.uid,
+          student_id: student.id,
+          branch_id: t.north,
+          held_from: MOMENT,
+          released_at: null,
+        },
       ]);
       const account = await t.database.migrator
         .selectFrom('student_accounts')
@@ -816,6 +824,8 @@ describe('student records', () => {
           grade: 7,
           startsOn: '2026-09-02',
           status: 'active',
+          planned: null,
+          version: 1,
         });
         expect(JSON.stringify(response.body)).not.toContain('+99890');
       }

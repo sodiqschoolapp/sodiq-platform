@@ -3,7 +3,9 @@ import {
   permits,
   STUDENT_STATUSES,
   studentCheckResultSchema,
+  studentLeavingSchema,
   type StudentCreate,
+  type StudentLeaving,
   type StudentListItem,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,13 +15,19 @@ import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
+import { FailureAlert } from '@/components/failure-alert';
+import { DateField, Field } from '@/components/field';
+import { RecordForm } from '@/components/form/record-form';
 import { SaveCancelled } from '@/components/form/save-cancelled';
-import { ListPage } from '@/components/list/list-page';
+import { useRecordForm } from '@/components/form/use-record-form';
+import { ListPage, type BulkAction } from '@/components/list/list-page';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
+import { schoolDateText } from '@/features/setup/setup-api';
+import { asFormSchema } from './form-schema';
 import { invalidateStudents, studentsQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
 import { StudentForm } from './student-form';
@@ -31,6 +39,30 @@ const fullName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) =>
 /** No class, group or tutor exists before tasks 3.1 and 3.2 (answer 17: "every student shows No class"). */
 const NO_CLASS = 'none';
 
+/** One last day and reason for every ticked student (task 2.4b-1, decision 12). */
+type BulkLeaving = Omit<StudentLeaving, 'version'>;
+
+const BULK_LEAVING_SCHEMA = asFormSchema<BulkLeaving>(
+  studentLeavingSchema.omit({ version: true }),
+  (path) => [...path],
+);
+
+/** The refusals the bulk leaving names instead of stopping at: the others go on. */
+const BULK_REFUSALS: ReadonlySet<string> = new Set([
+  'student_not_active',
+  'leaving_before_start',
+  'date_in_closed_year',
+  'student_changed',
+  'not_found',
+]);
+
+/** What a bulk leaving did: how many went through, the names of those refused, and a failure that stopped it. */
+interface Outcome {
+  done: number;
+  refused: string[];
+  failure: unknown;
+}
+
 /**
  * The students of the branch (`04`, Student record: "Student list columns, in
  * this order: checkbox, number, photo, UID, name and surname, class (grade
@@ -40,7 +72,8 @@ const NO_CLASS = 'none';
  * and the Academic Vice Principal add students.
  */
 export function StudentsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const number = useMemo(() => new Intl.NumberFormat(i18n.language), [i18n.language]);
   const navigate = useNavigate();
   const search = useSearch({ from: '/app/people/students' });
   const { role, branchId } = useView();
@@ -48,6 +81,8 @@ export function StudentsPage() {
   const leave = useLeave();
   const confirm = useConfirm();
   const [adding, setAdding] = useState(false);
+  const [leaving, setLeaving] = useState<StudentListItem[] | null>(null);
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
   const canCreate = role !== null && permits(PERMISSIONS, role, 'students', 'create');
   const students = useQuery(studentsQuery(branchId));
 
@@ -59,6 +94,66 @@ export function StudentsPage() {
     const found = byId.get(id);
     return found === undefined ? null : `${fullName(found)} (${found.uid})`;
   };
+  // A graduated holder is offered only to a reader who may restore one (the Super Admin).
+  const canRestoreGraduated =
+    role !== null && permits(PERMISSIONS, role, 'student_graduates', 'edit');
+  const holderRestorable = (id: string): boolean => {
+    const status = byId.get(id)?.status;
+    return status === 'inactive' || (status === 'graduated' && canRestoreGraduated);
+  };
+  const canArchive = students.data?.canArchive === true;
+
+  /**
+   * The bulk "Leave school" (`04`: "Bulk actions on ticked rows: ... archive"):
+   * one leaving per student with the version the list read, each its own
+   * change; a refused one is named and the others go on.
+   */
+  const leaveMany = useMutation({
+    mutationFn: async ({ rows, input }: { rows: StudentListItem[]; input: BulkLeaving }) => {
+      const result: Outcome = { done: 0, refused: [], failure: null };
+      for (const row of rows) {
+        try {
+          await answerOf(
+            api.POST('/api/people/students/{id}/leaving', {
+              params: { header: branchHeader(), path: { id: row.id } },
+              body: { ...input, version: row.version },
+            }),
+          );
+          result.done += 1;
+        } catch (error) {
+          if (!(error instanceof ApiFailure) || !BULK_REFUSALS.has(error.code)) {
+            // Anything else stops the rest; what was done is still said.
+            result.failure = error;
+            break;
+          }
+          result.refused.push(fullName(row));
+        }
+      }
+      return result;
+    },
+    onSuccess: (result) => {
+      setOutcome(result);
+      setLeaving(null);
+    },
+    onSettled: () => invalidateStudents(queryClient),
+  });
+
+  const bulkActions = useMemo(
+    (): BulkAction<StudentListItem>[] =>
+      canArchive
+        ? [
+            {
+              key: 'leave',
+              label: t('people.students.bulkLeave'),
+              run: (rows) => {
+                setOutcome(null);
+                setLeaving(rows);
+              },
+            },
+          ]
+        : [],
+    [canArchive, t],
+  );
 
   /**
    * The duplicate warning before a new student is saved (edge: "A matching
@@ -175,14 +270,24 @@ export function StudentsPage() {
       {
         key: 'status',
         header: t('people.students.status'),
-        cell: (row) =>
-          row.status === null
-            ? t('people.students.notStarted')
-            : t(`people.students.statuses.${row.status}`),
+        cell: (row) => (
+          <>
+            {row.status === null
+              ? t('people.students.notStarted')
+              : t(`people.students.statuses.${row.status}`)}
+            {row.planned?.status === 'inactive' && (
+              <span className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                {t('people.students.inactiveFrom', {
+                  date: schoolDateText(row.planned.from, i18n.language),
+                })}
+              </span>
+            )}
+          </>
+        ),
         sortValue: (row) => row.status ?? '',
       },
     ],
-    [t],
+    [t, i18n.language],
   );
 
   const filters = useMemo(
@@ -250,6 +355,10 @@ export function StudentsPage() {
             student={null}
             label={t('people.students.newTitle')}
             holderText={holderText}
+            holderRestorable={holderRestorable}
+            onOpenHolder={(id) => {
+              open({ ...search, open: id }, 'push');
+            }}
             onCreate={async (record) => {
               await create.mutateAsync(record);
             }}
@@ -270,6 +379,44 @@ export function StudentsPage() {
           </div>
         </section>
       )}
+      {leaving !== null && (
+        <BulkLeavingForm
+          key={leaving.map((row) => row.id).join()}
+          title={t('people.students.bulkLeaveTitle', {
+            count: leaving.length,
+            n: number.format(leaving.length),
+          })}
+          onSave={async (input) => {
+            const go = await confirm({
+              title: t('people.students.leaveConfirmTitle'),
+              text: t('people.students.leaveConfirmText'),
+              names: leaving.map(fullName),
+              action: t('people.students.leaveAction'),
+              destructive: true,
+            });
+            if (!go) {
+              throw new SaveCancelled();
+            }
+            await leaveMany.mutateAsync({ rows: leaving, input });
+          }}
+          onCancel={() => {
+            setLeaving(null);
+          }}
+        />
+      )}
+      {outcome !== null && (
+        <p role="status" className="mb-3 text-sm">
+          {t('people.students.bulkLeft', { count: outcome.done, n: number.format(outcome.done) })}
+          {outcome.refused.length > 0 && (
+            <> {t('people.students.bulkRefused', { names: outcome.refused.join(', ') })}</>
+          )}
+        </p>
+      )}
+      {outcome !== null && outcome.failure !== null && (
+        <div className="mb-3">
+          <FailureAlert error={outcome.failure} />
+        </div>
+      )}
       <ListPage
         listId="students"
         caption={t('people.students.caption')}
@@ -289,10 +436,56 @@ export function StudentsPage() {
           text: t('people.students.empty'),
           action: addButton === false ? undefined : addButton,
         }}
+        bulkActions={bulkActions}
         panel={(row) => (
           <StudentPanel key={row.id} id={row.id} name={fullName(row)} holderText={holderText} />
         )}
       />
     </>
+  );
+}
+
+/** The one last day and reason of a bulk leaving, above the list. */
+function BulkLeavingForm({
+  title,
+  onSave,
+  onCancel,
+}: {
+  title: string;
+  onSave: (input: BulkLeaving) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const leave = useLeave();
+  const form = useRecordForm<'lastDay' | 'reason', BulkLeaving>({
+    schema: BULK_LEAVING_SCHEMA,
+    initial: { lastDay: '', reason: '' },
+    save: onSave,
+  });
+  return (
+    <section
+      aria-label={title}
+      className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6 max-sm:p-4"
+    >
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <RecordForm form={form} label={title}>
+        <DateField label={t('people.students.lastDay')} {...form.bind('lastDay')} />
+        <Field label={t('people.students.reason')} {...form.bind('reason')} />
+      </RecordForm>
+      <div>
+        <Button
+          variant="ghost"
+          onClick={() => {
+            void leave.leave().then((leaves) => {
+              if (leaves) {
+                onCancel();
+              }
+            });
+          }}
+        >
+          {t('people.students.cancel')}
+        </Button>
+      </div>
+    </section>
   );
 }

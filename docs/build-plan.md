@@ -231,10 +231,15 @@ How to read the task lines:
   - Build: student record with contract and scholarship fields; the UID typed by hand, unique across the school for good (inactive, graduated and corrected-away UIDs included), its set warning and its correction with a reason; the duplicate checks (JSHSHIR and document number block, name and birth date warn); the field groups and their readers, the Principal's logged show; the dated status rows (every student starts active); a student account created with the record and switched off until Release 2; the student list and the profile with the tabs that have data.
   - Done when: a duplicate UID is refused, including against archived records.
 
-- [ ] **2.4b Statuses, photos and export** (pull request #67, decision 1)
+- [x] **2.4b-1 Leaving, return and delete** (2.4b split in two, pull request #68, decision 1)
   - Read: `04` (Student record, Movements), `edge/students-classes-groups`, `edge/people-roles-accounts` (Personal data and the audit log), the plan of pull request #67.
-  - Build: leaving (inactive, a date and a reason, scheduled when in the future, cancellable until the date), "undo leaving" with a reason, coming back from the Inactive list with a new contract, the Super Admin's restore of a graduated student with a reason; the delete of a student created twice (no data; `edge`: "A student is created twice by mistake"); "restore this student" offered on a document match of the branch; bulk actions on ticked rows (archive, export); the Excel export of the list by readers (whole-branch contact or identity fields for the Super Admin and the Academic Vice Principal only; Tutors their own class from 3.1); student photos (a second `FileRoute`); the list of active students without consent (answer 23); the "No class" counter on the Academic Vice Principal's home page.
-  - Done when: a leaving and a return keep the UID and history, and an export holds only the groups the role reads.
+  - Build: leaving (inactive, a date and a reason, scheduled when in the future, cancellable until the date), "undo leaving" with a reason, coming back from the Inactive list with a new contract, the Super Admin's restore of a graduated student with a reason; the delete of a student created twice (no data; `edge`: "A student is created twice by mistake"); "restore this student" offered on a document match of the branch; the bulk "Leave school" on ticked rows.
+  - Done when: a leaving and a return keep the UID and history.
+
+- [ ] **2.4b-2 Export, photos, consent list and the "No class" counter** (split from 2.4b on pull request #68, decision 1)
+  - Read: `04` (Student record), `edge/students-classes-groups`, `edge/people-roles-accounts` (Personal data and the audit log), `docs/decisions.md` ("Decided ahead for tasks 2.1 to 2.6", answers 1, 2 and 23), the plans of pull requests #58, #59, #67 and #68.
+  - Build: the Excel export of the student list by readers, ticked or matching, with the groups the role reads (whole-branch contact or identity fields for the Super Admin and the Academic Vice Principal only; Tutors their own class from 3.1), and its bulk action; student photos (a second `FileRoute`, the photo column of the list); the list of active students without consent (answer 23); the "No class" counter on the Academic Vice Principal's home page.
+  - Done when: an export holds only the groups the role reads.
 
 - [ ] **2.5 Close relatives (Parents)**
   - Read: `04` (Close relatives), `edge/close-relatives`.
@@ -246,6 +251,7 @@ How to read the task lines:
   - Read: `edge/people-roles-accounts` (Personal data and the audit log), `13` (Security).
   - Build: the audit log screen with search by person, record and date, and the reading rights per role; each user's own sign-in history; the personal data report per person; export rules (limited by role, every export logged).
   - Done when: a Principal sees only the branch's log and every export leaves a log entry.
+  - From 2.4b-1 (pull request #68): the audit entries `student.create`, `student.edit` and `student.delete` hold the identity fields of the student; a reader without the Identity group (the Principal) sees them hidden, with a logged show, as on the record.
 
 - [ ] **2.7 Polish of Phases 1 and 2**
   - Read: `docs/design-system.md`, `.claude/rules/web.md`, issue #39 (the owner's polish list; the owner adds the findings of the hand tests there before this task starts), `03` (the Branches list, spec change of 12 October 2026), `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7").
@@ -270,6 +276,7 @@ How to read the task lines:
   - Build: class transfer and group transfer with an effective date; leave and restore; scheduled moves; confirmation when moving between an Uzbek and a Russian class; the History tab. The effect inside journals is built in 8.6.
   - Done when: history shows each move with dates and a move into the past is handled as the spec says.
   - From 2.4a (pull request #67): leaving takes the student out of classes and groups from the date and a return places them in a class (2.4b builds the status side); the move to another branch (`edge/students-classes-groups`, "A student moves to another branch": released by the sending Academic Vice Principal, accepted by the receiving one, both by the Super Admin) as one update of `students.branch_id` through a guarded function, the keys of 0032 carrying the child rows (decision 15); the Super Admin's merge of two student records, the older UID kept (`edge`: "The Super Admin can merge two records").
+  - From 2.4b-1 (pull request #68): a leaving cancels the student's scheduled moves (`edge`: "scheduled moves are cancelled"); a return places the student in a class from the return date (`04`, Movements) and the Super Admin's restore of a graduated student with a class (`edge`: "restores the student to active with a class and a reason"), each re-checking the class rules then (`.claude/rules/database.md`, a row back in service is checked again); the History tab draws two adjacent active rows (an undo, a cancel) as one stretch.
 
 - [ ] **3.4 Teaching load**
   - Read: `05`, `04` (Teacher and staff record), `06` (Building a timetable, Rules), `edge/timetable` (Structure, After publishing).
@@ -412,6 +419,7 @@ How to read the task lines:
   - From 2.3 (pull request #62): the report of entries made within 48 hours of a password reset (`edge/people-roles-accounts`, Accounts and sign-in: "A report lists entries made within 48 hours of a reset"), once cells exist.
   - From 2.3c-2 (pull request #66, decision 6): the report also counts a password reset by email (`auth.password_reset_by_email`), and marks one that follows an email change by somebody else (the entry's `lastEmailChange`).
   - Done when: a stale save is refused and history records who changed what.
+  - From 2.4b-1 (pull request #68): every table of student data (cells, attendance, comments) references `students` with no action, never `on delete cascade`, so the key refuses the delete of a student with data whatever the branch filter sees; the service of the delete maps `23503` on such a key to `student_has_data` (`edge/students-classes-groups`: "A student is created twice by mistake").
 
 - [ ] **6.2 Journal grid**
   - Read: `07` (Opening a journal, Layout, Who can do what), `12`.
@@ -462,6 +470,7 @@ How to read the task lines:
   - Build: the rating exam score per student per quarter in rating subjects, with "did not sit" and "exempt"; comments on a mark or score and notes per student per lesson, each "staff only" or "visible to parents"; keyboard entry rules.
   - Done when: a non-rating subject has no exam column.
   - From 2.1 (pull request #52, decision 4): `edge/calculation`: "In a started quarter the change is refused while scores exist." `PUT /api/setup/subjects/:id` refuses a change of the rating exam switch or the journal type while a started quarter holds scores of the subject, with its test.
+  - From 2.4b-1 (pull request #68): the tables of numbers and comments reference `students` with no action, as the line of 6.1 says, so a student with them is never deleted.
 
 - [ ] **8.3a Saving and stale saves**
   - Read: `07`, `12` (No lost work), `edge/journal` (Saving and working together), `edge/system-behaviour`.
@@ -488,6 +497,7 @@ How to read the task lines:
   - Read: `07` (Exemptions), `edge/exemptions`.
   - Build: exemptions entered by the Academic Vice Principal or Super Admin (temporary or full, all or chosen subjects, whole days or chosen slots); cells shown as exempt; the late-entry preview; end and void; notices to the Tutor and teachers.
   - Done when: every row of the "Problem cases" table has a test.
+  - From 2.4b-1 (pull request #68): a leaving ends the student's open exemptions on the date (`edge/students-classes-groups`: "Open exemptions end"); the exemption table references `students` with no action, as the line of 6.1 says.
 
 - [ ] **8.6 Transfers and leaving inside the journal**
   - Read: `07` (Transfers), `edge/students-classes-groups`, `edge/calculation`.
@@ -518,6 +528,7 @@ How to read the task lines:
   - From 1.6 (pull request #49, decision 3): a change of late or skipped on a quarter (`PUT /api/setup/quarters/:id/attendance-values`) shows the results that change first, as the preview `edge/calculation` asks for, and recalculates them in the same transaction.
   - From 2.1 (pull request #52, decision 14 and migration 0021): every reader of the weights (results, the lesson score, the journal legend) takes a distribution only in the subject's current `weights_round` and, for a quarter, only when its rating exam part fits the switch; a row of an earlier round is not a distribution.
   - From 2.1 (pull request #52, decision 4): a change of a quarterly distribution (`PUT /api/setup/subjects/:id/quarter-weights/:quarterId` and the copy) in an open quarter: `edge/calculation`, "Before saving, the system shows how many grades will change in each journal, asks for a reason and tells the subject's teachers. The journal legend shows 'changed on [date]'."; `05`: "Each change is logged and results are recalculated at once."
+  - From 2.4b-1 (pull request #68): the tables of results reference `students` with no action, as the line of 6.1 says.
 
 - [ ] **9.2a Closing checklist**
   - Read: `07` (Closing a quarter), `edge/journal` (Closing and reopening), `edge/calculation`.
@@ -530,6 +541,7 @@ How to read the task lines:
   - Done when: closing against a simultaneous cell save is tested.
   - From 1.6 (pull request #49, decision 3): a closed quarter refuses a change of its late and skipped values, in the database as `quarters_closed_year_guard` does for a closed year, also after a reopening (`edge/calculation`: "A closed quarter keeps the values it was closed with, also when reopened").
   - From 2.1 (pull request #52, decision 12): `05`, "Weights of a quarter can change until the quarter is closed." A closed quarter refuses a write of `subject_quarter_weights`, in the database as `subject_quarter_weights_closed_year_guard` does for a closed year.
+  - From 2.4b-1 (pull request #68): a leaving, an undo, a return or a graduated restore dated in a closed quarter is refused (`edge/students-classes-groups`: "A date in a closed quarter is refused"), in the database as `student_statuses_closed_year_guard` (0033) does for a closed year.
 
 - [ ] **9.2c Reopening and the nightly check**
   - Read: `edge/journal` (Closing and reopening), `edge/system-behaviour`.
@@ -561,6 +573,7 @@ How to read the task lines:
   - Read: `edge/academic-year`.
   - Build: "Close the year" with its checklist; stored year results with class grade and name, subject and teacher as they were.
   - Done when: a renamed class still prints last year's name on last year's results.
+  - From 2.4b-1 (pull request #68): `student_statuses_closed_year_guard` refuses a status row dated in a closed year; the graduation writes its rows (cause `graduation`) before the year's status becomes `closed`, in the same transaction (`04`, Movements: "marked graduated when the year closes").
 
 - [ ] **9.5b Rollover**
   - Read: `04` (Movements), `edge/academic-year`.
