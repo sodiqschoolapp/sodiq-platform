@@ -156,6 +156,29 @@ export function uidSetOf(grade: number, yearStart: number): string | null {
   return `${String(firstYear % 100).padStart(2, '0')}01`;
 }
 
+/**
+ * The academic year whose UID sets a new student or a corrected UID is checked
+ * against (decision 5 of task 2.4a as changed by correction 2 of #67): the
+ * year of the branch that holds the start date, or the first that begins
+ * after it. `undefined` when the branch has none. One rule for the check of
+ * the API and the set named in its warning (task 2.7b-1, decision 7).
+ */
+export function uidYearOf<Year extends { readonly startDate: string; readonly endDate: string }>(
+  startsOn: string,
+  years: readonly Year[],
+): Year | undefined {
+  return years
+    .filter((year) => year.endDate >= startsOn)
+    .reduce<Year | undefined>(
+      (first, year) => (first === undefined || year.startDate < first.startDate ? year : first),
+      undefined,
+    );
+}
+
+/** The set of a grade in an academic year, by the year's start date. */
+export const uidSetFor = (grade: number, year: { readonly startDate: string }): string | null =>
+  uidSetOf(grade, Number(year.startDate.slice(0, 4)));
+
 /** Whether a UID is outside the set of the grade: the warning to confirm (`04`, Release 1). */
 export function uidOutsideSet(uid: string, grade: number, yearStart: number): boolean {
   const set = uidSetOf(grade, yearStart);

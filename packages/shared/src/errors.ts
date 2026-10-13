@@ -334,6 +334,11 @@ export const errorDetailSchema = z.object({
    * branch, or in any branch for the Super Admin).
    */
   mergeable: z.boolean().optional(),
+  /**
+   * The value the rule expected, when the reader is told it: the UID set of
+   * the grade on a `uid_set_mismatch` (task 2.7b-1, decision 7).
+   */
+  expected: z.string().optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;
