@@ -316,8 +316,10 @@ async function createAccountAndSignIn(page: Page): Promise<void> {
 const APPOINTMENT_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.3b-1');
 
 /** The give form of the account section of a person in the open staff list. */
-async function giveFormOf(page: Page, name: string) {
-  await page.getByRole('button', { name, exact: true }).click();
+async function giveFormOf(page: Page, firstName: string, lastName: string) {
+  // Surname first in the list, "First name Surname" in the panel (finding 27).
+  await page.getByRole('button', { name: `${lastName} ${firstName}`, exact: true }).click();
+  const name = `${firstName} ${lastName}`;
   const panel = page.getByRole('complementary', { name });
   const section = panel.getByRole('region', { name: en.people.account.title });
   const give = section.getByRole('form', {
@@ -339,7 +341,7 @@ async function appointHeadTeachers(page: Page): Promise<void> {
     .selectOption({ label: 'Accounts browser test branch' });
   await expect(heading(page, en.people.staff.title)).toBeVisible();
 
-  const first = await giveFormOf(page, 'Rustam Nazarov');
+  const first = await giveFormOf(page, 'Rustam', 'Nazarov');
   await first.give
     .getByLabel(en.people.account.newRole, { exact: true })
     .selectOption('head_teacher');
@@ -355,7 +357,7 @@ async function appointHeadTeachers(page: Page): Promise<void> {
     await first.section.screenshot({ path: path.join(APPOINTMENT_SCREENS, 'appointment.png') });
   }
 
-  const second = await giveFormOf(page, 'Saida Yusupova');
+  const second = await giveFormOf(page, 'Saida', 'Yusupova');
   await second.give
     .getByLabel(en.people.account.newRole, { exact: true })
     .selectOption('head_teacher');
