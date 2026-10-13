@@ -24,6 +24,7 @@ import {
   type StudentStatusOutcome,
   type StudentStatusPlan,
 } from './student-status.js';
+import { linkValueOf, RelativeWrites } from './relative-writes.js';
 import { Students } from './students.service.js';
 
 const CHECK_VIOLATION = '23514';
@@ -89,6 +90,7 @@ export class StudentStatuses {
     private readonly transactions: Transactions,
     private readonly audit: Audit,
     private readonly students: Students,
+    private readonly relatives: RelativeWrites,
   ) {}
 
   /** Leaving the school: the last day and a reason; scheduled when the last day is today or later. */
@@ -230,6 +232,20 @@ export class StudentStatuses {
           .where('student_id', '=', id)
           .orderBy('held_from')
           .execute();
+        // The links go with the student (task 2.5a, decision 10): kept in the
+        // entry, and each relative left with no live link anywhere is
+        // archived by `relatives_follow_links`, decided here under its lock
+        // in the order of its id.
+        const links = (await this.relatives.linksOf(transaction, id)).sort((a, b) =>
+          a.relative_id.localeCompare(b.relative_id),
+        );
+        const archived: string[] = [];
+        for (const link of links) {
+          await this.relatives.lockRelative(transaction, branchId, link.relative_id);
+          if ((await this.relatives.liveLinks(transaction, link.relative_id)) === 1) {
+            archived.push(link.relative_id);
+          }
+        }
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
@@ -241,10 +257,25 @@ export class StudentStatuses {
             contracts,
             statuses: rows,
             uids: uids.map((uid) => uid.uid),
+            relatives: links.map((link) => ({
+              relativeId: link.relative_id,
+              ...linkValueOf(id, link),
+            })),
           }),
           reason: input.reason,
           requestId,
         });
+        for (const relativeId of archived) {
+          await this.audit.record(transaction, {
+            branchId: null,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'relative.archive',
+            record: { type: 'relative', id: relativeId },
+            details: { branchId },
+            requestId,
+          });
+        }
         await transaction.deleteFrom('students').where('id', '=', id).execute();
       }),
     );

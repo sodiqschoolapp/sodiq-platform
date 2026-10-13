@@ -198,7 +198,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Oʻquvchida maʼlumotlar bor (stipendiya, ketish, bitirish yoki ikkinchi shartnoma), uni oʻchirib boʻlmaydi. Bitta oʻquvchining maʼlumotli ikki yozuvini Super Admin birlashtiradi.',
     student_changed: 'Oʻquvchini boshqa kishi oʻzgartirdi. Sahifani yangilang va qayta urining.',
     student_needs_relative:
-      'Oʻquvchining hali qarindoshi yoʻq. «Qarindoshlar» yorligʻida qarindosh qoʻshing, soʻng yozuvni saqlang.',
+      'Oʻquvchi kamida bitta qarindosh bilan saqlanadi. Qarindosh qoʻshing, soʻng qayta saqlang.',
     relative_phone_taken:
       'Bu telefon boshqa qarindoshga tegishli. Raqamni tekshiring yoki oʻsha qarindoshni oching.',
     relative_phone_exists:

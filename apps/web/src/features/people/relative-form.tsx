@@ -1,6 +1,7 @@
 import {
   DEFAULT_PHONE_PREFIX,
   relativeRecordSchema,
+  receivesNotices,
   relativePhoneSchema,
   smsCapable,
   type RelativeDetail,
@@ -10,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { CHECKED, CheckboxField, Field } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
-import { useRecordForm } from '@/components/form/use-record-form';
+import { useRecordForm, type FieldBinding } from '@/components/form/use-record-form';
 import { asFormSchema } from './form-schema';
 
 type RelativeField = 'fullName' | 'phone' | 'noPhone' | 'workplace' | 'email';
@@ -114,5 +115,28 @@ export function RelativeForm({
         </>
       )}
     </RecordForm>
+  );
+}
+
+/**
+ * The "receives notices" switch of a link: off and locked for a relative with
+ * no phone of their own, whatever is stored (decision 8, `receivesNotices`
+ * of packages/shared); the stored switch is sent as it was.
+ */
+export function NoticesField({
+  label,
+  note,
+  hasPhone,
+  ...bound
+}: FieldBinding & { label: string; note?: string | undefined; hasPhone: boolean }) {
+  const shown = receivesNotices({ receivesNotices: bound.value === CHECKED }, hasPhone ? '' : null);
+  return (
+    <CheckboxField
+      label={label}
+      note={note}
+      {...bound}
+      value={shown ? CHECKED : ''}
+      disabled={!hasPhone}
+    />
   );
 }

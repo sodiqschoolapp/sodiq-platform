@@ -421,6 +421,15 @@ describe('close relatives in the database', () => {
       ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'student_main_contact' });
     });
 
+    it('refuses at the commit a student whose only link is not the main contact', async () => {
+      await expect(
+        inBranch(north, async (transaction) => {
+          const student = await writeStudent(transaction, north);
+          await linkRelative(transaction, student, north, MOMENT, { mainContact: false });
+        }),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'student_main_contact' });
+    });
+
     it('refuses a second live main contact at once', async () => {
       const { student } = await studentWithRelative(north);
       await expect(
@@ -491,6 +500,12 @@ describe('close relatives in the database', () => {
             .set({ uid: '2607999' })
             .where('id', '=', student)
             .execute();
+          // The grade of a return (spec review of the build).
+          await transaction
+            .updateTable('students')
+            .set({ grade: 8 })
+            .where('id', '=', student)
+            .execute();
         });
         for (const branch of [south, north]) {
           await database.migrator
@@ -556,6 +571,25 @@ describe('close relatives in the database', () => {
           constraint: 'student_relatives_unlinked',
         });
       }
+    });
+
+    it('lets an unlinked row move with its student to another branch (task 3.3)', async () => {
+      const { student, second } = await twoRelatives();
+      await inBranch(north, (transaction) => unlink(transaction, student, second));
+      for (const branch of [south, north]) {
+        await database.migrator
+          .updateTable('students')
+          .set({ branch_id: branch })
+          .where('id', '=', student)
+          .execute();
+      }
+      const rows = await database.migrator
+        .selectFrom('student_relatives')
+        .select(['branch_id', 'unlinked_at'])
+        .where('student_id', '=', student)
+        .execute();
+      expect(rows.map((row) => row.branch_id)).toEqual([north, north]);
+      expect(rows.filter((row) => row.unlinked_at !== null)).toHaveLength(1);
     });
 
     it('refuses an unlink before the link', async () => {
@@ -723,7 +757,7 @@ describe('close relatives in the database', () => {
 
   describe('the functions across branches (decision 3)', () => {
     it('name the holder of an exact phone with a count, and nothing else', async () => {
-      const { student, relative } = await studentWithRelative(north, '+998901110020');
+      const { relative } = await studentWithRelative(north, '+998901110020');
       await inBranch(north, async (transaction) => {
         const other = await writeStudent(transaction, north);
         await linkRelative(transaction, other, north, MOMENT);
@@ -739,7 +773,6 @@ describe('close relatives in the database', () => {
         sql`select * from relative_by_phone(${'+998901110'})`.execute(transaction),
       );
       expect(none.rows).toEqual([]);
-      expect(student).toBeTruthy();
     });
 
     it('count the students elsewhere of a relative the branch sees, and nothing otherwise', async () => {

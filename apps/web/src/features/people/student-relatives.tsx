@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { asFormSchema } from './form-schema';
 import { invalidateRelatives, phoneMatch, studentRelativesQuery } from './people-api';
-import { phoneHolderOf, smsWarning } from './relative-form';
+import { NoticesField, phoneHolderOf, smsWarning } from './relative-form';
 
 type AddField =
   | 'phone'
@@ -254,9 +254,14 @@ function LinkEditor({
           <CheckboxField label={t('people.relatives.mainContact')} {...form.bind('mainContact')} />
         )}
         <CheckboxField label={t('people.relatives.portalAccess')} {...form.bind('portalAccess')} />
-        <CheckboxField
+        <NoticesField
           label={t('people.relatives.receivesNotices')}
-          note={relative.phone === null ? t('people.relatives.noPhoneMain') : undefined}
+          hasPhone={relative.phone !== null}
+          note={
+            relative.phone === null && relative.mainContact
+              ? t('people.relatives.noPhoneMain')
+              : undefined
+          }
           {...form.bind('receivesNotices')}
         />
       </RecordForm>
@@ -399,7 +404,11 @@ function AddRelative({
         <CheckboxField
           label={t('people.relatives.noPhone')}
           {...form.bind('noPhone')}
-          note={noPhone && first ? t('people.relatives.noPhoneMain') : undefined}
+          note={
+            noPhone && (first || form.bind('mainContact').value === CHECKED)
+              ? t('people.relatives.noPhoneMain')
+              : undefined
+          }
         />
         {!noPhone && (
           <Field
@@ -459,8 +468,9 @@ function AddRelative({
           <CheckboxField label={t('people.relatives.mainContact')} {...form.bind('mainContact')} />
         )}
         <CheckboxField label={t('people.relatives.portalAccess')} {...form.bind('portalAccess')} />
-        <CheckboxField
+        <NoticesField
           label={t('people.relatives.receivesNotices')}
+          hasPhone={!noPhone}
           {...form.bind('receivesNotices')}
         />
       </RecordForm>

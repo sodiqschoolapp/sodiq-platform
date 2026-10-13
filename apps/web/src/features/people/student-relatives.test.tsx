@@ -208,4 +208,23 @@ describe("the student's Relatives tab", () => {
       });
     });
   });
+
+  // Decision 8: a relative with no phone of their own gets no notices.
+  it('shows "receives notices" off and locked for a relative with no phone of their own', async () => {
+    openList(TWO);
+    renderApp(PATH);
+    const panel = await openPanel();
+    fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
+    fireEvent.click(await within(panel).findByRole('button', { name: en.people.relatives.add }));
+    const form = await within(panel).findByRole('form', {
+      name: en.people.relatives.formLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
+    });
+    const notices = within(form).getByRole<HTMLInputElement>('checkbox', {
+      name: en.people.relatives.receivesNotices,
+    });
+    expect(notices.checked).toBe(true);
+    fireEvent.click(within(form).getByRole('checkbox', { name: en.people.relatives.noPhone }));
+    expect(notices.checked).toBe(false);
+    expect(notices.disabled).toBe(true);
+  });
 });

@@ -407,6 +407,70 @@ describe('close relatives', () => {
     });
   });
 
+  describe('the link of a new relative to a student', () => {
+    // The reverse of the race above (`.claude/rules/api.md`: each pair in both
+    // directions): the north holds a new relative of a phone open, the
+    // south's route links a new relative of the same phone and waits.
+    it('answers relative_phone_exists to the link that waited for a create of the other branch', async () => {
+      const number = phone();
+      const northern = await withRelative(phone());
+      const southern = await withRelative(phone(), t.south);
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const held = t.app.get(Transactions).run([t.north], async (transaction: Transaction) => {
+        const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
+        const id = found.rows[0]?.id ?? '';
+        await transaction
+          .insertInto('relatives')
+          .values({ id, full_name: 'Lola Yoqubova', name_key: 'lola yoqubova', phone: number })
+          .execute();
+        await transaction
+          .insertInto('relative_accounts')
+          .values({ relative_id: id, created_at: new Date('2026-10-10T18:55:00Z') })
+          .execute();
+        await transaction
+          .insertInto('student_relatives')
+          .values({
+            student_id: northern.student.id,
+            branch_id: t.north,
+            relative_id: id,
+            relationship: 'aunt',
+            main_contact: false,
+            linked_at: new Date('2026-10-10T18:55:00Z'),
+          })
+          .execute();
+        ready();
+        await released;
+        return id;
+      });
+      await isReady;
+      const linking = t
+        .post(
+          `/api/people/students/${southern.student.id}/relatives`,
+          t.south,
+          newRelative(number, { mainContact: false }),
+        )
+        .then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      release();
+      const holder = await held;
+      const response = await linking;
+      refusedWith(response, 409, 'relative_phone_exists');
+      expect(detailsOf(response)[0]).toMatchObject({
+        path: 'relative.relative.phone',
+        recordId: holder,
+        holder: { fullName: 'Lola Yoqubova', students: 1 },
+      });
+      expect((await tab(southern.student.id, t.south)).relatives).toHaveLength(1);
+    });
+  });
+
   describe('the Parents list and page', () => {
     it('lists the relatives of the branch with their students and the count elsewhere', async () => {
       const number = phone();
@@ -912,6 +976,75 @@ describe('close relatives', () => {
       expect(studentRelativesSchema.parse(linked.body).relatives[0]?.mainContact).toBe(true);
       const saved = await t.put(`/api/people/students/${created.id}`, t.north, edit);
       expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+    });
+
+    it('leaves and comes back with a new grade, which is no edit of the record', async () => {
+      const keeper = await withRelative(phone());
+      const { student: created, relativeId } = await withRelative(phone());
+      await t.database.migrator
+        .insertInto('student_relatives')
+        .values({
+          student_id: keeper.student.id,
+          branch_id: t.north,
+          relative_id: relativeId,
+          relationship: 'aunt',
+          main_contact: false,
+          linked_at: new Date('2026-10-01T00:00:00Z'),
+        })
+        .execute();
+      await t.database.migrator
+        .deleteFrom('student_relatives')
+        .where('student_id', '=', created.id)
+        .execute();
+      const left = await t.post(`/api/people/students/${created.id}/leaving`, t.north, {
+        lastDay: '2026-10-01',
+        reason: 'The family moved to another city.',
+        version: created.version,
+      });
+      expect(left.status, JSON.stringify(left.body)).toBe(200);
+      const back = await t.post(`/api/people/students/${created.id}/return`, t.north, {
+        from: '2026-10-05',
+        grade: 8,
+        contract: { number: `RL-BACK/${String(count)}`, signedOn: '2026-10-05' },
+        reason: null,
+        version: studentDetailSchema.parse(left.body).version,
+      });
+      expect(back.status, JSON.stringify(back.body)).toBe(200);
+      expect(studentDetailSchema.parse(back.body)).toMatchObject({ grade: 8, status: 'active' });
+    });
+  });
+
+  describe('the status routes of a student with relatives', () => {
+    it('keeps the links in the entry of a delete and archives a relative left with none', async () => {
+      const { student: created, relativeId } = await withRelative(phone());
+      const deleted = await t.post(`/api/people/students/${created.id}/delete`, t.north, {
+        reason: 'Created twice by mistake.',
+        version: created.version,
+      });
+      expect(deleted.status, JSON.stringify(deleted.body)).toBe(204);
+      const entry = (await t.entries('student.delete', created.id))[0];
+      expect(entry?.old_value).toMatchObject({
+        relatives: [{ relativeId, relationship: 'mother', mainContact: true }],
+      });
+      expect(await schoolEntries('relative.archive', relativeId)).toHaveLength(1);
+      const stored = await t.database.migrator
+        .selectFrom('relatives')
+        .select('archived_at')
+        .where('id', '=', relativeId)
+        .executeTakeFirstOrThrow();
+      expect(stored.archived_at).not.toBeNull();
+    });
+
+    it('archives no relative linked to another student', async () => {
+      const number = phone();
+      const holder = await withRelative(number);
+      const second = await student([existing(holder.relativeId, number, true)]);
+      const deleted = await t.post(`/api/people/students/${second.id}/delete`, t.north, {
+        reason: 'Created twice by mistake.',
+        version: second.version,
+      });
+      expect(deleted.status, JSON.stringify(deleted.body)).toBe(204);
+      expect(await schoolEntries('relative.archive', holder.relativeId)).toEqual([]);
     });
   });
 });

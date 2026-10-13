@@ -30,7 +30,7 @@ import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
 import { asFormSchema } from './form-schema';
-import { phoneHolderOf, smsWarning } from './relative-form';
+import { NoticesField, phoneHolderOf, smsWarning } from './relative-form';
 
 /** The fields of the form: one per input. */
 export type StudentField =
@@ -597,7 +597,11 @@ function RelativeStep({
         {...bind('relativeRelationship')}
       />
       <CheckboxField label={t('people.relatives.portalAccess')} {...bind('relativePortal')} />
-      <CheckboxField label={t('people.relatives.receivesNotices')} {...bind('relativeNotices')} />
+      <NoticesField
+        label={t('people.relatives.receivesNotices')}
+        hasPhone={!noPhone}
+        {...bind('relativeNotices')}
+      />
     </fieldset>
   );
 }

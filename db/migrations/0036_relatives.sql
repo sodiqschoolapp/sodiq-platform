@@ -175,8 +175,9 @@ create trigger student_relatives_unlink_once
 -- Always connected (`04`): at the commit a student has at least one live link
 -- and exactly one live main contact. Checked on the insert of a student, on a
 -- link written or its main mark or unlink changed, and on the edit of the
--- record (the columns of the edit only: a photo, a UID correction, a status
--- and the branch move of 3.3 pass, decision 11). A student deleted in the
+-- record (the columns of the edit only, without the grade, which a return
+-- also writes: a photo, a UID correction, a status, a return and the branch
+-- move of 3.3 pass, decision 11; the edit writes every column at once). A student deleted in the
 -- transaction is not checked. Not SECURITY DEFINER: the links of a student
 -- are rows of its branch, which the writing transaction sees.
 create function student_relatives_guard() returns trigger
@@ -217,7 +218,7 @@ create constraint trigger student_relatives_guard_create
 
 create constraint trigger student_relatives_guard_edit
   after update of
-    first_name, last_name, paternal_name, name_key, sex, birth_date, grade, document_type,
+    first_name, last_name, paternal_name, name_key, sex, birth_date, document_type,
     document_number, jshshir, phone, email, address, region, previous_school, diagnostic_score,
     scholarship_type, scholarship_coverage, scholarship_amount, consent_signed_on
   on students

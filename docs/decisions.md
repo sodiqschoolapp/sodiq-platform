@@ -244,6 +244,9 @@ Plan approved on pull request #72 with corrections 1 and 2; decisions 1 to 16 an
 | The error detail of a refused phone carries `holder` (name and count of linked students) (decision taken in the build) | "that relative is shown" without an id of another branch |
 | The link guard fires on insert and on an update of `main_contact` or `unlinked_at`, not on the branch move's cascade (decision taken in the build) | The move of 3.3 changes no link's state |
 | The archive and restore entries are decided by the service under the relative's lock, counting the live links of every branch (decision taken in the build) | The trigger cannot write an audit entry with the actor and request |
+| The guard of a student's edit leaves out the grade, which a return also writes; the edit writes every column at once, so it still fires (spec review of the build) | Decision 11: a return of a student of 2.4a passes |
+| The delete of a student created twice keeps its links in the `student.delete` entry and writes `relative.archive` for each relative left with none, decided under the relative's lock (spec review of the build) | Every change is audited; decision 10 |
+| `receives notices` is shown off and locked for a relative with no phone of their own; the stored switch is sent as it was (spec review of the build) | Decision 8 |
 
 ## 13 October 2026: student export, photos, consent list and the "No class" counter (task 2.4b-2)
 

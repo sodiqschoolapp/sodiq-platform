@@ -190,7 +190,7 @@ export const en = {
       'This student holds data (a scholarship, a leaving, a graduation or a second contract) and cannot be deleted. Two records of one student with data are merged by the Super Admin.',
     student_changed: 'This student was changed by someone else. Reload the page and try again.',
     student_needs_relative:
-      'This student has no relative yet. Add a relative on the Relatives tab, then save the record.',
+      'A student is saved with at least one relative. Add a relative, then save again.',
     relative_phone_taken:
       'This phone belongs to another relative. Check the number, or open that relative.',
     relative_phone_exists:
