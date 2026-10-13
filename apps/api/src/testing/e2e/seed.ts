@@ -1239,6 +1239,21 @@ try {
   seeded.auditVice = { login: auditVice.login, password: auditVice.firstPassword };
   seeded.auditPrincipal = { login: auditPrincipal.login, password: auditPrincipal.firstPassword };
 
+  // A Principal of a branch of their own, who reads every section of People:
+  // the People tabs at phone width (task 2.7a, finding 8 of the hand test of
+  // 13 October 2026). Reads only.
+  const tabsBranch = await insertBranch(migrator, 'People tabs browser test branch');
+  const peopleTabs = await create('Zilola', 'Hamroyeva');
+  await transactions.run([tabsBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: peopleTabs.id,
+      role: 'principal',
+      branchId: tabsBranch,
+      givenBy: null,
+    }),
+  );
+  seeded.peopleTabs = { login: peopleTabs.login, password: peopleTabs.firstPassword };
+
   console.log(JSON.stringify(seeded));
 } finally {
   await app.close();
