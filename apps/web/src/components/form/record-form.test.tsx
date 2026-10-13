@@ -397,3 +397,75 @@ describe('the sign of a failed save with two forms on the page', () => {
     });
   });
 });
+
+// Task 2.7c-2b-1: a form opened by Edit in a side panel has a quiet Cancel
+// after Save; typed text is asked about first (`12`, No lost work).
+describe('the Cancel of a record form', () => {
+  function renderCancellable(save: Save) {
+    const cancelled = vi.fn();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <ConfirmProvider>
+          <UnsentProvider>
+            <SampleForm row={ROW} onSave={save} onCancel={cancelled} />
+            <Leaver />
+          </UnsentProvider>
+        </ConfirmProvider>
+      </I18nextProvider>,
+    );
+    return cancelled;
+  }
+  const cancel = () => screen.getByRole<HTMLButtonElement>('button', { name: en.form.cancel });
+
+  it('is not drawn without onCancel', () => {
+    renderForm(vi.fn<Save>(() => Promise.resolve()));
+    expect(screen.queryByRole('button', { name: en.form.cancel })).toBeNull();
+  });
+
+  it('is a quiet button after Save, and closes at once when nothing is typed', () => {
+    const cancelled = renderCancellable(vi.fn<Save>(() => Promise.resolve()));
+    const buttons = within(screen.getByRole('form')).getAllByRole('button');
+    expect(buttons.map((button) => button.textContent)).toEqual([en.form.save, en.form.cancel]);
+    expect(cancel().dataset.variant).toBe('ghost');
+
+    fireEvent.click(cancel());
+
+    expect(cancelled).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('asks about typed text, stays when the person stays, and drops it when they leave', async () => {
+    const cancelled = renderCancellable(vi.fn<Save>(() => Promise.resolve()));
+    type('90');
+
+    fireEvent.click(cancel());
+    const dialog = await screen.findByRole('alertdialog', { name: en.unsent.leaveTitle });
+    expect(within(dialog).getByText(ROW.name)).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.stay }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(cancelled).not.toHaveBeenCalled();
+    expect(score().value).toBe('90');
+
+    fireEvent.click(cancel());
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: en.unsent.leave,
+      }),
+    );
+    await waitFor(() => {
+      expect(cancelled).toHaveBeenCalledTimes(1);
+    });
+    expect(unsent()).toBe('');
+  });
+
+  it('is off while the save is on its way', () => {
+    const { save } = heldSave();
+    renderCancellable(save);
+    type('90');
+    pressSave();
+
+    expect(cancel().disabled).toBe(true);
+  });
+});

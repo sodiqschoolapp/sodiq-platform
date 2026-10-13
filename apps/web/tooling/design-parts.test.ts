@@ -332,3 +332,106 @@ describe('the pages of the design system', () => {
     );
   });
 });
+
+// Layout shell, Lists: the side panel shows the record with "its actions at
+// the bottom: primary "Edit", secondary actions, danger quiet "Archive""; one
+// primary per area (task 2.7c-2b-1, pull request #83). A form's Save is
+// primary, so every form of a panel opens behind a button of `usePanelEditing`.
+const PANEL_FILES = [
+  'src/features/setup/building-panel.tsx',
+  'src/features/setup/room-panel.tsx',
+  'src/features/setup/division-panel.tsx',
+  'src/features/setup/year-panel.tsx',
+  'src/features/setup/slot-type-panel.tsx',
+  'src/features/setup/day-template-panel.tsx',
+  'src/features/setup/calendar-entry-panel.tsx',
+  'src/features/setup/subject-panel.tsx',
+  'src/features/setup/template-assignment-panel.tsx',
+  'src/features/sample/sample-panel.tsx',
+];
+
+/**
+ * The forms of a panel's source drawn without a condition on the open form of
+ * `usePanelEditing` (`editing === '…'` or ``editing === `…` `` before `?` or
+ * `&&`), as `line: form`. A form inside a function that is itself a form
+ * (`BuildingForm`, `QuartersFormView`) is its body, not a form of the panel.
+ */
+function formsOutsideEditing(text: string): string[] {
+  const condition = /\bediting\s*===\s*(?:'[^']*'|`[^`]*`)\s*(?:\?|&&)/g;
+  return [...text.matchAll(/<([A-Z]\w*Form)\b/g)].flatMap((match) => {
+    const before = text.slice(0, match.index);
+    const owner = [...before.matchAll(/\bfunction\s+(\w+)/g)].at(-1)?.[1] ?? '';
+    if (/Form(View)?$/.test(owner)) {
+      return [];
+    }
+    const last = [...before.matchAll(condition)].at(-1);
+    const between = last === undefined ? null : before.slice((last.index ?? 0) + last[0].length);
+    // Between the condition and the form: no other branch and no closed block.
+    const tied =
+      between !== null &&
+      !/\)\s*:\s*[(<\w]/.test(between) &&
+      !/\)\}\s*\n/.test(between) &&
+      !/^\s*\}\s*$/m.test(between);
+    return tied ? [] : [`${String(before.split('\n').length)}: ${match[1] ?? ''}`];
+  });
+}
+
+describe('the side panels of School setup', () => {
+  it('draw their actions with PanelActions, and every form behind a button of usePanelEditing', () => {
+    for (const file of PANEL_FILES) {
+      const text = read(file);
+      expect(text, file).toMatch(/<PanelActions\b/);
+      expect(text, file).toMatch(/\busePanelEditing\(|\bpanel: PanelEditing\b/);
+      expect(formsOutsideEditing(text), file).toEqual([]);
+    }
+  });
+
+  it('refuse a form drawn openly or under another condition, and accept the conditions of the panels', () => {
+    const panel = (body: string) =>
+      `export function SomePanel() {\n  const panel = usePanelEditing();\n  return (\n${body}\n  );\n}\n`;
+    expect(
+      formsOutsideEditing(panel('    <div>\n      <BuildingForm building={b} />\n    </div>')),
+    ).toEqual(['5: BuildingForm']);
+    expect(
+      formsOutsideEditing(
+        panel('    <div>\n      {canEdit && <RoomForm room={room} />}\n    </div>'),
+      ),
+    ).toEqual(['5: RoomForm']);
+    // A form after the condition's block closed, or in its other branch.
+    expect(
+      formsOutsideEditing(
+        panel(
+          "    <div>\n      {panel.editing === 'record' && (\n        <p />\n      )}\n      <NamesForm names={n} />\n    </div>",
+        ),
+      ),
+    ).toEqual(['8: NamesForm']);
+    expect(
+      formsOutsideEditing(
+        panel(
+          "    <div>\n      {panel.editing === 'record' ? (\n        <p />\n      ) : (\n        <YearForm year={y} />\n      )}\n    </div>",
+        ),
+      ),
+    ).toEqual(['8: YearForm']);
+    // Accepted: a key of a row in a template, a branch over several lines, a wrapper.
+    expect(
+      formsOutsideEditing(
+        panel(
+          '    <div>\n      {canEdit && panel.editing === `floor:${floor.id}` ? (\n        <FloorForm floor={floor} />\n      ) : (\n        floor.name\n      )}\n    </div>',
+        ),
+      ),
+    ).toEqual([]);
+    expect(
+      formsOutsideEditing(
+        panel(
+          "    <div>\n      {editing === 'length' && (\n        <section className=\"grid gap-3\">\n          <h3 className={SECTION_TITLE}>{t('setup.slotTypes.changeLength')}</h3>\n          <RecordForm form={form} label={label}>\n            <Field />\n          </RecordForm>\n        </section>\n      )}\n    </div>",
+        ),
+      ),
+    ).toEqual([]);
+    // The body of a form component in the same file is not a form of the panel.
+    expect(
+      formsOutsideEditing(
+        'export function BuildingForm() {\n  return <RecordForm form={form} label={label} />;\n}\n',
+      ),
+    ).toEqual([]);
+  });
+});

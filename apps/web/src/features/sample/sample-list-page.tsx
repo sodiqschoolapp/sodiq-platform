@@ -14,7 +14,7 @@ import { PageHeader } from '@/components/page-header';
 import { Letterhead } from '@/components/print/letterhead';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { Button } from '@/components/ui/button';
-import { SampleForm } from './sample-form';
+import { SamplePanel } from './sample-panel';
 import { sampleRows, type SampleRow } from './sample-rows';
 
 /** The states of a list a developer can look at: `?demo=empty` and so on. */
@@ -197,9 +197,10 @@ export function SampleListPage() {
           setExported(matching.length);
         }}
         panel={(row) => (
-          <SampleForm
+          <SamplePanel
             key={row.id}
             row={row}
+            columns={columns}
             onSave={async (record) => {
               // As a call of the server: the answer comes a moment later.
               await Promise.resolve();

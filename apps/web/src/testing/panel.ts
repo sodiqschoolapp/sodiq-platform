@@ -32,8 +32,12 @@ export const actionsAreLast = (panel: HTMLElement): boolean => {
 };
 
 /** Edit pressed in the panel's bottom row: its form, named `name`. */
-export async function edit(panel: HTMLElement, name: string): Promise<HTMLElement> {
-  fireEvent.click(within(panel).getByRole('button', { name: en.form.edit }));
+export async function edit(
+  panel: HTMLElement,
+  name: string,
+  editText: string = en.form.edit,
+): Promise<HTMLElement> {
+  fireEvent.click(within(panel).getByRole('button', { name: editText }));
   return within(panel).findByRole('form', { name });
 }
 
