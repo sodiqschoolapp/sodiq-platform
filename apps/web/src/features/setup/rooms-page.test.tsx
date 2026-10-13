@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { setWindowWidth } from '@/testing/window-width';
+import { actionsAreLast, edit, panelActionNames, savedInPanel } from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 
@@ -187,7 +188,11 @@ describe('the room list', () => {
 
     fireEvent.click(rowButton('101'));
     const panel = await screen.findByRole('complementary', { name: '101' });
-    const form = within(panel).getByRole('form', { name: '101' });
+    // Task 2.7c-2b-1: read first, Edit at the bottom; a room has no archive.
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    expect(actionsAreLast(panel)).toBe(true);
+    const form = await edit(panel, '101');
     expect(field(form, en.setup.rooms.name).value).toBe('101');
     expect(field(form, en.setup.rooms.building).value).toBe(MAIN.id);
     expect(field(form, en.setup.rooms.floor).value).toBe(uid(11));
@@ -211,7 +216,7 @@ describe('the room list', () => {
     type(field(form, en.setup.rooms.capacity), '60');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
 
-    await within(form).findByText(en.form.saved);
+    await savedInPanel(panel);
     expect(calls.find((call) => call.route === `PUT /api/setup/rooms/${uid(101)}`)?.body).toEqual({
       name: '101',
       floorId: uid(11),
@@ -230,7 +235,7 @@ describe('the room list', () => {
     });
     fireEvent.click(rowButton('101'));
     const panel = await screen.findByRole('complementary', { name: '101' });
-    const form = within(panel).getByRole('form', { name: '101' });
+    const form = await edit(panel, '101');
 
     type(field(form, en.setup.rooms.building), ANNEX.id);
 
@@ -346,7 +351,7 @@ describe('the room list', () => {
 
     fireEvent.click(rowButton('A-1'));
     const panel = await screen.findByRole('complementary', { name: 'A-1' });
-    const form = within(panel).getByRole('form', { name: 'A-1' });
+    const form = await edit(panel, 'A-1');
     expect(
       within(form).getByText(
         en.setup.rooms.onArchivedFloor
@@ -394,6 +399,7 @@ describe('the room list', () => {
     const panel = await screen.findByRole('complementary', { name: 'Sports hall' });
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(within(panel).getByText('2 lessons at once')).toBeDefined();
+    expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
   });
 });
 

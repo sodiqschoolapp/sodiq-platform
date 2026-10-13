@@ -3,6 +3,7 @@ import { EXPORT_TEXTS, BUILDING_EXPORT_COLUMNS } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import { actionsAreLast, edit, panelActionNames, panelActions } from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const PATH = '/setup/buildings';
@@ -104,8 +105,8 @@ describe('the buildings page', () => {
     ]);
   });
 
-  it('opens a building in the side panel with its rename form and its floors, and renames it', async () => {
-    const { calls } = await openList();
+  it('opens a building in the side panel to read, with its floors and its actions at the bottom', async () => {
+    await openList();
 
     fireEvent.click(rowButton('Main'));
 
@@ -117,14 +118,89 @@ describe('the buildings page', () => {
       expect.stringContaining('Attic'),
     ]);
     expect(floors[2]?.textContent).toContain(en.setup.buildings.archived);
-    const form = within(panel).getByRole('form', { name: 'Main' });
-    type(within(form).getByLabelText(en.setup.buildings.name), 'Main building');
+    // Task 2.7c-2b-1: the record is read first; its form is behind Edit.
+    expect(within(panel).queryByRole('form', { name: 'Main' })).toBeNull();
+    expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.buildings.archiveBuilding]);
+    expect(actionsAreLast(panel)).toBe(true);
+    expect(within(panel).getByRole('button', { name: en.form.edit }).dataset.variant).toBe(
+      'default',
+    );
+    expect(
+      within(panel).getByRole('button', { name: en.setup.buildings.archiveBuilding }).dataset
+        .variant,
+    ).toBe('destructive');
+  });
+
+  it('renames the building through Edit, then shows it to read with "Saved." and the focus on Edit', async () => {
+    const { calls } = await openList();
+    fireEvent.click(rowButton('Main'));
+    const panel = await screen.findByRole('complementary', { name: 'Main' });
+
+    const form = await edit(panel, 'Main');
+    const name = within(form).getByLabelText(en.setup.buildings.name);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(name);
+    });
+    // The floors give way while the record's form is open: Save and Cancel are last.
+    expect(within(panel).queryByRole('table')).toBeNull();
+    expect(panelActions(panel)).toBeNull();
+    type(name, 'Main building');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
 
-    await within(form).findByText(en.form.saved);
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form', { name: 'Main' })).toBeNull();
+    });
     expect(
       calls.find((call) => call.route === `PUT /api/setup/buildings/${MAIN.id}`)?.body,
     ).toEqual({ name: 'Main building' });
+    expect(panelActions(panel)?.textContent).toContain(en.form.saved);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.form.edit }),
+      );
+    });
+  });
+
+  it('cancels the form without a call, asking first when something is typed', async () => {
+    const { calls } = await openList();
+    fireEvent.click(rowButton('Main'));
+    const panel = await screen.findByRole('complementary', { name: 'Main' });
+
+    let form = await edit(panel, 'Main');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.cancel }));
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form', { name: 'Main' })).toBeNull();
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.form.edit }),
+      );
+    });
+
+    form = await edit(panel, 'Main');
+    type(within(form).getByLabelText(en.setup.buildings.name), 'Main hall');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.cancel }));
+    await goOn(en.unsent.stay);
+    expect(within(form).getByLabelText<HTMLInputElement>(en.setup.buildings.name).value).toBe(
+      'Main hall',
+    );
+    fireEvent.click(within(form).getByRole('button', { name: en.form.cancel }));
+    await goOn(en.unsent.leave);
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form', { name: 'Main' })).toBeNull();
+    });
+    expect(calls.some((call) => call.route === `PUT /api/setup/buildings/${MAIN.id}`)).toBe(false);
+  });
+
+  it('shows an archived building with Restore and no Edit', async () => {
+    await openList();
+    fireEvent.click(rowButton('Annex'));
+    const panel = await screen.findByRole('complementary', { name: 'Annex' });
+    expect(panelActionNames(panel)).toEqual([en.setup.buildings.restoreBuilding]);
+    expect(
+      within(panel).getByRole('button', { name: en.setup.buildings.restoreBuilding }).dataset
+        .variant,
+    ).toBe('secondary');
   });
 
   it('adds a floor to the open building and renames a floor', async () => {
@@ -132,7 +208,11 @@ describe('the buildings page', () => {
     fireEvent.click(rowButton('Main'));
     const panel = await screen.findByRole('complementary', { name: 'Main' });
 
-    const added = within(panel).getByRole('form', { name: en.setup.buildings.newFloor });
+    expect(within(panel).queryByRole('form', { name: en.setup.buildings.newFloor })).toBeNull();
+    fireEvent.click(within(panel).getByRole('button', { name: en.setup.buildings.addFloor }));
+    const added = await within(panel).findByRole('form', { name: en.setup.buildings.newFloor });
+    // The bottom row gives way to the open form: one primary in view.
+    expect(panelActions(panel)).toBeNull();
     type(within(added).getByLabelText(en.setup.buildings.floorName), '2');
     fireEvent.click(within(added).getByRole('button', { name: en.form.save }));
 
@@ -140,6 +220,14 @@ describe('the buildings page', () => {
       expect(
         calls.find((call) => call.route === `POST /api/setup/buildings/${MAIN.id}/floors`)?.body,
       ).toEqual({ name: '2' });
+    });
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form', { name: en.setup.buildings.newFloor })).toBeNull();
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.setup.buildings.addFloor }),
+      );
     });
 
     fireEvent.click(
@@ -156,6 +244,31 @@ describe('the buildings page', () => {
         { name: 'G' },
       );
     });
+  });
+
+  it('asks before another form of the panel takes the place of one with typed text', async () => {
+    await openList();
+    fireEvent.click(rowButton('Main'));
+    const panel = await screen.findByRole('complementary', { name: 'Main' });
+    fireEvent.click(
+      within(panel).getByRole('button', {
+        name: en.setup.buildings.renameNamed.replace('{{name}}', 'Ground'),
+      }),
+    );
+    const rename = await within(panel).findByRole('form', { name: 'Ground' });
+    type(within(rename).getByLabelText(en.setup.buildings.floorName), 'G');
+
+    fireEvent.click(within(panel).getByRole('button', { name: en.setup.buildings.addFloor }));
+    await goOn(en.unsent.stay);
+    expect(within(panel).getByRole('form', { name: 'Ground' })).toBeDefined();
+    expect(within(panel).queryByRole('form', { name: en.setup.buildings.newFloor })).toBeNull();
+
+    fireEvent.click(within(panel).getByRole('button', { name: en.setup.buildings.addFloor }));
+    await goOn(en.unsent.leave);
+    expect(
+      await within(panel).findByRole('form', { name: en.setup.buildings.newFloor }),
+    ).toBeDefined();
+    expect(within(panel).queryByRole('form', { name: 'Ground' })).toBeNull();
   });
 
   it('archives and restores a floor after asking, and shows a refused archive of the building as its text', async () => {
@@ -301,6 +414,9 @@ describe('the buildings page', () => {
       within(panel).queryByRole('button', { name: en.setup.buildings.archiveBuilding }),
     ).toBeNull();
     expect(within(panel).getAllByRole('row')).toHaveLength(4);
+    expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.setup.buildings.addFloor })).toBeNull();
+    expect(panelActions(panel)).toBeNull();
   });
 
   it('shows an archived building without its rename form, with a way to restore it', async () => {
@@ -440,7 +556,7 @@ describe('a new record in the side panel of a list', () => {
     const { router } = await openList();
     fireEvent.click(rowButton('Main'));
     const record = await screen.findByRole('complementary', { name: 'Main' });
-    const name = within(record).getAllByLabelText(en.setup.buildings.name)[0] as HTMLElement;
+    const name = within(await edit(record, 'Main')).getByLabelText(en.setup.buildings.name);
     type(name, 'Main hall');
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.buildings.add }));

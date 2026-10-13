@@ -418,6 +418,9 @@ export const en = {
       'This record is no longer in the list. What you typed is still here; save it or close the panel.',
   },
   form: {
+    // The side panel's record forms (task 2.7c-2b-1): Edit opens a form, Cancel closes it.
+    edit: 'Edit',
+    cancel: 'Cancel',
     // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
     phoneFormat: 'Enter the phone as +998 71 123 45 67.',
     add: 'Add',
@@ -975,6 +978,7 @@ export const en = {
       startBlockedCurrent: 'Another year of the branch is current.',
       startBlockedEarlier: 'An earlier year of the branch is not closed yet.',
       quartersTitle: 'Quarters',
+      changeQuarters: 'Change quarters',
       quarter: 'Quarter {{number}}',
       quarterStart: 'Quarter {{number}}: start',
       quarterEnd: 'Quarter {{number}}: end',

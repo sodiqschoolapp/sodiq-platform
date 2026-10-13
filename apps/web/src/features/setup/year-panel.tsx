@@ -14,11 +14,12 @@ import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
-import { FailureAlert } from '@/components/failure-alert';
 import { DateField } from '@/components/field';
 import type { FormIssue } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
+import { PanelActions } from '@/components/list/panel-actions';
+import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -43,10 +44,12 @@ interface YearFormProps {
   year: AcademicYear | null;
   label: string;
   onSave: (record: AcademicYearRecord) => Promise<void>;
+  /** Closes the form (opened by Edit in the side panel). */
+  onCancel?: () => void;
 }
 
 /** The two dates of a year (`03`, Academic year: "Start and end date"); the name follows from them. */
-export function YearForm({ year, label, onSave }: YearFormProps) {
+export function YearForm({ year, label, onSave, onCancel }: YearFormProps) {
   const { t } = useTranslation();
   const form = useRecordForm({
     schema: academicYearRecordSchema,
@@ -61,7 +64,7 @@ export function YearForm({ year, label, onSave }: YearFormProps) {
     },
   });
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       <DateField label={t('setup.years.startDate')} {...form.bind('startDate')} />
       <DateField label={t('setup.years.endDate')} {...form.bind('endDate')} />
     </RecordForm>
@@ -102,9 +105,11 @@ const endField = (number: number): QuarterFormField =>
 function QuartersFormView({
   year,
   onSave,
+  onCancel,
 }: {
   year: AcademicYear;
   onSave: (form: QuartersForm) => Promise<void>;
+  onCancel: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const initial = Object.fromEntries(
@@ -137,7 +142,7 @@ function QuartersFormView({
     };
   };
   return (
-    <RecordForm form={form} label={t('setup.years.quartersTitle')}>
+    <RecordForm form={form} label={t('setup.years.quartersTitle')} onCancel={onCancel}>
       {QUARTER_NUMBERS.map((number) => {
         const quarter = year.quarters.find((one) => one.number === number);
         return (
@@ -218,6 +223,8 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
   const confirm = useConfirm();
   const refresh = () => invalidateYears(queryClient);
   const closed = year.status === 'closed';
+  // One form open at a time: the dates or the quarters (task 2.7c-2b-1).
+  const panel = usePanelEditing();
 
   const edit = useMutation({
     mutationFn: (record: AcademicYearRecord) =>
@@ -278,16 +285,20 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
   const statusText = t(`setup.years.${year.status}`);
 
   return (
-    <div className="grid gap-6">
+    <div ref={panel.root} className="grid gap-6">
       <section className="grid gap-3">
         <h3 className={SECTION_TITLE}>{t('setup.years.datesTitle')}</h3>
-        {canEditYear && !closed ? (
+        {canEditYear && !closed && panel.editing === 'record' ? (
+          // The form takes the read view's place and its Save and Cancel are last.
           <YearForm
-            key={year.id}
             year={year}
             label={year.name}
             onSave={async (record) => {
               await edit.mutateAsync(record);
+              panel.stop({ saved: true });
+            }}
+            onCancel={() => {
+              panel.stop();
             }}
           />
         ) : (
@@ -300,47 +311,85 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
               <dt className="text-muted-foreground">{t('setup.years.endDate')}</dt>
               <dd>{schoolDateText(year.endDate, i18n.language)}</dd>
             </div>
+            <div className="grid gap-0.5">
+              <dt className="text-muted-foreground">{t('setup.years.status')}</dt>
+              <dd>{statusText}</dd>
+            </div>
           </dl>
         )}
       </section>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-sm">
-          {t('setup.years.status')}: {statusText}
-        </span>
-        {canEditYear && year.status === 'planned' && (
-          <>
-            <Button
-              variant="secondary"
-              disabled={startBlocked !== null || start.isPending}
-              onClick={() => {
-                void askStart();
+      {panel.editing !== 'record' && (
+        <section className="grid gap-3">
+          <h3 className={SECTION_TITLE}>{t('setup.years.quartersTitle')}</h3>
+          {canEditQuarters && !closed && panel.editing === 'quarters' ? (
+            <QuartersFormView
+              year={year}
+              onSave={async (form) => {
+                await saveQuarters.mutateAsync(form);
+                panel.stop({ saved: true });
               }}
-            >
-              {t('setup.years.start')}
-            </Button>
-            {startBlocked !== null && (
-              <span className="text-sm text-muted-foreground">{startBlocked}</span>
-            )}
-          </>
-        )}
-      </div>
-      <FailureAlert error={start.error} />
+              onCancel={() => {
+                panel.stop();
+              }}
+            />
+          ) : (
+            <>
+              <QuartersTable year={year} />
+              {canEditQuarters && !closed && (
+                <div>
+                  <Button
+                    variant="secondary"
+                    {...panel.opener('quarters')}
+                    onClick={() => {
+                      panel.start('quarters');
+                    }}
+                  >
+                    {t('setup.years.changeQuarters')}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      )}
 
-      <section className="grid gap-3">
-        <h3 className={SECTION_TITLE}>{t('setup.years.quartersTitle')}</h3>
-        {canEditQuarters && !closed ? (
-          <QuartersFormView
-            key={year.id}
-            year={year}
-            onSave={async (form) => {
-              await saveQuarters.mutateAsync(form);
-            }}
-          />
-        ) : (
-          <QuartersTable year={year} />
-        )}
-      </section>
+      {(canEditYear || canEditQuarters) && panel.editing === null && (
+        <PanelActions
+          primary={
+            canEditYear &&
+            !closed && (
+              <Button
+                {...panel.opener('record')}
+                onClick={() => {
+                  panel.start('record');
+                }}
+              >
+                {t('form.edit')}
+              </Button>
+            )
+          }
+          secondary={
+            canEditYear &&
+            year.status === 'planned' && (
+              <Button
+                variant="secondary"
+                disabled={startBlocked !== null || start.isPending}
+                onClick={() => {
+                  void askStart();
+                }}
+              >
+                {t('setup.years.start')}
+              </Button>
+            )
+          }
+          // `edge/academic-year`: "An action whose prerequisite is missing is
+          // switched off and says what is missing."
+          note={canEditYear && year.status === 'planned' ? startBlocked : null}
+          error={start.error}
+          saved={panel.saved}
+        />
+      )}
     </div>
   );
 }

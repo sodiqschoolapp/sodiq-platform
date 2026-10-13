@@ -23,6 +23,8 @@ interface RoomFormProps {
   floors: readonly FloorChoice[];
   label: string;
   onSave: (record: RoomRecord) => Promise<void>;
+  /** Closes the form (opened by Edit in the side panel). */
+  onCancel?: () => void;
 }
 
 /**
@@ -33,7 +35,7 @@ interface RoomFormProps {
  * offered, and a room on an archived floor can only be moved (decided by the
  * owner): the form says where it is and asks for an active floor.
  */
-export function RoomForm({ room, floors, label, onSave }: RoomFormProps) {
+export function RoomForm({ room, floors, label, onSave, onCancel }: RoomFormProps) {
   const { t, i18n } = useTranslation();
   const number = new Intl.NumberFormat(i18n.language);
   const onOffered = room !== null && floors.some((floor) => floor.floorId === room.floorId);
@@ -72,7 +74,7 @@ export function RoomForm({ room, floors, label, onSave }: RoomFormProps) {
   const floorsOfBuilding = floors.filter((one) => one.buildingId === building.value);
 
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       {room !== null && !onOffered && (
         <p role="status" className="rounded-lg border border-dashed p-3 text-sm">
           {t('setup.rooms.onArchivedFloor', {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/confirm-dialog';
 import { useUnsentEntry } from '@/components/unsent/unsent-changes';
 import { SavedSign } from './saved-sign';
 import type { RecordFormState } from './use-record-form';
@@ -16,6 +17,11 @@ interface RecordFormProps<Field extends string> {
   label: string;
   /** The fields: `Field`, `NumberField`, `SelectField`. */
   children: ReactNode;
+  /**
+   * With it, a quiet Cancel after Save closes the form (a form opened by Edit
+   * in a side panel, task 2.7c-2b-1): typed text is asked about first.
+   */
+  onCancel?: (() => void) | undefined;
 }
 
 /**
@@ -32,8 +38,10 @@ export function RecordForm<Field extends string>({
   form,
   label,
   children,
+  onCancel,
 }: RecordFormProps<Field>) {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const element = useRef<HTMLFormElement>(null);
   // Counts the presses of Save that a wrong field refused.
   const [refused, setRefused] = useState(0);
@@ -61,6 +69,28 @@ export function RecordForm<Field extends string>({
       : null,
   );
 
+  // Only this form is asked about: another form of the page keeps what is typed in it.
+  async function cancel() {
+    if (onCancel === undefined) {
+      return;
+    }
+    if (
+      (form.dirty || form.status === 'failed') &&
+      !(await confirm({
+        title: t('unsent.leaveTitle'),
+        text: t('unsent.leaveText'),
+        names: [label],
+        action: t('unsent.leave'),
+        cancel: t('unsent.stay'),
+        destructive: true,
+      }))
+    ) {
+      return;
+    }
+    form.reset();
+    onCancel();
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault();
     void form.submit().then((sent) => {
@@ -85,6 +115,18 @@ export function RecordForm<Field extends string>({
         <Button type="submit" disabled={form.status === 'saving'}>
           {t('form.save')}
         </Button>
+        {onCancel !== undefined && (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={form.status === 'saving'}
+            onClick={() => {
+              void cancel();
+            }}
+          >
+            {t('form.cancel')}
+          </Button>
+        )}
         <SavedSign saved={form.status === 'saved'} />
       </div>
     </form>

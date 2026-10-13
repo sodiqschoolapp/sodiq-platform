@@ -3,6 +3,13 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import {
+  actionsAreLast,
+  edit,
+  panelActionNames,
+  panelActions,
+  savedInPanel,
+} from '@/testing/panel';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 
@@ -93,6 +100,12 @@ async function openList(
   }
   return calls;
 }
+
+/** "Change quarters" pressed: the quarters form. */
+const changeQuarters = async (panel: HTMLElement): Promise<HTMLElement> => {
+  fireEvent.click(within(panel).getByRole('button', { name: en.setup.years.changeQuarters }));
+  return within(panel).findByRole('form', { name: en.setup.years.quartersTitle });
+};
 
 const openYear = async (name: string) => {
   fireEvent.click(screen.getByText(name, { selector: 'button' }));
@@ -239,7 +252,10 @@ describe('the academic years page', () => {
     const panel = await openYear('2026–2027');
     expect(within(panel).queryByRole('form', { name: '2026–2027' })).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.setup.years.start })).toBeNull();
-    const form = within(panel).getByRole('form', { name: en.setup.years.quartersTitle });
+    // Task 2.7c-2b-1: quarters edit and no year edit: "Change quarters", no Edit.
+    expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
+    expect(panelActions(panel)).toBeNull();
+    const form = await changeQuarters(panel);
     expect(within(form).getByText('September – October')).toBeDefined();
     type(within(form).getByLabelText('Quarter 3: start'), '2027-01-12');
     type(within(form).getByLabelText('Quarter 3: end'), '2027-03-20');
@@ -258,6 +274,33 @@ describe('the academic years page', () => {
         ],
       });
     });
+    await savedInPanel(panel);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.setup.years.changeQuarters }),
+      );
+    });
+  });
+
+  it('changes the dates of a year through Edit, with "Start year" beside it at the bottom', async () => {
+    const calls = await openList('super_admin', [PLANNED], {
+      [`PUT /api/setup/academic-years/${PLANNED.id}`]: (body) =>
+        json({ ...PLANNED, ...(body as object) }),
+    });
+    const panel = await openYear('2027–2028');
+    expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.years.start]);
+    expect(actionsAreLast(panel)).toBe(true);
+
+    const form = await edit(panel, '2027–2028');
+    // The quarters give way while the dates are edited: Save and Cancel are last.
+    expect(within(panel).queryByRole('heading', { name: en.setup.years.quartersTitle })).toBeNull();
+    type(within(form).getByLabelText(en.setup.years.endDate), '2028-05-30');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+    await savedInPanel(panel);
+    expect(
+      calls.find((call) => call.route === `PUT /api/setup/academic-years/${PLANNED.id}`)?.body,
+    ).toEqual({ startDate: '2027-09-02', endDate: '2028-05-30' });
   });
 
   it('says what to fix in the quarters before anything is sent, and shows a quarter outside the year beside its field', async () => {
@@ -268,7 +311,7 @@ describe('the academic years page', () => {
         ]),
     });
     const panel = await openYear('2026–2027');
-    const form = within(panel).getByRole('form', { name: en.setup.years.quartersTitle });
+    const form = await changeQuarters(panel);
 
     type(within(form).getByLabelText('Quarter 3: start'), '2026-12-01');
     type(within(form).getByLabelText('Quarter 3: end'), '2027-03-20');
@@ -303,6 +346,8 @@ describe('the academic years page', () => {
 
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.setup.years.start })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.setup.years.changeQuarters })).toBeNull();
   });
 
   it('says what the page is for when the branch has no year, with the first action', async () => {

@@ -3,6 +3,13 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import {
+  actionsAreLast,
+  edit,
+  panelActionNames,
+  panelActions,
+  savedInPanel,
+} from '@/testing/panel';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 
@@ -86,6 +93,12 @@ async function openList(
   await screen.findByRole('table', { name: texts.setup.slotTypes.caption });
   return calls;
 }
+
+/** "New length from a date" pressed in the bottom row: its form. */
+const newLength = async (panel: HTMLElement): Promise<HTMLElement> => {
+  fireEvent.click(within(panel).getByRole('button', { name: en.setup.slotTypes.changeLength }));
+  return within(panel).findByRole('form', { name: en.setup.slotTypes.changeLength });
+};
 
 const openSlotType = async (name: string) => {
   fireEvent.click(screen.getByText(name, { selector: 'button' }));
@@ -171,7 +184,7 @@ describe('the slot types page', () => {
     });
 
     const panel = await openSlotType('Lunch');
-    const form = within(panel).getByRole('form', { name: en.setup.slotTypes.changeLength });
+    const form = await newLength(panel);
     expect(within(form).getByLabelText<HTMLInputElement>(en.setup.slotTypes.from).value).toBe(
       '2026-10-11',
     );
@@ -200,6 +213,42 @@ describe('the slot types page', () => {
         from: '2026-10-11',
       });
     });
+    await savedInPanel(panel);
+  });
+
+  it('shows a slot type to read with its actions at the bottom, and renames it through Edit', async () => {
+    const calls = await openList('academic_vice_principal', {
+      [`PATCH /api/setup/slot-types/${LUNCH.id}`]: (body) =>
+        json({ ...LUNCH, ...(body as object) }),
+    });
+    const panel = await openSlotType('Lunch');
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(panelActionNames(panel)).toEqual([
+      en.form.edit,
+      en.setup.slotTypes.changeLength,
+      en.setup.slotTypes.archive,
+    ]);
+    expect(actionsAreLast(panel)).toBe(true);
+
+    const form = await edit(panel, 'Lunch');
+    type(within(form).getByLabelText(en.setup.slotTypes.name), 'Long lunch');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await savedInPanel(panel);
+    expect(
+      calls.find((call) => call.route === `PATCH /api/setup/slot-types/${LUNCH.id}`)?.body,
+    ).toEqual({ name: 'Long lunch' });
+  });
+
+  it('shows an archived slot type with Restore and no Edit', async () => {
+    await openList('academic_vice_principal', {
+      'GET /api/setup/slot-types': () =>
+        json({
+          today: TODAY,
+          slotTypes: [LESSON, { ...LUNCH, archivedAt: '2026-10-10T10:00:00.000Z' }],
+        }),
+    });
+    const panel = await openSlotType('Lunch');
+    expect(panelActionNames(panel)).toEqual([en.setup.slotTypes.restore]);
   });
 
   it('saves nothing when the preview is answered "Do not save", and says so', async () => {
@@ -208,13 +257,17 @@ describe('the slot types page', () => {
     });
 
     const panel = await openSlotType('Lunch');
-    const form = within(panel).getByRole('form', { name: en.setup.slotTypes.changeLength });
+    const form = await newLength(panel);
     type(within(form).getByLabelText(en.setup.slotTypes.length), '30');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     const dialog = await screen.findByRole('dialog', { name: en.setup.templateTable.previewTitle });
     fireEvent.click(within(dialog).getByRole('button', { name: en.setup.templateTable.cancel }));
 
+    // The form stays open with what was typed.
     expect(await within(panel).findByText(en.form.notSaved)).toBeDefined();
+    expect(within(form).getByLabelText<HTMLInputElement>(en.setup.slotTypes.length).value).toBe(
+      '30',
+    );
     expect(
       calls.some((call) => call.route === `POST /api/setup/slot-types/${LUNCH.id}/lengths`),
     ).toBe(false);
@@ -230,7 +283,7 @@ describe('the slot types page', () => {
     });
 
     const panel = await openSlotType('Lesson 45');
-    const form = within(panel).getByRole('form', { name: en.setup.slotTypes.changeLength });
+    const form = await newLength(panel);
     type(within(form).getByLabelText(en.setup.slotTypes.length), '180');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
 
@@ -262,6 +315,7 @@ describe('the slot types page', () => {
     const panel = await openSlotType('Lesson 45');
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.setup.slotTypes.archive })).toBeNull();
+    expect(panelActions(panel)).toBeNull();
     expect(within(panel).getAllByText('1 November 2026', { selector: 'td' })).toHaveLength(2);
   });
 });

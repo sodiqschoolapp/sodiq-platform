@@ -22,6 +22,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { isNamedRefusal } from './building-panel';
 import { RoomForm } from './room-form';
+import { RoomPanel } from './room-panel';
 import { activeFloorsOf, buildingsQuery, roomsQuery, SETUP_KEY } from './setup-api';
 
 /** The fields of a room as the edit route takes them. */
@@ -346,28 +347,18 @@ export function RoomsPage() {
                 ...newRecord.handlers,
               }
         }
-        panel={(row) =>
-          canEdit ? (
-            <RoomForm
-              key={row.id}
-              room={row}
-              floors={floors}
-              label={row.name}
-              onSave={async (record) => {
-                await edit.mutateAsync({ id: row.id, record });
-              }}
-            />
-          ) : (
-            <dl className="grid gap-3">
-              {columns.map((column) => (
-                <div key={column.key} className="grid gap-0.5">
-                  <dt className="text-sm text-muted-foreground">{column.header}</dt>
-                  <dd>{column.cell(row)}</dd>
-                </div>
-              ))}
-            </dl>
-          )
-        }
+        panel={(row) => (
+          <RoomPanel
+            key={row.id}
+            room={row}
+            floors={floors}
+            columns={columns}
+            canEdit={canEdit}
+            onSave={async (record) => {
+              await edit.mutateAsync({ id: row.id, record });
+            }}
+          />
+        )}
       />
     </>
   );

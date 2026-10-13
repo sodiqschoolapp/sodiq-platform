@@ -161,13 +161,15 @@ interface VersionFormProps {
   initial: { startTime: string; slotTypeIds: readonly string[]; from: string };
   label: string;
   onSave: (record: DayTemplateVersionRecord) => Promise<void>;
+  /** Closes the form (opened in the side panel). */
+  onCancel?: () => void;
 }
 
 /**
  * New slots or a new start time from a date, tomorrow at the earliest (answer
  * 12). The times are shown with the lengths in force on that date.
  */
-export function VersionForm({ slotTypes, initial, label, onSave }: VersionFormProps) {
+export function VersionForm({ slotTypes, initial, label, onSave, onCancel }: VersionFormProps) {
   const { t } = useTranslation();
   const form = useRecordForm({
     schema: withinTheDay(dayTemplateVersionRecordSchema, slotTypes, (values) => values.from),
@@ -186,7 +188,7 @@ export function VersionForm({ slotTypes, initial, label, onSave }: VersionFormPr
   const start = form.bind('startTime');
   const from = form.bind('from');
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       <DateField label={t('setup.dayTemplates.from')} {...from} />
       <Field label={t('setup.dayTemplates.startTime')} type="time" {...start} />
       <SlotsField

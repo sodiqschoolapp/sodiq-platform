@@ -441,6 +441,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Этой записи больше нет в списке. Введённое осталось здесь: сохраните его или закройте панель.',
   },
   form: {
+    // The side panel's record forms (task 2.7c-2b-1): Edit opens a form, Cancel closes it.
+    edit: 'Изменить',
+    cancel: 'Отмена',
     // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
     phoneFormat: 'Введите телефон в виде +998 71 123 45 67.',
     add: 'Добавить',
@@ -1048,6 +1051,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       startBlockedCurrent: 'Другой год филиала уже текущий.',
       startBlockedEarlier: 'Предыдущий год филиала ещё не закрыт.',
       quartersTitle: 'Четверти',
+      changeQuarters: 'Изменить четверти',
       quarter: '{{number}}-я четверть',
       quarterStart: '{{number}}-я четверть: начало',
       quarterEnd: '{{number}}-я четверть: окончание',
