@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { savedRecordPanel } from '@/testing/new-record';
 
 const PATH = '/setup/years';
 
@@ -131,12 +132,21 @@ describe('the academic years page', () => {
   });
 
   it('adds a year from its two dates', async () => {
-    const calls = await openList('super_admin', [CURRENT], {
-      'POST /api/setup/academic-years': (body) => json({ ...PLANNED, ...(body as object) }, 201),
+    // The list read again after the save holds the new year.
+    const years = [CURRENT];
+    const calls = await openList('super_admin', years, {
+      'POST /api/setup/academic-years': (body) => {
+        const year = { ...PLANNED, ...(body as object) };
+        years.push(year);
+        return json(year, 201);
+      },
     });
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.years.add }));
-    const form = await screen.findByRole('form', { name: en.setup.years.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.years.newTitle }),
+    ).getByRole('form', { name: en.setup.years.newTitle });
     type(within(form).getByLabelText(en.setup.years.startDate), '2027-09-02');
     type(within(form).getByLabelText(en.setup.years.endDate), '2028-05-25');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
@@ -147,6 +157,8 @@ describe('the academic years page', () => {
         endDate: '2028-05-25',
       });
     });
+    // The panel shows the saved record (task 2.7c-2a).
+    await savedRecordPanel(en.setup.years.newTitle);
   });
 
   // Decision 1 of pull request #44.
@@ -154,7 +166,10 @@ describe('the academic years page', () => {
     const calls = await openList('super_admin', [CURRENT]);
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.years.add }));
-    const form = await screen.findByRole('form', { name: en.setup.years.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.years.newTitle }),
+    ).getByRole('form', { name: en.setup.years.newTitle });
     type(within(form).getByLabelText(en.setup.years.startDate), '2027-09-02');
     type(within(form).getByLabelText(en.setup.years.endDate), '2027-12-25');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));

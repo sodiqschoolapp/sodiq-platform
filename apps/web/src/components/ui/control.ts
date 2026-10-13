@@ -24,6 +24,14 @@ export const FIELD = `h-10 w-full min-w-0 rounded-lg border border-input bg-card
 export const CHECKBOX = `size-4 accent-checkbox disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS_RING}`;
 
 /**
+ * The label around every checkbox: below 640 px it is the touch target, at
+ * least 44 × 44 (docs/design-system.md, Accessibility; pull request #81,
+ * decision 8). The box itself stays 16 px in the navy accent. Every
+ * `type="checkbox"` sits in a label with it (`tooling/design-parts.test.ts`).
+ */
+export const CHECKBOX_TARGET = 'flex items-center gap-2 max-sm:min-h-11 max-sm:min-w-11';
+
+/**
  * A panel: white on the grey canvas, corner 12, padding 24 at every width
  * (only the page padding is 16 at phone width; pull request #80, decision 4),
  * no border and no shadow (docs/design-system.md, Spacing, corners,

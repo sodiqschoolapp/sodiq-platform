@@ -15,11 +15,11 @@ import { api, branchHeader } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { ListPage, type BulkAction } from '@/components/list/list-page';
 import { useExport } from '@/components/list/use-export';
+import { useNewRecord } from '@/components/list/use-new-record';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { divisionsQuery, nameOf } from './setup-api';
 import { SubjectChip } from './subject-colour';
@@ -27,7 +27,6 @@ import { SubjectForm, type DepartmentChoice } from './subject-form';
 import { SubjectPanel } from './subject-panel';
 import { invalidateSubjects, subjectsQuery } from './subjects-api';
 import { weightsText } from './weights-form';
-import { SECTION_TITLE } from '@/components/ui/control';
 
 /** What a bulk archive or restore did: how many went through, and the names refused, by reason. */
 interface Outcome {
@@ -51,8 +50,7 @@ export function SubjectsPage() {
   const search = useSearch({ from: '/app/setup/subjects' });
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
-  const [adding, setAdding] = useState(false);
+  const newRecord = useNewRecord();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const canCreate = role !== null && permits(PERMISSIONS, role, 'subjects', 'create');
   const canEdit = role !== null && permits(PERMISSIONS, role, 'subjects', 'edit');
@@ -84,7 +82,6 @@ export function SubjectsPage() {
         api.POST('/api/setup/subjects', { params: { header: branchHeader() }, body: record }),
       ),
     onSuccess: async () => {
-      setAdding(false);
       await refresh();
     },
   });
@@ -274,15 +271,16 @@ export function SubjectsPage() {
   };
 
   const noDepartment = divisions.data !== undefined && choices.length === 0;
-  const addButton = canCreate && !adding && (
+  const addButton = canCreate && newRecord.value === null && (
     <span className="flex flex-wrap items-center gap-2">
       {noDepartment && (
         <span className="text-sm text-muted-foreground">{t('setup.subjects.needsDepartment')}</span>
       )}
       <Button
+        id={newRecord.buttonId}
         disabled={divisions.data === undefined || noDepartment}
         onClick={() => {
-          setAdding(true);
+          newRecord.start(true);
         }}
       >
         {t('setup.subjects.add')}
@@ -307,37 +305,6 @@ export function SubjectsPage() {
             void divisions.refetch();
           }}
         />
-      )}
-      {adding && (
-        <section
-          aria-label={t('setup.subjects.newTitle')}
-          className="mb-6 grid max-w-2xl gap-3 rounded-xl bg-card p-6"
-        >
-          <h2 className={SECTION_TITLE}>{t('setup.subjects.newTitle')}</h2>
-          <SubjectForm
-            subject={null}
-            departments={choices}
-            hasDaily={false}
-            label={t('setup.subjects.newTitle')}
-            onSave={async (record) => {
-              await create.mutateAsync(record);
-            }}
-          />
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void leave.leave().then((leaves) => {
-                  if (leaves) {
-                    setAdding(false);
-                  }
-                });
-              }}
-            >
-              {t('setup.subjects.cancel')}
-            </Button>
-          </div>
-        </section>
       )}
       {outcome !== null && (
         <p role="status" className="mb-3 text-sm">
@@ -380,6 +347,33 @@ export function SubjectsPage() {
           action: addButton === false ? undefined : addButton,
         }}
         bulkActions={bulkActions}
+        creating={
+          newRecord.value === null
+            ? undefined
+            : {
+                key: 'subject',
+                title: t('setup.subjects.newTitle'),
+                content: ({ saved, close }) => (
+                  <div className="grid gap-4">
+                    <SubjectForm
+                      subject={null}
+                      departments={choices}
+                      hasDaily={false}
+                      label={t('setup.subjects.newTitle')}
+                      onSave={async (record) => {
+                        saved((await create.mutateAsync(record)).id);
+                      }}
+                    />
+                    <div>
+                      <Button variant="ghost" onClick={close}>
+                        {t('setup.subjects.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                ),
+                ...newRecord.handlers,
+              }
+        }
         panel={(row) => (
           <SubjectPanel
             key={row.id}

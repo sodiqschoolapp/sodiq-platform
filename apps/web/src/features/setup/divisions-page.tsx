@@ -7,14 +7,13 @@ import { api } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { ListPage, type BulkAction } from '@/components/list/list-page';
 import { useExport } from '@/components/list/use-export';
+import { useNewRecord } from '@/components/list/use-new-record';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { DivisionPanel, NamesForm } from './division-panel';
 import { divisionsQuery, invalidateDivisions, nameOf } from './setup-api';
-import { SECTION_TITLE } from '@/components/ui/control';
 
 /**
  * What a bulk archive or restore did: how many went through, which were
@@ -58,8 +57,7 @@ export function DivisionsPage() {
   const search = useSearch({ from: '/app/setup/divisions' });
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
-  const [adding, setAdding] = useState(false);
+  const newRecord = useNewRecord();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const canEdit = role !== null && permits(PERMISSIONS, role, 'divisions', 'edit');
   const canCreate = role !== null && permits(PERMISSIONS, role, 'divisions', 'create');
@@ -76,7 +74,6 @@ export function DivisionsPage() {
     mutationFn: (record: DivisionRecord) =>
       answerOf(api.POST('/api/setup/divisions', { body: record })),
     onSuccess: async () => {
-      setAdding(false);
       await refresh();
     },
   });
@@ -195,10 +192,11 @@ export function DivisionsPage() {
     void navigate({ to: '/setup/divisions', search: next, replace: how === 'replace' });
   };
 
-  const addButton = canCreate && !adding && (
+  const addButton = canCreate && newRecord.value === null && (
     <Button
+      id={newRecord.buttonId}
       onClick={() => {
-        setAdding(true);
+        newRecord.start(true);
       }}
     >
       {t('setup.divisions.add')}
@@ -215,36 +213,6 @@ export function DivisionsPage() {
         ]}
         actions={addButton === false ? undefined : addButton}
       />
-      {adding && (
-        <section
-          aria-label={t('setup.divisions.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6"
-        >
-          <h2 className={SECTION_TITLE}>{t('setup.divisions.newTitle')}</h2>
-          <NamesForm
-            names={null}
-            label={t('setup.divisions.newTitle')}
-            takenText={t('setup.divisions.nameTaken')}
-            onSave={async (record) => {
-              await create.mutateAsync(record);
-            }}
-          />
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void leave.leave().then((leaves) => {
-                  if (leaves) {
-                    setAdding(false);
-                  }
-                });
-              }}
-            >
-              {t('setup.divisions.cancel')}
-            </Button>
-          </div>
-        </section>
-      )}
       {outcome !== null && (
         <p role="status" className="mb-3 text-sm">
           {t(outcome.restore ? 'setup.divisions.restored' : 'setup.divisions.archived_done', {
@@ -284,6 +252,32 @@ export function DivisionsPage() {
           action: addButton === false ? undefined : addButton,
         }}
         bulkActions={bulkActions}
+        creating={
+          newRecord.value === null
+            ? undefined
+            : {
+                key: 'division',
+                title: t('setup.divisions.newTitle'),
+                content: ({ saved, close }) => (
+                  <div className="grid gap-4">
+                    <NamesForm
+                      names={null}
+                      label={t('setup.divisions.newTitle')}
+                      takenText={t('setup.divisions.nameTaken')}
+                      onSave={async (record) => {
+                        saved((await create.mutateAsync(record)).id);
+                      }}
+                    />
+                    <div>
+                      <Button variant="ghost" onClick={close}>
+                        {t('setup.divisions.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                ),
+                ...newRecord.handlers,
+              }
+        }
         panel={(row) => <DivisionPanel key={row.id} division={row} canEdit={canEdit} />}
       />
     </>

@@ -5,6 +5,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import { savedRecordPanel } from '@/testing/new-record';
 import { divisionsKey, invalidateDivisions } from './setup-api';
 
 const PATH = '/setup/divisions';
@@ -352,7 +353,10 @@ describe('the divisions page', () => {
     const { calls } = await openList();
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.divisions.add }));
-    const form = screen.getByRole('form', { name: en.setup.divisions.newTitle });
+    // In the side panel beside the list (task 2.7c-2a), not above it.
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.divisions.newTitle }),
+    ).getByRole('form', { name: en.setup.divisions.newTitle });
     typeNames(form, { uz: 'Sport', ru: 'Спорт', en: 'Sports' });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
 
@@ -371,6 +375,8 @@ describe('the divisions page', () => {
       ]);
     });
     expect(calls.filter((call) => call.route === 'GET /api/setup/divisions')).toHaveLength(2);
+    // The panel shows the saved record (task 2.7c-2a).
+    await savedRecordPanel(en.setup.divisions.newTitle);
   });
 
   it('archives several divisions at once after asking, naming Academic as built in, and goes on with the rest', async () => {

@@ -4,7 +4,8 @@ import { I18nextProvider } from 'react-i18next';
 import { describe, expect, it } from 'vitest';
 import { createI18n } from '@/i18n/i18n';
 import { en } from '@/i18n/locales/en';
-import { listValues, OrderedListField } from './field';
+import { CHECKBOX_TARGET } from '@/components/ui/control';
+import { CheckboxField, CheckboxGroupField, listValues, OrderedListField } from './field';
 
 const LABEL = 'Slots in order';
 
@@ -80,5 +81,53 @@ describe('an ordered list field', () => {
     expect(choice().value).toBe('lesson');
     add();
     expect(held()).toBe('lesson');
+  });
+});
+
+// docs/design-system.md, Accessibility: "touch targets of 44 px at phone
+// width" (task 2.7c-2a, pull request #81, decision 8). jsdom draws no sizes:
+// the label is the target, so a press on its words ticks the box.
+describe('the checkboxes of a form', () => {
+  function Ticks() {
+    const [one, setOne] = useState('');
+    const [days, setDays] = useState('');
+    return (
+      <>
+        <CheckboxField
+          label="Shared"
+          name="shared"
+          value={one}
+          onChange={(event) => {
+            setOne(event.target.value);
+          }}
+        />
+        <CheckboxGroupField
+          label="Weekdays"
+          name="days"
+          value={days}
+          onChange={(event) => {
+            setDays(event.target.value);
+          }}
+          options={[
+            { value: '1', label: 'Monday' },
+            { value: '2', label: 'Tuesday' },
+          ]}
+        />
+      </>
+    );
+  }
+
+  it('sit in a label that is 44 px at phone width, and a press on the words ticks them', () => {
+    render(<Ticks />);
+    for (const name of ['Shared', 'Monday', 'Tuesday']) {
+      const box = screen.getByRole<HTMLInputElement>('checkbox', { name });
+      const target = box.closest('label');
+      expect(target?.className.split(' ')).toEqual(
+        expect.arrayContaining(CHECKBOX_TARGET.split(' ')),
+      );
+      expect(box.checked).toBe(false);
+      fireEvent.click(screen.getByText(name));
+      expect(box.checked).toBe(true);
+    }
   });
 });

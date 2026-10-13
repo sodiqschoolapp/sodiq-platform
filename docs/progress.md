@@ -4,7 +4,19 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 ## 13 October 2026: spec change, the Branches list, Category shows every role, #42 texts
 
-- The owner's decisions on #39 and the texts proposed on #42 for tasks 2.2d to 2.7a are in the spec and the design system (`docs/spec-changes.md`, 13 October 2026). 2.7c-3 now builds the Branches list and the category of every role; 5.8 the forced delete of an unused building, floor or room. The procurement copy of `docs/design-system.md` needs the same lines. The next task is still 2.7c-2.
+- The owner's decisions on #39 and the texts proposed on #42 for tasks 2.2d to 2.7a are in the spec and the design system (`docs/spec-changes.md`, 13 October 2026). 2.7c-3 now builds the Branches list and the category of every role; 5.8 the forced delete of an unused building, floor or room. The procurement copy of `docs/design-system.md` needs the same lines. The next task is still 2.7c-2b.
+
+## 13 October 2026: task 2.7c-2a New records in the side panel and checkboxes at phone width
+
+- Built: `ListPage` shows a new record in its side panel (`creating`, `NewRecordActions`, `useNewRecord`); the eleven list pages and the bulk "Leave school" of Students use it, and the saved record then opens in the panel through the list's address.
+- Every checkbox sits in a label with `CHECKBOX_TARGET`, 44 × 44 at phone width; `checkPage` measures it; screenshots in `docs/screens/2.7c-2a/`.
+- Left out: the side panels' actions at the bottom and the staff panel's five Save buttons (2.7c-2b); Rooms "By floor" and the Branches list (2.7c-3); the Super Admin's own record (2.7d).
+
+The next sessions must know:
+
+- A new record of a list goes into `creating` of `ListPage` with `useNewRecord`; its form calls `saved(id)` after the list's query holds the record (await the invalidation), never `navigate` to `open`.
+- A new checkbox sits in a `label` with `CHECKBOX_TARGET` (`tooling/design-parts.test.ts`).
+- The next task is 2.7c-2b.
 
 ## 13 October 2026: task 2.7c-1 The page sweep, the text rule and the "New branch" side panel
 

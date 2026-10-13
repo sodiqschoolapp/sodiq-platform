@@ -1315,6 +1315,8 @@ try {
   // a year with quarters, a slot type, a template, a person, a student and a
   // parent), so every list has a record to open in its side panel. Written by
   // the migrator; the test reads and changes nothing but the theme.
+  // Also opened by the Super Admin in setup.spec.ts for the new-record panels
+  // of task 2.7c-2a: "Add room" there needs this branch's active floor.
   const pagesBranch = await insertBranch(migrator, 'Pages browser test branch');
   const pages = await create('Jasur', 'Tojiboyev');
   const pagesGiven = await transactions.run([pagesBranch], async (transaction) => {

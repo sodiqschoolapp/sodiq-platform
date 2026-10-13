@@ -7,14 +7,13 @@ import { api, branchHeader } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { ListPage, type BulkAction } from '@/components/list/list-page';
 import { useExport } from '@/components/list/use-export';
+import { useNewRecord } from '@/components/list/use-new-record';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { useLeave } from '@/components/unsent/unsent-changes';
 import { useView } from '@/features/access/use-view';
 import { BuildingForm, BuildingPanel } from './building-panel';
 import { buildingsQuery, SETUP_KEY } from './setup-api';
-import { SECTION_TITLE } from '@/components/ui/control';
 
 /**
  * What a bulk archive or restore did: how many went through, which were
@@ -50,8 +49,7 @@ export function BuildingsPage() {
   const search = useSearch({ from: '/app/setup/buildings' });
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
-  const [adding, setAdding] = useState(false);
+  const newRecord = useNewRecord();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const canEdit = role !== null && permits(PERMISSIONS, role, 'rooms', 'edit');
   const canCreate = role !== null && permits(PERMISSIONS, role, 'rooms', 'create');
@@ -69,10 +67,8 @@ export function BuildingsPage() {
       answerOf(
         api.POST('/api/setup/buildings', { params: { header: branchHeader() }, body: record }),
       ),
-    onSuccess: async () => {
-      setAdding(false);
-      await refresh();
-    },
+    // The list holds the new building before the panel shows it.
+    onSuccess: refresh,
   });
 
   /** One call per building, in order; a refusal of one does not stop the others. */
@@ -182,10 +178,11 @@ export function BuildingsPage() {
     void navigate({ to: '/setup/buildings', search: next, replace: how === 'replace' });
   };
 
-  const addButton = canCreate && !adding && (
+  const addButton = canCreate && newRecord.value === null && (
     <Button
+      id={newRecord.buttonId}
       onClick={() => {
-        setAdding(true);
+        newRecord.start(true);
       }}
     >
       {t('setup.buildings.add')}
@@ -202,35 +199,6 @@ export function BuildingsPage() {
         ]}
         actions={addButton === false ? undefined : addButton}
       />
-      {adding && (
-        <section
-          aria-label={t('setup.buildings.newTitle')}
-          className="mb-6 grid max-w-xl gap-3 rounded-xl bg-card p-6"
-        >
-          <h2 className={SECTION_TITLE}>{t('setup.buildings.newTitle')}</h2>
-          <BuildingForm
-            building={null}
-            label={t('setup.buildings.newTitle')}
-            onSave={async (record) => {
-              await create.mutateAsync(record);
-            }}
-          />
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void leave.leave().then((leaves) => {
-                  if (leaves) {
-                    setAdding(false);
-                  }
-                });
-              }}
-            >
-              {t('setup.buildings.cancel')}
-            </Button>
-          </div>
-        </section>
-      )}
       {outcome !== null && (
         <p role="status" className="mb-3 text-sm">
           {t(outcome.restore ? 'setup.buildings.restored' : 'setup.buildings.archived_done', {
@@ -267,6 +235,31 @@ export function BuildingsPage() {
           action: addButton === false ? undefined : addButton,
         }}
         bulkActions={bulkActions}
+        creating={
+          newRecord.value === null
+            ? undefined
+            : {
+                key: 'building',
+                title: t('setup.buildings.newTitle'),
+                content: ({ saved, close }) => (
+                  <div className="grid gap-4">
+                    <BuildingForm
+                      building={null}
+                      label={t('setup.buildings.newTitle')}
+                      onSave={async (record) => {
+                        saved((await create.mutateAsync(record)).id);
+                      }}
+                    />
+                    <div>
+                      <Button variant="ghost" onClick={close}>
+                        {t('setup.buildings.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                ),
+                ...newRecord.handlers,
+              }
+        }
         panel={(row) => (
           <BuildingPanel key={row.id} building={row} canEdit={canEdit} branchId={branchId} />
         )}

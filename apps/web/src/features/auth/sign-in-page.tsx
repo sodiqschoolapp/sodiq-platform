@@ -8,7 +8,7 @@ import { answerOf } from '@/api/failure';
 import { Field } from '@/components/field';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { CHECKBOX } from '@/components/ui/control';
+import { CHECKBOX, CHECKBOX_TARGET } from '@/components/ui/control';
 import { AuthPage } from './auth-page';
 import { FailureAlert } from '@/components/failure-alert';
 import { useWaiting } from './form-helpers';
@@ -109,10 +109,7 @@ export function SignInPage() {
         <div className="grid gap-1">
           {/* The label is tied to the input by its id as well (issue #39, hand test
               of 13 October 2026, finding 32: announced as "on"). */}
-          <label
-            htmlFor={trustBoxId}
-            className="flex items-center gap-2 text-sm font-medium max-sm:min-h-11"
-          >
+          <label htmlFor={trustBoxId} className={`${CHECKBOX_TARGET} text-sm font-medium`}>
             <input
               id={trustBoxId}
               name="trustDevice"
