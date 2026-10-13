@@ -19,6 +19,7 @@ import { RecordForm } from '@/components/form/record-form';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
+import { useLeave } from '@/components/unsent/unsent-changes';
 import { Button } from '@/components/ui/button';
 import { Segmented } from '@/components/ui/segmented';
 import { HistoryLink } from '@/features/audit/history-link';
@@ -54,6 +55,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const { branchId } = useView();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
+  const leave = useLeave();
   // After the delete of a student created twice the panel says so and reads nothing more (task 2.4b-1).
   const [deleted, setDeleted] = useState(false);
   const detail = useQuery({
@@ -162,57 +164,68 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
           label={t('people.students.tabs.label')}
           options={tabs.map((one) => ({ value: one.key, label: one.title }))}
           value={shownTab}
-          onChange={setTab}
+          onChange={(next) => {
+            // Another tab takes the forms of this one away: ask first.
+            void leave.leave().then((leaves) => {
+              if (leaves) {
+                setTab(next);
+              }
+            });
+          }}
         />
       )}
+      {/* Each tab holds only its own content (issue #39, hand test of 13 October
+          2026, finding 5): the status, the record and the UID belong to Overview. */}
       {shownTab === 'overview' ? (
-        <Overview student={student} />
+        <>
+          <Overview student={student} />
+          <StatusSection
+            student={student}
+            label={name}
+            holderText={holderText}
+            onChanged={refresh}
+            onStale={async () => {
+              await queryClient.invalidateQueries({
+                queryKey: studentDetailQuery(branchId, id).queryKey,
+              });
+              await invalidateStudents(queryClient);
+            }}
+            onDeleted={async () => {
+              setDeleted(true);
+              queryClient.removeQueries({ queryKey: studentDetailQuery(branchId, id).queryKey });
+              await invalidateStudents(queryClient);
+            }}
+          />
+          {student.canEdit && (
+            <>
+              <section className="grid gap-3">
+                <h3 className="text-base font-semibold">{t('people.students.recordTitle')}</h3>
+                <StudentForm
+                  key={`${student.id}-record`}
+                  student={student}
+                  label={name}
+                  holderText={holderText}
+                  onEdit={async (record) => {
+                    await edit.mutateAsync(record);
+                  }}
+                />
+              </section>
+              <UidCorrection
+                key={`${student.id}-${student.uid}`}
+                student={student}
+                label={name}
+                holderText={holderText}
+                onSave={async (input) => {
+                  await correct.mutateAsync(input);
+                }}
+              />
+            </>
+          )}
+        </>
       ) : shownTab === 'relatives' ? (
         <StudentRelativesTab studentId={student.id} name={name} />
       ) : (
         <ContractTab student={student} />
-      )}
-      <StatusSection
-        student={student}
-        label={name}
-        holderText={holderText}
-        onChanged={refresh}
-        onStale={async () => {
-          await queryClient.invalidateQueries({
-            queryKey: studentDetailQuery(branchId, id).queryKey,
-          });
-          await invalidateStudents(queryClient);
-        }}
-        onDeleted={async () => {
-          setDeleted(true);
-          queryClient.removeQueries({ queryKey: studentDetailQuery(branchId, id).queryKey });
-          await invalidateStudents(queryClient);
-        }}
-      />
-      {student.canEdit && (
-        <>
-          <section className="grid gap-3">
-            <h3 className="text-base font-semibold">{t('people.students.recordTitle')}</h3>
-            <StudentForm
-              key={`${student.id}-record`}
-              student={student}
-              label={name}
-              holderText={holderText}
-              onEdit={async (record) => {
-                await edit.mutateAsync(record);
-              }}
-            />
-          </section>
-          <UidCorrection
-            key={`${student.id}-${student.uid}`}
-            student={student}
-            label={name}
-            holderText={holderText}
-            onSave={async (input) => {
-              await correct.mutateAsync(input);
-            }}
-          />
-        </>
       )}
     </div>
   );

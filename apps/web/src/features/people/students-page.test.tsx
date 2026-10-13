@@ -267,6 +267,62 @@ describe('the profile of a student', () => {
     expect(within(panel).getByText(en.people.students.noConsent)).toBeDefined();
   });
 
+  // Issue #39, hand test of 13 October 2026, finding 5: each tab holds only
+  // its own content; the status, the record and the UID belong to Overview.
+  it('switches the whole panel with its tabs', async () => {
+    openList('academic_vice_principal', {}, 'en', { canEdit: true });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const titles = () => [...panel.querySelectorAll('h3')].map((title) => title.textContent);
+    const tabs = await within(panel).findByRole('radiogroup');
+
+    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.overview }));
+    await waitFor(() => {
+      expect(titles()).toEqual(
+        expect.arrayContaining([
+          en.people.students.statusTitle,
+          en.people.students.recordTitle,
+          en.people.students.uidTitle,
+        ]),
+      );
+    });
+
+    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.contract }));
+    expect(await within(panel).findByText(/SQ-2026\/017/)).toBeDefined();
+    expect(titles()).not.toContain(en.people.students.statusTitle);
+    expect(titles()).not.toContain(en.people.students.recordTitle);
+    expect(titles()).not.toContain(en.people.students.uidTitle);
+    expect(within(panel).queryByRole('form')).toBeNull();
+
+    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.relatives }));
+    expect(await within(panel).findByText('Dilfuza Rahimova')).toBeDefined();
+    expect(titles()).not.toContain(en.people.students.statusTitle);
+    expect(titles()).not.toContain(en.people.students.recordTitle);
+  });
+
+  it('asks before a tab takes typed changes of the record away', async () => {
+    openList('academic_vice_principal', {}, 'en', { canEdit: true });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Oʻtkir Rahimov', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const tabs = await within(panel).findByRole('radiogroup');
+    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.overview }));
+    const record = await within(panel).findByRole('form', { name: 'Oʻtkir Rahimov' });
+    const field = within(record).getByLabelText(en.people.students.firstName);
+    fireEvent.change(field, { target: { value: 'Oʻtkirbek' } });
+
+    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.contract }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.stay }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(within(panel).getByLabelText<HTMLInputElement>(en.people.students.firstName).value).toBe(
+      'Oʻtkirbek',
+    );
+  });
+
   it('draws only the groups a Head Tutor reads: no contract tab, no documents', async () => {
     openList('head_tutor', {}, 'en', {
       identity: null,
