@@ -332,6 +332,15 @@ export const PERMISSIONS = freezeTable({
     principal: ['view'],
     academic_vice_principal: ['view'],
   }),
+  /**
+   * The personal data report of a student, a relative or a staff member
+   * (task 2.6b, pull request #76, decision 3): edge-cases/people-roles-accounts,
+   * Personal data and the audit log: "The Super Admin can produce a personal
+   * data report per person". Producing one is an export and is logged.
+   */
+  personal_data_report: rows({
+    super_admin: ['export'],
+  }),
   current_period: rows({
     super_admin: ['view'],
     principal: ['view'],

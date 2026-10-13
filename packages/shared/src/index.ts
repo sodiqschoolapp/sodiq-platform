@@ -776,3 +776,19 @@ export {
   type SignInHistoryAction,
   type SignInHistoryQuery,
 } from './audit.js';
+export {
+  PERSONAL_DATA_ENTRY_LIMIT,
+  PERSONAL_DATA_KINDS,
+  personalDataKindSchema,
+  personalDataParamsSchema,
+  personalDataReportSchema,
+  relativeReportSchema,
+  staffReportSchema,
+  studentReportSchema,
+  type PersonalDataKind,
+  type PersonalDataParams,
+  type PersonalDataReport,
+  type RelativeReport,
+  type StaffReport,
+  type StudentReport,
+} from './personal-data.js';

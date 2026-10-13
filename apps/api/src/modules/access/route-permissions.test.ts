@@ -269,6 +269,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // entries each reads is decided in the route (audit-entries.test.ts).
   'GET /api/audit/entries': { branch: 'request', roles: SETUP_VIEWERS },
   'POST /api/audit/entries/:id/show': { branch: 'request', roles: SETUP_VIEWERS },
+  // The personal data report (task 2.6b, decision 3 of pull request #76): the
+  // Super Admin alone, for a person of the branch of the request.
+  'POST /api/people/students/:id/report': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/people/staff/:id/report': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/people/relatives/:id/report': { branch: 'request', roles: ['super_admin'] },
   // Task 2.5b-1 (pull request #73): the count of "no valid phone" for the home
   // tile under `relatives` `view`; the merge under `relatives` `edit`, refused
   // across branches to all but the Super Admin by the route (relative-owners.test.ts).

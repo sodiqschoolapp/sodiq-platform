@@ -1870,6 +1870,7 @@ export const uz: Texts<'one' | 'other'> = {
         availability_end: 'Ish vaqti tugatildi',
         export: 'Xodimlar eksport qilindi',
         identity_shown: 'Xodim yozuvining yashirin maydonlari koʻrsatildi',
+        personal_data_report: 'Xodimning shaxsiy maʼlumotlar hisoboti tuzildi',
       },
       vacancy: {
         create: 'Boʻsh oʻrin yaratildi',
@@ -1892,6 +1893,7 @@ export const uz: Texts<'one' | 'other'> = {
         delete: 'Ikki marta yaratilgan oʻquvchi oʻchirildi',
         export: 'Oʻquvchilar eksport qilindi',
         identity_shown: 'Oʻquvchi yozuvining yashirin maydonlari koʻrsatildi',
+        personal_data_report: 'Oʻquvchining shaxsiy maʼlumotlar hisoboti tuzildi',
       },
       relative: {
         create: 'Yaqin qarindosh yaratildi',
@@ -1908,6 +1910,7 @@ export const uz: Texts<'one' | 'other'> = {
         same_person: 'Xodim bilan bir shaxs deb belgilandi',
         same_person_removed: '"Bir shaxs" belgisi olib tashlandi',
         show: 'Qarindoshning yashirin maydonlari koʻrsatildi',
+        personal_data_report: 'Qarindoshning shaxsiy maʼlumotlar hisoboti tuzildi',
       },
       audit: {
         entry_shown: 'Jurnal yozuvining yashirin qiymatlari koʻrsatildi',

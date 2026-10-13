@@ -1853,6 +1853,7 @@ export const en = {
         availability_end: 'Working hours ended',
         export: 'Staff exported',
         identity_shown: 'Hidden fields of a staff record shown',
+        personal_data_report: 'Personal data report of a staff member produced',
       },
       vacancy: {
         create: 'Vacancy created',
@@ -1875,6 +1876,7 @@ export const en = {
         delete: 'Student created twice deleted',
         export: 'Students exported',
         identity_shown: 'Hidden fields of a student record shown',
+        personal_data_report: 'Personal data report of a student produced',
       },
       relative: {
         create: 'Relative created',
@@ -1891,6 +1893,7 @@ export const en = {
         same_person: 'Marked as the same person as a staff member',
         same_person_removed: 'Mark "same person" removed',
         show: 'Hidden fields of a relative shown',
+        personal_data_report: 'Personal data report of a relative produced',
       },
       audit: {
         entry_shown: 'Hidden values of a log entry shown',

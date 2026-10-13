@@ -1945,6 +1945,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         availability_end: 'Рабочее время завершено',
         export: 'Сотрудники выгружены',
         identity_shown: 'Показаны скрытые поля сотрудника',
+        personal_data_report: 'Сформирован отчёт о персональных данных сотрудника',
       },
       vacancy: {
         create: 'Вакансия создана',
@@ -1967,6 +1968,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         delete: 'Удалён ученик, созданный дважды',
         export: 'Ученики выгружены',
         identity_shown: 'Показаны скрытые поля ученика',
+        personal_data_report: 'Сформирован отчёт о персональных данных ученика',
       },
       relative: {
         create: 'Родственник создан',
@@ -1983,6 +1985,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         same_person: 'Отмечен как то же лицо, что и сотрудник',
         same_person_removed: 'Отметка «то же лицо» снята',
         show: 'Показаны скрытые поля родственника',
+        personal_data_report: 'Сформирован отчёт о персональных данных родственника',
       },
       audit: {
         entry_shown: 'Показаны скрытые значения записи журнала',
