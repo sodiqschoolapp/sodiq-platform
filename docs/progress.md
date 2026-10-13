@@ -2,6 +2,10 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: no silent stalls (process change, no task)
+
+- Owner: after every push the builder checks that CI started and, when GitHub fired no event, calls the owner at once (`@abbosc`, `needs-owner`); a builder may re-run a CI failure outside the code once, and the reviewer then reviews the head whose checks passed, which the start routine treats as waiting for the reviewer; after pull requests #63 and #68 (`docs/decisions.md`, 13 October 2026).
+
 ## 12 October 2026: task 2.4b-1 Leaving, return and delete
 
 - Built: migrations 0033 and 0034 (`cause` and `reason` of `student_statuses`, `student_statuses_closed_year_guard`, `students_delete_guard`, the children `on delete cascade`, `student_uids.released_at` with `student_uids_release`, `student_uids_insert_guard`); six routes in `StudentStatusesController` (leaving, cancel, undo, return, restore, delete) planned by the pure `student-status.ts`; `archive` on `students` and the area `student_graduates`; `version`, `planned`, `canArchive`, `canRestoreGraduated`, `deletable` in the answers.

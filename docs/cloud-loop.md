@@ -36,7 +36,7 @@ merge ──▶ /next-task on the                                               
 
 Rules of the loop:
 
-- Review comments start with `[review]` and are one of `approved`, `changes needed`, `owner decision needed`, `ready to merge`, `stuck after three rounds`, and each names the head sha it read (`[review] approved at <sha>`). The builder acts on the newest one (`.claude/skills/next-task`, `.claude/skills/finish-task`). A pull request needs a review when its head sha is not the sha named in its newest `[review]`: the loop compares commits, never times.
+- Review comments start with `[review]` and are one of `approved`, `changes needed`, `owner decision needed`, `ready to merge`, `stuck after three rounds`, and each names the head sha it read (`[review] approved at <sha>`). The builder acts on the newest one (`.claude/skills/next-task`, `.claude/skills/finish-task`). A pull request needs a review when its head sha is not the sha named in its newest `[review]`: the loop compares commits, never times. It also needs one when its newest `[review]` is a `CI red` verdict at its head sha and every check of that sha has since passed on a re-run (`review-pr` step 1).
 - When the spec is silent, unclear or contradicts itself, nothing waits: the builder decides and writes the reading under "Decided without the owner", the reviewer confirms or changes it in its approval, the owner confirms or changes it afterwards on issue #42. The weightiest decisions are marked **Look first** and come first there (`CLAUDE.md`, "Stop and wait for the owner"). `[review] owner decision needed` waits for a person only for the two items of the stop list of `CLAUDE.md`: secrets, provider accounts, money and production; and a task pull request that changes the loop's own rules. The owner answers in a comment, or runs `/spec-change`.
 - The reviewer never edits or pushes code (`.claude/skills/review-pr`). It merges only at `[review] ready to merge` with the checks `checks` and `e2e` green, and only the commit the review read (the merge call carries its sha; a head that moved is reviewed again; never auto-merge); the owner may merge by hand. The builder never merges (`.claude/settings.json` denies `gh pr merge`). The reviewer merges only pull requests from `task/` branches; every other pull request (a `process/` change, a `/spec-change`, a gate line deleted) is reviewed, and the owner merges it.
 - The loop may not loosen its own rules: on a task pull request, a change under `.claude/`, `CLAUDE.md`, `.github/`, `scripts/hooks/` or `docs/cloud-loop.md` is an owner decision. The two exceptions: added lines in `.claude/agents/*.md` or `.claude/rules/*.md` that add a check or a fact (an added "except", "unless", "may skip" or "need not" is a loosening), and added lines inside the Commands block of `CLAUDE.md` that each name a script of a `package.json` in the same pull request.
@@ -138,9 +138,13 @@ Review the pull request named in the routine-fire-payload block if there is one;
 otherwise every open pull request against main that needs a review (its head sha
 is not the sha named in its newest [review]; compare commits, never times), as
 the skill says, and pick up every open pull request from a task/ branch whose
-newest [review] is "ready to merge" at its head sha (its merge step). Skip a draft
-whose newest [review] is "approved": it is being built. When nothing needs a
-review or a merge, say so and stop.
+newest [review] is "ready to merge" at its head sha (its merge step). A pull
+request whose newest [review] is a CI red verdict at its head sha also needs a
+review once every check run of that sha has completed with success after a
+re-run (checks and e2e success, none failed or running): review it as usual;
+that verdict is still no round. Skip a draft whose newest [review] is
+"approved": it is being built. When nothing needs a review or a merge, say so
+and stop.
 If the pull request is a draft, review the plan: confirm or change every item
 under "Decided without the owner", each with a reason, and list the result under
 **Decisions** in the approval, every decision of a Look first kind marked Look
@@ -199,7 +203,7 @@ If a session opened its pull request without binding it (the tool was missing), 
 Bind the pull request you opened to this session, so that review comments reach you.
 ```
 
-If a woken session does not continue after a comment, the start routine resumes the task (section 6). A builder that is alive shows it: its first act on an `approved` or `changes needed` is the line "Acting on the review." (`next-task` step 12, `finish-task` step 9), it posts a progress comment at least once an hour while it builds (`next-task` step 13), and a plan revision ends with an empty commit. So the hourly run treats a task pull request whose newest `[review]` is `approved` or `changes needed` as stalled when (a) nothing came after that review for 30 minutes, or (b) nothing at all happened for two hours, unless the pull request waits for the reviewer (its head sha is not the sha named in its newest `[review]`, other than on a draft that is being built). It checks out the branch, binds the pull request to itself, posts "Resumed by the start routine." and continues from step 12 of `next-task` (a draft) or step 9 of `finish-task` (a ready pull request). A missed wake costs at most an hour, and ten minutes since the bridge (section 7): every `[review] approved` or `changes needed` on a task pull request fires the start routine, which waits ten minutes for "Acting on the review." and resumes the task when it does not come. The other way round, a pull request that has waited three hours for the reviewer gets one comment from the start routine, `@abbosc No review for three hours; the review routine may not be running (its runs: claude.ai/code/routines).`
+If a woken session does not continue after a comment, the start routine resumes the task (section 6). A builder that is alive shows it: its first act on an `approved` or `changes needed` is the line "Acting on the review." (`next-task` step 12, `finish-task` step 9), it posts a progress comment at least once an hour while it builds (`next-task` step 13), and a plan revision ends with an empty commit. So the hourly run treats a task pull request whose newest `[review]` is `approved` or `changes needed` as stalled when (a) nothing came after that review for 30 minutes, or (b) nothing at all happened for two hours, unless the pull request waits for the reviewer (its head sha is not the sha named in its newest `[review]`, other than on a draft that is being built; or its newest `[review]` is a `CI red` verdict at its head sha and every check of that sha has since passed on a re-run). It checks out the branch, binds the pull request to itself, posts "Resumed by the start routine." and continues from step 12 of `next-task` (a draft) or step 9 of `finish-task` (a ready pull request). A missed wake costs at most an hour, and ten minutes since the bridge (section 7): every `[review] approved` or `changes needed` on a task pull request fires the start routine, which waits ten minutes for "Acting on the review." and resumes the task when it does not come. The other way round, a pull request that has waited three hours for the reviewer (from its head commit, or from the end of the green re-run in the second case) gets one comment from the start routine, `@abbosc No review for three hours; the review routine may not be running (its runs: claude.ai/code/routines).`
 
 ### 6. The start routine
 
@@ -236,10 +240,12 @@ minutes, or (b) nothing (no commit, no comment) happened for two hours, whether 
 not commits came after the review. A pull request that waits for the reviewer is
 not stalled: one whose head sha is not the sha named in its newest [review],
 unless it is a draft whose newest [review] is "approved" (that one is being
-built). For a stalled
-task: check out its branch, bind the pull request to this session with the bind_pr
-tool, post "Resumed by the start routine.", and continue from step 12 of
-.claude/skills/next-task/SKILL.md for a draft or from step 9 of
+built); and one whose newest [review] is a CI red verdict at its head sha and
+every check of that sha has since passed on a re-run (checks and e2e success,
+none failed or running). For a stalled task: check out its branch, bind the
+pull request to this session with the bind_pr tool, post "Resumed by the start
+routine.", and continue from step 12 of .claude/skills/next-task/SKILL.md for a
+draft or from step 9 of
 .claude/skills/finish-task/SKILL.md for a ready pull request, stopping where the
 skill says; nothing else is started in this run.
 Then the first unticked task of docs/build-plan.md: when a task/ branch for it
@@ -256,11 +262,13 @@ Otherwise do nothing, and say why, when any of these holds: an open pull request
 from a task/ branch exists; any open task pull request carries the label
 needs-owner; the first unticked task of docs/build-plan.md comes after an owner
 gate line ("> **Owner gate.**"). One exception to doing nothing: an open pull
-request from a task/ branch that waits for the reviewer (as above) and whose head
-commit is more than three hours old gets one comment, "@abbosc No review for three
-hours; the review routine may not be running (its runs:
-claude.ai/code/routines)." Post it once: skip it when that comment is already
-there, newer than the head commit. Nothing else is started.
+request from a task/ branch that waits for the reviewer (as above, either case)
+for more than three hours gets one comment, "@abbosc No review for three hours;
+the review routine may not be running (its runs: claude.ai/code/routines)." The
+wait starts at the head commit, or, for a CI red verdict at the head whose checks
+have since passed on a re-run, when the last check run of that sha completed.
+Post it once: skip it when that comment is already there, newer than the start
+of the wait. Nothing else is started.
 Otherwise read .claude/skills/next-task/SKILL.md in this repository and follow it
 with no task id: the first unticked task. Follow it to the end of "The draft pull
 request": the branch task/<id>-<short-name>, the empty commit, the draft pull
@@ -309,6 +317,8 @@ The hourly schedules stay, as the second net. The routines' own GitHub triggers 
 - A task that stalled after a review (no reaction to an `approved` or `changes needed` for 30 minutes, or no commit and no comment for two hours) is resumed by the next hourly run of the start routine, which posts "Resumed by the start routine." and continues; nothing to do. A pull request with `needs-owner` is never resumed.
 - The comment "@abbosc No review for three hours" on a task pull request: its head commit has waited three hours for a review, so the review routine may not be running. Open it at claude.ai/code/routines, read its last runs (a failed run, a dropped event, a paused routine) and press **Run now**; the routine reviews the pull request and the loop goes on.
 - A `task/` branch of the next task on origin without a pull request: a session died between the push and the pull request. After two hours the start routine deletes it when it holds only empty commits, and starts the task again. When it holds work, the routine opens one issue, `Loop stopped: <branch>`, that starts with `@abbosc`, and starts nothing. Open the pull request by hand, or delete the branch (`git push origin --delete task/<id>-<short-name>`); close the issue, and the loop goes on.
+- CI never started on a push: GitHub recorded the push but fired no `pull_request` event (pull request #63, 12 October 2026), so no CI ran, the review routine was never fired and nobody woke until the owner closed and reopened the pull request. Now the builder checks after every push that a CI run exists for the new head (`gh api "$R/actions/runs?head_sha=<sha>"`); when none exists 15 minutes after the push and the pull request is not `dirty`, it posts at once a comment that starts with `@abbosc`, adds the label `needs-owner` and stops (`next-task` and `finish-task`, "After every push"). The builder may not push an empty commit or close and reopen the pull request itself: its session's own rules forbid both. Push an empty commit or close and reopen the pull request by hand, check that CI starts on the new head, and remove the label; the next event wakes the builder, or the start routine resumes the task.
+- CI green after a re-run, no review: a re-run of a failed job fires no `pull_request` event, and the reviewer skipped a pull request whose head sha was the sha of its newest `[review]` (pull request #68, 13 October 2026: `checks` failed in the teardown after every test had passed, the builder's re-run passed at 23:01 UTC, and nobody acted for 2 hours 20 minutes, until the owner's reviewer pushed an empty commit). Now the builder may re-run a failure that is not the pull request's code once and, when the re-run passes, posts one comment and pushes nothing (`finish-task` step 9); the reviewer reviews a pull request whose newest `[review]` is a `CI red` verdict at its head sha once every check of that sha has passed (`review-pr` step 1), so the next hourly run picks it up, and the start routine treats it as waiting for the reviewer, not as stalled (section 6). To have the review at once, press **Run now** on the review routine.
 - A review that is wrong: reply on the pull request with `[review] …` yourself; the builder follows the newest `[review]`.
 - A routine run with a green status and no comment: open the run and read why; the usual causes are a blocked network request, a pull request that already had a newer review, or a `[review]` at the same head sha that another run posted first.
 - Anything that touches `docs/spec/`: never from a routine. A session follows the nearest reading, marks it **Look first** on issue #42 with the proposed wording, and goes on; the owner runs `/spec-change` when they agree.
