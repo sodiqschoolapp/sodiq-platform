@@ -103,13 +103,13 @@ export const uz: Texts<'one' | 'other'> = {
     default_template_required:
       'Filialda har doim standart shablon boʻladi. Buning oʻrniga boshqa shablonni standart qilib belgilang.',
     slot_type_in_use:
-      'Bu slot turi bugundan boshlab kun shablonida ishlatiladi. Avval oʻsha shablonlarni oʻzgartiring, keyin arxivlang.',
+      'Bu dars yoki tanaffus turi bugundan boshlab kun shablonida ishlatiladi. Avval oʻsha shablonlarni oʻzgartiring, keyin arxivlang.',
     template_in_use:
       'Bu shablon bugundan boshlab filialda belgilangan. Avval oʻsha belgilashni tugating yoki almashtiring, keyin arxivlang.',
     slot_type_archived:
-      'Arxivlangan slot turi tanlangan. Avval uni tiklang yoki boshqasini tanlang.',
+      'Arxivlangan dars yoki tanaffus turi tanlangan. Avval uni tiklang yoki boshqasini tanlang.',
     template_uses_archived_slot_type:
-      'Bu shablon bugundan boshlab arxivlangan slot turidan foydalanadi. Avval oʻsha slot turini tiklang, keyin shablonni.',
+      'Bu shablon bugundan boshlab arxivlangan dars yoki tanaffus turidan foydalanadi. Avval oʻsha turni tiklang, keyin shablonni.',
     template_archived: 'Kun shabloni arxivlangan. Avval uni tiklang yoki boshqasini tanlang.',
     calendar_date_not_in_future:
       'Faqat ertangi kundan boshlab sanalarni qoʻshish, oʻzgartirish yoki olib tashlash mumkin; bugungi va oʻtgan sanalar oʻzgarmaydi.',
@@ -184,8 +184,7 @@ export const uz: Texts<'one' | 'other'> = {
     leaving_not_planned: 'Bu oʻquvchining rejalashtirilgan ketishi yoʻq. Sahifani yangilang.',
     leaving_in_force:
       'Ketish allaqachon kuchga kirgan. Sabab bilan «Ketishni bekor qilish»dan foydalaning.',
-    student_not_inactive:
-      'Oʻquvchi hozir nofaol emas. Joriy holatni koʻrish uchun sahifani yangilang.',
+    student_not_inactive: 'Oʻquvchi hozir faol. Joriy holatni koʻrish uchun sahifani yangilang.',
     undo_not_leaving: 'Bu holat ketishdan kelib chiqmagan, uni bu yerda bekor qilib boʻlmaydi.',
     return_too_early:
       'Qaytish kuni yoʻq boʻlgan birinchi kundan keyin boʻlishi kerak. Xato kiritilgan ketishni olib tashlash uchun «Ketishni bekor qilish»dan foydalaning.',
@@ -401,9 +400,9 @@ export const uz: Texts<'one' | 'other'> = {
     exportTicked_one: 'Belgilangan {{n}} tasini eksport qilish',
     exportTicked_other: 'Belgilangan {{n}} tasini eksport qilish',
     exporting: 'Eksport qilinmoqda…',
-    exportAlso: 'Faylga qoʻshish',
-    exportAlsoChosen_one: 'Faylga qoʻshish: {{n}} guruh',
-    exportAlsoChosen_other: 'Faylga qoʻshish: {{n}} guruh',
+    exportAlso: 'Qoʻshimcha maydonlar',
+    exportAlsoChosen_one: 'Qoʻshimcha maydonlar: {{n}} guruh',
+    exportAlsoChosen_other: 'Qoʻshimcha maydonlar: {{n}} guruh',
     exportColumnsLeftOut:
       'Faylga kirmadi, chunki rolingiz ularni eksport qila olmaydi: {{columns}}.',
     selectAll: 'Qidiruv va filtrlarga mos barcha qatorlarni tanlash',
@@ -502,7 +501,7 @@ export const uz: Texts<'one' | 'other'> = {
     divisionsLinkText: 'Butun maktab uchun bitta roʻyxat.',
     yearsLink: 'Oʻquv yillari',
     yearsLinkText: 'Yillar va ularning choraklari.',
-    slotTypesLink: 'Slot turlari',
+    slotTypesLink: 'Dars va tanaffus turlari',
     slotTypesLinkText: 'Darslar va tanaffuslar davomiyligi bilan.',
     dayTemplatesLink: 'Kun shablonlari',
     dayTemplatesLinkText: 'Oʻquv kunining boshlanish vaqti va slotlari.',
@@ -641,8 +640,8 @@ export const uz: Texts<'one' | 'other'> = {
     },
     slotTypes: {
       emptyTitle: 'Darslar va tanaffuslar hali yoʻq',
-      title: 'Slot turlari',
-      caption: 'Slot turlari',
+      title: 'Dars va tanaffus turlari',
+      caption: 'Dars va tanaffus turlari',
       name: 'Nomi',
       kind: 'Turi',
       kinds: { lesson: 'Dars', break: 'Tanaffus' },
@@ -654,8 +653,8 @@ export const uz: Texts<'one' | 'other'> = {
       state: 'Holati',
       active: 'Faol',
       archived: 'Arxivlangan',
-      add: 'Slot turini qoʻshish',
-      newTitle: 'Yangi slot turi',
+      add: 'Dars yoki tanaffus turini qoʻshish',
+      newTitle: 'Yangi dars yoki tanaffus turi',
       cancel: 'Bekor qilish',
       empty: 'Bu yerda oʻquv kunining darslari va tanaffuslari roʻyxati. Hozircha yoʻq.',
       changeLength: 'Sanadan boshlab yangi davomiylik',
@@ -664,8 +663,8 @@ export const uz: Texts<'one' | 'other'> = {
       lengths: 'Davomiyliklar',
       archive: 'Arxivlash',
       restore: 'Tiklash',
-      archiveTitle: '{{name}} slot turini arxivlaysizmi?',
-      restoreTitle: '{{name}} slot turini tiklaysizmi?',
+      archiveTitle: '{{name}} turini arxivlaysizmi?',
+      restoreTitle: '{{name}} turini tiklaysizmi?',
       archiveText: 'Uni endi kun shabloniga qoʻshib boʻlmaydi. Oʻtgan kunlar oʻz vaqtini saqlaydi.',
     },
     dayTemplates: {
@@ -686,7 +685,7 @@ export const uz: Texts<'one' | 'other'> = {
       cancel: 'Bekor qilish',
       empty:
         'Bu yerda filialning oʻquv kunlari: boshlanish vaqti va tartibdagi slotlar. Hozircha yoʻq.',
-      needLessonType: 'Avval «dars» turidagi slot turini qoʻshing.',
+      needLessonType: 'Avval «dars» turidagi dars yoki tanaffus turini qoʻshing.',
       slots: 'Tartibdagi slotlar',
       startTime: 'Boshlanish vaqti',
       from: 'Dan',
@@ -789,7 +788,7 @@ export const uz: Texts<'one' | 'other'> = {
       groupSubject: 'Guruhli fan',
       languageRule: 'Til qoidasi',
       demanding: 'Murakkab fan',
-      switches: 'Belgilar',
+      switches: 'Xususiyatlar',
       daily: 'Kunlik taqsimot',
       quarterly: 'Choraklik taqsimot',
       quarterlyMissing: 'Vaznsiz choraklar',
@@ -866,7 +865,7 @@ export const uz: Texts<'one' | 'other'> = {
         departments: 'Kafedralar',
         year: 'Oʻquv yili',
         quarters: 'Toʻrt chorak sanalari',
-        slotTypes: 'Dars slot turlari',
+        slotTypes: 'Dars va tanaffus turlari',
         defaultTemplate: 'Asosiy kun shabloni',
         calendar: 'Taqvim',
         subjects: 'Fanlar va vaznlar',
@@ -1142,7 +1141,7 @@ export const uz: Texts<'one' | 'other'> = {
       notStarted: 'Keyinroq boshlaydi',
       statuses: {
         active: 'Faol',
-        inactive: 'Nofaol',
+        inactive: 'Faol emas',
         graduated: 'Bitiruvchi',
       },
       firstName: 'Ism',
@@ -1241,12 +1240,12 @@ export const uz: Texts<'one' | 'other'> = {
       },
       causeReason: '{{cause}}: {{reason}}',
       deleted: 'Bu oʻquvchi oʻchirildi.',
-      inactiveFrom: '{{date}} dan nofaol',
+      inactiveFrom: '{{date}} dan faol emas',
       leaveTitle: 'Maktabdan ketish',
       lastDay: 'Maktabdagi oxirgi kun',
       leaveConfirmTitle: 'Oʻquvchining ketishini qayd etasizmi?',
       leaveConfirmText:
-        'Oʻquvchi oxirgi kundan keyingi kundan nofaol boʻladi. Barcha maʼlumotlar saqlanadi.',
+        'Oʻquvchi oxirgi kundan keyingi kundan faol emas boʻladi. Barcha maʼlumotlar saqlanadi.',
       leaveAction: 'Ketishni qayd etish',
       cancelLeaving: 'Rejalashtirilgan ketishni bekor qilish',
       cancelConfirmTitle: 'Rejalashtirilgan ketish bekor qilinsinmi?',
@@ -1350,7 +1349,7 @@ export const uz: Texts<'one' | 'other'> = {
         current: 'Amalda',
       },
     },
-    sections: 'Oʻqituvchilar roʻyxati boʻlimlari',
+    sections: 'Odamlar boʻlimlari',
     availability: {
       title: 'Ish vaqti',
       change: 'Sanadan boshlab oʻzgartirish',
@@ -1799,7 +1798,7 @@ export const uz: Texts<'one' | 'other'> = {
       subject: 'Fan',
       academic_year: 'Oʻquv yili',
       calendar_entry: 'Kalendar kuni',
-      slot_type: 'Dars turi',
+      slot_type: 'Dars yoki tanaffus turi',
       day_template: 'Kun shabloni',
       vacancy: 'Boʻsh oʻrin',
       audit_entry: 'Jurnal yozuvi',
@@ -1903,11 +1902,11 @@ export const uz: Texts<'one' | 'other'> = {
         restore: 'Kalendar kuni tiklandi',
       },
       slot_type: {
-        create: 'Dars turi yaratildi',
-        rename: 'Dars turi qayta nomlandi',
-        length_change: 'Dars turi davomiyligi oʻzgartirildi',
-        archive: 'Dars turi arxivlandi',
-        restore: 'Dars turi tiklandi',
+        create: 'Dars yoki tanaffus turi yaratildi',
+        rename: 'Dars yoki tanaffus turi qayta nomlandi',
+        length_change: 'Dars yoki tanaffus turi davomiyligi oʻzgartirildi',
+        archive: 'Dars yoki tanaffus turi arxivlandi',
+        restore: 'Dars yoki tanaffus turi tiklandi',
       },
       day_template: {
         create: 'Kun shabloni yaratildi',

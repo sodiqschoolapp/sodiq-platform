@@ -1337,7 +1337,7 @@ export const en = {
         current: 'In force',
       },
     },
-    sections: 'Sections of the teacher list',
+    sections: 'People sections',
     availability: {
       title: 'Availability',
       change: 'Change from a date',
