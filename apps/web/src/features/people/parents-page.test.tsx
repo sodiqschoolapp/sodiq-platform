@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
-import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const PATH = '/people/parents';
@@ -48,6 +48,9 @@ const ANVAR: RelativeListItem = {
 
 const detailOf = (row: RelativeListItem, fields: Partial<RelativeDetail> = {}): RelativeDetail => ({
   ...row,
+  extraPhones: [],
+  samePerson: null,
+  samePersonElsewhere: false,
   identity: { workplace: 'Toshkent shahar shifoxonasi', email: 'd.rahimova@example.uz' },
   identityHidden: false,
   canEdit: true,
@@ -214,6 +217,7 @@ describe('the page of a relative', () => {
       phone: '+998904445566',
       workplace: 'Toshkent shahar shifoxonasi',
       email: 'd.rahimova@example.uz',
+      extraPhones: [],
     });
     expect(
       await within(form).findByText(
@@ -393,6 +397,7 @@ describe('the page of a relative', () => {
         phone: '+998904445566',
         workplace: 'Toshkent shahar shifoxonasi',
         email: 'd.rahimova@example.uz',
+        extraPhones: [],
         newOwner: { previousId: uid(3), previousPhone: null },
       });
     });
@@ -413,5 +418,330 @@ describe('the page of a relative', () => {
         ),
       ).toBeDefined();
     });
+  });
+});
+
+// Task 2.5b-2 (edge/close-relatives, rows 5 and 8): the extra phones and the
+// mark "same person". All names and phones are invented.
+describe('the extra phones and the same person of a relative', () => {
+  const BAHODIR = {
+    id: uid(60),
+    staffId: 'S-260012',
+    firstName: 'Bahodir',
+    lastName: 'Karimov',
+    fatherName: null,
+    categories: ['teacher' as const],
+    branches: [{ branchId: NORTH.id, name: 'North', main: true }],
+    divisions: [],
+    subjects: [],
+    languages: [],
+    phone: '+998907770011',
+    status: 'active' as const,
+    planned: null,
+    photoId: null,
+  };
+  const MALIKA = {
+    ...BAHODIR,
+    id: uid(61),
+    staffId: 'S-260013',
+    firstName: 'Malika',
+    lastName: 'Yusupova',
+    phone: '+998907770012',
+  };
+  const SAME = { staffId: BAHODIR.id, name: 'Bahodir Karimov', staffNumber: 'S-260012' };
+
+  const openPanel = async () => {
+    fireEvent.click(await screen.findByText('Dilfuza Rahimova', { selector: 'button' }));
+    return screen.findByRole('complementary', { name: 'Dilfuza Rahimova' });
+  };
+
+  /** The value under a term of the panel. */
+  const valueOf = async (panel: HTMLElement, term: string) =>
+    (await within(panel).findByText(term, { selector: 'dt' })).nextElementSibling?.textContent;
+
+  it('shows the extra phones under the main phone', async () => {
+    openList('principal', {}, 'en', {
+      extraPhones: ['+998935556677', '+79161234567'],
+      canEdit: false,
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    expect(await valueOf(panel, en.people.relatives.phone)).toBe('+998901112233');
+    expect(await valueOf(panel, en.people.relatives.extraPhones)).toBe(
+      '+998935556677, +79161234567',
+    );
+  });
+
+  it('adds and removes extra phones, at most three, warns of SMS, and sends the whole list', async () => {
+    const calls = openList('academic_vice_principal', {
+      [`PATCH /api/people/relatives/${DILFUZA.id}`]: () =>
+        json(detailOf(DILFUZA, { extraPhones: ['+998935556677'] })),
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    const form = await within(panel).findByRole('form', {
+      name: en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
+    });
+    const add = () => {
+      fireEvent.click(
+        within(form).getByRole('button', { name: en.people.relatives.addExtraPhone }),
+      );
+    };
+    const extra = (n: number) =>
+      within(form).getByLabelText<HTMLInputElement>(
+        en.people.relatives.extraPhone.replace('{{n}}', String(n)),
+      );
+    add();
+    add();
+    add();
+    // Three at most: the button is gone.
+    expect(
+      within(form).queryByRole('button', { name: en.people.relatives.addExtraPhone }),
+    ).toBeNull();
+    // The country code is offered, as on the main phone.
+    expect(extra(1).value).toBe('+998 ');
+    fireEvent.change(extra(1), { target: { value: '+79161234567' } });
+    fireEvent.change(extra(2), { target: { value: '+998 93 555 66 77' } });
+    fireEvent.change(extra(3), { target: { value: '+998 93 555 66 77' } });
+    expect(await within(form).findByText(en.people.relatives.noSms)).toBeDefined();
+    expect(within(form).getByText(en.people.relatives.extraPhoneTwice)).toBeDefined();
+    // Nothing is sent while a phone is given twice.
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(
+      within(form).getByRole('button', {
+        name: en.people.relatives.removeExtraPhone.replace('{{n}}', '3'),
+      }),
+    );
+    fireEvent.click(
+      within(form).getByRole('button', {
+        name: en.people.relatives.removeExtraPhone.replace('{{n}}', '1'),
+      }),
+    );
+    // The second moved up.
+    expect(extra(1).value).toBe('+998 93 555 66 77');
+    expect(
+      within(form).queryByLabelText(en.people.relatives.extraPhone.replace('{{n}}', '2')),
+    ).toBeNull();
+    expect(calls.some((call) => call.route.startsWith('PATCH'))).toBe(false);
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route.startsWith('PATCH'))).toBe(true);
+    });
+    expect(calls.find((call) => call.route.startsWith('PATCH'))?.body).toEqual({
+      fullName: 'Dilfuza Rahimova',
+      phone: '+998901112233',
+      workplace: 'Toshkent shahar shifoxonasi',
+      email: 'd.rahimova@example.uz',
+      extraPhones: ['+998935556677'],
+    });
+  });
+
+  it('sends the extra phones it opened with, and none once all are removed', async () => {
+    const calls = openList(
+      'academic_vice_principal',
+      { [`PATCH /api/people/relatives/${DILFUZA.id}`]: () => json(detailOf(DILFUZA)) },
+      'en',
+      { extraPhones: ['+998935556677'] },
+    );
+    renderApp(PATH);
+    const panel = await openPanel();
+    const form = await within(panel).findByRole('form');
+    expect(
+      within(form).getByLabelText<HTMLInputElement>(
+        en.people.relatives.extraPhone.replace('{{n}}', '1'),
+      ).value,
+    ).toBe('+998935556677');
+    fireEvent.click(
+      within(form).getByRole('button', {
+        name: en.people.relatives.removeExtraPhone.replace('{{n}}', '1'),
+      }),
+    );
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.startsWith('PATCH'))?.body).toMatchObject({
+        extraPhones: [],
+      });
+    });
+  });
+
+  it('names the staff member marked as the same person, with a link to the staff panel', async () => {
+    openList('academic_vice_principal', {}, 'en', { samePerson: SAME });
+    const shell = renderApp(PATH);
+    const panel = await openPanel();
+    const section = await within(panel).findByRole('region', {
+      name: en.people.relatives.sameTitle,
+    });
+    expect(
+      within(section).getByText(en.people.relatives.staffIdOf.replace('{{staffId}}', 'S-260012')),
+    ).toBeDefined();
+    fireEvent.click(within(section).getByRole('link', { name: 'Bahodir Karimov' }));
+    await waitFor(() => {
+      expect(shell.router.state.location.pathname).toBe('/people/staff');
+    });
+    expect(shell.router.state.location.search).toMatchObject({ open: BAHODIR.id });
+  });
+
+  it('marks the relative as a staff member found by name', async () => {
+    const calls = openList('academic_vice_principal', {
+      'GET /api/people/staff': () => json({ staff: [MALIKA, BAHODIR], today: '2026-10-10' }),
+      [`PUT /api/people/relatives/${DILFUZA.id}/same-person`]: () =>
+        json(detailOf(DILFUZA, { samePerson: SAME })),
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    const section = await within(panel).findByRole('region', {
+      name: en.people.relatives.sameTitle,
+    });
+    expect(within(section).getByText(en.people.relatives.sameNone)).toBeDefined();
+    fireEvent.click(within(section).getByRole('button', { name: en.people.relatives.markStaff }));
+    const picker = await within(section).findByRole('form', {
+      name: en.people.relatives.markStaff,
+    });
+    fireEvent.change(within(picker).getByLabelText(en.people.relatives.staffSearch), {
+      target: { value: 'карим' },
+    });
+    const choice = await within(picker).findByLabelText(en.people.relatives.staffChoice);
+    expect([...choice.querySelectorAll('option')].map((option) => option.textContent)).toEqual([
+      en.people.relatives.choose,
+      'Karimov Bahodir (S-260012)',
+    ]);
+    fireEvent.change(choice, { target: { value: BAHODIR.id } });
+    fireEvent.click(within(picker).getByRole('button', { name: en.people.relatives.markSave }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/same-person'))?.body).toEqual({
+        staffId: BAHODIR.id,
+      });
+    });
+    expect(calls.find((call) => call.route.endsWith('/same-person'))?.route).toBe(
+      `PUT /api/people/relatives/${DILFUZA.id}/same-person`,
+    );
+    expect(await within(section).findByRole('link', { name: 'Bahodir Karimov' })).toBeDefined();
+  });
+
+  it('says why a mark is refused', async () => {
+    openList('academic_vice_principal', {
+      'GET /api/people/staff': () => json({ staff: [BAHODIR], today: '2026-10-10' }),
+      [`PUT /api/people/relatives/${DILFUZA.id}/same-person`]: () =>
+        refusal('same_person_taken', 409),
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    const section = await within(panel).findByRole('region', {
+      name: en.people.relatives.sameTitle,
+    });
+    fireEvent.click(within(section).getByRole('button', { name: en.people.relatives.markStaff }));
+    const choice = await within(section).findByLabelText(en.people.relatives.staffChoice);
+    fireEvent.change(choice, { target: { value: BAHODIR.id } });
+    fireEvent.click(within(section).getByRole('button', { name: en.people.relatives.markSave }));
+    expect(await within(section).findByText(en.errors.same_person_taken)).toBeDefined();
+  });
+
+  it('removes the mark after a question naming both people', async () => {
+    let marked = true;
+    const calls = openList('academic_vice_principal', {
+      [`GET /api/people/relatives/${DILFUZA.id}`]: () =>
+        json(detailOf(DILFUZA, { samePerson: marked ? SAME : null })),
+      [`DELETE /api/people/relatives/${DILFUZA.id}/same-person`]: () => {
+        marked = false;
+        return new Response(null, { status: 204 });
+      },
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    const section = await within(panel).findByRole('region', {
+      name: en.people.relatives.sameTitle,
+    });
+    fireEvent.click(
+      await within(section).findByRole('button', { name: en.people.relatives.removeMark }),
+    );
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.relatives.removeMarkTitle,
+    });
+    expect(within(dialog).getByText('Dilfuza Rahimova')).toBeDefined();
+    expect(within(dialog).getByText('Bahodir Karimov')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.removeMark }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route.startsWith('DELETE'))).toBe(true);
+    });
+    expect(await within(section).findByText(en.people.relatives.sameNone)).toBeDefined();
+    expect(within(section).queryByRole('link')).toBeNull();
+  });
+
+  it('lets the Super Admin remove a mark to a staff member of another branch, unnamed', async () => {
+    let marked = true;
+    const calls = openList('super_admin', {
+      [`GET /api/people/relatives/${DILFUZA.id}`]: () =>
+        json(detailOf(DILFUZA, { samePerson: null, samePersonElsewhere: marked })),
+      [`DELETE /api/people/relatives/${DILFUZA.id}/same-person`]: () => {
+        marked = false;
+        return new Response(null, { status: 204 });
+      },
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    const section = await within(panel).findByRole('region', {
+      name: en.people.relatives.sameTitle,
+    });
+    expect(await within(section).findByText(en.people.relatives.sameElsewhere)).toBeDefined();
+    expect(within(section).queryByRole('link')).toBeNull();
+    fireEvent.click(within(section).getByRole('button', { name: en.people.relatives.removeMark }));
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.relatives.removeMarkTitle,
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.removeMark }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route.startsWith('DELETE'))).toBe(true);
+    });
+    expect(await within(section).findByText(en.people.relatives.sameNone)).toBeDefined();
+  });
+
+  it('shows the mark without actions to a reader who may not edit', async () => {
+    openList('principal', {}, 'en', { samePerson: SAME, canEdit: false });
+    renderApp(PATH);
+    const panel = await openPanel();
+    const section = await within(panel).findByRole('region', {
+      name: en.people.relatives.sameTitle,
+    });
+    expect(within(section).getByRole('link', { name: 'Bahodir Karimov' })).toBeDefined();
+    for (const name of [
+      en.people.relatives.markStaff,
+      en.people.relatives.changeStaff,
+      en.people.relatives.removeMark,
+    ]) {
+      expect(within(section).queryByRole('button', { name })).toBeNull();
+    }
+  });
+
+  it('leaves the section out for a reader who may not edit a relative marked as nobody', async () => {
+    openList('principal', {}, 'en', { canEdit: false });
+    renderApp(PATH);
+    const panel = await openPanel();
+    await within(panel).findByText(en.people.relatives.phone, { selector: 'dt' });
+    expect(within(panel).queryByRole('region', { name: en.people.relatives.sameTitle })).toBeNull();
+  });
+
+  it('speaks Russian', async () => {
+    openList('academic_vice_principal', {}, 'ru', {
+      samePerson: SAME,
+      extraPhones: ['+998935556677'],
+    });
+    renderApp(PATH, 'ru');
+    const panel = await openPanel();
+    const section = await within(panel).findByRole('region', {
+      name: ru.people.relatives.sameTitle,
+    });
+    expect(
+      within(section).getByText(ru.people.relatives.staffIdOf.replace('{{staffId}}', 'S-260012')),
+    ).toBeDefined();
+    expect(
+      within(section).getByRole('button', { name: ru.people.relatives.changeStaff }),
+    ).toBeDefined();
+    expect(await valueOf(panel, ru.people.relatives.extraPhones)).toBe('+998935556677');
+    const form = await within(panel).findByRole('form', {
+      name: ru.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
+    });
+    expect(
+      within(form).getByLabelText(ru.people.relatives.extraPhone.replace('{{n}}', '1')),
+    ).toBeDefined();
   });
 });

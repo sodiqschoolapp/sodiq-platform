@@ -54,6 +54,7 @@ describe('the routes that work without sign-in', () => {
     expect(routesOf(app).map((route) => route.name)).toEqual([
       'DELETE /api/auth/photo',
       'DELETE /api/auth/trusted-devices/:id',
+      'DELETE /api/people/relatives/:id/same-person',
       'DELETE /api/people/staff/:id/photo',
       'DELETE /api/people/students/:id/photo',
       'GET /api/access/branches-without-vice-principal',
@@ -195,6 +196,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/setup/subjects/export',
       'PUT /api/auth/language',
       'PUT /api/auth/photo',
+      'PUT /api/people/relatives/:id/same-person',
       'PUT /api/people/staff/:id',
       'PUT /api/people/staff/:id/availability',
       'PUT /api/people/staff/:id/branches',

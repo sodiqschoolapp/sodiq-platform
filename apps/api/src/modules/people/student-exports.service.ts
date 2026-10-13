@@ -5,6 +5,7 @@ import {
   type DocumentType,
   type ExportTexts,
   type Region,
+  type Relationship,
   type ScholarshipCoverage,
   type ScholarshipType,
   type StudentExport,
@@ -40,6 +41,17 @@ interface ExportRow {
   consent_signed_on: string | null;
   /** The newest contract (the latest id, decision 17 of pull request #68). */
   contract: { number: string; signed_on: string } | undefined;
+  /** The live relatives of the student, the main contact first (task 2.5b-2). */
+  relatives: ExportRelative[];
+}
+
+/** A relative linked live to a student, as the Contact columns write it (task 2.5b-2, decision 1). */
+interface ExportRelative {
+  fullName: string;
+  relationship: Relationship;
+  mainContact: boolean;
+  phone: string | null;
+  extraPhones: string[];
 }
 
 function branchOf(access: Access): string {
@@ -114,12 +126,48 @@ export class StudentExports {
           contracts.set(contract.student_id, contract);
         }
       }
+      // The live links of the branch and the relatives they make visible, in
+      // the order of the Relatives tab (`RelativeWrites.linksOf`).
+      const relatives = new Map<string, ExportRelative[]>();
+      for (const link of await transaction
+        .selectFrom('student_relatives as l')
+        .innerJoin('relatives as r', 'r.id', 'l.relative_id')
+        .select([
+          'l.student_id',
+          'l.relationship',
+          'l.main_contact',
+          'r.full_name',
+          'r.phone',
+          'r.extra_phones',
+        ])
+        .where('l.branch_id', '=', branchId)
+        .where('l.unlinked_at', 'is', null)
+        .orderBy('l.student_id')
+        .orderBy('l.main_contact', 'desc')
+        .orderBy('l.linked_at')
+        .orderBy('l.id')
+        .execute()) {
+        const own = relatives.get(link.student_id) ?? [];
+        own.push({
+          fullName: link.full_name,
+          relationship: link.relationship as Relationship,
+          mainContact: link.main_contact,
+          phone: link.phone,
+          extraPhones: link.extra_phones,
+        });
+        relatives.set(link.student_id, own);
+      }
       const byId = new Map(fields.map((row) => [row.id, row]));
       const rows = new Map<string, ExportRow>();
       for (const item of items) {
         const row = byId.get(item.id);
         if (row !== undefined) {
-          rows.set(item.id, { ...row, item, contract: contracts.get(item.id) });
+          rows.set(item.id, {
+            ...row,
+            item,
+            contract: contracts.get(item.id),
+            relatives: relatives.get(item.id) ?? [],
+          });
         }
       }
       return exportList(transaction, this.audit, this.clock, access, requestId, {
@@ -143,6 +191,13 @@ const heading =
   (column: StudentExportColumn) =>
   (texts: ExportTexts): string =>
     texts.students.columns[column];
+
+const mainContactOf = (row: ExportRow): ExportRelative | undefined =>
+  row.relatives.find((relative) => relative.mainContact);
+
+/** The phones of a relative in one cell, separated by commas; empty without any. */
+const phonesOf = (phones: readonly string[]): string | null =>
+  phones.length === 0 ? null : phones.join(', ');
 
 const date = (value: string | null | undefined) =>
   value === null || value === undefined ? null : { date: value };
@@ -204,4 +259,36 @@ const STUDENT_EXPORT_SPECS: Readonly<Record<StudentExportColumn, ExportColumn<Ex
   previousSchool: oneCell(heading('previousSchool'), (row) => row.previous_school),
   diagnosticScore: oneCell(heading('diagnosticScore'), (row) => row.diagnostic_score),
   consentSignedOn: oneCell(heading('consentSignedOn'), (row) => date(row.consent_signed_on)),
+  // Task 2.5b-2, decision 1 (Look first): the relatives, written only for the
+  // Contact exporters. A relative with no phone of their own or no valid
+  // phone has an empty phone cell; workplace and email are not exported.
+  mainContactName: oneCell(
+    heading('mainContactName'),
+    (row) => mainContactOf(row)?.fullName ?? null,
+  ),
+  mainContactRelationship: oneCell(heading('mainContactRelationship'), (row, texts) => {
+    const main = mainContactOf(row);
+    return main === undefined ? null : texts.student.relationships[main.relationship];
+  }),
+  mainContactPhone: oneCell(
+    heading('mainContactPhone'),
+    (row) => mainContactOf(row)?.phone ?? null,
+  ),
+  mainContactExtraPhones: oneCell(heading('mainContactExtraPhones'), (row) =>
+    phonesOf(mainContactOf(row)?.extraPhones ?? []),
+  ),
+  // One line per other live relative: "Name (relationship): phones".
+  otherRelatives: oneCell(heading('otherRelatives'), (row, texts) => {
+    const lines = row.relatives
+      .filter((relative) => !relative.mainContact)
+      .map((relative) => {
+        const named = `${relative.fullName} (${texts.student.relationships[relative.relationship]})`;
+        const phones = phonesOf([
+          ...(relative.phone === null ? [] : [relative.phone]),
+          ...relative.extraPhones,
+        ]);
+        return phones === null ? named : `${named}: ${phones}`;
+      });
+    return lines.length === 0 ? null : lines.join('\n');
+  }),
 };

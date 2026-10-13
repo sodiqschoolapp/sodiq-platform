@@ -365,6 +365,12 @@ export const staffDetailSchema = staffListItemSchema.extend({
   statuses: z.array(staffStatusRowSchema),
   rights: staffRightsSchema,
   today: schoolDateSchema,
+  /**
+   * The relative marked as the same person (`edge/close-relatives`, row 8;
+   * task 2.5b-2, decision 6): for a reader holding `relatives` view, when the
+   * relative is linked live in the branch of the request; `null` otherwise.
+   */
+  sameAsRelative: z.object({ id: z.uuid(), fullName: z.string() }).nullable(),
 });
 
 export type StaffDetail = z.infer<typeof staffDetailSchema>;

@@ -32,6 +32,7 @@ If the request gives you a plan instead of a branch, skip step 1 and step 4 and 
    - a person-wide fact (the time zone of the main branch, an employment period, a status) is never read through the row-filtered `staff_branches` or `branches`; it comes from a SECURITY DEFINER function, so every reader gets the same answer (found by the review of task 2.3c-1);
    - a branch of a database guard (insert and update, each refused case) without a test that reaches it with nothing before it that refuses first (found by the code review of task 2.4b-1);
    - a test that a guard lets a case through without the data that the guard would refuse if it were wrong (found by the code review of task 2.4b-1);
+   - a unique mark or claim on a record (a unique column, a held phone, a link to another record) that a route can no longer reach once the record is archived: every path that archives the record clears the mark in the same transaction, with its entry, or a route can still remove it (found by the code review of task 2.5b-2);
 4. Run `pnpm test:changed` if it has not been run and report failures; the full suite runs in CI on the pull request (`docs/decisions.md`, 11 October 2026, decision 5).
 
 Report in this form:

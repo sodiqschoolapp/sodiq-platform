@@ -27,12 +27,17 @@ import { useView } from '@/features/access/use-view';
 import { asFormSchema } from './form-schema';
 import { invalidateRelatives, phoneMatch, studentRelativesQuery } from './people-api';
 import {
+  extraPhoneIssueField,
+  extraPhonesInitial,
+  extraPhonesTyped,
+  ExtraPhonesField,
   NEW_OWNER,
   NoticesField,
   OwnerChoice,
   phoneHolderOf,
   SAME_PERSON,
   smsWarning,
+  type ExtraPhoneFields,
 } from './relative-form';
 
 type AddField =
@@ -47,11 +52,25 @@ type AddField =
   | 'relationship'
   | 'mainContact'
   | 'portalAccess'
-  | 'receivesNotices';
+  | 'receivesNotices'
+  | 'extraCount'
+  | 'extra1'
+  | 'extra2'
+  | 'extra3';
+
+/** The extra phones of a new relative (task 2.5b-2). */
+const EXTRA_FIELDS: ExtraPhoneFields<'extraCount' | 'extra1' | 'extra2' | 'extra3'> = {
+  count: 'extraCount',
+  phones: ['extra1', 'extra2', 'extra3'],
+};
 
 type LinkField = 'relationship' | 'mainContact' | 'portalAccess' | 'receivesNotices';
 
 const ADD_SCHEMA = asFormSchema<RelativeLinkInput>(relativeLinkInputSchema, (path) => {
+  const extra = extraPhoneIssueField(path, EXTRA_FIELDS);
+  if (extra !== undefined) {
+    return [extra];
+  }
   const last = path[path.length - 1];
   return [typeof last === 'string' ? last : 'phone'];
 });
@@ -136,7 +155,7 @@ export function StudentRelativesTab({ studentId, name }: { studentId: string; na
   );
 }
 
-/** One relative as the reader may see them. */
+/** One relative as the reader may see them; the extra phones under the main one (task 2.5b-2). */
 function RelativeRow({ relative }: { relative: StudentRelative }) {
   const { t } = useTranslation();
   const notSet = t('people.relatives.notSet');
@@ -147,6 +166,9 @@ function RelativeRow({ relative }: { relative: StudentRelative }) {
     ],
     [t('people.relatives.phone'), relative.phone ?? t('people.relatives.noPhone')],
   ];
+  if (relative.extraPhones.length > 0) {
+    rows.push([t('people.relatives.extraPhones'), relative.extraPhones.join(', ')]);
+  }
   if (relative.identity !== null) {
     rows.push(
       [t('people.relatives.workplace'), relative.identity.workplace ?? notSet],
@@ -362,6 +384,7 @@ function AddRelative({
       mainContact: checked(first),
       portalAccess: CHECKED,
       receivesNotices: CHECKED,
+      ...extraPhonesInitial(EXTRA_FIELDS, []),
     },
     read: (typed) => {
       const noPhone = typed.noPhone === CHECKED;
@@ -383,6 +406,7 @@ function AddRelative({
             phone: typed.phone,
             workplace: typed.workplace,
             email: typed.email,
+            extraPhones: extraPhonesTyped(EXTRA_FIELDS, typed),
           },
           previousId: matched.holder.id,
           previousPhone: typed.previousUnknown === CHECKED ? null : typed.previousPhone,
@@ -398,6 +422,7 @@ function AddRelative({
               phone: noPhone ? null : typed.phone,
               workplace: typed.workplace,
               email: typed.email,
+              extraPhones: extraPhonesTyped(EXTRA_FIELDS, typed),
             },
             ...link,
           };
@@ -476,6 +501,10 @@ function AddRelative({
               label={t('people.relatives.fullName')}
               autoComplete="off"
               {...form.bind('fullName')}
+            />
+            <ExtraPhonesField
+              count={form.bind(EXTRA_FIELDS.count)}
+              phones={EXTRA_FIELDS.phones.map((field) => form.bind(field))}
             />
             <Field
               label={t('people.relatives.workplace')}

@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, Patch, Post } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, Patch, Post, Put } from '@nestjs/common';
 import {
   relativeDetailSchema,
   relativeEditSchema,
@@ -12,6 +12,7 @@ import {
   relativeParamsSchema,
   relativePhoneMatchResultSchema,
   relativePhoneMatchSchema,
+  relativeSamePersonSchema,
   relativeUnlinkSchema,
   studentParamsSchema,
   studentRelativeParamsSchema,
@@ -28,13 +29,14 @@ import {
   type RelativeParams,
   type RelativePhoneMatch,
   type RelativePhoneMatchResult,
+  type RelativeSamePerson,
   type RelativeUnlink,
   type StudentParams,
   type StudentRelativeParams,
   type StudentRelatives,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
+import { Returns, ReturnsNothing, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { Relatives } from './relatives.service.js';
@@ -124,6 +126,35 @@ export class RelativesController {
     @RequestId() requestId: string,
   ): Promise<RelativeDetail> {
     return this.relatives.merge(access, params.id, input, requestId);
+  }
+
+  /**
+   * Marks the relative as the same person as a staff member of the branch
+   * (`edge/close-relatives`, row 8; task 2.5b-2). A mark set to a staff
+   * member of another branch is changed only by the Super Admin.
+   */
+  @Put('relatives/:id/same-person')
+  @Requires('relatives', 'edit')
+  @Returns(relativeDetailSchema)
+  markSamePerson(
+    @CurrentAccess() access: Access,
+    @ValidParams(relativeParamsSchema) params: RelativeParams,
+    @ValidBody(relativeSamePersonSchema) input: RelativeSamePerson,
+    @RequestId() requestId: string,
+  ): Promise<RelativeDetail> {
+    return this.relatives.markSamePerson(access, params.id, input.staffId, requestId);
+  }
+
+  /** Removes the mark; as the change, only the Super Admin for a staff member of another branch. */
+  @Delete('relatives/:id/same-person')
+  @ReturnsNothing()
+  @Requires('relatives', 'edit')
+  removeSamePerson(
+    @CurrentAccess() access: Access,
+    @ValidParams(relativeParamsSchema) params: RelativeParams,
+    @RequestId() requestId: string,
+  ): Promise<void> {
+    return this.relatives.removeSamePerson(access, params.id, requestId);
   }
 
   /** The Principal's logged show of workplace and email (decision 5). */

@@ -572,6 +572,7 @@ describe('close relatives', () => {
       phone: null,
       workplace: '',
       email: '',
+      extraPhones: [],
       ...values,
     });
 
@@ -651,12 +652,15 @@ describe('close relatives', () => {
         403,
         'permission_denied',
       );
-      for (const id of [southern.relativeId, UNKNOWN]) {
-        refusedWith(
-          await t.patch(`/api/people/relatives/${id}`, t.north, record({})),
-          404,
-          'not_found',
-        );
+      // Also the Super Admin, who counts in every branch (permission review of 2.5b-2).
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const id of [southern.relativeId, UNKNOWN]) {
+          refusedWith(
+            await t.patch(`/api/people/relatives/${id}`, t.north, record({}), cookie),
+            404,
+            'not_found',
+          );
+        }
       }
       expect(await snapshot()).toEqual(before);
     });

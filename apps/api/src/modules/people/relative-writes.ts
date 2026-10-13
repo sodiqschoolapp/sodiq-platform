@@ -102,6 +102,9 @@ export interface RelativeRow {
   phone: string | null;
   workplace: string | null;
   email: string | null;
+  extra_phones: string[];
+  /** The staff record marked as the same person (task 2.5b-2). */
+  staff_id: string | null;
   phone_invalid_since: Date | null;
 }
 
@@ -116,11 +119,14 @@ export interface LinkRow {
 }
 
 /** The record fields of a relative as the audit entries compare them. */
-export const recordOf = (row: Omit<RelativeRow, 'phone_invalid_since'>): RelativeRecord => ({
+export const recordOf = (
+  row: Omit<RelativeRow, 'phone_invalid_since' | 'staff_id'>,
+): RelativeRecord => ({
   fullName: row.full_name,
   phone: row.phone,
   workplace: row.workplace,
   email: row.email,
+  extraPhones: row.extra_phones,
 });
 
 /** The fields of a link as the audit entries hold them. */
@@ -396,6 +402,7 @@ export class RelativeWrites {
           phone: record.phone,
           workplace: record.workplace,
           email: record.email,
+          extra_phones: record.extraPhones,
         })
         .execute(),
     );
@@ -546,6 +553,41 @@ export class RelativeWrites {
   }
 
   /**
+   * Removes the mark "same person" of a relative its last live link leaves
+   * (review of 2.5b-2, code round 1): an archived relative is reached by no
+   * branch, so a mark it kept could never be removed, and its staff member
+   * could never be marked again (`relatives_staff_idx`). Called under the
+   * relative's lock while it is still linked, so that the transaction sees its
+   * row; the school-wide entry keeps the staff member.
+   */
+  async unmarkArchived(
+    transaction: Transaction,
+    access: Access,
+    relative: RelativeRow,
+    requestId: string,
+  ): Promise<void> {
+    if (relative.staff_id === null) {
+      return;
+    }
+    await transaction
+      .updateTable('relatives')
+      .set({ staff_id: null })
+      .where('id', '=', relative.id)
+      .execute();
+    await this.audit.record(transaction, {
+      branchId: null,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      action: 'relative.same_person_removed',
+      record: { type: 'relative', id: relative.id },
+      oldValue: { staffId: relative.staff_id },
+      newValue: { staffId: null },
+      details: { branchId: branchOf(access), staffId: relative.staff_id, archived: true },
+      requestId,
+    });
+  }
+
+  /**
    * The live links of a relative in every branch: those of the branch, which
    * the transaction sees, and the count of the others.
    */
@@ -597,7 +639,16 @@ export class RelativeWrites {
     }
     const row = await transaction
       .selectFrom('relatives')
-      .select(['id', 'full_name', 'phone', 'workplace', 'email', 'phone_invalid_since'])
+      .select([
+        'id',
+        'full_name',
+        'phone',
+        'workplace',
+        'email',
+        'extra_phones',
+        'staff_id',
+        'phone_invalid_since',
+      ])
       .where('id', '=', relativeId)
       .forUpdate()
       .executeTakeFirst();

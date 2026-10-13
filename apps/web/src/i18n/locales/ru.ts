@@ -205,6 +205,15 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Этого родственника изменил кто-то другой. Обновите страницу и попробуйте снова.',
     relative_merged:
       'Этот родственник объединён с другой записью. Введите телефон снова, чтобы найти оставшуюся запись.',
+    same_person_taken:
+      'Этот сотрудник уже отмечен как то же лицо, что и другой родственник. Сначала снимите ту отметку.',
+    same_person_held_elsewhere:
+      'Этот сотрудник уже отмечен как то же лицо, что и родственник другого филиала. Попросите Супер-администратора снять ту отметку.',
+    same_person_elsewhere:
+      'Этот родственник отмечен как то же лицо, что и сотрудник другого филиала. Попросите Супер-администратора изменить отметку.',
+    same_person_vacancy: 'Вакансия — не человек. Выберите сотрудника.',
+    merge_marks_differ:
+      'Эти родственники отмечены как два разных сотрудника. Снимите одну из отметок, затем объедините.',
     request_refused: 'Запрос отклонён. Попробуйте ещё раз или обратитесь к администратору.',
     already_exists: 'Запись с таким названием здесь уже есть. Выберите другое название.',
     staff_id_exhausted:
@@ -1202,6 +1211,11 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       scholarshipAmount: 'Сумма в сумах',
       amount: 'Сумма в сумах: {{amount}}',
       consentSignedOn: 'Согласие подписано',
+      mainContactName: 'Основной контакт',
+      mainContactRelationship: 'Основной контакт: родство',
+      mainContactPhone: 'Основной контакт: телефон',
+      mainContactExtraPhones: 'Основной контакт: дополнительные телефоны',
+      otherRelatives: 'Другие родственники',
       consent: 'Согласие',
       activeNoConsent: 'Учатся, без согласия',
       exportGroups: {
@@ -1437,6 +1451,27 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       stepTitle: 'Родственник',
       notSet: 'Не указано',
       linkLabel: 'Связь: {{name}}',
+      extraPhones: 'Дополнительные телефоны',
+      extraPhone: 'Дополнительный телефон {{n}}',
+      addExtraPhone: 'Добавить дополнительный телефон',
+      removeExtraPhone: 'Удалить дополнительный телефон {{n}}',
+      extraPhoneTwice: 'Этот телефон уже есть в списке.',
+      sameTitle: 'Тот же человек, что и сотрудник',
+      sameNone: 'Не отмечен как сотрудник.',
+      sameElsewhere: 'Отмечен как то же лицо, что и сотрудник другого филиала.',
+      staffIdOf: 'Табельный номер {{staffId}}',
+      staffOption: '{{name}} ({{staffId}})',
+      markStaff: 'Отметить как сотрудника',
+      changeStaff: 'Изменить',
+      removeMark: 'Убрать',
+      staffSearch: 'Найти сотрудника',
+      staffChoice: 'Сотрудник',
+      staffNone: 'Сотрудник с таким именем не найден.',
+      markSave: 'Отметить',
+      markCancel: 'Отмена',
+      removeMarkTitle: 'Убрать отметку «тот же человек»?',
+      removeMarkText:
+        'Родственник и сотрудник остаются как есть; они больше не отмечены как один человек.',
       relationships: {
         father: 'Отец',
         mother: 'Мать',
@@ -1531,6 +1566,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       cancel: 'Отмена',
       name: 'Имя',
       staffId: 'Табельный номер',
+      alsoParent: 'Также родитель',
       categories: 'Категория',
       branches: 'Филиалы',
       department: 'Кафедра',

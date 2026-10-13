@@ -289,6 +289,16 @@ export const ERROR_CODES = [
   'relative_changed',
   /** The relative was merged into another record and is not linked again (task 2.5b-1, decision 9). */
   'relative_merged',
+  /** The staff record is already marked as the same person as another relative (`edge/close-relatives`, row 8; task 2.5b-2). `details` names the holder when visible in the branch. */
+  'same_person_taken',
+  /** The staff record is marked as the same person as a relative of another branch, who is not named (task 2.5b-2). */
+  'same_person_held_elsewhere',
+  /** The relative is marked as the same person as a staff member of another branch: only the Super Admin changes it (task 2.5b-2, decision 9). */
+  'same_person_elsewhere',
+  /** A vacancy is not a person and cannot be marked as the same person (task 2.5b-2). */
+  'same_person_vacancy',
+  /** Two relatives marked as the same person as two different staff members are not merged (task 2.5b-2, decision 5). */
+  'merge_marks_differ',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

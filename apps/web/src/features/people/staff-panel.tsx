@@ -17,6 +17,7 @@ import {
   type Subject,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
@@ -403,6 +404,21 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
             <dd>{value}</dd>
           </div>
         ))}
+        {/* The relative marked as the same person (task 2.5b-2), with a link to the Parent panel. */}
+        {staff.sameAsRelative !== null && (
+          <div className="grid gap-0.5">
+            <dt className="text-muted-foreground">{t('people.staff.alsoParent')}</dt>
+            <dd>
+              <Link
+                to="/people/parents"
+                search={{ open: staff.sameAsRelative.id }}
+                className="font-semibold text-link underline-offset-4 hover:underline"
+              >
+                {staff.sameAsRelative.fullName}
+              </Link>
+            </dd>
+          </div>
+        )}
       </dl>
       {staff.identityHidden && shown === null && branchId !== null && (
         <div className="flex flex-wrap items-center gap-3">

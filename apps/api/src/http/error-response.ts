@@ -144,6 +144,12 @@ const MESSAGE: Record<ErrorCode, string> = {
   merge_needs_super_admin: 'Only the Super Admin merges relatives linked in another branch.',
   relative_changed: 'The relative changed meanwhile; read it again.',
   relative_merged: 'The relative was merged into another record.',
+  same_person_taken: 'The staff member is marked as the same person as another relative.',
+  same_person_held_elsewhere:
+    'The staff member is marked as the same person as a relative of another branch.',
+  same_person_elsewhere: 'The relative is marked as a staff member of another branch.',
+  same_person_vacancy: 'A vacancy is not a person.',
+  merge_marks_differ: 'The two relatives are marked as two different staff members.',
   no_academic_year: 'The start date is in no academic year of the branch.',
   student_not_active: 'The student is not active on that day, or a leaving is in force.',
   leaving_before_start: 'The last day is before the current time at school began.',

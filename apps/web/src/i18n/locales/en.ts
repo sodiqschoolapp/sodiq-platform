@@ -204,6 +204,15 @@ export const en = {
     relative_changed: 'This relative was changed by someone else. Reload and try again.',
     relative_merged:
       'This relative was merged into another record. Type the phone again to find the record that stays.',
+    same_person_taken:
+      'This staff member is already marked as the same person as another relative. Remove that mark first.',
+    same_person_held_elsewhere:
+      'This staff member is already marked as the same person as a relative of another branch. Ask the Super Admin to remove that mark.',
+    same_person_elsewhere:
+      'This relative is marked as the same person as a staff member of another branch. Ask the Super Admin to change it.',
+    same_person_vacancy: 'A vacancy is not a person. Choose a staff member.',
+    merge_marks_differ:
+      'These relatives are marked as two different staff members. Remove one of the marks, then merge.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -1127,6 +1136,11 @@ export const en = {
       scholarshipAmount: 'Amount in soʻm',
       amount: '{{amount}} soʻm',
       consentSignedOn: 'Consent signed on',
+      mainContactName: 'Main contact',
+      mainContactRelationship: 'Main contact: relationship',
+      mainContactPhone: 'Main contact: phone',
+      mainContactExtraPhones: 'Main contact: extra phones',
+      otherRelatives: 'Other relatives',
       consent: 'Consent',
       activeNoConsent: 'Active, no consent',
       exportGroups: {
@@ -1347,6 +1361,27 @@ export const en = {
       stepTitle: 'Relative',
       notSet: 'Not set',
       linkLabel: 'Link of {{name}}',
+      extraPhones: 'Extra phones',
+      extraPhone: 'Extra phone {{n}}',
+      addExtraPhone: 'Add an extra phone',
+      removeExtraPhone: 'Remove extra phone {{n}}',
+      extraPhoneTwice: 'This phone is already in the list.',
+      sameTitle: 'Same person as a staff member',
+      sameNone: 'Not marked as a staff member.',
+      sameElsewhere: 'Marked as the same person as a staff member of another branch.',
+      staffIdOf: 'Staff ID {{staffId}}',
+      staffOption: '{{name}} ({{staffId}})',
+      markStaff: 'Mark as staff member',
+      changeStaff: 'Change',
+      removeMark: 'Remove',
+      staffSearch: 'Find a staff member',
+      staffChoice: 'Staff member',
+      staffNone: 'No staff member of this name.',
+      markSave: 'Mark',
+      markCancel: 'Cancel',
+      removeMarkTitle: 'Remove the mark "same person"?',
+      removeMarkText:
+        'The relative and the staff member stay as they are; they are no longer marked as one person.',
       relationships: {
         father: 'Father',
         mother: 'Mother',
@@ -1439,6 +1474,7 @@ export const en = {
       cancel: 'Cancel',
       name: 'Name',
       staffId: 'Staff ID',
+      alsoParent: 'Also a parent',
       categories: 'Category',
       branches: 'Branches',
       department: 'Department',

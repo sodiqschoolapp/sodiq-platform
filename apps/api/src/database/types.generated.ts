@@ -290,12 +290,14 @@ export interface Relatives {
   archived_at: Timestamp | null;
   created_at: Generated<Timestamp>;
   email: string | null;
+  extra_phones: Generated<string[]>;
   full_name: string;
   id: Generated<string>;
   merged_into: string | null;
   name_key: string;
   phone: string | null;
   phone_invalid_since: Timestamp | null;
+  staff_id: string | null;
   workplace: string | null;
 }
 

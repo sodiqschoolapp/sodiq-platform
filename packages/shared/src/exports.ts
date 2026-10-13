@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { Language } from './language.js';
+import type { Relationship } from './relatives.js';
 import type { Role } from './roles.js';
 import type { InstructionLanguage } from './settings.js';
 import type { RoomStatus, RoomType } from './setup.js';
@@ -120,6 +121,12 @@ export const STUDENT_EXPORT_COLUMNS = [
   'previousSchool',
   'diagnosticScore',
   'consentSignedOn',
+  // Task 2.5b-2, decision 1 (Look first): the relatives, Contact columns.
+  'mainContactName',
+  'mainContactRelationship',
+  'mainContactPhone',
+  'mainContactExtraPhones',
+  'otherRelatives',
 ] as const;
 
 export type StudentExportColumn = (typeof STUDENT_EXPORT_COLUMNS)[number];
@@ -158,6 +165,11 @@ export const STUDENT_EXPORT_GROUPS: Readonly<Record<StudentExportColumn, Student
   previousSchool: 'financial',
   diagnosticScore: 'financial',
   consentSignedOn: 'financial',
+  mainContactName: 'contact',
+  mainContactRelationship: 'contact',
+  mainContactPhone: 'contact',
+  mainContactExtraPhones: 'contact',
+  otherRelatives: 'contact',
 };
 
 export type StaffExportColumn = (typeof STAFF_EXPORT_COLUMNS)[number];
@@ -277,6 +289,8 @@ export interface ExportTexts {
     regions: Record<Region, string>;
     scholarshipTypes: Record<ScholarshipType, string>;
     scholarshipCoverages: Record<ScholarshipCoverage, string>;
+    /** The relationship of a relative to the student, as the Relatives tab names it (task 2.5b-2). */
+    relationships: Record<Relationship, string>;
   };
   /** The two headings the status column of the staff file adds: a planned status and its first day. */
   plannedStatus: string;
@@ -389,6 +403,11 @@ const en: ExportTexts = {
       previousSchool: 'Previous school',
       diagnosticScore: 'Diagnostic test score',
       consentSignedOn: 'Consent signed on',
+      mainContactName: 'Main contact',
+      mainContactRelationship: 'Main contact: relationship',
+      mainContactPhone: 'Main contact: phone',
+      mainContactExtraPhones: 'Main contact: extra phones',
+      otherRelatives: 'Other relatives',
     },
   },
   student: {
@@ -434,6 +453,18 @@ const en: ExportTexts = {
     scholarshipCoverages: {
       full: 'Full',
       partial: 'Partial',
+    },
+    relationships: {
+      father: 'Father',
+      mother: 'Mother',
+      grandfather: 'Grandfather',
+      grandmother: 'Grandmother',
+      uncle: 'Uncle',
+      aunt: 'Aunt',
+      brother: 'Brother',
+      sister: 'Sister',
+      guardian: 'Guardian',
+      other: 'Other',
     },
   },
   plannedStatus: 'Planned status',
@@ -575,6 +606,11 @@ const ru: ExportTexts = {
       previousSchool: 'Предыдущая школа',
       diagnosticScore: 'Балл диагностического теста',
       consentSignedOn: 'Согласие подписано',
+      mainContactName: 'Основной контакт',
+      mainContactRelationship: 'Основной контакт: родство',
+      mainContactPhone: 'Основной контакт: телефон',
+      mainContactExtraPhones: 'Основной контакт: дополнительные телефоны',
+      otherRelatives: 'Другие родственники',
     },
   },
   student: {
@@ -620,6 +656,18 @@ const ru: ExportTexts = {
     scholarshipCoverages: {
       full: 'Полное',
       partial: 'Частичное',
+    },
+    relationships: {
+      father: 'Отец',
+      mother: 'Мать',
+      grandfather: 'Дедушка',
+      grandmother: 'Бабушка',
+      uncle: 'Дядя',
+      aunt: 'Тётя',
+      brother: 'Брат',
+      sister: 'Сестра',
+      guardian: 'Опекун',
+      other: 'Другое',
     },
   },
   plannedStatus: 'Запланированный статус',
@@ -760,6 +808,11 @@ const uz: ExportTexts = {
       previousSchool: 'Avvalgi maktab',
       diagnosticScore: 'Diagnostik test bali',
       consentSignedOn: 'Rozilik imzolangan sana',
+      mainContactName: 'Asosiy aloqa',
+      mainContactRelationship: 'Asosiy aloqa: qarindoshligi',
+      mainContactPhone: 'Asosiy aloqa: telefoni',
+      mainContactExtraPhones: 'Asosiy aloqa: qoʻshimcha telefonlari',
+      otherRelatives: 'Boshqa qarindoshlar',
     },
   },
   student: {
@@ -805,6 +858,18 @@ const uz: ExportTexts = {
     scholarshipCoverages: {
       full: 'Toʻliq',
       partial: 'Qisman',
+    },
+    relationships: {
+      father: 'Otasi',
+      mother: 'Onasi',
+      grandfather: 'Bobosi',
+      grandmother: 'Buvisi',
+      uncle: 'Amakisi yoki togʻasi',
+      aunt: 'Ammasi yoki xolasi',
+      brother: 'Akasi yoki ukasi',
+      sister: 'Opasi yoki singlisi',
+      guardian: 'Vasiysi',
+      other: 'Boshqa',
     },
   },
   plannedStatus: 'Rejalashtirilgan holat',

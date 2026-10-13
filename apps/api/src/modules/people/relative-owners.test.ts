@@ -16,6 +16,7 @@ import { ApiException } from '../../http/api-exception.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { refusingRelativeRaces } from './relative-writes.js';
+import { staffIdOf } from './staff-numbers.js';
 
 // All names and phones are invented. edge/close-relatives, rows 1 to 3; the
 // plan approved on pull request #73 with corrections 1 to 3 (task 2.5b-1):
@@ -333,6 +334,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
         phone: number,
         workplace: 'Toshkent shahar shifoxonasi',
         email: 'd.karimova@example.uz',
+        extraPhones: [],
       };
       // The holder is linked in the south only: no merge for the Academic
       // Vice Principal of the north, a merge for the Super Admin.
@@ -491,7 +493,13 @@ describe('phone owners, merges and the notice to the other branch', () => {
       );
       expect(after.relatives.some((one) => one.id === earlier.relativeId)).toBe(false);
       // A name kept, a phone given: no longer invalid.
-      const record = { fullName: 'Feruza Qodirova', phone: null, workplace: null, email: null };
+      const record = {
+        fullName: 'Feruza Qodirova',
+        phone: null,
+        workplace: null,
+        email: null,
+        extraPhones: [],
+      };
       expect(
         (await t.patch(`/api/people/relatives/${earlier.relativeId}`, t.north, record)).status,
       ).toBe(200);
@@ -524,14 +532,26 @@ describe('phone owners, merges and the notice to the other branch', () => {
       const changed = await t.patch(
         `/api/people/relatives/${shared.relativeId}`,
         t.north,
-        { fullName: 'Lola Ismoilova Karimova', phone: phone(), workplace: null, email: null },
+        {
+          fullName: 'Lola Ismoilova Karimova',
+          phone: phone(),
+          workplace: null,
+          email: null,
+          extraPhones: [],
+        },
         t.vicePrincipal,
       );
       expect(changed.status, JSON.stringify(changed.body)).toBe(200);
       const renamedOnly = await t.patch(
         `/api/people/relatives/${only.relativeId}`,
         t.north,
-        { fullName: 'Lola Karimova', phone: phone(), workplace: null, email: null },
+        {
+          fullName: 'Lola Karimova',
+          phone: phone(),
+          workplace: null,
+          email: null,
+          extraPhones: [],
+        },
         t.vicePrincipal,
       );
       expect(renamedOnly.status).toBe(200);
@@ -615,7 +635,13 @@ describe('phone owners, merges and the notice to the other branch', () => {
             phone: mergedPhone,
             fullName: 'Gavhar Toyirova',
           }) as unknown,
-          new_value: { mergedInto: kept.relativeId, phone: null, account: 'off' },
+          new_value: {
+            mergedInto: kept.relativeId,
+            phone: null,
+            account: 'off',
+            extraPhones: [],
+            staffId: null,
+          },
         }),
       ]);
       expect(await schoolEntries('relative.archive', merged.relativeId)).toHaveLength(1);
@@ -751,6 +777,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
         phone: (await stored(holder.relativeId)).phone,
         workplace: null,
         email: null,
+        extraPhones: [],
       });
       refusedWith(refused, 409, 'relative_phone_taken');
       expect(detailsOf(refused)[0]).toMatchObject({ mergeable: true, recordId: holder.relativeId });
@@ -762,6 +789,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
         phone: number,
         workplace: null,
         email: null,
+        extraPhones: [],
       });
       // The holder is linked in the north and in the south.
       const holderPhone = phone();
@@ -944,14 +972,17 @@ describe('phone owners, merges and the notice to the other branch', () => {
       expect((await stored(merged.relativeId)).merged_into).toBeNull();
     });
 
-    it('refuses the second of two merges sharing a record', async () => {
+    // Two merges at the same moment are proved by the lock pair "a merge that
+    // waited on another merge of the same record" below; sent at once, the
+    // second answered 404 or 409 by timing (CI of pull request #74).
+    it('refuses a later merge of a record already merged, changing nothing', async () => {
       const aPhone = phone();
       const bPhone = phone();
       const cPhone = phone();
       const a = await withRelative(aPhone, t.north);
       const b = await withRelative(bPhone, t.north);
       const c = await withRelative(cPhone, t.north);
-      const first = merge(
+      const first = await merge(
         a.relativeId,
         {
           otherId: b.relativeId,
@@ -961,21 +992,26 @@ describe('phone owners, merges and the notice to the other branch', () => {
           nameOf: 'this',
         },
         t.north,
-      ).then((response) => response);
-      const second = merge(
-        c.relativeId,
-        {
-          otherId: b.relativeId,
-          thisPhone: cPhone,
-          otherPhone: bPhone,
-          phoneOf: 'this',
-          nameOf: 'this',
-        },
-        t.north,
-        t.admin,
-      ).then((response) => response);
-      const statuses = [(await first).status, (await second).status].sort();
-      expect(statuses).toEqual([200, 409]);
+      );
+      expect(first.status, JSON.stringify(first.body)).toBe(200);
+      const before = await snapshot();
+      refusedWith(
+        await merge(
+          c.relativeId,
+          {
+            otherId: b.relativeId,
+            thisPhone: cPhone,
+            otherPhone: bPhone,
+            phoneOf: 'this',
+            nameOf: 'this',
+          },
+          t.north,
+          t.admin,
+        ),
+        404,
+        'not_found',
+      );
+      expect(await snapshot()).toEqual(before);
     });
 
     it('is refused to the Principal and the south Academic Vice Principal in the north', async () => {
@@ -1012,6 +1048,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
             phone: number,
             workplace: null,
             email: null,
+            extraPhones: [],
             newOwner: { previousId: holder.relativeId, previousPhone: null },
           },
           t.vicePrincipal,
@@ -1045,6 +1082,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
             phone: number,
             workplace: null,
             email: null,
+            extraPhones: [],
             newOwner: { previousId, previousPhone: null },
           }),
           409,
@@ -1072,6 +1110,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
         phone: (await stored(edited.relativeId)).phone,
         workplace: 'Toshkent shahar shifoxonasi',
         email: 'd.karimova@example.uz',
+        extraPhones: [],
         newOwner: { previousId: holder.relativeId, previousPhone: null },
       });
       refusedWith(response, 422, 'request_refused');
@@ -1091,6 +1130,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
           phone: number,
           workplace: 'Toshkent shahar shifoxonasi',
           email: 'd.karimova@example.uz',
+          extraPhones: [],
           newOwner: { previousId: holder.relativeId, previousPhone: null },
         },
         t.vicePrincipal,
@@ -1238,6 +1278,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
           phone: next,
           workplace: 'Toshkent shahar shifoxonasi',
           email: 'd.karimova@example.uz',
+          extraPhones: [],
         })
         .then((response) => response);
       await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
@@ -1297,6 +1338,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
           phone: next,
           workplace: 'Toshkent shahar shifoxonasi',
           email: 'd.karimova@example.uz',
+          extraPhones: [],
         })
         .then((response) => response);
       await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
@@ -1389,7 +1431,13 @@ describe('phone owners, merges and the notice to the other branch', () => {
       expect(unlinked.status, JSON.stringify(unlinked.body)).toBe(200);
       expect((await stored(holder.relativeId)).archived_at).not.toBeNull();
       const edited = await withRelative(phone(), t.north);
-      const record = { fullName: 'Dilfuza Karimova', phone: number, workplace: null, email: null };
+      const record = {
+        fullName: 'Dilfuza Karimova',
+        phone: number,
+        workplace: null,
+        email: null,
+        extraPhones: [],
+      };
       const refused = await t.patch(`/api/people/relatives/${edited.relativeId}`, t.north, record);
       refusedWith(refused, 409, 'relative_phone_taken');
       expect(detailsOf(refused)[0]).toMatchObject({ mergeable: false });
@@ -1398,6 +1446,350 @@ describe('phone owners, merges and the notice to the other branch', () => {
         newOwner: { previousId: holder.relativeId, previousPhone: null },
       });
       expect(given.status, JSON.stringify(given.body)).toBe(200);
+    });
+  });
+
+  // Task 2.5b-2, pull request #74: extra phones (decisions 2 and 3) and what a
+  // merge does with them and with the mark "same person" (decision 5).
+  describe('extra phones and the merge of marks (task 2.5b-2)', () => {
+    let headTutor: string;
+    let staffCount = 0;
+
+    const lettersOf = (n: number): string =>
+      n < 26
+        ? String.fromCharCode(97 + n)
+        : lettersOf(Math.floor(n / 26) - 1) + String.fromCharCode(97 + (n % 26));
+
+    /** A staff person with a main branch and further branches, written by the migrator. */
+    async function staffMember(main: string, further: string[] = []): Promise<string> {
+      staffCount += 1;
+      const number = staffCount;
+      const division = await t.database.migrator
+        .selectFrom('divisions')
+        .select('id')
+        .where('name_en', '=', 'Academic')
+        .executeTakeFirstOrThrow();
+      const department = await t.database.migrator
+        .selectFrom('departments')
+        .select('id')
+        .where('name_en', '=', 'STEAM')
+        .executeTakeFirstOrThrow();
+      return t.database.migrator.transaction().execute(async (transaction) => {
+        const row = await transaction
+          .insertInto('staff')
+          .values({
+            kind: 'person',
+            staff_id: staffIdOf(2026, 8500 + number),
+            first_name: 'Jasur',
+            last_name: `Ergashev${lettersOf(number)}`,
+            sex: 'male',
+            birth_date: '1984-02-03',
+            phone: `+99895${String(7000000 + number)}`,
+            admission_date: '2026-09-01',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_branches')
+          .values([
+            { staff_id: row.id, branch_id: main, is_main: true },
+            ...further.map((branch) => ({ staff_id: row.id, branch_id: branch, is_main: false })),
+          ])
+          .execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({
+            staff_id: row.id,
+            division_id: division.id,
+            department_id: department.id,
+            is_main: true,
+          })
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: row.id, status: 'active', valid_from: '2026-09-01' })
+          .execute();
+        return row.id;
+      });
+    }
+
+    const withExtra = (number: string | null, extraPhones: string[]) => {
+      const link = newRelative(number);
+      return { ...link, relative: { ...link.relative, extraPhones } };
+    };
+
+    const extraOf = async (id: string) =>
+      await t.database.migrator
+        .selectFrom('relatives')
+        .select(['extra_phones', 'staff_id'])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+
+    const editBody = (number: string | null, extraPhones?: string[]) => ({
+      fullName: 'Dilfuza Karimova',
+      phone: number,
+      workplace: 'Toshkent shahar shifoxonasi',
+      email: 'd.karimova@example.uz',
+      ...(extraPhones === undefined ? {} : { extraPhones }),
+    });
+
+    beforeAll(async () => {
+      const tutor = await t.kit.completeSession('Nilufar', 'Hamidova');
+      await t.kit.giveRole(tutor.account.id, { role: 'head_tutor', branchId: t.north });
+      headTutor = tutor.cookie;
+    });
+
+    it('keeps extra phones written with a new relative, a link and a new owner, in the create entry', async () => {
+      const extra = phone();
+      const created = await student([withExtra(phone(), [extra, '+12025550147'])], t.north);
+      const [link] = (await tab(created.id, t.north)).relatives;
+      expect(link?.extraPhones).toEqual([extra, '+12025550147']);
+      const relativeId = link?.relativeId ?? '';
+      const [entry] = await schoolEntries('relative.create', relativeId);
+      expect(entry?.new_value).toMatchObject({ extraPhones: [extra, '+12025550147'] });
+      const linked = await t.post(`/api/people/students/${created.id}/relatives`, t.north, {
+        ...withExtra(phone(), [phone()]),
+        mainContact: false,
+      });
+      expect(linked.status, JSON.stringify(linked.body)).toBe(201);
+      expect(studentRelativesSchema.parse(linked.body).relatives[1]?.extraPhones).toHaveLength(1);
+      const number = phone();
+      const earlier = await withRelative(number, t.north);
+      const owner = newOwner(number, earlier.relativeId, null);
+      const taken = await student(
+        [{ ...owner, relative: { ...owner.relative, extraPhones: [extra] } }],
+        t.north,
+      );
+      expect((await tab(taken.id, t.north)).relatives[0]?.extraPhones).toEqual([extra]);
+    });
+
+    it('answers the extra phones to a Contact reader of the Relatives tab and on the detail', async () => {
+      const extra = phone();
+      const created = await student([withExtra(phone(), [extra])], t.north);
+      const response = await t.get(
+        `/api/people/students/${created.id}/relatives`,
+        t.north,
+        headTutor,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(studentRelativesSchema.parse(response.body).relatives[0]?.extraPhones).toEqual([
+        extra,
+      ]);
+      const id = studentRelativesSchema.parse(response.body).relatives[0]?.relativeId ?? '';
+      const detail = relativeDetailSchema.parse(
+        (await t.get(`/api/people/relatives/${id}`, t.north)).body,
+      );
+      expect(detail).toMatchObject({ extraPhones: [extra], samePerson: null });
+    });
+
+    it('refuses an extra phone given twice, a fourth one and an edit without the list, changing nothing', async () => {
+      const extra = phone();
+      const before = await snapshot();
+      refusedWith(
+        await t.post('/api/people/students', t.north, body([withExtra(phone(), [extra, extra])])),
+        400,
+        'validation_failed',
+      );
+      refusedWith(
+        await t.post(
+          '/api/people/students',
+          t.north,
+          body([withExtra(phone(), [phone(), phone(), phone(), phone()])]),
+        ),
+        400,
+        'validation_failed',
+      );
+      expect(await snapshot()).toEqual(before);
+      const edited = await withRelative(phone(), t.north);
+      const number = (await stored(edited.relativeId)).phone;
+      const unchanged = await snapshot();
+      for (const sent of [editBody(number), editBody(number, [extra, extra])]) {
+        refusedWith(
+          await t.patch(`/api/people/relatives/${edited.relativeId}`, t.north, sent),
+          400,
+          'validation_failed',
+        );
+      }
+      expect(await snapshot()).toEqual(unchanged);
+    });
+
+    it('logs a change of extra phones only and tells no other branch', async () => {
+      const shared = await withRelative(phone(), t.north);
+      const number = (await stored(shared.relativeId)).phone ?? '';
+      await student(
+        [existing(shared.relativeId, number)].map((one) => ({ ...one, mainContact: true })),
+        t.south,
+      );
+      const before = (await noticesOf(southViceAccount)).length;
+      const extra = phone();
+      const response = await t.patch(
+        `/api/people/relatives/${shared.relativeId}`,
+        t.north,
+        editBody(number, [extra]),
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(relativeDetailSchema.parse(response.body).extraPhones).toEqual([extra]);
+      expect(await schoolEntries('relative.edit', shared.relativeId)).toEqual([
+        expect.objectContaining({
+          old_value: { extraPhones: [] },
+          new_value: { extraPhones: [extra] },
+        }),
+      ]);
+      expect((await noticesOf(southViceAccount)).length).toBe(before);
+    });
+
+    it('never finds a relative by an extra phone: the phone match and the phone search', async () => {
+      const extra = phone();
+      await student([withExtra(phone(), [extra])], t.north);
+      const match = await t.post('/api/people/relatives/phone-match', t.north, { phone: extra });
+      expect(match.status, JSON.stringify(match.body)).toBe(200);
+      expect(relativePhoneMatchResultSchema.parse(match.body).holder).toBeNull();
+      const list = await t.get(`/api/people/relatives?phone=${encodeURIComponent(extra)}`, t.north);
+      expect(list.status, JSON.stringify(list.body)).toBe(200);
+      expect(relativeListSchema.parse(list.body).relatives).toEqual([]);
+      // A new relative with that number as the main phone is created, not matched.
+      const created = await student([newRelative(extra)], t.north);
+      expect((await tab(created.id, t.north)).relatives[0]?.phone).toBe(extra);
+    });
+
+    /** Two relatives of the north, each with its own phone, for a merge. */
+    const mergePair = async () => {
+      const keptPhone = phone();
+      const mergedPhone = phone();
+      const kept = await withRelative(keptPhone, t.north);
+      const merged = await withRelative(mergedPhone, t.north);
+      return {
+        kept,
+        merged,
+        input: {
+          otherId: merged.relativeId,
+          thisPhone: keptPhone,
+          otherPhone: mergedPhone,
+          phoneOf: 'this',
+          nameOf: 'this',
+        },
+      };
+    };
+
+    const markAs = async (relativeId: string, staffId: string, cookie = t.vicePrincipal) => {
+      const response = await t.put(
+        `/api/people/relatives/${relativeId}/same-person`,
+        t.north,
+        { staffId },
+        cookie,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+    };
+
+    const setExtra = (relativeId: string, extraPhones: string[]) =>
+      t.database.migrator
+        .updateTable('relatives')
+        .set({ extra_phones: extraPhones })
+        .where('id', '=', relativeId)
+        .execute();
+
+    it('fills the kept record with the extra phones and the mark of the other, and empties it', async () => {
+      const { kept, merged, input } = await mergePair();
+      const teacher = await staffMember(t.north);
+      const extra = phone();
+      await setExtra(merged.relativeId, [extra]);
+      await markAs(merged.relativeId, teacher);
+      const response = await merge(kept.relativeId, input, t.north);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(relativeDetailSchema.parse(response.body)).toMatchObject({
+        extraPhones: [extra],
+        samePerson: { staffId: teacher },
+      });
+      expect(await extraOf(kept.relativeId)).toEqual({ extra_phones: [extra], staff_id: teacher });
+      expect(await extraOf(merged.relativeId)).toEqual({ extra_phones: [], staff_id: null });
+      expect(await schoolEntries('relative.merge', kept.relativeId)).toEqual([
+        expect.objectContaining({
+          old_value: expect.objectContaining({ extraPhones: [], staffId: null }) as unknown,
+          new_value: expect.objectContaining({ extraPhones: [extra], staffId: teacher }) as unknown,
+        }),
+      ]);
+      expect(await schoolEntries('relative.merged', merged.relativeId)).toEqual([
+        expect.objectContaining({
+          old_value: expect.objectContaining({ extraPhones: [extra], staffId: teacher }) as unknown,
+          new_value: expect.objectContaining({ extraPhones: [], staffId: null }) as unknown,
+        }),
+      ]);
+    });
+
+    it('keeps the extra phones and the mark of the kept record', async () => {
+      const { kept, merged, input } = await mergePair();
+      const teacher = await staffMember(t.north);
+      const keptExtra = phone();
+      await setExtra(kept.relativeId, [keptExtra]);
+      await setExtra(merged.relativeId, [phone()]);
+      await markAs(kept.relativeId, teacher);
+      const response = await merge(kept.relativeId, input, t.north);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(await extraOf(kept.relativeId)).toEqual({
+        extra_phones: [keptExtra],
+        staff_id: teacher,
+      });
+    });
+
+    it('refuses two records marked as two different staff members, changing nothing', async () => {
+      const { kept, merged, input } = await mergePair();
+      await markAs(kept.relativeId, await staffMember(t.north));
+      await markAs(merged.relativeId, await staffMember(t.north));
+      const before = await snapshot();
+      refusedWith(await merge(kept.relativeId, input, t.north), 422, 'merge_marks_differ');
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('refuses to the Academic Vice Principal a mark to move of a staff member of another branch; the Super Admin moves it', async () => {
+      const { kept, merged, input } = await mergePair();
+      const teacher = await staffMember(t.south, [t.north]);
+      await markAs(merged.relativeId, teacher);
+      // The teacher leaves the north: the mark stays, out of the north's sight.
+      await t.database.migrator
+        .deleteFrom('staff_branches')
+        .where('staff_id', '=', teacher)
+        .where('branch_id', '=', t.north)
+        .execute();
+      const before = await snapshot();
+      refusedWith(await merge(kept.relativeId, input, t.north), 403, 'merge_needs_super_admin');
+      expect(await snapshot()).toEqual(before);
+      // An account that is Academic Vice Principal of the north first and
+      // Super Admin second: the part only the Super Admin may do names that
+      // assignment (permission review of 2.5b-2, M1).
+      const both = await t.kit.completeSession('Shoira', 'Valiyeva');
+      await t.kit.giveRole(both.account.id, {
+        role: 'academic_vice_principal',
+        branchId: t.north,
+      });
+      const superAssignment = (await t.kit.giveRole(both.account.id, { role: 'super_admin' })).id;
+      const response = await merge(kept.relativeId, input, t.north, both.cookie);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(await extraOf(kept.relativeId)).toMatchObject({ staff_id: teacher });
+      expect(await extraOf(merged.relativeId)).toMatchObject({ staff_id: null });
+      for (const [action, id] of [
+        ['relative.merge', kept.relativeId],
+        ['relative.merged', merged.relativeId],
+      ] as const) {
+        expect(await schoolEntries(action, id)).toEqual([
+          expect.objectContaining({ assignment_id: superAssignment }),
+        ]);
+      }
+    });
+
+    it('refuses two different marks, one of another branch, as merge_needs_super_admin before naming them', async () => {
+      const { kept, merged, input } = await mergePair();
+      await markAs(kept.relativeId, await staffMember(t.north));
+      const teacher = await staffMember(t.south, [t.north]);
+      await markAs(merged.relativeId, teacher);
+      await t.database.migrator
+        .deleteFrom('staff_branches')
+        .where('staff_id', '=', teacher)
+        .where('branch_id', '=', t.north)
+        .execute();
+      const before = await snapshot();
+      refusedWith(await merge(kept.relativeId, input, t.north), 403, 'merge_needs_super_admin');
+      refusedWith(await merge(kept.relativeId, input, t.north, t.admin), 422, 'merge_marks_differ');
+      expect(await snapshot()).toEqual(before);
     });
   });
 });

@@ -582,6 +582,155 @@ describe('the student export, the consent list and the "No class" counter', () =
       }
     });
 
+    // Task 2.5b-2, decision 1 (Look first): the relatives in the Contact group.
+    describe('the relatives (task 2.5b-2)', () => {
+      const RELATIVE_COLUMNS = [
+        'mainContactName',
+        'mainContactRelationship',
+        'mainContactPhone',
+        'mainContactExtraPhones',
+        'otherRelatives',
+      ];
+      let phones = 0;
+
+      /** A new invented phone of the people shape, never used before in this file. */
+      const phone = () => {
+        phones += 1;
+        return `+99895${String(4000000 + phones)}`;
+      };
+
+      const relative = (
+        fullName: string,
+        relationship: string,
+        number: string | null,
+        extraPhones: string[] = [],
+        mainContact = false,
+      ) => ({
+        kind: 'new',
+        relative: { fullName, phone: number, workplace: '', email: '', extraPhones },
+        relationship,
+        mainContact,
+        portalAccess: true,
+        receivesNotices: true,
+      });
+
+      const relativeIdOf = async (student: string, fullName: string) =>
+        (
+          await t.database.migrator
+            .selectFrom('student_relatives as l')
+            .innerJoin('relatives as r', 'r.id', 'l.relative_id')
+            .select('r.id')
+            .where('l.student_id', '=', student)
+            .where('r.full_name', '=', fullName)
+            .executeTakeFirstOrThrow()
+        ).id;
+
+      it('writes the main contact and the other relatives for the Super Admin and the Academic Vice Principal', async () => {
+        await speak('en');
+        const mainPhone = phone();
+        const mainExtra = [phone(), phone()];
+        const brotherPhone = phone();
+        const brotherExtra = phone();
+        const auntExtra = phone();
+        const full = await create({
+          relatives: [
+            relative('Nargiza Tursunova', 'mother', mainPhone, mainExtra, true),
+            relative('Zafar Tursunov', 'father', null),
+            relative('Bobur Tursunov', 'brother', brotherPhone, [brotherExtra]),
+            relative('Kamol Tursunov', 'uncle', phone()),
+          ],
+        });
+        // Unlinked: never in the file.
+        const uncle = await relativeIdOf(full.id, 'Kamol Tursunov');
+        const unlinked = await t.post(
+          `/api/people/students/${full.id}/relatives/${uncle}/unlink`,
+          t.north,
+          { newMainContactId: null },
+        );
+        expect(unlinked.status, JSON.stringify(unlinked.body)).toBe(200);
+        // Linked last: the last line.
+        const added = await t.post(
+          `/api/people/students/${full.id}/relatives`,
+          t.north,
+          relative('Aziza Tursunova', 'aunt', null, [auntExtra]),
+        );
+        expect(added.status, JSON.stringify(added.body)).toBeLessThan(300);
+        // A main contact with no phone of their own, and no other relative.
+        const bare = await create({
+          relatives: [relative('Laylo Qosimova', 'grandmother', null, [], true)],
+        });
+        // A student of another branch: their relative is never in the north's file.
+        await create(
+          {
+            relatives: [
+              relative('Sherzod Olimov', 'father', phone(), [phone()], true),
+              relative('Gavhar Olimova', 'mother', phone()),
+            ],
+          },
+          t.south,
+        );
+
+        for (const [cookie, assignment] of [
+          [t.admin, t.adminAssignment],
+          [t.vicePrincipal, t.viceAssignment],
+        ] as const) {
+          const file = await fileOf(
+            await exportOf(send([full.id, bare.id], ['uid', ...RELATIVE_COLUMNS]), cookie),
+          );
+          expect(file.columns).toBe(['uid', ...RELATIVE_COLUMNS].join(','));
+          expect(file.sheet.headings).toEqual([
+            'UID',
+            'Main contact',
+            'Main contact: relationship',
+            'Main contact: phone',
+            'Main contact: extra phones',
+            'Other relatives',
+          ]);
+          expect(file.sheet.rows).toEqual([
+            [
+              full.uid,
+              'Nargiza Tursunova',
+              'Mother',
+              mainPhone,
+              mainExtra.join(', '),
+              [
+                'Zafar Tursunov (Father)',
+                `Bobur Tursunov (Brother): ${brotherPhone}, ${brotherExtra}`,
+                `Aziza Tursunova (Aunt): ${auntExtra}`,
+              ].join('\n'),
+            ],
+            [bare.uid, 'Laylo Qosimova', 'Grandmother', null, null, null],
+          ]);
+          const text = JSON.stringify(file.sheet.rows);
+          for (const absent of ['Kamol', 'Sherzod', 'Gavhar']) {
+            expect(text, absent).not.toContain(absent);
+          }
+          expect((await t.entries('student.export')).at(-1)).toMatchObject({
+            branch_id: t.north,
+            assignment_id: assignment,
+            details: { columns: ['uid', ...RELATIVE_COLUMNS], leftOut: [], rows: 2 },
+          });
+        }
+      });
+
+      it('leaves the relatives out of the Principal’s file and names them', async () => {
+        await speak('en');
+        const student = await create({
+          relatives: [relative('Dilnoza Ahmedova', 'mother', phone(), [phone()], true)],
+        });
+        const file = await fileOf(
+          await exportOf(send([student.id], ['uid', ...RELATIVE_COLUMNS]), t.principal),
+        );
+        expect(file.columns).toBe('uid');
+        expect(file.sheet.headings).toEqual(['UID']);
+        expect(file.sheet.rows).toEqual([[student.uid]]);
+        expect((await t.entries('student.export')).at(-1)).toMatchObject({
+          assignment_id: principalAssignment,
+          details: { columns: ['uid'], leftOut: RELATIVE_COLUMNS, rows: 1 },
+        });
+      });
+    });
+
     // Answer 23: the consent list is exported by its readers, and the filter is logged.
     it('logs the consent filter of an export from the consent list', async () => {
       const student = await create({ consentSignedOn: null });

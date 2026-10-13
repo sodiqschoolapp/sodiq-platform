@@ -212,6 +212,15 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu qarindoshni boshqa kishi oʻzgartirdi. Sahifani yangilab, qayta urinib koʻring.',
     relative_merged:
       'Bu qarindosh boshqa yozuv bilan birlashtirilgan. Qolgan yozuvni topish uchun telefonni qayta kiriting.',
+    same_person_taken:
+      'Bu xodim allaqachon boshqa qarindosh bilan bir shaxs deb belgilangan. Avval oʻsha belgini olib tashlang.',
+    same_person_held_elsewhere:
+      'Bu xodim allaqachon boshqa filial qarindoshi bilan bir shaxs deb belgilangan. Oʻsha belgini olib tashlashni Super administratordan soʻrang.',
+    same_person_elsewhere:
+      'Bu qarindosh boshqa filial xodimi bilan bir shaxs deb belgilangan. Belgini oʻzgartirishni Super administratordan soʻrang.',
+    same_person_vacancy: 'Boʻsh oʻrin shaxs emas. Xodimni tanlang.',
+    merge_marks_differ:
+      'Bu qarindoshlar ikki xil xodim deb belgilangan. Belgilardan birini olib tashlang, soʻng birlashtiring.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
@@ -1140,6 +1149,11 @@ export const uz: Texts<'one' | 'other'> = {
       scholarshipAmount: 'Miqdori, soʻm',
       amount: '{{amount}} soʻm',
       consentSignedOn: 'Rozilik imzolangan sana',
+      mainContactName: 'Asosiy aloqa',
+      mainContactRelationship: 'Asosiy aloqa: qarindoshligi',
+      mainContactPhone: 'Asosiy aloqa: telefoni',
+      mainContactExtraPhones: 'Asosiy aloqa: qoʻshimcha telefonlari',
+      otherRelatives: 'Boshqa qarindoshlar',
       consent: 'Rozilik',
       activeNoConsent: 'Faol, roziliksiz',
       exportGroups: {
@@ -1362,6 +1376,27 @@ export const uz: Texts<'one' | 'other'> = {
       stepTitle: 'Qarindosh',
       notSet: 'Koʻrsatilmagan',
       linkLabel: 'Bogʻlanish: {{name}}',
+      extraPhones: 'Qoʻshimcha telefonlar',
+      extraPhone: '{{n}}-qoʻshimcha telefon',
+      addExtraPhone: 'Qoʻshimcha telefon qoʻshish',
+      removeExtraPhone: '{{n}}-qoʻshimcha telefonni olib tashlash',
+      extraPhoneTwice: 'Bu telefon roʻyxatda allaqachon bor.',
+      sameTitle: 'Xodim bilan bir shaxs',
+      sameNone: 'Xodim deb belgilanmagan.',
+      sameElsewhere: 'Boshqa filial xodimi bilan bir shaxs deb belgilangan.',
+      staffIdOf: 'Xodim raqami {{staffId}}',
+      staffOption: '{{name}} ({{staffId}})',
+      markStaff: 'Xodim deb belgilash',
+      changeStaff: 'Oʻzgartirish',
+      removeMark: 'Olib tashlash',
+      staffSearch: 'Xodimni topish',
+      staffChoice: 'Xodim',
+      staffNone: 'Bunday ismli xodim topilmadi.',
+      markSave: 'Belgilash',
+      markCancel: 'Bekor qilish',
+      removeMarkTitle: '«Bir shaxs» belgisi olib tashlansinmi?',
+      removeMarkText:
+        'Qarindosh va xodim oʻz holicha qoladi; ular endi bir shaxs deb belgilanmaydi.',
       relationships: {
         father: 'Otasi',
         mother: 'Onasi',
@@ -1456,6 +1491,7 @@ export const uz: Texts<'one' | 'other'> = {
       cancel: 'Bekor qilish',
       name: 'Ism',
       staffId: 'Xodim raqami',
+      alsoParent: 'Shuningdek, ota-ona',
       categories: 'Toifa',
       branches: 'Filiallar',
       department: 'Kafedra',
