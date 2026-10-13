@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '../../database/database.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { linkRelative } from '../../testing/relatives-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
@@ -93,6 +94,7 @@ describe('leaving, return and delete in the database', () => {
         .insertInto('student_accounts')
         .values({ student_id: newId, branch_id: branch, created_at: new Date(MOMENT) })
         .execute();
+      await linkRelative(transaction, newId, branch, new Date(MOMENT));
       return newId;
     });
     return { id, uid };

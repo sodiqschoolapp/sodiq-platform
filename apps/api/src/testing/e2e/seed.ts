@@ -748,6 +748,43 @@ try {
   });
   seeded.studentExport = { login: exportVice.login, password: exportVice.firstPassword };
 
+  // An Academic Vice Principal of two branches, each with the planned year
+  // around today, for a relative shared across branches (task 2.5a).
+  const relativesVice = await create('Shahlo', 'Mirzayeva');
+  for (const name of ['Relatives browser test branch A', 'Relatives browser test branch B']) {
+    const relativesBranch = await insertBranch(migrator, name);
+    await transactions.run([relativesBranch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: relativesVice.id,
+        role: 'academic_vice_principal',
+        branchId: relativesBranch,
+        givenBy: null,
+      }),
+    );
+    await migrator.transaction().execute(async (transaction) => {
+      const year = await transaction
+        .insertInto('academic_years')
+        .values({
+          branch_id: relativesBranch,
+          start_date: startDate,
+          end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('quarters')
+        .values(
+          [1, 2, 3, 4].map((number) => ({
+            branch_id: relativesBranch,
+            academic_year_id: year.id,
+            number,
+          })),
+        )
+        .execute();
+    });
+  }
+  seeded.relatives = { login: relativesVice.login, password: relativesVice.firstPassword };
+
   // A Tutor in one branch and a Teacher in two: the role and branch switchers.
   const second = await insertBranch(migrator, 'Second browser test branch');
   const switchers = await create('Jamshid', 'Ismoilov');

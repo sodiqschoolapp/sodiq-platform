@@ -241,16 +241,22 @@ How to read the task lines:
   - Build: the Excel export of the student list by readers, ticked or matching, with the groups the role reads (whole-branch contact or identity fields for the Super Admin and the Academic Vice Principal only; Tutors their own class from 3.1), and its bulk action; student photos (a second `FileRoute`, the photo column of the list); the list of active students without consent (answer 23); the "No class" counter on the Academic Vice Principal's home page.
   - Done when: an export holds only the groups the role reads.
 
-- [ ] **2.5 Close relatives (Parents)**
+- [x] **2.5a Relative record, links and the Parents list** (2.5 split in two, pull request #72, decision 1)
   - Read: `04` (Close relatives), `edge/close-relatives`.
   - Build: school-wide relative records unique by main phone; links to several students with relationship, main contact, portal access and "receives notices"; the "no phone of their own" case; the Parent list and page; a Parent account created with the record and switched off until Release 2.
   - Done when: a student cannot be saved without at least one relative and phone uniqueness holds across branches.
   - From 2.4a (pull request #67, decision 10): the students saved by 2.4a have no relative yet; the rule "at least one relative" refuses the edit of such a record until one is linked, and the student form of 2.4a gains the relative step.
 
+- [ ] **2.5b Phone owners, merge, extra phones and the same person** (split from 2.5 on pull request #72, decision 1)
+  - Read: `04` (Close relatives), `edge/close-relatives`, `edge/people-roles-accounts` (Personal data and the audit log), the plan and the decisions of pull request #72.
+  - Build: on a phone match, "different person, the number has a new owner" with the earlier relative's new phone or "no valid phone" (a column of its own, `phone_invalid_since`; sign-in blocked; listed for the Academic Vice Principal while a linked student is active); "Merge" offered on a refused phone change (the Academic Vice Principal in the branch, the Super Admin across branches); a change of name or phone of a relative linked in another branch told to that branch's Academic Vice Principal (a notification kind); extra phones (not unique, not for sign-in); a staff record and a relative record marked as the same person; relatives in the student export.
+  - Done when: a phone match offers the new owner and a merge, and the other branch's Academic Vice Principal is told of a change.
+
 - [ ] **2.6 Audit log screen and personal data tools**
   - Read: `edge/people-roles-accounts` (Personal data and the audit log), `13` (Security).
   - Build: the audit log screen with search by person, record and date, and the reading rights per role; each user's own sign-in history; the personal data report per person; export rules (limited by role, every export logged).
   - Done when: a Principal sees only the branch's log and every export leaves a log entry.
+  - From 2.5a (pull request #72, decision 17 as changed by correction 1): the entries of a relative's record (`relative.create`, `relative.edit`, `relative.archive`, `relative.restore`) are in `audit_log_school` with the branch of the request in `details`; the link entries are in the branch's log. Decide which branches read the record entries of a relative.
   - From 2.4b-1 (pull request #68): the audit entries `student.create`, `student.edit` and `student.delete` hold the identity fields of the student; a reader without the Identity group (the Principal) sees them hidden, with a logged show, as on the record.
 
 - [ ] **2.7 Polish of Phases 1 and 2**

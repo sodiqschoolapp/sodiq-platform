@@ -10,6 +10,9 @@ import { StaffAvailability } from './availability.service.js';
 import { HeadTeachersController } from './head-teachers.controller.js';
 import { HeadTeachers } from './head-teachers.service.js';
 import { PHOTO_STORE, photoStoreOf } from './photo-store.js';
+import { RelativeWrites } from './relative-writes.js';
+import { RelativesController } from './relatives.controller.js';
+import { Relatives } from './relatives.service.js';
 import { StaffAccountsController } from './staff-accounts.controller.js';
 import { StaffAccounts } from './staff-accounts.service.js';
 import { OwnPhotoController } from './own-photo.controller.js';
@@ -33,7 +36,7 @@ import { Vacancies } from './vacancies.service.js';
  * the account section of a record (task 2.3a), the Head Teacher appointments
  * (task 2.3b-1), the sign-in access of an account (task 2.3c-1), student
  * records (task 2.4a), their leaving, return and delete (task 2.4b-1), their
- * export and photos (task 2.4b-2).
+ * export and photos (task 2.4b-2), their close relatives (task 2.5a).
  */
 @Module({
   imports: [AccessModule, AuthModule],
@@ -49,6 +52,7 @@ import { Vacancies } from './vacancies.service.js';
     StudentsController,
     StudentStatusesController,
     StudentPhotosController,
+    RelativesController,
   ],
   providers: [
     Staff,
@@ -62,6 +66,8 @@ import { Vacancies } from './vacancies.service.js';
     StudentStatuses,
     StudentExports,
     StudentPhotos,
+    RelativeWrites,
+    Relatives,
     {
       provide: PHOTO_STORE,
       useFactory: (config: AppConfig) => photoStoreOf(config.photos),

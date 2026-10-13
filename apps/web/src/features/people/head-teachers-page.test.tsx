@@ -149,6 +149,8 @@ describe('the Head Teachers of the branch', () => {
       en.people.staff.title,
       // Task 2.4a: the students, a section of its own.
       en.people.students.title,
+      // Task 2.5a: the Parents.
+      en.people.relatives.title,
       en.people.vacancies.title,
       en.people.headTeachers.title,
       // Task 2.3c-1: the accounts never used, a fourth section.

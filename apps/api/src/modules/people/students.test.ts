@@ -12,6 +12,7 @@ import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import { linkRelative, relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const MOMENT = new Date('2026-10-10T23:55:00+05:00');
@@ -58,6 +59,7 @@ describe('student records', () => {
       scholarship: { type: 'merit', coverage: 'partial', amount: 1500000 },
       consentSignedOn: '2026-08-20',
       contract: { number: `SQ-2026/${String(count)}`, signedOn: '2026-08-20' },
+      relatives: relativesInput(),
       ...overrides,
     };
   }
@@ -442,6 +444,7 @@ describe('student records', () => {
           signed_on: '2026-08-20',
         })
         .execute();
+      await linkRelative(transaction, id, branch, MOMENT);
     }
 
     it.each([

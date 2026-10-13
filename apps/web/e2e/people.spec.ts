@@ -316,6 +316,10 @@ test('an Academic Vice Principal adds a student and is refused a second with the
     await form.getByLabel(texts.startsOn, { exact: true }).fill(today);
     await form.getByLabel(texts.contractNumber, { exact: true }).fill(contract);
     await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(today);
+    // Task 2.5a: a student is saved with a relative.
+    await form.getByRole('checkbox', { name: en.people.relatives.noPhone }).check();
+    await form.getByLabel(en.people.relatives.fullName, { exact: true }).fill('Dilfuza Rahimova');
+    await form.getByLabel(en.people.relatives.relationship, { exact: true }).selectOption('mother');
     await form.getByRole('button', { name: en.form.save, exact: true }).click();
     const question = page.getByRole('alertdialog', { name: texts.setTitle });
     await expect(question).toBeVisible();
@@ -403,6 +407,10 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
     await form.getByLabel(texts.startsOn, { exact: true }).fill(daysAgo(60));
     await form.getByLabel(texts.contractNumber, { exact: true }).fill(contract);
     await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(daysAgo(61));
+    // Task 2.5a: a student is saved with a relative.
+    await form.getByRole('checkbox', { name: en.people.relatives.noPhone }).check();
+    await form.getByLabel(en.people.relatives.fullName, { exact: true }).fill('Dilfuza Rahimova');
+    await form.getByLabel(en.people.relatives.relationship, { exact: true }).selectOption('mother');
     await form.getByRole('button', { name: en.form.save, exact: true }).click();
     const question = page.getByRole('alertdialog', { name: texts.setTitle });
     await expect(question).toBeVisible();
@@ -551,6 +559,10 @@ test('an Academic Vice Principal exports students with their documents, adds a p
     }
     await form.getByLabel(texts.contractNumber, { exact: true }).fill(contract);
     await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(daysAgo(41));
+    // Task 2.5a: a student is saved with a relative.
+    await form.getByRole('checkbox', { name: en.people.relatives.noPhone }).check();
+    await form.getByLabel(en.people.relatives.fullName, { exact: true }).fill('Dilfuza Rahimova');
+    await form.getByLabel(en.people.relatives.relationship, { exact: true }).selectOption('mother');
     await form.getByRole('button', { name: en.form.save, exact: true }).click();
     const question = page.getByRole('alertdialog', { name: texts.setTitle });
     await expect(question).toBeVisible();
@@ -612,4 +624,85 @@ test('an Academic Vice Principal exports students with their documents, adds a p
   await counter.getByRole('link', { name: en.home.noClass.link }).click();
   await expect(heading(page, texts.title)).toBeVisible();
   await expect(page.locator('tbody tr')).toHaveCount(2);
+});
+
+// Task 2.5a, pull request #72 (docs/spec/04-people.md, Close relatives;
+// edge/close-relatives): an Academic Vice Principal of two branches adds a
+// student with a new relative, then in the other branch a student whose
+// relative is found by the same phone and linked; the Parents page shows one
+// record with the student of the other branch as a count. All names and
+// phones are invented.
+test('an Academic Vice Principal links one relative to students of two branches', async ({
+  page,
+}) => {
+  const account = accountOf('relatives');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  const texts = en.people.students;
+  const relatives = en.people.relatives;
+  const phone = '+998 90 555 01 25';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(Date.now());
+  async function add(uid: string, lastName: string, contract: string, found: boolean) {
+    await page.getByRole('button', { name: texts.add, exact: true }).first().click();
+    const form = page.getByRole('form', { name: texts.newTitle });
+    await form.getByLabel(texts.uid, { exact: true }).fill(uid);
+    await form.getByLabel(texts.lastName, { exact: true }).fill(lastName);
+    await form.getByLabel(texts.firstName, { exact: true }).fill('Nodira');
+    await form.getByLabel(texts.sex, { exact: true }).selectOption('female');
+    await form.getByLabel(texts.birthDate, { exact: true }).fill('2014-06-02');
+    await form.getByLabel(texts.grade, { exact: true }).selectOption('7');
+    await form.getByLabel(texts.startsOn, { exact: true }).fill(today);
+    await form.getByLabel(texts.contractNumber, { exact: true }).fill(contract);
+    await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(today);
+    // The phone typed first (04, Adding a relative).
+    await form.getByLabel(relatives.phone, { exact: true }).fill(phone);
+    await form.getByLabel(relatives.phone, { exact: true }).blur();
+    if (found) {
+      await expect(
+        form.getByText(
+          relatives.found_one.replace('{{name}}', 'Gulnora Tursunova').replace('{{count}}', '1'),
+        ),
+      ).toBeVisible();
+    } else {
+      await form.getByLabel(relatives.fullName, { exact: true }).fill('Gulnora Tursunova');
+    }
+    await form.getByLabel(relatives.relationship, { exact: true }).selectOption('mother');
+    await form.getByRole('button', { name: en.form.save, exact: true }).click();
+    const question = page.getByRole('alertdialog', { name: texts.setTitle });
+    await expect(question).toBeVisible();
+    await question.getByRole('button', { name: texts.saveAnyway, exact: true }).click();
+    await expect(page.getByRole('form', { name: texts.newTitle })).toHaveCount(0);
+  }
+
+  await page.goto('/people/students');
+  await expect(heading(page, texts.title)).toBeVisible();
+  await add('9999201', 'Tursunova', 'E2E-RELATIVE-1', false);
+
+  // The other branch: the same phone finds the same person.
+  const branches = page.getByRole('combobox', { name: en.switcher.branch, exact: true });
+  const other = await branches.locator('option:not(:checked)').first().getAttribute('value');
+  await branches.selectOption(other ?? '');
+  await expect(page.locator('tbody tr')).toHaveCount(0);
+  await add('9999202', 'Rasulova', 'E2E-RELATIVE-2', true);
+
+  await page.goto('/people/parents');
+  await expect(heading(page, relatives.title)).toBeVisible();
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Gulnora Tursunova', exact: true }).click();
+  const panel = page.getByRole('complementary', { name: 'Gulnora Tursunova' });
+  await expect(
+    panel.getByText(relatives.elsewhereCount_one.replace('{{count}}', '1'), { exact: true }),
+  ).toBeVisible();
+  await studentScreenshot(page, 'parents');
 });

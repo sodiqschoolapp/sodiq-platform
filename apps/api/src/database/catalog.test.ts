@@ -67,52 +67,83 @@ const SCHOOL_WIDE_WITH_BRANCH: Record<string, string> = {
 };
 
 /**
- * Tables of a staff record, filtered by membership (owner's answer 2 on pull
- * request #53): a row is visible and writable only when the person is linked
- * in `staff_branches` (a branch table) to a branch of the transaction. Each
- * has no `branch_id`, row security on and exactly the policy
- * `staff_membership` written below, naming the column that holds the id of
- * the person. `openInsert`: the insert check is `true` (the record is
- * inserted before its first link; `staff_main_branch_check` refuses a commit
- * without one). Adding a name here is a decision for the owner, like the lists
- * above.
+ * The membership filters, each a policy that reads a link table which is
+ * itself a branch table, as PostgreSQL writes it back: `staff_membership`
+ * through `staff_branches` (owner's answer 2 on pull request #53), and
+ * `relative_membership` through the live links of `student_relatives` (task
+ * 2.5a, decision 2 of pull request #72, Look first). Adding one is a decision
+ * for the owner.
+ */
+const MEMBERSHIPS = {
+  staff_membership: (table: string, column: string) =>
+    `(EXISTS ( SELECT 1 FROM staff_branches b WHERE (b.staff_id = ${table}.${column})))`,
+  relative_membership: (table: string, column: string) =>
+    `(EXISTS ( SELECT 1 FROM student_relatives l WHERE ((l.relative_id = ${table}.${column}) AND (l.unlinked_at IS NULL))))`,
+} as const;
+
+type Membership = keyof typeof MEMBERSHIPS;
+
+/**
+ * Tables filtered by membership: a row is visible and writable only when the
+ * person is linked, through the link table of its policy, to a branch of the
+ * transaction. Each has no `branch_id`, row security on and exactly the
+ * policy named, written as `MEMBERSHIPS` has it, naming the column that holds
+ * the id of the person. `openInsert`: the insert check is `true` (the record
+ * is inserted before its first link; `staff_main_branch_check` and
+ * `relatives_complete_check` refuse a commit without one). Adding a name here
+ * is a decision for the owner, like the lists above.
  */
 const MEMBERSHIP_FILTERED_TABLES: Record<
   string,
-  { reason: string; column: string; openInsert?: true }
+  { reason: string; policy: Membership; column: string; openInsert?: true }
 > = {
   staff: {
     reason:
       'The staff record: one per person for every branch they work in (docs/spec/04, Teacher and staff record), with the personal data of the person.',
+    policy: 'staff_membership',
     column: 'id',
     openInsert: true,
   },
   staff_divisions: {
     reason: 'The divisions and departments of a staff record.',
+    policy: 'staff_membership',
     column: 'staff_id',
   },
   staff_subjects: {
     reason: 'The subjects of a staff record with the grades taught.',
+    policy: 'staff_membership',
     column: 'staff_id',
   },
   staff_languages: {
     reason: 'The languages of instruction of a staff record.',
+    policy: 'staff_membership',
     column: 'staff_id',
   },
   staff_statuses: {
     reason: 'The dated status history of a staff record.',
+    policy: 'staff_membership',
     column: 'staff_id',
   },
   staff_status_role_ends: {
     reason:
       'The ends a "left" status wrote on the assignments of the account of a staff record, kept to put them back.',
+    policy: 'staff_membership',
     column: 'staff_id',
   },
+  relatives: {
+    reason:
+      'A close relative: one school-wide record per person, unique by main phone, opened in a branch only while a student of that branch is linked (edge/close-relatives).',
+    policy: 'relative_membership',
+    column: 'id',
+    openInsert: true,
+  },
+  relative_accounts: {
+    reason: 'The switched-off Parent account of a relative, written before its first link.',
+    policy: 'relative_membership',
+    column: 'relative_id',
+    openInsert: true,
+  },
 };
-
-/** The membership condition of a table, as PostgreSQL writes it back. */
-const membershipExpression = (table: string, column: string) =>
-  `(EXISTS ( SELECT 1 FROM staff_branches b WHERE (b.staff_id = ${table}.${column})))`;
 
 /**
  * The partitions of `audit_log_school` (db/migrations/0003): one per month from
@@ -155,6 +186,12 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'The email of the person record of an account while a reset link may be sent, for the mail job only, which runs with no branch (task 2.3c-2, correction 2 of #66).',
   'password_reset_allowed(uuid,timestamp with time zone)':
     'Whether a reset link may be made for an account (not locked, not inactive or left, an email on record, written last by a Super Admin or by an Academic Vice Principal of a branch of its roles, read from audit_log through last_email_change), a yes or no for the public request before any branch is known (task 2.3c-2).',
+  'relative_by_phone(text)':
+    'The holder of an exact main phone in any branch, archived included: id, full name and the number of students linked live, for the phone typed first and the refused phone change (04, Close relatives: "the system shows the person"; task 2.5a, decision 3 of pull request #72, Look first).',
+  'relative_links_elsewhere(uuid)':
+    'The number of students of other branches linked live to a relative that the transaction sees, or null (edge/close-relatives: "students of other branches appear as a count"; task 2.5a, decision 3); a count.',
+  'relatives_follow_links()':
+    'The trigger that archives a relative with no live link in any branch and restores it on a new one (04: "A relative with no linked students is archived"; task 2.5a, decisions 3, 10 and 14); the links of other branches decide it, and an archived relative is visible to no branch.',
   'reset_by_person_name(uuid)':
     'The first and last name of the administrator who reset an account\'s password, shown to that account\'s person while the reset password is in use ("your password was reset by X").',
   'student_duplicate_elsewhere(text,date)':
@@ -195,7 +232,7 @@ interface TableRow {
   row_security: boolean;
   policies: number;
   filter_policies: number;
-  membership_policies: number;
+  membership_policy: string | null;
   membership_using: string | null;
   membership_check: string | null;
   filter_using: string | null;
@@ -236,18 +273,24 @@ async function tableProblems(
         where p.polrelid = c.oid and p.polname = 'branch_filter'
       ) as filter_check,
       (
-        select count(*)::int from pg_policy p
-        where p.polrelid = c.oid and p.polname = 'staff_membership' and p.polcmd = '*'
+        select p.polname from pg_policy p
+        where p.polrelid = c.oid and p.polname <> 'branch_filter' and p.polcmd = '*'
           and p.polpermissive
           and p.polroles = array[(select oid from pg_roles where rolname = 'sodiq_app')]
-      ) as membership_policies,
+        order by p.polname
+        limit 1
+      ) as membership_policy,
       (
         select pg_get_expr(p.polqual, p.polrelid) from pg_policy p
-        where p.polrelid = c.oid and p.polname = 'staff_membership'
+        where p.polrelid = c.oid and p.polname <> 'branch_filter'
+        order by p.polname
+        limit 1
       ) as membership_using,
       (
         select pg_get_expr(p.polwithcheck, p.polrelid) from pg_policy p
-        where p.polrelid = c.oid and p.polname = 'staff_membership'
+        where p.polrelid = c.oid and p.polname <> 'branch_filter'
+        order by p.polname
+        limit 1
       ) as membership_check
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
@@ -273,15 +316,15 @@ async function tableProblems(
       if (!table.row_security) {
         problems.push(`${table.name}: row security is off`);
       }
-      const expected = membershipExpression(table.name, member.column);
+      const expected = MEMBERSHIPS[member.policy](table.name, member.column);
       if (
-        table.membership_policies !== 1 ||
+        table.membership_policy !== member.policy ||
         table.policies !== 1 ||
         squeeze(table.membership_using) !== expected ||
         squeeze(table.membership_check) !== (member.openInsert === true ? 'true' : expected)
       ) {
         problems.push(
-          `${table.name}: the staff_membership policy is missing, not the standard one, or not alone`,
+          `${table.name}: the ${member.policy} policy is missing, not the standard one, or not alone`,
         );
       }
       continue;
@@ -739,7 +782,11 @@ describe('the catalog checks', () => {
     describe('with the list of tables filtered by membership', () => {
       const memberAs = (name: string) => ({
         ...MEMBERSHIP_FILTERED_TABLES,
-        [name]: { reason: 'Named for this test.', column: 'staff_id' },
+        [name]: {
+          reason: 'Named for this test.',
+          policy: 'staff_membership' as const,
+          column: 'staff_id',
+        },
       });
       const scratchMember = async (name: string) => {
         await sql`
@@ -807,6 +854,59 @@ describe('the catalog checks', () => {
         ]);
       });
 
+      // Task 2.5a, decision 2 of pull request #72: the second filter, through the live links.
+      it('accept a named table with the relative membership through live links only', async () => {
+        await scratchMember('scratch_member');
+        await sql`
+          create policy relative_membership on scratch_member for all to sodiq_app
+            using (exists (select 1 from student_relatives l
+              where l.relative_id = scratch_member.staff_id and l.unlinked_at is null))
+            with check (true)
+        `.execute(database.migrator);
+        const named = {
+          ...MEMBERSHIP_FILTERED_TABLES,
+          scratch_member: {
+            reason: 'Named for this test.',
+            policy: 'relative_membership' as const,
+            column: 'staff_id',
+            openInsert: true as const,
+          },
+        };
+
+        expect(
+          await tableProblems(
+            database.migrator,
+            SCHOOL_WIDE_TABLES,
+            SCHOOL_WIDE_WITH_BRANCH,
+            named,
+          ),
+        ).toEqual([]);
+        // Named with the other filter, or with unlinked rows let through, it fails.
+        expect(
+          await tableProblems(database.migrator, SCHOOL_WIDE_TABLES, SCHOOL_WIDE_WITH_BRANCH, {
+            ...named,
+            scratch_member: { ...named.scratch_member, policy: 'staff_membership' as const },
+          }),
+        ).toEqual([
+          'scratch_member: the staff_membership policy is missing, not the standard one, or not alone',
+        ]);
+        await sql`
+          alter policy relative_membership on scratch_member
+            using (exists (select 1 from student_relatives l
+              where l.relative_id = scratch_member.staff_id))
+        `.execute(database.migrator);
+        expect(
+          await tableProblems(
+            database.migrator,
+            SCHOOL_WIDE_TABLES,
+            SCHOOL_WIDE_WITH_BRANCH,
+            named,
+          ),
+        ).toEqual([
+          'scratch_member: the relative_membership policy is missing, not the standard one, or not alone',
+        ]);
+      });
+
       it('name a named table with row security off and one that does not exist', async () => {
         await sql`create table scratch_member (id integer primary key, staff_id uuid)`.execute(
           database.migrator,
@@ -815,7 +915,11 @@ describe('the catalog checks', () => {
         expect(
           await tableProblems(database.migrator, SCHOOL_WIDE_TABLES, SCHOOL_WIDE_WITH_BRANCH, {
             ...memberAs('scratch_member'),
-            scratch_gone: { reason: 'Named for this test.', column: 'staff_id' },
+            scratch_gone: {
+              reason: 'Named for this test.',
+              policy: 'staff_membership' as const,
+              column: 'staff_id',
+            },
           }),
         ).toEqual([
           'scratch_member: row security is off',

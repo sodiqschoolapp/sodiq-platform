@@ -15,6 +15,7 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { linkRelative, relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const MOMENT = new Date(START);
@@ -60,6 +61,7 @@ describe('leaving, return and delete of a student', () => {
       scholarship: { type: 'none', coverage: null, amount: null },
       consentSignedOn: null,
       contract: { number: `LV-2026/${String(count)}`, signedOn: '2026-08-20' },
+      relatives: relativesInput(),
       ...overrides,
     };
   }
@@ -277,6 +279,7 @@ describe('leaving, return and delete of a student', () => {
       .insertInto('student_contracts')
       .values({ student_id: id, branch_id: t.north, number, signed_on: '2026-08-20' })
       .execute();
+    await linkRelative(transaction, id, t.north, MOMENT);
   }
 
   async function signedIn(first: string, last: string, role: string, branchId: string | null) {

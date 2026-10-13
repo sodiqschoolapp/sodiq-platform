@@ -3,13 +3,14 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useView } from '@/features/access/use-view';
 
-type Section = 'staff' | 'students' | 'vacancies' | 'head-teachers' | 'never-used';
+type Section = 'staff' | 'students' | 'parents' | 'vacancies' | 'head-teachers' | 'never-used';
 
 const SECTIONS: readonly {
   key: Section;
   to:
     | '/people/staff'
     | '/people/students'
+    | '/people/parents'
     | '/people/vacancies'
     | '/people/head-teachers'
     | '/people/never-used';
@@ -17,6 +18,7 @@ const SECTIONS: readonly {
   title:
     | 'people.staff.title'
     | 'people.students.title'
+    | 'people.relatives.title'
     | 'people.vacancies.title'
     | 'people.headTeachers.title'
     | 'people.neverUsed.title';
@@ -28,6 +30,13 @@ const SECTIONS: readonly {
     to: '/people/students',
     area: 'students',
     title: 'people.students.title',
+  },
+  // Task 2.5a: the Parents.
+  {
+    key: 'parents',
+    to: '/people/parents',
+    area: 'relatives',
+    title: 'people.relatives.title',
   },
   { key: 'vacancies', to: '/people/vacancies', area: 'vacancies', title: 'people.vacancies.title' },
   {

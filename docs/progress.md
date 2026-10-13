@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: task 2.5a Relative record, links and the Parents list
+
+- Built: migration 0036 (`relatives`, `student_relatives`, `relative_accounts`; the phone unique across the school; the membership policy `relative_membership`; the guards of one main contact and at least one relative, the unlink once, the archive that follows the links, a relative committed whole; `relative_by_phone`, `relative_links_elsewhere`); the area `relatives`; nine routes of `RelativesController` and the create of a student with its relatives.
+- Screens: People → Parents (list and panel with the edit and the Principal's show), the Relatives tab of a student (add with the phone first, link switches, unlink naming the next main contact), the relative step of a new student; browser test in `people.spec.ts`.
+- Tests: `relatives.database.test.ts`, `relatives.test.ts`, `relatives.test.ts` of shared, `parents-page.test.tsx`, `student-relatives.test.tsx`; every student create of the earlier tests carries a relative.
+- Left out: the new owner of a phone, merge, the notice to the other branch, extra phones, the same person, relatives in the export (2.5b); who reads `audit_log_school` (2.6); the Tutor's class scope on the tab (3.1); the parent portal and SMS (Release 2).
+
+The next sessions must know:
+
+- A relative is visible in a branch only through a live link of that branch; a write that may leave a relative with no live link locks the relative first (`RelativeWrites.lockRelative`) and counts with `liveLinks`.
+- Every student written by hand in a test needs a relative in the same transaction (`linkRelative` of `apps/api/src/testing/relatives-kit.ts`), or the commit is refused.
+- The name helpers (`spellingKey`, `storedStudentName`, `validName`) live in `packages/shared/src/names.ts`.
+- The next task is 2.5b.
+
 ## 13 October 2026: task 2.4b-2 Export, photos, consent list and the "No class" counter
 
 - Built: migration 0035 (`students.photo_id`, `photo_type`); `POST people/students/export` (`StudentExports`, groups decided by `exportGroupsOf` in `student-export.ts`), `GET people/students/no-class`, the `consent=missing` query of the list (403 without `student_financial`), the photo routes of `StudentPhotos` (the third `FILE_ROUTES` entry); `students` `export` for the Super Admin, the Academic Vice Principal and the Principal.

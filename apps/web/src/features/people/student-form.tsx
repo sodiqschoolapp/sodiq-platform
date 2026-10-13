@@ -2,6 +2,8 @@ import {
   DEFAULT_PHONE_PREFIX,
   DOCUMENT_TYPES,
   REGIONS,
+  RELATIONSHIPS,
+  relativePhoneSchema,
   SCHOLARSHIP_COVERAGES,
   SCHOLARSHIP_TYPES,
   SEXES,
@@ -9,16 +11,26 @@ import {
   studentRecordSchema,
   type StudentCreate,
   type StudentDetail,
+  type RelativeHolder,
   type StudentRecord,
 } from '@sodiq/shared';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
-import { DateField, Field, NumberField, SelectField } from '@/components/field';
+import {
+  CHECKED,
+  CheckboxField,
+  DateField,
+  Field,
+  NumberField,
+  SelectField,
+} from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
 import { asFormSchema } from './form-schema';
+import { NoticesField, phoneHolderOf, smsWarning } from './relative-form';
 
 /** The fields of the form: one per input. */
 export type StudentField =
@@ -44,7 +56,25 @@ export type StudentField =
   | 'scholarshipAmount'
   | 'consentSignedOn'
   | 'contractNumber'
-  | 'contractSignedOn';
+  | 'contractSignedOn'
+  // The relative of a new student (task 2.5a): the main contact.
+  | 'relativePhone'
+  | 'relativeNoPhone'
+  | 'relativeName'
+  | 'relativeRelationship'
+  | 'relativeWorkplace'
+  | 'relativeEmail'
+  | 'relativePortal'
+  | 'relativeNotices';
+
+/** The field of the relative step an issue of `relatives.0` names. */
+const RELATIVE_FIELDS: Readonly<Record<string, StudentField>> = {
+  fullName: 'relativeName',
+  phone: 'relativePhone',
+  workplace: 'relativeWorkplace',
+  email: 'relativeEmail',
+  relationship: 'relativeRelationship',
+};
 
 /** The field of the form an issue of the record names. */
 function fieldOf(path: readonly PropertyKey[]): PropertyKey[] {
@@ -60,6 +90,10 @@ function fieldOf(path: readonly PropertyKey[]): PropertyKey[] {
   }
   if (first === 'contract') {
     return [second === 'signedOn' ? 'contractSignedOn' : 'contractNumber'];
+  }
+  if (first === 'relatives') {
+    const last = path[path.length - 1];
+    return [(typeof last === 'string' ? RELATIVE_FIELDS[last] : undefined) ?? 'relativePhone'];
   }
   return [...path];
 }
@@ -138,6 +172,14 @@ interface StudentFormProps {
   holderRestorable?: (id: string) => boolean;
   /** Opens a student of this branch in the side panel. */
   onOpenHolder?: (id: string) => void;
+  /** The phone typed first (`04`, Adding a relative): the holder of a phone, or none. */
+  onPhoneMatch?: (phone: string) => Promise<RelativeHolder | null>;
+}
+
+/** A holder found for a phone, with the phone it was found by. */
+interface Match {
+  phone: string;
+  holder: RelativeHolder;
 }
 
 /**
@@ -154,9 +196,16 @@ export function StudentForm({
   onEdit,
   holderRestorable,
   onOpenHolder,
+  onPhoneMatch,
 }: StudentFormProps) {
   const { t } = useTranslation();
   const creating = student === null;
+  const [match, setMatch] = useState<Match | null>(null);
+  /** The typed phone of the relative in its stored form, or null. */
+  const storedPhone = (typed: string): string | null => {
+    const parsed = relativePhoneSchema.safeParse(typed);
+    return parsed.success ? parsed.data : null;
+  };
   const contract = student?.financial?.contracts[0];
   const form = useRecordForm<StudentField, StudentCreate | StudentRecord>({
     schema: creating ? CREATE_SCHEMA : EDIT_SCHEMA,
@@ -192,6 +241,14 @@ export function StudentForm({
       consentSignedOn: student?.financial?.consentSignedOn ?? '',
       contractNumber: contract?.number ?? '',
       contractSignedOn: contract?.signedOn ?? '',
+      relativePhone: `${DEFAULT_PHONE_PREFIX} `,
+      relativeNoPhone: '',
+      relativeName: '',
+      relativeRelationship: '',
+      relativeWorkplace: '',
+      relativeEmail: '',
+      relativePortal: CHECKED,
+      relativeNotices: CHECKED,
     },
     read: (typed) => {
       // The country code alone is no phone.
@@ -223,13 +280,62 @@ export function StudentForm({
         consentSignedOn: orNull(typed.consentSignedOn),
         contract: { number: typed.contractNumber, signedOn: typed.contractSignedOn },
       };
-      return creating
-        ? { ...record, uid: typed.uid, startsOn: typed.startsOn, confirmUidSet: false }
-        : record;
+      if (!creating) {
+        return record;
+      }
+      // The relative found by the phone is linked; otherwise a new one is
+      // created (`04`, Adding a relative). The only relative is the main contact.
+      const noPhone = typed.relativeNoPhone === CHECKED;
+      const phoneNow = noPhone ? null : storedPhone(typed.relativePhone);
+      const link = {
+        relationship: typed.relativeRelationship,
+        mainContact: true,
+        portalAccess: typed.relativePortal === CHECKED,
+        receivesNotices: typed.relativeNotices === CHECKED,
+      };
+      const relative =
+        match !== null && phoneNow === match.phone && match.holder.id !== null
+          ? { kind: 'existing', relativeId: match.holder.id, phone: match.phone, ...link }
+          : {
+              kind: 'new',
+              relative: {
+                fullName: typed.relativeName,
+                phone: noPhone ? null : typed.relativePhone,
+                workplace: typed.relativeWorkplace,
+                email: typed.relativeEmail,
+              },
+              ...link,
+            };
+      return {
+        ...record,
+        uid: typed.uid,
+        startsOn: typed.startsOn,
+        confirmUidSet: false,
+        relatives: [relative],
+      };
     },
     save: async (values) => {
       if ('uid' in values) {
-        await onCreate?.(values);
+        try {
+          await onCreate?.(values);
+        } catch (error) {
+          // A phone held by a relative who may be linked: that person is
+          // offered, and the next save links them (`04`, Adding a relative).
+          const holder = phoneHolderOf(error);
+          const sent = values.relatives[0];
+          if (
+            holder !== null &&
+            holder.id !== null &&
+            sent?.kind === 'new' &&
+            sent.relative.phone !== null
+          ) {
+            setMatch({
+              phone: sent.relative.phone,
+              holder: { id: holder.id, fullName: holder.fullName, students: holder.students },
+            });
+          }
+          throw error;
+        }
       } else {
         await onEdit?.(values);
       }
@@ -368,6 +474,32 @@ export function StudentForm({
           />
         )}
         <DateField label={t('people.students.consentSignedOn')} {...bind('consentSignedOn')} />
+        {creating && (
+          <RelativeStep
+            bind={bind}
+            found={(() => {
+              const typedPhone = form.bind('relativePhone').value;
+              const noPhone = form.bind('relativeNoPhone').value === CHECKED;
+              return !noPhone && match !== null && storedPhone(typedPhone) === match.phone
+                ? match.holder
+                : null;
+            })()}
+            onPhoneDone={(typed) => {
+              const phone = storedPhone(typed);
+              if (phone === null || onPhoneMatch === undefined || phone === match?.phone) {
+                return;
+              }
+              void onPhoneMatch(phone)
+                .then((holder) => {
+                  setMatch(holder === null || holder.id === null ? null : { phone, holder });
+                })
+                .catch(() => {
+                  // No match is shown; the save answers a held phone with its holder.
+                  setMatch(null);
+                });
+            }}
+          />
+        )}
       </RecordForm>
       {restorable !== null && (
         <div>
@@ -382,5 +514,94 @@ export function StudentForm({
         </div>
       )}
     </>
+  );
+}
+
+type Bind = (field: StudentField) => {
+  name: string;
+  value: string;
+  error: string | undefined;
+  onChange: (event: { target: { value: string } }) => void;
+};
+
+/**
+ * The relative of a new student (`04`, Close relatives: "A student cannot be
+ * saved without at least one relative"; "The phone is typed first. If a
+ * relative with that phone already exists, the system shows the person and
+ * links them to the student"; task 2.5a). The only relative is the main
+ * contact; more are added on the Relatives tab.
+ */
+function RelativeStep({
+  bind,
+  found,
+  onPhoneDone,
+}: {
+  bind: Bind;
+  found: RelativeHolder | null;
+  onPhoneDone: (typed: string) => void;
+}) {
+  const { t } = useTranslation();
+  const noPhone = bind('relativeNoPhone').value === CHECKED;
+  const phone = bind('relativePhone');
+  const option = (value: string, text: string) => ({ value, label: text });
+  return (
+    <fieldset className="grid gap-4">
+      <legend className="mb-2 text-base font-semibold">{t('people.relatives.stepTitle')}</legend>
+      <CheckboxField
+        label={t('people.relatives.noPhone')}
+        {...bind('relativeNoPhone')}
+        note={noPhone ? t('people.relatives.noPhoneMain') : undefined}
+      />
+      {!noPhone && (
+        <Field
+          label={t('people.relatives.phone')}
+          type="tel"
+          autoComplete="off"
+          {...phone}
+          note={smsWarning(phone.value) ? t('people.relatives.noSms') : undefined}
+          onBlur={() => {
+            onPhoneDone(phone.value);
+          }}
+        />
+      )}
+      {found !== null ? (
+        <p role="status" className="text-sm">
+          {t('people.relatives.found', { name: found.fullName, count: found.students })}
+        </p>
+      ) : (
+        <>
+          <Field
+            label={t('people.relatives.fullName')}
+            autoComplete="off"
+            {...bind('relativeName')}
+          />
+          <Field
+            label={t('people.relatives.workplace')}
+            autoComplete="off"
+            {...bind('relativeWorkplace')}
+          />
+          <Field
+            label={t('people.relatives.email')}
+            type="email"
+            autoComplete="off"
+            {...bind('relativeEmail')}
+          />
+        </>
+      )}
+      <SelectField
+        label={t('people.relatives.relationship')}
+        options={[
+          option('', t('people.relatives.choose')),
+          ...RELATIONSHIPS.map((one) => option(one, t(`people.relatives.relationships.${one}`))),
+        ]}
+        {...bind('relativeRelationship')}
+      />
+      <CheckboxField label={t('people.relatives.portalAccess')} {...bind('relativePortal')} />
+      <NoticesField
+        label={t('people.relatives.receivesNotices')}
+        hasPhone={!noPhone}
+        {...bind('relativeNotices')}
+      />
+    </fieldset>
   );
 }

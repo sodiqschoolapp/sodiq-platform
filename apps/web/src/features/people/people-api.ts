@@ -4,14 +4,19 @@ import {
   availabilitySchema,
   loginSuggestionSchema,
   neverUsedListSchema,
+  relativeDetailSchema,
+  relativeListSchema,
+  relativePhoneMatchResultSchema,
   staffAccountSchema,
   staffDetailSchema,
   staffListSchema,
   studentDetailSchema,
   studentListSchema,
   studentNoClassSchema,
+  studentRelativesSchema,
   vacancyDetailSchema,
   vacancyListSchema,
+  type RelativeHolder,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -365,3 +370,71 @@ export const studentDetailQuery = (branchId: string | null, id: string) =>
 /** After a change of a student: every student list. */
 export const invalidateStudents = (queryClient: QueryClient): Promise<unknown> =>
   queryClient.invalidateQueries({ queryKey: studentsKey() });
+
+/**
+ * The relatives of the branch of the switcher, the Parents (task 2.5a). A
+ * relative is the same record in every branch with a linked student, so a
+ * change marks every branch's list stale.
+ */
+export const relativesKey = (branchId?: string | null) =>
+  branchId === undefined ? [...PEOPLE_KEY, 'relatives'] : [...PEOPLE_KEY, 'relatives', branchId];
+
+export const relativesQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: relativesKey(branchId),
+    queryFn: async () =>
+      relativeListSchema.parse(
+        await answerOf(api.GET('/api/people/relatives', { params: { header: branchHeader() } })),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** One relative with the students of the branch and the count of the others. */
+export const relativeDetailQuery = (branchId: string | null, id: string) =>
+  queryOptions({
+    queryKey: [...relativesKey(branchId), 'detail', id],
+    queryFn: async () =>
+      relativeDetailSchema.parse(
+        await answerOf(
+          api.GET('/api/people/relatives/{id}', {
+            params: { header: branchHeader(), path: { id } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** The Relatives tab of a student; kept under the student, so a student change reads it again. */
+export const studentRelativesQuery = (branchId: string | null, id: string) =>
+  queryOptions({
+    queryKey: [...studentsKey(branchId), 'relatives', id],
+    queryFn: async () =>
+      studentRelativesSchema.parse(
+        await answerOf(
+          api.GET('/api/people/students/{id}/relatives', {
+            params: { header: branchHeader(), path: { id } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** After a change of a relative or a link: every Parents list and every student. */
+export const invalidateRelatives = (queryClient: QueryClient): Promise<unknown> =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: relativesKey() }),
+    queryClient.invalidateQueries({ queryKey: studentsKey() }),
+  ]);
+
+/** The phone typed first (`04`, Adding a relative): the holder of that phone, or none. */
+export async function phoneMatch(phone: string): Promise<RelativeHolder | null> {
+  const answer = relativePhoneMatchResultSchema.parse(
+    await answerOf(
+      api.POST('/api/people/relatives/phone-match', {
+        params: { header: branchHeader() },
+        body: { phone },
+      }),
+    ),
+  );
+  return answer.holder;
+}
