@@ -4,7 +4,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 ## 13 October 2026: no silent stalls (process change, no task)
 
-- Owner: after every push the builder checks that CI started and pushes one empty commit when GitHub fired no event; a green re-run after a `CI red` verdict is followed by an empty commit, and the reviewer also reviews such a head; after pull requests #63 and #68 (`docs/decisions.md`, 13 October 2026).
+- Owner: after every push the builder checks that CI started and, when GitHub fired no event, calls the owner at once (`@abbosc`, `needs-owner`); a builder may re-run a CI failure outside the code once, and the reviewer then reviews the head whose checks passed, which the start routine treats as waiting for the reviewer; after pull requests #63 and #68 (`docs/decisions.md`, 13 October 2026).
 
 ## 12 October 2026: task 2.4b-1 Leaving, return and delete
 
