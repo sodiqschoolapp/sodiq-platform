@@ -269,7 +269,7 @@ How to read the task lines:
   - Build: for the Super Admin, the personal data report of a student, a relative or a staff member on screen as a printable page: every field of the record in every group, the links (relatives, students), the account and its roles, the photo, the consent and statuses, and the audit entries about the person; producing it is an export and leaves an audit entry.
   - Done when: the Super Admin prints the report of a student and the log holds the entry; no other role reaches it.
 
-- [ ] **2.7a "Fix first" findings, dates in the app, accessibility and wording** (2.7 split in four, pull request #77, decision 1)
+- [x] **2.7a "Fix first" findings, dates in the app, accessibility and wording** (2.7 split in four, pull request #77, decision 1)
   - Read: issue #39 (the hand test of 13 October 2026, findings 1–10, 23, 32–36, and the owner's answers after it, answer 38 included), `12` (Language), `docs/design-system.md` (Brand moments), `.claude/rules/web.md`, the plan and the review of pull request #77.
   - Build: the ten "Fix first" findings (sign-in sideways scroll, locked further divisions, the full-page "no access", the student panel tabs, the main contact message, one history line after a cancelled leaving, the People tabs on a phone, "You are signed out.", the "Save failed" pill); every date and time from `apps/web/src/lib/dates.ts` (Uzbek names from i18n keys, English day-first and 24-hour); the first-password slip's dates; findings 32–34; the decided Uzbek and Russian wording (35–36).
   - Done when: each of those findings is done, Uzbek dates read "8-dekabr, 2026" with the browser's `Intl` trimmed, and a lint rule keeps dates in `lib/dates.ts`.

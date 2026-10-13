@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: task 2.7a "Fix first" findings, dates in the app, accessibility and wording
+
+- Built: findings 1–10, 23 and 32–36 of the hand test of 13 October 2026 (issue #39); `apps/web/src/lib/dates.ts` with a lint rule; English day-first and 24-hour (answer 38).
+- Screens: the full-page "no access" from the route (`guarded` in `router.tsx`), the student panel's tabs, one history line after a leaving taken back (API), the sign-in panel within the window, the People tabs scrolling on a phone.
+- Left out: findings 11, 13–22, 24–31 and #39 item 3 (2.7b); the page sweep, #39 items 2, 4, 5, finding 12 and the screenshots (2.7c); the Branches list (2.7c, waiting for its spec change); #39 item 6 (5.8, waiting for its spec change); question 37 (2.7d).
+
+The next sessions must know:
+
+- A date or a time on a screen comes from `lib/dates.ts`; `Intl.DateTimeFormat` and `toLocale…String` fail lint elsewhere.
+- A new page of one area is wrapped in `guarded(area, Page)` in `router.tsx`; a refused part says `problems.noAccessPart`.
+- The next task is 2.7b.
+
 ## 13 October 2026: task 2.6b The personal data report per person
 
 - Built: migration 0040 (`personal_data_relatives`, security definer); `POST people/{students,staff,relatives}/:id/report` (area `personal_data_report`, Super Admin `export`), each one `*.personal_data_report` entry; `readPersonEntries` with the pinned `ENTRY_ABOUT` map and `VALUE_MATCHES`.

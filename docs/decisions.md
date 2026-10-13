@@ -213,6 +213,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 13 October 2026: "Fix first" findings, dates in the app, accessibility and wording (task 2.7a)
+
+Plan approved on pull request #77 with corrections 1 to 3; decisions 1 to 11 confirmed there; 1 and 2 marked Look first. The decisions after 11 came from the build and its review. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (split). 2.7 is split into 2.7a (this), 2.7b (formats and smaller UX), 2.7c (pages against the design system, the Branches list, "By floor", screenshots of every page) and 2.7d (the Super Admin's own staff record) | Decision 1; 40 findings and a sweep of every page do not fit one session |
+| **Look first** (spec text). The Branches list waits for its `/spec-change` of `03`; #39 item 6 (forced delete of an unused room, floor or building) goes with 5.8 after its own `/spec-change` | Decision 2; "Decided ahead for tasks 2.2d and 2.7", item 11 |
+| **Look first** (tests changed by a decision). The expected English dates of six web tests became day-first (answer 38); the undo's line in `student-statuses.test.ts` became one joined line, its reason asserted in the stored row and the audit entry | Correction 1 and 3 of the review of the plan |
+| Every date and time of the web app comes from `apps/web/src/lib/dates.ts`; a lint rule refuses `Intl.DateTimeFormat` and `toLocale…String` elsewhere in `src` | Decisions 3, 4 and 10; finding 3 |
+| Uzbek month and weekday names are i18n keys (`dates.months`, `dates.weekdays`); English is `en-GB` with the 24-hour clock and its short month from the app's names ("Sep", never "Sept") | Decisions 3 and 4; answer 38; spec review of the build |
+| A page of one area opens only when an assignment of the person permits it in the branch of the tab, read as the server reads it; otherwise the full-page "no access" inside the layout. A refused part of a page says "Your role may not see this." | Decision 5; spec review of the build |
+| A leaving taken back (cancel, undo) is one line in the status history of the record; the rows, the reason and the audit entry keep it; the personal data report keeps the raw rows | Decision 6, correction 3 |
+| The sign-in slogan steps 28 / 34, 40 / 44, 56 / 58 by the room of its panel; the hexagon column is 48 wide below 1280 px and hidden below 768 px | Decision 9 as changed by correction 2 and the spec review of the build; differences from the shared `docs/design-system.md` named in the report |
+| "Save failed" ends when the refused form changes, saves, resets or closes; a save the person stopped before it was sent is "not saved", not "failed" | Finding 10 |
+| A switched-off checkbox is greyed and never changes the form | Finding 2 |
+
 ## 13 October 2026: the personal data report per person (task 2.6b)
 
 Plan approved on pull request #76 with corrections 1 to 3; decisions 1 to 11 confirmed there (7 changed by correction 1); 1 and 2 marked Look first. The decisions after 11 came from the build and its reviews. Flagged on issue #42.
