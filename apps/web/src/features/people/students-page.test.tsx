@@ -134,6 +134,12 @@ const detailOf = (row: StudentListItem, fields: Partial<StudentDetail> = {}): St
   canArchive: false,
   canRestoreGraduated: false,
   deletable: false,
+  scheduledMoves: [],
+  lastClassMove: null,
+  canMoveClass: false,
+  groupMoveSubjects: [],
+  canMoveInPast: false,
+  readsHistory: false,
   today: '2026-10-10',
   ...fields,
 });

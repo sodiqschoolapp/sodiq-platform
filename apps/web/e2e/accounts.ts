@@ -52,7 +52,8 @@ export type AccountKey =
   | 'members'
   | 'topBar'
   | 'tutorScope'
-  | 'recordSearch';
+  | 'recordSearch'
+  | 'moves';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

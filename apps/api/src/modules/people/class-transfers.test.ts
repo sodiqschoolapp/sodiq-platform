@@ -258,15 +258,15 @@ describe('class transfers', () => {
       const detail = ok(response);
       expect(detail.class?.id).toBe(oxford);
       expect(detail.plannedClass).toMatchObject({ id: yale, from: TOMORROW });
-      expect(detail.scheduledMoves).toEqual([
-        expect.objectContaining({
+      expect(detail.scheduledMoves).toMatchObject([
+        {
           kind: 'class',
           from: TOMORROW,
           state: 'scheduled',
-          fromClass: expect.objectContaining({ id: oxford }),
-          toClass: expect.objectContaining({ id: yale }),
+          fromClass: { id: oxford },
+          toClass: { id: yale },
           undoable: false,
-        }),
+        },
       ]);
       const move = moveOf(detail);
       expect(await classRows(one.id)).toEqual([
@@ -308,11 +308,11 @@ describe('class transfers', () => {
         from: '2026-10-19',
       });
       const detail = ok(response);
-      expect(detail.scheduledMoves).toEqual([
-        expect.objectContaining({
+      expect(detail.scheduledMoves).toMatchObject([
+        {
           from: '2026-10-19',
-          toClass: expect.objectContaining({ id: harvard }),
-        }),
+          toClass: { id: harvard },
+        },
       ]);
       expect(await held(one.id)).toEqual([
         [oxford, '2026-09-02', TOMORROW],

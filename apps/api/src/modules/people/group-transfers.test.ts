@@ -202,14 +202,14 @@ describe('group transfers and the History tab', () => {
       const member = await memberOf(one.id, a);
       const response = await moveGroup(one.id, member, b, '2026-10-19', headTeacher);
       const detail = ok(response);
-      expect(detail.scheduledMoves).toEqual([
-        expect.objectContaining({
+      expect(detail.scheduledMoves).toMatchObject([
+        {
           kind: 'group',
           from: '2026-10-19',
           subjectId: headSubject,
-          fromGroup: expect.objectContaining({ id: a }),
-          toGroup: expect.objectContaining({ id: b }),
-        }),
+          fromGroup: { id: a },
+          toGroup: { id: b },
+        },
       ]);
       expect(await held(one.id)).toEqual([
         [a, TOMORROW, '2026-10-19'],

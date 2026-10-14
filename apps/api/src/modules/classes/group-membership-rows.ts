@@ -255,6 +255,7 @@ export async function studentGroupsOn(
     .selectFrom('group_memberships')
     .innerJoin('groups', 'groups.id', 'group_memberships.group_id')
     .select([
+      'group_memberships.id as membership_id',
       'group_memberships.student_id',
       'group_memberships.group_id',
       'group_memberships.subject_id',
@@ -281,6 +282,7 @@ export async function studentGroupsOn(
     if (!own.has(row.subject_id)) {
       own.set(row.subject_id, {
         id: row.group_id,
+        membershipId: row.membership_id,
         name: row.name,
         subjectId: row.subject_id,
         from: row.valid_from,
@@ -299,6 +301,7 @@ export async function studentGroupsOn(
         .sort((a, b) => a.key.localeCompare(b.key) || a.id.localeCompare(b.id))
         .map((group) => ({
           id: group.id,
+          membershipId: group.membershipId,
           name: group.name,
           subjectId: group.subjectId,
           from: group.from,
