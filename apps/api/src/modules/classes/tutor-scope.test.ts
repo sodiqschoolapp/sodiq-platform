@@ -50,6 +50,7 @@ describe('the class scope of a Tutor', () => {
   let other: string;
   let noClass: string;
   let southern: string;
+  let southClass: string;
 
   const FROM = new Date('2026-09-01T00:00:00+05:00');
   const MIDNIGHT = new Date('2026-10-11T00:00:00+05:00');
@@ -122,7 +123,7 @@ describe('the class scope of a Tutor', () => {
     yale = await classes.schoolClass(t.north, year, { name: 'Yale' });
     harvard = await classes.schoolClass(t.north, year, { name: 'Harvard' });
     princeton = await classes.schoolClass(t.north, year, { name: 'Princeton' });
-    const southClass = await classes.schoolClass(t.south, southYear, { name: 'Southern' });
+    southClass = await classes.schoolClass(t.south, southYear, { name: 'Southern' });
 
     const first = await tutorOf('Gulnora', 'Tursunova');
     tutor = first.cookie;
@@ -415,7 +416,7 @@ describe('the class scope of a Tutor', () => {
           403,
           'permission_denied',
         );
-        for (const id of [UNKNOWN]) {
+        for (const id of [southClass, UNKNOWN]) {
           refusedWith(await t.get(`/api/classes/${id}${path}`, t.north, tutor), 404, 'not_found');
         }
       }
@@ -493,6 +494,26 @@ describe('the class scope of a Tutor', () => {
         'permission_denied',
       );
       expect(await harvardOf(starting)).toEqual([princeton]);
+      // The student of 7 Harvard: record, Relatives tab and export all go
+      // with the class at the end moment.
+      const harvardStudent = (
+        await t.database.migrator
+          .selectFrom('class_memberships')
+          .select('student_id')
+          .where('class_id', '=', harvard)
+          .executeTakeFirstOrThrow()
+      ).student_id;
+      refusedWith(
+        await t.get(`/api/people/students/${harvardStudent}`, t.north, ending),
+        403,
+        'permission_denied',
+      );
+      refusedWith(
+        await t.get(`/api/people/students/${harvardStudent}/relatives`, t.north, ending),
+        403,
+        'permission_denied',
+      );
+      refusedWith(await refusedExport([harvardStudent], ending), 403, 'permission_denied');
     });
   });
 });

@@ -81,7 +81,7 @@ const EXPORTERS = SETUP_VIEWERS;
 
 // Task 3.1a, decision 5 of pull request #88 (Look first): the area `classes`.
 // Task 3.1c (decision 1 of pull request #90): the Tutor reads own classes;
-// the route decides the class (classes.test.ts, class-members.test.ts).
+// the route decides the class (classes/tutor-scope.test.ts).
 const CLASS_VIEWERS: readonly Role[] = [
   'super_admin',
   'principal',
@@ -266,7 +266,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/people/students/:id/delete': { branch: 'request', roles: STUDENT_EDITORS },
   // Task 2.4b-2: the export (decision 1), the photos and the "No class" counter.
   // Task 3.1c (decision 3 of pull request #90): the Tutor, own classes only
-  // (student-exports.test.ts).
+  // (classes/tutor-scope.test.ts).
   'POST /api/people/students/export': {
     branch: 'request',
     roles: ['super_admin', 'principal', 'academic_vice_principal', 'tutor'],
@@ -302,7 +302,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/people/relatives/:id/same-person': { branch: 'request', roles: STUDENT_EDITORS },
   'DELETE /api/people/relatives/:id/same-person': { branch: 'request', roles: STUDENT_EDITORS },
   // Task 3.1c (decision 2 of pull request #90): the class Tutor, own classes
-  // only (relatives.test.ts).
+  // only (classes/tutor-scope.test.ts).
   'GET /api/people/students/:id/relatives': {
     branch: 'request',
     roles: [
