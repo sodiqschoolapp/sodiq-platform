@@ -391,7 +391,8 @@ export class StudentStatuses {
    * an undo or the replace of a scheduled leaving gives back the rows the
    * leaving taken back had cut, through every check of the guard; a row of a
    * class out of service is named and not given back. The classes are locked
-   * FOR SHARE after the student (the lock order of every placement). `null`
+   * FOR UPDATE after the student (the lock order of every placement), then
+   * the groups (task 3.2c, decision 9). `null`
    * when the change touches no leaving (a return, a restore).
    */
   private async followLeaving(

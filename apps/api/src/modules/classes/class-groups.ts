@@ -648,10 +648,14 @@ export async function coverClassRows(
  * a load row of a group or split is valid: the students of the classes whose
  * class rows hold a day from `from` on with no group row of the subject, with
  * the first such day. A class the transaction cannot see is refused first
- * (spec review of the plan, should-fix 7): "no gaps" never means "not seen".
+ * (spec review of the plan, should-fix 7): "no gaps" never means "not seen";
+ * so is a class of another branch than `branchId`, the branch of the request,
+ * also in a transaction that holds every branch (a Super Admin's; permission
+ * review of the build, should-fix 5).
  */
 export async function groupPlacementGaps(
   transaction: Transaction,
+  branchId: string,
   classIds: readonly string[],
   subjectId: string,
   from: SchoolDate,
@@ -664,6 +668,7 @@ export async function groupPlacementGaps(
     .selectFrom('classes')
     .select('id')
     .where('id', 'in', ids)
+    .where('branch_id', '=', branchId)
     .execute();
   if (seen.length !== ids.length) {
     throw notFound();

@@ -10,7 +10,7 @@ import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
-import { dayTemplatesKit, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { groupPlacementGaps } from './class-groups.js';
@@ -36,6 +36,7 @@ describe('groups on every class membership path', () => {
   let t: DayTemplatesKit;
   let classes: ClassesKit;
   let year: string;
+  let southYear: string;
   let headTeacher: string;
   let headSubject: string;
   let tutor: string;
@@ -221,6 +222,7 @@ describe('groups on every class membership path', () => {
     t = await dayTemplatesKit();
     classes = new ClassesKit(t.database.migrator);
     year = await classes.year(t.north);
+    southYear = await classes.year(t.south);
     headSubject = await classes.subject({ grades: [7] });
     headTeacher = (await signedIn('Rustam', 'Aliyev', 'head_teacher')).cookie;
     tutor = (await signedIn('Zarina', 'Qodirova', 'tutor')).cookie;
@@ -370,7 +372,7 @@ describe('groups on every class membership path', () => {
       const gaps = await t.app
         .get(Transactions)
         .run([t.north], (transaction) =>
-          groupPlacementGaps(transaction, [oxford], maths, '2026-10-12'),
+          groupPlacementGaps(transaction, t.north, [oxford], maths, '2026-10-12'),
         );
       expect(gaps).toEqual([
         expect.objectContaining({ studentId: one.id, firstDay: '2026-10-20' }),
@@ -688,6 +690,103 @@ describe('groups on every class membership path', () => {
 
   // `.claude/rules/api.md`: each pair that meets on a row, both directions;
   // the held side writes what its route writes.
+  // `.claude/rules/api.md`: an id of another branch or an unknown one, in
+  // the path or the body, is answered 404 with the rows of both branches and
+  // the log unchanged (permission review of the build, must-fixes 1 to 3).
+  describe('ids of another branch or unknown', () => {
+    /** A class of the South branch feeding a group, and a student of it, made by the Super Admin. */
+    async function southSide() {
+      const subjectId = await subject();
+      const southClass = await classes.schoolClass(t.south, southYear, { grade: 7 });
+      const created = await t.post(
+        '/api/people/students',
+        t.south,
+        body({ classId: southClass }),
+        t.admin,
+      );
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      await classes.group(t.south, southYear, subjectId, [southClass]);
+      return { subjectId, southClass, southPupil: studentDetailSchema.parse(created.body) };
+    }
+
+    it('answers 404 to "Put into a class" for a class or a student of another branch or unknown, changing nothing', async () => {
+      const { southClass, southPupil } = await southSide();
+      const maths = await subject();
+      const oxford = await schoolClass();
+      await group(maths, [oxford]);
+      const one = await pupil(null);
+      const before = await rowsOf();
+      for (const [classId, students] of [
+        [southClass, [one]],
+        [UNKNOWN, [one]],
+        [oxford, [southPupil]],
+        [oxford, [{ ...one, id: UNKNOWN }]],
+      ] as const) {
+        refusedWith(await putIntoClass(classId, students, '2026-10-12', t.admin), 404, 'not_found');
+      }
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('answers 404 to the create with a class of another branch or unknown, changing nothing', async () => {
+      const { southClass } = await southSide();
+      const before = await rowsOf();
+      for (const classId of [southClass, UNKNOWN]) {
+        refusedWith(
+          await post('/api/people/students', body({ classId }), t.admin),
+          404,
+          'not_found',
+        );
+      }
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('answers 404 to the leaving, its cancel and its undo for a student of another branch or unknown, changing nothing', async () => {
+      const { southPupil } = await southSide();
+      const left = await t.post(
+        `/api/people/students/${southPupil.id}/leaving`,
+        t.south,
+        { lastDay: '2026-10-31', reason: 'The family moved.', version: southPupil.version },
+        t.admin,
+      );
+      expect(left.status, JSON.stringify(left.body)).toBe(200);
+      const version = studentDetailSchema.parse(left.body).version;
+      const before = await rowsOf();
+      for (const id of [southPupil.id, UNKNOWN]) {
+        for (const [path, sent] of [
+          ['leaving', { lastDay: '2026-11-30', reason: 'The family moved.', version }],
+          ['leaving/cancel', { version }],
+          ['leaving/undo', { version, reason: 'Entered by mistake.' }],
+        ] as const) {
+          refusedWith(
+            await post(`/api/people/students/${id}/${path}`, sent, t.admin),
+            404,
+            'not_found',
+          );
+        }
+      }
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('refuses in group_placement_gaps a class of another branch or unknown, also in a transaction of every branch', async () => {
+      const { subjectId, southClass } = await southSide();
+      const oxford = await schoolClass();
+      for (const branches of [[t.north], [t.north, t.south]]) {
+        for (const classId of [southClass, UNKNOWN]) {
+          const failure = await t.app
+            .get(Transactions)
+            .run(branches, (transaction) =>
+              groupPlacementGaps(transaction, t.north, [oxford, classId], subjectId, '2026-10-12'),
+            )
+            .then(
+              () => undefined,
+              (error: unknown) => error,
+            );
+          expect(failure).toMatchObject({ code: 'not_found' });
+        }
+      }
+    });
+  });
+
   describe('at the same moment', () => {
     /** The writes of a group placement, as the route makes them: the students, then the group. */
     async function writeGroupPlacement(
@@ -980,7 +1079,7 @@ describe('groups on every class membership path', () => {
       const gaps = await t.app
         .get(Transactions)
         .run([t.north], (transaction) =>
-          groupPlacementGaps(transaction, [yale], maths2, '2026-10-12'),
+          groupPlacementGaps(transaction, t.north, [yale], maths2, '2026-10-12'),
         );
       expect(gaps.map((one) => one.studentId)).toEqual([two.id]);
     });
@@ -1367,7 +1466,7 @@ describe('groups on every class membership path', () => {
       const gaps = await t.app
         .get(Transactions)
         .run([t.north], (transaction) =>
-          groupPlacementGaps(transaction, [yale], english2, '2026-11-01'),
+          groupPlacementGaps(transaction, t.north, [yale], english2, '2026-11-01'),
         );
       expect(gaps.map((row) => row.studentId)).toEqual([two.id]);
     });
