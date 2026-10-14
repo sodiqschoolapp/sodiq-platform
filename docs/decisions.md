@@ -236,6 +236,12 @@ Plan approved on pull request #95 with corrections 1 to 4; decisions 1, 2, 9 and
 | A class row of the same class that starts where the one shown ends (given back by a cancel) continues it: the record and the list show no planned class for it | Build: a cancelled move showed "7 Oxford from tomorrow" |
 | The group move is made from the student's record (the Academic block's groups, "Move to another group"), not from the group panel's member rows | Build: one form for every reader who moves; the Head Teachers open the record from the student list |
 | A cancel or an undo of a class move refused by the old class (archived, full) answers the guard's code, nothing is given back | Build; the reviewer's remark on the give-back branches |
+| A leaving whose first inactive day is the date of a scheduled move names the rows that move cut on that day, so its cancel gives them back | Spec review of the build, must-fix 1; a line added to `.claude/rules/api.md` |
+| Migration 0051 adds a trigger beside the shrink triggers: a row ends by a move only on the move's date while the move is live, or empty on or after it, and is undone only by a move undone first; the reason of a move only with its undo | Spec review of the build, should-fix 1; a new guard, nothing weakened |
+| A move dated before a later move of its kind (and subject) that has begun is refused (`move_before_later`, a code of its own); the cancel of a class move is refused while a group move inside it is scheduled (`move_scheduled`) | Spec review of the build, should-fixes 2 and 3 |
+| The Head Teacher undoes a group move of own subjects that has begun, with no limit of age beyond the rule of decision 10; the open quarter comes with 9.2b | Permission review of the build, should-fix 3: the spec says nothing on who undoes |
+| A group move's audit entry names the assignment whose scope fits both groups | Permission review of the build, should-fix 1 |
+| The History tab orders lines of one date by the id of the row or move that wrote them (uuidv7, in the order written), not by a moment: status, class and group rows carry no moment a rule reads | Spec review of the build, should-fix 4 |
 
 ## 14 October 2026: search over records (task 3.2d)
 
