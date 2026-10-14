@@ -2301,6 +2301,55 @@ try {
   });
   seeded.tutorScope = { login: scopeTutor.login, password: scopeTutor.firstPassword };
 
+  // The Academic Vice Principal of the record search (task 3.2d), in a branch
+  // of its own with a planned year around today and the classes 7 Oxford and
+  // 7 Yale.
+  const searchBranch = await insertBranch(migrator, 'Search browser test branch');
+  const searchVice = await create('Mohira', 'Ismoilova');
+  await transactions.run([searchBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: searchVice.id,
+      role: 'academic_vice_principal',
+      branchId: searchBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: searchBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: searchBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    for (const name of ['Oxford', 'Yale']) {
+      await transaction
+        .insertInto('classes')
+        .values({
+          branch_id: searchBranch,
+          academic_year_id: year.id,
+          grade: 7,
+          name,
+          language: 'uz',
+          max_size: 25,
+        })
+        .execute();
+    }
+  });
+  seeded.recordSearch = { login: searchVice.login, password: searchVice.firstPassword };
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')
