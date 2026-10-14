@@ -633,7 +633,7 @@ describe('groups on every class membership path', () => {
       ]);
     });
 
-    it('gives back nothing when the class row is not given back: the class archived', async () => {
+    it('gives back nothing when the class row is not given back: the group, then its class archived', async () => {
       const maths = await subject();
       const oxford = await schoolClass();
       const one = await pupil(oxford);
@@ -649,6 +649,69 @@ describe('groups on every class membership path', () => {
       const response = await undo(one.id);
       expect(response.status, JSON.stringify(response.body)).toBe(200);
       expect(await rowsOfStudent(one.id)).toHaveLength(1);
+    });
+
+    it('gives back no row of a group that no longer draws from the class; the smallest other group takes the days', async () => {
+      const maths = await subject();
+      const oxford = await schoolClass();
+      const yale = await schoolClass();
+      const one = await pupil(oxford);
+      const across = await group(maths, [oxford, yale], 20, 'A-across');
+      const own = await group(maths, [oxford], 20, 'B-own');
+      // A planned row from 16 November, emptied by the leaving: Oxford may then leave the group.
+      await placeInGroup(across, [one], '2026-11-16');
+      await leave(one.id, '2026-10-31');
+      const detail = (await get(`/api/groups/${across}`)).body as { version: number; name: string };
+      const edited = await t.put(
+        `/api/groups/${across}`,
+        t.north,
+        {
+          classIds: [yale],
+          name: detail.name,
+          language: null,
+          maxSize: 20,
+          version: detail.version,
+        },
+        t.vicePrincipal,
+      );
+      expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+      expect((await cancel(one.id)).status).toBe(200);
+      const held = (await rowsOfStudent(one.id)).filter((row) => row.valid_from < row.valid_until);
+      expect(held).toEqual([
+        expect.objectContaining({
+          group_id: own,
+          valid_from: '2026-11-01',
+          valid_until: '2027-06-01',
+          cause: 'automatic',
+          review: true,
+        }),
+      ]);
+    });
+
+    it('gives back no row of a group whose seat was taken meanwhile: the smallest other group, or a refusal', async () => {
+      const maths = await subject();
+      const oxford = await schoolClass();
+      const [one, newcomer] = [await pupil(oxford), await pupil(oxford)];
+      const small = await group(maths, [oxford], 1, 'A-small');
+      await placeInGroup(small, [one], '2026-09-02');
+      await leave(one.id, '2026-10-31');
+      // The seat the leaving freed is taken from 2 November.
+      await placeInGroup(small, [newcomer], '2026-11-02');
+      // No other group: the cancel is refused, nothing changes.
+      const before = await rowsOf();
+      refusedWith(await cancel(one.id), 409, 'class_group_no_seat');
+      expect(await rowsOf()).toEqual(before);
+      // Another group: the days go there, tagged.
+      const other = await group(maths, [oxford], 20, 'B-other');
+      expect((await cancel(one.id)).status).toBe(200);
+      expect((await rowsOfStudent(one.id)).slice(1)).toEqual([
+        expect.objectContaining({
+          group_id: other,
+          valid_from: '2026-11-01',
+          cause: 'automatic',
+          review: true,
+        }),
+      ]);
     });
 
     it('refuses the leaving routes to every role that does not archive students, with nothing written', async () => {
@@ -1297,29 +1360,38 @@ describe('groups on every class membership path', () => {
       const created = await creating;
       expect(created.status, JSON.stringify(created.body)).toBe(201);
       expect(await rowsOfStudent(studentDetailSchema.parse(created.body).id)).toHaveLength(1);
-      // The create first (its class row and group row): the group create route waits, then commits.
+      // The create first (both real routes, in a fixed order; spec review of
+      // the build, must-fix 2): the create holds the class and waits on its
+      // group, the create of a group of another subject waits on the class,
+      // then commits after it; the new student is not yet placed in that one.
       const maths2 = await subject();
+      const english2 = await subject();
       const yale = await schoolClass();
       const seat = await group(maths2, [yale], 1);
-      const one = await pupil(null);
-      const holding = await holdOpen((transaction) =>
-        writeClassPlacement(transaction, yale, one.id, seat, maths2),
+      const [created2, grouping] = await inOrder(
+        seat,
+        () => post('/api/people/students', body({ classId: yale })),
+        () =>
+          post('/api/groups', {
+            academicYearId: year,
+            subjectId: english2,
+            classIds: [yale],
+            name: 'C-second',
+            language: null,
+            maxSize: 20,
+          }),
       );
-      const grouping = post('/api/groups', {
-        academicYearId: year,
-        subjectId: maths2,
-        classIds: [yale],
-        name: 'C-second',
-        language: null,
-        maxSize: 20,
-      }).then((response) => response);
-      await waitForTheLock();
-      holding.release();
-      expect(await holding.done).toBeUndefined();
-      expect((await grouping).status).toBe(201);
+      expect(created2.status, JSON.stringify(created2.body)).toBe(201);
+      expect(grouping.status, JSON.stringify(grouping.body)).toBe(201);
+      const createdId = studentDetailSchema.parse(created2.body).id;
+      expect((await rowsOfStudent(createdId)).map((row) => row.group_id)).toEqual([seat]);
+      const gaps2 = await t.app
+        .get(Transactions)
+        .run([t.north], (transaction) =>
+          groupPlacementGaps(transaction, t.north, [yale], english2, '2026-09-02'),
+        );
+      expect(gaps2.map((row) => row.studentId)).toEqual([createdId]);
       // A placement into the last seat first: the create waits, then is refused.
-      const other = await pupil(yale);
-      expect(await rowsOfStudent(other.id)).toHaveLength(1);
       const maths3 = await subject();
       const harvard = await schoolClass();
       const blocker = await pupil(harvard);

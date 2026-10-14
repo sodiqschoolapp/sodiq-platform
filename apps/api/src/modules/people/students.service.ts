@@ -34,7 +34,11 @@ import { studentClasses, studentReaderOf } from '../access/class-scope.js';
 import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
-import { CLASS_GROUP_REFUSALS, coverClassRows } from '../classes/class-groups.js';
+import {
+  CLASS_GROUP_REFUSALS,
+  coverClassRows,
+  lockPlacementGroups,
+} from '../classes/class-groups.js';
 import {
   classesInService,
   membershipCounts,
@@ -576,6 +580,8 @@ export class Students {
                     [{ student, version: null }],
                     input.startsOn,
                   );
+                  // Decision 9: every group the placement may touch, before its first write.
+                  const groups = await lockPlacementGroups(transaction, [placement.id], [id]);
                   await writePlacement(
                     transaction,
                     this.audit,
@@ -604,7 +610,7 @@ export class Students {
                         },
                       })),
                       giveBack: null,
-                      groups: null,
+                      groups,
                       pathOf: () => 'classId',
                     },
                     requestId,

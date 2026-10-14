@@ -319,7 +319,7 @@ export const en = {
     placement_no_seat:
       'No group of the screen has a free seat for some students, so nobody was placed. Raise the maximum size of a group or add a group.',
     class_group_no_seat:
-      'No group of a split or group subject of the class has a free seat on every day from that date, so nothing was saved. Raise the maximum size of a group or add a group, then try again.',
+      'No group of a split or group subject of the class has a free seat on every day the student would be in the class, so nothing was saved. Raise the maximum size of a group or add a group, then try again.',
     class_group_missing:
       'The student would be in a class without a group of one of its group subjects. Nothing was saved. Reload and try again.',
     request_refused: 'The request was refused. Try again or ask an administrator.',

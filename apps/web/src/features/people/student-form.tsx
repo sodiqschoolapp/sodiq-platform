@@ -35,6 +35,7 @@ import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { classesQuery } from '@/features/classes/classes-api';
+import { GroupSeatRefusal } from '@/features/classes/class-members';
 import { yearsQuery } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import {
@@ -527,6 +528,8 @@ export function StudentForm({
               {...bind('classId')}
             />
           ))}
+        {/* Task 3.2c: the subject of the class without a group with a free seat. */}
+        {creating && <GroupSeatRefusal error={form.failure} />}
         <SelectField
           label={t('people.students.documentType')}
           options={[

@@ -11,7 +11,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { classesInService, membersPeak, MEMBERSHIP_REFUSALS } from './class-membership-rows.js';
-import { CLASS_GROUP_REFUSALS, coverClassRows } from './class-groups.js';
+import { CLASS_GROUP_REFUSALS, coverClassRows, lockPlacementGroups } from './class-groups.js';
 import { CLASS_PATH_GROUP_REFUSALS, withdrawGroupRows } from './group-membership-rows.js';
 import {
   lockPlacementStudents,
@@ -77,6 +77,12 @@ export class ClassMembers {
             }),
             input.from,
           );
+          // Decision 9: every group the placement may touch, before its first write.
+          const groups = await lockPlacementGroups(
+            transaction,
+            [placement.id],
+            rows.map((row) => row.studentId),
+          );
           await writePlacement(
             transaction,
             this.audit,
@@ -105,7 +111,7 @@ export class ClassMembers {
                 },
               })),
               giveBack: null,
-              groups: null,
+              groups,
             },
             requestId,
           );

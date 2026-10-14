@@ -325,7 +325,7 @@ export const uz: Texts<'one' | 'other'> = {
     placement_no_seat:
       'Ayrim oʻquvchilar uchun ekrandagi guruhlarning birortasida boʻsh oʻrin yoʻq, shuning uchun hech kim joylashtirilmadi. Guruhning eng koʻp sonini oshiring yoki guruh qoʻshing.',
     class_group_no_seat:
-      'Sinfning boʻlinadigan yoki guruhli fanlaridan birining hech bir guruhida shu sanadan boshlab har kuni boʻsh oʻrin yoʻq, shuning uchun hech narsa saqlanmadi. Guruhning eng koʻp sonini oshiring yoki guruh qoʻshing va qayta urinib koʻring.',
+      'Sinfning boʻlinadigan yoki guruhli fanlaridan birining hech bir guruhida oʻquvchi sinfda boʻladigan har bir kun uchun boʻsh oʻrin yoʻq, shuning uchun hech narsa saqlanmadi. Guruhning eng koʻp sonini oshiring yoki guruh qoʻshing va qayta urinib koʻring.',
     class_group_missing:
       'Oʻquvchi guruhli fanlaridan birining guruhisiz sinfda qolar edi. Hech narsa saqlanmadi. Sahifani yangilang va qayta urinib koʻring.',
     request_refused:

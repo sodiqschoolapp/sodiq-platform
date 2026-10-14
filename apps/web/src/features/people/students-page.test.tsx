@@ -776,6 +776,60 @@ describe('adding a student', () => {
     });
   });
 
+  // Task 3.2c, decision 3: the create with a class whose group subject has
+  // no group with a free seat is refused on the class field, the subject named.
+  it('refuses a new student on the class field when a group subject has no seat, naming the subject', async () => {
+    const maths = uid(201);
+    openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'GET /api/setup/subjects': () =>
+        json({
+          subjects: [
+            {
+              id: maths,
+              names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+              departmentId: uid(9),
+              grades: [7, 8],
+              colour: 'blue',
+              journalType: 'graded',
+              ratingExam: false,
+              groupSubject: true,
+              languageRule: true,
+              demanding: false,
+              archivedAt: null,
+              daily: { attendance: 10, classwork: 50, homework: 40 },
+              quarterWeightsMissing: 0,
+              quarterCount: 4,
+            },
+          ],
+          mayMoveDepartment: false,
+        }),
+      'POST /api/people/students': () =>
+        Response.json(
+          {
+            error: {
+              code: 'class_group_no_seat',
+              message: 'x',
+              requestId: 'r',
+              details: [
+                { path: 'classId', code: 'class_group_no_seat', message: 'x', subjectId: maths },
+              ],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    const form = await fillAndSave(uid(50));
+    expect(
+      await within(form).findByText(en.classes.groupNoSeat.replace('{{subjects}}', 'Mathematics')),
+    ).toBeDefined();
+    expect(form.textContent).toContain(en.errors.class_group_no_seat);
+  });
+
   it('names the student of this branch who holds the UID, and says only "another branch" otherwise', async () => {
     let elsewhere = false;
     openList('academic_vice_principal', {

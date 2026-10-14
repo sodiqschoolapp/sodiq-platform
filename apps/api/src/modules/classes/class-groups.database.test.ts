@@ -215,6 +215,18 @@ describe('groups on the class side in the database', () => {
         .execute();
       expect(await subjectsOf(yale)).toEqual([]);
     });
+
+    it('does not mix the classes of another year', async () => {
+      const nextYear = await classes.year(north, 'planned', '2027-09-01', '2028-05-31');
+      const now = await classes.schoolClass(north, northYear);
+      const next = await classes.schoolClass(north, nextYear);
+      await classes.group(north, northYear, maths, [now]);
+      expect(await subjectsOf(now)).toEqual([maths]);
+      expect(await subjectsOf(next)).toEqual([]);
+      await classes.group(north, nextYear, english, [next]);
+      expect(await subjectsOf(now)).toEqual([maths]);
+      expect(await subjectsOf(next)).toEqual([english]);
+    });
   });
 
   describe('class_memberships_need_groups', () => {

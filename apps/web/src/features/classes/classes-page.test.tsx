@@ -750,7 +750,7 @@ describe('the students of a class', () => {
       ['ru', []],
     ] as const) {
       cleanup();
-      await openList({
+      const calls = await openList({
         language,
         extra: {
           'GET /api/people/students': () =>
@@ -808,6 +808,12 @@ describe('the students of a class', () => {
       expect(
         within(form).getByText(texts.classes.refusedNames.replace('{{names}}', 'Yusupovaa Shahlo')),
       ).toBeDefined();
+      // A subject the list does not hold: the list is read again (.claude/rules/web.md).
+      if (language === 'ru') {
+        await waitFor(() => {
+          expect(calls.filter((call) => call.route === 'GET /api/setup/subjects')).toHaveLength(2);
+        });
+      }
     }
   });
 

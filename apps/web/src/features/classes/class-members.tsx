@@ -117,6 +117,19 @@ export function GroupSeatRefusal({ error }: { error: unknown }) {
     ...subjectsQuery(branchId),
     enabled: branchId !== null && ids.length > 0,
   });
+  const missing =
+    subjects.data !== undefined &&
+    ids.some((id) => !subjects.data.subjects.some((one) => one.id === id));
+  // A subject the list read does not hold: the list is read again, once per
+  // refusal (.claude/rules/web.md, a refusal that names a record by id).
+  const reread = useRef<unknown>(null);
+  const { refetch } = subjects;
+  useEffect(() => {
+    if (missing && reread.current !== error) {
+      reread.current = error;
+      void refetch();
+    }
+  }, [missing, error, refetch]);
   if (ids.length === 0) {
     return null;
   }

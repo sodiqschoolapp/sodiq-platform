@@ -164,6 +164,23 @@ export async function lockClassGroups(
 }
 
 /**
+ * `lockClassGroups` for a placement into classes (decision 9), before its
+ * first write: the active groups of the classes and the groups of the
+ * students' own rows.
+ */
+export async function lockPlacementGroups(
+  transaction: Transaction,
+  classIds: readonly string[],
+  studentIds: readonly string[],
+): Promise<Map<string, CoverGroup>> {
+  const own: string[] = [];
+  for (const id of studentIds) {
+    own.push(...(await groupMembershipsOf(transaction, id)).map((row) => row.groupId));
+  }
+  return lockClassGroups(transaction, classIds, own);
+}
+
+/**
  * The rows with days of each group, as the seats are counted: those stored
  * (read once, when a group is first asked) and those this change adds.
  */
