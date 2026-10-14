@@ -356,7 +356,12 @@ describe('group membership', () => {
       const oxford = await schoolClass();
       const maths1 = await group([oxford], { name: 'M-Card' });
       const one = await pupil(oxford);
-      placed(await place(maths1, [one], '2026-10-10', t.admin));
+      const response = await place(maths1, [one], '2026-10-10', t.admin);
+      placed(response);
+      expect((await t.entries('student.group_joined', one.id))[0]).toMatchObject({
+        assignment_id: t.adminAssignment,
+        request_id: response.headers['x-request-id'],
+      });
       const list = studentListSchema.parse((await get('/api/people/students')).body);
       expect(list.students.find((row) => row.id === one.id)?.groups).toEqual([
         {
@@ -477,6 +482,24 @@ describe('group membership', () => {
       );
     });
 
+    it('lets a Senior Head Teacher read a group of own subjects in a branch of no assignment of theirs', async () => {
+      const senior = (await signedIn('Nodira', 'Usmonova', 'senior_head_teacher', [maths])).cookie;
+      const southClass = await schoolClass(7, t.south, southYear);
+      const southMaths = await group([southClass], { branch: t.south, year: southYear });
+      const southEnglish = await group([southClass], {
+        branch: t.south,
+        year: southYear,
+        subject: english,
+      });
+      const tab = await get(`/api/groups/${southMaths}/members`, senior, t.south);
+      expect(tab.status, JSON.stringify(tab.body)).toBe(200);
+      refusedWith(
+        await get(`/api/groups/${southEnglish}/members`, senior, t.south),
+        403,
+        'permission_denied',
+      );
+    });
+
     it('lets a Tutor read the members of own class only, with a count of the others', async () => {
       const other = await schoolClass();
       const across = await group([tutorClass, other]);
@@ -490,6 +513,12 @@ describe('group membership', () => {
       const notOwn = await group([other]);
       refusedWith(await get(`/api/groups/${notOwn}/members`, tutor), 403, 'permission_denied');
       refusedWith(await get(`/api/groups/${UNKNOWN}/members`), 404, 'not_found');
+      // Another branch's group: 404 with the header of the north, also for the Super Admin.
+      const southClass = await schoolClass(7, t.south, southYear);
+      const southGroup = await group([southClass], { branch: t.south, year: southYear });
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        refusedWith(await get(`/api/groups/${southGroup}/members`, cookie), 404, 'not_found');
+      }
     });
 
     it('shows a Tutor the groups of own class rows only in the student list', async () => {
@@ -523,6 +552,7 @@ describe('group membership', () => {
       const [entry] = await t.entries('student.group_withdrawn', later.id);
       expect(entry).toMatchObject({
         assignment_id: t.viceAssignment,
+        request_id: response.headers['x-request-id'],
         new_value: { until: '2026-10-12', endedBy: 'withdrawn' },
       });
       // Answered as it is when repeated.
@@ -610,6 +640,11 @@ describe('group membership', () => {
         expect(await rowsOfStudent(one.id)).toEqual([
           expect.objectContaining({ cause: 'automatic', review: true }),
         ]);
+        expect((await t.entries('student.group_joined', one.id))[0]).toMatchObject({
+          assignment_id: t.viceAssignment,
+          request_id: response.headers['x-request-id'],
+          new_value: { cause: 'automatic', review: true },
+        });
       }
       const tab = await membersOf(beta);
       expect(tab.members[0]?.review).toBe(true);
@@ -618,9 +653,21 @@ describe('group membership', () => {
       );
       expect(reviewed.status, JSON.stringify(reviewed.body)).toBe(200);
       expect(groupMembersSchema.parse(reviewed.body).members[0]?.review).toBe(false);
-      expect(await t.entries('student.group_reviewed', tab.members[0]?.studentId)).toHaveLength(1);
+      const reviewEntries = await t.entries('student.group_reviewed', tab.members[0]?.studentId);
+      expect(reviewEntries).toHaveLength(1);
+      expect(reviewEntries[0]).toMatchObject({
+        assignment_id: t.viceAssignment,
+        request_id: reviewed.headers['x-request-id'],
+        new_value: { review: false },
+      });
       const empty = groupPlacementBoardSchema.parse((await board(subject, '8')).body);
       expect(empty.unplaced).toEqual([]);
+    });
+
+    it('answers 404 for an unknown subject of a run, changing nothing', async () => {
+      const before = await rowsOf();
+      refusedWith(await automatic(UNKNOWN, [7]), 404, 'not_found');
+      expect(await rowsOf()).toEqual(before);
     });
 
     it('places none when a student finds no seat, and names them', async () => {
