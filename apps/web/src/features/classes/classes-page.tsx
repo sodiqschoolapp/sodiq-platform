@@ -232,7 +232,19 @@ export function ClassesPage() {
         empty={{
           title: t('classes.emptyTitle'),
           text: noYear ? t('classes.emptyNoYear') : t('classes.empty'),
-          action: addButton === false ? undefined : addButton,
+          // The header holds "New class" with its id; the empty page offers it once more.
+          action:
+            canCreate && newRecord.value === null && !noYear ? (
+              <Button
+                variant="secondary"
+                disabled={years.data === undefined || rooms.data === undefined}
+                onClick={() => {
+                  newRecord.start(true);
+                }}
+              >
+                {t('classes.add')}
+              </Button>
+            ) : undefined,
         }}
         view={
           wide

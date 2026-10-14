@@ -48,7 +48,8 @@ test('an Academic Vice Principal creates a class and gives it a Tutor of its lan
   await expect(heading(page, en.classes.title)).toBeVisible();
 
   const texts = en.classes;
-  await page.getByRole('button', { name: texts.add, exact: true }).click();
+  // The header's button comes first; the empty list offers the same action.
+  await page.getByRole('button', { name: texts.add, exact: true }).first().click();
   const create = page.getByRole('form', { name: texts.newTitle });
   await create.getByLabel(texts.grade, { exact: true }).selectOption('7');
   await create.getByLabel(texts.className, { exact: true }).fill('Oxford');
