@@ -746,6 +746,71 @@ describe('the actions of the staff panel', () => {
     expect(calls.some((call) => call.route.startsWith('PUT'))).toBe(false);
   });
 
+  // Task 3.1a, correction 5: the class that keeps a language is named, or
+  // "a class of another branch" when the refusal names none.
+  it.each([
+    ['in the branch', true],
+    ['of another branch', false],
+  ])('names the class %s that keeps a language on the record', async (_where, named) => {
+    openList('super_admin', {
+      [`PUT /api/people/staff/${AKMAL.id}/teaching`]: () =>
+        json(
+          {
+            error: {
+              code: 'tutor_language_held',
+              message: '',
+              requestId: 'test-request',
+              details: [
+                {
+                  path: 'languages',
+                  code: 'tutor_language_held',
+                  message: '',
+                  ...(named ? { recordId: '0199a000-0000-7000-8000-000000000777' } : {}),
+                },
+              ],
+            },
+          },
+          409,
+        ),
+      'GET /api/classes/0199a000-0000-7000-8000-000000000777': () =>
+        json({
+          id: '0199a000-0000-7000-8000-000000000777',
+          academicYearId: '0199a000-0000-7000-8000-000000000777',
+          yearName: '2026–2027',
+          yearStatus: 'current',
+          grade: 7,
+          name: 'Oxford',
+          language: 'ru',
+          mainRoom: null,
+          maxSize: 25,
+          tutor: null,
+          acting: null,
+          archived: false,
+          version: 0,
+          tutors: [],
+          today: '2026-10-14',
+        }),
+    });
+    const panel = await openAkmal();
+    const teaching = await edit(
+      panel,
+      en.people.staff.teachingOf.replace('{{name}}', 'Akmal Karimov'),
+      en.people.staff.changeTeaching,
+    );
+    fireEvent.click(within(teaching).getByLabelText(en.people.staff.languages.ru));
+    fireEvent.click(within(teaching).getByRole('button', { name: en.form.save }));
+    expect((await within(teaching).findByRole('alert')).textContent).toBe(
+      en.errors.tutor_language_held,
+    );
+    expect(
+      await within(teaching).findByText(
+        named
+          ? en.people.staff.tutorsClass.replace('{{name}}', '7 Oxford')
+          : en.people.staff.tutorsClassElsewhere,
+      ),
+    ).toBeDefined();
+  });
+
   it('asks before another form takes the place of one with typed text', async () => {
     openList('super_admin');
     const panel = await openAkmal();

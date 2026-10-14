@@ -95,6 +95,32 @@ describe('every export is logged', () => {
       column: 'name',
       row: () => Promise.resolve(academic),
     },
+    // Task 3.1a.
+    'POST /api/classes/export': {
+      action: 'class.export',
+      list: 'classes',
+      column: 'name',
+      row: async () => {
+        const year = await t.database.migrator
+          .selectFrom('academic_years')
+          .select('id')
+          .where('branch_id', '=', t.north)
+          .executeTakeFirstOrThrow();
+        const row = await t.database.migrator
+          .insertInto('classes')
+          .values({
+            branch_id: t.north,
+            academic_year_id: year.id,
+            grade: 7,
+            name: 'Logged',
+            language: 'uz',
+            max_size: 25,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        return row.id;
+      },
+    },
     'POST /api/setup/subjects/export': {
       action: 'subject.export',
       list: 'subjects',

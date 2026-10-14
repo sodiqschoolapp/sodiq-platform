@@ -4,6 +4,7 @@ import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { Audit } from '../audit/audit.service.js';
+import { trackingTutorEnds } from '../classes/class-tutor-rows.js';
 import { UnknownAccountError } from '../auth/password-resets.service.js';
 import { insertAppointmentSubjects } from './appointment-subjects.js';
 import { notEnded } from './current-assignments.js';
@@ -282,12 +283,17 @@ export class Assignments {
     }
     const at = ending.at !== undefined && ending.at > now ? ending.at : now;
     const validUntil = assignment.valid_from > at ? assignment.valid_from : at;
+    let tutorRows: Awaited<ReturnType<typeof trackingTutorEnds>>;
     try {
-      await transaction
-        .updateTable('assignments')
-        .set({ valid_until: validUntil, ended_by: ending.endedBy })
-        .where('id', '=', ending.assignmentId)
-        .execute();
+      // The class rows of a Tutor role follow its end (db/migrations/0042) and
+      // are named in the entry (task 3.1a, decision 20).
+      tutorRows = await trackingTutorEnds(transaction, ending.assignmentId, async () => {
+        await transaction
+          .updateTable('assignments')
+          .set({ valid_until: validUntil, ended_by: ending.endedBy })
+          .where('id', '=', ending.assignmentId)
+          .execute();
+      });
     } catch (error) {
       // An end moved later over a holder of a subject appointed meanwhile
       // (decision 10 of #63); the transaction cannot go on.
@@ -303,7 +309,11 @@ export class Assignments {
       record: { type: 'assignment', id: ending.assignmentId },
       oldValue: { validUntil: assignment.valid_until?.toISOString() ?? null },
       newValue: { validUntil: validUntil.toISOString() },
-      details: { accountId: assignment.account_id, role: assignment.role },
+      details: {
+        accountId: assignment.account_id,
+        role: assignment.role,
+        ...(tutorRows.length === 0 ? {} : { tutorRows }),
+      },
       ...(ending.requestId === undefined ? {} : { requestId: ending.requestId }),
       ...(ending.actingAssignmentId === undefined
         ? {}

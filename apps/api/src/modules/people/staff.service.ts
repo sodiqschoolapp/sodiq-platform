@@ -63,6 +63,7 @@ import {
   refusingDuplicates,
 } from '../setup/setup-refusals.js';
 import { closeOpenResetLinks } from '../auth/reset-links.js';
+import { ROLE_END_TUTOR_REFUSALS, trackingTutorEnds } from '../classes/class-tutor-rows.js';
 import { reachingAssignment } from './account-reach.js';
 import { endAvailability } from './availability.service.js';
 import { staffIdOf, takeStaffNumber } from './staff-numbers.js';
@@ -90,6 +91,11 @@ const STAFF_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   // (decision 10 of #63).
   assignment_subjects_one_head_teacher: 'head_teacher_taken',
   assignment_subjects_one_senior: 'head_teacher_taken',
+  // A language removed from a person who tutors a class of it (task 3.1a,
+  // decision 16), and a Tutor row a taken-back `left` brings back over a Tutor
+  // given meanwhile or to a class of a language the person no longer teaches.
+  ...ROLE_END_TUTOR_REFUSALS,
+  staff_languages_tutor_held: 'tutor_language_held',
 };
 
 /** JSHSHIR is unique when filled (`edge/people-roles-accounts`, Staff over time). */
@@ -572,6 +578,7 @@ export class Staff {
             .where('staff_id', '=', id)
             .where('language', '=', language)
             .execute();
+          await refuseTutorLanguageHeld(transaction, id, language);
         }
         await this.audit.record(transaction, {
           branchId,
@@ -1168,11 +1175,15 @@ export class Staff {
           previous_ended_by: assignment.ended_by,
         })
         .execute();
-      await transaction
-        .updateTable('assignments')
-        .set({ valid_until: end, ended_by: access.accountId })
-        .where('id', '=', assignment.id)
-        .execute();
+      // The class rows of a Tutor role follow its end (db/migrations/0042) and
+      // are named in the entry (task 3.1a, decision 20).
+      const tutorRows = await trackingTutorEnds(transaction, assignment.id, async () => {
+        await transaction
+          .updateTable('assignments')
+          .set({ valid_until: end, ended_by: access.accountId })
+          .where('id', '=', assignment.id)
+          .execute();
+      });
       await this.audit.record(transaction, {
         branchId: assignment.branch_id,
         actorId: access.accountId,
@@ -1182,6 +1193,7 @@ export class Staff {
         record: { type: 'assignment', id: assignment.id },
         oldValue: { validUntil: assignment.valid_until?.toISOString() ?? null },
         newValue: { validUntil: end.toISOString() },
+        ...(tutorRows.length === 0 ? {} : { details: { tutorRows } }),
         reason: 'staff_left',
         requestId: left.requestId,
       });
@@ -1225,11 +1237,13 @@ export class Staff {
       ) {
         continue;
       }
-      await transaction
-        .updateTable('assignments')
-        .set({ valid_until: end.previous_valid_until, ended_by: end.previous_ended_by })
-        .where('id', '=', end.id)
-        .execute();
+      const tutorRows = await trackingTutorEnds(transaction, end.id, async () => {
+        await transaction
+          .updateTable('assignments')
+          .set({ valid_until: end.previous_valid_until, ended_by: end.previous_ended_by })
+          .where('id', '=', end.id)
+          .execute();
+      });
       await this.audit.record(transaction, {
         branchId: end.branch_id,
         actorId: access.accountId,
@@ -1239,6 +1253,7 @@ export class Staff {
         record: { type: 'assignment', id: end.id },
         oldValue: { validUntil: end.valid_until?.toISOString() ?? null },
         newValue: { validUntil: end.previous_valid_until?.toISOString() ?? null },
+        ...(tutorRows.length === 0 ? {} : { details: { tutorRows } }),
         reason: 'staff_left_withdrawn',
         requestId,
       });
@@ -1584,4 +1599,35 @@ function staffExportColumns(
       ],
     },
   };
+}
+
+/**
+ * A language is removed from a person only while no class the person tutors,
+ * now or planned, needs it (task 3.1a, decision 16; correction 5): checked
+ * after the delete, under the record's lock, with
+ * `tutor_classes_of_language` (db/migrations/0042), which sees every branch.
+ * The refusal names the class when it is of the branch of the request; the
+ * deferred trigger `staff_languages_tutor_held` holds the same at the commit.
+ */
+async function refuseTutorLanguageHeld(
+  transaction: Transaction,
+  staffId: string,
+  language: string,
+): Promise<void> {
+  const found = await sql<{ class_ids: string[]; elsewhere: number }>`
+    select class_ids, elsewhere from tutor_classes_of_language(${staffId}::uuid, ${language})
+  `.execute(transaction);
+  const held = found.rows[0];
+  if (held === undefined || (held.class_ids.length === 0 && held.elsewhere === 0)) {
+    return;
+  }
+  const classId = held.class_ids[0];
+  throw new ApiException('tutor_language_held', 409, undefined, [
+    {
+      path: 'languages',
+      code: 'tutor_language_held',
+      message: 'The person tutors a class of this language.',
+      ...(classId === undefined ? {} : { recordId: classId }),
+    },
+  ]);
 }

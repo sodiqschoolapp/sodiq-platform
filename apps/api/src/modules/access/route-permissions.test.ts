@@ -79,6 +79,18 @@ const ACCESS_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal
 // file (tested in people/exports.test.ts).
 const EXPORTERS = SETUP_VIEWERS;
 
+// Task 3.1a, decision 5 of pull request #88 (Look first): the area `classes`.
+const CLASS_VIEWERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'spiritual_vice_principal',
+  'head_tutor',
+  'senior_head_teacher',
+  'head_teacher',
+];
+const CLASS_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
+
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
@@ -363,6 +375,17 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/people/vacancies/:id/close': { branch: 'request', roles: STAFF_EDITORS },
   'POST /api/people/vacancies/:id/reopen': { branch: 'request', roles: STAFF_EDITORS },
   'POST /api/people/vacancies/:id/delete': { branch: 'request', roles: STAFF_EDITORS },
+  // Task 3.1a: classes and their Tutors; the Principal exports (decision 5).
+  'GET /api/classes': { branch: 'request', roles: CLASS_VIEWERS },
+  'GET /api/classes/tutor-candidates': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/classes/export': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/classes': { branch: 'request', roles: CLASS_EDITORS },
+  'GET /api/classes/:id': { branch: 'request', roles: CLASS_VIEWERS },
+  'PUT /api/classes/:id': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/classes/:id/archive': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/classes/:id/restore': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/classes/:id/tutors': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/classes/:id/tutors/:tutorId/end': { branch: 'request', roles: CLASS_EDITORS },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

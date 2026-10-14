@@ -174,6 +174,10 @@ function auditSchoolPartitions(): Record<string, string> {
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'audit_names(uuid[])':
     'The first and last name of each person named by an account or staff id, in any branch, for the actor and the person of one page of the audit log (task 2.6a, decision 12 of pull request #75, Look first); the Basic group only.',
+  'assignments_class_tutors_end()':
+    'Writes the end of a Tutor assignment on its class rows, which the application cannot write for a branch it does not filter to: a role end is written school-wide (task 3.1a, decision 2 of pull request #88, Look first).',
+  'class_tutor_ends(uuid)':
+    "The Tutor rows of one assignment in every branch, ids and end moments only, for the audit entry of a role end or a `left` that the mirror carries to the rows of another branch than the request's (task 3.1a, correction 1 of the code review of pull request #88, Look first).",
   'assignments_subjects_end()':
     'Writes the end of an assignment on its subject rows, which the application cannot update, so the exclusion constraints of one Head Teacher per subject see every end (task 2.3b-1, decision 2 of pull request #63).',
   'branches_without_vice_principal(timestamp with time zone)':
@@ -206,6 +210,10 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'Gives the holder of an exact main phone, visible to the branch or not, a new phone or "no valid phone", and nothing else of the record, answering the notice targets as ids (edge/close-relatives: "the number has a new owner"; task 2.5b-1, decision 2 of pull request #73, Look first).',
   'relatives_follow_links()':
     'The trigger that archives a relative with no live link in any branch and restores it on a new one (04: "A relative with no linked students is archived"; task 2.5a, decisions 3, 10 and 14); the links of other branches decide it, and an archived relative is visible to no branch.',
+  'tutor_classes_of_language(uuid,text)':
+    'The classes of a language a person tutors now or later while not teaching in it: ids of the branches of the transaction only, a count of the others (task 3.1a, decision 19 and correction 4 of pull request #88, Look first); "blocked, not a warning" (05) from the staff side across branches.',
+  'tutor_teaches_language(uuid,text)':
+    'Whether the person of a Tutor assignment teaches in a language, whichever branch link of the record the request sees (task 3.1a, decision 19 of pull request #88, Look first); a yes or no, after a share lock on the record.',
   'reset_by_person_name(uuid)':
     'The first and last name of the administrator who reset an account\'s password, shown to that account\'s person while the reset password is in use ("your password was reset by X").',
   'student_duplicate_elsewhere(text,date)':

@@ -131,7 +131,8 @@ export function NumberField(props: Omit<FieldProps, 'type' | 'inputMode'>) {
 
 type SelectFieldProps = FieldTexts &
   Omit<ComponentProps<'select'>, 'id' | 'children'> & {
-    options: readonly { value: string; label: string }[];
+    /** `disabled`: shown, with its reason in its label, and not chosen (the Tutors of a class, task 3.1a). */
+    options: readonly { value: string; label: string; disabled?: boolean }[];
   };
 
 /** A choice among a few values: a plain select, as the filters of a list. */
@@ -141,7 +142,7 @@ export function SelectField({ label, error, note, options, ...select }: SelectFi
       {(control) => (
         <Select {...control} {...select}>
           {options.map((option) => (
-            <option key={option.value} value={option.value}>
+            <option key={option.value} value={option.value} disabled={option.disabled}>
               {option.label}
             </option>
           ))}

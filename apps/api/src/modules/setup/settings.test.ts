@@ -516,6 +516,8 @@ describe('the settings of a branch', () => {
         'defaultTemplate',
         'calendar',
         'subjects',
+        // Task 3.1a, decision 12.
+        'classes',
       ]);
       expect(items.map((item) => item.done)).toEqual([
         true,
@@ -528,9 +530,11 @@ describe('the settings of a branch', () => {
         null,
         // No subject yet (task 2.1, decision 7).
         false,
+        // No class yet (task 3.1a, decision 12).
+        false,
       ]);
       expect(items.find((item) => item.key === 'calendar')?.count).toBe(0);
-      expect(items.at(-1)?.count).toBe(0);
+      expect(items.find((item) => item.key === 'subjects')?.count).toBe(0);
     });
 
     it('turns each item done as its data is stored', async () => {
@@ -623,6 +627,38 @@ describe('the settings of a branch', () => {
       items = await stateOf(branch);
       expect(items[7]).toMatchObject({ done: null, count: 1 });
       expect(items.slice(0, 7).every((item) => item.done === true)).toBe(true);
+
+      // Task 3.1a, decision 12: an active class in a planned or current year;
+      // an archived one does not count.
+      const classesItem = async () =>
+        (await stateOf(branch)).find((item) => item.key === 'classes')?.done;
+      expect(await classesItem()).toBe(false);
+      const year = await migrator
+        .selectFrom('academic_years')
+        .select('id')
+        .where('branch_id', '=', branch)
+        .orderBy('start_date')
+        .executeTakeFirstOrThrow();
+      const schoolClass = await migrator
+        .insertInto('classes')
+        .values({
+          branch_id: branch,
+          academic_year_id: year.id,
+          grade: 7,
+          name: 'Oxford',
+          language: 'uz',
+          max_size: 25,
+          archived_at: new Date(START),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      expect(await classesItem()).toBe(false);
+      await migrator
+        .updateTable('classes')
+        .set({ archived_at: null })
+        .where('id', '=', schoolClass.id)
+        .execute();
+      expect(await classesItem()).toBe(true);
     });
 
     // Decision 6: a default setting in force today or starting later; a row

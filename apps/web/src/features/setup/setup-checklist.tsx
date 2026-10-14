@@ -19,6 +19,8 @@ const PAGES: Record<ChecklistItemKey, { to: LinkProps['to']; area: string }> = {
   defaultTemplate: { to: '/setup/day-template-settings', area: 'day_templates' },
   calendar: { to: '/setup/calendar', area: 'calendar' },
   subjects: { to: '/setup/subjects', area: 'subjects' },
+  // Task 3.1a, decision 12.
+  classes: { to: '/classes', area: 'classes' },
 };
 
 /**

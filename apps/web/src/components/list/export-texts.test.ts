@@ -69,6 +69,16 @@ const SCREEN: Record<ExportList, Record<string, (texts: Texts) => string>> = {
     switches: (texts) => texts.setup.subjects.switches,
     status: (texts) => texts.setup.subjects.status,
   },
+  // Task 3.1a.
+  classes: {
+    name: (texts) => texts.classes.name,
+    year: (texts) => texts.classes.year,
+    language: (texts) => texts.classes.language,
+    tutor: (texts) => texts.classes.tutor,
+    mainRoom: (texts) => texts.classes.mainRoom,
+    maxSize: (texts) => texts.classes.maxSize,
+    status: (texts) => texts.classes.status,
+  },
   // Task 2.4b-2: the list's headers, then the export-only columns named as the profile names the field.
   students: {
     uid: (texts) => texts.people.students.uid,

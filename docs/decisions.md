@@ -213,6 +213,43 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 14 October 2026: classes and their Tutors (task 3.1a)
+
+Plan approved on pull request #88 with corrections 1 to 7; decisions 1, 2, 5, 8 and 19 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Task 3.1 split into 3.1a (classes and Tutors), 3.1b (membership) and 3.1c (Tutor class scope), with the inherited lines of 2.4a and 2.4b-2 moved to 3.1b and 3.1c and the "done when" split | Decision 1: three rule sets and two modules; the 2.3 and 2.4 precedents |
+| **Look first.** `assignments_class_tutors_end()` is SECURITY DEFINER: the end of a Tutor role is written on its class rows (`end_cause = 'role'`), a row the role end shortened returns to the earlier of its own end (`own_until`) and the role's when the end moves later or is emptied, and rows ended by the Academic Vice Principal or an archive stay ended | Decision 2 with corrections 2 and 3; the `assignments_subjects_end` precedent |
+| **Look first.** Area `classes`: the Super Admin and the Academic Vice Principal view, create, edit, archive and export; the Principal views and exports; the Vice Principal for Spiritual and Moral Education, the Head Tutor, the Head Teacher and the Senior Head Teacher view; the Tutor gets nothing until 3.1c | Decision 5; `02`; the Senior Head Teacher reads classes and their Tutors' names in every branch, each request in its branch |
+| **Look first.** The Super Admin gives the Tutor role; the Academic Vice Principal names the classes of a Tutor of the branch under `classes` `edit`. Proposed `/spec-change` for `edge/people-roles-accounts`, Who can act: "The Super Admin creates staff accounts and gives all roles. The Academic Vice Principal names the class or classes of a Tutor of his branch, with dates." | Decision 8 |
+| **Look first.** `tutor_teaches_language` (a yes or no, after a share lock on the record) and `tutor_classes_of_language` (class ids of the transaction's branches, a count of the others) are SECURITY DEFINER | Decision 19 with correction 4; `05`: "blocked, not a warning" from the staff side across branches |
+| **Look first.** `fast-check` 4.10.2 (MIT, maintained, no audit finding) is a dev dependency of `apps/api`: the property test of `class_name_key` against `classNameKey` | Correction 6 asks for generated names; `13` names fast-check in the stack |
+| The name is unique per branch, year and grade among archived classes too, by its folded key (look-alike Cyrillic letters, case, spaces), computed by the database; the name is stored as typed | Decisions 3 and 4 with correction 6 |
+| A class belongs to one planned or current year, chosen at the create and fixed; no such year: `class_needs_year`, "New class" switched off with "Add an academic year first" | Decisions 6 and 12; the plan's `no_academic_year` speaks of a student's start date, so the class create has a code of its own (`.claude/rules/web.md`) |
+| The main classroom is optional, not closed when chosen; a room closed later stays, shown "closed" | Decision 7 |
+| A Tutor row begins now or at 00:00 of a later date, never before its role, and ends now or at 00:00 of a later date, never after its role; the end route only moves an end earlier (`tutor_ends_by_then`), a planned row is withdrawn | Decision 9; the codes `tutor_outside_role`, `tutor_date_past`, `tutor_ended` and `tutor_ends_by_then` added in the build so that each text is true where it is sent |
+| Archive ends the Tutors in force and withdraws the planned ones in its audit entry; a restore gives none back | Decision 10 |
+| "No Tutor" mark on the row, the card and the panel, and a Tutor filter, for every reader; no home tile | Decision 11 |
+| Checklist item `classes` after `subjects`: an active class in a planned or current year | Decision 12 |
+| Students, average and attendance show "—" until 3.1b and the journal | Decision 13 |
+| Maximum size 1 to 60; class name 2 to 40 characters beginning with a letter | Decisions 14 and 17 |
+| An acting Tutor is a second dated row of kind `acting`, one at a time, under the language rule | Decision 15 |
+| A language leaves a staff record only while no class the person tutors, now or planned, needs it (`tutor_language_held`, its own code; the refusal of a give or a class language change is `tutor_language`) | Decision 16 with correction 5 |
+| In a closed year a class and its Tutors are history (`class_year_closed`) | Decision 18 |
+| A role end, a `left` and its taking back name the Tutor rows they move in their own audit entry (`tutorRows`); the archive names them in `tutorsEnded` | Decision 20 |
+| The edit is `PUT api/classes/:id`, not PATCH | Build: the convention of the record routes (rooms, students) |
+| The class detail answers `today` in the branch's time zone, the first date its forms take | Build: the account section's precedent; the browser never decides "today" |
+| `SelectField` options may be `disabled`: a Tutor candidate who does not teach in the class's language is shown with the reason and cannot be chosen | Build: the plan's "shown disabled with the reason" |
+| The give and the end of a Tutor are audited on the class (`class.tutor_given`, `class.tutor_ended`), in a new Audit log group "Classes" | Build: the class's history is where they are read |
+| The class list shows archived classes too, with a Status column and filter | Build: as the subject list |
+| Migration 0043 (in this pull request, 0042 being applied locally): a withdrawn row keeps its cause when a role end is set, and a role end moved later brings back only rows of an active class in an open year; a withdrawn row is final for the application | Spec review of the build, must-fix 1: decisions 2 and 10 ("stay ended", "a restore gives none back"); a new file rather than an edit, so that no local database is reset |
+| A class name holds letters, digits, spaces, hyphens and the Uzbek apostrophes only (0043 and `classNameSchema`) | Spec review of the build, should-fix 3: the two folds then see the same white space |
+| The role-end routes answer `role_tutor_taken` and `role_tutor_language`, and the class edit `class_language_tutor`, not the codes of a give | `.claude/rules/web.md`: a code's text is true on every path that sends it (spec review of the build, should-fix 1) |
+| A list column may give `searchFold`; the class name searches with `classNameKey`, so a look-alike Cyrillic letter finds the class | Correction 6 ("the list search of classes compares the same key"); `spellingKey` transliterates instead |
+| The staff record's language refusal names the class of the branch ("Tutor of 7 Oxford, a class of that language"), read by its id, or says "a class of another branch" | Correction 5; spec review of the build, must-fix 2 |
+| `tutorRowsIn` joins `assignments` on the row's own branch | Permission review of the build, must-fix 1 (`.claude/rules/database.md`, reads of `assignments`) |
+
 ## 14 October 2026: the Super Admin's own staff record (task 2.7d)
 
 Plan approved on pull request #87 with corrections 1 to 5; decisions 1 to 9 confirmed there; none marked Look first. Flagged on issue #42.

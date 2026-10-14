@@ -41,7 +41,8 @@ import { Audit } from '../audit/audit.service.js';
 import { Accounts, LoginTakenError } from '../auth/accounts.service.js';
 import { appointedSubjects } from '../access/appointment-subjects.js';
 import { actorsOf } from './actors.js';
-import { notFound } from '../setup/setup-refusals.js';
+import { ROLE_END_TUTOR_REFUSALS } from '../classes/class-tutor-rows.js';
+import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import {
   branchOf,
   findPerson,
@@ -666,7 +667,10 @@ export class StaffAccounts {
   /** The errors of `Assignments` and the last Super Admin rule as coded refusals. */
   private async refusing<T>(work: () => Promise<T>): Promise<T> {
     try {
-      return await work();
+      // A role end moved later brings Tutor rows back (db/migrations/0042):
+      // over a Tutor given meanwhile, or to a class of a language the person
+      // no longer teaches (task 3.1a).
+      return await refusingConstraints(work, ROLE_END_TUTOR_REFUSALS);
     } catch (error) {
       if (error instanceof AssignmentOverlapError) {
         throw refused('role_overlap');
