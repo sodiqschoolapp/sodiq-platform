@@ -32,6 +32,36 @@ export const memberValues = (row: MemberRow) => ({
   leaving_id: row.leavingId ?? null,
 });
 
+/** A group row as a test writes it (task 3.2b); the dates are school dates. */
+export interface GroupMemberRow {
+  branch: string;
+  groupId: string;
+  subjectId: string;
+  studentId: string;
+  from: string;
+  until?: string;
+  ownUntil?: string;
+  cause?: 'placement' | 'automatic';
+  review?: boolean;
+  endedBy?: 'leaving' | null;
+  leavingId?: string | null;
+}
+
+/** The values of a group row: its own end is the day after the year's end by default. */
+export const groupMemberValues = (row: GroupMemberRow) => ({
+  branch_id: row.branch,
+  student_id: row.studentId,
+  group_id: row.groupId,
+  subject_id: row.subjectId,
+  valid_from: row.from,
+  valid_until: row.until ?? row.ownUntil ?? '2027-06-01',
+  own_until: row.ownUntil ?? '2027-06-01',
+  cause: row.cause ?? 'placement',
+  review: row.review ?? false,
+  ended_by: row.endedBy ?? null,
+  leaving_id: row.leavingId ?? null,
+});
+
 /**
  * The students and memberships class membership stands on (task 3.1b),
  * written by the migrator unless a transaction is given. Names are invented.
@@ -138,6 +168,28 @@ export class MembersKit {
       .returning('id')
       .executeTakeFirstOrThrow();
     return written.id;
+  }
+
+  /** A group row (task 3.2b), by the migrator or in the transaction given. */
+  async groupMember(
+    row: GroupMemberRow,
+    db: Database | Transaction = this.migrator,
+  ): Promise<string> {
+    const written = await db
+      .insertInto('group_memberships')
+      .values(groupMemberValues(row))
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    return written.id;
+  }
+
+  /** The stored state of a group row. */
+  groupRowOf(id: string) {
+    return this.migrator
+      .selectFrom('group_memberships')
+      .select(['valid_from', 'valid_until', 'own_until', 'ended_by', 'leaving_id', 'review'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
   }
 
   /** The stored dates of a membership row. */
