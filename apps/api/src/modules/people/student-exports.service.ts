@@ -104,7 +104,9 @@ export class StudentExports {
       // exporter (the Principal, the Academic Vice Principal) fits every row.
       const exporters = access.permitting;
       const scoped = classesInScope(exporters) !== 'all';
-      const classes = scoped ? await studentClasses(transaction, today, null) : new Map<string, string[]>();
+      const classes = scoped
+        ? await studentClasses(transaction, today, null)
+        : new Map<string, string[]>();
       const fields = await transaction
         .selectFrom('students')
         .select([

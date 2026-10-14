@@ -206,8 +206,11 @@ const refused = (code: 'no_academic_year'): ApiException => new ApiException(cod
  * groups of own classes only, `class-scope.ts`). With no class given (the
  * list, a show), only a class-wide reader counts.
  */
-const readerOf = (access: Access, area: string, classIds: readonly string[] = []): string | undefined =>
-  studentReaderOf(access, area, classIds)?.id;
+const readerOf = (
+  access: Access,
+  area: string,
+  classIds: readonly string[] = [],
+): string | undefined => studentReaderOf(access, area, classIds)?.id;
 
 /**
  * The status of a student on a date: the row in force, or before the start

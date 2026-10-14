@@ -131,7 +131,9 @@ export class PermissionGuard implements CanActivate {
       throw new ApiException('permission_denied', 403);
     }
     const assignments =
-      branchId === null ? session.assignments : await this.withClasses(session.assignments, branchId);
+      branchId === null
+        ? session.assignments
+        : await this.withClasses(session.assignments, branchId);
     const allowing = permitting(access, assignments, branchId, this.table);
     const [assignment] = allowing;
     if (assignment === undefined) {
@@ -182,7 +184,10 @@ export class PermissionGuard implements CanActivate {
     );
     return assignments.map((assignment) =>
       tutors.includes(assignment.id)
-        ? Object.freeze({ ...assignment, classIds: Object.freeze(classes.get(assignment.id) ?? []) })
+        ? Object.freeze({
+            ...assignment,
+            classIds: Object.freeze(classes.get(assignment.id) ?? []),
+          })
         : assignment,
     );
   }
