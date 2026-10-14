@@ -334,7 +334,7 @@ How to read the task lines:
   - From 2.4a (pull request #67): the class, groups and tutor columns and the class, group and language filters of the student list (`04`); an active student with no class is allowed only before their start date (`edge/students-classes-groups`, "A student is enrolled in August before classes are formed").
   - From 2.4b-2 (pull request #70): the `groups` and `tutor` columns join `STUDENT_EXPORT_COLUMNS` and lose `exported: false` once they hold data (3.1, 3.2); the "No class" counter (`GET people/students/no-class`) and the "No class" filter read the class memberships instead of counting every active student.
 
-- [ ] **3.1c Class scope for Tutors** (3.1 split in three, pull request #88, decision 1)
+- [x] **3.1c Class scope for Tutors** (3.1 split in three, pull request #88, decision 1)
   - Read: `02`, `edge/people-roles-accounts`, `edge/students-classes-groups`, the plan of pull request #88.
   - Build: class scope for Tutors in the permission guard (`classIds` on the current assignment, from `class_tutors`; `class-scope.ts` beside `subject-scope.ts`); the Tutor's "Classes" menu item and their own classes (a decision of its own: the Tutor menu was decided at 0.8c, pull request #27).
   - Done when: a Tutor reads their own class and nothing of another class, with allow and refuse tests on every route that takes the scope.

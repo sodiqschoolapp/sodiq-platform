@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 14 October 2026: task 3.1c Class scope for Tutors
+
+- Built: the class scope of Tutors (`apps/api/src/modules/access/class-scope.ts`): the permission guard puts on every Tutor assignment of the request's branch the classes of its Tutor and acting rows in force; the table gives the Tutor `classes` `view`, `student_contact` `view` and `students` `export`, each limited to own classes in the route.
+- A Tutor lists and reads own classes and their members, opens the profiles of own class (Contact, Relatives tab), and exports own class's students (Basic columns; other rows left out and counted, `X-Export-Rows-Left-Out`); the student list keeps the whole branch with `opens` per row; the menu has Classes.
+- Left out: the Tutor's timetable, attendance, absence reasons and own lessons (timetable and journal tasks, with `class-scope.ts`); the scope in groups (3.2) and transfers (3.3); Ctrl+K over class records (3.2); whether a Tutor reads a closed year of a class they held (results and journal tasks).
+
+The next sessions must know:
+
+- A route with class scope calls `inClassScope(access.permitting, classIds)`, or `studentReaderOf(access, area, classes)` for a group of a student's fields; `classIds` is filled only by the guard. A route that writes on the strength of the class scope reads the Tutor row again in its own transaction.
+- `exportList` takes `inScope` for a list with a row scope; `ListPage` takes `rowOpens`.
+- `ClassesKit.person` takes `accountId` to give a signed-in account a staff record.
+- The next task is 3.2.
+
 ## 14 October 2026: task 3.1b Class membership
 
 - Built: migration 0045 (`class_memberships`: one class per student per date across branches, the size on every date of a row with scheduled joins and leaves, the class inside the active time at the commit, the archive, grade, size and year dates against members, rows that only shrink with their own end); routes `GET`/`POST api/classes/:id/members` and the withdraw of a planned placement; the create of a student with a class; a leaving, its cancel, undo and replace moving the class rows.

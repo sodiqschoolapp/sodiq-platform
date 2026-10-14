@@ -213,6 +213,28 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 14 October 2026: the class scope of Tutors (task 3.1c)
+
+Plan approved on pull request #90 with corrections 1 to 3; decisions 1 to 15 confirmed there, 1 to 5 marked Look first. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** `classes` `view` for the Tutor, own classes only | Decision 1; `02`, the Tutor row: "Own class or classes" |
+| **Look first.** `student_contact` `view` for the Tutor, students of own classes only | Decision 2; `edge/people-roles-accounts`: Contact readers include "the class Tutor" |
+| **Look first.** `students` `export` for the Tutor, own classes and Basic columns only | Decision 3; `edge`: "Tutors export their own class"; 2.4b-2 decision 1 |
+| **Look first.** The Tutor's menu gains "Classes" | Decision 4; the 3.1c line of the build plan; the menu of 0.8c was the owner's |
+| **Look first.** A Tutor's export drops the rows of the branch outside the scope and counts them (`rowsLeftOut` in the audit entry and the header `X-Export-Rows-Left-Out`); 404 for an id outside the branch first; 403 when no row is left | Decision 5; "A Tutor ticks every student of the branch and exports"; the `leftOut` precedent of 2.2c-1 |
+| **Look first.** The 2.4a test "refuses the record to a Tutor until the class scope" and the 3.1a test "a Tutor is refused the classes" are replaced by the scope tests (`tutor-scope.test.ts`) | Correction 3; the requirement changed with the 3.1c line of the build plan |
+| The permission guard reads the classes of every Tutor assignment of the request's branch from `class_tutors` rows in force at `transactionMoment`, through the branch filter, on every request; not of an archived class or a closed year; `classIds` is in no answer | Decisions 6 and 14, correction 1 |
+| A student is of a class with a class row in force today or planned; a former member is not | Decision 7 |
+| The list rows carry `opens`, decided by the rule of the record (`studentReaderOf` over `studentClasses`) | Decision 8 |
+| 404 for an unknown or another branch's id first, then 403 outside the scope | Decision 9 |
+| An acting Tutor in force has the scope; a planned row gives nothing until it begins | Decision 10 |
+| The Head Teacher and the Senior Head Teacher are class-wide (`CLASS_WIDE_ROLES`) | Decision 11 |
+| The student photo stays readable by every `students` reader; the Tutor's home is unchanged | Decisions 12, 13 |
+| The scope is read at the guard's moment; a route that writes on the strength of the class scope reads the Tutor row again in its own transaction (doc comment of `inClassScope`) | Decision 15, correction 2 |
+| The Tutor's empty Classes page says "You are not the Tutor of a class yet." (decision taken in the build) | `.claude/rules/web.md`: one short line on an empty page |
+
 ## 14 October 2026: class membership (task 3.1b)
 
 Plan approved on pull request #89 with corrections 1 to 4; decisions 1 to 4, 12 and 16 marked Look first and confirmed there. Flagged on issue #42.
