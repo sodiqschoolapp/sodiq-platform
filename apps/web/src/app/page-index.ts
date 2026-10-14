@@ -80,7 +80,10 @@ export function indexedPages(
     ? PEOPLE_PAGES.filter((page) => views(page.area)).map(({ titleKey, to }) => ({ titleKey, to }))
     : [];
   const classes = menuPages.some((page) => page.to === '/classes')
-    ? CLASS_PAGES.filter((page) => views(page.area, page.action)).map(({ titleKey, to }) => ({ titleKey, to }))
+    ? CLASS_PAGES.filter((page) => views(page.area, page.action)).map(({ titleKey, to }) => ({
+        titleKey,
+        to,
+      }))
     : [];
   return [...menuPages, ...setup, ...people, ...classes, ...COMMON_PAGES];
 }
