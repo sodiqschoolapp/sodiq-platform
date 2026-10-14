@@ -33,6 +33,7 @@ const OTKIR: StudentListItem = {
   plannedClass: null,
   tutor: null,
   actingTutor: null,
+  groups: [],
   version: 1,
   opens: true,
 };

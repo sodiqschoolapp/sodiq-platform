@@ -36,9 +36,9 @@ const classesText = (group: SchoolGroup): string =>
 /**
  * The groups of the branch (`05`, Group; task 3.2a): rows, and at phone width
  * the group cards of `05` ("grade, name, number of students, language,
- * teacher, and the same two figures"; the students come with membership in
- * 3.2b, the teacher with the teaching load in 3.4 and the figures with the
- * journal, decision 15). Each reader sees the groups of its scope, as the
+ * teacher, and the same two figures"; the students today from task 3.2b, the
+ * teacher with the teaching load in 3.4 and the figures with the journal,
+ * decision 15). Each reader sees the groups of its scope, as the
  * server decides it (decisions 2 and 11). "New group" is switched off, saying
  * what is missing, without a planned or current year, an active class or an
  * active subject (`edge/academic-year`).
@@ -134,6 +134,14 @@ export function GroupsPage() {
         sortValue: (row) => row.language,
       },
       {
+        // Task 3.2b: the members today, the card's count.
+        key: 'students',
+        header: t('groups.columns.students'),
+        cell: (row) => number.format(row.students),
+        sortValue: (row) => row.students,
+        numeric: true,
+      },
+      {
         key: 'maxSize',
         header: t('groups.columns.maxSize'),
         cell: (row) => number.format(row.maxSize),
@@ -206,6 +214,11 @@ export function GroupsPage() {
       <Link to="/classes" className="text-link">
         {t('groups.classesLink')}
       </Link>
+      {canEdit && (
+        <Link to="/groups/placement" className="text-link">
+          {t('groups.placementLink')}
+        </Link>
+      )}
       {canCreate && newRecord.value === null && (
         <>
           <Button
@@ -296,7 +309,7 @@ export function GroupsPage() {
                               row.grades.map((one) => number.format(one)).join(', '),
                             ],
                             [t('groups.columns.subject'), nameOf(row.subject.names, language)],
-                            [t('groups.students'), t('groups.notYet')],
+                            [t('groups.students'), number.format(row.students)],
                             [
                               t('groups.columns.language'),
                               t(`people.staff.languages.${row.language}`),

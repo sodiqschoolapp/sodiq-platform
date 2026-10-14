@@ -454,8 +454,8 @@ function Deleted() {
 
 /**
  * The Academic block of the record (task 3.1b): the class today, else the one
- * planned with its first day, its Tutor and acting Tutor in force, and its
- * main classroom.
+ * planned with its first day, its groups (task 3.2b), its Tutor and acting
+ * Tutor in force, and its main classroom.
  */
 function Academic({ student }: { student: StudentDetail }) {
   const { t, i18n } = useTranslation();
@@ -472,6 +472,21 @@ function Academic({ student }: { student: StudentDetail }) {
               date: schoolDateText(shown.from, i18n.language),
             })
           : name,
+    ],
+    [
+      t('people.students.groups'),
+      student.groups.length === 0
+        ? '—'
+        : student.groups
+            .map((group) =>
+              group.state === 'planned'
+                ? t('people.students.groupFrom', {
+                    group: group.name,
+                    date: schoolDateText(group.from, i18n.language),
+                  })
+                : group.name,
+            )
+            .join(', '),
     ],
     [
       t('people.students.tutor'),

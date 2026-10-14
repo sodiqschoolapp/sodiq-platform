@@ -1,4 +1,9 @@
 import {
+  automaticPlacementResultSchema,
+  groupMembersSchema,
+  groupPlacementBoardSchema,
+  type AutomaticPlacement,
+  type GroupPlacement,
   groupDetailSchema,
   groupListSchema,
   groupSlotCheckSchema,
@@ -87,3 +92,71 @@ export const restoreGroup = (id: string, confirmMixedLanguage: boolean) =>
       body: { confirmMixedLanguage },
     }),
   ).then((answer) => groupDetailSchema.parse(answer));
+
+/** The Students tab of a group (task 3.2b); a Tutor reads the members of own classes. */
+export const groupMembersQuery = (branchId: string | null, id: string) =>
+  queryOptions({
+    queryKey: [...groupsKey(branchId), id, 'members'],
+    queryFn: async () =>
+      groupMembersSchema.parse(
+        await answerOf(
+          api.GET('/api/groups/{id}/members', {
+            params: { header: branchHeader(), path: { id } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** The bulk placement screen (task 3.2b, decision 14): one subject, one grade or a pair, a date. */
+export const placementBoardQuery = (
+  branchId: string | null,
+  subjectId: string,
+  grades: readonly number[],
+  on: string,
+) =>
+  queryOptions({
+    queryKey: [...groupsKey(branchId), 'placement', subjectId, grades.join(','), on],
+    queryFn: async () =>
+      groupPlacementBoardSchema.parse(
+        await answerOf(
+          api.GET('/api/groups/placement', {
+            params: {
+              header: branchHeader(),
+              query: { subjectId, grades: grades.join(','), on },
+            },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && subjectId !== '' && grades.length > 0 && on !== '',
+  });
+
+export const placeInGroup = (id: string, placement: GroupPlacement) =>
+  answerOf(
+    api.POST('/api/groups/{id}/members', {
+      params: { header: branchHeader(), path: { id } },
+      body: placement,
+    }),
+  ).then((answer) => groupMembersSchema.parse(answer));
+
+export const withdrawGroupMember = (id: string, memberId: string) =>
+  answerOf(
+    api.POST('/api/groups/{id}/members/{memberId}/withdraw', {
+      params: { header: branchHeader(), path: { id, memberId } },
+    }),
+  ).then((answer) => groupMembersSchema.parse(answer));
+
+export const markReviewed = (id: string, memberId: string) =>
+  answerOf(
+    api.POST('/api/groups/{id}/members/{memberId}/reviewed', {
+      params: { header: branchHeader(), path: { id, memberId } },
+    }),
+  ).then((answer) => groupMembersSchema.parse(answer));
+
+export const placeAutomatically = (input: AutomaticPlacement) =>
+  answerOf(
+    api.POST('/api/groups/placement/automatic', {
+      params: { header: branchHeader() },
+      body: input,
+    }),
+  ).then((answer) => automaticPlacementResultSchema.parse(answer));

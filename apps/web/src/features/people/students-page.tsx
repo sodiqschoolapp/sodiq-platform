@@ -1,5 +1,6 @@
 import {
   classDisplayName,
+  classNameKey,
   INSTRUCTION_LANGUAGES,
   listName,
   PERMISSIONS,
@@ -52,6 +53,7 @@ import {
 } from './people-api';
 import { PeopleTabs } from './people-tabs';
 import { PlaceTickedForm } from '@/features/classes/class-members';
+import { PlaceTickedInGroupForm } from '@/features/classes/group-members';
 import { StudentForm } from './student-form';
 import { StudentPanel } from './student-panel';
 import { schoolDateText } from '@/lib/dates';
@@ -140,7 +142,8 @@ const BULK_REFUSALS: ReadonlySet<string> = new Set([
 type NewForm =
   | { kind: 'student' }
   | { kind: 'leaving'; rows: StudentListItem[] }
-  | { kind: 'place'; rows: StudentListItem[] };
+  | { kind: 'place'; rows: StudentListItem[] }
+  | { kind: 'placeGroup'; rows: StudentListItem[] };
 
 /** What a bulk leaving did: how many went through, the names of those refused, and a failure that stopped it. */
 interface Outcome {
@@ -173,6 +176,9 @@ export function StudentsPage() {
   const canCreate = role !== null && permits(PERMISSIONS, role, 'students', 'create');
   // "Put into a class" (task 3.1b, decision 9): the editors of classes; the server decides.
   const canPlace = role !== null && permits(PERMISSIONS, role, 'classes', 'edit');
+  // "Put into a group" (task 3.2b, decision 6): the editors of groups; the server decides.
+  const canPlaceInGroup = role !== null && permits(PERMISSIONS, role, 'groups', 'edit');
+  const [placedInGroup, setPlacedInGroup] = useState<number | null>(null);
   const [placed, setPlaced] = useState<number | null>(null);
   const exporter = useExport<StudentListItem>('students', (row) => row.id);
   const all = useQuery(studentsQuery(branchId));
@@ -250,6 +256,18 @@ export function StudentsPage() {
             },
           ]
         : []),
+      ...(canPlaceInGroup
+        ? [
+            {
+              key: 'placeGroup',
+              label: t('groups.putIntoGroup'),
+              run: (rows: StudentListItem[]) => {
+                setPlacedInGroup(null);
+                startNew({ kind: 'placeGroup', rows });
+              },
+            },
+          ]
+        : []),
       ...(canArchive
         ? [
             {
@@ -263,7 +281,7 @@ export function StudentsPage() {
           ]
         : []),
     ],
-    [canArchive, canPlace, t, startNew],
+    [canArchive, canPlace, canPlaceInGroup, t, startNew],
   );
 
   /**
@@ -406,11 +424,27 @@ export function StudentsPage() {
         },
       },
       {
-        // No group before task 3.2: not a column of the file yet (2.4b-2, decision 6).
+        // `04`: "groups" (task 3.2b): in force today, else the first planned
+        // with its first day, one per subject; a Tutor's rows of other classes
+        // hold none (decision 4).
         key: 'groups',
         header: t('people.students.groups'),
-        cell: () => '—',
-        exported: false,
+        cell: (row) =>
+          row.groups.length === 0
+            ? '—'
+            : row.groups
+                .map((group) =>
+                  group.state === 'planned'
+                    ? t('people.students.groupFrom', {
+                        group: group.name,
+                        date: schoolDateText(group.from, i18n.language),
+                      })
+                    : group.name,
+                )
+                .join(', '),
+        sortValue: (row) => row.groups.map((group) => group.name).join(', ') || null,
+        searchText: (row) => row.groups.map((group) => group.name).join(' '),
+        searchFold: classNameKey,
       },
       {
         // The Tutor of the class in force today, the acting one beside them (task 3.1b).
@@ -481,6 +515,22 @@ export function StudentsPage() {
           value === NO_CLASS
             ? shownClass(row) === null && (row.status === 'active' || row.status === null)
             : shownClass(row)?.id === value,
+      },
+      {
+        // The groups the rows name, current or planned: the server's rule of
+        // the column (task 3.2b).
+        key: 'group',
+        label: t('people.students.groups'),
+        options: [
+          ...new Map(
+            (all.data?.students ?? []).flatMap((row) =>
+              row.groups.map((group) => [group.id, group.name] as const),
+            ),
+          ),
+        ]
+          .sort((a, b) => classNameKey(a[1]).localeCompare(classNameKey(b[1])))
+          .map(([value, label]) => ({ value, label })),
+        matches: (row, value) => row.groups.some((group) => group.id === value),
       },
       {
         key: 'language',
@@ -558,6 +608,34 @@ export function StudentsPage() {
     };
   };
 
+  /** "Put into a group" of the ticked students (task 3.2b), in the side panel of the list. */
+  const placeGroupPanel = (rows: StudentListItem[]): NewRecord => {
+    const title = t('groups.placeTitle', { count: rows.length, n: number.format(rows.length) });
+    return {
+      key: `placeGroup:${rows.map((row) => row.id).join()}`,
+      title,
+      content: ({ close }) => (
+        <div className="grid gap-4">
+          <PlaceTickedInGroupForm
+            key={rows.map((row) => row.id).join()}
+            rows={rows}
+            title={title}
+            onPlaced={(count) => {
+              setPlacedInGroup(count);
+              close();
+            }}
+          />
+          <div>
+            <Button variant="ghost" onClick={close}>
+              {t('people.students.cancel')}
+            </Button>
+          </div>
+        </div>
+      ),
+      ...newRecord.handlers,
+    };
+  };
+
   const leavingPanel = (rows: StudentListItem[]): NewRecord => {
     const title = t('people.students.bulkLeaveTitle', {
       count: rows.length,
@@ -613,6 +691,11 @@ export function StudentsPage() {
       {placed !== null && (
         <p role="status" className="mb-3 text-sm">
           {t('classes.placed', { count: placed, n: number.format(placed) })}
+        </p>
+      )}
+      {placedInGroup !== null && (
+        <p role="status" className="mb-3 text-sm">
+          {t('groups.placed', { count: placedInGroup, n: number.format(placedInGroup) })}
         </p>
       )}
       {outcome !== null && outcome.failure !== null && (
@@ -696,7 +779,9 @@ export function StudentsPage() {
                 }
               : newRecord.value.kind === 'place'
                 ? placePanel(newRecord.value.rows)
-                : leavingPanel(newRecord.value.rows)
+                : newRecord.value.kind === 'placeGroup'
+                  ? placeGroupPanel(newRecord.value.rows)
+                  : leavingPanel(newRecord.value.rows)
         }
         rowOpens={(row) => row.opens}
         panel={(row) => (

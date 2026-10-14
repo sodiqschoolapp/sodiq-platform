@@ -26,6 +26,7 @@ import { BuildingsPage } from '@/features/setup/buildings-page';
 import { DivisionsPage } from '@/features/setup/divisions-page';
 import { SubjectsPage } from '@/features/setup/subjects-page';
 import { ClassesPage } from '@/features/classes/classes-page';
+import { GroupPlacementPage } from '@/features/classes/group-placement-page';
 import { GroupsPage } from '@/features/classes/groups-page';
 import { HeadTeachersPage } from '@/features/people/head-teachers-page';
 import { NeverUsedPage } from '@/features/people/never-used-page';
@@ -261,6 +262,14 @@ const groupsRoute = createRoute({
   component: guarded('groups', GroupsPage),
 });
 
+/** The bulk placement into groups (task 3.2b), for the roles that place. */
+const groupPlacementRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/groups/placement',
+  validateSearch: listSearch,
+  component: guarded('groups', GroupPlacementPage, 'edit'),
+});
+
 /** People (task 2.2a): the entry of the menu item and the staff list. */
 const peopleRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -436,6 +445,7 @@ const routeTree = rootRoute.addChildren([
     subjectsRoute,
     classesRoute,
     groupsRoute,
+    groupPlacementRoute,
     peopleRoute,
     staffRoute,
     studentsRoute,

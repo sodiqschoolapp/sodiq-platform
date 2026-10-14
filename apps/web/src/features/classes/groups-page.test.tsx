@@ -92,6 +92,7 @@ const group = (n: number, fields: Partial<SchoolGroup> = {}): SchoolGroup => ({
     { id: PRINCETON.id, grade: 7, name: 'Princeton', language: 'uz', archived: false },
   ],
   kind: 'across',
+  students: 0,
   archived: false,
   version: 0,
   ...fields,
@@ -190,8 +191,9 @@ describe('the group list', () => {
     setWindowWidth(1440);
     await openList();
     expect(rowsDrawn()).toEqual([
-      ['7-M-1', 'Mathematics', '7 Oxford, 7 Princeton', 'Uzbek', '20', 'Active'],
-      ['7-E-1', 'English', '7 Oxford', 'Uzbek', '20', 'Active'],
+      // Task 3.2b: the students today follow the language (decision 2 of #92).
+      ['7-M-1', 'Mathematics', '7 Oxford, 7 Princeton', 'Uzbek', '0', '20', 'Active'],
+      ['7-E-1', 'English', '7 Oxford', 'Uzbek', '0', '20', 'Active'],
     ]);
   });
 
@@ -215,7 +217,7 @@ describe('the group list', () => {
     expect(rowsDrawn()[0]?.[0]).toBe('7-E-1');
   });
 
-  // `05`, group cards; decision 15: the students, the teacher and the figures show "—".
+  // `05`, group cards; decision 15: the teacher and the figures show "—", the students their count (3.2b).
   it('draws the groups as cards at phone width', async () => {
     setWindowWidth(400);
     await openList();
@@ -239,6 +241,8 @@ describe('the group list', () => {
       'subject',
       'classes',
       'language',
+      // Task 3.2b, decision 2 of #92 (Look first): the card's count.
+      'students',
       'maxSize',
       'status',
     ]);

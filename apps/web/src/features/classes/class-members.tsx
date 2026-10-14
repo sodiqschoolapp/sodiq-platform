@@ -62,7 +62,7 @@ export function placementDay(
  * date: when the default moves (a student ticked, a class chosen), a field
  * still showing the last default takes the new one.
  */
-function useFollowingDefault(binding: FieldBinding, value: string): void {
+export function useFollowingDefault(binding: FieldBinding, value: string): void {
   const last = useRef(binding.value);
   const { value: shown, onChange } = binding;
   useEffect(() => {

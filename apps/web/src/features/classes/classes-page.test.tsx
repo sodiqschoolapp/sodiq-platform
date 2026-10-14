@@ -606,6 +606,7 @@ describe('the students of a class', () => {
     plannedClass: null,
     tutor: null,
     actingTutor: null,
+    groups: [],
     version: 1,
     opens: true,
     ...fields,

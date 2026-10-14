@@ -60,8 +60,10 @@ export const PEOPLE_PAGES: readonly (IndexedPage & { area: string })[] = [
  * Classes page, indexed when the menu of the role has the item and the role
  * views groups.
  */
-export const CLASS_PAGES: readonly (IndexedPage & { area: string })[] = [
+export const CLASS_PAGES: readonly (IndexedPage & { area: string; action?: Action })[] = [
   { titleKey: 'groups.title', to: '/groups', area: 'groups' },
+  // Task 3.2b: the bulk placement screen, for the roles that place.
+  { titleKey: 'groups.placement.title', to: '/groups/placement', area: 'groups', action: 'edit' },
 ];
 
 /** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */
@@ -78,7 +80,7 @@ export function indexedPages(
     ? PEOPLE_PAGES.filter((page) => views(page.area)).map(({ titleKey, to }) => ({ titleKey, to }))
     : [];
   const classes = menuPages.some((page) => page.to === '/classes')
-    ? CLASS_PAGES.filter((page) => views(page.area)).map(({ titleKey, to }) => ({ titleKey, to }))
+    ? CLASS_PAGES.filter((page) => views(page.area, page.action)).map(({ titleKey, to }) => ({ titleKey, to }))
     : [];
   return [...menuPages, ...setup, ...people, ...classes, ...COMMON_PAGES];
 }
