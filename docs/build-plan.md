@@ -327,7 +327,7 @@ How to read the task lines:
   - Build: class as grade plus name (shown as "7 Oxford"), language of instruction, main classroom, maximum size, academic year; the list, the cards and the side panel; Tutors of a class with dates and acting Tutors (`class_tutors`), named by the Academic Vice Principal; the Tutor language rule in the database from the class, the Tutor and the staff record; the "classes" item of the setup checklist.
   - Done when: the Tutor language rule is enforced by the database from all three sides, and a Tutor row follows the end of its role.
 
-- [ ] **3.1b Class membership** (3.1 split in three, pull request #88, decision 1)
+- [x] **3.1b Class membership** (3.1 split in three, pull request #88, decision 1)
   - Read: `05`, `edge/students-classes-groups`, `edge/developer-rules`, the plan of pull request #88.
   - Build: class membership as date ranges that cannot overlap (database constraint); the maximum size as a hard limit counting scheduled joins and leaves, on every path; "Put into a class" (the bulk action of the student list and the class's Students tab); the student count of the class card; the student record's Academic block (class, Tutor, main classroom); the refusal to archive a class with members in force or planned.
   - Done when: the database refuses a student in two classes on one date.
@@ -345,12 +345,13 @@ How to read the task lines:
   - Read: `05`, `06` (Model, Rules), `03` (Slot types and day templates), `edge/timetable` (Structure), `edge/time-dates-calendar`, `edge/students-classes-groups`.
   - Build: groups across classes and splits of one class; membership by date ranges, one group per student per subject per date (database constraint); group language rules; the bulk placement screen; the list of students not yet placed; a group across two grades, lessons only in slots with the same times in both grades' templates.
   - Done when: every student of the classes involved must be in exactly one group before a load row is valid.
+  - From 3.1b (pull request #89, decision 15): `edge/students-classes-groups`, first row, "A class membership cannot be saved without a group for every split or group subject of that class, from the same date", on every path that writes a class membership: "Put into a class" (`POST api/classes/:id/members`), the create of a student with a class, the cancel and the undo of a leaving and the replace of a scheduled leaving, which write rows back (`class_memberships`, causes `cancel` and `undo`).
 
 - [ ] **3.3 Movements**
   - Read: `04` (Movements), `edge/students-classes-groups`.
   - Build: class transfer and group transfer with an effective date; leave and restore; scheduled moves; confirmation when moving between an Uzbek and a Russian class; the History tab. The effect inside journals is built in 8.6.
   - Done when: history shows each move with dates and a move into the past is handled as the spec says.
-  - From 2.4a (pull request #67): leaving takes the student out of classes and groups from the date and a return places them in a class (2.4b builds the status side); the move to another branch (`edge/students-classes-groups`, "A student moves to another branch": released by the sending Academic Vice Principal, accepted by the receiving one, both by the Super Admin) as one update of `students.branch_id` through a guarded function, the keys of 0032 carrying the child rows (decision 15); the Super Admin's merge of two student records, the older UID kept (`edge`: "The Super Admin can merge two records").
+  - From 2.4a (pull request #67): leaving takes the student out of groups from the date (3.1b, pull request #89, decision 1, built it for classes: the cut, and the rows given back by a cancel, an undo or a replace) and a return places them in a class (2.4b builds the status side); the move to another branch (`edge/students-classes-groups`, "A student moves to another branch": released by the sending Academic Vice Principal, accepted by the receiving one, both by the Super Admin) as one update of `students.branch_id` through a guarded function, the keys of 0032 carrying the child rows (decision 15); from 3.1b (pull request #89, decision 16, correction 3): the class rows keep their class's branch and their student key has no branch, so the release cuts the memberships of the old branch at the move date (the overlap constraint holds across branches and refuses the receiving class otherwise), and the History tab and the Academic block read the old branch's rows past the row filter (ids, class names and dates only), a **Look first** decision there; the Super Admin's merge of two student records, the older UID kept (`edge`: "The Super Admin can merge two records").
   - From 2.4b-1 (pull request #68): a leaving cancels the student's scheduled moves (`edge`: "scheduled moves are cancelled"); a return places the student in a class from the return date (`04`, Movements) and the Super Admin's restore of a graduated student with a class (`edge`: "restores the student to active with a class and a reason"), each re-checking the class rules then (`.claude/rules/database.md`, a row back in service is checked again); the History tab draws two adjacent active rows (an undo, a cancel) as one stretch.
 
 - [ ] **3.4 Teaching load**
@@ -651,6 +652,7 @@ How to read the task lines:
   - Build: "Close the year" with its checklist; stored year results with class grade and name, subject and teacher as they were.
   - Done when: a renamed class still prints last year's name on last year's results.
   - From 2.4b-1 (pull request #68): `student_statuses_closed_year_guard` refuses a status row dated in a closed year; the graduation writes its rows (cause `graduation`) before the year's status becomes `closed`, in the same transaction (`04`, Movements: "marked graduated when the year closes").
+  - From 3.1b (pull request #89): `class_memberships_active` (0045) refuses at the commit a class row outside the active time; a class row ends on the day after its year's end, so a graduation that begins inside the year also ends the class rows from its first day, in the same transaction (`ended_by` lists `leaving` and `withdrawn` only: a cause of its own is a migration of that task, under the only-shrink trigger).
 
 - [ ] **9.5b Rollover**
   - Read: `04` (Movements), `edge/academic-year`.

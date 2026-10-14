@@ -320,6 +320,8 @@ test('an Academic Vice Principal adds a student and is refused a second with the
     await form.getByLabel(texts.birthDate, { exact: true }).fill('2014-03-02');
     await form.getByLabel(texts.grade, { exact: true }).selectOption('7');
     await form.getByLabel(texts.startsOn, { exact: true }).fill(today);
+    // Task 3.1b, decision 2: a student who starts today or earlier joins a class.
+    await form.getByLabel(texts.class, { exact: true }).selectOption({ index: 1 });
     await form.getByLabel(texts.contractNumber, { exact: true }).fill(contract);
     await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(today);
     // Task 2.5a: a student is saved with a relative.
@@ -411,6 +413,8 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
     await form.getByLabel(texts.birthDate, { exact: true }).fill('2013-06-12');
     await form.getByLabel(texts.grade, { exact: true }).selectOption('8');
     await form.getByLabel(texts.startsOn, { exact: true }).fill(daysAgo(60));
+    // Task 3.1b, decision 2: a student who starts today or earlier joins a class.
+    await form.getByLabel(texts.class, { exact: true }).selectOption({ index: 1 });
     await form.getByLabel(texts.contractNumber, { exact: true }).fill(contract);
     await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(daysAgo(61));
     // Task 2.5a: a student is saved with a relative.
@@ -554,7 +558,13 @@ test('an Academic Vice Principal exports students with their documents, adds a p
       .toISOString()
       .slice(0, 10);
   };
-  async function add(uid: string, lastName: string, contract: string, consent: string | null) {
+  async function add(
+    uid: string,
+    lastName: string,
+    contract: string,
+    consent: string | null,
+    start: string,
+  ) {
     await page.getByRole('button', { name: texts.add, exact: true }).first().click();
     const form = page.getByRole('form', { name: texts.newTitle });
     await form.getByLabel(texts.uid, { exact: true }).fill(uid);
@@ -563,7 +573,12 @@ test('an Academic Vice Principal exports students with their documents, adds a p
     await form.getByLabel(texts.sex, { exact: true }).selectOption('female');
     await form.getByLabel(texts.birthDate, { exact: true }).fill('2013-07-14');
     await form.getByLabel(texts.grade, { exact: true }).selectOption('8');
-    await form.getByLabel(texts.startsOn, { exact: true }).fill(daysAgo(40));
+    await form.getByLabel(texts.startsOn, { exact: true }).fill(start);
+    // Task 3.1b, decision 2: one who starts today or earlier joins a class;
+    // one who starts later may wait for it, and is counted under "No class".
+    if (start <= today) {
+      await form.getByLabel(texts.class, { exact: true }).selectOption({ index: 1 });
+    }
     await form.getByLabel(texts.jshshir, { exact: true }).fill(`3140713${uid}`);
     if (consent !== null) {
       await form.getByLabel(texts.consentSignedOn, { exact: true }).fill(consent);
@@ -580,8 +595,8 @@ test('an Academic Vice Principal exports students with their documents, adds a p
     await question.getByRole('button', { name: texts.saveAnyway, exact: true }).click();
     await expect(page.getByRole('form', { name: texts.newTitle })).toHaveCount(0);
   }
-  await add('9997001', 'Ergasheva', 'E2E-EXPORT-1', null);
-  await add('9997002', 'Musayeva', 'E2E-EXPORT-2', daysAgo(45));
+  await add('9997001', 'Ergasheva', 'E2E-EXPORT-1', null, daysAgo(40));
+  await add('9997002', 'Musayeva', 'E2E-EXPORT-2', daysAgo(45), daysAgo(-10));
   await expect(page.locator('tbody tr')).toHaveCount(2);
 
   // Answer 23: the active students without consent.
@@ -605,7 +620,7 @@ test('an Academic Vice Principal exports students with their documents, adds a p
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: /^Export 1 ticked$/ }).click();
   expect((await answer).headers()['x-export-columns']).toBe(
-    'uid,name,class,status,birthDate,documentType,documentNumber,jshshir,address,region',
+    'uid,name,class,tutor,status,birthDate,documentType,documentNumber,jshshir,address,region',
   );
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/^Students-\d{4}-\d{2}-\d{2}\.xlsx$/);
@@ -630,11 +645,13 @@ test('an Academic Vice Principal exports students with their documents, adds a p
   // The counter of the home page, and the rows its link opens.
   await page.goto('/');
   const counter = page.getByRole('region', { name: en.home.noClass.title });
-  await expect(counter.locator('[data-count]')).toHaveText('2');
+  // Task 3.1b: the student in a class is not counted; the one who starts later without one is.
+  await expect(counter.locator('[data-count]')).toHaveText('1');
   await exportScreenshot(page, 'home');
   await counter.getByRole('link', { name: en.home.noClass.link }).click();
   await expect(heading(page, texts.title)).toBeVisible();
-  await expect(page.locator('tbody tr')).toHaveCount(2);
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await expect(page.locator('tbody tr')).toContainText('Musayeva Kamola');
 });
 
 // Task 2.5a, pull request #72 (docs/spec/04-people.md, Close relatives;
@@ -674,6 +691,8 @@ test('an Academic Vice Principal links one relative to students of two branches'
     await form.getByLabel(texts.birthDate, { exact: true }).fill('2014-06-02');
     await form.getByLabel(texts.grade, { exact: true }).selectOption('7');
     await form.getByLabel(texts.startsOn, { exact: true }).fill(today);
+    // Task 3.1b, decision 2: a student who starts today or earlier joins a class.
+    await form.getByLabel(texts.class, { exact: true }).selectOption({ index: 1 });
     await form.getByLabel(texts.contractNumber, { exact: true }).fill(contract);
     await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(today);
     // The phone typed first (04, Adding a relative).
@@ -757,6 +776,8 @@ test('the number of a relative of another branch gets a new owner, and that bran
   await form.getByLabel(texts.birthDate, { exact: true }).fill('2014-06-02');
   await form.getByLabel(texts.grade, { exact: true }).selectOption('7');
   await form.getByLabel(texts.startsOn, { exact: true }).fill(today);
+  // Task 3.1b, decision 2: a student who starts today or earlier joins a class.
+  await form.getByLabel(texts.class, { exact: true }).selectOption({ index: 1 });
   await form.getByLabel(texts.contractNumber, { exact: true }).fill('E2E-OWNERS-2');
   await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(today);
   await form.getByLabel(relatives.phone, { exact: true }).fill('+998 90 555 01 37');

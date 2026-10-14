@@ -77,3 +77,66 @@ test('an Academic Vice Principal creates a class and gives it a Tutor of its lan
   await expect(row).toContainText('Salimova Zuhra');
   await screenshot(page, 'class-with-tutor');
 });
+
+// Task 3.1b, pull request #89 (edge/students-classes-groups, "A student is
+// enrolled in August before classes are formed"; "A class is full"): an
+// Academic Vice Principal puts two students with no class into 7 Oxford from
+// today; the class shows them and its count, and the student list shows the
+// class. With SCREENSHOTS=1 the tab and the list are saved for the report
+// under docs/screens/3.1b/. All names are invented.
+const MEMBER_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/3.1b');
+
+async function memberScreenshot(page: Page, name: string): Promise<void> {
+  if (process.env.SCREENSHOTS !== '1') {
+    return;
+  }
+  await page.waitForTimeout(400);
+  mkdirSync(MEMBER_SCREENS, { recursive: true });
+  await page.screenshot({ path: path.join(MEMBER_SCREENS, `${name}.png`) });
+}
+
+test('an Academic Vice Principal puts two students into a class', async ({ page }) => {
+  const account = accountOf('members');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/classes');
+  await expect(heading(page, en.classes.title)).toBeVisible();
+  const texts = en.classes;
+  const row = page.getByRole('row').filter({ hasText: '7 Oxford' });
+  await row.getByRole('button', { name: '7 Oxford' }).click();
+  const panel = page.getByRole('complementary', { name: '7 Oxford' });
+  await expect(panel.getByText(texts.noMembers)).toBeVisible();
+  await panel.getByRole('button', { name: texts.putIntoClass, exact: true }).click();
+  const form = panel.getByRole('form', {
+    name: texts.putIntoNamed.replace('{{class}}', '7 Oxford'),
+  });
+  await form.getByRole('checkbox', { name: 'Qosimova Madina (9999701)' }).check();
+  await form.getByRole('checkbox', { name: 'Nurmatov Javohir (9999702)' }).check();
+  await form.getByRole('button', { name: en.form.save, exact: true }).click();
+
+  await expect(panel.getByText('Qosimova Madina')).toBeVisible();
+  await expect(panel.getByText('Nurmatov Javohir')).toBeVisible();
+  await expect(panel.getByText(texts.freeToday.replace('{{n}}', '23'))).toBeVisible();
+  // The count of the list (`05`: "the student count of the class card").
+  const counts = await row.locator('td').allInnerTexts();
+  expect(counts).toContain('2');
+  await memberScreenshot(page, 'class-students');
+
+  await page.goto('/people/students');
+  await expect(heading(page, en.people.students.title)).toBeVisible();
+  for (const name of ['Qosimova Madina', 'Nurmatov Javohir']) {
+    await expect(page.locator('tbody tr').filter({ hasText: name })).toContainText('7 Oxford');
+  }
+  await memberScreenshot(page, 'student-list');
+});

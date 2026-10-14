@@ -70,8 +70,8 @@ const typedName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) =>
 
 /**
  * The "No class" option of the class filter (edge: "They appear with class
- * \"—\", under a \"No class\" filter"): no class today and none planned, the
- * rule of the server's counter (task 3.1b).
+ * \"—\", under a \"No class\" filter"): active, with no class today and none
+ * planned, the rule of the server's counter (task 3.1b).
  */
 const NO_CLASS = 'none';
 
@@ -475,8 +475,12 @@ export function StudentsPage() {
             .map((one) => ({ value: one.id, label: classDisplayName(one.grade, one.name) })),
           { value: NO_CLASS, label: t('people.students.noClass') },
         ],
+        // "No class" is the server's rule of the counter whose link opens it:
+        // active today (before the start date included), no class now or planned.
         matches: (row, value) =>
-          value === NO_CLASS ? shownClass(row) === null : shownClass(row)?.id === value,
+          value === NO_CLASS
+            ? shownClass(row) === null && (row.status === 'active' || row.status === null)
+            : shownClass(row)?.id === value,
       },
       {
         key: 'language',
