@@ -344,7 +344,7 @@ export {
 } from './setup.js';
 export { gradeRanges } from './grades.js';
 export { phoneDigits, phoneText } from './phones.js';
-export { listName } from './names.js';
+export { listName, searchWords } from './names.js';
 export {
   CALENDAR_ENTRY_KINDS,
   CALENDAR_ENTRY_NAME_MAX_LENGTH,
@@ -939,3 +939,26 @@ export {
   type StudentGroup,
   type UnplacedStudent,
 } from './groups.js';
+export {
+  classFoundSchema,
+  classSearchSchema,
+  groupFoundSchema,
+  groupSearchSchema,
+  limited,
+  SEARCH_LIMIT,
+  SEARCH_QUERY_MAX_LENGTH,
+  searchQuerySchema,
+  staffFoundSchema,
+  staffSearchSchema,
+  studentFoundSchema,
+  studentSearchSchema,
+  type ClassFound,
+  type ClassSearch,
+  type GroupFound,
+  type GroupSearch,
+  type SearchQuery,
+  type StaffFound,
+  type StaffSearch,
+  type StudentFound,
+  type StudentSearch,
+} from './search.js';

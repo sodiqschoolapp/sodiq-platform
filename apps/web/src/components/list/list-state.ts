@@ -1,4 +1,4 @@
-import { spellingKey } from '@sodiq/shared';
+import { searchWords, spellingKey } from '@sodiq/shared';
 import type { ReactNode } from 'react';
 
 /** One column of a list. The texts are given translated. */
@@ -137,14 +137,6 @@ export function nextSort(current: Sort | null, key: string): string | undefined 
  */
 export function searchKey(value: string): string {
   return spellingKey(value);
-}
-
-/** Null when nothing is typed; otherwise the words a row must all contain. */
-export function searchWords(q: string | undefined): string[] | null {
-  const words = searchKey(q ?? '')
-    .split(/\s+/)
-    .filter((word) => word !== '');
-  return words.length === 0 ? null : words;
 }
 
 /**

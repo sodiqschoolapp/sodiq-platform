@@ -14,6 +14,7 @@ import { PersonalDataController } from './personal-data.controller.js';
 import { PersonalData } from './personal-data.service.js';
 import { PHOTO_STORE, photoStoreOf } from './photo-store.js';
 import { RelativeWrites } from './relative-writes.js';
+import { PeopleSearchController } from './search.controller.js';
 import { RelativesController } from './relatives.controller.js';
 import { Relatives } from './relatives.service.js';
 import { StaffAccountsController } from './staff-accounts.controller.js';
@@ -22,10 +23,12 @@ import { OwnPhotoController } from './own-photo.controller.js';
 import { StaffPhotosController } from './staff-photos.controller.js';
 import { StaffPhotos } from './staff-photos.service.js';
 import { StaffController } from './staff.controller.js';
+import { StaffSearch } from './staff-search.js';
 import { Staff } from './staff.service.js';
 import { StudentExports } from './student-exports.service.js';
 import { StudentPhotosController } from './student-photos.controller.js';
 import { StudentPhotos } from './student-photos.service.js';
+import { StudentSearch } from './student-search.js';
 import { StudentStatusesController } from './student-statuses.controller.js';
 import { StudentStatuses } from './student-statuses.service.js';
 import { StudentsController } from './students.controller.js';
@@ -39,7 +42,7 @@ import { Vacancies } from './vacancies.service.js';
  * the account section of a record (task 2.3a), the Head Teacher appointments
  * (task 2.3b-1), the sign-in access of an account (task 2.3c-1), student
  * records (task 2.4a), their leaving, return and delete (task 2.4b-1), their
- * export and photos (task 2.4b-2), their close relatives (task 2.5a), the personal data report (task 2.6b).
+ * export and photos (task 2.4b-2), their close relatives (task 2.5a), the personal data report (task 2.6b), Ctrl+K over students and staff (task 3.2d).
  */
 @Module({
   imports: [AccessModule, AuthModule, NotificationsModule],
@@ -57,6 +60,7 @@ import { Vacancies } from './vacancies.service.js';
     StudentPhotosController,
     RelativesController,
     PersonalDataController,
+    PeopleSearchController,
   ],
   providers: [
     PersonalData,
@@ -73,6 +77,8 @@ import { Vacancies } from './vacancies.service.js';
     StudentPhotos,
     RelativeWrites,
     Relatives,
+    StudentSearch,
+    StaffSearch,
     {
       provide: PHOTO_STORE,
       useFactory: (config: AppConfig) => photoStoreOf(config.photos),

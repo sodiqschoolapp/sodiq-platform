@@ -1,4 +1,4 @@
-import { PERMISSIONS, permits } from '@sodiq/shared';
+import { PERMISSIONS, permits, searchWords } from '@sodiq/shared';
 import { useNavigate } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { ChevronRightIcon, SearchIcon, CloseIcon } from '@/components/icons';
@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { indexedPages, type IndexedPage } from '@/app/page-index';
 import { useMenuPages } from '@/features/access/use-menu';
 import { useView } from '@/features/access/use-view';
-import { searchKey, searchWords } from '@/components/list/list-state';
+import { searchKey } from '@/components/list/list-state';
 import { Button } from '@/components/ui/button';
 import { FIELD } from '@/components/ui/control';
 import {

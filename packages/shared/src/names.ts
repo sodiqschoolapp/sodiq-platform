@@ -95,6 +95,19 @@ export function spellingKey(text: string): string {
 }
 
 /**
+ * The words a search must all find, folded by `spellingKey`; `null` when
+ * nothing is typed. One split for the lists, Ctrl+K and the search routes of
+ * the API (task 3.2d, moved from the web's list state), so the server and
+ * the screen find the same records.
+ */
+export function searchWords(typed: string | undefined): string[] | null {
+  const words = spellingKey(typed ?? '')
+    .split(/\s+/)
+    .filter((word) => word !== '');
+  return words.length === 0 ? null : words;
+}
+
+/**
  * A person's name in a list, an export or a picker: surname first, as on
  * school registers (owner's answer to finding 27 of the hand test of
  * 13 October 2026). Titles of panels and pages, the own name and sentences
