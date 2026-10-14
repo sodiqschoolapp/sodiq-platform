@@ -47,6 +47,7 @@ import {
   findPerson,
   leftForGood,
   neverUsedAccounts,
+  periodStarts,
   readingBranches,
   type Person,
 } from './staff-account-records.js';
@@ -175,6 +176,125 @@ export class StaffAccounts {
         };
       },
     );
+  }
+
+  /**
+   * Links the record to the account of the session (task 2.7d; issue #39,
+   * answer 37): the Super Admin whose account has no staff record, the first
+   * one made by `auth:first-account`, gives it the record made the ordinary
+   * way. Only the session's account is linked, never one named in the
+   * request (decision 1). The link is written once (`staff_account_id_key`
+   * and `staff_account_link_guard`, 0024). Lock order as `setStatus`: the
+   * Super Admin count, then the record.
+   */
+  async linkOwn(access: Access, id: string, requestId: string): Promise<StaffAccount> {
+    const branchId = branchOf(access);
+    const superAdmin = this.actingAs(access);
+    return this.refusing(async () =>
+      this.transactions.run(
+        await readingBranches(this.transactions, access),
+        async (transaction) => {
+          // The 404 before any lock or write (`.claude/rules/api.md`).
+          await findPerson(transaction, id, branchId, false);
+          await lockSuperAdmins(transaction);
+          const person = await findPerson(transaction, id, branchId, true);
+          const refusal = await this.ownLinkRefusal(transaction, access, person);
+          if (refusal !== null) {
+            throw refused(refusal);
+          }
+          const now = await transactionMoment(transaction);
+          // The refusals above leave nothing this link could take out of the
+          // count; kept as the guard every change of a Super Admin runs in.
+          await keepingASuperAdmin(transaction, now, () =>
+            transaction
+              .updateTable('staff')
+              .set({ account_id: access.accountId })
+              .where('id', '=', id)
+              .execute(),
+          );
+          const account = await transaction
+            .selectFrom('accounts')
+            .select('login')
+            .where('id', '=', access.accountId)
+            .executeTakeFirstOrThrow();
+          // School-wide, as `account.create` (decision 7).
+          await this.audit.record(transaction, {
+            branchId: null,
+            actorId: access.accountId,
+            assignmentId: superAdmin,
+            personId: id,
+            action: 'account.linked',
+            record: { type: 'account', id: access.accountId },
+            newValue: { login: account.login, staffId: id },
+            requestId,
+          });
+          return this.sectionOf(
+            transaction,
+            access,
+            { ...person, accountId: access.accountId },
+            branchId,
+          );
+        },
+      ),
+    );
+  }
+
+  /**
+   * Why the record may not be linked to the account of the session, or
+   * `null`: the one rule of the route and of `canLinkOwn` (correction 3 of
+   * the review of #87), for a reader with a current Super Admin assignment
+   * (the route refuses any other with 403 first). Not for a record with an account, an account with a record (read
+   * through `own_staff_record`, which no branch hides), an inactive or left
+   * status in force or planned (decision 3, correction 2), or an employment
+   * that begins after today (decision 9).
+   */
+  private async ownLinkRefusal(
+    transaction: Transaction,
+    access: Access,
+    person: Person,
+  ): Promise<'account_exists' | 'own_record_exists' | 'own_link_status' | null> {
+    if (person.accountId !== null) {
+      return 'account_exists';
+    }
+    const own = await sql<{ staff_id: string }>`
+      select staff_id from own_staff_record(${access.accountId}::uuid)
+    `.execute(transaction);
+    if (own.rows.length > 0) {
+      return 'own_record_exists';
+    }
+    const now = await transactionMoment(transaction);
+    // As `super_admin_active_count` (0027) reads them: a row not taken back
+    // that is in force today or planned, today in the main branch's zone.
+    const status = await transaction
+      .selectFrom('staff_statuses')
+      .innerJoin('staff_branches', (join) =>
+        join
+          .onRef('staff_branches.staff_id', '=', 'staff_statuses.staff_id')
+          .on('staff_branches.is_main', '=', true),
+      )
+      .innerJoin('branches', 'branches.id', 'staff_branches.branch_id')
+      .select(['staff_statuses.valid_until', 'branches.time_zone'])
+      .where('staff_statuses.staff_id', '=', person.id)
+      .where('staff_statuses.status', 'in', ['inactive', 'left'])
+      // One taken back before it began was never in force.
+      .where((builder) =>
+        builder.or([
+          builder('staff_statuses.valid_until', 'is', null),
+          builder('staff_statuses.valid_until', '>', builder.ref('staff_statuses.valid_from')),
+        ]),
+      )
+      .execute();
+    const blocked = status.some(
+      (row) => row.valid_until === null || row.valid_until > schoolDateOf(now, row.time_zone),
+    );
+    if (blocked) {
+      return 'own_link_status';
+    }
+    const start = (await periodStarts(transaction, [person.id])).get(person.id);
+    if (start !== undefined && start > now) {
+      return 'own_link_status';
+    }
+    return null;
   }
 
   /**
@@ -672,7 +792,9 @@ export class StaffAccounts {
     const left = await leftForGood(transaction, person.id);
     const canEdit = superAdminOf(access) !== undefined;
     if (person.accountId === null) {
-      return { account: null, canEdit, left, today };
+      const canLinkOwn =
+        canEdit && (await this.ownLinkRefusal(transaction, access, person)) === null;
+      return { account: null, canEdit, canLinkOwn, left, today };
     }
     const account = await transaction
       .selectFrom('accounts')
@@ -762,6 +884,7 @@ export class StaffAccounts {
         roles,
       },
       canEdit,
+      canLinkOwn: false,
       left,
       today,
     };

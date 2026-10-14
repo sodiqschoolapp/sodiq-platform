@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 14 October 2026: task 2.7d The Super Admin's own staff record
+
+- Built: `POST /api/people/staff/:id/account/own` (Super Admin, `accounts` `create`) links a record of the branch to the account of the session, once, with the audit entry `account.linked`; it refuses a record with an account (`account_exists`), an account with a record (`own_record_exists`), and an inactive or left status in force or planned or an employment that begins later (`own_link_status`).
+- The account section answers `canLinkOwn` from the same rule and offers "Link to my account" after a confirmation; the menu, "Given by" and "Locked by" then show the name (by the branch rule). The Account page tells a Super Admin without a record, in one line, where to make one.
+- Browser test at the end of the years test; screenshots in `docs/screens/2.7d/`.
+- Left out: an unlink or a move of a link (none asked; `staff_account_link_guard` keeps a link fixed); a same-moment test of a link against another Super Admin's status change that would leave none (the count lock serialises them; `own_status` is tested).
+
+The next sessions must know:
+
+- `whileHeld` in `staff-accounts.test.ts` waits for a lock of this database only and fails when the route never waited.
+- Phase 2 is done; the next task is 3.1.
+
 ## 14 October 2026: task 2.7c-3 Rooms "By floor", the Branches list and the category of every role
 
 - Built: the Branches list for the Super Admin (`GET /api/setup/branches`, `/setup/branches`): name, address, weekdays, buildings, rooms; opening a branch switches to it; "New branch" moved there from the Branch page.

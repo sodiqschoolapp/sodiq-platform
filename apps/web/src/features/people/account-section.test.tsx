@@ -14,6 +14,7 @@ import { edit } from '@/testing/panel';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
+import { SESSION_KEY } from '@/features/auth/session';
 import { accountAccessKey } from './people-api';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
@@ -147,12 +148,19 @@ const HEAD_TEACHER: AccountRole = {
 const withAccount = (fields: Partial<StaffAccount> = {}): StaffAccount => ({
   account: ACCOUNT,
   canEdit: true,
+  canLinkOwn: false,
   left: false,
   today: '2026-10-10',
   ...fields,
 });
 
-const noAccount: StaffAccount = { account: null, canEdit: true, left: false, today: '2026-10-10' };
+const noAccount: StaffAccount = {
+  account: null,
+  canEdit: true,
+  canLinkOwn: false,
+  left: false,
+  today: '2026-10-10',
+};
 
 function open(
   role: Role,
@@ -190,6 +198,66 @@ async function section(language: 'en' | 'ru' | 'uz' = 'en') {
 }
 
 describe('the account section', () => {
+  // Task 2.7d: a Super Admin without a staff record links this one to their account.
+  describe('the link to the own account', () => {
+    it('is offered only when the server answers canLinkOwn', async () => {
+      open('super_admin', {
+        [`GET /api/people/staff/${LOLA.id}/account`]: () => json(noAccount),
+      });
+      const found = await section();
+      await within(found).findByRole('button', { name: en.people.account.create });
+      expect(within(found).queryByRole('button', { name: en.people.account.linkOwn })).toBeNull();
+    });
+
+    it('asks first, naming the record and the login, then links and reads the session again', async () => {
+      let linked = false;
+      const calls = open('super_admin', {
+        [`GET /api/people/staff/${LOLA.id}/account`]: () =>
+          json(
+            linked
+              ? withAccount({ account: { ...ACCOUNT, login: 'm.ergasheva', roles: [] } })
+              : { ...noAccount, canLinkOwn: true },
+          ),
+        [`POST /api/people/staff/${LOLA.id}/account/own`]: () => {
+          linked = true;
+          return json(withAccount({ account: { ...ACCOUNT, login: 'm.ergasheva', roles: [] } }));
+        },
+      });
+      const found = await section();
+      const invalidated = vi.spyOn(shell.queryClient, 'invalidateQueries');
+      fireEvent.click(
+        await within(found).findByRole('button', { name: en.people.account.linkOwn }),
+      );
+      const dialog = await screen.findByRole('alertdialog');
+      expect(within(dialog).getByText(en.people.account.linkOwnText)).toBeDefined();
+      expect(within(dialog).getByText('Lola Tursunova: account m.ergasheva')).toBeDefined();
+      expect(calls.some((call) => call.route.endsWith('/account/own'))).toBe(false);
+      fireEvent.click(within(dialog).getByRole('button', { name: en.people.account.linkOwn }));
+      await within(found).findByText('m.ergasheva');
+      expect(calls.filter((call) => call.route.endsWith('/account/own'))).toHaveLength(1);
+      await waitFor(() => {
+        expect(invalidated.mock.calls.map(([filters]) => filters?.queryKey)).toContainEqual(
+          SESSION_KEY,
+        );
+      });
+    });
+
+    it('shows the refusal of the server', async () => {
+      open('super_admin', {
+        [`GET /api/people/staff/${LOLA.id}/account`]: () =>
+          json({ ...noAccount, canLinkOwn: true }),
+        [`POST /api/people/staff/${LOLA.id}/account/own`]: () => refusal('own_record_exists', 409),
+      });
+      const found = await section();
+      fireEvent.click(
+        await within(found).findByRole('button', { name: en.people.account.linkOwn }),
+      );
+      const dialog = await screen.findByRole('alertdialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: en.people.account.linkOwn }));
+      expect(await within(found).findByText(en.errors.own_record_exists)).toBeDefined();
+    });
+  });
+
   it('creates the account with the suggested login and shows the slip once', async () => {
     let created = false;
     const calls = open('super_admin', {

@@ -161,6 +161,11 @@ export const staffAccountSchema = z.object({
    * Super Admin (decided by the server from every current assignment).
    */
   canEdit: z.boolean(),
+  /**
+   * Whether the reader may link the record to their own account (task 2.7d):
+   * true exactly when `POST people/staff/:id/account/own` would not refuse.
+   */
+  canLinkOwn: z.boolean(),
   /** The person has left for good: no account and no role is given (decision 12). */
   left: z.boolean(),
   /** Today in the time zone of the branch of the request: the first date a role may be given or ended. */

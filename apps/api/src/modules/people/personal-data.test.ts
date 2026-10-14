@@ -495,6 +495,13 @@ describe('the personal data report', () => {
         person: staffId,
         record: { type: 'account', id: accountId },
       });
+      // Task 2.7d: the link of a record to the own account, school-wide.
+      await entry({
+        branch: null,
+        action: 'account.linked',
+        person: staffId,
+        record: { type: 'account', id: accountId },
+      });
       await entry({
         branch: null,
         action: 'relative.same_person',
@@ -542,6 +549,7 @@ describe('the personal data report', () => {
         expect.arrayContaining([
           'staff.edit',
           'account.locked',
+          'account.linked',
           'assignment.given',
           'auth.sign_in',
           'relative.same_person',

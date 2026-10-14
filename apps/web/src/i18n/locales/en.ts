@@ -254,6 +254,10 @@ export const en = {
       'The floor is archived. A room on an archived floor can only be moved: choose an active floor, or restore the floor first.',
     archived_record: 'It is archived, or the building it is in is. Restore first, then change it.',
     account_exists: 'This person already has an account. Reload the page to see it.',
+    own_record_exists:
+      'Your account is already linked to a staff record. One account has one record.',
+    own_link_status:
+      'This record cannot be linked now: it is inactive, has left, has such a status planned, or the person starts later.',
     login_taken: 'This login is taken. Logins are never given twice: choose another one.',
     no_account: 'This person has no account yet. Create the account first, then give roles.',
     staff_left: 'This person has left the school. Change the status to active first.',
@@ -1546,6 +1550,10 @@ export const en = {
       changeSubjects: 'Change subjects',
       changeSubjectsOf: 'Change the subjects of {{role}}',
       create: 'Create account',
+      linkOwn: 'Link to my account',
+      linkOwnTitle: 'Link this record to your account?',
+      linkOwnText: 'The link cannot be undone. Your name and photo will come from this record.',
+      linkOwnNames: '{{name}}: account {{login}}',
       give: 'Give a role',
       subjectsFrom: 'New subjects from',
       subjectsFailed: 'The subjects could not be loaded.',
@@ -1868,6 +1876,7 @@ export const en = {
       },
       account: {
         create: 'Account created',
+        linked: 'Staff record linked to own account',
         language_changed: 'Language changed',
         locked: 'Account locked',
         unlocked: 'Account unlocked',
@@ -2038,6 +2047,8 @@ export const en = {
   account: {
     title: 'Account',
     photoTitle: 'Photo',
+    photoNoRecord:
+      'No staff record yet: create yours under People, Staff and choose Link to my account.',
     photoAdd: 'Add photo',
     photoChange: 'Change photo',
     photoRemove: 'Remove photo',

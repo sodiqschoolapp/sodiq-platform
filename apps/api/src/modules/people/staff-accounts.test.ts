@@ -1,8 +1,10 @@
 import {
+  accountAccessSchema,
   BRANCH_HEADER,
   branchesWithoutViceSchema,
   firstPasswordSlipSchema,
   loginSuggestionSchema,
+  neverUsedListSchema,
   sessionResponseSchema,
   staffAccountSchema,
   staffDetailSchema,
@@ -1334,6 +1336,406 @@ describe('the account section of a staff record', () => {
         sessionResponseSchema.parse((await t.kit.get('/api/auth/session', cookie)).body)
           .passwordResetBy,
       ).toBe(bare.login);
+    });
+  });
+
+  // Task 2.7d (issue #39, answer 37): a Super Admin whose account has no
+  // staff record links a record of the branch to their own account. The plan
+  // of pull request #87 with the corrections of its review.
+  describe('the link of a record to the own account', () => {
+    /** A Super Admin with a signed-in session and no staff record. */
+    async function recordless(): Promise<{ cookie: string; accountId: string; login: string }> {
+      count += 1;
+      const browser = await t.kit.completeSession('Zafar', `Nazarov${lettersOf(count)}`);
+      await t.kit.giveRole(browser.account.id, { role: 'super_admin' });
+      return {
+        cookie: browser.cookie,
+        accountId: browser.account.id,
+        login: browser.account.login,
+      };
+    }
+
+    const link = (id: string, cookie: string, branch = t.north) =>
+      t.post(`/api/people/staff/${id}/account/own`, branch, {}, cookie);
+
+    const accountOf = async (id: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('staff')
+          .select('account_id')
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+      ).account_id;
+
+    const setStatus = async (id: string, status: string, from: string) => {
+      const response = await t.post(`/api/people/staff/${id}/status`, t.north, { status, from });
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+    };
+
+    it('links the record to the account of the session, audited, and the name shows', async () => {
+      const own = await recordless();
+      const colleague = await withAccount();
+      expect(
+        (
+          await give(
+            colleague.id,
+            { role: 'teacher', branchId: t.north, from: TODAY },
+            t.north,
+            own.cookie,
+          )
+        ).status,
+      ).toBe(201);
+      expect(
+        (
+          await t.post(
+            `/api/people/staff/${colleague.id}/account/lock`,
+            t.north,
+            { reason: 'Laptop lost' },
+            own.cookie,
+          )
+        ).status,
+      ).toBe(200);
+      const made = await person();
+      expect((await section(made.id, t.north, own.cookie)).canLinkOwn).toBe(true);
+
+      const response = await link(made.id, own.cookie);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const answer = staffAccountSchema.parse(response.body);
+      expect(answer.account?.login).toBe(own.login);
+      expect(answer.account?.neverUsed).toBe(false);
+      expect(answer.canLinkOwn).toBe(false);
+      expect(await accountOf(made.id)).toBe(own.accountId);
+
+      const assignment = await t.database.migrator
+        .selectFrom('assignments')
+        .select('id')
+        .where('account_id', '=', own.accountId)
+        .where('role', '=', 'super_admin')
+        .executeTakeFirstOrThrow();
+      const entries = await schoolEntries('account.linked', own.accountId);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({
+        actor_id: own.accountId,
+        assignment_id: assignment.id,
+        person_id: made.id,
+        record_type: 'account',
+        new_value: { login: own.login, staffId: made.id },
+      });
+      expect(entries[0]?.request_id).not.toBeNull();
+
+      // The menu and the Account page read the name from the session.
+      const session = sessionResponseSchema.parse(
+        (await t.kit.get('/api/auth/session', own.cookie)).body,
+      );
+      expect(session.name).toEqual({ firstName: 'Akmal', lastName: made.lastName });
+      // "Given by" and "Locked by" for a reader of the record's branch.
+      const name = { firstName: 'Akmal', lastName: made.lastName };
+      expect(roleOf(await section(colleague.id, t.north, t.principal), 'teacher').givenBy).toEqual({
+        login: own.login,
+        name,
+      });
+      const access = accountAccessSchema.parse(
+        (await t.get(`/api/people/staff/${colleague.id}/account/access`, t.north, t.principal))
+          .body,
+      );
+      expect(access.account?.locked?.by).toEqual({ login: own.login, name });
+      // Decision 9: an account in use is not listed as never used.
+      const never = neverUsedListSchema.parse(
+        (await t.get('/api/people/accounts/never-used', t.north)).body,
+      );
+      expect(never.accounts.map((one) => one.login)).not.toContain(own.login);
+    });
+
+    it('shows only the login to a reader of another branch (decision 8)', async () => {
+      const own = await recordless();
+      const colleague = await withAccount();
+      expect(
+        (
+          await give(
+            colleague.id,
+            { role: 'teacher', branchId: t.north, from: TODAY },
+            t.north,
+            own.cookie,
+          )
+        ).status,
+      ).toBe(201);
+      const southern = await person({}, t.south);
+      expect((await link(southern.id, own.cookie, t.south)).status).toBe(200);
+      expect(roleOf(await section(colleague.id, t.north, t.principal), 'teacher').givenBy).toEqual({
+        login: own.login,
+        name: null,
+      });
+      expect(roleOf(await section(colleague.id), 'teacher').givenBy?.name).toEqual({
+        firstName: 'Akmal',
+        lastName: southern.lastName,
+      });
+    });
+
+    it('refuses a record with an account, and a second record of the same account', async () => {
+      const own = await recordless();
+      const taken = await withAccount();
+      expect((await section(taken.id, t.north, own.cookie)).canLinkOwn).toBe(false);
+      let before = await snapshot();
+      refusedWith(await link(taken.id, own.cookie), 409, 'account_exists');
+      expect(await snapshot()).toEqual(before);
+
+      const first = await person();
+      const second = await person();
+      expect((await link(first.id, own.cookie)).status).toBe(200);
+      expect((await section(second.id, t.north, own.cookie)).canLinkOwn).toBe(false);
+      before = await snapshot();
+      refusedWith(await link(second.id, own.cookie), 409, 'own_record_exists');
+      expect(await snapshot()).toEqual(before);
+      expect(await accountOf(second.id)).toBeNull();
+    });
+
+    // Decision 3 with correction 2, and decision 9 with correction 3: the
+    // section offers the link exactly when the route would not refuse it.
+    it.each([
+      ['inactive from today', 'inactive', TODAY],
+      ['inactive planned', 'inactive', '2026-12-01'],
+      ['left from today', 'left', TODAY],
+      ['left planned', 'left', '2026-12-01'],
+    ])('refuses a record %s', async (_name, status, from) => {
+      const own = await recordless();
+      const made = await person();
+      await setStatus(made.id, status, from);
+      expect((await section(made.id, t.north, own.cookie)).canLinkOwn).toBe(false);
+      const before = await snapshot();
+      refusedWith(await link(made.id, own.cookie), 409, 'own_link_status');
+      expect(await snapshot()).toEqual(before);
+    });
+
+    // Spec review of the build: the refusal reads only rows in force or
+    // planned, so an ended period and a taken-back plan do not refuse.
+    it.each([
+      ['an inactive period that ended before today', 'ended'],
+      ['a planned inactive status that was taken back', 'taken back'],
+    ])('links a record with %s', async (_name, kind) => {
+      const own = await recordless();
+      const made = await person();
+      const statuses = t.database.migrator.transaction();
+      await statuses.execute(async (transaction) => {
+        if (kind === 'ended') {
+          await transaction
+            .updateTable('staff_statuses')
+            .set({ valid_until: '2026-09-20' })
+            .where('staff_id', '=', made.id)
+            .execute();
+          await transaction
+            .insertInto('staff_statuses')
+            .values([
+              {
+                staff_id: made.id,
+                status: 'inactive',
+                valid_from: '2026-09-20',
+                valid_until: '2026-10-01',
+              },
+              { staff_id: made.id, status: 'active', valid_from: '2026-10-01' },
+            ])
+            .execute();
+        } else {
+          await transaction
+            .insertInto('staff_statuses')
+            .values({
+              staff_id: made.id,
+              status: 'inactive',
+              valid_from: '2026-12-01',
+              valid_until: '2026-12-01',
+            })
+            .execute();
+        }
+      });
+      expect((await section(made.id, t.north, own.cookie)).canLinkOwn).toBe(true);
+      const response = await link(made.id, own.cookie);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(await accountOf(made.id)).toBe(own.accountId);
+    });
+
+    it('refuses a record whose employment begins after today, and links it from that day', async () => {
+      const own = await recordless();
+      const made = await person({ admissionDate: TOMORROW, contractDate: TOMORROW });
+      expect((await section(made.id, t.north, own.cookie)).canLinkOwn).toBe(false);
+      const before = await snapshot();
+      refusedWith(await link(made.id, own.cookie), 409, 'own_link_status');
+      expect(await snapshot()).toEqual(before);
+      // Ten minutes later it is the admission date in Tashkent.
+      t.clock.set('2026-10-11T00:05:00+05:00');
+      expect((await section(made.id, t.north, own.cookie)).canLinkOwn).toBe(true);
+    });
+
+    it('offers and allows the link to the Super Admin alone', async () => {
+      const made = await person();
+      expect((await section(made.id, t.north, t.principal)).canLinkOwn).toBe(false);
+      const before = await snapshot();
+      refusedWith(await link(made.id, t.principal), 403, 'permission_denied');
+      refusedWith(await link(made.id, t.vicePrincipal), 403, 'permission_denied');
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('answers 404 for a record of another branch, an unknown id and a vacancy', async () => {
+      const own = await recordless();
+      const southern = await person({}, t.south);
+      const vacancy = (
+        await sql<{ id: string }>`select uuidv7() as id`.execute(t.database.migrator)
+      ).rows[0]?.id;
+      if (vacancy === undefined) {
+        throw new Error('No id.');
+      }
+      // Written as the vacancy create writes it, in one transaction.
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await transaction
+          .insertInto('staff')
+          .values({ id: vacancy, kind: 'vacancy', vacancy_name: 'Physics vacancy' })
+          .execute();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: vacancy, branch_id: t.north, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({ staff_id: vacancy, division_id: academic, department_id: steam, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: vacancy, status: 'open', valid_from: TODAY })
+          .execute();
+      });
+      const before = await snapshot();
+      refusedWith(await link(southern.id, own.cookie), 404, 'not_found');
+      refusedWith(await link(UNKNOWN, own.cookie), 404, 'not_found');
+      refusedWith(await link(vacancy, own.cookie), 404, 'not_found');
+      expect(await snapshot()).toEqual(before);
+    });
+
+    type Migrator = DayTemplatesKit['database']['migrator'];
+
+    /**
+     * Runs `call` while a transaction holds what `hold` takes, and commits it
+     * once the route waits for a lock: the held side does what its route does.
+     */
+    async function whileHeld(
+      hold: (connection: Migrator) => Promise<void>,
+      call: () => PromiseLike<Response>,
+    ): Promise<Response> {
+      return t.database.migrator.connection().execute(async (connection) => {
+        await sql`begin`.execute(connection);
+        await hold(connection);
+        const pending = Promise.resolve(call());
+        // The route waits for a lock of this database before the held side
+        // commits; otherwise the pair proves nothing of the lock order.
+        let waited = false;
+        for (let tries = 0; tries < 250 && !waited; tries += 1) {
+          const waiting = await sql<{ waiting: number }>`
+            select count(distinct l.pid)::int as waiting
+            from pg_locks l join pg_stat_activity a on a.pid = l.pid
+            where a.datname = current_database() and not l.granted
+          `.execute(t.database.migrator);
+          waited = (waiting.rows[0]?.waiting ?? 0) > 0;
+          if (!waited) {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+          }
+        }
+        await sql`commit`.execute(connection);
+        expect(waited, 'the route never waited for the held lock').toBe(true);
+        return pending;
+      });
+    }
+
+    /** What the link route does, held open: the count, the record, the link. */
+    const heldLink = (id: string, accountId: string) => async (connection: Migrator) => {
+      await sql`select pg_advisory_xact_lock(60701)`.execute(connection);
+      await sql`select id from staff where id = ${id} for update`.execute(connection);
+      await sql`update staff set account_id = ${accountId} where id = ${id}`.execute(connection);
+    };
+
+    it('refuses the link that waits for an account create on the record', async () => {
+      const own = await recordless();
+      const made = await person();
+      const answer = await whileHeld(
+        async (connection) => {
+          await sql`select id from staff where id = ${made.id} for update`.execute(connection);
+          const created = await sql<{ id: string }>`
+            insert into accounts (login, password_hash, must_change_password, created_at)
+            values (${`a.${made.lastName.toLowerCase()}`}, '$argon2id$held', false, ${new Date(START)})
+            returning id
+          `.execute(connection);
+          await sql`update staff set account_id = ${created.rows[0]?.id} where id = ${made.id}`.execute(
+            connection,
+          );
+        },
+        () => link(made.id, own.cookie),
+      );
+      refusedWith(answer, 409, 'account_exists');
+    });
+
+    it('refuses the account create that waits for a link of the record', async () => {
+      const own = await recordless();
+      const made = await person();
+      const answer = await whileHeld(heldLink(made.id, own.accountId), () =>
+        t.post(`/api/people/staff/${made.id}/account`, t.north, {
+          login: `a.${made.lastName.toLowerCase()}`,
+        }),
+      );
+      refusedWith(answer, 409, 'account_exists');
+      expect(await accountOf(made.id)).toBe(own.accountId);
+    });
+
+    it('refuses the link that waits for an inactive status planned on the record', async () => {
+      const own = await recordless();
+      const made = await person();
+      const answer = await whileHeld(
+        async (connection) => {
+          await sql`select pg_advisory_xact_lock(60701)`.execute(connection);
+          await sql`select id from staff where id = ${made.id} for update`.execute(connection);
+          await sql`
+            update staff_statuses set valid_until = '2026-12-01'
+            where staff_id = ${made.id} and status = 'active'
+          `.execute(connection);
+          await sql`
+            insert into staff_statuses (staff_id, status, valid_from)
+            values (${made.id}, 'inactive', '2026-12-01')
+          `.execute(connection);
+        },
+        () => link(made.id, own.cookie),
+      );
+      refusedWith(answer, 409, 'own_link_status');
+    });
+
+    it('refuses the own status change that waits for the link of the record', async () => {
+      const own = await recordless();
+      const made = await person();
+      const answer = await whileHeld(heldLink(made.id, own.accountId), () =>
+        t.post(
+          `/api/people/staff/${made.id}/status`,
+          t.north,
+          { status: 'inactive', from: '2026-12-01' },
+          own.cookie,
+        ),
+      );
+      refusedWith(answer, 409, 'own_status');
+    });
+
+    it('refuses the link of a record another Super Admin links at the same moment', async () => {
+      const own = await recordless();
+      const other = await recordless();
+      const made = await person();
+      const answer = await whileHeld(heldLink(made.id, other.accountId), () =>
+        link(made.id, own.cookie),
+      );
+      refusedWith(answer, 409, 'account_exists');
+      expect(await accountOf(made.id)).toBe(other.accountId);
+    });
+
+    it('refuses a second record linked at the same moment as the first', async () => {
+      const own = await recordless();
+      const first = await person();
+      const second = await person();
+      const answer = await whileHeld(heldLink(first.id, own.accountId), () =>
+        link(second.id, own.cookie),
+      );
+      refusedWith(answer, 409, 'own_record_exists');
+      expect(await accountOf(second.id)).toBeNull();
     });
   });
 

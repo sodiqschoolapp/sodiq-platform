@@ -307,6 +307,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/people/staff/:id/account': { branch: 'request', roles: ['super_admin', 'principal'] },
   'GET /api/people/staff/:id/account/suggestion': { branch: 'request', roles: ['super_admin'] },
   'POST /api/people/staff/:id/account': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/people/staff/:id/account/own': { branch: 'request', roles: ['super_admin'] },
   'POST /api/people/staff/:id/roles': { branch: 'request', roles: ['super_admin'] },
   'POST /api/people/staff/:id/roles/:assignmentId/end': {
     branch: 'request',

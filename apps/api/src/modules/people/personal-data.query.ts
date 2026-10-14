@@ -70,6 +70,7 @@ export const ENTRY_ABOUT: Readonly<Record<PeopleAction, readonly About[]>> = {
   'auth.password_reset_by_email': ['account'],
   // Record the account; an administrator's change also names the person.
   'account.create': ['account', 'person'],
+  'account.linked': ['account', 'person'],
   'account.language_changed': ['account'],
   'account.locked': ['account', 'person'],
   'account.unlocked': ['account', 'person'],

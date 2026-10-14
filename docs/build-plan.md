@@ -315,7 +315,7 @@ How to read the task lines:
   - From the spec change of 13 October 2026: the Branches list under School setup (name, address, working weekdays, number of buildings and of rooms; opening a branch switches the current branch; "New branch" from the list in the side panel; no new permission, branches `view` and `create`); the category of a staff record and the teacher list's category column and filter show every role the person holds in the branch (`STAFF_CATEGORY_ROLES` widened to all nine roles), a vacancy still has none.
   - Done when: "By floor" is built; the Branches list is built, or reported as waiting for its `/spec-change` ("Decided ahead for tasks 2.2d and 2.7", item 11), which closes the item for this task; the category column and filter offer every role, with a test for a Super Admin, a Principal and a Senior Head Teacher in the list.
 
-- [ ] **2.7d The Super Admin's own staff record** (split from 2.7 on pull request #77, decision 1)
+- [x] **2.7d The Super Admin's own staff record** (split from 2.7 on pull request #77, decision 1)
   - Read: issue #39 (the owner's answer to question 37), `04` (Teacher and staff record), `edge/people-roles-accounts`, the plan of pull request #77.
   - Build: the Super Admin creates their own staff record and links it to their existing account, so the menu, "Given by …", "Locked by …" and the Account photo show the name; the link is audited.
   - Done when: a Super Admin without a staff record links one to their account, and no other role can link a record to an existing account this way.

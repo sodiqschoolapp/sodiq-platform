@@ -33,12 +33,14 @@ import {
 import { RecordForm } from '@/components/form/record-form';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
+import { FailureAlert } from '@/components/failure-alert';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import type { PanelEditing } from '@/components/list/use-panel-editing';
 import { SUPER_ADMINS_KEY } from '@/features/access/super-admin-banner';
 import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
 import { useView } from '@/features/access/use-view';
+import { SESSION_KEY, sessionQuery } from '@/features/auth/session';
 import { nameOf } from '@/features/setup/setup-api';
 import { subjectsQuery } from '@/features/setup/subjects-api';
 import { FirstPasswordSlipDialog } from './first-password-slip';
@@ -50,6 +52,7 @@ import {
   accountAccessKey,
   neverUsedKey,
   staffAccountQuery,
+  staffKey,
 } from './people-api';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
@@ -129,7 +132,7 @@ export function AccountSection({
           ) : (
             <div className="grid gap-3">
               <p className="text-sm">{t('people.account.none')}</p>
-              <div>
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="secondary"
                   {...panel.opener('account-new')}
@@ -139,6 +142,9 @@ export function AccountSection({
                 >
                   {t('people.account.create')}
                 </Button>
+                {data.canLinkOwn && (
+                  <LinkOwnAccount staff={staff} label={label} onLinked={refresh} />
+                )}
               </div>
             </div>
           )
@@ -731,5 +737,66 @@ function EndRoleForm({
     >
       <DateField label={t('people.account.endFrom')} min={today} {...form.bind('from')} />
     </RecordForm>
+  );
+}
+
+/**
+ * "Link to my account" (task 2.7d): a Super Admin whose account has no staff
+ * record links this one to it, once. Offered only where the server answers
+ * `canLinkOwn`; the confirmation names the record and the login, and says
+ * the link cannot be undone (decision 4). The menu then shows the name.
+ */
+function LinkOwnAccount({
+  staff,
+  label,
+  onLinked,
+}: {
+  staff: StaffDetail;
+  label: string;
+  onLinked: () => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const confirm = useConfirm();
+  const queryClient = useQueryClient();
+  const { data: session } = useQuery(sessionQuery);
+  const link = useMutation({
+    mutationFn: () =>
+      answerOf(
+        api.POST('/api/people/staff/{id}/account/own', {
+          params: { header: branchHeader(), path: { id: staff.id } },
+        }),
+      ),
+    onSuccess: async () => {
+      await Promise.all([
+        onLinked(),
+        // The menu and the Account page read the name from the session.
+        queryClient.invalidateQueries({ queryKey: SESSION_KEY }),
+        queryClient.invalidateQueries({ queryKey: staffKey() }),
+      ]);
+    },
+  });
+  return (
+    <>
+      <Button
+        variant="secondary"
+        disabled={link.isPending}
+        onClick={() => {
+          link.reset();
+          void confirm({
+            title: t('people.account.linkOwnTitle'),
+            text: t('people.account.linkOwnText'),
+            names: [t('people.account.linkOwnNames', { name: label, login: session?.login ?? '' })],
+            action: t('people.account.linkOwn'),
+          }).then((go) => {
+            if (go) {
+              link.mutate();
+            }
+          });
+        }}
+      >
+        {t('people.account.linkOwn')}
+      </Button>
+      <FailureAlert error={link.error} />
+    </>
   );
 }
