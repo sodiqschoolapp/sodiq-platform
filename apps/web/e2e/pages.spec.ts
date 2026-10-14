@@ -50,6 +50,8 @@ const LISTS = [
   ['classes', '/classes', en.classes.title],
   // Task 3.2a: the seeded group.
   ['groups', '/groups', en.groups.title],
+  // Task 3.2b: the seeded student of 7 Harvard in no Geometry group.
+  ['groups-placement', '/groups/placement', en.groups.placement.title],
 ] as const;
 
 /** The lists the Academic Vice Principal adds to, with the "New …" button and the panel's title. */

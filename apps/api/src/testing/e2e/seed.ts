@@ -1643,6 +1643,108 @@ try {
       newValue: { name: 'Geometry vacancy 1', status: 'open', from: startDate },
     }),
   );
+  /**
+   * An active student of grade 7 in a class from the start of the year (task
+   * 3.2b), with a contract and a mother: the students the group placement
+   * tests place.
+   */
+  const studentInClass = async (
+    transaction: Parameters<Parameters<ReturnType<typeof migrator.transaction>['execute']>[0]>[0],
+    input: {
+      branch: string;
+      classId: string;
+      uid: string;
+      first: string;
+      last: string;
+      createdBy: string;
+      phone: string;
+    },
+  ): Promise<void> => {
+    const student = await transaction
+      .insertInto('students')
+      .values({
+        branch_id: input.branch,
+        uid: input.uid,
+        first_name: input.first,
+        last_name: input.last,
+        name_key: studentNameKey(input.last, input.first),
+        sex: 'female',
+        birth_date: '2013-05-11',
+        grade: 7,
+        starts_on: startDate,
+        created_by: input.createdBy,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('student_uids')
+      .values({
+        uid: input.uid,
+        student_id: student.id,
+        branch_id: input.branch,
+        held_from: new Date(),
+      })
+      .execute();
+    await transaction
+      .insertInto('student_contracts')
+      .values({
+        student_id: student.id,
+        branch_id: input.branch,
+        number: `E2E-${input.uid}`,
+        signed_on: startDate,
+      })
+      .execute();
+    await transaction
+      .insertInto('student_statuses')
+      .values({
+        student_id: student.id,
+        branch_id: input.branch,
+        status: 'active',
+        valid_from: startDate,
+        cause: 'start',
+      })
+      .execute();
+    await transaction
+      .insertInto('student_accounts')
+      .values({ student_id: student.id, branch_id: input.branch, created_at: new Date() })
+      .execute();
+    await transaction
+      .insertInto('class_memberships')
+      .values({
+        branch_id: input.branch,
+        student_id: student.id,
+        class_id: input.classId,
+        valid_from: startDate,
+        valid_until: isoDate(new Date(yearStart.getTime() + 365 * dayMs)),
+        own_until: isoDate(new Date(yearStart.getTime() + 365 * dayMs)),
+        cause: 'placement',
+      })
+      .execute();
+    await linkRelative(transaction, student.id, input.branch, new Date(), {
+      fullName: `Mother of ${input.first}`,
+      phone: input.phone,
+    });
+  };
+
+  // Task 3.2b: a student of 7 Harvard in no group, so the group placement
+  // screen opens with a record.
+  await migrator.transaction().execute(async (transaction) => {
+    const harvard = await transaction
+      .selectFrom('classes')
+      .select('id')
+      .where('branch_id', '=', pagesBranch)
+      .where('name', '=', 'Harvard')
+      .executeTakeFirstOrThrow();
+    await studentInClass(transaction, {
+      branch: pagesBranch,
+      classId: harvard.id,
+      uid: '9999602',
+      first: 'Sabina',
+      last: 'Yoqubova',
+      createdBy: pages.id,
+      phone: '+998935550162',
+    });
+  });
   seeded.pages = { login: pages.login, password: pages.firstPassword };
 
   // The Academic Vice Principal of the classes test (task 3.1a), in a branch
@@ -1898,6 +2000,96 @@ try {
     }
   });
   seeded.members = { login: membersVice.login, password: membersVice.firstPassword };
+
+  // The Academic Vice Principal of the group membership test (task 3.2b), in
+  // a branch of its own with the year around today, the class 7 Oxford with
+  // four students, and two Geometry groups of it, 7-G-1 and 7-G-2.
+  const groupMembersBranch = await insertBranch(migrator, 'Group members browser test branch');
+  const groupMembersVice = await create('Sevinch', 'Tursunova');
+  await transactions.run([groupMembersBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: groupMembersVice.id,
+      role: 'academic_vice_principal',
+      branchId: groupMembersBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: groupMembersBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: groupMembersBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const oxford = await transaction
+      .insertInto('classes')
+      .values({
+        branch_id: groupMembersBranch,
+        academic_year_id: year.id,
+        grade: 7,
+        name: 'Oxford',
+        language: 'uz',
+        max_size: 25,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const geometry = await transaction
+      .selectFrom('subjects')
+      .select('id')
+      .where('name_en', '=', 'Geometry')
+      .executeTakeFirstOrThrow();
+    for (const name of ['7-G-1', '7-G-2']) {
+      const group = await transaction
+        .insertInto('groups')
+        .values({
+          branch_id: groupMembersBranch,
+          academic_year_id: year.id,
+          subject_id: geometry.id,
+          name,
+          language: 'uz',
+          max_size: 20,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('group_classes')
+        .values({ group_id: group.id, class_id: oxford.id, branch_id: groupMembersBranch })
+        .execute();
+    }
+    for (const [index, [first, last]] of [
+      ['Nodira', 'Aliyeva'],
+      ['Feruza', 'Bakirova'],
+      ['Gulchehra', 'Davronova'],
+      ['Iroda', 'Ergasheva'],
+    ].entries()) {
+      await studentInClass(transaction, {
+        branch: groupMembersBranch,
+        classId: oxford.id,
+        uid: String(9999801 + index),
+        first: first ?? '',
+        last: last ?? '',
+        createdBy: groupMembersVice.id,
+        phone: `+99890555036${String(index + 1)}`,
+      });
+    }
+  });
+  seeded.groupMembers = {
+    login: groupMembersVice.login,
+    password: groupMembersVice.firstPassword,
+  };
 
   // The Tutor of the class scope test (task 3.1c), in a branch of its own with
   // the year around today: the Tutor of 7 Oxford, who teaches in Uzbek, and a

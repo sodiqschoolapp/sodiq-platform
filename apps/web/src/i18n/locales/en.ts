@@ -2372,7 +2372,6 @@ export const en = {
       gradeOne: 'Grade {{grade}}',
       gradePair: 'Grades {{a}} and {{b}}',
       on: 'Date',
-      chooseFirst: 'Choose a subject and grades.',
       groups: 'Groups',
       groupLine: '{{members}} of {{max}} · fewest free seats {{free}}',
       noGroups: 'No active group of this subject draws only from classes of these grades.',

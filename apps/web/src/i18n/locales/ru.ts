@@ -2489,7 +2489,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       gradeOne: '{{grade}} класс',
       gradePair: '{{a}} и {{b}} классы',
       on: 'Дата',
-      chooseFirst: 'Выберите предмет и параллели.',
       groups: 'Группы',
       groupLine: '{{members}} из {{max}} · меньше всего свободных мест {{free}}',
       noGroups: 'Ни одна действующая группа этого предмета не набирается только из классов этих параллелей.',

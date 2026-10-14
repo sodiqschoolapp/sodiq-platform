@@ -61,7 +61,6 @@ export function GroupPlacementPage() {
   const [typedOn, setTypedOn] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const on = typedOn ?? students.data?.today ?? '';
-  const grades = gradesText === '' ? [] : gradesText.split(',').map(Number);
 
   // The subjects of the active groups, and for the subject chosen the grades
   // and pairs of grades its groups are of: what the screen can show.
@@ -71,19 +70,21 @@ export function GroupPlacementPage() {
   const subjects = [...new Map(active.map((one) => [one.subject.id, one.subject.names]))].map(
     ([value, names]) => ({ value, label: nameOf(names, language) }),
   );
+  // The first subject and its first grades are chosen until the person chooses.
+  const shownSubject = subjects.some((one) => one.value === subjectId)
+    ? subjectId
+    : (subjects[0]?.value ?? '');
   const gradeOptions = [
     ...new Set(
       active
-        .filter((one) => one.subject.id === subjectId)
+        .filter((one) => one.subject.id === shownSubject)
         .flatMap((one) => [...one.grades.map(String), one.grades.join(',')]),
     ),
   ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  const shownSubject = subjects.some((one) => one.value === subjectId) ? subjectId : '';
-  const shownGrades = gradeOptions.includes(gradesText) ? gradesText : '';
+  const shownGrades = gradeOptions.includes(gradesText) ? gradesText : (gradeOptions[0] ?? '');
 
-  const board = useQuery(
-    placementBoardQuery(branchId, shownSubject, shownGrades === '' ? [] : grades, on),
-  );
+  const grades = shownGrades === '' ? [] : shownGrades.split(',').map(Number);
+  const board = useQuery(placementBoardQuery(branchId, shownSubject, grades, on));
   const refresh = () =>
     Promise.all([invalidateGroups(queryClient), invalidateStudents(queryClient)]);
   const nameOfStudent = (id: string) => {
@@ -227,7 +228,7 @@ export function GroupPlacementPage() {
             setGradesText('');
             setOutcome(null);
           }}
-          options={[{ value: '', label: t('groups.chooseSubject') }, ...subjects]}
+          options={subjects}
         />
         <SelectField
           label={t('groups.placement.grades')}
@@ -238,7 +239,6 @@ export function GroupPlacementPage() {
             setOutcome(null);
           }}
           options={[
-            { value: '', label: t('groups.placement.grades') },
             ...gradeOptions.map((value) => {
               const [a, b] = value.split(',').map(Number);
               return {
@@ -282,7 +282,7 @@ export function GroupPlacementPage() {
         </div>
       )}
       {shownSubject === '' || shownGrades === '' ? (
-        <EmptyState title={t('groups.placement.title')} text={t('groups.placement.chooseFirst')} />
+        <EmptyState title={t('groups.emptyTitle')} text={t('groups.empty')} />
       ) : board.isError ? (
         <ErrorState
           error={board.error}

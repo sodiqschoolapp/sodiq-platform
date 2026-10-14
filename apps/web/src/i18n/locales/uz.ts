@@ -2392,7 +2392,6 @@ export const uz: Texts<'one' | 'other'> = {
       gradeOne: '{{grade}}-sinf',
       gradePair: '{{a}}- va {{b}}-sinflar',
       on: 'Sana',
-      chooseFirst: 'Fan va parallellarni tanlang.',
       groups: 'Guruhlar',
       groupLine: '{{max}} tadan {{members}} ta · eng kam boʻsh oʻrin {{free}}',
       noGroups: 'Bu fanning faol guruhlaridan birortasi faqat shu parallellar sinflaridan olinmaydi.',
