@@ -18,6 +18,7 @@ import { ApiException } from '../../http/api-exception.js';
 import { HeaderPipe } from '../../http/validation.js';
 import { owedStepsAllowedOn, sessionOf } from '../auth/session.guard.js';
 import { declarationsOf } from './access.decorators.js';
+import { tutorClassesAt } from './class-scope.js';
 import type { CurrentAssignment } from './current-assignments.js';
 import { permitting } from './permission-check.js';
 import { PERMISSION_TABLE } from './permission-table.token.js';
@@ -42,7 +43,8 @@ export interface Access {
   /**
    * The assignments that permit this route in this branch, by id; the first
    * is `assignmentId`. A route with subject scope takes the one whose
-   * subjects fit (`inSubjectScope`, task 2.3b-1).
+   * subjects fit (`inSubjectScope`, task 2.3b-1), a route with class scope
+   * the one whose classes fit (`inClassScope`, task 3.1c).
    */
   permitting: readonly CurrentAssignment[];
 }
@@ -125,7 +127,12 @@ export class PermissionGuard implements CanActivate {
       access.branch === 'none'
         ? null
         : branchHeader.transform(request.headers[BRANCH_HEADER.toLowerCase()]).toLowerCase();
-    const allowing = permitting(access, session.assignments, branchId, this.table);
+    if (permitting(access, session.assignments, branchId, this.table).length === 0) {
+      throw new ApiException('permission_denied', 403);
+    }
+    const assignments =
+      branchId === null ? session.assignments : await this.withClasses(session.assignments, branchId);
+    const allowing = permitting(access, assignments, branchId, this.table);
     const [assignment] = allowing;
     if (assignment === undefined) {
       throw new ApiException('permission_denied', 403);
@@ -142,10 +149,42 @@ export class PermissionGuard implements CanActivate {
       role: assignment.role,
       branchId,
       branchIds: branchId === null ? [] : [branchId],
-      assignments: session.assignments,
+      assignments,
       permitting: allowing,
     });
     return true;
+  }
+
+  /**
+   * The assignments with the classes of every Tutor assignment of the branch
+   * of the request, whether it permits this route or not: a route decides a
+   * group of fields from every assignment (task 3.1c, decision 6 of pull
+   * request #90). Read on every request ("Rights are read again on every
+   * request"), through the branch filter of the request; the session's
+   * objects are not changed, and a Tutor assignment of another branch keeps
+   * no class.
+   */
+  private async withClasses(
+    assignments: readonly CurrentAssignment[],
+    branchId: string,
+  ): Promise<readonly CurrentAssignment[]> {
+    const tutors = assignments
+      .filter(
+        (assignment) =>
+          assignment.role === 'tutor' && assignment.branchId?.toLowerCase() === branchId,
+      )
+      .map((assignment) => assignment.id);
+    if (tutors.length === 0) {
+      return assignments;
+    }
+    const classes = await this.transactions.run([branchId], (transaction) =>
+      tutorClassesAt(transaction, tutors),
+    );
+    return assignments.map((assignment) =>
+      tutors.includes(assignment.id)
+        ? Object.freeze({ ...assignment, classIds: Object.freeze(classes.get(assignment.id) ?? []) })
+        : assignment,
+    );
   }
 
   private exists(branchId: string): Promise<boolean> {

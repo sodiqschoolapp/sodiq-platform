@@ -19,6 +19,7 @@ function held(role: CurrentAssignment['role'], branchId: string | null): Current
     role,
     branchId,
     subjectIds: [],
+    classIds: [],
   };
 }
 

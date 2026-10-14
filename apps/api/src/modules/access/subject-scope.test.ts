@@ -24,6 +24,7 @@ function held(
     role,
     branchId,
     subjectIds,
+    classIds: [],
   };
 }
 

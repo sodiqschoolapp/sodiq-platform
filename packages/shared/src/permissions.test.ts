@@ -129,15 +129,19 @@ describe('a frozen permission table', () => {
         'academic_vice_principal',
         'spiritual_vice_principal',
         'head_tutor',
+        // Task 3.1c, decision 2 of pull request #90 (Look first): the class
+        // Tutor, for the students of own classes (the route decides the scope).
+        'tutor',
       ],
       student_identity: ['super_admin', 'academic_vice_principal'],
       student_financial: ['super_admin', 'principal', 'academic_vice_principal'],
     };
     for (const role of ROLES) {
-      // Task 2.4b-2 (decision 1): `export` for the editors and the Principal only.
+      // Task 2.4b-2 (decision 1): `export` for the editors and the Principal;
+      // task 3.1c (decision 3 of pull request #90): the Tutor, own classes only.
       const students = editors.includes(role)
         ? ['view', 'create', 'edit', 'archive', 'export']
-        : role === 'principal'
+        : role === 'principal' || role === 'tutor'
           ? ['view', 'export']
           : viewers.includes(role)
             ? ['view']
@@ -158,12 +162,14 @@ describe('a frozen permission table', () => {
     }
   });
 
-  // Task 3.1a, decision 5 of pull request #88 (Look first).
+  // Task 3.1a, decision 5 of pull request #88 (Look first); the Tutor with
+  // the class scope of task 3.1c (decision 1 of pull request #90, Look first).
   it('gives the classes to the editors of 02, their exports to the Principal, and the list to its readers', () => {
     const editors = ['super_admin', 'academic_vice_principal'];
     const viewers = [
       'spiritual_vice_principal',
       'head_tutor',
+      'tutor',
       'senior_head_teacher',
       'head_teacher',
     ];

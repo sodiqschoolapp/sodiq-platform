@@ -60,7 +60,8 @@ export const MENU: Readonly<Record<Role, readonly MenuItem[]>> = Object.freeze({
   academic_vice_principal: [...MANAGEMENT, 'requests', 'audit_log'],
   spiritual_vice_principal: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   head_tutor: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
-  tutor: ['home', 'people', 'timetable', 'journal', 'results'],
+  // Own classes (task 3.1c, decision 4 of pull request #90, Look first).
+  tutor: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   senior_head_teacher: HEAD_TEACHER,
   head_teacher: HEAD_TEACHER,
   teacher: ['home', 'timetable', 'journal', 'plans', 'results'],
