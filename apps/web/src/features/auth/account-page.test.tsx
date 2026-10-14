@@ -654,6 +654,34 @@ describe('the own photo on the account page', () => {
     expect(screen.queryByRole('region', { name: en.account.photoTitle })).toBeNull();
     expect(calls.some((call) => call.route === 'GET /api/auth/photo')).toBe(false);
   });
+
+  // Task 2.7d, decision 5 with correction 4 of the review of #87.
+  it('tells a Super Admin without a staff record, in one line, where to make and link one', async () => {
+    const superAdmin = [{ role: 'super_admin' as const, branchId: null }];
+    const { calls } = openAccount({
+      'GET /api/auth/session': () => json(sessionOf({ name: null, assignments: superAdmin })),
+    });
+    const photo = await screen.findByRole('region', { name: en.account.photoTitle });
+    expect(within(photo).getByText(en.account.photoNoRecord)).toBeDefined();
+    expect(within(photo).queryByRole('button')).toBeNull();
+    expect(calls.some((call) => call.route === 'GET /api/auth/photo')).toBe(false);
+  });
+
+  it('does not show the line to a Super Admin with a staff record', async () => {
+    openAccount({
+      'GET /api/auth/session': () =>
+        json(
+          sessionOf({
+            name: { firstName: 'Nodira', lastName: 'Saidova' },
+            assignments: [{ role: 'super_admin', branchId: null }],
+          }),
+        ),
+      'GET /api/auth/photo': () => refusal('not_found', 404),
+    });
+    const photo = await screen.findByRole('region', { name: en.account.photoTitle });
+    await within(photo).findByRole('button', { name: en.account.photoAdd });
+    expect(within(photo).queryByText(en.account.photoNoRecord)).toBeNull();
+  });
 });
 
 // Edge cases, Personal data and the audit log: "every user sees their own

@@ -5,7 +5,7 @@ import { api } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
-import { ErrorState } from '@/components/states';
+import { EmptyState, ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { photoRefusalOf, shrinkPhoto } from '@/features/people/shrink-photo';
 import { sessionQuery } from '../session';
@@ -57,6 +57,8 @@ const ownPhotoQuery = queryOptions({
  * can change their own ... photo"; task 2.3c-2, decision 18 of pull request
  * #66). Shown only to an account with a staff record (the session names one);
  * the browser checks and shrinks the photo as the staff panel does (answer 2).
+ * A Super Admin without a record is told, in one line, where to make and link
+ * one (task 2.7d, decision 5 with correction 4 of the review of #87).
  */
 export function PhotoSection() {
   const { t } = useTranslation();
@@ -97,7 +99,13 @@ export function PhotoSection() {
 
   const name = session?.name;
   if (name == null) {
-    return null;
+    const superAdmin =
+      session?.assignments.some((assignment) => assignment.role === 'super_admin') === true;
+    return superAdmin ? (
+      <AccountSection title={t('account.photoTitle')}>
+        <EmptyState text={t('account.photoNoRecord')} />
+      </AccountSection>
+    ) : null;
   }
   const fullName = `${name.firstName} ${name.lastName}`;
   const initials = `${name.firstName.slice(0, 1)}${name.lastName.slice(0, 1)}`.toUpperCase();

@@ -590,6 +590,74 @@ function yearEnd(start: string): string {
   return end.toISOString().slice(0, 10);
 }
 
+// Task 2.7d, pull request #87: the Super Admin's own staff record. With
+// SCREENSHOTS=1 the account section and the menu are saved under docs/screens/2.7d/.
+const OWN_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.7d');
+
+/**
+ * A Super Admin without a staff record is told where to make one on the
+ * Account page, creates it the ordinary way, links it with "Link to my
+ * account" after the confirmation, and the menu then shows the name instead
+ * of the login. The seed holds no fourth Super Admin (correction 1 of the
+ * review of #87), so this runs at the end of the years test's session.
+ */
+async function linkOwnRecord(page: Page): Promise<void> {
+  const login = accountOf('years').login;
+  const menu = page.getByRole('button', { name: en.layout.account, exact: true });
+  await expect(menu).toContainText(login);
+  await page.goto('/account');
+  await expect(page.getByRole('region', { name: en.account.photoTitle })).toContainText(
+    en.account.photoNoRecord,
+  );
+
+  await page.goto('/people/staff');
+  await page
+    .getByRole('combobox', { name: en.switcher.branch, exact: true })
+    .selectOption({ label: 'Years browser test branch' });
+  await expect(heading(page, en.people.staff.title)).toBeVisible();
+  await page.getByRole('button', { name: en.people.staff.add, exact: true }).first().click();
+  const form = page.getByRole('form', { name: en.people.staff.newTitle });
+  await form.getByLabel(en.people.staff.firstName, { exact: true }).fill('Shahlo');
+  await form.getByLabel(en.people.staff.lastName, { exact: true }).fill('Nurmatova');
+  await form.getByLabel(en.people.staff.sex, { exact: true }).selectOption('female');
+  await form.getByLabel(en.people.staff.birthDate, { exact: true }).fill('1985-05-12');
+  await form.getByLabel(en.people.staff.phone, { exact: true }).fill('+998935550177');
+  await form.getByLabel(en.people.staff.admissionDate, { exact: true }).fill(schoolDay(0));
+  await form
+    .getByLabel(en.people.staff.mainDivision, { exact: true })
+    .selectOption({ label: 'Management' });
+  await form.getByRole('button', { name: en.form.save, exact: true }).click();
+
+  const panel = page.getByRole('complementary', { name: 'Shahlo Nurmatova' });
+  const section = panel.getByRole('region', { name: en.people.account.title });
+  const linkButton = section.getByRole('button', { name: en.people.account.linkOwn, exact: true });
+  await expect(linkButton).toBeVisible();
+  if (process.env.SCREENSHOTS === '1') {
+    mkdirSync(OWN_SCREENS, { recursive: true });
+    await section.screenshot({ path: path.join(OWN_SCREENS, 'before.png') });
+  }
+  await linkButton.click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toContainText(`Shahlo Nurmatova: account ${login}`);
+  if (process.env.SCREENSHOTS === '1') {
+    await dialog.screenshot({ path: path.join(OWN_SCREENS, 'confirm.png') });
+  }
+  await confirmWith(page, en.people.account.linkOwn);
+  await expect(section.getByText(login, { exact: true })).toBeVisible();
+  await expect(
+    section.getByRole('button', { name: en.people.account.linkOwn, exact: true }),
+  ).toHaveCount(0);
+  await expect(menu).toContainText('Shahlo Nurmatova');
+  if (process.env.SCREENSHOTS === '1') {
+    await section.screenshot({ path: path.join(OWN_SCREENS, 'account-section.png') });
+    await page.screenshot({ path: path.join(OWN_SCREENS, 'menu.png') });
+  }
+  await page.goto('/account');
+  await expect(
+    page.getByRole('region', { name: en.account.photoTitle }).getByText(en.account.photoNoRecord),
+  ).toHaveCount(0);
+}
+
 // docs/spec/03-school-setup.md: Academic year and Quarters; "The current
 // academic year and quarter are always shown in the top bar."
 // edge/academic-year: "Start year"; the go-live date. Owner's answers 1 to 8
@@ -598,7 +666,7 @@ function yearEnd(start: string): string {
 test('the Super Admin adds a year, dates its quarters, sets the go-live date and starts the year; the top bar shows it', async ({
   page,
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   await signInAsSuperAdmin(page, 'years');
   await page
     .getByRole('combobox', { name: en.switcher.branch, exact: true })
@@ -667,6 +735,9 @@ test('the Super Admin adds a year, dates its quarters, sets the go-live date and
     en.setup.years.current,
   );
   await expect(topBar).toHaveText(`${name} · Quarter 1`);
+
+  await test.step('creates their own staff record and links it to the account; the menu shows the name', () =>
+    linkOwnRecord(page));
 });
 
 // docs/spec/03-school-setup.md, Slot types and day templates: "A day template

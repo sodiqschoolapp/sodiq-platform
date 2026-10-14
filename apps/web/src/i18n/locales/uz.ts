@@ -263,6 +263,10 @@ export const uz: Texts<'one' | 'other'> = {
       'Qavat arxivlangan. Arxivlangan qavatdagi xonani faqat koʻchirish mumkin: faol qavatni tanlang yoki avval qavatni tiklang.',
     archived_record: 'U yoki u joylashgan bino arxivlangan. Avval tiklang, keyin oʻzgartiring.',
     account_exists: 'Bu xodimning hisobi allaqachon bor. Uni koʻrish uchun sahifani yangilang.',
+    own_record_exists:
+      'Hisobingiz allaqachon xodim yozuviga bogʻlangan. Bitta hisobda bitta yozuv boʻladi.',
+    own_link_status:
+      'Bu yozuvni hozir bogʻlab boʻlmaydi: xodim nofaol, ketgan, bu rejalashtirilgan yoki u ishni keyinroq boshlaydi.',
     login_taken: 'Bu login band. Loginlar ikki marta berilmaydi: boshqasini tanlang.',
     no_account: 'Bu xodimda hali hisob yoʻq. Avval hisob yarating, keyin rollar bering.',
     staff_left: 'Bu xodim ishdan ketgan. Avval holatini faolga qaytaring.',
@@ -1564,6 +1568,10 @@ export const uz: Texts<'one' | 'other'> = {
       changeSubjects: 'Fanlarni oʻzgartirish',
       changeSubjectsOf: '«{{role}}» rolining fanlarini oʻzgartirish',
       create: 'Hisob yaratish',
+      linkOwn: 'Mening hisobimga bogʻlash',
+      linkOwnTitle: 'Bu yozuv hisobingizga bogʻlansinmi?',
+      linkOwnText: 'Bogʻlashni bekor qilib boʻlmaydi. Ismingiz va suratingiz shu yozuvdan olinadi.',
+      linkOwnNames: '{{name}}: {{login}} hisobi',
       give: 'Rol berish',
       subjectsFrom: 'Yangi fanlar boshlanish sanasi',
       subjectsFailed: 'Fanlarni yuklab boʻlmadi.',
@@ -1887,6 +1895,7 @@ export const uz: Texts<'one' | 'other'> = {
       },
       account: {
         create: 'Hisob yaratildi',
+        linked: 'Xodim yozuvi oʻz hisobiga bogʻlandi',
         language_changed: 'Til oʻzgartirildi',
         locked: 'Hisob bloklandi',
         unlocked: 'Hisob blokdan chiqarildi',
@@ -2057,6 +2066,8 @@ export const uz: Texts<'one' | 'other'> = {
   account: {
     title: 'Hisob',
     photoTitle: 'Surat',
+    photoNoRecord:
+      'Xodim yozuvi hali yoʻq: uni Odamlar, Xodimlar boʻlimida yarating va «Mening hisobimga bogʻlash»ni tanlang.',
     photoAdd: 'Surat qoʻshish',
     photoChange: 'Suratni almashtirish',
     photoRemove: 'Suratni olib tashlash',
