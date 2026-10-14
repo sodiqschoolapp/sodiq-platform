@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 14 October 2026: task 2.7c-2b-2a Record actions at the bottom of the staff and vacancy panels
+
+- Built: the staff panel reads first (the overview now shows every field of the record), with Edit and "Change status" at the bottom; the subjects, availability, branches and account forms open behind their section's button; the vacancy panel has Edit, Close or Reopen and Delete at the bottom.
+- `usePanelEditing().stop` takes `focus` for a save that takes its own button away; `AvailabilitySection` and `AccountSection` take the panel's `panel`; `tooling/design-parts.test.ts` reads them as `SECTION_FILES`, with a wrapper rule; screenshots in `docs/screens/2.7c-2b-2a/`.
+- Left out: the student and parent panels (2.7c-2b-2b); Rooms "By floor" and the Branches list (2.7c-3); the Super Admin's own record (2.7d).
+
+The next sessions must know:
+
+- `PANEL_ACTIONS_LATER` of `e2e/pages.spec.ts` holds `people-students` and `people-parents`; 2.7c-2b-2b empties it.
+- A part whose actions act at once (photo, sign-in access) takes `quiet` and gives way while a form of the panel is open; the openers of the other sections stay, as the floor rows of 2.7c-2b-1.
+- The next task is 2.7c-2b-2b.
+
 ## 13 October 2026: task 2.7c-2b-1 Record actions at the bottom of the School setup panels
 
 - Built: `PanelActions` (primary, secondary, danger; a note, a failure and "Saved." inside it), `usePanelEditing` (one form open per panel, focus to the first field and back to the opener), Cancel in `RecordForm` (`onCancel`), `data-variant` on the Button part.

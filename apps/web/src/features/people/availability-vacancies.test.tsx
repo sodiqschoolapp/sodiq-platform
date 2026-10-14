@@ -312,6 +312,53 @@ describe('availability', () => {
     ).toBeDefined();
   });
 
+  // Task 2.7c-2b-2a: Cancel of RecordForm asks about typed text, closes the
+  // form without a call and takes the refusal of the last change away.
+  it('closes the change on Cancel after asking, with no call and no refusal left', async () => {
+    const calls = api('academic_vice_principal', {
+      [`PUT /api/people/staff/${AKMAL.id}/availability`]: () =>
+        Response.json(
+          {
+            error: {
+              code: 'availability_overlap',
+              message: 'ENGLISH TEXT FOR THE DEVELOPER',
+              requestId: 'test-request',
+              details: [{ path: 'weekday.2', code: 'overlap', message: 'x' }],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    const panel = await openAkmal();
+    fireEvent.click(
+      await within(panel).findByRole('button', { name: en.people.availability.change }),
+    );
+    const form = await within(panel).findByRole('form', {
+      name: en.people.availability.changeOf.replace('{{name}}', 'Akmal Karimov'),
+    });
+    fireEvent.change(within(form).getByLabelText('Tuesday'), { target: { value: '14:00-16:00' } });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(await within(panel).findByText(en.errors.availability_overlap)).toBeDefined();
+
+    fireEvent.click(within(form).getByRole('button', { name: en.form.cancel }));
+    const dialog = await screen.findByRole('alertdialog', { name: en.unsent.leaveTitle });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.leave }));
+    await waitFor(() => {
+      expect(form.isConnected).toBe(false);
+    });
+    expect(within(panel).queryByText(en.errors.availability_overlap)).toBeNull();
+    expect(
+      within(panel).queryByText(en.people.availability.overlapDays.replace('{{days}}', 'Tuesday')),
+    ).toBeNull();
+    expect(panelActions(panel)?.textContent ?? '').not.toContain(en.form.saved);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.people.availability.change }),
+      );
+    });
+    expect(calls.filter((call) => call.route.startsWith('PUT'))).toHaveLength(1);
+  });
+
   it('gives the Principal no change', async () => {
     api('principal');
     const panel = await openAkmal();
@@ -479,16 +526,23 @@ describe('the vacancies', () => {
     expect(actionsAreLast(panel)).toBe(true);
   });
 
-  it('show a refused close inside the row of actions', async () => {
+  it('show a refused close inside the row of actions, without the "Saved." of an earlier save', async () => {
     api('academic_vice_principal', {
+      [`PUT /api/people/vacancies/${OPEN.id}`]: () => json(vacancyDetail(OPEN)),
       [`POST /api/people/vacancies/${OPEN.id}/close`]: () => refusal('status_unchanged', 409),
     });
     renderApp(`/people/vacancies?open=${OPEN.id}`);
     const panel = await screen.findByRole('complementary', { name: OPEN.name });
-    fireEvent.click(await within(panel).findByRole('button', { name: en.people.vacancies.close }));
+    await within(panel).findByRole('heading', { name: en.people.vacancies.statusTitle });
+    const form = await edit(panel, OPEN.name);
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await savedInPanel(panel);
+
+    fireEvent.click(within(panel).getByRole('button', { name: en.people.vacancies.close }));
     await waitFor(() => {
       expect(panelActions(panel)?.textContent).toContain(en.errors.status_unchanged);
     });
+    expect(panelActions(panel)?.textContent).not.toContain(en.form.saved);
     expect(actionsAreLast(panel)).toBe(true);
   });
 

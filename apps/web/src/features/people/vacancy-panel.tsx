@@ -191,7 +191,10 @@ export function VacancyPanel({
           }
           error={status.error ?? remove.error}
           // After a save of a form, or a close or reopen until another action starts (finding 18).
-          saved={panel.saved || (status.isSuccess && remove.isIdle)}
+          // A form's "Saved." goes once a close, a reopen or a delete starts.
+          saved={
+            (panel.saved && status.isIdle && remove.isIdle) || (status.isSuccess && remove.isIdle)
+          }
         />
       )}
     </div>

@@ -341,6 +341,9 @@ describe('the account section', () => {
     });
     expect(within(form).queryByLabelText(en.people.account.branch)).toBeNull();
     // The form opened again starts fresh, from today.
+    expect(within(form).getByLabelText<HTMLInputElement>(en.people.account.from).value).toBe(
+      '2026-10-10',
+    );
     fireEvent.change(within(form).getByLabelText(en.people.account.from), {
       target: { value: '2026-10-11' },
     });
@@ -764,6 +767,12 @@ describe('the account section', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.account.closeSlip }));
     await waitFor(() => {
       expect(document.body.textContent).not.toContain(PASSWORD);
+    });
+    // Task 2.7c-2b-2a: the focus is back on the button the status form came from.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: en.people.staff.changeStatus }),
+      );
     });
     // Correction 4: nothing keeps the password, neither a query nor a mutation.
     await waitFor(() => {

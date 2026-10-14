@@ -270,6 +270,14 @@ describe('the staff page', () => {
         within(panel).getByRole('table', { name: en.people.staff.historyTitle }).textContent,
       ).toContain(en.people.staff.statuses.left);
     });
+    // Task 2.7c-2b-2a: the form closes, "Saved." is at the bottom, the focus is on its button.
+    await savedInPanel(panel);
+    expect(status.isConnected).toBe(false);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.people.staff.changeStatus }),
+      );
+    });
   });
 
   // Task 2.3c-2, decision 4 of pull request #66: the email opens the account
@@ -315,6 +323,12 @@ describe('the staff page', () => {
     await screen.findByRole('heading', { name: en.people.staff.title });
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    // No status form and no branches form: their buttons are the Super Admin's.
+    await within(panel).findByRole('button', { name: en.form.edit });
+    expect(within(panel).queryByRole('button', { name: en.people.staff.changeStatus })).toBeNull();
+    expect(
+      within(panel).queryByRole('button', { name: en.people.staff.changeBranches }),
+    ).toBeNull();
     const record = await edit(panel, 'Akmal Karimov');
 
     expect(within(record).getByLabelText<HTMLInputElement>(en.people.staff.phone).disabled).toBe(
@@ -329,9 +343,6 @@ describe('the staff page', () => {
     expect(
       within(record).getByLabelText<HTMLInputElement>(en.people.staff.admissionDate).disabled,
     ).toBe(true);
-    // No status form, no branches form.
-    expect(within(panel).queryByLabelText(en.people.staff.newStatus)).toBeNull();
-    expect(within(panel).queryByLabelText(en.people.staff.mainBranchField)).toBeNull();
   });
 
   // Issue #39, hand test of 13 October 2026, finding 2: the further
@@ -401,6 +412,14 @@ describe('the staff page', () => {
           { divisionId: MANAGEMENT.id, departmentId: null, main: false },
         ],
       });
+    });
+    // Task 2.7c-2b-2a: the form closes, "Saved." is at the bottom, the focus is on Edit.
+    await savedInPanel(panel);
+    expect(record.isConnected).toBe(false);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.form.edit }),
+      );
     });
   });
 
