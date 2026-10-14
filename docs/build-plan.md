@@ -309,7 +309,7 @@ How to read the task lines:
   - Build: the same pattern on the panels of students (the record, the UID correction, the five status forms, the photo, the relatives tab with the link editor and "Add relative") and parents (the record, the phone owner choices, the same-person mark).
   - Done when: every People side panel has its actions at the bottom, one primary in view, `PANEL_ACTIONS_LATER` of `e2e/pages.spec.ts` is empty, and `e2e/pages.spec.ts` passes again with its screenshots in the report.
 
-- [ ] **2.7c-3 Rooms "By floor" and the Branches list** (split from 2.7c on pull request #80, decision 1)
+- [x] **2.7c-3 Rooms "By floor" and the Branches list** (split from 2.7c on pull request #80, decision 1)
   - Read: `docs/design-system.md`, issue #39 (items 1 and 5), `03` (Branch: the Branches list), `04` (Teacher and staff record: Category; the teacher list), spec change of 13 October 2026, `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7", item 11), the plan of pull request #77.
   - Build: the Rooms "By floor" view (#39 item 5); the school-wide Branches list for the Super Admin (#39 item 1) once its spec change is merged.
   - From the spec change of 13 October 2026: the Branches list under School setup (name, address, working weekdays, number of buildings and of rooms; opening a branch switches the current branch; "New branch" from the list in the side panel; no new permission, branches `view` and `create`); the category of a staff record and the teacher list's category column and filter show every role the person holds in the branch (`STAFF_CATEGORY_ROLES` widened to all nine roles), a vacancy still has none.

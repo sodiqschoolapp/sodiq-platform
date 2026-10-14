@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 14 October 2026: task 2.7c-3 Rooms "By floor", the Branches list and the category of every role
+
+- Built: the Branches list for the Super Admin (`GET /api/setup/branches`, `/setup/branches`): name, address, weekdays, buildings, rooms; opening a branch switches to it; "New branch" moved there from the Branch page.
+- Rooms "By floor" (`/setup/rooms?view=floors`): buildings with counts, floor tabs, room cards with type colour, status dot and "shared"; a card opens the room's side panel.
+- The category shows every role held in the branch for every reader, with a category filter on the teacher list; `ListPage` gained `onOpenRow` and `view`; screenshots in `docs/screens/2.7c-3/` (from CI).
+- Left out: live state of the cards and "free rooms in slot N" (phase 5), a drawn floorplan (Release 2), the Super Admin's own record (2.7d), forced delete of an unused room (5.8).
+
+The next sessions must know:
+
+- A list whose rows open elsewhere gives `ListPage` `onOpenRow`; another view of its rows gives `view` and draws the loading and failure of any second query itself.
+- `SETUP_PAGES` may carry `area` and `action`; the search and the setup page filter on them.
+- The next task is 2.7d.
+
 ## 14 October 2026: task 2.7c-2b-2b Record actions at the bottom of the student and parent panels
 
 - Built: the student panel reads first, with Edit, "Correct the UID", the status actions (Cancel the leaving, Undo, Return, Restore; Leave school and Delete as danger) at the bottom under every tab; the record and status forms take the place of the tabs; the relative rows' "Change the link" and "Unlink", and "Add relative", open through the panel.

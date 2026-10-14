@@ -250,6 +250,16 @@ test('every page of Phases 0 to 2 is drawn with the design system in light, dark
     await expect(page.getByRole('complementary')).toBeVisible();
     await checkPage(page, `${name}-record`);
   }
+  // Task 2.7c-3: the Rooms "By floor" view, with a card open in its side
+  // panel as a row is; and the Branches list, which is the Super Admin's.
+  await open(page, '/setup/rooms?view=floors', en.setup.rooms.title);
+  await expect(page.getByRole('tablist', { name: en.setup.rooms.floorsTabs })).toBeVisible();
+  await checkPage(page, 'setup-rooms-floors');
+  await page.getByRole('tabpanel').getByRole('list').last().getByRole('button').first().click();
+  await expect(page.getByRole('complementary')).toBeVisible();
+  await checkPage(page, 'setup-rooms-floors-record');
+  await page.goto('/setup/branches');
+  await expect(heading(page, en.problems.noAccessTitle)).toBeVisible();
   // Tasks 2.7c-2b-1 and 2.7c-2b-2a: each School setup and People panel this
   // role changes, with each of its forms open; while the record's form is
   // open its Save and Cancel are the panel's last part. Nothing is saved.

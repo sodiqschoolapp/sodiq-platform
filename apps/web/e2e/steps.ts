@@ -73,7 +73,7 @@ const VIEWS = [
 ] as const;
 
 /** Where `checkPage` saves its screenshots with SCREENSHOTS=1, for the report. */
-const PAGE_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.7c-2b-2b');
+const PAGE_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.7c-3');
 
 interface Measured {
   h1: number;

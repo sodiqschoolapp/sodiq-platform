@@ -160,6 +160,17 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
     control('ring', 'warning-bg', fill('warning-bg')),
     control('ring', 'destructive-bg', fill('destructive-bg')),
     control('sidebar-ring', 'sidebar', sidebar),
+    // The Rooms "By floor" cards (task 2.7c-3, decision 9): the status dot is
+    // a graphic beside the status word, 3:1 on the card and on its hover
+    // fill; the type squares are subject colours, checked on the card below
+    // and here on the hover fill.
+    ...(['success', 'warning', 'destructive'] as const).flatMap((state) => [
+      control(state, 'card (the status dot of a room card)', card),
+      control(state, 'muted (a hovered room card)', fill('muted')),
+    ]),
+    ...(['blue', 'cyan', 'indigo', 'violet', 'pink'] as const).map((colour) =>
+      control(`subject-${colour}`, 'muted (a hovered room card)', fill('muted')),
+    ),
     // The 12 subject colours (task 2.1, answer 7; `subject-colour.tsx`): the
     // swatch is a graphic that tells subjects apart, 3:1 on the background
     // and on a panel (1.4.11); the chip writes the name in the normal text on

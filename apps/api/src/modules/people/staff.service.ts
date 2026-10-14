@@ -4,6 +4,7 @@ import {
   nextDay,
   PERMISSIONS,
   phoneText,
+  SCHOOL_WIDE_ROLES,
   schoolDateOf,
   STAFF_CATEGORY_ROLES,
   STAFF_CONTACT_EXPORT_COLUMNS,
@@ -1244,12 +1245,10 @@ export class Staff {
     }
   }
 
-  /** The list rows of the given records, in one read per table. */
   /**
    * The list rows of the given records, in one read per table. The categories
-   * come from the assignments the reader may see: every branch for a Super
-   * Admin, else the branch of the request and the roles without a branch
-   * (the permission review of pull request #53).
+   * are the roles held in the branch of the request, for every reader (task
+   * 2.7c-3, decision 5).
    */
   private async items(
     transaction: Transaction,
@@ -1307,19 +1306,25 @@ export class Staff {
       .execute();
     const now = this.clock.now();
     const categories = new Map<string, Role[]>();
+    // The person's current roles in the branch of the request, for every
+    // reader (`04`, Personal): a role with a branch counts in that branch
+    // only, a school-wide role without one in each branch; in the order of
+    // STAFF_CATEGORY_ROLES (task 2.7c-3, decision 5).
     for (const row of rows) {
       if (row.account_id !== null) {
-        const everyBranch = superAdminOf(access) !== undefined;
-        const roles = (await currentAssignments(transaction, row.account_id, now))
-          .filter(
-            (assignment) =>
-              everyBranch ||
-              assignment.branchId === null ||
-              assignment.branchId === access.branchId,
-          )
-          .map((assignment) => assignment.role)
-          .filter((role) => (STAFF_CATEGORY_ROLES as readonly Role[]).includes(role));
-        categories.set(row.id, [...new Set(roles)]);
+        const held = new Set(
+          (await currentAssignments(transaction, row.account_id, now))
+            .filter(
+              (assignment) =>
+                assignment.branchId === access.branchId ||
+                (assignment.branchId === null && SCHOOL_WIDE_ROLES.includes(assignment.role)),
+            )
+            .map((assignment) => assignment.role),
+        );
+        categories.set(
+          row.id,
+          STAFF_CATEGORY_ROLES.filter((role) => held.has(role)),
+        );
       }
     }
     return rows.map((row) => {

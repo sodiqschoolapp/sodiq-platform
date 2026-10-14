@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  STAFF_CATEGORY_ROLES,
   STAFF_NAME_MAX_LENGTH,
   staffBranchesSchema,
   staffCheckSchema,
@@ -143,5 +144,23 @@ describe('staff records', () => {
         staffRecordId: null,
       }).data?.firstName,
     ).toBe('Oʻtkir');
+  });
+});
+
+describe('STAFF_CATEGORY_ROLES', () => {
+  // 04, Teacher and staff record, Personal (spec change of 13 October 2026,
+  // item A2): the category is any of the nine roles, in the order of 04.
+  it('is the nine roles of 04, in their order', () => {
+    expect(STAFF_CATEGORY_ROLES).toEqual([
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'spiritual_vice_principal',
+      'head_tutor',
+      'tutor',
+      'senior_head_teacher',
+      'head_teacher',
+      'teacher',
+    ]);
   });
 });

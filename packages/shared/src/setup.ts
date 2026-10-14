@@ -102,6 +102,27 @@ export const branchSchema = z.object({
 
 export type Branch = z.infer<typeof branchSchema>;
 
+/**
+ * The Branches list of the Super Admin (`03`, Branch: "name, address,
+ * working weekdays, number of buildings and of rooms"; task 2.7c-3). The
+ * buildings are those not archived, the rooms every room whatever its
+ * status, as the Buildings and Rooms lists count them (decision 3).
+ */
+export const branchListItemSchema = z.object({
+  id: branchIdSchema,
+  name: z.string(),
+  address: z.string().nullable(),
+  workingWeekdays: z.array(weekdaySchema),
+  buildingCount: z.number().int().nonnegative(),
+  roomCount: z.number().int().nonnegative(),
+});
+
+export type BranchListItem = z.infer<typeof branchListItemSchema>;
+
+export const branchListSchema = z.object({ branches: z.array(branchListItemSchema) });
+
+export type BranchList = z.infer<typeof branchListSchema>;
+
 // Building, floor, room: "Rooms are added floor by floor."
 
 export const BUILDING_NAME_MAX_LENGTH = 100;

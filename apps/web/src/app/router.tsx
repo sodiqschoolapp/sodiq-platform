@@ -21,6 +21,7 @@ import { sessionQuery, STEP_PATH, stepOf, type Step } from '@/features/auth/sess
 import { SetUpPage } from '@/features/auth/set-up-page';
 import { SampleListPage, sampleSearch } from '@/features/sample/sample-list-page';
 import { BranchPage } from '@/features/setup/branch-page';
+import { BranchesPage } from '@/features/setup/branches-page';
 import { BuildingsPage } from '@/features/setup/buildings-page';
 import { DivisionsPage } from '@/features/setup/divisions-page';
 import { SubjectsPage } from '@/features/setup/subjects-page';
@@ -39,7 +40,7 @@ import { SettingsPage } from '@/features/setup/settings-page';
 import { TravelTimesPage } from '@/features/setup/travel-times-page';
 import { DayTemplatesPage } from '@/features/setup/day-templates-page';
 import { TemplateSettingsPage } from '@/features/setup/template-settings-page';
-import { RoomsPage } from '@/features/setup/rooms-page';
+import { RoomsPage, roomsSearch } from '@/features/setup/rooms-page';
 import { SetupPage } from '@/features/setup/setup-page';
 import { listSearch } from '@/components/list/list-state';
 import { SignInPage } from '@/features/auth/sign-in-page';
@@ -196,6 +197,17 @@ const setupRoute = createRoute({
   component: SetupPage,
 });
 
+/**
+ * The Branches list (task 2.7c-3): the Super Admin's, on `branches` `create`,
+ * which a Super Admin passes before the first branch exists.
+ */
+const branchesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/branches',
+  validateSearch: listSearch,
+  component: guarded('branches', BranchesPage, 'create'),
+});
+
 const branchRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/branch',
@@ -212,7 +224,7 @@ const buildingsRoute = createRoute({
 const roomsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/rooms',
-  validateSearch: listSearch,
+  validateSearch: roomsSearch,
   component: guarded('rooms', RoomsPage),
 });
 
@@ -391,6 +403,7 @@ const routeTree = rootRoute.addChildren([
     accountRoute,
     ownPasswordRoute,
     setupRoute,
+    branchesRoute,
     branchRoute,
     buildingsRoute,
     roomsRoute,

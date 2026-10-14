@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import { apiErrorSchema, BRANCH_HEADER } from '@sodiq/shared';
+import { apiErrorSchema, BRANCH_HEADER, branchListSchema, buildingListSchema } from '@sodiq/shared';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
@@ -351,5 +351,127 @@ describe('the record of a branch', () => {
   it('answers nobody who is not signed in', async () => {
     expect((await kit.get('/api/setup/branch').set(BRANCH_HEADER, north)).status).toBe(401);
     expect((await kit.post('/api/setup/branches').send(RECORD)).status).toBe(401);
+  });
+  // docs/spec/03-school-setup.md, Branch: "The Super Admin sees every branch in
+  // one list under School setup: name, address, working weekdays, number of
+  // buildings and of rooms … it uses the rights to view and create branches"
+  // (task 2.7c-3, decisions 2 and 3).
+  describe('the Branches list', () => {
+    const list = (cookie: string) => kit.get('/api/setup/branches', cookie);
+    let made = 0;
+
+    /** A building with one floor and rooms of the given statuses, archived when asked. */
+    async function building(branch: string, statuses: readonly string[], archived = false) {
+      made += 1;
+      const block = await database.migrator
+        .insertInto('buildings')
+        .values({ branch_id: branch, name: `Block ${String(made)}` })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const floor = await database.migrator
+        .insertInto('floors')
+        .values({ branch_id: branch, building_id: block.id, name: 'First' })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      for (const [index, status] of statuses.entries()) {
+        await database.migrator
+          .insertInto('rooms')
+          .values({
+            branch_id: branch,
+            floor_id: floor.id,
+            name: `${String(made)}-${String(index + 1)}`,
+            type: 'classroom',
+            capacity: 30,
+            status,
+          })
+          .execute();
+      }
+      if (archived) {
+        await database.migrator
+          .updateTable('floors')
+          .set({ archived_at: new Date(START) })
+          .where('id', '=', floor.id)
+          .execute();
+        await database.migrator
+          .updateTable('buildings')
+          .set({ archived_at: new Date(START) })
+          .where('id', '=', block.id)
+          .execute();
+      }
+    }
+
+    it('holds every branch by name with its counts: buildings not archived, every room', async () => {
+      await building(north, ['in_use', 'under_repair', 'closed']);
+      await building(north, ['closed'], true);
+      await building(south, ['in_use']);
+      const before = await database.migrator
+        .selectFrom('audit_log_school')
+        .select((builder) => builder.fn.countAll<string>().as('n'))
+        .executeTakeFirstOrThrow();
+
+      const response = await list(admin);
+
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const { branches } = branchListSchema.parse(response.body);
+      const names = branches.map((branch) => branch.name);
+      expect(names).toEqual([...names].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
+      const all = await database.migrator.selectFrom('branches').select('id').execute();
+      expect(branches.map((branch) => branch.id).sort()).toEqual(all.map((row) => row.id).sort());
+      expect(branches.find((branch) => branch.id === north)).toMatchObject({
+        name: 'North',
+        buildingCount: 1,
+        roomCount: 4,
+      });
+      expect(branches.find((branch) => branch.id === south)).toMatchObject({
+        name: 'South',
+        buildingCount: 1,
+        roomCount: 1,
+      });
+      // The same number the Buildings list sums for the branch (decision 3).
+      for (const branch of [north, south]) {
+        const buildings = buildingListSchema.parse(
+          (await kit.get('/api/setup/buildings', admin).set(BRANCH_HEADER, branch)).body,
+        ).buildings;
+        const summed = buildings.reduce(
+          (sum, one) => sum + one.floors.reduce((inner, floor) => inner + floor.roomCount, 0),
+          0,
+        );
+        expect(branches.find((one) => one.id === branch)?.roomCount).toBe(summed);
+      }
+      // A read writes nothing to the audit log.
+      const after = await database.migrator
+        .selectFrom('audit_log_school')
+        .select((builder) => builder.fn.countAll<string>().as('n'))
+        .executeTakeFirstOrThrow();
+      expect(after.n).toBe(before.n);
+    });
+
+    it('answers a new branch with nothing in it as 0 and 0, with its address and weekdays', async () => {
+      const made = bodyId(await create(admin, { ...RECORD, name: 'Listed empty' }));
+      const { branches } = branchListSchema.parse((await list(admin)).body);
+      expect(branches.find((branch) => branch.id === made)).toEqual({
+        id: made,
+        name: 'Listed empty',
+        address: 'Yunusobod, 4',
+        workingWeekdays: [1, 2, 3, 4, 5, 6],
+        buildingCount: 0,
+        roomCount: 0,
+      });
+    });
+
+    it('needs no branch in the request and ignores one that is sent', async () => {
+      const plain = await list(admin);
+      const named = await list(admin).set(BRANCH_HEADER, south);
+      expect(named.status).toBe(200);
+      expect(named.body).toEqual(plain.body);
+    });
+
+    it('refuses the Principal, the Academic Vice Principal and a Teacher, who may not create branches', async () => {
+      for (const cookie of [principal, vicePrincipal, teacher]) {
+        const response = await list(cookie);
+        expect(response.status).toBe(403);
+        expect(errorCode(response)).toBe('permission_denied');
+      }
+    });
   });
 });

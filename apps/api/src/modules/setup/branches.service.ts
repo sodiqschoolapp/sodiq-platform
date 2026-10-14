@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Branch, BranchRecord, GoLiveRecord, Weekday } from '@sodiq/shared';
+import type { Branch, BranchList, BranchRecord, GoLiveRecord, Weekday } from '@sodiq/shared';
 import { ApiException } from '../../http/api-exception.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { Audit } from '../audit/audit.service.js';
@@ -127,6 +127,57 @@ export class Branches {
         return branch;
       }),
     );
+  }
+
+  /**
+   * Every branch of the school with its counts, by name: the Branches list of
+   * the Super Admin (`03`, Branch; task 2.7c-3). School-wide work with no
+   * branch in the request, so the transaction holds every branch id, read
+   * first, for the row filters of buildings and rooms to let the counts
+   * through. Buildings not archived; every room whatever its status, as the
+   * Buildings and Rooms lists count them (decision 3). A read: no audit entry.
+   */
+  async list(): Promise<BranchList> {
+    const ids = await this.transactions.run([], async (transaction) =>
+      (await transaction.selectFrom('branches').select('id').orderBy('id').execute()).map(
+        (row) => row.id,
+      ),
+    );
+    return this.transactions.run(ids, async (transaction) => {
+      const rows = await transaction
+        .selectFrom('branches')
+        .select((builder) => [
+          'branches.id',
+          'branches.name',
+          'branches.address',
+          'branches.working_weekdays',
+          builder
+            .selectFrom('buildings')
+            .whereRef('buildings.branch_id', '=', 'branches.id')
+            .where('buildings.archived_at', 'is', null)
+            .select(builder.fn.countAll<string>().as('n'))
+            .as('building_count'),
+          builder
+            .selectFrom('rooms')
+            .whereRef('rooms.branch_id', '=', 'branches.id')
+            .select(builder.fn.countAll<string>().as('n'))
+            .as('room_count'),
+        ])
+        .orderBy('branches.name')
+        .orderBy('branches.id')
+        .execute();
+      return {
+        branches: rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          address: row.address,
+          workingWeekdays: weekdaysOf(row.working_weekdays),
+          // A count; `null` is how the type of a subquery is written, never what it answers.
+          buildingCount: Number(row.building_count ?? 0),
+          roomCount: Number(row.room_count ?? 0),
+        })),
+      };
+    });
   }
 
   /** The branch of the request. */

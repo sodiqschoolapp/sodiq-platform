@@ -1,4 +1,4 @@
-import { PERMISSIONS, permits } from '@sodiq/shared';
+import { PERMISSIONS, permits, type Action } from '@sodiq/shared';
 import { Link, type LinkProps } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/page-header';
@@ -13,6 +13,8 @@ interface SetupLink {
   title: string;
   /** The area of the permission table the page belongs to. */
   area: string;
+  /** What the role must be allowed in the area to see the link; `view` when left out. */
+  action?: Action;
 }
 
 /**
@@ -26,6 +28,14 @@ export function SetupPage() {
   const { t } = useTranslation();
   const { role } = useView();
   const all: SetupLink[] = [
+    {
+      // The Branches list is the Super Admin's (task 2.7c-3, decision 2).
+      key: 'branches',
+      to: '/setup/branches',
+      title: t('setup.branchesLink'),
+      area: 'branches',
+      action: 'create',
+    },
     {
       key: 'branch',
       to: '/setup/branch',
@@ -101,7 +111,7 @@ export function SetupPage() {
   ];
   const showsChecklist = role !== null && permits(PERMISSIONS, role, 'settings', 'view');
   const links = all.filter(
-    (link) => role !== null && permits(PERMISSIONS, role, link.area, 'view'),
+    (link) => role !== null && permits(PERMISSIONS, role, link.area, link.action ?? 'view'),
   );
 
   return (

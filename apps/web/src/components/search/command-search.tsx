@@ -98,7 +98,7 @@ export function CommandSearch() {
     () =>
       indexedPages(
         menuPages,
-        (area) => role !== null && permits(PERMISSIONS, role, area, 'view'),
+        (area, action = 'view') => role !== null && permits(PERMISSIONS, role, area, action),
       ).map((page) => ({ ...page, title: t(page.titleKey) })),
     [t, menuPages, role],
   );

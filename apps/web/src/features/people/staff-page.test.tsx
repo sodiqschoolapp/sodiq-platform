@@ -202,6 +202,47 @@ describe('the staff page', () => {
     ]);
   });
 
+  // 04, the teacher list (spec change of 13 October 2026, item A2): the
+  // category column shows every role held in the branch; its filter offers every role.
+  it('shows every role in the category and filters by any of them', async () => {
+    const heads: StaffListItem = {
+      ...NODIRA,
+      categories: ['super_admin', 'principal', 'senior_head_teacher'],
+    };
+    openList('super_admin', {
+      'GET /api/people/staff': () => json({ staff: [AKMAL, heads], today: '2026-10-10' }),
+    });
+    renderApp(PATH);
+    await screen.findByRole('heading', { name: en.people.staff.title });
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row[3])).toEqual([
+        en.roles.teacher,
+        `${en.roles.super_admin}, ${en.roles.principal}, ${en.roles.senior_head_teacher}`,
+      ]);
+    });
+    const filter = screen.getByRole('combobox', { name: en.people.staff.categories });
+    expect([...filter.querySelectorAll('option')].map((option) => option.textContent)).toEqual([
+      en.list.all,
+      en.roles.super_admin,
+      en.roles.principal,
+      en.roles.academic_vice_principal,
+      en.roles.spiritual_vice_principal,
+      en.roles.head_tutor,
+      en.roles.tutor,
+      en.roles.senior_head_teacher,
+      en.roles.head_teacher,
+      en.roles.teacher,
+    ]);
+    fireEvent.change(filter, { target: { value: 'principal' } });
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row[1])).toEqual(['Aliyeva Nodira']);
+    });
+    fireEvent.change(filter, { target: { value: 'teacher' } });
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row[1])).toEqual(['Karimov Akmal']);
+    });
+  });
+
   it('filters by status and finds a person by staff ID', async () => {
     openList('super_admin');
     renderApp(`${PATH}?f=${encodeURIComponent(JSON.stringify({ status: 'active' }))}`);

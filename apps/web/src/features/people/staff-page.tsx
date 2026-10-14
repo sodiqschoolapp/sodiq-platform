@@ -5,6 +5,7 @@ import {
   INSTRUCTION_LANGUAGES,
   PERMISSIONS,
   permits,
+  STAFF_CATEGORY_ROLES,
   STAFF_STATUSES,
   SUBJECT_GRADES,
   staffCheckResultSchema,
@@ -244,6 +245,13 @@ export function StaffPage() {
           label: t(`people.staff.statuses.${one}`),
         })),
         matches: (row, value) => row.status === value,
+      },
+      {
+        // Every role (`04`, the teacher list: "the category filter offers every role").
+        key: 'category',
+        label: t('people.staff.categories'),
+        options: STAFF_CATEGORY_ROLES.map((one) => ({ value: one, label: t(`roles.${one}`) })),
+        matches: (row, value) => row.categories.some((one) => one === value),
       },
       {
         key: 'division',

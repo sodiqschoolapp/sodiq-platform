@@ -82,6 +82,7 @@ async function openList(
   rooms = ROOMS,
   buildings = [MAIN, ANNEX],
   refuse?: Record<string, () => Response>,
+  path = PATH,
 ) {
   let list = rooms;
   const calls = fakeApi({
@@ -105,7 +106,7 @@ async function openList(
     ),
     ...refuse,
   });
-  const shell = renderApp(PATH);
+  const shell = renderApp(path);
   await screen.findByRole('heading', { name: en.setup.rooms.title });
   return { ...shell, calls };
 }
@@ -501,5 +502,289 @@ describe('the export of the room list', () => {
     answer = () => refusal('permission_denied', 403);
     fireEvent.click(screen.getByRole('button', { name: en.list.export }));
     expect((await screen.findByRole('alert')).textContent).toBe(en.errors.permission_denied);
+  });
+});
+
+// Issue #39, item 5; task 2.7c-3: the Rooms "By floor" view beside the list.
+// The same rows as the list; the side panel opens from a card as from a row.
+describe('the By floor view', () => {
+  const FLOORS = `${PATH}?view=floors`;
+  const nav = () => screen.getByRole('navigation', { name: en.setup.rooms.buildingsNav });
+  const buildingButton = (name: string) =>
+    within(nav())
+      .getAllByRole('button')
+      .find((one) => one.textContent?.startsWith(name)) as HTMLElement;
+  const tabNames = () => screen.getAllByRole('tab').map((tab) => tab.textContent);
+  // A card is named by all it shows (type, seats, status), its first line the room's name.
+  const cardButtons = () => [
+    ...screen.getByRole('tabpanel').querySelectorAll<HTMLElement>('button[data-open-row]'),
+  ];
+  const cards = () => cardButtons().map((one) => one.firstElementChild?.textContent);
+  const card = (name: string) =>
+    cardButtons().find((one) => one.firstElementChild?.textContent === name) as HTMLElement;
+  const views = () => screen.getByRole('radiogroup', { name: en.setup.rooms.views });
+  const address = (router: { state: { location: { search: unknown } } }) =>
+    router.state.location.search as Record<string, unknown>;
+
+  it('is beside the list, which stays the default, and is kept in the address', async () => {
+    const { router } = await openList();
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(3);
+    });
+    expect(
+      within(views()).getByRole<HTMLInputElement>('radio', { name: en.setup.rooms.viewList })
+        .checked,
+    ).toBe(true);
+
+    fireEvent.click(within(views()).getByRole('radio', { name: en.setup.rooms.viewFloors }));
+    await screen.findByRole('tablist', { name: en.setup.rooms.floorsTabs });
+    expect(address(router)).toEqual({ view: 'floors' });
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+
+    fireEvent.click(within(views()).getByRole('radio', { name: en.setup.rooms.viewList }));
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(3);
+    });
+    expect(address(router)).toEqual({});
+  });
+
+  it('lists the active buildings by name with their room counts, and the first is chosen', async () => {
+    await openList(superAdmin(), ROOMS, [MAIN, ANNEX], undefined, FLOORS);
+    await screen.findByRole('tablist');
+    expect(
+      within(nav())
+        .getAllByRole('button')
+        .map((one) => one.getAttribute('aria-label')),
+    ).toEqual(['Annex, 0 rooms shown', 'Main, 3 rooms shown']);
+    expect(buildingButton('Annex').getAttribute('aria-current')).toBe('true');
+    expect(tabNames()).toEqual(['Ground']);
+    expect(screen.getByText(en.setup.rooms.noRoomOnFloor)).toBeDefined();
+  });
+
+  it('shows the active floors of a building as tabs and the rooms of a floor as cards', async () => {
+    const { router } = await openList(superAdmin(), ROOMS, [MAIN, ANNEX], undefined, FLOORS);
+    await screen.findByRole('tablist');
+    fireEvent.click(buildingButton('Main'));
+    // The archived Attic is not a tab (decision 10).
+    await waitFor(() => {
+      expect(tabNames()).toEqual(['Ground', '1']);
+    });
+    expect(address(router)).toEqual({ view: 'floors', building: MAIN.id });
+    expect(screen.getByRole('tab', { name: 'Ground' }).getAttribute('aria-selected')).toBe('true');
+    expect(cards()).toEqual(['101', 'Sports hall']);
+
+    const hall = card('Sports hall');
+    expect(hall.textContent).toContain(en.setup.rooms.types.sports_hall);
+    expect(hall.textContent).toContain('120 seats');
+    expect(hall.textContent).toContain(en.setup.rooms.statuses.closed);
+    expect(hall.textContent).toContain('Shared: 2 lessons at once');
+    expect(card('101').textContent).toContain('28 seats');
+    expect(card('101').textContent).not.toContain('Shared');
+
+    const legend = screen.getByRole('list', { name: en.setup.rooms.legend });
+    expect(
+      within(legend)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      en.setup.rooms.types.classroom,
+      en.setup.rooms.types.laboratory,
+      en.setup.rooms.types.sports_hall,
+      en.setup.rooms.types.hall,
+      en.setup.rooms.types.other,
+    ]);
+  });
+
+  it('moves between the floor tabs with the arrow keys, Home and End', async () => {
+    await openList(superAdmin(), ROOMS, [MAIN, ANNEX], undefined, `${FLOORS}&building=${MAIN.id}`);
+    const ground = await screen.findByRole('tab', { name: 'Ground' });
+    fireEvent.keyDown(ground, { key: 'ArrowRight' });
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: '1' }).getAttribute('aria-selected')).toBe('true');
+    });
+    expect(cards()).toEqual(['102']);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('tab', { name: '1' }));
+    });
+    fireEvent.keyDown(screen.getByRole('tab', { name: '1' }), { key: 'ArrowRight' });
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Ground' }).getAttribute('aria-selected')).toBe(
+        'true',
+      );
+    });
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Ground' }), { key: 'End' });
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: '1' }).getAttribute('aria-selected')).toBe('true');
+    });
+  });
+
+  it('opens a card in the side panel as a row, and Back closes it', async () => {
+    const { router } = await openList(
+      superAdmin(),
+      ROOMS,
+      [MAIN, ANNEX],
+      undefined,
+      `${FLOORS}&building=${MAIN.id}`,
+    );
+    await screen.findByRole('tablist');
+    expect(card('Sports hall').textContent).toContain(en.setup.rooms.statuses.closed);
+    fireEvent.click(card('Sports hall'));
+    const panel = await screen.findByRole('complementary', { name: 'Sports hall' });
+    expect(within(panel).getByRole('button', { name: en.form.edit })).toBeDefined();
+    await waitFor(() => {
+      expect(address(router)).toEqual({ view: 'floors', building: MAIN.id, open: ROOMS[2]?.id });
+    });
+    router.history.back();
+    await waitFor(() => {
+      expect(screen.queryByRole('complementary')).toBeNull();
+    });
+    expect(screen.getByRole('tablist')).toBeDefined();
+  });
+
+  it('narrows the cards and the counts with the search and the type and status filters, and offers no building or floor filter', async () => {
+    await openList(superAdmin(), ROOMS, [MAIN, ANNEX], undefined, `${FLOORS}&building=${MAIN.id}`);
+    await screen.findByRole('tablist');
+    const toolbarFilter = (label: string) =>
+      screen
+        .queryAllByRole('combobox', { name: label })
+        .filter((one) => !nav().contains(one) && one.closest('[role="tabpanel"]') === null);
+    expect(screen.queryByRole('combobox', { name: en.setup.rooms.floor })).toBeNull();
+    // The one "Buildings" select is the view's own, for phone width.
+    expect(toolbarFilter(en.setup.rooms.building)).toEqual([]);
+
+    fireEvent.change(screen.getByRole('combobox', { name: en.setup.rooms.type }), {
+      target: { value: 'sports_hall' },
+    });
+    await waitFor(() => {
+      expect(cards()).toEqual(['Sports hall']);
+    });
+    expect(buildingButton('Main').getAttribute('aria-label')).toBe('Main, 1 room shown');
+
+    // The status filter and the search narrow the cards the same way.
+    fireEvent.change(screen.getByRole('combobox', { name: en.setup.rooms.type }), {
+      target: { value: '' },
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: en.setup.rooms.status }), {
+      target: { value: 'in_use' },
+    });
+    await waitFor(() => {
+      expect(cards()).toEqual(['101']);
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: en.setup.rooms.status }), {
+      target: { value: '' },
+    });
+    fireEvent.change(screen.getByRole('searchbox', { name: en.list.search }), {
+      target: { value: 'Sports' },
+    });
+    await waitFor(() => {
+      expect(cards()).toEqual(['Sports hall']);
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: en.setup.rooms.type }), {
+      target: { value: 'hall' },
+    });
+    await waitFor(() => {
+      expect(screen.getByText(en.setup.rooms.noRoomMatches)).toBeDefined();
+    });
+  });
+
+  it('turns a building chosen in the list filter into the chosen building', async () => {
+    const { router } = await openList(
+      superAdmin(),
+      ROOMS,
+      [MAIN, ANNEX],
+      undefined,
+      `${PATH}?f=${encodeURIComponent(JSON.stringify({ building: MAIN.id, status: 'in_use' }))}`,
+    );
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+    fireEvent.click(within(views()).getByRole('radio', { name: en.setup.rooms.viewFloors }));
+    await screen.findByRole('tablist');
+    expect(address(router)).toEqual({ view: 'floors', building: MAIN.id, f: { status: 'in_use' } });
+    expect(buildingButton('Main').getAttribute('aria-current')).toBe('true');
+    expect(cards()).toEqual(['101']);
+  });
+
+  it('falls back to the first building and floor when the address names an unknown one', async () => {
+    await openList(
+      superAdmin(),
+      ROOMS,
+      [MAIN, ANNEX],
+      undefined,
+      `${FLOORS}&building=${uid(99)}&floor=${uid(98)}`,
+    );
+    await screen.findByRole('tablist');
+    expect(buildingButton('Annex').getAttribute('aria-current')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Ground' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('orders the cards by name, whatever order the server answers', async () => {
+    const out = [room(5, { name: '10' }), room(6, { name: 'B2' }), room(7, { name: '9' })];
+    await openList(superAdmin(), out, [MAIN], undefined, FLOORS);
+    await screen.findByRole('tablist');
+    expect(cards()).toEqual(['9', '10', 'B2']);
+  });
+
+  it('shows the empty state of the list when the branch has no room', async () => {
+    await openList(
+      superAdmin(),
+      [],
+      [{ ...ANNEX, archivedAt: '2026-10-09T04:00:00.000Z' }],
+      undefined,
+      FLOORS,
+    );
+    // An empty list shows the list's own empty state first.
+    expect(await screen.findByText(en.setup.rooms.emptyTitle)).toBeDefined();
+  });
+
+  it('says so when the chosen building has no floor in use', async () => {
+    const bare: Building = { id: uid(3), name: 'Bare', archivedAt: null, floors: [] };
+    await openList(superAdmin(), ROOMS, [MAIN, bare], undefined, `${FLOORS}&building=${bare.id}`);
+    expect(await screen.findByText(en.setup.rooms.noFloorInBuilding)).toBeDefined();
+    expect(screen.queryByRole('tablist')).toBeNull();
+  });
+
+  it('says so when no building of the branch is in use', async () => {
+    await openList(
+      superAdmin(),
+      ROOMS,
+      [{ ...MAIN, archivedAt: '2026-10-09T04:00:00.000Z' }],
+      undefined,
+      FLOORS,
+    );
+    expect(await screen.findByText(en.setup.rooms.noActiveBuilding)).toBeDefined();
+  });
+
+  it('lets the Principal read the cards and the panel, with nothing to change', async () => {
+    await openList(principal(), ROOMS, [MAIN, ANNEX], undefined, `${FLOORS}&building=${MAIN.id}`);
+    await screen.findByRole('tablist');
+    fireEvent.click(card('101'));
+    const panel = await screen.findByRole('complementary', { name: '101' });
+    expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
+    expect(screen.queryByRole('button', { name: en.setup.rooms.add })).toBeNull();
+  });
+
+  it('shows the failure of the buildings in place of the cards, with a way to try again, never the table', async () => {
+    let failures = 1;
+    await openList(
+      superAdmin(),
+      ROOMS,
+      [MAIN, ANNEX],
+      {
+        'GET /api/setup/buildings': () => {
+          if (failures > 0) {
+            failures -= 1;
+            return refusal('internal_error', 500);
+          }
+          return json({ buildings: [MAIN, ANNEX] });
+        },
+      },
+      FLOORS,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: en.problems.retry }));
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    await screen.findByRole('tablist');
   });
 });

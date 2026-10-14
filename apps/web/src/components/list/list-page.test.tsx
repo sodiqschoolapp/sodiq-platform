@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,7 @@ import { CHECKBOX_TARGET } from '@/components/ui/control';
 import { setWindowWidth } from '@/testing/window-width';
 import {
   ListPage,
+  ROWS_AT_ONCE,
   type BulkAction,
   type ExportExtra,
   type ExportState,
@@ -61,6 +62,12 @@ interface HarnessProps {
   more?: { onMore: () => void; loading: boolean };
   columns?: Column<Room>[];
   creating?: NewRecord;
+  onOpenRow?: (row: Room) => void;
+  view?: (shown: {
+    rows: readonly Room[];
+    sorted: boolean;
+    open: (id: string) => void;
+  }) => React.ReactNode;
   /** Sees every address the list writes. */
   onAddress?: (search: ListSearch) => void;
 }
@@ -78,6 +85,8 @@ function Harness({
   more,
   columns = COLUMNS,
   creating,
+  onOpenRow,
+  view,
   onAddress,
 }: HarnessProps) {
   const [search, setSearch] = useState(start);
@@ -102,6 +111,8 @@ function Harness({
       exportExtras={exportExtras}
       panel={panel}
       creating={creating}
+      onOpenRow={onOpenRow}
+      view={view}
       more={more}
     />
   );
@@ -520,5 +531,152 @@ describe('a new record in the side panel', () => {
   it('draws nothing without a panel for the records', () => {
     show({ rows: ROOMS, creating: newRecord() });
     expect(screen.queryByRole('complementary')).toBeNull();
+  });
+
+  // Task 2.7c-3 (the Branches list, decision 4): a list whose rows open elsewhere.
+  it('is drawn for a list whose rows open elsewhere, and hands the saved id to the page without an address', () => {
+    const addresses: ListSearch[] = [];
+    const onSaved = vi.fn();
+    show({
+      rows: ROOMS,
+      onOpenRow: vi.fn(),
+      creating: newRecord(onSaved, 'r2'),
+      onAddress: (next) => {
+        addresses.push(next);
+      },
+    });
+    expect(screen.getByRole('complementary', { name: 'New room' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(onSaved).toHaveBeenCalledWith('r2');
+    expect(addresses).toEqual([]);
+  });
+});
+
+// Task 2.7c-3, decision 4: the Branches list opens a branch by switching to it.
+describe('a list whose rows open elsewhere', () => {
+  it('opens a row through the shared open button and writes no record into the address', async () => {
+    const addresses: ListSearch[] = [];
+    const onOpenRow = vi.fn();
+    show({
+      rows: ROOMS,
+      onOpenRow,
+      onAddress: (next) => {
+        addresses.push(next);
+      },
+    });
+    const button = screen.getByRole('button', { name: 'Room 4' });
+    expect(button.closest('td')).not.toBeNull();
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(onOpenRow).toHaveBeenCalledWith(ROOMS[1]);
+    });
+    expect(addresses).toEqual([]);
+    expect(screen.queryByRole('complementary')).toBeNull();
+  });
+});
+
+// Task 2.7c-3, decision 8: another view of the same rows (Rooms "By floor").
+describe('another view of the rows', () => {
+  const cards = ({
+    rows,
+    sorted,
+    open,
+  }: {
+    rows: readonly Room[];
+    sorted: boolean;
+    open: (id: string) => void;
+  }) => (
+    <ul aria-label="Cards" data-sorted={String(sorted)}>
+      {rows.map((row) => (
+        <li key={row.id}>
+          <button
+            type="button"
+            onClick={() => {
+              open(row.id);
+            }}
+          >
+            {`Card ${row.name}`}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+  const cardNames = () =>
+    within(screen.getByRole('list', { name: 'Cards' }))
+      .getAllByRole('button')
+      .map((one) => one.textContent);
+
+  it('gets every row the search leaves, past the rows drawn at once, in the order the list chose', () => {
+    const many = Array.from({ length: ROWS_AT_ONCE + 20 }, (_, index) => ({
+      id: `m${String(index)}`,
+      name: `Room ${String(index).padStart(3, '0')}`,
+      seats: index,
+    }));
+    show({ rows: many, view: cards, start: { sort: '-seats', q: 'Room' } });
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(cardNames()).toHaveLength(ROWS_AT_ONCE + 20);
+    expect(cardNames()[0]).toBe(`Card Room ${String(ROWS_AT_ONCE + 19).padStart(3, '0')}`);
+    expect(screen.getByRole('list', { name: 'Cards' }).dataset.sorted).toBe('true');
+    expect(screen.queryByRole('button', { name: en.list.showMore })).toBeNull();
+  });
+
+  it('hands the rows in their own order when the list chose none, and narrows them with the search', () => {
+    show({ rows: ROOMS, view: cards });
+    expect(screen.getByRole('list', { name: 'Cards' }).dataset.sorted).toBe('false');
+    expect(cardNames()).toEqual(['Card Room 12', 'Card Room 4', 'Card Laboratory']);
+    fireEvent.change(screen.getByRole('searchbox', { name: en.list.search }), {
+      target: { value: 'Lab' },
+    });
+    expect(cardNames()).toEqual(['Card Laboratory']);
+  });
+
+  it('opens a row in the side panel as the table does', () => {
+    const addresses: ListSearch[] = [];
+    show({
+      rows: ROOMS,
+      view: cards,
+      panel: (row) => `Panel of ${row.name}`,
+      onAddress: (next) => {
+        addresses.push(next);
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Card Room 4' }));
+    expect(addresses.at(-1)).toEqual({ open: 'r2' });
+    expect(screen.getByRole('complementary', { name: 'Room 4' }).textContent).toContain(
+      'Panel of Room 4',
+    );
+  });
+
+  it('has no checkboxes, and rows ticked in the table are cleared when it is shown', () => {
+    const exported = vi.fn();
+    function Switching() {
+      const [cardsShown, setCardsShown] = useState(false);
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              setCardsShown((before) => !before);
+            }}
+          >
+            Switch
+          </button>
+          <Harness rows={ROOMS} onExport={exported} view={cardsShown ? cards : undefined} />
+        </>
+      );
+    }
+    render(
+      <I18nextProvider i18n={i18n}>
+        <Switching />
+      </I18nextProvider>,
+    );
+    fireEvent.click(tick('Room 4'));
+    expect(status().textContent).toBe(selected(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch' }));
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: en.list.export }));
+    expect(exported.mock.calls[0]?.[3]).toBe('matching');
+    fireEvent.click(screen.getByRole('button', { name: 'Switch' }));
+    expect(tick('Room 4').checked).toBe(false);
   });
 });

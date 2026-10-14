@@ -1,9 +1,9 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
-import { fakeApi, json, refusal, renderApp, sessionOf } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { isSearchShortcut } from './command-search';
 
 type Language = 'en' | 'ru' | 'uz';
@@ -65,6 +65,35 @@ describe('the search of pages', () => {
       en.sample.title,
     ]);
     expect(screen.getByRole('listbox', { name: en.search.pages })).toBeDefined();
+  });
+
+  // Task 2.7c-3, decision 13: the Branches list is the Super Admin's
+  // (`03`, Branch), so the search offers it to no other role of School setup.
+  it('offers the Branches list to the Super Admin only', async () => {
+    const offered = async (role: 'super_admin' | 'principal' | 'academic_vice_principal') => {
+      fakeApi({
+        'GET /api/auth/session': () =>
+          json(
+            sessionOf({
+              assignments: [{ role, branchId: role === 'super_admin' ? null : NORTH.id }],
+              branches: [NORTH],
+            }),
+          ),
+        'GET /api/access/branches-without-vice-principal': () => json({ branches: [] }),
+      });
+      renderApp('/account');
+      await screen.findByRole('heading', { name: en.account.title });
+      pressShortcut();
+      await dialog();
+      fireEvent.change(box(), { target: { value: en.setup.branches.title } });
+      // None may match: no option at all.
+      const names = screen.queryAllByRole('option').map((option) => option.textContent ?? '');
+      cleanup();
+      return names;
+    };
+    expect(await offered('super_admin')).toContain(en.setup.branches.title);
+    expect(await offered('principal')).not.toContain(en.setup.branches.title);
+    expect(await offered('academic_vice_principal')).not.toContain(en.setup.branches.title);
   });
 
   it('opens with Cmd+K too, and closes with Escape with the focus back where it was', async () => {

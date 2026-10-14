@@ -1,5 +1,6 @@
 import {
   academicYearListSchema,
+  branchListSchema,
   branchSchema,
   currentPeriodSchema,
   divisionListSchema,
@@ -29,6 +30,16 @@ export const branchQuery = (branchId: string | null) =>
         await answerOf(api.GET('/api/setup/branch', { params: { header: branchHeader() } })),
       ),
     enabled: branchId !== null,
+  });
+
+/**
+ * Every branch of the school with its counts, for the Super Admin (task
+ * 2.7c-3): school-wide, so no branch in the header or the key.
+ */
+export const branchesQuery = () =>
+  queryOptions({
+    queryKey: [...SETUP_KEY, 'branches'],
+    queryFn: async () => branchListSchema.parse(await answerOf(api.GET('/api/setup/branches'))),
   });
 
 export const buildingsQuery = (branchId: string | null) =>

@@ -118,6 +118,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // "Changes nothing"; the Academic Vice Principal's view approved by the
   // owner, pull request #37, answer 5). Creating a branch names no branch.
   'POST /api/setup/branches': { branch: 'none', roles: ['super_admin'] },
+  'GET /api/setup/branches': { branch: 'none', roles: ['super_admin'] },
   'GET /api/setup/branch': { branch: 'request', roles: SETUP_VIEWERS },
   'PUT /api/setup/branch': { branch: 'request', roles: ['super_admin'] },
   'GET /api/setup/buildings': { branch: 'request', roles: SETUP_VIEWERS },
