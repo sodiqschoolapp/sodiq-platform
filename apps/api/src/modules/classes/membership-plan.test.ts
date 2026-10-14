@@ -21,6 +21,9 @@ const row = (
   ownUntil: YEAR_END,
   endedBy: null,
   leavingId: null,
+  cause: 'placement',
+  writtenByMoveId: null,
+  endedByMoveId: null,
   ...extra,
 });
 
@@ -291,5 +294,49 @@ describe('the end of a placement', () => {
         YEAR_END,
       ),
     ).toEqual({ refusal: 'student_not_active_on' });
+  });
+});
+
+// Task 3.3a, decision 8 and must-fix 1 of the plan review: a leaving dated on
+// or before a scheduled move cancels it; taking that leaving back gives the
+// row the move cut back to its own end and never the row the move wrote.
+describe('the class rows of a move cancelled by a leaving', () => {
+  const cut = row('oxford', '2026-09-01', '2026-11-02', { endedBy: 'leaving', leavingId: 'L' });
+  const target = row('yale', '2026-11-16', '2026-11-16', {
+    classId: 'yale',
+    endedBy: 'leaving',
+    leavingId: 'L',
+    cause: 'transfer',
+    writtenByMoveId: 'M',
+  });
+
+  it('gives back the row the move cut to its own end when the move is cancelled', () => {
+    const plan = planMemberships(
+      [cut, target],
+      { takeBack: { leavingId: 'L', from: '2026-11-02' }, leave: null },
+      always,
+      new Set(['M']),
+    );
+    expect(plan.inserts).toEqual([
+      {
+        classId: 'oxford',
+        validFrom: '2026-11-02',
+        validUntil: YEAR_END,
+        ownUntil: YEAR_END,
+        cut: false,
+      },
+    ]);
+  });
+
+  it('gives back both rows of a move that was not cancelled, each to the next', () => {
+    const plan = planMemberships(
+      [cut, target],
+      { takeBack: { leavingId: 'L', from: '2026-11-02' }, leave: null },
+      always,
+    );
+    expect(plan.inserts.map((one) => [one.classId, one.validFrom, one.validUntil])).toEqual([
+      ['oxford', '2026-11-02', '2026-11-16'],
+      ['yale', '2026-11-16', YEAR_END],
+    ]);
   });
 });

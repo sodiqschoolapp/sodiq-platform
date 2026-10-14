@@ -481,7 +481,9 @@ describe('groups on the class side in the database', () => {
                 studentId: student,
                 from: '2026-10-12',
               }),
-              cause: 'transfer',
+              // Task 3.3a (decision 12 of pull request #95) made `transfer` a cause;
+              // a cause no task names is still refused.
+              cause: 'merge',
             })
             .execute(),
         ),

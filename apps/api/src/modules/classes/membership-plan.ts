@@ -8,8 +8,31 @@ export interface StoredMembership {
   readonly validUntil: SchoolDate;
   /** The row's own end (correction 1), which a leaving taken back gives back. */
   readonly ownUntil: SchoolDate;
-  readonly endedBy: 'leaving' | 'withdrawn' | null;
+  readonly endedBy: 'leaving' | 'withdrawn' | 'transfer' | 'undone' | null;
   readonly leavingId: string | null;
+  /** What wrote the row (0045, 0050): a placement, the create, a cancel, an undo, a move. */
+  readonly cause: 'placement' | 'create' | 'cancel' | 'undo' | 'transfer';
+  /** The move whose action inserted the row (task 3.3a, 0050), if any. */
+  readonly writtenByMoveId: string | null;
+  /** The move that cut or emptied the row (task 3.3a, 0050), if any. */
+  readonly endedByMoveId: string | null;
+}
+
+/**
+ * Whether a row was written into its target by a move now cancelled (task
+ * 3.3a, decision 8): a leaving dated on or before a scheduled move cancels it,
+ * and a cancel or an undo of that leaving never gives such a row back (the
+ * review's must-fix 1 of the plan).
+ */
+export function writtenByCancelledMove(
+  row: { cause: string; writtenByMoveId: string | null },
+  cancelledMoves: ReadonlySet<string>,
+): boolean {
+  return (
+    row.writtenByMoveId !== null &&
+    (row.cause === 'transfer' || row.cause === 'automatic') &&
+    cancelledMoves.has(row.writtenByMoveId)
+  );
 }
 
 /** A status row as the placement reads it (`student_statuses`). */
@@ -125,12 +148,15 @@ export interface MembershipPlan {
  *   to the new date, cut by it;
  * - a row whose class is out of service (archived, or in a closed year) is
  *   not given back and is named (`.claude/rules/database.md`, a mirror brings
- *   back only rows whose own record is in service).
+ *   back only rows whose own record is in service);
+ * - a row a cancelled move wrote into its target is never given back, so the
+ *   row the move cut comes back to its own end (task 3.3a, decision 8).
  */
 export function planMemberships(
   rows: readonly StoredMembership[],
   change: MembershipChange,
   inService: (classId: string) => boolean,
+  cancelledMoves: ReadonlySet<string> = new Set(),
 ): MembershipPlan {
   const cuts: { id: string; validUntil: SchoolDate }[] = [];
   const inserts: {
@@ -157,7 +183,7 @@ export function planMemberships(
         continue;
       }
     }
-    if (cutByTakenBack && takeBack !== null) {
+    if (cutByTakenBack && takeBack !== null && !writtenByCancelledMove(row, cancelledMoves)) {
       given.push({ row, start: later(takeBack.from, row.validFrom) });
     }
   }

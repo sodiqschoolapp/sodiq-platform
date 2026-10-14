@@ -425,6 +425,22 @@ export const ERROR_CODES = [
   'class_group_no_seat',
   /** A class row would be saved without a group of a split or group subject of its class (task 3.2c, decision 1): a fault of the path, never a choice of the person. */
   'class_group_missing',
+  /** A move dated before today is for the Super Admin and the Academic Vice Principal (`edge/students-classes-groups`: "Backdating is for the Academic Vice Principal"; task 3.3a, decision 4). */
+  'move_in_past',
+  /** The move has begun, or was cancelled or undone: only a scheduled move is changed or cancelled (edge: "It can be changed or cancelled until the date"; task 3.3a). */
+  'move_not_scheduled',
+  /** The move cannot be undone: it has not begun, was cancelled or undone, its year is closed, or something cut what it wrote since (a later move, a leaving); a transfer back is made instead (edge: "A transfer was a mistake"; task 3.3a, decision 10). */
+  'move_not_undoable',
+  /** Another move of the student of the same kind (and subject) is scheduled: it is changed or cancelled first (task 3.3a). */
+  'move_scheduled',
+  /** The student is in no class (or no group of the subject) on the date of the move (task 3.3a). */
+  'move_no_membership',
+  /** The student is already in that class or group on the date (task 3.3a). */
+  'move_same_target',
+  /** The two classes differ in language of instruction: the move is confirmed first (`05`, Language of instruction, Students; task 3.3a). */
+  'class_language_differs',
+  /** The group is of another subject than the group the student leaves (task 3.3a). */
+  'group_transfer_subject',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

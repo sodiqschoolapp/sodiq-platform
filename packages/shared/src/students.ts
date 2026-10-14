@@ -3,6 +3,7 @@ import { schoolDateSchema } from './academic-year.js';
 import { personNameSchema } from './accounts.js';
 import { classNotRestoredSchema, studentClassSchema } from './classes.js';
 import { studentGroupSchema } from './groups.js';
+import { moveClassSchema, moveGroupSchema, studentMoveSchema } from './moves.js';
 import { spellingKey, storedStudentName, validName } from './names.js';
 import { studentRelativesInputSchema } from './relatives.js';
 import { jshshirSchema, sexSchema, staffPhoneSchema } from './staff.js';
@@ -541,10 +542,69 @@ export const studentDetailSchema = studentListItemSchema.extend({
   canRestoreGraduated: z.boolean(),
   /** The delete of a student created twice is open: no data (`students_delete_guard`, 0033). */
   deletable: z.boolean(),
+  /**
+   * The scheduled moves of the student (task 3.3a; edge: "the student shows
+   * the current class with a badge"), by date: changed or cancelled until
+   * their date.
+   */
+  scheduledMoves: z.array(studentMoveSchema),
+  /** The Academic block's "transfer history" (`04`, Student record): the latest class move begun, if any. */
+  lastClassMove: studentMoveSchema.nullable(),
+  /** Class transfers: `classes` `edit`, the Super Admin and the Academic Vice Principal (task 3.3a, decision 3). */
+  canMoveClass: z.boolean(),
+  /**
+   * The subjects whose group rows of the student this reader may move
+   * (`group_transfers` `edit` in its scope, task 3.3a, decision 2), by id.
+   */
+  groupMoveSubjects: z.array(z.uuid()),
+  /** A move dated before today: the Super Admin and the Academic Vice Principal (task 3.3a, decision 4). */
+  canMoveInPast: z.boolean(),
+  /** The History tab (`student_history` `view` in its scope; task 3.3a, decision 9). */
+  readsHistory: z.boolean(),
   today: schoolDateSchema,
 });
 
 export type StudentDetail = z.infer<typeof studentDetailSchema>;
+
+/**
+ * One line of the History tab (`04`, Profile tabs; Movements: "The profile
+ * History tab shows each move with dates"; task 3.3a): a move; a class or a
+ * group joined outside a move (a placement, the create); a stretch of one
+ * status, two adjacent active rows of a cancel or an undo drawn as one.
+ */
+export const studentHistoryLineSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('move'), move: studentMoveSchema }),
+  z.object({
+    kind: z.literal('class'),
+    class: moveClassSchema,
+    from: schoolDateSchema,
+    until: schoolDateSchema,
+  }),
+  z.object({
+    kind: z.literal('group'),
+    group: moveGroupSchema,
+    subjectId: z.uuid(),
+    from: schoolDateSchema,
+    until: schoolDateSchema,
+  }),
+  z.object({
+    kind: z.literal('status'),
+    status: studentStatusSchema,
+    cause: statusCauseSchema,
+    from: schoolDateSchema,
+    until: schoolDateSchema.nullable(),
+  }),
+]);
+
+export type StudentHistoryLine = z.infer<typeof studentHistoryLineSchema>;
+
+/** The History tab: newest first, by date, then the order the lines were written (should-fix 8). */
+export const studentHistorySchema = z.object({
+  lines: z.array(studentHistoryLineSchema),
+  today: schoolDateSchema,
+});
+
+export type StudentHistory = z.infer<typeof studentHistorySchema>;
 
 export const studentParamsSchema = z.object({ id: z.uuid() });
 

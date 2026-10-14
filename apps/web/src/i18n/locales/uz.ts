@@ -328,6 +328,22 @@ export const uz: Texts<'one' | 'other'> = {
       'Sinfning boʻlinadigan yoki guruhli fanlaridan birining hech bir guruhida oʻquvchi sinfda boʻladigan har bir kun uchun boʻsh oʻrin yoʻq, shuning uchun hech narsa saqlanmadi. Guruhning eng koʻp sonini oshiring yoki guruh qoʻshing va qayta urinib koʻring.',
     class_group_missing:
       'Oʻquvchi guruhli fanlaridan birining guruhisiz sinfda qolar edi. Hech narsa saqlanmadi. Sahifani yangilang va qayta urinib koʻring.',
+    move_in_past:
+      'Bugundan oldingi sanali koʻchirishni faqat oʻquv ishlari boʻyicha direktor oʻrinbosari yoki super administrator rasmiylashtiradi. Bugungi yoki keyingi sanani tanlang.',
+    move_not_scheduled:
+      'Bu koʻchirish allaqachon boshlangan, bekor qilingan yoki qaytarilgan, shuning uchun uni oʻzgartirib yoki bekor qilib boʻlmaydi. Hozirgi holatini koʻrish uchun sahifani yangilang.',
+    move_not_undoable:
+      'Bu koʻchirishni endi qaytarib boʻlmaydi: undan keyin oʻquvchining sinflari yoki guruhlari oʻzgargan yoki oʻquv yili yopilgan. Oʻrniga orqaga koʻchirishni rasmiylashtiring.',
+    move_scheduled:
+      'Bu oʻquvchining boshqa koʻchirishi allaqachon rejalashtirilgan. Avval uni oʻzgartiring yoki bekor qiling.',
+    move_no_membership:
+      'Bu sanada oʻquvchi hech bir sinfda yoki shu fanning hech bir guruhida emas. Boshqa sanani tanlang.',
+    move_same_target:
+      'Bu sanada oʻquvchi allaqachon shu sinf yoki guruhda. Boshqasini tanlang.',
+    class_language_differs:
+      'Bu ikki sinfda taʼlim tili har xil. Davom etish uchun koʻchirishni tasdiqlang.',
+    group_transfer_subject:
+      'Bu guruh boshqa fanga tegishli. Shu fanning guruhini tanlang.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',

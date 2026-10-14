@@ -243,6 +243,24 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   the journal. The scopes are decided in the route (`group-scope.ts`). A
  *   new area for new routes, decided without the owner on pull request #91
  *   (decision 2, Look first), confirmed at its review and flagged on issue #42.
+ * - `group_transfers` (`04`, Movements: "Head Teachers move students between
+ *   groups of their subjects"; `02`, Head Teacher: "Moves students between
+ *   groups of those subjects"; task 3.3a): the Super Admin and the Academic
+ *   Vice Principal ("Full edit of students, classes, groups"), the Head
+ *   Teacher for own subjects in own branch and the Senior Head Teacher for
+ *   own subjects in every branch, decided in the route (`inGroupScope`).
+ *   `groups` `edit` would also let them create, place and withdraw. Class
+ *   transfers are `classes` `edit`. A new area for new routes, decided
+ *   without the owner on pull request #95 (decision 2, Look first),
+ *   confirmed at its review and flagged on issue #42.
+ * - `student_history` (`04`, Profile tabs: History; task 3.3a): the History
+ *   tab of a student, for the Super Admin, the Principal, the Academic Vice
+ *   Principal, the Tutor (own classes, decided in the route), the Head
+ *   Teacher and the Senior Head Teacher; not the Vice Principal for Spiritual
+ *   and Moral Education and the Head Tutor, whose tabs `02` lists without
+ *   History. A new area for new routes, decided on pull request #95
+ *   (decision 9 as changed by correction 3, Look first) and flagged on
+ *   issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -351,6 +369,14 @@ export const PERMISSIONS = freezeTable({
   student_graduates: rows({
     super_admin: ['edit'],
   }),
+  student_history: rows({
+    super_admin: ['view'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+    tutor: ['view'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
+  }),
   classes: rows({
     super_admin: ['view', 'create', 'edit', 'archive', 'export'],
     principal: ['view', 'export'],
@@ -370,6 +396,12 @@ export const PERMISSIONS = freezeTable({
     tutor: ['view'],
     senior_head_teacher: ['view'],
     head_teacher: ['view'],
+  }),
+  group_transfers: rows({
+    super_admin: ['edit'],
+    academic_vice_principal: ['edit'],
+    senior_head_teacher: ['edit'],
+    head_teacher: ['edit'],
   }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
