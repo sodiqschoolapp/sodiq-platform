@@ -47,6 +47,14 @@ export interface ExportInput<Row, Column extends string> {
    * names the assignment that allowed that part"); else `access.assignmentId`.
    */
   assignmentFor?: (columns: readonly Column[]) => string | undefined;
+  /**
+   * Whether a row of the list is in the reader's scope (task 3.1c: a Tutor's
+   * own classes, decision 5 of pull request #90). A row outside it is left
+   * out of the file and counted (`rowsLeftOut`), as a column the reader may
+   * not export is (`leftOut`); with none left, 403 and no audit entry.
+   * Absent for a list without a scope.
+   */
+  inScope?: (id: string) => boolean;
   columns: Readonly<Record<Column, ExportColumn<Row>>>;
 }
 
@@ -58,7 +66,8 @@ export interface ExportInput<Row, Column extends string> {
  *
  * - every id must be a row of the list, else 404 (`.claude/rules/api.md`, ids
  *   in the body): another branch's row, an unknown one, a vacancy in the staff
- *   export (decision 5);
+ *   export (decision 5); then a row outside the reader's scope is left out
+ *   and counted (`inScope`, task 3.1c);
  * - the rows in the order of `ids`, the columns in the order sent, without
  *   those the reader may not export; with none left, 403 and no audit entry;
  * - the texts in the language of the account (decision 7), the file name with
@@ -78,13 +87,21 @@ export async function exportList<Row, Column extends string>(
   if (branchId === null) {
     throw new Error('An export works for the branch of the request.');
   }
-  const rows = input.request.ids.map((id) => {
+  const found = input.request.ids.map((id) => {
     const row = input.rows.get(id);
     if (row === undefined) {
       throw notFound();
     }
-    return row;
+    return { id, row };
   });
+  const inScope = input.inScope;
+  const rows = found
+    .filter((one) => inScope === undefined || inScope(one.id))
+    .map((one) => one.row);
+  const rowsLeftOut = inScope === undefined ? undefined : found.length - rows.length;
+  if (found.length > 0 && rows.length === 0) {
+    throw new ApiException('permission_denied', 403);
+  }
   const columns = input.request.columns.filter((column) => input.allowed(column));
   const leftOut = input.request.columns.filter((column) => !input.allowed(column));
   if (columns.length === 0) {
@@ -121,6 +138,7 @@ export async function exportList<Row, Column extends string>(
       filters: { ...input.request.filters },
       columns,
       leftOut,
+      ...(rowsLeftOut === undefined ? {} : { rowsLeftOut }),
       rows: rows.length,
     },
     requestId,
@@ -130,6 +148,7 @@ export async function exportList<Row, Column extends string>(
     `${input.list}-${today}.xlsx`,
     columns,
     content,
+    rowsLeftOut,
   );
 }
 

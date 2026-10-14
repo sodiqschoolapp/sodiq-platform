@@ -24,6 +24,7 @@ import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { XlsxFile } from '../../http/xlsx.js';
+import { classesInScope, inClassScope } from '../access/class-scope.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { exportList, oneCell, type ExportColumn } from '../audit/export-list.js';
@@ -58,6 +59,17 @@ interface ClassRow {
   max_size: number;
   archived_at: Date | null;
   version: number;
+}
+
+/**
+ * A class outside the scope of every assignment that permits the route is
+ * refused 403 (task 3.1c, decision 9 of pull request #90); the caller has
+ * answered 404 for an unknown id or another branch's first.
+ */
+export function refuseOutsideClassScope(access: Access, classId: string): void {
+  if (inClassScope(access.permitting, [classId]) === undefined) {
+    throw new ApiException('permission_denied', 403);
+  }
 }
 
 export function branchOf(access: Access): string {
@@ -259,16 +271,26 @@ export class Classes {
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
+  /**
+   * The classes of the branch; a Tutor's own classes only (`02`, Tutor: "Own
+   * class or classes"; task 3.1c, decision 1 of pull request #90).
+   */
   list(access: Access): Promise<ClassList> {
+    const scope = classesInScope(access.permitting);
     return this.transactions.run(access.branchIds, async (transaction) => ({
-      classes: await readClasses(transaction, branchOf(access)),
+      classes: (await readClasses(transaction, branchOf(access))).filter(
+        (one) => scope === 'all' || scope.has(one.id.toLowerCase()),
+      ),
     }));
   }
 
+  /** One class: an unknown id or another branch's is 404, a class outside the scope 403 (decision 9). */
   detail(access: Access, id: string): Promise<ClassDetail> {
-    return this.transactions.run(access.branchIds, (transaction) =>
-      readClassDetail(transaction, branchOf(access), id),
-    );
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const found = await readClassDetail(transaction, branchOf(access), id);
+      refuseOutsideClassScope(access, id);
+      return found;
+    });
   }
 
   /** The Excel file of the list, from the rows the list reads, in one transaction. */

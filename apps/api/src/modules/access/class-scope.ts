@@ -1,6 +1,8 @@
-import type { Role, SchoolDate } from '@sodiq/shared';
+import { PERMISSIONS, schoolDateOf, type Role, type SchoolDate } from '@sodiq/shared';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { CurrentAssignment } from './current-assignments.js';
+import { permitting } from './permission-check.js';
+import type { Access } from './permission.guard.js';
 import { BRANCH_WIDE_ROLES } from './subject-scope.js';
 
 /**
@@ -146,4 +148,45 @@ export async function studentClasses(
     found.set(row.student_id, own);
   }
   return found;
+}
+
+/**
+ * The assignment that lets the account read a group of a student's fields
+ * (`students` for the record, `student_contact` for Contact, and so on) in
+ * the branch of the request, for a student of the given classes: one that
+ * the table gives `view` of the area there and whose scope fits (task 3.1c,
+ * decisions 2 and 8 of pull request #90). Decided from every current
+ * assignment (`.claude/rules/api.md`): a Tutor who is also Head Teacher reads
+ * the profile of every student and the Contact group of own classes only.
+ * With no class given, only a class-wide reader fits.
+ */
+export function studentReaderOf(
+  access: Access,
+  area: string,
+  classIds: readonly string[],
+): CurrentAssignment | undefined {
+  return inClassScope(
+    permitting(
+      { area, action: 'view', branch: 'request' },
+      access.assignments,
+      access.branchId,
+      PERMISSIONS,
+    ),
+    classIds,
+  );
+}
+
+/** The classes of one student of the branch of the transaction, today in the branch's time zone. */
+export async function classesOfStudent(
+  transaction: Transaction,
+  branchId: string,
+  studentId: string,
+): Promise<string[]> {
+  const branch = await transaction
+    .selectFrom('branches')
+    .select('time_zone')
+    .where('id', '=', branchId)
+    .executeTakeFirstOrThrow();
+  const today = schoolDateOf(await transactionMoment(transaction), branch.time_zone);
+  return (await studentClasses(transaction, today, studentId)).get(studentId) ?? [];
 }

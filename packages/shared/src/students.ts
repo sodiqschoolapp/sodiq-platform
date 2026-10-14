@@ -411,6 +411,12 @@ export const studentListItemSchema = z.object({
    * reload\""; task 3.1b, decision 17).
    */
   version: z.int().min(0),
+  /**
+   * Whether this reader may open the record (task 3.1c, decision 8 of pull
+   * request #90): decided by the server with the rule of the record, so a
+   * Tutor opens the rows of own classes only and still reads the whole list.
+   */
+  opens: z.boolean(),
 });
 
 export type StudentListItem = z.infer<typeof studentListItemSchema>;

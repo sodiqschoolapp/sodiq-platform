@@ -21,6 +21,7 @@ import { ApiException } from '../../http/api-exception.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import { classesInScope, inClassScope, studentClasses } from '../access/class-scope.js';
 import { exportList, oneCell, type ExportColumn } from '../audit/export-list.js';
 import { assignmentForGroups, exportGroupsOf } from './student-export.js';
 import { Students } from './students.service.js';
@@ -89,14 +90,21 @@ export class StudentExports {
     const branchId = branchOf(access);
     const groups = exportGroupsOf(access);
     // Correction 1 of the review: the consent list is the Financial readers'.
-    // Every exporter reads Financial today; this refusal guards the Tutor's
-    // export of task 3.1, whose tests reach it (build plan, the line on 3.1).
+    // The Tutor exports and does not read Financial (task 3.1c), so a Tutor's
+    // file with this filter is refused here.
     if (Object.hasOwn(request.filters, CONSENT_FILTER) && !groups.has('financial')) {
       throw new ApiException('permission_denied', 403);
     }
     return this.transactions.run(access.branchIds, async (transaction) => {
       const today = await this.students.todayIn(transaction, branchId);
       const items = await this.students.listItems(transaction, access, branchId, today);
+      // "Tutors export their own class" (edge/people-roles-accounts; task 3.1c,
+      // decision 5 of pull request #90): a row is written when an assignment
+      // that exports in the branch fits the student's classes; a class-wide
+      // exporter (the Principal, the Academic Vice Principal) fits every row.
+      const exporters = access.permitting;
+      const scoped = classesInScope(exporters) !== 'all';
+      const classes = scoped ? await studentClasses(transaction, today, null) : new Map<string, string[]>();
       const fields = await transaction
         .selectFrom('students')
         .select([
@@ -179,6 +187,12 @@ export class StudentExports {
         request,
         rows,
         allowed: (column) => groups.has(STUDENT_EXPORT_GROUPS[column]),
+        ...(scoped
+          ? {
+              inScope: (id: string) =>
+                inClassScope(exporters, classes.get(id.toLowerCase()) ?? []) !== undefined,
+            }
+          : {}),
         assignmentFor: (columns) =>
           assignmentForGroups(
             groups,
