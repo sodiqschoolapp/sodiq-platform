@@ -18,7 +18,7 @@ import { ApiException } from '../../http/api-exception.js';
 import { HeaderPipe } from '../../http/validation.js';
 import { owedStepsAllowedOn, sessionOf } from '../auth/session.guard.js';
 import { declarationsOf } from './access.decorators.js';
-import { tutorClassesAt } from './class-scope.js';
+import { CLASS_SCOPED_AREAS, tutorClassesAt } from './class-scope.js';
 import type { CurrentAssignment } from './current-assignments.js';
 import { permitting } from './permission-check.js';
 import { PERMISSION_TABLE } from './permission-table.token.js';
@@ -131,7 +131,7 @@ export class PermissionGuard implements CanActivate {
       throw new ApiException('permission_denied', 403);
     }
     const assignments =
-      branchId === null
+      branchId === null || !CLASS_SCOPED_AREAS.includes(access.area)
         ? session.assignments
         : await this.withClasses(session.assignments, branchId);
     const allowing = permitting(access, assignments, branchId, this.table);

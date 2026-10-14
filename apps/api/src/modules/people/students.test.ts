@@ -671,7 +671,10 @@ describe('student records', () => {
       }
     });
 
-    it('refuses the record to a Tutor until the class scope of task 3.1 (decision 6)', async () => {
+    // Task 3.1c replaced the 2.4a rule "no profile until the class scope"
+    // (correction 3 of the review of #90, Look first): a Tutor opens own
+    // classes only (classes/tutor-scope.test.ts); this Tutor holds no class.
+    it('refuses the record to a Tutor of no class', async () => {
       refusedWith(
         await t.get(`/api/people/students/${student.id}`, t.north, tutor),
         403,

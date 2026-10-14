@@ -174,9 +174,9 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   of own class"; the class scope of task 3.1c, `class-scope.ts`).
  *   `student_contact`: the Super Admin, the Principal, the Academic Vice
  *   Principal, the Vice Principal for Spiritual and Moral Education, the
- *   Head Tutor and the class Tutor ("and the class Tutor"), the Tutor for
- *   the students of own classes only (task 3.1c, decision 2 of pull request
- *   #90, Look first: a widening of an existing role). `student_identity`: the
+ *   Head Tutor and the class Tutor, for the students of own classes only
+ *   (task 3.1c, decision 2 of pull request #90, Look first: a widening of an
+ *   existing role). `student_identity`: the
  *   Super Admin and the Academic Vice Principal; the Principal sees it hidden
  *   with a logged show under `students` `view`. `student_financial`: the
  *   Super Admin, the Academic Vice Principal and the Principal. Four new areas
@@ -197,10 +197,10 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   export is logged"; task 2.4b-2): the Super Admin, the Academic Vice
  *   Principal and the Principal ("Exports are allowed, without identity
  *   documents"). The Spiritual VP and the Head Tutor are "view only" in `02`
- *   and the Head Teachers have no export line; Tutors export their own class
- *   ("Tutors export their own class"), Basic columns of the students of own
- *   classes only (task 3.1c, decision 3 of pull request #90, Look first). Which groups a file holds is decided by
- *   the route. Decided without the owner on pull request #70 (decision 1,
+ *   and the Head Teachers have no export line; Tutors export their own
+ *   class, Basic columns of the students of own classes only (task 3.1c,
+ *   decision 3 of pull request #90, Look first). Which groups a file holds
+ *   is decided by the route. Decided without the owner on pull request #70 (decision 1,
  *   Look first), confirmed at its review and flagged on issue #42.
  * - `relatives` (`04`, Close relatives; `edge/close-relatives`; task 2.5a): the
  *   Parents list and page, the relative record and the phone typed first.

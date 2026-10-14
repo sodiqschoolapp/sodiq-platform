@@ -804,3 +804,20 @@ describe('the classes of a Tutor', () => {
     expect(await screen.findByText(ru.classes.emptyTutor)).toBeDefined();
   });
 });
+
+describe('the classes of a Tutor who also reads every class', () => {
+  it('says the general line when another role of the branch reads every class', async () => {
+    await openList({
+      session: sessionOf({
+        assignments: [
+          { role: 'tutor', branchId: NORTH.id },
+          { role: 'head_tutor', branchId: NORTH.id },
+        ],
+        branches: [NORTH],
+      }),
+      classes: [],
+    });
+    expect(await screen.findByText(en.classes.empty)).toBeDefined();
+    expect(screen.queryByText(en.classes.emptyTutor)).toBeNull();
+  });
+});

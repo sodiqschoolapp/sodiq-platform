@@ -373,6 +373,19 @@ describe('the class scope of a Tutor', () => {
       expect(await t.auditCount()).toBe(before);
     });
 
+    it('exports the whole branch for a Tutor who is also Principal, naming the Principal', async () => {
+      const mixed = await tutorOf('Dildora', 'Rasulova');
+      const principal = (
+        await t.kit.giveRole(mixed.accountId, { role: 'principal', branchId: t.north })
+      ).id;
+      const response = await exportOf([own, other], mixed.cookie);
+      expect(response.status).toBe(200);
+      expect(response.headers['x-export-rows-left-out']).toBeUndefined();
+      expect((await fileOf(response)).sheet.rows).toHaveLength(2);
+      const [entry] = (await t.entries('student.export')).slice(-1);
+      expect(entry?.assignment_id).toBe(principal);
+    });
+
     it('leaves the export of a class-wide reader whole, with no count', async () => {
       const response = await exportOf([own, other], t.vicePrincipal);
       expect(response.status).toBe(200);
@@ -458,6 +471,14 @@ describe('the class scope of a Tutor', () => {
       const eastClass = await classes.schoolClass(east, eastYear, { name: 'Eastern' });
       const eastTutor = await tutorOf('Nodira', 'Yusupova', east);
       await classes.tutorRow(east, eastClass, eastTutor.assignment, { from: FROM });
+      const eastStudent = await members.student(east);
+      await members.member({
+        branch: east,
+        classId: eastClass,
+        studentId: eastStudent,
+        from: '2026-09-01',
+      });
+      await t.get(`/api/people/students/${eastStudent}`, east, eastTutor.cookie).expect(200);
       const before = classListSchema.parse(
         (await t.get('/api/classes', east, eastTutor.cookie).expect(200)).body,
       );
@@ -472,8 +493,60 @@ describe('the class scope of a Tutor', () => {
         403,
         'permission_denied',
       );
+      for (const path of ['', '/relatives']) {
+        refusedWith(
+          await t.get(`/api/people/students/${eastStudent}${path}`, east, eastTutor.cookie),
+          403,
+          'permission_denied',
+        );
+      }
       // The Tutor assignment of another branch gives nothing in north.
       refusedWith(await t.get('/api/classes', t.north, eastTutor.cookie), 403, 'permission_denied');
+    });
+  });
+
+  describe('the classes the guard reads (decision 6)', () => {
+    it('holds no archived class, no withdrawn row, and the rows of the branch of the request only', async () => {
+      const both = await tutorOf('Lola', 'Karimova');
+      const southAssignment = (
+        await t.kit.giveRole(both.accountId, { role: 'tutor', branchId: t.south, validFrom: FROM })
+      ).id;
+      await classes.tutorRow(t.south, southClass, southAssignment, { from: FROM });
+      const columbia = await classes.schoolClass(t.north, year, { name: 'Columbia' });
+      await classes.tutorRow(t.north, columbia, both.assignment, { from: FROM });
+      await t.database.migrator
+        .updateTable('classes')
+        .set({ archived_at: new Date('2026-10-01T09:00:00+05:00') })
+        .where('id', '=', columbia)
+        .execute();
+      const stanford = await classes.schoolClass(t.north, year, { name: 'Stanford' });
+      const withdrawn = await classes.tutorRow(t.north, stanford, both.assignment, { from: FROM });
+      await t.database.migrator
+        .updateTable('class_tutors')
+        .set({ valid_until: FROM, end_cause: 'ended' })
+        .where('id', '=', withdrawn)
+        .execute();
+      const north = classListSchema.parse(
+        (await t.get('/api/classes', t.north, both.cookie).expect(200)).body,
+      );
+      expect(north.classes).toEqual([]);
+      for (const id of [columbia, stanford]) {
+        refusedWith(
+          await t.get(`/api/classes/${id}`, t.north, both.cookie),
+          403,
+          'permission_denied',
+        );
+      }
+      // In south the south assignment holds its class, and only there.
+      const south = classListSchema.parse(
+        (await t.get('/api/classes', t.south, both.cookie).expect(200)).body,
+      );
+      expect(south.classes.map((one) => one.id)).toEqual([southClass]);
+      refusedWith(
+        await t.get(`/api/classes/${southClass}`, t.north, both.cookie),
+        404,
+        'not_found',
+      );
     });
   });
 

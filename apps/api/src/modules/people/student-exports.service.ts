@@ -195,11 +195,15 @@ export class StudentExports {
                 inClassScope(exporters, classes.get(id.toLowerCase()) ?? []) !== undefined,
             }
           : {}),
+        // A file of the whole branch names a class-wide exporter, never a
+        // Tutor assignment that allows only its own class (review of the
+        // build, `.claude/rules/api.md`: the entry names the assignment that
+        // allowed that part).
         assignmentFor: (columns) =>
           assignmentForGroups(
             groups,
             new Set(columns.map((column) => STUDENT_EXPORT_GROUPS[column])),
-          ),
+          ) ?? (scoped ? undefined : inClassScope(exporters, [])?.id),
         columns: STUDENT_EXPORT_SPECS,
       });
     });

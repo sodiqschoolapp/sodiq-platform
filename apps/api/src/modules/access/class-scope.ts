@@ -19,6 +19,16 @@ export const CLASS_WIDE_ROLES: readonly Role[] = [
 ];
 
 /**
+ * The areas whose routes decide the class scope (task 3.1c): the permission
+ * guard reads the classes of Tutor assignments only for a route of one of
+ * them, so every other request of a Tutor costs no read. A route of another
+ * area sees `classIds` empty, and a Tutor fits no class there; a task that
+ * adds class scope to an area adds the area here (`class-scope.test.ts` pins
+ * the list).
+ */
+export const CLASS_SCOPED_AREAS: readonly string[] = ['classes', 'students', 'student_contact'];
+
+/**
  * Whether an assignment's scope fits one of the classes. A Tutor fits the
  * classes of its rows in force (`classIds`, filled by the permission guard);
  * a Teacher (own lessons, the journal) and the roles of Releases 2 and 3 fit

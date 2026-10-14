@@ -1,6 +1,11 @@
 import { PERMISSIONS, ROLES, type Role } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
-import { CLASS_WIDE_ROLES, classesInScope, inClassScope } from './class-scope.js';
+import {
+  CLASS_SCOPED_AREAS,
+  CLASS_WIDE_ROLES,
+  classesInScope,
+  inClassScope,
+} from './class-scope.js';
 import type { CurrentAssignment } from './current-assignments.js';
 import { permitting } from './permission-check.js';
 
@@ -37,6 +42,10 @@ describe('class scope', () => {
         'super_admin',
       ].sort(),
     );
+  });
+
+  it('pins the areas whose routes read the class scope', () => {
+    expect(CLASS_SCOPED_AREAS).toEqual(['classes', 'students', 'student_contact']);
   });
 
   it('fits a class for the class-wide roles and the Tutor of the class only', () => {
