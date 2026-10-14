@@ -515,11 +515,13 @@ describe('the By floor view', () => {
       .getAllByRole('button')
       .find((one) => one.textContent?.startsWith(name)) as HTMLElement;
   const tabNames = () => screen.getAllByRole('tab').map((tab) => tab.textContent);
-  const cards = () =>
-    within(screen.getByRole('tabpanel'))
-      .queryAllByRole('button')
-      .map((card) => card.getAttribute('aria-label'));
-  const card = (name: string) => within(screen.getByRole('tabpanel')).getByRole('button', { name });
+  // A card is named by all it shows (type, seats, status), its first line the room's name.
+  const cardButtons = () => [
+    ...screen.getByRole('tabpanel').querySelectorAll<HTMLElement>('button[data-open-row]'),
+  ];
+  const cards = () => cardButtons().map((one) => one.firstElementChild?.textContent);
+  const card = (name: string) =>
+    cardButtons().find((one) => one.firstElementChild?.textContent === name) as HTMLElement;
   const views = () => screen.getByRole('radiogroup', { name: en.setup.rooms.views });
   const address = (router: { state: { location: { search: unknown } } }) =>
     router.state.location.search as Record<string, unknown>;
@@ -625,7 +627,9 @@ describe('the By floor view', () => {
       undefined,
       `${FLOORS}&building=${MAIN.id}`,
     );
-    fireEvent.click(await screen.findByRole('button', { name: 'Sports hall' }));
+    await screen.findByRole('tablist');
+    expect(card('Sports hall').textContent).toContain(en.setup.rooms.statuses.closed);
+    fireEvent.click(card('Sports hall'));
     const panel = await screen.findByRole('complementary', { name: 'Sports hall' });
     expect(within(panel).getByRole('button', { name: en.form.edit })).toBeDefined();
     await waitFor(() => {
@@ -657,6 +661,25 @@ describe('the By floor view', () => {
     });
     expect(buildingButton('Main').getAttribute('aria-label')).toBe('Main, 1 room shown');
 
+    // The status filter and the search narrow the cards the same way.
+    fireEvent.change(screen.getByRole('combobox', { name: en.setup.rooms.type }), {
+      target: { value: '' },
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: en.setup.rooms.status }), {
+      target: { value: 'in_use' },
+    });
+    await waitFor(() => {
+      expect(cards()).toEqual(['101']);
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: en.setup.rooms.status }), {
+      target: { value: '' },
+    });
+    fireEvent.change(screen.getByRole('searchbox', { name: en.list.search }), {
+      target: { value: 'Sports' },
+    });
+    await waitFor(() => {
+      expect(cards()).toEqual(['Sports hall']);
+    });
     fireEvent.change(screen.getByRole('combobox', { name: en.setup.rooms.type }), {
       target: { value: 'hall' },
     });
@@ -735,9 +758,33 @@ describe('the By floor view', () => {
 
   it('lets the Principal read the cards and the panel, with nothing to change', async () => {
     await openList(principal(), ROOMS, [MAIN, ANNEX], undefined, `${FLOORS}&building=${MAIN.id}`);
-    fireEvent.click(await screen.findByRole('button', { name: '101' }));
+    await screen.findByRole('tablist');
+    fireEvent.click(card('101'));
     const panel = await screen.findByRole('complementary', { name: '101' });
     expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
     expect(screen.queryByRole('button', { name: en.setup.rooms.add })).toBeNull();
+  });
+
+  it('shows the failure of the buildings in place of the cards, with a way to try again, never the table', async () => {
+    let failures = 1;
+    await openList(
+      superAdmin(),
+      ROOMS,
+      [MAIN, ANNEX],
+      {
+        'GET /api/setup/buildings': () => {
+          if (failures > 0) {
+            failures -= 1;
+            return refusal('internal_error', 500);
+          }
+          return json({ buildings: [MAIN, ANNEX] });
+        },
+      },
+      FLOORS,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: en.problems.retry }));
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    await screen.findByRole('tablist');
   });
 });

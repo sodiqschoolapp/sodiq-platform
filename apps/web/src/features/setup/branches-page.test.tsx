@@ -214,10 +214,10 @@ describe('the Branches list', () => {
       'GET /api/setup/branches': () => json({ branches: [] }),
     });
     renderApp(PATH);
-    await screen.findByText(en.setup.branches.emptyTitle);
-    expect(
-      screen.getAllByRole('button', { name: en.setup.branch.newBranch }).length,
-    ).toBeGreaterThan(0);
+    const title = await screen.findByText(en.setup.branches.emptyTitle);
+    // The empty state's own action, besides the one in the page header.
+    const empty = title.closest('div.grid') as HTMLElement;
+    expect(within(empty).getByRole('button', { name: en.setup.branch.newBranch })).toBeDefined();
   });
 
   it('shows the failure of the load with a way to try again', async () => {

@@ -63,9 +63,6 @@ describe('the School setup entry', () => {
     expect(within(crumbs).getByRole('link', { name: en.home.title })).toBeDefined();
   });
 
-  // .claude/rules/web.md, Text on screens: "A menu page is a title and its
-  // links" (issue #39, item 4; pull request #80, decision 2): no intro under
-  // the title and no line under a link.
   // Task 2.7c-3, decision 2: the Branches list is the Super Admin's (`03`, Branch).
   it.each([
     ['super_admin', true],
@@ -86,6 +83,9 @@ describe('the School setup entry', () => {
     expect(within(links).getByRole('link', { name: en.setup.branchLink })).toBeDefined();
   });
 
+  // .claude/rules/web.md, Text on screens: "A menu page is a title and its
+  // links" (issue #39, item 4; pull request #80, decision 2): no intro under
+  // the title and no line under a link.
   it('is a title and its links, with no intro and no line under a link', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionAs('principal')) });
     renderApp('/setup');

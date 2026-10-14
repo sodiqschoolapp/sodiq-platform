@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import { apiErrorSchema, BRANCH_HEADER, branchListSchema } from '@sodiq/shared';
+import { apiErrorSchema, BRANCH_HEADER, branchListSchema, buildingListSchema } from '@sodiq/shared';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
@@ -427,6 +427,17 @@ describe('the record of a branch', () => {
         buildingCount: 1,
         roomCount: 1,
       });
+      // The same number the Buildings list sums for the branch (decision 3).
+      for (const branch of [north, south]) {
+        const buildings = buildingListSchema.parse(
+          (await kit.get('/api/setup/buildings', admin).set(BRANCH_HEADER, branch)).body,
+        ).buildings;
+        const summed = buildings.reduce(
+          (sum, one) => sum + one.floors.reduce((inner, floor) => inner + floor.roomCount, 0),
+          0,
+        );
+        expect(branches.find((one) => one.id === branch)?.roomCount).toBe(summed);
+      }
       // A read writes nothing to the audit log.
       const after = await database.migrator
         .selectFrom('audit_log_school')

@@ -1245,12 +1245,10 @@ export class Staff {
     }
   }
 
-  /** The list rows of the given records, in one read per table. */
   /**
    * The list rows of the given records, in one read per table. The categories
-   * come from the assignments the reader may see: every branch for a Super
-   * Admin, else the branch of the request and the roles without a branch
-   * (the permission review of pull request #53).
+   * are the roles held in the branch of the request, for every reader (task
+   * 2.7c-3, decision 5).
    */
   private async items(
     transaction: Transaction,

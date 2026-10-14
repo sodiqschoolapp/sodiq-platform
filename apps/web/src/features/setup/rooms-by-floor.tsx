@@ -225,7 +225,7 @@ export function RoomsByFloor({
               ref={tabs}
               role="tablist"
               aria-label={t('setup.rooms.floorsTabs')}
-              className="flex flex-wrap gap-x-6 border-b"
+              className="flex gap-6 overflow-x-auto border-b whitespace-nowrap"
             >
               {building.floors.map((one, index) => {
                 const selected = one.id === floor.id;
@@ -246,7 +246,7 @@ export function RoomsByFloor({
                       onTabKey(event, index);
                     }}
                     className={cn(
-                      'min-h-10 shrink-0 border-b-2 px-1 text-sm max-sm:min-h-11',
+                      'shrink-0 border-b-2 px-1 pb-2 max-sm:pt-3',
                       selected
                         ? 'border-foreground font-semibold'
                         : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -293,7 +293,6 @@ export function RoomsByFloor({
                     <li key={room.id} className="grid">
                       <button
                         type="button"
-                        aria-label={room.name}
                         data-open-row={room.id}
                         onClick={() => {
                           open(room.id);

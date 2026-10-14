@@ -1054,7 +1054,7 @@ export const en = {
       noActiveBuilding: 'The branch has no building in use. Add one under Buildings and floors.',
       noFloorInBuilding: 'This building has no floor in use. Add one under Buildings and floors.',
       noRoomOnFloor: 'No room on this floor yet.',
-      noRoomMatches: 'No room on this floor matches the search.',
+      noRoomMatches: 'No room on this floor matches the search and filters.',
       needFloor: 'Add a building with a floor first: rooms are added floor by floor.',
       onArchivedFloor:
         'This room is on floor {{floor}} of {{building}}, which is archived. It can only be moved: choose an active floor to save it.',

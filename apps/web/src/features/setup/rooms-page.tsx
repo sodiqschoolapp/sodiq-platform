@@ -25,6 +25,7 @@ import {
 import { PageHeader } from '@/components/page-header';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Segmented } from '@/components/ui/segmented';
+import { ErrorState, LoadingOutline } from '@/components/states';
 import { useView } from '@/features/access/use-view';
 import { isNamedRefusal } from './building-panel';
 import { RoomForm } from './room-form';
@@ -397,7 +398,8 @@ export function RoomsPage() {
         listId="rooms"
         caption={t('setup.rooms.caption')}
         rows={rooms.data?.rooms}
-        error={rooms.error ?? buildings.error ?? setStatus.error ?? undefined}
+        // In "By floor" a failure of the buildings is the view's own error state.
+        error={rooms.error ?? (byFloor ? null : buildings.error) ?? setStatus.error ?? undefined}
         onRetry={() => {
           void rooms.refetch();
           void buildings.refetch();
@@ -417,28 +419,41 @@ export function RoomsPage() {
         }}
         bulkActions={bulkActions}
         view={
-          byFloor && buildings.data !== undefined
-            ? ({ rows, sorted, open: openRoom }) => (
-                <RoomsByFloor
-                  rooms={rows}
-                  sorted={sorted}
-                  allRooms={rooms.data?.rooms ?? []}
-                  buildings={buildings.data.buildings}
-                  chosen={{ building: search.building, floor: search.floor }}
-                  onChoose={(place) => {
-                    void navigate({
-                      to: '/setup/rooms',
-                      search: {
-                        ...listSearch(search),
-                        view: 'floors',
-                        building: place.building,
-                        ...(place.floor === undefined ? {} : { floor: place.floor }),
-                      },
-                    });
-                  }}
-                  open={openRoom}
-                />
-              )
+          byFloor
+            ? ({ rows, sorted, open: openRoom }) =>
+                // The view is drawn from the buildings too: while they load
+                // or after they failed it says so, never the table (review
+                // of the branch, finding 1).
+                buildings.isError ? (
+                  <ErrorState
+                    error={buildings.error}
+                    onRetry={() => {
+                      void buildings.refetch();
+                    }}
+                  />
+                ) : buildings.data === undefined ? (
+                  <LoadingOutline lines={4} />
+                ) : (
+                  <RoomsByFloor
+                    rooms={rows}
+                    sorted={sorted}
+                    allRooms={rooms.data?.rooms ?? []}
+                    buildings={buildings.data.buildings}
+                    chosen={{ building: search.building, floor: search.floor }}
+                    onChoose={(place) => {
+                      void navigate({
+                        to: '/setup/rooms',
+                        search: {
+                          ...listSearch(search),
+                          view: 'floors',
+                          building: place.building,
+                          ...(place.floor === undefined ? {} : { floor: place.floor }),
+                        },
+                      });
+                    }}
+                    open={openRoom}
+                  />
+                )
             : undefined
         }
         creating={

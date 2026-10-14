@@ -1068,7 +1068,7 @@ export const uz: Texts<'one' | 'other'> = {
       noFloorInBuilding:
         'Bu binoda foydalanilayotgan qavat yoʻq. Uni Binolar va qavatlar boʻlimida qoʻshing.',
       noRoomOnFloor: 'Bu qavatda hali xona yoʻq.',
-      noRoomMatches: 'Bu qavatda qidiruvga mos xona yoʻq.',
+      noRoomMatches: 'Bu qavatda qidiruv va filtrlarga mos xona yoʻq.',
       needFloor: 'Avval qavati bor bino qoʻshing: xonalar qavatma-qavat qoʻshiladi.',
       onArchivedFloor:
         'Bu xona {{building}} binosining {{floor}} qavatida, u arxivlangan. Uni faqat koʻchirish mumkin: saqlash uchun faol qavatni tanlang.',
