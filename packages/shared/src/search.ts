@@ -27,7 +27,8 @@ export type SearchQuery = z.infer<typeof searchQuerySchema>;
 /**
  * A student found: the UID always shown (`edge/journal`: "The UID is always
  * shown in pickers and search"), the class in force today, and the status
- * today (`null`: before the start date), as the student list shows them.
+ * today as the student list shows it (before the start date the first row,
+ * active; `null` only without a status row).
  */
 export const studentFoundSchema = z.object({
   id: z.uuid(),
