@@ -1506,6 +1506,52 @@ describe('the account section of a staff record', () => {
       expect(await snapshot()).toEqual(before);
     });
 
+    // Spec review of the build: the refusal reads only rows in force or
+    // planned, so an ended period and a taken-back plan do not refuse.
+    it.each([
+      ['an inactive period that ended before today', 'ended'],
+      ['a planned inactive status that was taken back', 'taken back'],
+    ])('links a record with %s', async (_name, kind) => {
+      const own = await recordless();
+      const made = await person();
+      const statuses = t.database.migrator.transaction();
+      await statuses.execute(async (transaction) => {
+        if (kind === 'ended') {
+          await transaction
+            .updateTable('staff_statuses')
+            .set({ valid_until: '2026-09-20' })
+            .where('staff_id', '=', made.id)
+            .execute();
+          await transaction
+            .insertInto('staff_statuses')
+            .values([
+              {
+                staff_id: made.id,
+                status: 'inactive',
+                valid_from: '2026-09-20',
+                valid_until: '2026-10-01',
+              },
+              { staff_id: made.id, status: 'active', valid_from: '2026-10-01' },
+            ])
+            .execute();
+        } else {
+          await transaction
+            .insertInto('staff_statuses')
+            .values({
+              staff_id: made.id,
+              status: 'inactive',
+              valid_from: '2026-12-01',
+              valid_until: '2026-12-01',
+            })
+            .execute();
+        }
+      });
+      expect((await section(made.id, t.north, own.cookie)).canLinkOwn).toBe(true);
+      const response = await link(made.id, own.cookie);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(await accountOf(made.id)).toBe(own.accountId);
+    });
+
     it('refuses a record whose employment begins after today, and links it from that day', async () => {
       const own = await recordless();
       const made = await person({ admissionDate: TOMORROW, contractDate: TOMORROW });
@@ -1576,16 +1622,22 @@ describe('the account section of a staff record', () => {
         await sql`begin`.execute(connection);
         await hold(connection);
         const pending = Promise.resolve(call());
-        for (let tries = 0; tries < 100; tries += 1) {
+        // The route waits for a lock of this database before the held side
+        // commits; otherwise the pair proves nothing of the lock order.
+        let waited = false;
+        for (let tries = 0; tries < 250 && !waited; tries += 1) {
           const waiting = await sql<{ waiting: number }>`
-            select count(*)::int as waiting from pg_locks where not granted
+            select count(distinct l.pid)::int as waiting
+            from pg_locks l join pg_stat_activity a on a.pid = l.pid
+            where a.datname = current_database() and not l.granted
           `.execute(t.database.migrator);
-          if ((waiting.rows[0]?.waiting ?? 0) > 0) {
-            break;
+          waited = (waiting.rows[0]?.waiting ?? 0) > 0;
+          if (!waited) {
+            await new Promise((resolve) => setTimeout(resolve, 20));
           }
-          await new Promise((resolve) => setTimeout(resolve, 20));
         }
         await sql`commit`.execute(connection);
+        expect(waited, 'the route never waited for the held lock').toBe(true);
         return pending;
       });
     }
