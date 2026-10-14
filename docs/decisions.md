@@ -243,6 +243,12 @@ Plan approved on pull request #88 with corrections 1 to 7; decisions 1, 2, 5, 8 
 | `SelectField` options may be `disabled`: a Tutor candidate who does not teach in the class's language is shown with the reason and cannot be chosen | Build: the plan's "shown disabled with the reason" |
 | The give and the end of a Tutor are audited on the class (`class.tutor_given`, `class.tutor_ended`), in a new Audit log group "Classes" | Build: the class's history is where they are read |
 | The class list shows archived classes too, with a Status column and filter | Build: as the subject list |
+| Migration 0043 (in this pull request, 0042 being applied locally): a withdrawn row keeps its cause when a role end is set, and a role end moved later brings back only rows of an active class in an open year; a withdrawn row is final for the application | Spec review of the build, must-fix 1: decisions 2 and 10 ("stay ended", "a restore gives none back"); a new file rather than an edit, so that no local database is reset |
+| A class name holds letters, digits, spaces, hyphens and the Uzbek apostrophes only (0043 and `classNameSchema`) | Spec review of the build, should-fix 3: the two folds then see the same white space |
+| The role-end routes answer `role_tutor_taken` and `role_tutor_language`, and the class edit `class_language_tutor`, not the codes of a give | `.claude/rules/web.md`: a code's text is true on every path that sends it (spec review of the build, should-fix 1) |
+| A list column may give `searchFold`; the class name searches with `classNameKey`, so a look-alike Cyrillic letter finds the class | Correction 6 ("the list search of classes compares the same key"); `spellingKey` transliterates instead |
+| The staff record's language refusal names the class of the branch ("Tutor of 7 Oxford, a class of that language"), read by its id, or says "a class of another branch" | Correction 5; spec review of the build, must-fix 2 |
+| `tutorRowsIn` joins `assignments` on the row's own branch | Permission review of the build, must-fix 1 (`.claude/rules/database.md`, reads of `assignments`) |
 
 ## 14 October 2026: the Super Admin's own staff record (task 2.7d)
 

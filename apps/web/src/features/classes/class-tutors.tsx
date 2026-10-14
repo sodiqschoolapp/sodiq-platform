@@ -109,7 +109,6 @@ export function ClassTutors({ schoolClass, canEdit, panel, onGive, onEnd }: Clas
                   <div>
                     <Button
                       variant="secondary"
-                      size="sm"
                       {...panel.opener(`end:${row.id}`)}
                       onClick={() => {
                         panel.start(`end:${row.id}`);

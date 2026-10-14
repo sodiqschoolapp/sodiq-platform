@@ -329,6 +329,12 @@ export const ERROR_CODES = [
   'tutor_ended',
   /** The Tutor row already ends on or before that date (task 3.1a). */
   'tutor_ends_by_then',
+  /** A class's language is changed while its Tutor, now or planned, does not teach in the new one (task 3.1a). */
+  'class_language_tutor',
+  /** A role end moved later or taken back would bring back a Tutor of a class that has another Tutor of that kind at that time (task 3.1a). */
+  'role_tutor_taken',
+  /** A role end moved later or taken back would bring back a Tutor of a class whose language the person no longer teaches (task 3.1a). */
+  'role_tutor_language',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

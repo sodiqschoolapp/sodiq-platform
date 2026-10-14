@@ -8,7 +8,9 @@ import type {
   SchoolClass,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import type { Column } from '@/components/list/list-state';
 import { PanelActions } from '@/components/list/panel-actions';
@@ -51,9 +53,22 @@ export function ClassPanel({ row, columns, years, rooms, canEdit, canArchive }: 
   const detail = useQuery(classQuery(branchId, row.id));
   const refresh = () => invalidateClasses(queryClient);
 
+  // "Class changed, reload": the form closes, the class is read again and the
+  // refusal stays at the bottom of the panel (.claude/rules/web.md).
+  const [changed, setChanged] = useState<unknown>(null);
   const edit = useMutation({
     mutationFn: (record: ClassEdit) => editClass(row.id, record),
-    onSuccess: refresh,
+    onSuccess: async () => {
+      setChanged(null);
+      await refresh();
+    },
+    onError: async (error) => {
+      if (error instanceof ApiFailure && error.code === 'class_changed') {
+        setChanged(error);
+        panel.stop({ focus: 'record' });
+        await refresh();
+      }
+    },
   });
   const archive = useMutation({
     mutationFn: (restore: boolean) => archiveClass(row.id, restore),
@@ -212,7 +227,7 @@ export function ClassPanel({ row, columns, years, rooms, canEdit, canArchive }: 
                 </Button>
               )
             }
-            error={archive.error}
+            error={archive.error ?? changed}
             saved={panel.saved}
           />
         )}

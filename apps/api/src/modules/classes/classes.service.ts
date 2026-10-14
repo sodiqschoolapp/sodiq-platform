@@ -17,6 +17,7 @@ import {
   type ClassRecord,
   type ClassTutor,
   type Clock,
+  type ErrorCode,
   type SchoolClass,
 } from '@sodiq/shared';
 import { CLOCK } from '../../clock/clock.module.js';
@@ -28,6 +29,7 @@ import { Audit } from '../audit/audit.service.js';
 import { exportList, oneCell, type ExportColumn } from '../audit/export-list.js';
 import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import {
+  CLASS_EDIT_REFUSALS,
   CLASS_REFUSALS,
   toClassTutor,
   tutorEnded,
@@ -275,7 +277,7 @@ export class Classes {
 
   create(access: Access, input: ClassCreate, requestId: string): Promise<ClassDetail> {
     const branchId = branchOf(access);
-    return this.refusingName(access, input.academicYearId, input, () =>
+    return this.refusingName(access, input.academicYearId, input, CLASS_REFUSALS, () =>
       this.transactions.run(access.branchIds, async (transaction) => {
         await this.requireOpenYearFor(transaction, input.academicYearId);
         await this.requireRoom(transaction, input.mainRoomId);
@@ -310,7 +312,7 @@ export class Classes {
   /** Every field but the year. Nothing is written when nothing changed. */
   edit(access: Access, id: string, input: ClassEdit, requestId: string): Promise<ClassDetail> {
     const branchId = branchOf(access);
-    return this.refusingName(access, null, { ...input, id }, () =>
+    return this.refusingName(access, null, { ...input, id }, CLASS_EDIT_REFUSALS, () =>
       this.transactions.run(access.branchIds, async (transaction) => {
         const before = await this.lockClass(transaction, id);
         if (before.archived_at !== null) {
@@ -549,10 +551,11 @@ export class Classes {
     access: Access,
     yearId: string | null,
     record: ClassRecord & { id?: string },
+    refusals: Readonly<Record<string, ErrorCode>>,
     work: () => Promise<T>,
   ): Promise<T> {
     try {
-      return await refusingConstraints(work, CLASS_REFUSALS);
+      return await refusingConstraints(work, refusals);
     } catch (error) {
       const failure = error as { code?: unknown; constraint?: unknown };
       if (failure.code !== UNIQUE_VIOLATION || failure.constraint !== NAME_INDEX) {

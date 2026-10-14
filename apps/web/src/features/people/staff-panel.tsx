@@ -1,4 +1,5 @@
 import {
+  classDisplayName,
   phoneText,
   gradeRanges,
   STAFF_STATUSES,
@@ -45,6 +46,7 @@ import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-
 import { HistoryLink } from '@/features/audit/history-link';
 import { ReportLink } from './report-link';
 import { useView } from '@/features/access/use-view';
+import { classQuery } from '@/features/classes/classes-api';
 import { nameOf } from '@/features/setup/setup-api';
 import { AccountAccessSection } from './account-access-section';
 import { AccountSection } from './account-section';
@@ -717,7 +719,43 @@ function TeachingForm({
         }))}
         {...form.bind('languages')}
       />
+      <TutorLanguageHeld failure={form.failure} />
     </RecordForm>
+  );
+}
+
+/**
+ * Which class keeps a language on the record (task 3.1a, correction 5): the
+ * class of the branch the refusal names, read by its id, or "a class of
+ * another branch" when it names none. While the class is read, or when it
+ * cannot be, the refusal's own text stands alone.
+ */
+function TutorLanguageHeld({ failure }: { failure: unknown }) {
+  const { t } = useTranslation();
+  const { branchId } = useView();
+  const held = failure instanceof ApiFailure && failure.code === 'tutor_language_held';
+  const classId = held
+    ? (failure.details?.find((one) => one.path === 'languages')?.recordId ?? null)
+    : null;
+  const named = useQuery({
+    ...classQuery(branchId, classId ?? ''),
+    enabled: branchId !== null && classId !== null,
+  });
+  if (!held) {
+    return null;
+  }
+  if (classId === null) {
+    return <p className="text-sm">{t('people.staff.tutorsClassElsewhere')}</p>;
+  }
+  if (named.data === undefined) {
+    return null;
+  }
+  return (
+    <p className="text-sm">
+      {t('people.staff.tutorsClass', {
+        name: classDisplayName(named.data.grade, named.data.name),
+      })}
+    </p>
   );
 }
 

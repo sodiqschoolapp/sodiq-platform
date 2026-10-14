@@ -426,6 +426,40 @@ describe('the Tutors of a class', () => {
       });
     });
 
+    // Decisions 10 and 18: an archived class and a class of a closed year change nothing.
+    it('refuses an end on an archived class and in a closed year', async () => {
+      const held = await newClass();
+      const person = await tutor();
+      const given = detailOf(await give(held, { assignmentId: person.assignmentId }).expect(201));
+      const row = given.tutors[0]?.id ?? '';
+      await database.migrator
+        .updateTable('classes')
+        .set({ archived_at: clock.now() })
+        .where('id', '=', held)
+        .execute();
+      expect(
+        errorCode(
+          await post(`/api/classes/${held}/tutors/${row}/end`, { from: TODAY }).expect(409),
+        ),
+      ).toBe('class_archived');
+
+      const branch = await insertBranch(database.migrator, 'Ended year');
+      const year = await classes.year(branch, 'current', '2025-09-01', '2026-05-31');
+      const old = await classes.schoolClass(branch, year, { name: 'Long ago' });
+      const there = await classes.person(branch, ['uz']);
+      const role = await classes.role(there.accountId, branch);
+      const oldRow = await classes.tutorRow(branch, old, role);
+      await classes.setYear(year, 'closed');
+      const response = await post(
+        `/api/classes/${old}/tutors/${oldRow}/end`,
+        { from: TODAY },
+        admin,
+        branch,
+      );
+      expect(response.status).toBe(409);
+      expect(errorCode(response)).toBe('class_year_closed');
+    });
+
     it("answers 404 for another branch's class, another class's row and unknown ones", async () => {
       const held = await newClass();
       const other = await newClass();
@@ -525,6 +559,37 @@ describe('the Tutors of a class', () => {
 
   // Decision 20: a role end and a `left` name the Tutor rows they end.
   describe('the end of the role', () => {
+    // A role end moved later brings its rows back; over a Tutor given meanwhile it is refused.
+    it('refuses to move a role end later over a Tutor given meanwhile, with its own code', async () => {
+      const held = await newClass();
+      const first = await tutor();
+      const second = await tutor();
+      await give(held, { assignmentId: first.assignmentId }).expect(201);
+      const end = (from: string) =>
+        post(`/api/people/staff/${first.staffId}/roles/${first.assignmentId}/end`, { from }, admin);
+      await end('2026-11-02').expect(200);
+      await give(held, { assignmentId: second.assignmentId, from: '2026-11-02' }).expect(201);
+      const response = await end('2026-12-01').expect(409);
+      expect(errorCode(response)).toBe('role_tutor_taken');
+    });
+
+    // A class's language changed while the person keeps it: the edit says which side to change.
+    it('refuses a change of class language its Tutor does not teach, with its own code', async () => {
+      const held = await newClass();
+      const person = await tutor(['uz']);
+      await give(held, { assignmentId: person.assignmentId }).expect(201);
+      const read = detailOf(await get(`/api/classes/${held}`).expect(200));
+      const response = await put(`/api/classes/${held}`, {
+        grade: read.grade,
+        name: read.name,
+        language: 'ru',
+        mainRoomId: null,
+        maxSize: read.maxSize,
+        version: read.version,
+      }).expect(409);
+      expect(errorCode(response)).toBe('class_language_tutor');
+    });
+
     it('ends the Tutor rows and names them in the entry of the role end', async () => {
       const held = await newClass();
       const person = await tutor();
@@ -620,7 +685,7 @@ describe('the Tutors of a class', () => {
       open.release();
       await open.done;
       expect((await response).status).toBe(409);
-      expect(errorCode(await response)).toBe('tutor_language');
+      expect(errorCode(await response)).toBe('class_language_tutor');
     });
 
     it('refuses a give that waited for the language to leave the staff record', async () => {

@@ -234,6 +234,12 @@ export const en = {
     tutor_date_past: 'The date is in the past. Choose today or a later date.',
     tutor_ended: 'This Tutor has already ended. Reload the class.',
     tutor_ends_by_then: 'This Tutor already ends on or before that date. Nothing changed.',
+    class_language_tutor:
+      'A Tutor of this class does not teach in that language. End that Tutor or give the class another one first.',
+    role_tutor_taken:
+      'This would bring back the person as Tutor of a class that has another Tutor at that time. Ask the Academic Vice Principal to change the Tutors of that class first.',
+    role_tutor_language:
+      'This would bring back the person as Tutor of a class whose language they no longer teach. Add the language to their staff record first.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -1602,6 +1608,8 @@ export const en = {
       subjects: 'Subjects',
       grades: 'Grades',
       languagesTitle: 'Languages of instruction',
+      tutorsClass: 'Tutor of {{name}}, a class of that language.',
+      tutorsClassElsewhere: 'Tutor of a class of that language in another branch.',
       languages: { uz: 'Uzbek', ru: 'Russian' },
       phone: 'Phone',
       statusColumn: 'Status',

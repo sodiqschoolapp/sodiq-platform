@@ -2,7 +2,7 @@ import { CLASS_MAX_SIZE, CLASS_NAME_MAX_LENGTH, classNameKey } from '@sodiq/shar
 import fc from 'fast-check';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { MOMENT_SETTING, Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
@@ -174,6 +174,12 @@ describe('classes and their Tutors in the database', () => {
       // "There are no class codes such as 7-A" (05); decision 17.
       expect(await refused({ name: '7-A' })).toBe('classes_name_check');
       expect(await refused({ name: 'A' })).toBe('classes_name_check');
+      // Plain characters only (0043): no tab or other white space inside.
+      expect(await refused({ name: 'Big\tOxford' })).toBe('classes_name_check');
+      expect(await refused({ name: 'Ox/ford' })).toBe('classes_name_check');
+      expect((await insertClass(north, northYear, { name: 'Bogʻ-2 Lux', grade: 2 })).name_key).toBe(
+        'bogʻ-2 lux',
+      );
       expect(await refused({ name: `B${'a'.repeat(CLASS_NAME_MAX_LENGTH)}` })).toBe(
         'classes_name_check',
       );
@@ -212,6 +218,8 @@ describe('classes and their Tutors in the database', () => {
         ' ',
         '  ',
         '\t',
+        // Other Cyrillic and Uzbek letters fold by case alone (spec review of the build).
+        ...'БбДдҒғЎўҚқҲҳЖжЁёЯяʻʼ-0123456789',
       ];
       await fc.assert(
         fc.asyncProperty(
@@ -569,6 +577,10 @@ describe('classes and their Tutors in the database', () => {
             .set({ valid_from: at('2026-10-20T00:00:00+05:00') })
             .where('id', '=', row)
             .execute(),
+        (transaction: Transaction) =>
+          sql`update class_tutors set written_xact = pg_current_xact_id() where id = ${row}`.execute(
+            transaction,
+          ),
       ];
       for (const work of tries) {
         expect((await refusal(inBranch(north, work))).code).toBe(INSUFFICIENT_PRIVILEGE);
@@ -692,6 +704,164 @@ describe('classes and their Tutors in the database', () => {
       await giveTutor(north, id, second.assignmentId, { from: at('2026-11-01T00:00:00+05:00') });
       const back = await refusal(endRole(first.assignmentId, null));
       expect(back.constraint).toBe('class_tutors_one_tutor');
+    });
+
+    // Spec review of the build, must-fix 1: decisions 2 and 10.
+    it('leaves a row withdrawn by an archive, or by the role end, withdrawn when the end is taken back', async () => {
+      const archived = await insertClass(north, northYear, { name: 'Withdrawn archive', grade: 9 });
+      const person = await tutor(north);
+      const december = at('2026-12-01T00:00:00+05:00');
+      const planned = await giveTutor(north, archived.id, person.assignmentId, { from: december });
+      // The archive withdraws the planned row, then the role ends and the end is taken back.
+      await inBranch(north, async (transaction) => {
+        await transaction
+          .updateTable('class_tutors')
+          .set({ valid_until: december, end_cause: 'archive', ended_by: editor })
+          .where('id', '=', planned)
+          .execute();
+        await transaction
+          .updateTable('classes')
+          .set({ archived_at: clock.now() })
+          .where('id', '=', archived.id)
+          .execute();
+      });
+      await endRole(person.assignmentId, at('2026-11-01T00:00:00+05:00'));
+      await endRole(person.assignmentId, null);
+      expect(await kit.tutorRowOf(planned)).toMatchObject({
+        valid_until: december,
+        end_cause: 'archive',
+      });
+
+      // Withdrawn by the role end, then the class is archived: the taking back leaves it.
+      const other = await insertClass(north, northYear, { name: 'Withdrawn role', grade: 9 });
+      const second = await tutor(north);
+      const row = await giveTutor(north, other.id, second.assignmentId, { from: december });
+      await endRole(second.assignmentId, at('2026-11-01T00:00:00+05:00'));
+      await inBranch(north, (transaction) =>
+        transaction
+          .updateTable('classes')
+          .set({ archived_at: clock.now() })
+          .where('id', '=', other.id)
+          .execute(),
+      );
+      await endRole(second.assignmentId, null);
+      expect(await kit.tutorRowOf(row)).toMatchObject({ valid_until: december, end_cause: 'role' });
+    });
+
+    it('keeps a withdrawn row final for the application', async () => {
+      const { id } = await insertClass(north, northYear, { name: 'Final withdrawn', grade: 9 });
+      const person = await tutor(north);
+      const december = at('2026-12-01T00:00:00+05:00');
+      const row = await giveTutor(north, id, person.assignmentId, { from: december });
+      const set = (until: Date | null) =>
+        inBranch(north, (transaction) =>
+          transaction
+            .updateTable('class_tutors')
+            .set({
+              valid_until: until,
+              end_cause: until === null ? null : 'ended',
+              ended_by: until === null ? null : editor,
+            })
+            .where('id', '=', row)
+            .execute(),
+        );
+      await set(december);
+      expect((await refusal(set(null))).constraint).toBe('class_tutors_end_final');
+    });
+  });
+
+  // Spec review of the build, must-fix 4: every branch of the guards, reached.
+  describe('the guards of a Tutor row', () => {
+    it('refuse a row of an archived class and of a closed year', async () => {
+      const { id } = await insertClass(north, northYear, { name: 'Guard archived', grade: 10 });
+      const person = await tutor(north);
+      await database.migrator
+        .updateTable('classes')
+        .set({ archived_at: clock.now() })
+        .where('id', '=', id)
+        .execute();
+      expect((await refusal(giveTutor(north, id, person.assignmentId))).constraint).toBe(
+        'class_tutors_class_archived',
+      );
+
+      const branch = await insertBranch(database.migrator, 'Guard closed');
+      const year = await kit.year(branch, 'current', '2025-09-01', '2026-05-31');
+      const old = await kit.schoolClass(branch, year, { name: 'Guard closed' });
+      const there = await kit.person(branch, ['uz']);
+      const role = await kit.role(there.accountId, branch);
+      const row = await kit.tutorRow(branch, old, role, { givenBy: editor });
+      await kit.setYear(year, 'closed');
+      expect((await refusal(giveTutor(branch, old, role))).constraint).toBe('class_year_closed');
+      const ended = await refusal(
+        inBranch(branch, (transaction) =>
+          transaction
+            .updateTable('class_tutors')
+            .set({ valid_until: clock.now(), end_cause: 'ended', ended_by: editor })
+            .where('id', '=', row)
+            .execute(),
+        ),
+      );
+      expect(ended.constraint).toBe('class_year_closed');
+    });
+
+    it('refuse a start at or after the end of the role, and an end after it', async () => {
+      const { id } = await insertClass(north, northYear, { name: 'Guard role', grade: 10 });
+      const person = await kit.person(north, ['uz']);
+      const role = await kit.role(
+        person.accountId,
+        north,
+        'tutor',
+        SEPTEMBER,
+        at('2026-11-01T00:00:00+05:00'),
+      );
+      expect(
+        (await refusal(giveTutor(north, id, role, { from: at('2026-11-01T00:00:00+05:00') })))
+          .constraint,
+      ).toBe('class_tutors_outside_role');
+      const row = await giveTutor(north, id, role);
+      const later = await refusal(
+        inBranch(north, (transaction) =>
+          transaction
+            .updateTable('class_tutors')
+            .set({
+              valid_until: at('2026-11-20T00:00:00+05:00'),
+              end_cause: 'ended',
+              ended_by: editor,
+            })
+            .where('id', '=', row)
+            .execute(),
+        ),
+      );
+      expect(later.constraint).toBe('class_tutors_outside_role');
+    });
+
+    it('refuse a write of the application without the moment of the transaction', async () => {
+      const { id } = await insertClass(north, northYear, { name: 'Guard moment', grade: 10 });
+      const person = await tutor(north);
+      const row = await giveTutor(north, id, person.assignmentId);
+      // The branch filter of the transaction, with its moment cleared.
+      const withoutMoment = (statement: ReturnType<typeof sql>) =>
+        refusal(
+          inBranch(north, async (transaction) => {
+            await sql`select set_config(${MOMENT_SETTING}, '', true)`.execute(transaction);
+            await statement.execute(transaction);
+          }),
+        );
+      expect(
+        (
+          await withoutMoment(
+            sql`insert into class_tutors (branch_id, class_id, assignment_id, kind, valid_from, given_by)
+              values (${north}, ${id}, ${person.assignmentId}, 'acting', ${clock.now()}, ${editor})`,
+          )
+        ).constraint,
+      ).toBe('class_tutors_needs_moment');
+      expect(
+        (
+          await withoutMoment(
+            sql`update class_tutors set valid_until = ${clock.now()}, end_cause = 'ended' where id = ${row}`,
+          )
+        ).constraint,
+      ).toBe('class_tutors_needs_moment');
     });
   });
 });

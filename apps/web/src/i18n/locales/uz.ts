@@ -241,6 +241,12 @@ export const uz: Texts<'one' | 'other'> = {
     tutor_date_past: 'Sana oʻtib ketgan. Bugungi yoki keyingi sanani tanlang.',
     tutor_ended: 'Bu tyutor allaqachon yakunlangan. Sinfni qayta yuklang.',
     tutor_ends_by_then: 'Bu tyutor shu sanada yoki undan oldin yakunlanadi. Hech narsa oʻzgarmadi.',
+    class_language_tutor:
+      'Bu sinf tyutori shu tilda dars bermaydi. Avval uni yakunlang yoki sinfga boshqa tyutor tayinlang.',
+    role_tutor_taken:
+      'Bu shaxsni shu vaqtda boshqa tyutori bor sinfning tyutori sifatida qaytaradi. Avval oʻquv ishlari boʻyicha direktor oʻrinbosaridan oʻsha sinf tyutorlarini oʻzgartirishni soʻrang.',
+    role_tutor_language:
+      'Bu shaxsni u endi dars bermaydigan tildagi sinfning tyutori sifatida qaytaradi. Avval tilni uning xodim kartasiga qoʻshing.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
@@ -1620,6 +1626,8 @@ export const uz: Texts<'one' | 'other'> = {
       subjects: 'Fanlar',
       grades: 'Sinflar',
       languagesTitle: 'Taʼlim tillari',
+      tutorsClass: 'Shu tildagi {{name}} sinfining tyutori.',
+      tutorsClassElsewhere: 'Boshqa filialdagi shu tildagi sinfning tyutori.',
       languages: { uz: 'Oʻzbek', ru: 'Rus' },
       phone: 'Telefon',
       statusColumn: 'Holat',

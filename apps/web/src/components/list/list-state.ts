@@ -10,6 +10,12 @@ export interface Column<Row> {
   sortValue?: (row: Row) => string | number | null;
   /** What the search box looks at in this column; a column without it is not searched. */
   searchText?: (row: Row) => string;
+  /**
+   * A fold of the column's own (the class names, task 3.1a): the row also
+   * matches when the typed text, folded so, is in the column's text folded
+   * so (`classNameKey`: look-alike Cyrillic and Latin letters as the same).
+   */
+  searchFold?: (text: string) => string;
   /** The cell opens the record in the side panel. Such a column cannot be hidden. */
   opens?: boolean;
   /** The column cannot be hidden in the column chooser. */
@@ -166,6 +172,11 @@ export function matchingRows<Row>(
   const searched = columns.flatMap((column) =>
     column.searchText === undefined ? [] : [column.searchText],
   );
+  const folded = columns.flatMap((column) =>
+    column.searchText === undefined || column.searchFold === undefined
+      ? []
+      : [{ fold: column.searchFold, text: column.searchText }],
+  );
 
   const matching = rows.filter((row) => {
     if (!chosen.every(({ filter, value }) => filter.matches(row, value))) {
@@ -175,7 +186,10 @@ export function matchingRows<Row>(
       return true;
     }
     const haystack = searchKey(searched.map((textOf) => textOf(row)).join('\n'));
-    return words.every((word) => haystack.includes(word));
+    return (
+      words.every((word) => haystack.includes(word)) ||
+      folded.some(({ fold, text }) => fold(text(row)).includes(fold(search.q ?? '')))
+    );
   });
 
   const sort = sortOf(search);

@@ -87,7 +87,9 @@ export function ClassesPage() {
         header: t('classes.name'),
         cell: (row) => classDisplayName(row.grade, row.name),
         sortValue: (row) => `${String(row.grade).padStart(2, '0')} ${classNameKey(row.name)}`,
-        searchText: (row) => `${classDisplayName(row.grade, row.name)} ${classNameKey(row.name)}`,
+        searchText: (row) => classDisplayName(row.grade, row.name),
+        // Correction 6: the search compares the same fold as the unique name.
+        searchFold: classNameKey,
         opens: true,
       },
       {
@@ -255,7 +257,7 @@ export function ClassesPage() {
                     <li key={row.id} data-class-card="" className={`${PANEL} grid gap-2 p-4`}>
                       <button
                         type="button"
-                        className="text-link justify-self-start text-lg"
+                        className="text-link justify-self-start"
                         onClick={() => {
                           openClass(row.id);
                         }}
@@ -270,7 +272,11 @@ export function ClassesPage() {
                             [t('classes.tutor'), tutorCell(row)],
                             [
                               t('classes.mainRoom'),
-                              row.mainRoom === null ? t('classes.noRoom') : row.mainRoom.name,
+                              row.mainRoom === null
+                                ? t('classes.noRoom')
+                                : row.mainRoom.status === 'closed'
+                                  ? t('classes.closedRoom', { room: row.mainRoom.name })
+                                  : row.mainRoom.name,
                             ],
                             [t('classes.average'), t('classes.notYet')],
                             [t('classes.attendance'), t('classes.notYet')],

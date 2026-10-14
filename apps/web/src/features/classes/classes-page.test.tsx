@@ -228,6 +228,16 @@ describe('the class list', () => {
     expect(rowsDrawn()[0]?.[0]).toBe('8 Princeton');
   });
 
+  // Correction 6: the search compares the fold of the unique name.
+  it('finds a class typed with look-alike Cyrillic letters', async () => {
+    await openList();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Рrincеton' } });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+    expect(rowsDrawn()[0]?.[0]).toBe('8 Princeton');
+  });
+
   // `05`, class cards; decision 13: the figures show "—" until 3.1b and the journal.
   it('draws the classes as cards at phone width', async () => {
     setWindowWidth(400);
@@ -336,6 +346,7 @@ describe('a new class', () => {
             {
               error: {
                 ...body.error,
+                requestId: 'test-request',
                 details: [
                   { path: 'name', code: 'already_exists', message: '', recordId: archived.id },
                 ],
@@ -404,6 +415,32 @@ describe('a class in the side panel', () => {
       language: 'uz',
       mainRoomId: uid(2),
       maxSize: 30,
+    });
+  });
+
+  // "Class changed, reload": the form closes, the class is read again, the refusal stays.
+  it('reads the class again after a change made on an old state', async () => {
+    let reads = 0;
+    await openList({
+      extra: {
+        [`GET /api/classes/${OXFORD.id}`]: () => {
+          reads += 1;
+          return json(detailOf({ ...OXFORD, version: reads > 1 ? 1 : 0 }));
+        },
+        [`PUT /api/classes/${OXFORD.id}`]: () => refusal('class_changed', 409),
+      },
+    });
+    fireEvent.click(rowButton('7 Oxford'));
+    const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
+    const form = await edit(panel, '7 Oxford');
+    type(field(form, en.classes.maxSize), '30');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form')).toBeNull();
+    });
+    expect((await within(panel).findByRole('alert')).textContent).toBe(en.errors.class_changed);
+    await waitFor(() => {
+      expect(reads).toBeGreaterThan(1);
     });
   });
 

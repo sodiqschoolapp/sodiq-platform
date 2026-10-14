@@ -37,9 +37,15 @@ export const CLASS_REFUSALS: Readonly<Record<string, ErrorCode>> = {
  * the person no longer teaches. For the routes that end roles.
  */
 export const ROLE_END_TUTOR_REFUSALS: Readonly<Record<string, ErrorCode>> = {
-  class_tutors_one_tutor: 'class_tutor_taken',
-  class_tutors_one_acting: 'class_tutor_taken',
-  class_tutors_language: 'tutor_language',
+  class_tutors_one_tutor: 'role_tutor_taken',
+  class_tutors_one_acting: 'role_tutor_taken',
+  class_tutors_language: 'role_tutor_language',
+};
+
+/** The refusals of a class edit: a change of language meets its Tutors (`classes_tutor_language`). */
+export const CLASS_EDIT_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+  ...CLASS_REFUSALS,
+  class_tutors_language: 'class_language_tutor',
 };
 
 /** A Tutor row as the database holds it, with the person of its assignment. */
