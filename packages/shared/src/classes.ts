@@ -85,14 +85,15 @@ export const classGradeSchema = z.int().min(1).max(11);
 /**
  * Decision 17: begins with a letter, so "7-A" and "A" are refused; then
  * letters, digits, spaces, hyphens and the Uzbek apostrophes (U+02BB, U+02BC),
- * as `classes_name_check` of db/migrations/0043.
+ * digits 0 to 9 only, so that it refuses every name `classes_name_check` of
+ * db/migrations/0043 refuses ("Oxford²": pull request #88, code review round 1).
  */
 export const classNameSchema = z
   .string()
   .trim()
   .min(CLASS_NAME_MIN_LENGTH)
   .max(CLASS_NAME_MAX_LENGTH)
-  .regex(/^\p{L}[\p{L}\p{N} '\u02BB\u02BC-]*$/u, {
+  .regex(/^\p{L}[\p{L}0-9 '\u02BB\u02BC-]*$/u, {
     message: 'A class name begins with a letter and holds letters, digits and spaces.',
   });
 

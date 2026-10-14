@@ -7,6 +7,7 @@ import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { trackingTutorEnds } from './class-tutor-rows.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
 const CHECK_VIOLATION = '23514';
@@ -630,6 +631,28 @@ describe('classes and their Tutors in the database', () => {
       expect(await kit.tutorRowOf(now)).toMatchObject({ valid_until: null, end_cause: null });
       expect(await kit.tutorRowOf(planned)).toMatchObject({ valid_until: null, end_cause: null });
       expect(await kit.tutorRowOf(owned)).toMatchObject({ valid_until: june, end_cause: 'ended' });
+    });
+
+    // Decision 20 and code review round 1, finding 1: the mirror moves the rows
+    // of every branch, so the entry of the end names them whatever branch the
+    // transaction filters to (`class_tutor_ends`, db/migrations/0044).
+    it("names the rows it moved in another branch than the transaction's", async () => {
+      const far = await insertClass(south, southYear, { name: 'Named far', grade: 2 });
+      const person = await tutor(north, ['uz'], [south]);
+      const southRole = await kit.role(person.accountId, south);
+      const row = await giveTutor(south, far.id, southRole);
+      const end = at('2026-11-02T00:00:00+05:00');
+      const moved = await inBranch(north, (transaction) =>
+        trackingTutorEnds(transaction, southRole, async () => {
+          await transaction
+            .updateTable('assignments')
+            .set({ valid_until: end })
+            .where('id', '=', southRole)
+            .execute();
+        }),
+      );
+      expect(moved).toEqual([{ id: row, classId: far.id, from: null, to: end.toISOString() }]);
+      expect(await kit.tutorRowOf(row)).toMatchObject({ valid_until: end, end_cause: 'role' });
     });
 
     it('leaves rows ended by the Academic Vice Principal or by an archive ended', async () => {

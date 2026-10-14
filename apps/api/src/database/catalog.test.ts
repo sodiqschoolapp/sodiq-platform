@@ -176,6 +176,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'The first and last name of each person named by an account or staff id, in any branch, for the actor and the person of one page of the audit log (task 2.6a, decision 12 of pull request #75, Look first); the Basic group only.',
   'assignments_class_tutors_end()':
     'Writes the end of a Tutor assignment on its class rows, which the application cannot write for a branch it does not filter to: a role end is written school-wide (task 3.1a, decision 2 of pull request #88, Look first).',
+  'class_tutor_ends(uuid)':
+    "The Tutor rows of one assignment in every branch, ids and end moments only, for the audit entry of a role end or a `left` that the mirror carries to the rows of another branch than the request's (task 3.1a, correction 1 of the code review of pull request #88, Look first).",
   'assignments_subjects_end()':
     'Writes the end of an assignment on its subject rows, which the application cannot update, so the exclusion constraints of one Head Teacher per subject see every end (task 2.3b-1, decision 2 of pull request #63).',
   'branches_without_vice_principal(timestamp with time zone)':

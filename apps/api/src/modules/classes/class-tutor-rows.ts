@@ -6,6 +6,7 @@ import {
   type ClassTutorState,
   type ErrorCode,
 } from '@sodiq/shared';
+import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 
 /**
@@ -139,14 +140,17 @@ export interface TutorEnd {
   validUntil: string | null;
 }
 
+/**
+ * The rows of an assignment in every branch, through `class_tutor_ends`
+ * (db/migrations/0044): a role end is written school-wide and its mirror moves
+ * the rows of every branch, while the transaction of an Academic Vice
+ * Principal sees the branch of the request only. Ids and moments only.
+ */
 async function tutorEndsOf(transaction: Transaction, assignmentId: string): Promise<TutorEnd[]> {
-  const rows = await transaction
-    .selectFrom('class_tutors')
-    .select(['id', 'class_id', 'valid_until'])
-    .where('assignment_id', '=', assignmentId)
-    .orderBy('id')
-    .execute();
-  return rows.map((row) => ({
+  const found = await sql<{ id: string; class_id: string; valid_until: Date | null }>`
+    select id, class_id, valid_until from class_tutor_ends(${assignmentId}::uuid)
+  `.execute(transaction);
+  return found.rows.map((row) => ({
     id: row.id,
     classId: row.class_id,
     validUntil: row.valid_until?.toISOString() ?? null,
@@ -157,8 +161,7 @@ async function tutorEndsOf(transaction: Transaction, assignmentId: string): Prom
  * Runs a change of the end of an assignment and answers the Tutor rows whose
  * end the mirror moved (`assignments_class_tutors_end`), old and new end, so
  * that the audit entry of the role end, the `left` or its taking back names
- * them (task 3.1a, decision 20). The rows are of the assignment's branch,
- * which the transactions of those routes see.
+ * them (task 3.1a, decision 20), in whichever branch they are.
  */
 export async function trackingTutorEnds(
   transaction: Transaction,

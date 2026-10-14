@@ -265,8 +265,14 @@ describe('classes', () => {
       expect(await rowsOf()).toEqual(before);
     });
 
-    it('refuses a code such as 7-A, a one-letter name and a size outside 1 to 60', async () => {
-      for (const fields of [{ name: '7-A' }, { name: 'A' }, { maxSize: 0 }, { maxSize: 61 }]) {
+    it('refuses a code such as 7-A, a one-letter name, a digit outside 0 to 9 and a size outside 1 to 60', async () => {
+      for (const fields of [
+        { name: '7-A' },
+        { name: 'A' },
+        { name: 'Oxford²' },
+        { maxSize: 0 },
+        { maxSize: 61 },
+      ]) {
         const response = await post('/api/classes', body(fields)).expect(400);
         expect(errorCode(response)).toBe('validation_failed');
       }
