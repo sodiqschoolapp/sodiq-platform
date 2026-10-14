@@ -156,13 +156,25 @@ export class Groups {
   export(access: Access, request: GroupExport, requestId: string): Promise<XlsxFile> {
     return this.transactions.run(access.branchIds, async (transaction) => {
       const groups = await readGroups(transaction);
+      const rows = new Map(groups.map((one) => [one.id, one]));
       return exportList(transaction, this.audit, this.clock, access, requestId, {
         list: 'groups',
         action: 'group.export',
         request,
-        rows: new Map(groups.map((one) => [one.id, one])),
+        rows,
         allowed: () => true,
         columns: GROUP_EXPORT,
+        // The file holds what the list shows (permission review of the build, S1).
+        inScope: (id) => {
+          const group = rows.get(id);
+          return (
+            group !== undefined &&
+            inGroupScope(access.permitting, {
+              subjectId: group.subject.id,
+              classIds: group.classes.map((one) => one.id),
+            }) !== undefined
+          );
+        },
       });
     });
   }

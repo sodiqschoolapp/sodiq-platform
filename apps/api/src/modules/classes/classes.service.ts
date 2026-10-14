@@ -411,6 +411,21 @@ export class Classes {
               : { details: { groupsMoved: groups.moved, groupsMixed: groups.mixed } }),
             requestId,
           });
+          // Each moved group's own history shows the change too (permission
+          // review of the build, S2), named after the class edit that caused it.
+          for (const moved of groups.moved) {
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'group.edit',
+              record: { type: 'group', id: moved.id },
+              oldValue: { language: moved.from },
+              newValue: { language: moved.to },
+              details: { classLanguageChanged: id },
+              requestId,
+            });
+          }
           return readClassDetail(transaction, branchId, id);
         }),
     );

@@ -420,6 +420,8 @@ describe('groups', () => {
         (await get('/api/groups', seniorHeadTeacher, t.south).expect(200)).body,
       );
       expect(listed.groups.map((one) => one.id)).toContain(southGroup);
+      detailOf(await get(`/api/groups/${southGroup}`, seniorHeadTeacher, t.south));
+      refusedWith(await get(`/api/groups/${southGroup}`, seniorHeadTeacher), 404, 'not_found');
       expect(listed.groups.every((one) => one.subject.id === subject)).toBe(true);
       refusedWith(await get('/api/groups', headTeacher, t.south), 403, 'permission_denied');
     });
@@ -477,6 +479,26 @@ describe('groups', () => {
         403,
         'permission_denied',
       );
+      // A group of another branch in the ids is not found, and nothing is logged.
+      const southern = await schoolClass({ branch: t.south, year: southYear });
+      const southGroup = await classes.group(t.south, southYear, subject, [southern]);
+      const logged = (await t.entries('group.export')).length;
+      refusedWith(
+        await post(
+          '/api/groups/export',
+          {
+            ids: [group.id, southGroup],
+            columns: ['name'],
+            selection: 'matching',
+            search: '',
+            filters: {},
+          },
+          t.principal,
+        ),
+        404,
+        'not_found',
+      );
+      expect(await t.entries('group.export')).toHaveLength(logged);
     });
   });
 
@@ -704,6 +726,13 @@ describe('groups', () => {
       expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
       expect(detailOf(await get(`/api/groups/${split.id}`)).language).toBe('ru');
       expect(detailOf(await get(`/api/groups/${across.id}`)).language).toBe('uz');
+      expect(await t.entries('group.edit', split.id)).toEqual([
+        expect.objectContaining({
+          old_value: { language: 'uz' },
+          new_value: { language: 'ru' },
+          details: { classLanguageChanged: oxford },
+        }),
+      ]);
       const [entry] = await t.entries('class.edit', oxford);
       expect(entry).toMatchObject({
         details: {
