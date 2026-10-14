@@ -152,3 +152,59 @@ describe('the open form of a side panel', () => {
     expect(screen.getByTestId('saved').textContent).toBe('false');
   });
 });
+
+/** A form whose save takes its own button away, as a role that is ended. */
+function GoneOpener() {
+  const panel = usePanelEditing();
+  return (
+    <aside data-slot="side-panel" aria-label="panel">
+      <h3 tabIndex={-1} {...panel.opener('heading')}>
+        heading
+      </h3>
+      {panel.editing === 'c' ? (
+        <SampleForm
+          row={{ ...ROW, name: 'Form c' }}
+          onSave={() => {
+            panel.stop({ saved: true, key: 'c', focus: 'heading' });
+            return Promise.resolve();
+          }}
+          onCancel={() => {
+            panel.stop();
+          }}
+        />
+      ) : (
+        panel.saved || (
+          <button type="button" {...panel.opener('c')} onClick={() => panel.start('c')}>
+            open c
+          </button>
+        )
+      )}
+    </aside>
+  );
+}
+
+// Task 2.7c-2b-2a: a save that takes its opener away hands the focus to a part that stays.
+describe('the focus after a save whose button is gone', () => {
+  it('goes to the element the save names', async () => {
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <ConfirmProvider>
+          <UnsentProvider>
+            <GoneOpener />
+          </UnsentProvider>
+        </ConfirmProvider>
+      </I18nextProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'open c' }));
+    const form = await screen.findByRole('form', { name: 'Form c' });
+    fireEvent.change(score('Form c'), { target: { value: '90' } });
+    fireEvent.submit(form);
+    await waitFor(() => {
+      expect(screen.queryByRole('form', { name: 'Form c' })).toBeNull();
+    });
+    expect(screen.queryByRole('button', { name: 'open c' })).toBeNull();
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'heading' }));
+    });
+  });
+});

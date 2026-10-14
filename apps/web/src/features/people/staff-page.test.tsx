@@ -6,6 +6,13 @@ import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
+import {
+  actionsAreLast,
+  edit,
+  panelActionNames,
+  panelActions,
+  savedInPanel,
+} from '@/testing/panel';
 
 const PATH = '/people/staff';
 
@@ -227,9 +234,11 @@ describe('the staff page', () => {
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
 
     const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
-    const status = await within(panel).findByRole('form', {
-      name: en.people.staff.statusOf.replace('{{name}}', 'Akmal Karimov'),
-    });
+    const status = await edit(
+      panel,
+      en.people.staff.statusOf.replace('{{name}}', 'Akmal Karimov'),
+      en.people.staff.changeStatus,
+    );
     fireEvent.change(within(status).getByLabelText(en.people.staff.newStatus), {
       target: { value: 'left' },
     });
@@ -280,7 +289,7 @@ describe('the staff page', () => {
     await screen.findByRole('heading', { name: en.people.staff.title });
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
-    const record = await within(panel).findByRole('form', { name: 'Akmal Karimov' });
+    const record = await edit(panel, 'Akmal Karimov');
 
     const email = within(record).getByLabelText<HTMLInputElement>(en.people.staff.email);
     expect(email.disabled).toBe(true);
@@ -306,7 +315,7 @@ describe('the staff page', () => {
     await screen.findByRole('heading', { name: en.people.staff.title });
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
-    const record = await within(panel).findByRole('form', { name: 'Akmal Karimov' });
+    const record = await edit(panel, 'Akmal Karimov');
 
     expect(within(record).getByLabelText<HTMLInputElement>(en.people.staff.phone).disabled).toBe(
       false,
@@ -347,7 +356,7 @@ describe('the staff page', () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
-    const record = await within(panel).findByRole('form', { name: 'Akmal Karimov' });
+    const record = await edit(panel, 'Akmal Karimov');
     const management = within(record).getByRole<HTMLInputElement>('checkbox', {
       name: 'Management',
     });
@@ -376,7 +385,7 @@ describe('the staff page', () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
-    const record = await within(panel).findByRole('form', { name: 'Akmal Karimov' });
+    const record = await edit(panel, 'Akmal Karimov');
     const management = within(record).getByRole<HTMLInputElement>('checkbox', {
       name: 'Management',
     });
@@ -572,15 +581,197 @@ const headingsDrawn = (): string[] =>
     .filter((cell) => cell.querySelector('input') === null)
     .map((cell) => cell.textContent ?? '');
 
+const READER = {
+  all: false,
+  contact: false,
+  teaching: false,
+  accounts: false,
+  accountAccess: false,
+  email: false,
+};
+const VICE = { ...READER, contact: true, teaching: true, accountAccess: true, email: true };
+
+/** The value read beside a term of the panel's read view. */
+const termOf = (panel: HTMLElement, term: string): string | null =>
+  [...panel.querySelectorAll('dt')].find((dt) => dt.textContent === term)?.nextElementSibling
+    ?.textContent ?? null;
+
+async function openAkmal(): Promise<HTMLElement> {
+  renderApp(PATH);
+  fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
+  const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+  await within(panel).findByRole('heading', { name: en.people.staff.statusTitle });
+  return panel;
+}
+
+// docs/design-system.md, Layout shell, Lists: the side panel reads first, with
+// its actions at the bottom; one form open at a time (task 2.7c-2b-2a).
+describe('the actions of the staff panel', () => {
+  it('reads first, with Edit and Change status at the bottom for the Super Admin', async () => {
+    openList('super_admin');
+    const panel = await openAkmal();
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(panelActionNames(panel)).toEqual([en.form.edit, en.people.staff.changeStatus]);
+    expect(actionsAreLast(panel)).toBe(true);
+    for (const opener of [en.people.staff.changeTeaching, en.people.staff.changeBranches]) {
+      expect(within(panel).getByRole('button', { name: opener })).toBeDefined();
+    }
+  });
+
+  // Decision 4: every field of the answer is read, with the label of its form.
+  it('shows the Principal every field of the record and no action', async () => {
+    openList('principal', {}, 'en', { rights: READER, fatherName: 'Botirovich' });
+    const panel = await openAkmal();
+    expect(termOf(panel, en.people.staff.fatherName)).toBe('Botirovich');
+    expect(termOf(panel, en.people.staff.educationLevel)).toBe(
+      en.people.staff.educationLevels.master,
+    );
+    expect(termOf(panel, en.people.staff.contractType)).toBe(
+      en.people.staff.contractTypes.full_time,
+    );
+    expect(termOf(panel, en.people.staff.contractDate)).toBe(en.people.staff.notSet);
+    expect(termOf(panel, en.people.staff.weeklyLessons)).toBe('18');
+    expect(termOf(panel, en.people.staff.dailyLessons)).toBe('5');
+    expect(panelActions(panel)).toBeNull();
+    for (const opener of [
+      en.form.edit,
+      en.people.staff.changeStatus,
+      en.people.staff.changeTeaching,
+      en.people.staff.changeBranches,
+    ]) {
+      expect(within(panel).queryByRole('button', { name: opener })).toBeNull();
+    }
+  });
+
+  it('gives the Academic Vice Principal Edit and the subjects, not the status or the branches', async () => {
+    openList('academic_vice_principal', {}, 'en', { rights: VICE });
+    const panel = await openAkmal();
+    expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    expect(
+      within(panel).getByRole('button', { name: en.people.staff.changeTeaching }),
+    ).toBeDefined();
+    expect(
+      within(panel).queryByRole('button', { name: en.people.staff.changeBranches }),
+    ).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.people.staff.changeStatus })).toBeNull();
+  });
+
+  it('switches the subjects off with its reason when the person has no Academic department', async () => {
+    openList('super_admin', {}, 'en', {
+      divisions: [{ divisionId: MANAGEMENT.id, departmentId: null, main: true }],
+    });
+    const panel = await openAkmal();
+    const change = within(panel).getByRole<HTMLButtonElement>('button', {
+      name: en.people.staff.changeTeaching,
+    });
+    expect(change.disabled).toBe(true);
+    expect(change.parentElement?.textContent).toContain(en.people.staff.needsAcademic);
+  });
+
+  it('closes the record without a call on Cancel and gives the focus back to Edit', async () => {
+    const calls = openList('super_admin');
+    const panel = await openAkmal();
+    const form = await edit(panel, 'Akmal Karimov');
+    // The record's form takes the read view's place.
+    expect(within(panel).queryByText(en.people.staff.teachingTitle)).toBeNull();
+    fireEvent.click(within(form).getByRole('button', { name: en.form.cancel }));
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.form.edit }),
+      );
+    });
+    expect(calls.some((call) => call.route.startsWith('PUT'))).toBe(false);
+  });
+
+  it('asks before another form takes the place of one with typed text', async () => {
+    openList('super_admin');
+    const panel = await openAkmal();
+    const teaching = await edit(
+      panel,
+      en.people.staff.teachingOf.replace('{{name}}', 'Akmal Karimov'),
+      en.people.staff.changeTeaching,
+    );
+    fireEvent.click(within(teaching).getByLabelText(en.people.staff.languages.ru));
+    fireEvent.click(within(panel).getByRole('button', { name: en.people.staff.changeBranches }));
+    const dialog = await screen.findByRole('alertdialog', { name: en.unsent.leaveTitle });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.stay }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(teaching.isConnected).toBe(true);
+    expect(
+      within(panel).queryByRole('form', {
+        name: en.people.staff.branchesOf.replace('{{name}}', 'Akmal Karimov'),
+      }),
+    ).toBeNull();
+  });
+
+  it('changes the branches behind their button and says "Saved." at the bottom', async () => {
+    const calls = openList('super_admin', {
+      [`PUT /api/people/staff/${AKMAL.id}/branches`]: () => json(detailOf(AKMAL)),
+    });
+    const panel = await openAkmal();
+    const form = await edit(
+      panel,
+      en.people.staff.branchesOf.replace('{{name}}', 'Akmal Karimov'),
+      en.people.staff.changeBranches,
+    );
+    fireEvent.click(within(form).getByLabelText('South'));
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/branches'))?.body).toEqual({
+        mainBranchId: NORTH.id,
+        furtherBranchIds: [],
+      });
+    });
+    await savedInPanel(panel);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.people.staff.changeBranches }),
+      );
+    });
+  });
+
+  it('keeps the status form with what was typed when the question is answered no', async () => {
+    const calls = openList('super_admin');
+    const panel = await openAkmal();
+    const form = await edit(
+      panel,
+      en.people.staff.statusOf.replace('{{name}}', 'Akmal Karimov'),
+      en.people.staff.changeStatus,
+    );
+    fireEvent.change(within(form).getByLabelText(en.people.staff.newStatus), {
+      target: { value: 'inactive' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.confirm.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(form.isConnected).toBe(true);
+    expect(within(form).getByLabelText<HTMLSelectElement>(en.people.staff.newStatus).value).toBe(
+      'inactive',
+    );
+    expect(calls.some((call) => call.route.endsWith('/status'))).toBe(false);
+  });
+});
+
 // Issue #39, hand test of 13 October 2026, findings 18 and 21 (task 2.7b-2).
 describe('the subjects and languages of a staff member', () => {
   const teachingForm = async () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
-    return within(panel).findByRole('form', {
-      name: en.people.staff.teachingOf.replace('{{name}}', 'Akmal Karimov'),
-    });
+    // Task 2.7c-2b-2a: the form opens behind its section's button.
+    return edit(
+      panel,
+      en.people.staff.teachingOf.replace('{{name}}', 'Akmal Karimov'),
+      en.people.staff.changeTeaching,
+    );
   };
   const grades = (form: HTMLElement) =>
     within(form).getByRole('group', {
@@ -623,7 +814,8 @@ describe('the subjects and languages of a staff member', () => {
     expect(calls.some((call) => call.route.endsWith('/teaching'))).toBe(false);
   });
 
-  it('keeps "Saved." after a save that changes the subjects', async () => {
+  // Task 2.7c-2b-2a: the form closes on a save and "Saved." is at the bottom of the panel.
+  it('says "Saved." after a save that changes the subjects', async () => {
     let detail = detailOf(AKMAL);
     openList('academic_vice_principal', {
       [`GET /api/people/staff/${AKMAL.id}`]: () => json(detail),
@@ -639,10 +831,8 @@ describe('the subjects and languages of a staff member', () => {
     await waitFor(() => {
       expect(detail.subjects).toEqual([]);
     });
-    await waitFor(() => {
-      expect(within(form).getByRole('status').textContent).toBe(en.form.saved);
-    });
-    expect(form.isConnected).toBe(true);
+    await savedInPanel(screen.getByRole('complementary', { name: 'Akmal Karimov' }));
+    expect(form.isConnected).toBe(false);
   });
 });
 

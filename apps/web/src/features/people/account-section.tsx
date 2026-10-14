@@ -17,7 +17,7 @@ import {
   type SubjectsChange,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type ComponentProps } from 'react';
+import { useRef, useState, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
@@ -35,6 +35,7 @@ import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
+import type { PanelEditing } from '@/components/list/use-panel-editing';
 import { SUPER_ADMINS_KEY } from '@/features/access/super-admin-banner';
 import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
 import { useView } from '@/features/access/use-view';
@@ -63,12 +64,24 @@ const actorText = (actor: Actor): string =>
  * and ends roles; the Principal reads. What the reader may do comes from the
  * server (`canEdit`). A first password is shown once, in the slip dialog.
  */
-export function AccountSection({ staff, label }: { staff: StaffDetail; label: string }) {
+export function AccountSection({
+  staff,
+  label,
+  panel,
+}: {
+  staff: StaffDetail;
+  label: string;
+  /** The one open form of the staff panel (task 2.7c-2b-2a). */
+  panel: PanelEditing;
+}) {
   const { t } = useTranslation();
   const { branchId } = useView();
   const queryClient = useQueryClient();
   const section = useQuery(staffAccountQuery(branchId, staff.id));
   const [slip, setSlip] = useState<{ slip: FirstPasswordSlip; issued: string } | null>(null);
+  // The section's heading takes the focus when a save takes its button away
+  // (an account created, a role ended or its subjects changed; decision 11).
+  const heading = useRef<HTMLHeadingElement>(null);
 
   /** The answer of a role change is the section as it now is. */
   const refresh = async () => {
@@ -100,25 +113,52 @@ export function AccountSection({ staff, label }: { staff: StaffDetail; label: st
     body =
       data.account === null ? (
         data.canEdit && !data.left ? (
-          <CreateAccount
-            staff={staff}
-            label={label}
-            onCreated={async (created) => {
-              setSlip({ slip: created, issued: data.today });
-              await refresh();
-            }}
-          />
+          panel.editing === 'account-new' ? (
+            <CreateAccount
+              staff={staff}
+              label={label}
+              onCreated={async (created) => {
+                setSlip({ slip: created, issued: data.today });
+                await refresh();
+                panel.stop({ saved: true, key: 'account-new', focus: 'account' });
+              }}
+              onCancel={() => {
+                panel.stop();
+              }}
+            />
+          ) : (
+            <div className="grid gap-3">
+              <p className="text-sm">{t('people.account.none')}</p>
+              <div>
+                <Button
+                  variant="secondary"
+                  {...panel.opener('account-new')}
+                  onClick={() => {
+                    panel.start('account-new');
+                  }}
+                >
+                  {t('people.account.create')}
+                </Button>
+              </div>
+            </div>
+          )
         ) : (
           <p className="text-sm">{t('people.account.none')}</p>
         )
       ) : (
-        <AccountRoles staff={staff} label={label} data={data} onChange={refresh} />
+        <AccountRoles staff={staff} label={label} data={data} panel={panel} onChange={refresh} />
       );
   }
 
   return (
     <section className="grid gap-3" aria-labelledby={`account-${staff.id}`}>
-      <h3 id={`account-${staff.id}`} className={SECTION_TITLE}>
+      <h3
+        ref={heading}
+        id={`account-${staff.id}`}
+        className={SECTION_TITLE}
+        tabIndex={-1}
+        {...panel.opener('account')}
+      >
         {t('people.account.title')}
       </h3>
       {body}
@@ -128,6 +168,7 @@ export function AccountSection({ staff, label }: { staff: StaffDetail; label: st
           issued={slip.issued}
           onClose={() => {
             setSlip(null);
+            heading.current?.focus();
           }}
         />
       )}
@@ -140,10 +181,12 @@ function CreateAccount({
   staff,
   label,
   onCreated,
+  onCancel,
 }: {
   staff: StaffDetail;
   label: string;
   onCreated: (slip: FirstPasswordSlip) => Promise<void>;
+  onCancel: () => void;
 }) {
   const { branchId } = useView();
   const suggestion = useQuery(loginSuggestionQuery(branchId, staff.id));
@@ -167,6 +210,7 @@ function CreateAccount({
       label={label}
       suggested={suggestion.data.login ?? ''}
       onCreated={onCreated}
+      onCancel={onCancel}
     />
   );
 }
@@ -176,11 +220,13 @@ function CreateAccountForm({
   label,
   suggested,
   onCreated,
+  onCancel,
 }: {
   staff: StaffDetail;
   label: string;
   suggested: string;
   onCreated: (slip: FirstPasswordSlip) => Promise<void>;
+  onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const create = useMutation({
@@ -212,7 +258,11 @@ function CreateAccountForm({
     form.failure.code === 'login_taken' &&
     form.failure.details?.some((detail) => detail.path === 'login') === true;
   return (
-    <RecordForm form={form} label={t('people.account.createOf', { name: label })}>
+    <RecordForm
+      form={form}
+      label={t('people.account.createOf', { name: label })}
+      onCancel={onCancel}
+    >
       <Field
         label={t('people.account.login')}
         autoComplete="off"
@@ -231,17 +281,17 @@ function AccountRoles({
   staff,
   label,
   data,
+  panel,
   onChange,
 }: {
   staff: StaffDetail;
   label: string;
   data: StaffAccount;
+  panel: PanelEditing;
   onChange: () => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
-  const [ending, setEnding] = useState<string | null>(null);
-  const [changing, setChanging] = useState<string | null>(null);
   const account = data.account;
   if (account === null) {
     return null;
@@ -315,8 +365,9 @@ function AccountRoles({
                       aria-label={t('people.account.changeSubjectsOf', {
                         role: t(`roles.${role.role}`),
                       })}
+                      {...panel.opener(`role-subjects:${role.id}`)}
                       onClick={() => {
-                        setChanging(role.id);
+                        panel.start(`role-subjects:${role.id}`);
                       }}
                     >
                       {t('people.account.changeSubjects')}
@@ -330,8 +381,9 @@ function AccountRoles({
                       aria-label={t('people.account.endOf', {
                         role: t(`roles.${role.role}`),
                       })}
+                      {...panel.opener(`role-end:${role.id}`)}
                       onClick={() => {
-                        setEnding(role.id);
+                        panel.start(`role-end:${role.id}`);
                       }}
                     >
                       {t('people.account.end')}
@@ -344,9 +396,8 @@ function AccountRoles({
         </table>
       )}
       {data.canEdit &&
-        account.roles
-          .filter((role) => role.id === ending && role.state !== 'ended')
-          .map((role) => (
+        account.roles.map((role) =>
+          role.state !== 'ended' && panel.editing === `role-end:${role.id}` ? (
             <EndRoleForm
               key={role.id}
               staff={staff}
@@ -354,31 +405,65 @@ function AccountRoles({
               role={role}
               today={data.today}
               onEnded={async () => {
-                setEnding(null);
                 await onChange();
+                // A role ended today loses its button: the focus goes to the heading.
+                panel.stop({ saved: true, key: `role-end:${role.id}`, focus: 'account' });
+              }}
+              onCancel={() => {
+                panel.stop();
               }}
             />
-          ))}
-      {data.canEdit &&
-        account.roles
-          .filter(
-            (role) => role.id === changing && role.state !== 'ended' && isAppointment(role.role),
-          )
-          .map((role) => (
+          ) : role.state !== 'ended' &&
+            isAppointment(role.role) &&
+            panel.editing === `role-subjects:${role.id}` ? (
             <ChangeSubjectsForm
               key={role.id}
               staff={staff}
               role={role}
               today={data.today}
               onChanged={async () => {
-                setChanging(null);
                 await onChange();
+                // The change begins a new appointment with a new id: its row's button is gone.
+                panel.stop({
+                  saved: true,
+                  key: `role-subjects:${role.id}`,
+                  focus: 'account',
+                });
+              }}
+              onCancel={() => {
+                panel.stop();
               }}
             />
-          ))}
-      {data.canEdit && !data.left && (
-        <GiveRoleForm staff={staff} label={label} today={data.today} onGiven={onChange} />
-      )}
+          ) : null,
+        )}
+      {data.canEdit &&
+        !data.left &&
+        (panel.editing === 'role-new' ? (
+          <GiveRoleForm
+            staff={staff}
+            label={label}
+            today={data.today}
+            onGiven={async () => {
+              await onChange();
+              panel.stop({ saved: true, key: 'role-new' });
+            }}
+            onCancel={() => {
+              panel.stop();
+            }}
+          />
+        ) : (
+          <div>
+            <Button
+              variant="secondary"
+              {...panel.opener('role-new')}
+              onClick={() => {
+                panel.start('role-new');
+              }}
+            >
+              {t('people.account.give')}
+            </Button>
+          </div>
+        ))}
     </div>
   );
 }
@@ -455,11 +540,13 @@ function GiveRoleForm({
   label,
   today,
   onGiven,
+  onCancel,
 }: {
   staff: StaffDetail;
   label: string;
   today: string;
   onGiven: () => Promise<void>;
+  onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const give = useMutation({
@@ -497,7 +584,7 @@ function GiveRoleForm({
   });
   const role = form.bind('role');
   return (
-    <RecordForm form={form} label={t('people.account.giveOf', { name: label })}>
+    <RecordForm form={form} label={t('people.account.giveOf', { name: label })} onCancel={onCancel}>
       <SelectField
         label={t('people.account.newRole')}
         options={[
@@ -538,11 +625,13 @@ function ChangeSubjectsForm({
   role,
   today,
   onChanged,
+  onCancel,
 }: {
   staff: StaffDetail;
   role: AccountRole;
   today: string;
   onChanged: () => Promise<void>;
+  onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const change = useMutation({
@@ -576,6 +665,7 @@ function ChangeSubjectsForm({
     <RecordForm
       form={form}
       label={t('people.account.changeSubjectsOf', { role: t(`roles.${role.role}`) })}
+      onCancel={onCancel}
     >
       <SubjectsField bound={form.bind('subjectIds')} />
       <DateField label={t('people.account.subjectsFrom')} min={today} {...form.bind('from')} />
@@ -590,12 +680,14 @@ function EndRoleForm({
   role,
   today,
   onEnded,
+  onCancel,
 }: {
   staff: StaffDetail;
   label: string;
   role: AccountRole;
   today: string;
   onEnded: () => Promise<void>;
+  onCancel: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const confirm = useConfirm();
@@ -632,7 +724,11 @@ function EndRoleForm({
     },
   });
   return (
-    <RecordForm form={form} label={t('people.account.endOf', { role: roleName })}>
+    <RecordForm
+      form={form}
+      label={t('people.account.endOf', { role: roleName })}
+      onCancel={onCancel}
+    >
       <DateField label={t('people.account.endFrom')} min={today} {...form.bind('from')} />
     </RecordForm>
   );

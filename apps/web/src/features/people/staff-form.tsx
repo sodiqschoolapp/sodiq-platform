@@ -86,6 +86,8 @@ interface StaffFormProps {
   contactOnly: boolean;
   label: string;
   onSave: (record: StaffRecord) => Promise<void>;
+  /** Closes the form (opened by Edit in the side panel). */
+  onCancel?: () => void;
 }
 
 /**
@@ -95,7 +97,14 @@ interface StaffFormProps {
  * when Academic is a further division, there too ("Teaching from another
  * division", `03`).
  */
-export function StaffForm({ staff, divisions, contactOnly, label, onSave }: StaffFormProps) {
+export function StaffForm({
+  staff,
+  divisions,
+  contactOnly,
+  label,
+  onSave,
+  onCancel,
+}: StaffFormProps) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const academic = divisions.divisions.find((division) => division.builtIn);
@@ -187,7 +196,7 @@ export function StaffForm({ staff, divisions, contactOnly, label, onSave }: Staf
   const option = (value: string, labelText: string) => ({ value, label: labelText });
 
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       <Field label={t('people.staff.firstName')} autoComplete="off" {...bind('firstName')} />
       <Field label={t('people.staff.lastName')} autoComplete="off" {...bind('lastName')} />
       <Field label={t('people.staff.fatherName')} autoComplete="off" {...bind('fatherName')} />

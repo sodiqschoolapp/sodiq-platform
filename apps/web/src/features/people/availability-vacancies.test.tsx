@@ -11,9 +11,25 @@ import type {
 import { EXPORT_TEXTS, VACANCY_EXPORT_COLUMNS } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import {
+  actionsAreLast,
+  edit,
+  panelActionNames,
+  panelActions,
+  savedInPanel,
+} from '@/testing/panel';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
-import { fakeApi, json, NORTH, nothing, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import {
+  fakeApi,
+  json,
+  NORTH,
+  nothing,
+  refusal,
+  renderApp,
+  sessionOf,
+  SOUTH,
+} from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 
 const uid = (n: number): string => `0199c000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -241,16 +257,21 @@ describe('availability', () => {
       ],
     });
     // Issue #39, hand test of 13 October 2026, finding 18: the form closes, and
-    // "Saved." stands beside "Change availability" until the next change starts.
-    const change = await within(panel).findByRole('button', {
-      name: en.people.availability.change,
+    // "Saved." stands until the next change starts; task 2.7c-2b-2a: at the
+    // bottom of the panel, and the focus is back on the button.
+    await savedInPanel(panel);
+    const change = within(panel).getByRole('button', { name: en.people.availability.change });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(change);
     });
-    const sign = () => change.parentElement?.querySelector('[role="status"]')?.textContent;
-    expect(sign()).toBe(en.form.saved);
     fireEvent.click(change);
+    await within(panel).findByRole('form', {
+      name: en.people.availability.changeOf.replace('{{name}}', 'Akmal Karimov'),
+    });
+    expect(panelActions(panel)).toBeNull();
     expect(
       within(panel)
-        .getAllByRole('status')
+        .queryAllByRole('status')
         .some((status) => status.textContent === en.form.saved && !status.closest('form')),
     ).toBe(false);
   });
@@ -422,6 +443,53 @@ describe('the vacancies', () => {
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.people.vacancies.close })).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.people.vacancies.delete })).toBeNull();
+    // Task 2.7c-2b-2a: the record is read, with no row of actions at the bottom.
+    expect(panelActions(panel)).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
+  });
+
+  // Task 2.7c-2b-2a: the record reads first; Edit opens its form, Cancel closes it.
+  it('are changed behind Edit, with "Saved." at the bottom, and closed without a call on Cancel', async () => {
+    const calls = api('academic_vice_principal', {
+      [`PUT /api/people/vacancies/${OPEN.id}`]: () => json(vacancyDetail(OPEN)),
+    });
+    renderApp(`/people/vacancies?open=${OPEN.id}`);
+    const panel = await screen.findByRole('complementary', { name: OPEN.name });
+    await within(panel).findByRole('heading', { name: en.people.vacancies.statusTitle });
+    expect(within(panel).queryByRole('form')).toBeNull();
+    let form = await edit(panel, OPEN.name);
+    fireEvent.click(within(form).getByRole('button', { name: en.form.cancel }));
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form')).toBeNull();
+    });
+    expect(calls.some((call) => call.route.startsWith('PUT'))).toBe(false);
+
+    form = await edit(panel, OPEN.name);
+    fireEvent.change(within(form).getByLabelText(en.people.staff.weeklyLessons), {
+      target: { value: '14' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        (calls.find((call) => call.route.startsWith('PUT'))?.body as { weeklyLessons: number })
+          .weeklyLessons,
+      ).toBe(14);
+    });
+    await savedInPanel(panel);
+    expect(actionsAreLast(panel)).toBe(true);
+  });
+
+  it('show a refused close inside the row of actions', async () => {
+    api('academic_vice_principal', {
+      [`POST /api/people/vacancies/${OPEN.id}/close`]: () => refusal('status_unchanged', 409),
+    });
+    renderApp(`/people/vacancies?open=${OPEN.id}`);
+    const panel = await screen.findByRole('complementary', { name: OPEN.name });
+    fireEvent.click(await within(panel).findByRole('button', { name: en.people.vacancies.close }));
+    await waitFor(() => {
+      expect(panelActions(panel)?.textContent).toContain(en.errors.status_unchanged);
+    });
+    expect(actionsAreLast(panel)).toBe(true);
   });
 
   it('are closed, and deleted after a confirmation that names them', async () => {
@@ -445,18 +513,19 @@ describe('the vacancies', () => {
     const panel = await screen.findByRole('complementary', { name: OPEN.name });
     fireEvent.click(await within(panel).findByRole('button', { name: en.people.vacancies.close }));
     const reopen = await within(panel).findByRole('button', { name: en.people.vacancies.reopen });
-    // Finding 18: the close is said to be saved, beside its button.
-    expect(reopen.parentElement?.querySelector('[role="status"]')?.textContent).toBe(en.form.saved);
+    // Task 2.7c-2b-2a: Edit, then Close or Reopen, then Delete, last in the panel.
+    expect(panelActionNames(panel)).toEqual([
+      en.form.edit,
+      en.people.vacancies.reopen,
+      en.people.vacancies.delete,
+    ]);
+    expect(actionsAreLast(panel)).toBe(true);
+    // Finding 18: the close is said to be saved, in the bottom row.
+    await savedInPanel(panel);
     // Reopened: the sign goes while it is on its way and comes with the answer.
     fireEvent.click(reopen);
-    const closeAgain = await within(panel).findByRole('button', {
-      name: en.people.vacancies.close,
-    });
-    await waitFor(() => {
-      expect(closeAgain.parentElement?.querySelector('[role="status"]')?.textContent).toBe(
-        en.form.saved,
-      );
-    });
+    await within(panel).findByRole('button', { name: en.people.vacancies.close });
+    await savedInPanel(panel);
     expect(calls.some((call) => call.route.endsWith('/reopen'))).toBe(true);
     fireEvent.click(within(panel).getByRole('button', { name: en.people.vacancies.delete }));
     const dialog = await screen.findByRole('alertdialog');

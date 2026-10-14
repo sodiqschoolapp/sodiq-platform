@@ -16,9 +16,12 @@ export interface PanelEditing {
   /**
    * Closes the open form; after a save, `saved` says so. The focus goes back
    * to its opener. With `key`, only when that form is still the open one: a
-   * save that arrives after another form opened closes nothing.
+   * save that arrives after another form opened closes nothing. With
+   * `focus`, the focus goes to the element marked `opener(focus)` instead:
+   * a save that takes its own opener away (a role ended) hands it to a part
+   * that stays (task 2.7c-2b-2a).
    */
-  stop: (how?: { saved?: boolean; key?: string }) => void;
+  stop: (how?: { saved?: boolean; key?: string; focus?: string }) => void;
   /** Put on the button that opens a form: the focus comes back to it. */
   opener: (key: string) => { 'data-opens': string };
 }
@@ -79,13 +82,13 @@ export function usePanelEditing(): PanelEditing {
     [leave],
   );
 
-  const stop = useCallback((how?: { saved?: boolean; key?: string }) => {
+  const stop = useCallback((how?: { saved?: boolean; key?: string; focus?: string }) => {
     if (how?.key !== undefined && how.key !== open.current) {
       return;
     }
     const key = open.current;
     open.current = null;
-    focus.current = key === null ? null : { to: 'opener', key };
+    focus.current = key === null ? null : { to: 'opener', key: how?.focus ?? key };
     setSaved(how?.saved === true);
     setEditing(null);
   }, []);
