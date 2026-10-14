@@ -95,17 +95,8 @@ const NEW_RECORDS = [
 ] as const;
 
 /**
- * The People lists whose side panels get their actions at the bottom in task
- * 2.7c-2b-2b: until then `checkPage` does not hold their open record to one
- * primary and the actions last. Pinned: it only shrinks (staff and vacancies
- * left it in 2.7c-2b-2a), and 2.7c-2b-2b is done when it is empty (pull
- * request #83, decision 3; pull request #84, decision 3).
- */
-const PANEL_ACTIONS_LATER: readonly string[] = ['people-students', 'people-parents'];
-
-/**
  * The School setup and People panels the Academic Vice Principal changes
- * (tasks 2.7c-2b-1 and 2.7c-2b-2a): the list, the record opened by the button
+ * (tasks 2.7c-2b-1, 2.7c-2b-2a and 2.7c-2b-2b): the list, the record opened by the button
  * of its row (or the first), and the button of the panel that opens its form.
  */
 const EDITS = [
@@ -131,6 +122,37 @@ const EDITS = [
     en.people.vacancies.title,
     null,
     en.people.availability.change,
+  ],
+  // The seeded student is active and holds no data yet, so it may be deleted.
+  ['people-students', '/people/students', en.people.students.title, null, en.form.edit],
+  [
+    'people-students-uid',
+    '/people/students',
+    en.people.students.title,
+    null,
+    en.people.students.uidTitle,
+  ],
+  [
+    'people-students-leave',
+    '/people/students',
+    en.people.students.title,
+    null,
+    en.people.students.leaveTitle,
+  ],
+  [
+    'people-students-delete',
+    '/people/students',
+    en.people.students.title,
+    null,
+    en.people.students.deleteAction,
+  ],
+  ['people-parents', '/people/parents', en.people.relatives.title, null, en.form.edit],
+  [
+    'people-parents-same',
+    '/people/parents',
+    en.people.relatives.title,
+    null,
+    en.people.relatives.markStaff,
   ],
   ['setup-slot-types', '/setup/slot-types', en.setup.slotTypes.title, null, en.form.edit],
   ['setup-day-templates', '/setup/day-templates', en.setup.dayTemplates.title, null, en.form.edit],
@@ -226,9 +248,7 @@ test('every page of Phases 0 to 2 is drawn with the design system in light, dark
       ? page.getByRole('button', { name: 'Pages day off', exact: true }).click()
       : openFirstRecord(page));
     await expect(page.getByRole('complementary')).toBeVisible();
-    await checkPage(page, `${name}-record`, {
-      panelActionsLater: PANEL_ACTIONS_LATER.includes(name),
-    });
+    await checkPage(page, `${name}-record`);
   }
   // Tasks 2.7c-2b-1 and 2.7c-2b-2a: each School setup and People panel this
   // role changes, with each of its forms open; while the record's form is
@@ -239,6 +259,20 @@ test('every page of Phases 0 to 2 is drawn with the design system in light, dark
       ? openFirstRecord(page)
       : page.getByRole('button', { name: row, exact: true }).first().click());
     const panel = page.getByRole('complementary');
+    await panel.getByRole('button', { name: opener, exact: true }).click();
+    await expect(panel.getByRole('form').first()).toBeVisible();
+    await checkPage(page, `${name}-edit`);
+  }
+  // Task 2.7c-2b-2b: the forms of the student's Relatives tab, each opened in
+  // the tab (the seeded student has one relative). Nothing is saved.
+  for (const [name, opener] of [
+    ['people-students-relative-new', en.people.relatives.add],
+    ['people-students-link', en.people.relatives.changeLink],
+  ] as const) {
+    await open(page, '/people/students', en.people.students.title);
+    await openFirstRecord(page);
+    const panel = page.getByRole('complementary');
+    await panel.getByText(en.people.students.tabs.relatives, { exact: true }).click();
     await panel.getByRole('button', { name: opener, exact: true }).click();
     await expect(panel.getByRole('form').first()).toBeVisible();
     await checkPage(page, `${name}-edit`);

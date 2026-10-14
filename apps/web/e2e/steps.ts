@@ -73,7 +73,7 @@ const VIEWS = [
 ] as const;
 
 /** Where `checkPage` saves its screenshots with SCREENSHOTS=1, for the report. */
-const PAGE_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.7c-2b-2a');
+const PAGE_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.7c-2b-2b');
 
 interface Measured {
   h1: number;
@@ -102,7 +102,7 @@ interface Measured {
  * At phone width every checkbox's target is 44 px (task 2.7c-2a). A side
  * panel shows at most one primary button, and nothing of it follows its row of
  * actions (task 2.7c-2b-1).
- * With SCREENSHOTS=1 it saves docs/screens/2.7c-2b-2a/<name>-<view>.png. The page
+ * With SCREENSHOTS=1 it saves docs/screens/2.7c-2b-2b/<name>-<view>.png. The page
  * is left in light at 1440 x 900.
  */
 export async function checkPage(
@@ -110,11 +110,8 @@ export async function checkPage(
   name: string,
   {
     signInFrame = false,
-    panelActionsLater = false,
   }: {
     signInFrame?: boolean;
-    /** A People panel, pinned in `PANEL_ACTIONS_LATER` until task 2.7c-2b-2b. */
-    panelActionsLater?: boolean;
   } = {},
 ): Promise<void> {
   for (const view of VIEWS) {
@@ -186,18 +183,17 @@ export async function checkPage(
       expect(small, `${where}: checkbox targets of 44 px`).toEqual([]);
     }
     // Principle: one primary per area; Layout shell, Lists: the side panel's
-    // actions at the bottom (task 2.7c-2b-1).
-    if (!panelActionsLater) {
-      for (const panel of measured.panels) {
-        expect(
-          panel.primaries.length,
-          `${where}: one primary in the side panel "${panel.name}" (${panel.primaries.join(', ')})`,
-        ).toBeLessThanOrEqual(1);
-        expect(
-          panel.afterActions,
-          `${where}: the actions of the side panel "${panel.name}" are its last part`,
-        ).toEqual([]);
-      }
+    // actions at the bottom (task 2.7c-2b-1), every side panel without
+    // exception since task 2.7c-2b-2b.
+    for (const panel of measured.panels) {
+      expect(
+        panel.primaries.length,
+        `${where}: one primary in the side panel "${panel.name}" (${panel.primaries.join(', ')})`,
+      ).toBeLessThanOrEqual(1);
+      expect(
+        panel.afterActions,
+        `${where}: the actions of the side panel "${panel.name}" are its last part`,
+      ).toEqual([]);
     }
     if (process.env.SCREENSHOTS === '1') {
       mkdirSync(PAGE_SCREENS, { recursive: true });

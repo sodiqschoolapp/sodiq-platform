@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 14 October 2026: task 2.7c-2b-2b Record actions at the bottom of the student and parent panels
+
+- Built: the student panel reads first, with Edit, "Correct the UID", the status actions (Cancel the leaving, Undo, Return, Restore; Leave school and Delete as danger) at the bottom under every tab; the record and status forms take the place of the tabs; the relative rows' "Change the link" and "Unlink", and "Add relative", open through the panel.
+- The parent panel has Edit at the bottom; the phone choices keep its Save as the one primary (Merge danger, "Give the number" secondary, "Close the choices"); the same-person picker opens through the panel.
+- `usePanelEditing` gained `point(key)` (the focus with no form open) and focuses the first field of a `data-slot="panel-form"`; `PANEL_ACTIONS_LATER` and `checkPage`'s `panelActionsLater` are gone; screenshots in `docs/screens/2.7c-2b-2b/`.
+- Left out: Rooms "By floor" and the Branches list (2.7c-3); the Super Admin's own record (2.7d).
+
+The next sessions must know:
+
+- Every side panel is now held by `checkPage` to one primary and its actions last; there is no exemption list.
+- A form of a panel that is not a `RecordForm` carries `data-slot="panel-form"` so it takes the focus as it opens; an action done with no form open that takes its own button away calls `panel.point(key)`.
+- The next task is 2.7c-3.
+
 ## 14 October 2026: task 2.7c-2b-2a Record actions at the bottom of the staff and vacancy panels
 
 - Built: the staff panel reads first (the overview now shows every field of the record), with Edit and "Change status" at the bottom; the subjects, availability, branches and account forms open behind their section's button; the vacancy panel has Edit, Close or Reopen and Delete at the bottom.
