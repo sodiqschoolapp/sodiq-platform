@@ -80,6 +80,7 @@ describe('OpenAPI document', () => {
         '/api/people/staff/{id}/account',
         '/api/people/staff/{id}/account/access',
         '/api/people/staff/{id}/account/lock',
+        '/api/people/staff/{id}/account/own',
         '/api/people/staff/{id}/account/password-reset',
         '/api/people/staff/{id}/account/second-step-reset',
         '/api/people/staff/{id}/account/suggestion',

@@ -133,6 +133,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/people/staff',
       'POST /api/people/staff/:id/account',
       'POST /api/people/staff/:id/account/lock',
+      'POST /api/people/staff/:id/account/own',
       'POST /api/people/staff/:id/account/password-reset',
       'POST /api/people/staff/:id/account/second-step-reset',
       'POST /api/people/staff/:id/account/unlock',
