@@ -239,6 +239,67 @@ describe('group membership', () => {
     }
   }
 
+  /**
+   * The writes of a leaving, as the leaving route makes them: the student
+   * FOR UPDATE, the status rows, the class rows cut, then the groups of its
+   * group rows FOR UPDATE in the order of their id and those rows cut.
+   */
+  async function writeLeaving(
+    transaction: Transaction,
+    studentId: string,
+    firstInactiveDay: string,
+  ): Promise<void> {
+    await transaction
+      .selectFrom('students')
+      .select('id')
+      .where('id', '=', studentId)
+      .forUpdate()
+      .execute();
+    await transaction
+      .updateTable('student_statuses')
+      .set({ valid_until: firstInactiveDay })
+      .where('student_id', '=', studentId)
+      .where('valid_until', 'is', null)
+      .execute();
+    const leaving = await transaction
+      .insertInto('student_statuses')
+      .values({
+        student_id: studentId,
+        branch_id: t.north,
+        status: 'inactive',
+        valid_from: firstInactiveDay,
+        cause: 'leaving',
+        reason: 'The family moved.',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .updateTable('class_memberships')
+      .set({ valid_until: firstInactiveDay, ended_by: 'leaving', leaving_id: leaving.id })
+      .where('student_id', '=', studentId)
+      .where('valid_until', '>', firstInactiveDay)
+      .execute();
+    const groups = await transaction
+      .selectFrom('group_memberships')
+      .select('group_id')
+      .where('student_id', '=', studentId)
+      .where('valid_until', '>', firstInactiveDay)
+      .execute();
+    await transaction
+      .selectFrom('groups')
+      .select('id')
+      .where('id', 'in', groups.length === 0 ? [UNKNOWN] : groups.map((row) => row.group_id).sort())
+      .orderBy('id')
+      .forUpdate()
+      .execute();
+    await transaction
+      .updateTable('group_memberships')
+      .set({ valid_until: firstInactiveDay, ended_by: 'leaving', leaving_id: leaving.id })
+      .where('student_id', '=', studentId)
+      .where('valid_until', '>', firstInactiveDay)
+      .execute();
+  }
+
   /** The writes of a group edit, as the route makes them: its classes FOR SHARE, then the group. */
   async function writeGroupEdit(
     transaction: Transaction,
@@ -572,6 +633,8 @@ describe('group membership', () => {
       const maths2 = await group([oxford], { subject: english });
       const tab = placed(await place(maths1, [await pupil(oxford)], '2026-10-12'));
       const member = tab.members[0]?.id ?? '';
+      const southClass = await schoolClass(7, t.south, southYear);
+      const southGroup = await group([southClass], { branch: t.south, year: southYear });
       const before = await rowsOf();
       for (const action of ['withdraw', 'reviewed']) {
         refusedWith(
@@ -590,6 +653,132 @@ describe('group membership', () => {
           'not_found',
         );
       }
+      // The group of the path unknown or of another branch.
+      for (const action of ['withdraw', 'reviewed']) {
+        for (const path of [UNKNOWN, southGroup]) {
+          refusedWith(
+            await post(`/api/groups/${path}/members/${member}/${action}`, {}, t.admin),
+            404,
+            'not_found',
+          );
+        }
+      }
+      expect(await rowsOf()).toEqual(before);
+    });
+  });
+
+  describe('more refusals of the members routes', () => {
+    it('answers an ended placement not planned, and a repeated "Mark reviewed" as it is', async () => {
+      const oxford = await schoolClass();
+      const maths1 = await group([oxford]);
+      const one = await pupil(oxford);
+      // A row that ended before today, written as a leaving of 1 October would leave it.
+      const leaving = await t.database.migrator.transaction().execute(async (transaction) => {
+        await transaction
+          .updateTable('student_statuses')
+          .set({ valid_until: '2026-10-01' })
+          .where('student_id', '=', one.id)
+          .execute();
+        const row = await transaction
+          .insertInto('student_statuses')
+          .values({
+            student_id: one.id,
+            branch_id: t.north,
+            status: 'inactive',
+            valid_from: '2026-10-01',
+            cause: 'leaving',
+            reason: 'The family moved.',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .updateTable('class_memberships')
+          .set({ valid_until: '2026-10-01', ended_by: 'leaving', leaving_id: row.id })
+          .where('student_id', '=', one.id)
+          .execute();
+        return row.id;
+      });
+      const ended = await t.database.migrator
+        .insertInto('group_memberships')
+        .values({
+          branch_id: t.north,
+          student_id: one.id,
+          group_id: maths1,
+          subject_id: maths,
+          valid_from: '2026-09-02',
+          valid_until: '2026-10-01',
+          own_until: '2027-06-01',
+          cause: 'automatic',
+          review: true,
+          ended_by: 'leaving',
+          leaving_id: leaving,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      refusedWith(
+        await post(`/api/groups/${maths1}/members/${ended.id}/withdraw`),
+        409,
+        'group_membership_not_planned',
+      );
+      const first = await post(`/api/groups/${maths1}/members/${ended.id}/reviewed`);
+      expect(first.status, JSON.stringify(first.body)).toBe(200);
+      const before = await t.auditCount();
+      const again = await post(`/api/groups/${maths1}/members/${ended.id}/reviewed`);
+      expect(again.status).toBe(200);
+      expect(await t.auditCount()).toBe(before);
+    });
+
+    it('answers a planned row a leaving emptied as it is, keeping its cause', async () => {
+      const oxford = await schoolClass();
+      const maths1 = await group([oxford]);
+      const one = await pupil(oxford);
+      placed(await place(maths1, [one], '2026-11-16'));
+      const fresh = studentDetailSchema.parse((await get(`/api/people/students/${one.id}`)).body);
+      const left = await post(`/api/people/students/${one.id}/leaving`, {
+        lastDay: '2026-10-31',
+        reason: 'The family moved.',
+        version: fresh.version,
+      });
+      expect(left.status).toBe(200);
+      const row = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select('id')
+        .where('student_id', '=', one.id)
+        .executeTakeFirstOrThrow();
+      const response = await post(`/api/groups/${maths1}/members/${row.id}/withdraw`);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(await rowsOfStudent(one.id)).toEqual([
+        expect.objectContaining({ valid_until: '2026-11-16', ended_by: 'leaving' }),
+      ]);
+    });
+
+    it('refuses a group of a closed year, on a placement and on a run', async () => {
+      const branch = await t.newBranch();
+      const oldYear = await classes.year(branch, 'planned', '2025-09-01', '2026-05-31');
+      const oldClass = await schoolClass(7, branch, oldYear);
+      const oldGroup = await group([oldClass], { branch, year: oldYear });
+      await classes.setYear(oldYear, 'current');
+      await classes.setYear(oldYear, 'closed');
+      await classes.year(branch, 'current', '2026-09-01', '2027-05-31');
+      const created = await t.postStudent(branch, body({ startsOn: '2026-09-02' }), t.admin);
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const one = studentDetailSchema.parse(created.body);
+      const before = await rowsOf();
+      refusedWith(
+        await place(oldGroup, [one], '2026-01-12', t.admin, branch),
+        409,
+        'group_year_closed',
+      );
+      refusedWith(
+        await t.post(
+          '/api/groups/placement/automatic',
+          branch,
+          { subjectId: maths, grades: [7], from: '2026-01-12' },
+          t.admin,
+        ),
+        409,
+        'group_year_closed',
+      );
       expect(await rowsOf()).toEqual(before);
     });
   });
@@ -664,6 +853,21 @@ describe('group membership', () => {
       expect(empty.unplaced).toEqual([]);
     });
 
+    it('breaks a tie of sizes by the name of the group, the students in the order of their names', async () => {
+      const subject = await classes.subject({ grades: [8] });
+      const oxford = await schoolClass(8);
+      // Created B first, so that the id would put it first: the name decides.
+      const later = await group([oxford], { subject, name: 'Z-8' });
+      const earlier = await group([oxford], { subject, name: 'Y-8' });
+      const first = await pupil(oxford, { grade: 8, lastName: 'Aminova' });
+      const second = await pupil(oxford, { grade: 8, lastName: 'Botirova' });
+      const response = await automatic(subject, [8]);
+      expect(automaticPlacementResultSchema.parse(response.body).placed).toEqual([
+        { studentId: first.id, groupId: earlier },
+        { studentId: second.id, groupId: later },
+      ]);
+    });
+
     it('answers 404 for an unknown subject of a run, changing nothing', async () => {
       const before = await rowsOf();
       refusedWith(await automatic(UNKNOWN, [7]), 404, 'not_found');
@@ -677,7 +881,7 @@ describe('group membership', () => {
       const students = [await pupil(oxford, { grade: 8 }), await pupil(oxford, { grade: 8 })];
       const before = await rowsOf();
       const response = await automatic(subject, [8]);
-      refusedWith(response, 409, 'group_full');
+      refusedWith(response, 409, 'placement_no_seat');
       expect(detailsOf(response)).toHaveLength(1);
       expect(students.map((one) => one.id)).toContain(detailsOf(response)[0]?.recordId);
       expect(await rowsOf()).toEqual(before);
@@ -746,6 +950,51 @@ describe('group membership', () => {
         '2026-11-01',
         '2026-11-16',
       ]);
+    });
+
+    it('names the new leaving on the group rows of a scheduled leaving replaced by an earlier date', async () => {
+      const oxford = await schoolClass();
+      const maths1 = await group([oxford]);
+      const one = await pupil(oxford);
+      placed(await place(maths1, [one], '2026-12-20'));
+      const leave = async (lastDay: string) => {
+        const fresh = studentDetailSchema.parse((await get(`/api/people/students/${one.id}`)).body);
+        const response = await post(`/api/people/students/${one.id}/leaving`, {
+          lastDay,
+          reason: 'The family moved.',
+          version: fresh.version,
+        });
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+      };
+      const leavingOf = async (from: string) =>
+        (
+          await t.database.migrator
+            .selectFrom('student_statuses')
+            .select('id')
+            .where('student_id', '=', one.id)
+            .where('status', '=', 'inactive')
+            .where('valid_from', '=', from)
+            .executeTakeFirstOrThrow()
+        ).id;
+      await leave('2026-12-14');
+      const rowOf = () =>
+        t.database.migrator
+          .selectFrom('group_memberships')
+          .select(['valid_from', 'valid_until', 'ended_by', 'leaving_id'])
+          .where('student_id', '=', one.id)
+          .executeTakeFirstOrThrow();
+      expect(await rowOf()).toMatchObject({
+        valid_until: '2026-12-20',
+        ended_by: 'leaving',
+        leaving_id: await leavingOf('2026-12-15'),
+      });
+      // The replace by 30 November: the withdrawn row is the new leaving's (decision 9).
+      await leave('2026-11-30');
+      expect(await rowOf()).toMatchObject({
+        valid_until: '2026-12-20',
+        ended_by: 'leaving',
+        leaving_id: await leavingOf('2026-12-01'),
+      });
     });
 
     it('withdraws the group rows of a planned class placement withdrawn', async () => {
@@ -818,7 +1067,7 @@ describe('group membership', () => {
   });
 
   describe('at the same moment', () => {
-    it('refuses the second of two placements into the last seat, both directions', async () => {
+    it('refuses the second of two placements into the last seat', async () => {
       const oxford = await schoolClass();
       const small = await group([oxford], { size: 1 });
       const [one, two] = [await pupil(oxford), await pupil(oxford)];
@@ -959,21 +1208,22 @@ describe('group membership', () => {
       expect(await rowsOfStudent(one.id)).toEqual([
         expect.objectContaining({ valid_until: '2026-11-01', ended_by: 'leaving' }),
       ]);
-      // The leaving first: the placement route waits, then places up to the leaving.
+      // The leaving first: the placement route waits on the student, then
+      // places up to the leaving's first inactive day, cut by it.
       const two = await pupil(oxford);
-      const left = await holdOpen(async (transaction) => {
-        await transaction
-          .selectFrom('students')
-          .select('id')
-          .where('id', '=', two.id)
-          .forUpdate()
-          .execute();
-      });
+      const left = await holdOpen((transaction) => writeLeaving(transaction, two.id, '2026-11-01'));
       const placing = place(maths1, [two]).then((response) => response);
       await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBeGreaterThan(0);
       left.release();
       expect(await left.done).toBeUndefined();
-      expect((await placing).status).toBe(201);
+      expect((await placing).status, JSON.stringify((await placing).body)).toBe(201);
+      expect(await rowsOfStudent(two.id)).toEqual([
+        expect.objectContaining({
+          valid_from: '2026-10-12',
+          valid_until: '2026-11-01',
+          ended_by: 'leaving',
+        }),
+      ]);
     });
 
     it('meets the withdraw of the student’s planned class row', async () => {
@@ -1026,42 +1276,61 @@ describe('group membership', () => {
       ]);
     });
 
-    it('orders an automatic run against a placement into the last seat, and two runs on shared groups', async () => {
+    /** Two groups of grades 9 and 10 with a seat each, a student of each grade not yet placed. */
+    async function sharedGroups(size = 1) {
       const subject = await classes.subject({ grades: [9, 10] });
       const nine = await schoolClass(9);
       const ten = await schoolClass(10);
-      const first = await group([nine, ten], { subject, size: 1, name: 'S-1' });
-      const second = await group([nine, ten], { subject, size: 1, name: 'S-2' });
+      const first = await group([nine, ten], { subject, size });
+      const second = await group([nine, ten], { subject, size });
       const ninth = await pupil(nine, { grade: 9 });
       const tenth = await pupil(ten, { grade: 10 });
-      // A manual placement holds the last seat of S-1: the run waits and takes S-2.
-      const held = await holdOpen(async (transaction) => {
-        await transaction
-          .selectFrom('students')
-          .select('id')
-          .where('id', '=', tenth.id)
-          .forUpdate()
-          .execute();
-        await transaction
-          .selectFrom('groups')
-          .select('id')
-          .where('id', '=', first)
-          .forUpdate()
-          .execute();
-        await transaction
-          .insertInto('group_memberships')
-          .values({
-            branch_id: t.north,
-            student_id: tenth.id,
-            group_id: first,
-            subject_id: subject,
-            valid_from: '2026-10-12',
-            valid_until: '2027-06-01',
-            own_until: '2027-06-01',
-            cause: 'placement',
-          })
-          .execute();
-      });
+      return { subject, first, second, ninth, tenth };
+    }
+
+    /** The writes of a placement into a group of another subject than maths, as the routes make them. */
+    async function writeInto(
+      transaction: Transaction,
+      subject: string,
+      studentId: string,
+      groupIds: readonly string[],
+      into: string,
+      cause: 'placement' | 'automatic',
+    ): Promise<void> {
+      await transaction
+        .selectFrom('students')
+        .select('id')
+        .where('id', '=', studentId)
+        .forUpdate()
+        .execute();
+      await transaction
+        .selectFrom('groups')
+        .select('id')
+        .where('id', 'in', [...groupIds].sort())
+        .orderBy('id')
+        .forUpdate()
+        .execute();
+      await transaction
+        .insertInto('group_memberships')
+        .values({
+          branch_id: t.north,
+          student_id: studentId,
+          group_id: into,
+          subject_id: subject,
+          valid_from: '2026-10-12',
+          valid_until: '2027-06-01',
+          own_until: '2027-06-01',
+          cause,
+          review: cause === 'automatic',
+        })
+        .execute();
+    }
+
+    it('lets an automatic run wait for a placement into the last seat and take the other group', async () => {
+      const { subject, first, second, ninth, tenth } = await sharedGroups();
+      const held = await holdOpen((transaction) =>
+        writeInto(transaction, subject, tenth.id, [first], first, 'placement'),
+      );
       const run = automatic(subject, [9, 10]).then((response) => response);
       await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBeGreaterThan(0);
       held.release();
@@ -1073,38 +1342,60 @@ describe('group membership', () => {
       ]);
     });
 
-    it('lets a leaving and an automatic run that share groups finish one after the other', async () => {
+    it('refuses a placement into the last seat an automatic run took first', async () => {
+      const { subject, first, second, ninth, tenth } = await sharedGroups();
+      const held = await holdOpen((transaction) =>
+        writeInto(transaction, subject, ninth.id, [first, second], first, 'automatic'),
+      );
+      const placing = place(first, [tenth]).then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBeGreaterThan(0);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      refusedWith(await placing, 409, 'group_full');
+    });
+
+    it('orders two automatic runs on shared groups: the second places only who is left', async () => {
+      const { subject, first, second, ninth, tenth } = await sharedGroups(5);
+      // The first run holds the ninth grader and both groups.
+      const held = await holdOpen((transaction) =>
+        writeInto(transaction, subject, ninth.id, [first, second], first, 'automatic'),
+      );
+      const run = automatic(subject, [9, 10]).then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBeGreaterThan(0);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      const result = await run;
+      expect(result.status, JSON.stringify(result.body)).toBe(201);
+      // Read again under the locks: the ninth grader is placed; the other goes to the smaller group.
+      expect(automaticPlacementResultSchema.parse(result.body).placed).toEqual([
+        { studentId: tenth.id, groupId: second },
+      ]);
+    });
+
+    it('lets an automatic run see a leaving that came first', async () => {
       const subject = await classes.subject({ grades: [9] });
       const nine = await schoolClass(9);
       const g1 = await group([nine], { subject, name: 'L-1' });
       const g2 = await group([nine], { subject, name: 'L-2' });
       const leaver = await pupil(nine, { grade: 9 });
-      placed(await place(g1, [leaver], '2026-10-12'));
+      const stays = await pupil(nine, { grade: 9 });
+      const other = await pupil(nine, { grade: 9 });
+      placed(await place(g1, [leaver, stays], '2026-10-10'));
+      placed(await place(g2, [other], '2026-10-10'));
       const waiting = await pupil(nine, { grade: 9 });
-      // A leaving holds the student and both groups, in the order of their id.
-      const left = await holdOpen(async (transaction) => {
-        await transaction
-          .selectFrom('students')
-          .select('id')
-          .where('id', '=', leaver.id)
-          .forUpdate()
-          .execute();
-        await transaction
-          .selectFrom('groups')
-          .select('id')
-          .where('id', 'in', [g1, g2].sort())
-          .orderBy('id')
-          .forUpdate()
-          .execute();
-      });
+      // Without the leaving L-1 holds two and L-2 one; from 12 October L-1 holds one.
+      const left = await holdOpen((transaction) =>
+        writeLeaving(transaction, leaver.id, '2026-10-12'),
+      );
       const run = automatic(subject, [9]).then((response) => response);
       await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBeGreaterThan(0);
       left.release();
       expect(await left.done).toBeUndefined();
       const result = await run;
       expect(result.status, JSON.stringify(result.body)).toBe(201);
+      // A tie on the date, broken by name: L-1.
       expect(automaticPlacementResultSchema.parse(result.body).placed).toEqual([
-        { studentId: waiting.id, groupId: g2 },
+        { studentId: waiting.id, groupId: g1 },
       ]);
     });
   });

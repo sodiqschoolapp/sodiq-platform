@@ -154,16 +154,13 @@ export function GroupMembers({ group, years, canEdit, panel }: GroupMembersProps
               <span className="text-muted-foreground">
                 {member.uid} · {classDisplayName(member.class.grade, member.class.name)}
               </span>
+              {/* Plain words, never a tinted tag (docs/design-system.md, What we never do, 4). */}
               {member.state === 'planned' && (
-                <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                <span className="text-muted-foreground">
                   {t('groups.joinsOn', { date: schoolDateText(member.from, i18n.language) })}
                 </span>
               )}
-              {member.review && (
-                <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                  {t('groups.review')}
-                </span>
-              )}
+              {member.review && <span className="font-semibold">{t('groups.review')}</span>}
               {canEdit && member.review && panel.editing === null && (
                 <Button
                   variant="secondary"
@@ -190,7 +187,10 @@ export function GroupMembers({ group, years, canEdit, panel }: GroupMembersProps
           ))}
           {tab.othersCount > 0 && (
             <li className="text-sm text-muted-foreground">
-              {t('groups.others', { count: tab.othersCount, n: tab.othersCount })}
+              {t('groups.others', {
+                count: tab.othersCount,
+                n: new Intl.NumberFormat(i18n.language).format(tab.othersCount),
+              })}
             </li>
           )}
         </ul>

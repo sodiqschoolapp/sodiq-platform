@@ -349,11 +349,12 @@ describe('the bulk placement screen', () => {
     });
     const [first] = screen.getAllByRole('checkbox').slice(1);
     fireEvent.click(first as HTMLElement);
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: en.groups.placement.putInto.replace('{{group}}', M1.name),
-      }),
-    );
+    const action = en.groups.placement.putInto.replace('{{group}}', M1.name);
+    fireEvent.click(await screen.findByRole('button', { name: action }));
+    // A placement that has begun is changed by a transfer: the action asks first.
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toContain('Qodirova Aziza');
+    fireEvent.click(within(dialog).getByRole('button', { name: action }));
     expect(await screen.findByText(en.groups.placed_one.replace('{{n}}', '1'))).toBeDefined();
     expect(calls.find((call) => call.route === `POST /api/groups/${M1.id}/members`)?.body).toEqual({
       students: [{ id: uid(701) }],
@@ -384,6 +385,57 @@ describe('the bulk placement screen', () => {
     expect(
       calls.find((call) => call.route === 'POST /api/groups/placement/automatic')?.body,
     ).toEqual({ subjectId: MATHS.id, grades: [7], from: '2026-10-10' });
+  });
+
+  it('names the students no group has a seat for, from the details of the refusal', async () => {
+    await openPlacement(BOARD, {
+      'POST /api/groups/placement/automatic': () =>
+        Response.json(
+          {
+            error: {
+              code: 'placement_no_seat',
+              message: 'ENGLISH TEXT FOR THE DEVELOPER',
+              requestId: 'test-request',
+              details: [
+                {
+                  path: 'students',
+                  code: 'placement_no_seat',
+                  message: 'x',
+                  recordId: uid(702),
+                },
+              ],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.groups.placement.automatic }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.groups.placement.automatic }));
+    expect(await screen.findByText(en.errors.placement_no_seat)).toBeDefined();
+    expect(
+      screen.getByText(en.groups.refusedNames.replace('{{names}}', 'Toshmatov Bobur')),
+    ).toBeDefined();
+  });
+
+  it('draws the screen in Russian', async () => {
+    setWindowWidth(1440);
+    fakeApi({
+      'GET /api/auth/session': () => json(vice('ru')),
+      'GET /api/groups': () => json({ groups: [M1] }),
+      'GET /api/people/students': () => studentsAnswer([]),
+      'GET /api/groups/placement': () => json(BOARD),
+    });
+    renderApp('/groups/placement', 'ru');
+    await screen.findByRole('heading', { name: ru.groups.placement.title, level: 1 });
+    expect(await screen.findByLabelText(ru.groups.placement.subject)).toBeDefined();
+    expect(
+      await screen.findByRole('button', { name: ru.groups.placement.automatic }),
+    ).toBeDefined();
+    const groups = screen
+      .getByRole('heading', { name: ru.groups.placement.groups })
+      .closest('section');
+    expect(groups?.textContent).toContain('2 из 20');
   });
 
   it('says when everyone is placed', async () => {
@@ -460,6 +512,22 @@ describe('the groups of the student list', () => {
       `7-M-1, ${en.people.students.groupFrom.replace('{{group}}', '7-E-2').replace('{{date}}', schoolDateText('2026-11-02', 'en'))}`,
     );
     expect(cells).toContain('—');
+  });
+
+  it('filters the list by a group the rows name', async () => {
+    openStudents();
+    renderApp('/people/students');
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    const filter = await screen.findByLabelText(en.people.students.groups, { selector: 'select' });
+    expect([...filter.querySelectorAll('option')].map((option) => option.textContent)).toContain(
+      '7-E-2',
+    );
+    fireEvent.change(filter, { target: { value: M1.id } });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
   });
 
   it('offers the groups that draw from the class of the ticked students', async () => {

@@ -23,9 +23,12 @@ import { branchOf, zoneOf } from './classes.service.js';
 import {
   GROUP_MEMBERSHIP_REFUSALS,
   groupMembersPeak,
+  groupRangesFrom,
+  peakWith,
   lockGroups,
 } from './group-membership-rows.js';
 import { classesOfGroups, readGroupRow, type GroupRow } from './group-rows.js';
+import type { HeldRange } from './group-membership-rows.js';
 
 /** A group as a placement reads it, after its lock. */
 interface PlacementGroupRow {
@@ -174,13 +177,15 @@ export class GroupMembers {
           if (first !== undefined) {
             throw new ApiException(first.code as ErrorCode, 409, undefined, details);
           }
-          const until = rows.reduce(
-            (latest, row) => (row.until > latest ? row.until : latest),
-            input.from,
-          );
-          const free =
-            group.maxSize - (await groupMembersPeak(transaction, groupId, input.from, until));
-          if (rows.length > free) {
+          // Date by date, as the guard counts (spec review of the build, should-fix 1).
+          const existing = await groupRangesFrom(transaction, groupId, input.from);
+          if (peakWith(existing, rows) > group.maxSize) {
+            const until = rows.reduce(
+              (latest, row) => (row.until > latest ? row.until : latest),
+              input.from,
+            );
+            const free =
+              group.maxSize - (await groupMembersPeak(transaction, groupId, input.from, until));
             throw new ApiException('group_full', 409, undefined, [
               {
                 path: 'students',
@@ -226,7 +231,9 @@ export class GroupMembers {
             .select(['valid_from', 'valid_until', 'ended_by'])
             .where('id', '=', memberId)
             .executeTakeFirstOrThrow();
-          if (row.ended_by !== 'withdrawn' && row.ended_by !== 'class_withdrawn') {
+          // A row with no day (withdrawn, or emptied by a leaving) is answered as it is:
+          // an empty range keeps its cause (spec review of the build, should-fix 8).
+          if (row.valid_from < row.valid_until) {
             const today = schoolDateOf(
               await transactionMoment(transaction),
               await zoneOf(transaction, branchId),
@@ -374,6 +381,10 @@ export class GroupMembers {
             input.grades,
             input.from,
           );
+          // A date of a closed year: its groups stay as they were.
+          if (seen.some((group) => group.yearStatus === 'closed')) {
+            throw new ApiException('group_year_closed', 409);
+          }
           const candidates = await this.unplacedOf(transaction, input.subjectId, seen, input.from);
           if (candidates.length === 0) {
             return { placed: [] };
@@ -397,13 +408,17 @@ export class GroupMembers {
             ),
           );
           const order = candidates.filter((one) => still.has(one.id));
-          const added = new Map<string, number>();
+          const added = new Map<string, HeldRange[]>();
           const rows: PlannedGroupRow[] = [];
           const details: ErrorDetail[] = [];
-          const sized: { group: PlacementGroupRow; members: number }[] = [];
+          const sized: { group: PlacementGroupRow; members: number; existing: HeldRange[] }[] = [];
           for (const group of groups) {
             this.checkGroup(group, input.from);
-            sized.push({ group, members: await this.membersOn(transaction, group.id, input.from) });
+            sized.push({
+              group,
+              members: await this.membersOn(transaction, group.id, input.from),
+              existing: await groupRangesFrom(transaction, group.id, input.from),
+            });
           }
           for (const [index, candidate] of order.entries()) {
             const student = students.get(candidate.id);
@@ -412,24 +427,20 @@ export class GroupMembers {
             }
             const options: { group: PlacementGroupRow; members: number; row: PlannedGroupRow }[] =
               [];
-            for (const { group, members } of sized) {
+            for (const { group, members, existing } of sized) {
               const held = classRowOn(student, new Set(group.classIds), input.from);
               if (held === undefined) {
                 continue;
               }
-              const taken = added.get(group.id) ?? 0;
-              const peak = await groupMembersPeak(
-                transaction,
-                group.id,
-                input.from,
-                held.validUntil,
-              );
-              if (peak + taken + 1 > group.maxSize) {
+              const taken = added.get(group.id) ?? [];
+              const range = { from: input.from, until: held.validUntil };
+              // Date by date, the rows this run gave the group included.
+              if (peakWith(existing, [...taken, range]) > group.maxSize) {
                 continue;
               }
               options.push({
                 group,
-                members: members + taken,
+                members: members + taken.length,
                 row: {
                   studentId: student.id,
                   groupId: group.id,
@@ -448,15 +459,21 @@ export class GroupMembers {
             );
             const [best] = options;
             if (best === undefined) {
-              details.push({ ...studentDetail(index, student.id, 'group_full'), path: 'students' });
+              details.push({
+                ...studentDetail(index, student.id, 'placement_no_seat'),
+                path: 'students',
+              });
               continue;
             }
-            added.set(best.group.id, (added.get(best.group.id) ?? 0) + 1);
+            added.set(best.group.id, [
+              ...(added.get(best.group.id) ?? []),
+              { from: best.row.from, until: best.row.until },
+            ]);
             rows.push(best.row);
           }
           const first = details[0];
           if (first !== undefined) {
-            throw new ApiException('group_full', 409, undefined, details);
+            throw new ApiException('placement_no_seat', 409, undefined, details);
           }
           const byId = new Map(groups.map((group) => [group.id, group]));
           for (const row of rows) {
@@ -681,7 +698,13 @@ export class GroupMembers {
     const rows = await transaction
       .selectFrom('groups')
       .innerJoin('academic_years', 'academic_years.id', 'groups.academic_year_id')
-      .select(['groups.id', 'groups.name', 'groups.language', 'groups.max_size'])
+      .select([
+        'groups.id',
+        'groups.name',
+        'groups.language',
+        'groups.max_size',
+        'academic_years.status as year_status',
+      ])
       .where('groups.subject_id', '=', subjectId)
       .where('groups.archived_at', 'is', null)
       .where('academic_years.start_date', '<=', day)
@@ -699,6 +722,7 @@ export class GroupMembers {
         name: row.name,
         language: row.language as 'uz' | 'ru',
         maxSize: row.max_size,
+        yearStatus: row.year_status,
         classes: (classes.get(row.id) ?? []).map((one) => ({
           id: one.id,
           grade: one.grade,

@@ -87,6 +87,8 @@ const SCREEN: Record<ExportList, Record<string, (texts: Texts) => string>> = {
     subject: (texts) => texts.groups.columns.subject,
     classes: (texts) => texts.groups.columns.classes,
     language: (texts) => texts.groups.columns.language,
+    // Task 3.2b: the members today.
+    students: (texts) => texts.groups.columns.students,
     maxSize: (texts) => texts.groups.columns.maxSize,
     status: (texts) => texts.groups.columns.status,
   },
@@ -95,6 +97,8 @@ const SCREEN: Record<ExportList, Record<string, (texts: Texts) => string>> = {
     uid: (texts) => texts.people.students.uid,
     name: (texts) => texts.people.students.name,
     class: (texts) => texts.people.students.class,
+    // Task 3.2b: the groups of the student.
+    groups: (texts) => texts.people.students.groups,
     // Task 3.1b: the Tutor of the class.
     tutor: (texts) => texts.people.students.tutor,
     status: (texts) => texts.people.students.status,

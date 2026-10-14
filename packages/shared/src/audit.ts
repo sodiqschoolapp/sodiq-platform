@@ -447,8 +447,8 @@ const NOT_IDENTITY_KEYS = new Set([
   'groupMemberships',
   'subject_id',
   'review',
-  'withdrawn',
   'cut',
+  'was',
   // nested records: the student and the links kept by `student.delete`
   'student',
   'relatives',

@@ -60,7 +60,8 @@ export function GroupPlacementPage() {
   const [gradesText, setGradesText] = useState('');
   const [typedOn, setTypedOn] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
-  const on = typedOn ?? students.data?.today ?? '';
+  // A cleared date falls back to today (.claude/rules/web.md).
+  const on = typedOn !== null && typedOn !== '' ? typedOn : (students.data?.today ?? '');
 
   // The subjects of the active groups, and for the subject chosen the grades
   // and pairs of grades its groups are of: what the screen can show.
@@ -162,13 +163,21 @@ export function GroupPlacementPage() {
         ? (board.data?.groups ?? []).map((group) => ({
             key: `place:${group.id}`,
             label: t('groups.placement.putInto', { group: group.name }),
+            // A placement that begins today is not withdrawn: a transfer moves it (3.3).
+            confirm: () => ({
+              title: t('groups.placement.putIntoTitle', { group: group.name }),
+              text: t('groups.placement.putIntoText', {
+                date: schoolDateText(on, language),
+              }),
+              action: t('groups.placement.putInto', { group: group.name }),
+            }),
             run: (rows: UnplacedStudent[]) => {
               setOutcome(null);
               place.mutate({ groupId: group.id, rows });
             },
           }))
         : [],
-    [board.data, canEdit, place, t],
+    [board.data, canEdit, place, t, on, language],
   );
 
   const open = (next: ListSearch, how: 'push' | 'replace'): void => {

@@ -226,6 +226,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   group_size_below_members: 'The group holds more members on some date from today on.',
   group_class_has_members: 'The group holds or held students of a class taken out.',
   group_membership_in_class: 'A group row would lie outside a class row.',
+  placement_no_seat: 'No group of the screen has a seat for some students.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };

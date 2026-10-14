@@ -419,6 +419,8 @@ export const ERROR_CODES = [
   'group_class_has_members',
   /** A change would leave a group row outside the class rows of its group's classes (task 3.2b, decision 8): a fault of the path, never a choice of the person. */
   'group_membership_in_class',
+  /** "Place automatically" found no group of the screen with a free seat on every day for some students; nothing was placed (task 3.2b, decision 13). `details` names them. */
+  'placement_no_seat',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

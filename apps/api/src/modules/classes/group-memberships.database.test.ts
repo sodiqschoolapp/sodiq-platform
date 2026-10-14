@@ -568,7 +568,7 @@ describe('group membership in the database', () => {
             endedBy: null,
           }),
         ),
-      ).toMatchObject({ code: CHECK_VIOLATION });
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'group_memberships_insert_ended' });
       const withdrawn = await refusal(
         inBranch(north, (transaction) =>
           transaction
@@ -738,7 +738,37 @@ describe('group membership in the database', () => {
               .execute(),
           ),
         ),
-      ).toMatchObject({ code: CHECK_VIOLATION });
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'group_memberships_withdraw_planned' });
+    });
+
+    it('withdraws with a class row only before its day, and names only a leaving of the student', async () => {
+      const { oxford, group, student } = await setting();
+      const inForce = await placeInGroup({
+        branch: north,
+        groupId: group,
+        subjectId: maths,
+        studentId: student,
+        from: '2026-10-14',
+      });
+      const change = (values: Record<string, unknown>) =>
+        inBranch(north, (transaction) =>
+          transaction
+            .updateTable('group_memberships')
+            .set(values)
+            .where('id', '=', inForce)
+            .execute(),
+        );
+      expect(
+        await refusal(change({ valid_until: '2026-10-14', ended_by: 'class_withdrawn' })),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'group_memberships_withdraw_planned' });
+      // The update branch of the leaving check: a leaving of another student.
+      const other = await pupilOf(oxford);
+      const foreign = await leaveClasses(north, other, '2027-03-01');
+      expect(
+        await refusal(
+          change({ valid_until: '2027-03-01', ended_by: 'leaving', leaving_id: foreign }),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'group_memberships_leaving' });
     });
 
     it('refuses a change of the end in a closed year', async () => {

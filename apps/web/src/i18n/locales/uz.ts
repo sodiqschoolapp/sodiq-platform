@@ -322,6 +322,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Guruhda siz olib tashlagan sinf oʻquvchilari bor yoki boʻlgan, shuning uchun bu sinf guruhda qoladi. Oʻrniga yangi guruh tuzing.',
     group_membership_in_class:
       'Oʻzgarish oʻquvchini shu guruh sinfisiz guruhda qoldirardi. Hech narsa saqlanmadi. Qayta yuklang va yana urinib koʻring.',
+    placement_no_seat:
+      'Ayrim oʻquvchilar uchun ekrandagi guruhlarning birortasida boʻsh oʻrin yoʻq, shuning uchun hech kim joylashtirilmadi. Guruhning eng koʻp sonini oshiring yoki guruh qoʻshing.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
@@ -2385,7 +2387,6 @@ export const uz: Texts<'one' | 'other'> = {
     others_other: 'va boshqa sinflardan {{n}} ta oʻquvchi',
     chooseGroup: 'Guruhni tanlang',
     noGroupOfClass: 'Bu oʻquvchilar sinfidan olinadigan faol guruh yoʻq.',
-    oneClassOnly: 'Bitta sinf oʻquvchilarini belgilang: guruh belgilangan sinflardan olinadi.',
     refusedNames: 'Hech kim joylashtirilmadi. Rad etildi: {{names}}.',
     placed_one: '{{n}} ta oʻquvchi joylashtirildi.',
     placed_other: '{{n}} ta oʻquvchi joylashtirildi.',
@@ -2418,6 +2419,9 @@ export const uz: Texts<'one' | 'other'> = {
       placedAutomatically_other:
         '{{n}} ta oʻquvchi avtomatik joylashtirildi. Belgilangan qatorlarni koʻrib chiqing.',
       putInto: '{{group}} guruhiga joylashtirish',
+      putIntoTitle: 'Belgilangan oʻquvchilar {{group}} guruhiga joylashtirilsinmi?',
+      putIntoText:
+        'Ular {{date}} dan qoʻshiladi. Boshlangan joylashtirish oʻtkazish bilan oʻzgartiriladi.',
       student: 'Oʻquvchi',
       class: 'Sinf',
     },

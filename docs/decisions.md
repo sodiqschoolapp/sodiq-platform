@@ -235,7 +235,12 @@ Plan approved on pull request #92 with corrections 1 and 2; decisions 1 to 5 mar
 | The date of a placement defaults to the latest of today, the year's start and each ticked student's class row start | Decision 15 |
 | A class leaves a group only while the group holds no row with days of its students, past rows included; the archive is refused with members in force or planned, a lower maximum below the members of a date from today on | Decision 16; spec review of the plan, must-fix 3 |
 | Lock order: students FOR UPDATE by id, then every group the change touches FOR UPDATE by id (`lockGroups`), then the writes; a leaving and a class withdraw take the student, its classes, then its groups | Spec review of the plan, must-fix 1; same-moment tests of both directions |
-| Lines added to 3.3 (a release and a class transfer end group rows) and 9.5a (the graduation ends group rows) | Spec review of the plan, should-fix 1 |
+| Lines added to 3.3 (a release and a class transfer end group rows; the Head Teachers' moves need a permission of their own) and 9.5a (the graduation ends group rows) | Spec review of the plan, should-fix 1; permission review of the build, should-fix 3 |
+| The seat count of a placement and of a run is the guard's, date by date (`peakWith`): a row that ends at a scheduled leaving takes no seat after it | Spec review of the build, should-fix 1 |
+| A run that finds no seat for a student answers `placement_no_seat` (a code of its own: the person chose no student); a run of a date in a closed year `group_year_closed` | Spec review of the build, smaller points; `.claude/rules/web.md`, a text true on every path |
+| A withdraw of a row with no day (withdrawn, or emptied by a leaving) answers it as it is: an empty range keeps its cause, so 3.2c can give it back | Spec review of the build, should-fix 8 |
+| "Put into {group}" on the placement screen asks first: a placement that has begun is changed only by a transfer | Spec review of the build, should-fix 9 |
+| The Students tab decides a Tutor's members by the class on the first day of each row; the student list by the classes of today and planned (`studentClasses`); both keep to own classes, and a planned move into the Tutor's class shows in the list before the tab | Permission review of the build, should-fix 4 |
 
 ## 14 October 2026: groups and splits (task 3.2a)
 

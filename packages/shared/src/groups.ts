@@ -213,9 +213,11 @@ export const groupPlacementSchema = z.strictObject({
     .array(z.strictObject({ id: z.uuid() }))
     .min(1)
     .max(GROUP_PLACEMENT_MAX_STUDENTS)
-    .refine((students) => new Set(students.map((student) => student.id)).size === students.length, {
-      message: 'A student is named once.',
-    }),
+    .refine(
+      (students) =>
+        new Set(students.map((student) => student.id.toLowerCase())).size === students.length,
+      { message: 'A student is named once.' },
+    ),
   from: schoolDateSchema,
 });
 

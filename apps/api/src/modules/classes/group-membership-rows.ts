@@ -292,3 +292,46 @@ export async function groupMembersPeak(
   `.execute(transaction);
   return found.rows[0]?.peak ?? 0;
 }
+
+/** A range of days a row holds, half-open `[from, until)`. */
+export interface HeldRange {
+  from: SchoolDate;
+  until: SchoolDate;
+}
+
+/** The rows with days of a group that end after `from`: what a seat count from `from` on reads. */
+export async function groupRangesFrom(
+  transaction: Transaction,
+  groupId: string,
+  from: SchoolDate,
+): Promise<HeldRange[]> {
+  const rows = await transaction
+    .selectFrom('group_memberships')
+    .select(['valid_from', 'valid_until'])
+    .where('group_id', '=', groupId)
+    .whereRef('valid_from', '<', 'valid_until')
+    .where('valid_until', '>', from)
+    .execute();
+  return rows.map((row) => ({ from: row.valid_from, until: row.valid_until }));
+}
+
+/**
+ * The largest number of rows that hold one day, over the days the new rows
+ * hold (spec review of the build, should-fix 1): the count of the guard of
+ * 0048 (`group_members_peak` + 1 for each row), date by date, so that a row
+ * that ends at a scheduled leaving takes no seat after it and a scheduled
+ * join counts from its date. The count only rises at the start of a range.
+ */
+export function peakWith(existing: readonly HeldRange[], added: readonly HeldRange[]): number {
+  const all = [...existing, ...added];
+  const days = new Set(added.flatMap((range) => [range.from, ...all.map((one) => one.from)]));
+  let peak = 0;
+  for (const day of days) {
+    if (!added.some((range) => range.from <= day && day < range.until)) {
+      continue;
+    }
+    const count = all.filter((range) => range.from <= day && day < range.until).length;
+    peak = Math.max(peak, count);
+  }
+  return peak;
+}

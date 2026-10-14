@@ -316,6 +316,8 @@ export const en = {
       'The group holds or held students of a class you took out, so that class stays in the group. Make a new group instead.',
     group_membership_in_class:
       'The change would leave the student in a group without a class of that group. Nothing was saved. Reload and try again.',
+    placement_no_seat:
+      'No group of the screen has a free seat for some students, so nobody was placed. Raise the maximum size of a group or add a group.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -2366,7 +2368,6 @@ export const en = {
     others_other: 'and {{n}} students of other classes',
     chooseGroup: 'Choose a group',
     noGroupOfClass: 'No active group draws from the class of these students.',
-    oneClassOnly: 'Tick students of one class: a group draws from given classes.',
     refusedNames: 'Nobody was placed. Refused: {{names}}.',
     placed_one: '{{n}} student placed.',
     placed_other: '{{n}} students placed.',
@@ -2396,6 +2397,8 @@ export const en = {
       placedAutomatically_one: '{{n}} student placed automatically. Review the tagged rows.',
       placedAutomatically_other: '{{n}} students placed automatically. Review the tagged rows.',
       putInto: 'Put into {{group}}',
+      putIntoTitle: 'Put the ticked students into {{group}}?',
+      putIntoText: 'They join from {{date}}. A placement that has begun is changed by a transfer.',
       student: 'Student',
       class: 'Class',
     },

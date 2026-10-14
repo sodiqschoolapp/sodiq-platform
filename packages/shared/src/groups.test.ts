@@ -95,6 +95,11 @@ describe('groupPlacementSchema', () => {
       groupPlacementSchema.safeParse({ students: [student(1), student(1)], from: '2026-10-14' })
         .success,
     ).toBe(false);
+    // The same id in two letter cases is the same student.
+    const upper = { id: student(1).id.toUpperCase() };
+    expect(
+      groupPlacementSchema.safeParse({ students: [student(1), upper], from: '2026-10-14' }).success,
+    ).toBe(false);
     const many = Array.from({ length: GROUP_PLACEMENT_MAX_STUDENTS + 1 }, (_, n) => student(n + 1));
     expect(groupPlacementSchema.safeParse({ students: many, from: '2026-10-14' }).success).toBe(
       false,
