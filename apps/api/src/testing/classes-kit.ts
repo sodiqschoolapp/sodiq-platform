@@ -5,6 +5,17 @@ const HASH =
 
 let count = 0;
 
+/** A number written in letters (1 a, 26 z, 27 ba), so that every default name is new and is a valid class name. */
+function lettersOf(value: number): string {
+  let text = '';
+  let rest = value;
+  do {
+    text = String.fromCharCode(97 + (rest % 26)) + text;
+    rest = Math.floor(rest / 26);
+  } while (rest > 0);
+  return text;
+}
+
 /**
  * The records classes and their Tutors stand on (task 3.1a), written by the
  * migrator: years, rooms, accounts with a staff record and their roles. Names
@@ -94,7 +105,7 @@ export class ClassesKit {
         branch_id: branch,
         academic_year_id: year,
         grade: input.grade ?? 7,
-        name: input.name ?? `Oxford${'x'.repeat(count % 7)}${String(count)}`.replace(/\d/g, 'q'),
+        name: input.name ?? `Oxford ${lettersOf(count)}`,
         language: input.language ?? 'uz',
         main_room_id: input.room ?? null,
         max_size: 25,
@@ -102,6 +113,69 @@ export class ClassesKit {
       .returning('id')
       .executeTakeFirstOrThrow();
     return row.id;
+  }
+
+  /**
+   * A school-wide subject of the Academic division (task 3.2a), taught in
+   * `grades`, under the language rule unless said otherwise.
+   */
+  async subject(
+    input: { grades?: readonly number[]; languageRule?: boolean; name?: string } = {},
+  ): Promise<string> {
+    count += 1;
+    const name = input.name ?? `Subject ${String.fromCharCode(97 + (count % 26))}${String(count)}`;
+    const steam = await this.migrator
+      .selectFrom('departments')
+      .select('id')
+      .where('name_en', '=', 'STEAM')
+      .executeTakeFirstOrThrow();
+    const row = await this.migrator
+      .insertInto('subjects')
+      .values({
+        name_uz: `${name} uz`,
+        name_ru: `${name} ru`,
+        name_en: name,
+        department_id: steam.id,
+        grades: [...(input.grades ?? [7, 8, 9, 10])],
+        colour: 'blue',
+        journal_type: 'graded',
+        language_rule: input.languageRule ?? true,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    return row.id;
+  }
+
+  /** A group of the classes written by the migrator, through every check of 0046 (task 3.2a). */
+  async group(
+    branch: string,
+    year: string,
+    subject: string,
+    classIds: readonly string[],
+    input: { name?: string; language?: 'uz' | 'ru'; size?: number } = {},
+  ): Promise<string> {
+    count += 1;
+    return this.migrator.transaction().execute(async (transaction) => {
+      const row = await transaction
+        .insertInto('groups')
+        .values({
+          branch_id: branch,
+          academic_year_id: year,
+          subject_id: subject,
+          name: input.name ?? `G-${String(count)}`,
+          language: input.language ?? 'uz',
+          max_size: input.size ?? 20,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      for (const classId of classIds) {
+        await transaction
+          .insertInto('group_classes')
+          .values({ group_id: row.id, class_id: classId, branch_id: branch })
+          .execute();
+      }
+      return row.id;
+    });
   }
 
   /** An account with no staff record. */
