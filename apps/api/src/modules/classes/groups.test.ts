@@ -430,7 +430,16 @@ describe('groups', () => {
       const own = await schoolClass();
       const group = await create([own]);
       const before = await rowsOf();
-      for (const cookie of [t.principal, spiritual, headTutor, headTeacher, tutor, t.teacher]) {
+      for (const cookie of [
+        t.principal,
+        spiritual,
+        headTutor,
+        headTeacher,
+        seniorHeadTeacher,
+        tutor,
+        noClassTutor,
+        t.teacher,
+      ]) {
         refusedWith(await post('/api/groups', body([own]), cookie), 403, 'permission_denied');
         refusedWith(
           await put(`/api/groups/${group.id}`, editBody(group, { maxSize: 30 }), cookie),
@@ -667,12 +676,41 @@ describe('groups', () => {
       refusedWith(await put(`/api/groups/${group.id}`, editBody(archived)), 409, 'group_archived');
       // An archived group lets its class be archived; the restore is then refused.
       expect((await post(`/api/classes/${own}/archive`)).status).toBe(200);
-      refusedWith(await post(`/api/groups/${group.id}/restore`), 409, 'group_class_year');
+      refusedWith(await post(`/api/groups/${group.id}/restore`), 409, 'group_restore_class');
       await post(`/api/classes/${own}/restore`).expect(200);
       const restored = detailOf(await post(`/api/groups/${group.id}/restore`));
       expect(restored.archived).toBe(false);
       expect(await t.entries('group.restore', group.id)).toHaveLength(1);
     });
+  });
+
+  // Spec review of the build, must-fix 4: a restore takes the classes' language.
+  it('restores a group whose class changed language meanwhile in the new language, and names a subject archived meanwhile', async () => {
+    const own = await schoolClass({ language: 'uz' });
+    const group = await create([own]);
+    detailOf(await post(`/api/groups/${group.id}/archive`));
+    await t.database.migrator
+      .updateTable('classes')
+      .set({ language: 'ru' })
+      .where('id', '=', own)
+      .execute();
+    const restored = detailOf(await post(`/api/groups/${group.id}/restore`));
+    expect(restored.language).toBe('ru');
+    expect(await t.entries('group.restore', group.id)).toEqual([
+      expect.objectContaining({
+        old_value: { archived: true, language: 'uz' },
+        new_value: { archived: false, language: 'ru' },
+      }),
+    ]);
+    const shortLived = await classes.subject({ grades: [7] });
+    const other = await create([await schoolClass()], { subjectId: shortLived });
+    detailOf(await post(`/api/groups/${other.id}/archive`));
+    await t.database.migrator
+      .updateTable('subjects')
+      .set({ archived_at: new Date('2026-10-10T20:00:00+05:00') })
+      .where('id', '=', shortLived)
+      .execute();
+    refusedWith(await post(`/api/groups/${other.id}/restore`), 409, 'group_restore_subject');
   });
 
   describe("the class's and the subject's side (decisions 8 and 16)", () => {
@@ -911,6 +949,69 @@ describe('groups', () => {
         language: 'ru',
         maxSize: 25,
       });
+    });
+
+    // Spec review of the build, must-fix 1: two classes of one group, one order of locks.
+    it('moves the group of a second class language change that waited for the first', async () => {
+      const oxford = await schoolClass({ language: 'uz' });
+      const yale = await schoolClass({ language: 'uz' });
+      const group = await create([oxford, yale]);
+      const read = (await get(`/api/classes/${yale}`).expect(200)).body as {
+        name: string;
+        version: number;
+      };
+      const open = await holdOpen(async (transaction) => {
+        await transaction
+          .selectFrom('classes')
+          .select('id')
+          .where('id', 'in', [oxford, yale].sort())
+          .orderBy('id')
+          .forUpdate()
+          .execute();
+        await transaction
+          .updateTable('classes')
+          .set({ language: 'ru' })
+          .where('id', '=', oxford)
+          .execute();
+      });
+      const response = put(`/api/classes/${yale}`, {
+        grade: 7,
+        name: read.name,
+        language: 'ru',
+        mainRoomId: null,
+        maxSize: 25,
+        version: read.version,
+      }).then((done) => done);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      open.release();
+      expect(await open.done).toBeUndefined();
+      expect((await response).status, JSON.stringify((await response).body)).toBe(200);
+      expect(detailOf(await get(`/api/groups/${group.id}`)).language).toBe('ru');
+    });
+
+    it('moves the group of a class language change that waited for a create of the group', async () => {
+      const own = await schoolClass({ language: 'uz' });
+      const read = (await get(`/api/classes/${own}`).expect(200)).body as {
+        name: string;
+        version: number;
+      };
+      let groupId = '';
+      const open = await holdOpen(async (transaction) => {
+        groupId = await writeGroup(transaction, [own]);
+      });
+      const response = put(`/api/classes/${own}`, {
+        grade: 7,
+        name: read.name,
+        language: 'ru',
+        mainRoomId: null,
+        maxSize: 25,
+        version: read.version,
+      }).then((done) => done);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      open.release();
+      expect(await open.done).toBeUndefined();
+      expect((await response).status, JSON.stringify((await response).body)).toBe(200);
+      expect(detailOf(await get(`/api/groups/${groupId}`)).language).toBe('ru');
     });
 
     it('refuses a group edit that waited for a class language change moving the group', async () => {

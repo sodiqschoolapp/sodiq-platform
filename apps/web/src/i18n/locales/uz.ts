@@ -297,8 +297,12 @@ export const uz: Texts<'one' | 'other'> = {
     class_language_mixes_groups:
       'Bu oʻzgarishdan keyin sinfning guruhi oʻzbek va rus sinflarini aralashtiradi. Guruh tilini saqlash uchun tasdiqlang.',
     subject_grade_groups:
-      'Shu parallelning faol guruhiga fan kerak. Avval guruhni arxivlang yoki uning sinflarini oʻzgartiring.',
-    subject_has_groups: 'Fanning faol guruhlari bor. Avval ularni arxivlang.',
+      'Faol guruhlarga shu paralleldagi fan kerak. Avval bu guruhlarni arxivlang yoki ularning sinflarini oʻzgartiring.',
+    subject_has_groups: 'Faol guruhlarga bu fan kerak. Avval bu guruhlarni arxivlang.',
+    group_restore_class:
+      'Bu guruhning sinfi arxivda yoki boshqa oʻquv yiliga tegishli, shuning uchun guruhni qaytarib boʻlmaydi. Faol sinflardan yangi guruh tuzing.',
+    group_restore_subject:
+      'Bu guruhning fani arxivda yoki uning parallellarida endi oʻqitilmaydi. Avval fanni tiklang yoki parallelni qoʻshing.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
@@ -944,6 +948,9 @@ export const uz: Texts<'one' | 'other'> = {
       teachersHere: 'Shu filialda: {{names}}.',
       teachersElsewhere_one: 'Boshqa filiallarda: {{n}} kishi.',
       teachersElsewhere_other: 'Boshqa filiallarda: {{n}} kishi.',
+      groupsHere: 'Shu filial guruhlari: {{names}}.',
+      groupsElsewhere_one: 'Boshqa filiallarda: {{n}} guruh.',
+      groupsElsewhere_other: 'Boshqa filiallarda: {{n}} guruh.',
       takenNames: 'Tiklanmadi, chunki uning nomlaridan biri endi faol fanda bor: {{names}}.',
       departmentArchivedNames: 'Tiklanmadi, chunki kafedra arxivda: {{names}}.',
     },

@@ -588,6 +588,66 @@ describe('the subjects page', () => {
     ).toBeDefined();
   });
 
+  // Task 3.2a, decision 16: the groups of the branch by name, those of other branches as a number.
+  it('names the groups of the branch and counts the others when a grade cannot be removed', async () => {
+    const groupId = uid(92);
+    await openList({
+      extra: {
+        [`PUT /api/setup/subjects/${MATHS.id}`]: () =>
+          Response.json(
+            {
+              error: {
+                code: 'subject_grade_groups',
+                message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                requestId: 'test-request',
+                details: [
+                  { path: `group.${groupId}`, code: 'needs', message: 'x' },
+                  { path: 'elsewhere', code: '3', message: 'x' },
+                ],
+              },
+            },
+            { status: 409 },
+          ),
+        'GET /api/groups': () =>
+          json({
+            groups: [
+              {
+                id: groupId,
+                academicYearId: YEAR.id,
+                yearName: YEAR.name,
+                yearStatus: 'current',
+                subject: { id: MATHS.id, names: MATHS.names, languageRule: true },
+                name: '5-M-1',
+                language: 'uz',
+                maxSize: 20,
+                grades: [5],
+                classes: [
+                  { id: uid(93), grade: 5, name: 'Oxford', language: 'uz', archived: false },
+                ],
+                kind: 'split',
+                archived: false,
+                version: 0,
+              },
+            ],
+          }),
+      },
+    });
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+    const form = await edit(panel, 'Mathematics');
+    fireEvent.click(
+      within(form).getByLabelText(subjectsText.grade.replace('{{grade}}', String(MATHS.grades[0]))),
+    );
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(await within(panel).findByText(en.errors.subject_grade_groups)).toBeDefined();
+    expect(
+      await within(panel).findByText(subjectsText.groupsHere.replace('{{names}}', '5-M-1')),
+    ).toBeDefined();
+    expect(
+      within(panel).getByText(subjectsText.groupsElsewhere_other.replace('{{n}}', '3')),
+    ).toBeDefined();
+  });
+
   it('keeps the department of a subject fixed in the edit of the Academic Vice Principal, saying why', async () => {
     await openList({
       session: sessionOf({

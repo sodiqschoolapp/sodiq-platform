@@ -214,6 +214,8 @@ const MESSAGE: Record<ErrorCode, string> = {
     'The change makes a group mix languages; the warning was not confirmed.',
   subject_grade_groups: 'An active group of that grade needs the subject.',
   subject_has_groups: 'The subject has active groups.',
+  group_restore_class: 'A class of the group is archived or of another academic year.',
+  group_restore_subject: 'The subject of the group is archived or not taught in its grades.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
 };

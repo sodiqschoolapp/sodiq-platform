@@ -341,7 +341,7 @@ How to read the task lines:
   - From 2.4a (pull request #67): a Tutor opens the profiles of their own class and reads its Contact group (`02`; until then `GET people/students/:id` refuses a Tutor-only reader, decision 6).
   - From 2.4b-2 (pull request #70): Tutors export the students of their own class (`students` `export` with the class scope; `edge/people-roles-accounts`: "Tutors export their own class"), with a test that a Tutor's export with the consent filter is refused (`StudentExports`, unreachable while every exporter reads the Financial group).
 
-- [ ] **3.2a Groups** (3.2 split in three, pull request #91, decision 1)
+- [x] **3.2a Groups** (3.2 split in three, pull request #91, decision 1)
   - Read: `05`, `06` (Model, Rules), `03` (Slot types and day templates), `edge/timetable` (Structure), `edge/time-dates-calendar`, `edge/students-classes-groups`, `edge/academic-year`, the plan of pull request #91.
   - Build: the group record (subject, the classes it draws from: one class is a split, several of one grade or two a group across classes; name unique per branch and year; language; maximum size; academic year), its list, cards and side panel; the group language rule; the lesson slots two grades share (`packages/timetable-rules`), shown at the save; the class's and the subject's side; the `groups` checklist item; the Head Teachers' and the Tutor's scope.
   - Done when: the database refuses a group of three grades, of a subject not taught in its grade, or of a language its one-language classes do not have, with allow and refuse tests on every route.

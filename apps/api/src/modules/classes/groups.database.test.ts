@@ -330,6 +330,70 @@ describe('groups in the database', () => {
       );
     });
 
+    // Spec review of the build, must-fix 3: the rules reached through the links too.
+    it('refuses an added class of a grade the subject does not teach, or of another language than the group', async () => {
+      const onlySeven = await kit.subject({ grades: [7, 8] });
+      const seven = await kit.schoolClass(north, northYear, { grade: 7 });
+      const nine = await kit.schoolClass(north, northYear, { grade: 9 });
+      const group = await kit.group(north, northYear, onlySeven, [seven]);
+      const add = (classId: string, groupId = group) =>
+        inBranch(north, (transaction) =>
+          transaction
+            .insertInto('group_classes')
+            .values({ group_id: groupId, class_id: classId, branch_id: north })
+            .execute(),
+        );
+      expect((await refusal(add(nine))).constraint).toBe('group_subject_grade');
+      // An Uzbek class added to a Russian group makes it mixed, which is allowed;
+      // removing the Uzbek class of a mixed Uzbek group leaves Russian classes only.
+      const russian = await kit.schoolClass(north, northYear, { language: 'ru' });
+      const uzbek = await kit.schoolClass(north, northYear, { language: 'uz' });
+      const otherRussian = await kit.schoolClass(north, northYear, { language: 'ru' });
+      const ruGroup = await kit.group(north, northYear, subject, [russian], { language: 'ru' });
+      await add(uzbek, ruGroup);
+      const mixed = await kit.group(north, northYear, subject, [uzbek, otherRussian], {
+        language: 'uz',
+      });
+      const error = await refusal(
+        inBranch(north, (transaction) =>
+          transaction
+            .deleteFrom('group_classes')
+            .where('group_id', '=', mixed)
+            .where('class_id', '=', uzbek)
+            .execute(),
+        ),
+      );
+      expect(error.constraint).toBe('group_language');
+    });
+
+    it('refuses a class added in a closed year', async () => {
+      const branch = await insertBranch(database.migrator, 'Closed links');
+      const closed = await kit.year(branch, 'current', '2025-09-01', '2026-05-31');
+      const first = await kit.schoolClass(branch, closed);
+      const second = await kit.schoolClass(branch, closed);
+      const group = await kit.group(branch, closed, subject, [first]);
+      await kit.setYear(closed, 'closed');
+      const error = await refusal(
+        inBranch(branch, (transaction) =>
+          transaction
+            .insertInto('group_classes')
+            .values({ group_id: group, class_id: second, branch_id: branch })
+            .execute(),
+        ),
+      );
+      expect(error.constraint).toBe('group_year_closed');
+    });
+
+    // Spec review of the build, should-fix 2: values between \p{L} and
+    // [[:alpha:]]; whatever the schema takes, the check takes too.
+    it.each(['ʻA-1', 'ª-1', 'ǅ-1'])('takes %s when the schema does', async (name) => {
+      if (!groupNameSchema.safeParse(name).success) {
+        return;
+      }
+      const classId = await kit.schoolClass(north, nameYear);
+      await insertGroup(north, { year: nameYear, classIds: [classId], name });
+    });
+
     it('raises its version on every update', async () => {
       const classId = await kit.schoolClass(north, northYear);
       const group = await insertGroup(north, { classIds: [classId] });

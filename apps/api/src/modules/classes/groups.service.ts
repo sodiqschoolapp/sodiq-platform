@@ -28,6 +28,7 @@ import { branchOf } from './classes.service.js';
 import {
   classesOfGroups,
   GROUP_REFUSALS,
+  GROUP_RESTORE_REFUSALS,
   gradesOf,
   readGroupDetail,
   readGroupRow,
@@ -313,22 +314,35 @@ export class Groups {
             return readGroupDetail(transaction, branchId, id);
           }
           await this.requireOpenYear(transaction, before.academic_year_id);
+          // A restore takes the classes' language when they share one (a class
+          // may have changed language while the group was archived), and its
+          // refusals name what the person can do on a restore (spec review of
+          // the build, must-fix 4).
+          const language = archived
+            ? before.language
+            : (sharedLanguageOf(classes) ?? before.language);
           if (!archived) {
-            this.checkRules(
-              { classIds: seen, language: null, confirmMixedLanguage: true },
-              classes,
-              before.academic_year_id,
-              {
-                archived: before.subject_archived_at !== null,
-                grades: before.subject_grades,
-                languageRule: before.language_rule,
-              },
-              before.language,
-            );
+            if (
+              classes.some(
+                (one) =>
+                  one.archived_at !== null || one.academic_year_id !== before.academic_year_id,
+              )
+            ) {
+              throw new ApiException('group_restore_class', 409);
+            }
+            if (
+              before.subject_archived_at !== null ||
+              gradesOf(classes).some((grade) => !before.subject_grades.includes(grade))
+            ) {
+              throw new ApiException('group_restore_subject', 409);
+            }
           }
           await transaction
             .updateTable('groups')
-            .set({ archived_at: archived ? await transactionMoment(transaction) : null })
+            .set({
+              archived_at: archived ? await transactionMoment(transaction) : null,
+              language,
+            })
             .where('id', '=', id)
             .execute();
           await this.audit.record(transaction, {
@@ -337,13 +351,16 @@ export class Groups {
             assignmentId: access.assignmentId,
             action: archived ? 'group.archive' : 'group.restore',
             record: { type: 'group', id },
-            oldValue: { archived: !archived },
-            newValue: { archived },
+            oldValue: {
+              archived: !archived,
+              ...(language === before.language ? {} : { language: before.language }),
+            },
+            newValue: { archived, ...(language === before.language ? {} : { language }) },
             requestId,
           });
           return readGroupDetail(transaction, branchId, id);
         }),
-      GROUP_REFUSALS,
+      archived ? GROUP_REFUSALS : GROUP_RESTORE_REFUSALS,
     );
   }
 

@@ -234,6 +234,10 @@ Plan approved on pull request #91 with corrections 1 to 4; decisions 1, 2, 11, 1
 | Checklist item `groups` after `classes` | Decision 14 |
 | Lock order: every group write takes its class rows (old and new set) FOR SHARE in the order of their id, then the group row FOR UPDATE, then writes; a class edit takes its class FOR UPDATE, then the group rows | Correction 1; tested both directions |
 | A subject edit waits for a group create that names it (the foreign key's key share lock against the edit's FOR UPDATE), then sees the group and refuses | Build: the same-moment test of a create and a grade removal |
+| A class language change locks the class and every class of its active groups FOR UPDATE in the order of their id before its own row or a group (`lockClassesOfGroups`); a `group_language` refusal of the class edit after it is a fault (`request_refused`) | Spec review of the build, must-fix 1 (two classes of one group deadlocked) and should-fix 3 |
+| A restore takes the classes' shared language (the change in its audit entry) and refuses with codes of its own, `group_restore_class` and `group_restore_subject`, whose texts say what can be done | Spec review of the build, must-fix 4: a group archived before its class changed language could never come back |
+| The subject panel names the groups of the branch and counts those of other branches (`GroupsOutside`, the `TeachersOutside` precedent); the error texts speak of "active groups" so they are true in either case | Spec review of the build, must-fix 5 |
+| A class language change writes a `group.edit` entry on each group it moves; the export keeps to the reader's scope (`inScope`) | Permission review of the build, S1 and S2 |
 | `ClassesKit.schoolClass` names its classes by a letter count (`Oxford a`, `Oxford ba`): the old digits-to-q names repeated after seven classes | Build |
 
 ## 14 October 2026: the class scope of Tutors (task 3.1c)

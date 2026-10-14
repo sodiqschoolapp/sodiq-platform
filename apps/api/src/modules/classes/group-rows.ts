@@ -34,11 +34,22 @@ export const GROUP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   group_language: 'group_language',
 };
 
+/** The refusals of a restore, whose texts say what can be done then (spec review of the build, must-fix 4). */
+export const GROUP_RESTORE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+  ...GROUP_REFUSALS,
+  group_class_year: 'group_restore_class',
+  group_grades: 'group_restore_class',
+  group_subject_grade: 'group_restore_subject',
+  group_subject_archived: 'group_restore_subject',
+};
+
 /** The refusals the other side of a group meets: a class's and a subject's change (decision 16). */
 export const GROUP_SIDE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   class_grade_groups: 'class_grade_groups',
   class_in_groups: 'class_in_groups',
-  group_language: 'class_language_mixes_groups',
+  // The class edit locks every class of its groups first and moves or asks
+  // about each group itself; the deferred rule answers only a fault.
+  group_language: 'request_refused',
   subject_grade_groups: 'subject_grade_groups',
   subject_has_groups: 'subject_has_groups',
 };

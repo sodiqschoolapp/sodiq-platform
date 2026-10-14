@@ -395,6 +395,10 @@ export const ERROR_CODES = [
   'subject_grade_groups',
   /** A subject with active groups, in any branch, is not archived (task 3.2a, decision 16). `details` names the groups of the branch and counts the others. */
   'subject_has_groups',
+  /** A class of the group is archived or of another academic year, so the group is not restored (task 3.2a, spec review of the build). */
+  'group_restore_class',
+  /** The subject of the group is archived or no longer taught in a grade of its classes, so the group is not restored (task 3.2a, spec review of the build). */
+  'group_restore_subject',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

@@ -290,8 +290,12 @@ export const en = {
     class_language_mixes_groups:
       "The change makes a group of this class mix Uzbek and Russian classes. Confirm it to keep that group's language.",
     subject_grade_groups:
-      'An active group of that grade needs the subject. Archive the group or change its classes first.',
-    subject_has_groups: 'The subject has active groups. Archive them first.',
+      'Active groups need the subject in that grade. Archive those groups or change their classes first.',
+    subject_has_groups: 'Active groups need this subject. Archive those groups first.',
+    group_restore_class:
+      'A class of this group is archived or belongs to another academic year, so the group cannot come back. Make a new group of active classes.',
+    group_restore_subject:
+      'The subject of this group is archived or no longer taught in its grades. Restore the subject or add the grade first.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -931,6 +935,9 @@ export const en = {
       teachersHere: 'In this branch: {{names}}.',
       teachersElsewhere_one: 'In other branches: {{n}} person.',
       teachersElsewhere_other: 'In other branches: {{n}} people.',
+      groupsHere: 'Groups in this branch: {{names}}.',
+      groupsElsewhere_one: 'In other branches: {{n}} group.',
+      groupsElsewhere_other: 'In other branches: {{n}} groups.',
       takenNames: 'Not restored, because an active subject has one of its names now: {{names}}.',
       departmentArchivedNames: 'Not restored, because the department is archived: {{names}}.',
     },

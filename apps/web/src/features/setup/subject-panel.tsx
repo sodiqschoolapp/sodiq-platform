@@ -18,6 +18,7 @@ import { usePanelEditing, type PanelEditing } from '@/components/list/use-panel-
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
+import { groupsQuery } from '@/features/classes/groups-api';
 import { staffQuery, vacanciesQuery } from '@/features/people/people-api';
 import { nameOf, yearsQuery } from './setup-api';
 import { SubjectChip } from './subject-colour';
@@ -144,6 +145,7 @@ export function SubjectPanel({
             }}
           />
           <TeachersOutside error={edit.error} />
+          <GroupsOutside error={edit.error} />
         </div>
       ) : (
         <>
@@ -263,6 +265,60 @@ export function SubjectPanel({
           error={archive.error}
           saved={panel.saved}
         />
+      )}
+      <GroupsOutside error={archive.error} />
+    </div>
+  );
+}
+
+/**
+ * The active groups that keep a subject from losing a grade or from its
+ * archive (task 3.2a, decision 16): those of this branch by name, those of
+ * other branches as a number only, as `TeachersOutside` does for staff. A
+ * name the group list does not hold is left out, never shown as a blank.
+ */
+function GroupsOutside({ error }: { error: unknown }) {
+  const { t, i18n } = useTranslation();
+  const { branchId } = useView();
+  const refused =
+    error instanceof ApiFailure &&
+    (error.code === 'subject_grade_groups' || error.code === 'subject_has_groups');
+  const details = refused ? (error.details ?? []) : [];
+  const ids = details
+    .filter((detail) => detail.path.startsWith('group.'))
+    .map((detail) => detail.path.slice('group.'.length));
+  const groups = useQuery({
+    ...groupsQuery(branchId),
+    enabled: ids.length > 0 && branchId !== null,
+  });
+  if (!refused) {
+    return null;
+  }
+  if (groups.isError) {
+    return (
+      <ErrorState
+        error={groups.error}
+        onRetry={() => {
+          void groups.refetch();
+        }}
+      />
+    );
+  }
+  if (ids.length > 0 && groups.data === undefined) {
+    return <LoadingOutline lines={1} />;
+  }
+  const elsewhere = Number(details.find((detail) => detail.path === 'elsewhere')?.code ?? '0');
+  const number = new Intl.NumberFormat(i18n.language);
+  const names = ids
+    .map((id) => groups.data?.groups.find((one) => one.id === id)?.name)
+    .filter((name): name is string => name !== undefined);
+  return (
+    <div className="grid gap-1 text-sm" role="status">
+      {names.length > 0 && <p>{t('setup.subjects.groupsHere', { names: names.join(', ') })}</p>}
+      {elsewhere > 0 && (
+        <p>
+          {t('setup.subjects.groupsElsewhere', { count: elsewhere, n: number.format(elsewhere) })}
+        </p>
       )}
     </div>
   );

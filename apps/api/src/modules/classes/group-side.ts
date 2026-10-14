@@ -11,6 +11,36 @@ import { classesOfGroups, sharedLanguageOf } from './group-rows.js';
  * the groups named.
  */
 
+/**
+ * Before a class's language change: the class and every class of its active
+ * groups, locked FOR UPDATE in the order of their id, before the class edit
+ * locks its own row or a group (spec review of the build, must-fix 1). Two
+ * language changes of two classes of one group then wait for each other in
+ * one order, and a group write, which takes its classes FOR SHARE first,
+ * waits for them both.
+ */
+export async function lockClassesOfGroups(
+  transaction: Transaction,
+  classId: string,
+): Promise<void> {
+  const related = await transaction
+    .selectFrom('group_classes as mine')
+    .innerJoin('groups', 'groups.id', 'mine.group_id')
+    .innerJoin('group_classes as theirs', 'theirs.group_id', 'mine.group_id')
+    .select('theirs.class_id')
+    .where('mine.class_id', '=', classId)
+    .where('groups.archived_at', 'is', null)
+    .execute();
+  const ids = [...new Set([classId, ...related.map((row) => row.class_id)])].sort();
+  await transaction
+    .selectFrom('classes')
+    .select('id')
+    .where('id', 'in', ids)
+    .orderBy('id')
+    .forUpdate()
+    .execute();
+}
+
 /** A group a class language change moved, or made mix languages. */
 export type GroupLanguageChange = {
   id: string;

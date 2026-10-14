@@ -31,7 +31,7 @@ import { exportList, oneCell, type ExportColumn } from '../audit/export-list.js'
 import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { memberCountsOn, MEMBERSHIP_REFUSALS } from './class-membership-rows.js';
 import { GROUP_SIDE_REFUSALS } from './group-rows.js';
-import { followClassLanguage } from './group-side.js';
+import { followClassLanguage, lockClassesOfGroups } from './group-side.js';
 import {
   CLASS_EDIT_REFUSALS,
   CLASS_REFUSALS,
@@ -354,6 +354,15 @@ export class Classes {
       { ...MEMBERSHIP_REFUSALS, ...CLASS_EDIT_REFUSALS, ...GROUP_SIDE_REFUSALS },
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
+          // Task 3.2a: a language change locks the classes of its groups first, in id order.
+          const unlocked = await transaction
+            .selectFrom('classes')
+            .select('language')
+            .where('id', '=', id)
+            .executeTakeFirst();
+          if (unlocked !== undefined && unlocked.language !== input.language) {
+            await lockClassesOfGroups(transaction, id);
+          }
           const before = await this.lockClass(transaction, id);
           if (before.archived_at !== null) {
             throw new ApiException('class_archived', 409);

@@ -12,9 +12,9 @@ import { codeNow } from './totp';
 // Principal then chooses the group's language and confirms a warning"); task
 // 3.2a, pull request #91. An Academic Vice Principal creates "7-G-1" from two
 // Uzbek classes, then "7-G-2" from an Uzbek and a Russian class with the
-// language chosen and the warning confirmed. With SCREENSHOTS=1 the form and
-// the list are saved for the report under docs/screens/3.2a/. All names are
-// invented.
+// language chosen and the warning confirmed, and "7-G-3", a split of 7 Yale.
+// With SCREENSHOTS=1 the form and the list are saved for the report under
+// docs/screens/3.2a/. All names are invented.
 const SCREENS = path.join(import.meta.dirname, '../../../docs/screens/3.2a');
 
 async function screenshot(page: Page, name: string): Promise<void> {
@@ -88,4 +88,16 @@ test('an Academic Vice Principal creates a group of one language and a confirmed
   await expect(page.getByRole('complementary', { name: '7-G-2' })).toBeVisible();
   await expect(page.getByRole('row').filter({ hasText: '7-G-2' })).toContainText('Russian');
   await screenshot(page, 'groups-list');
+
+  // A split of one class: it takes the class's language.
+  await page.getByRole('button', { name: texts.add, exact: true }).first().click();
+  create = page.getByRole('form', { name: texts.newTitle });
+  await create.getByLabel(texts.subject, { exact: true }).selectOption({ label: 'Geometry' });
+  await create.getByRole('checkbox', { name: '7 Yale', exact: true }).check();
+  await create.getByLabel(texts.groupName, { exact: true }).fill('7-G-3');
+  await create.getByLabel(texts.maxSize, { exact: true }).fill('15');
+  await create.getByRole('button', { name: en.form.save, exact: true }).click();
+  const split = page.getByRole('complementary', { name: '7-G-3' });
+  await expect(split).toBeVisible();
+  await expect(split.getByText(texts.kinds.split)).toBeVisible();
 });
