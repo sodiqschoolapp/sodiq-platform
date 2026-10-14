@@ -7,6 +7,7 @@ import {
   instructionLanguageSchema,
   listName,
   roomStatusSchema,
+  schoolDateOf,
   type ClassCreate,
   type ClassDetail,
   type ClassEdit,
@@ -195,7 +196,7 @@ export async function readClassDetail(
   const tutors = (
     await tutorRowsIn(transaction).where('class_tutors.class_id', '=', id).execute()
   ).map((tutor: TutorRow) => toClassTutor(tutor, now, zone));
-  return { ...toClass(row, inForceOf(tutors)), tutors };
+  return { ...toClass(row, inForceOf(tutors)), tutors, today: schoolDateOf(now, zone) };
 }
 /** The file's columns, the same words as the list's headers. */
 const CLASS_EXPORT: Record<ClassExportColumn, ExportColumn<SchoolClass>> = {
@@ -455,7 +456,6 @@ export class Classes {
     );
   }
 
-
   /** The class locked for a change; 404 for another branch's class or an unknown id. */
   private async lockClass(transaction: Transaction, id: string): Promise<ClassRow> {
     const locked = await transaction
@@ -469,7 +469,6 @@ export class Classes {
     }
     return readClassRow(transaction, id);
   }
-
 
   /**
    * The year of a new class: a planned or current year of the branch

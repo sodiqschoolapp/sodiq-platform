@@ -1,5 +1,6 @@
 import {
   buildingExportSchema,
+  classExportSchema,
   divisionExportSchema,
   EXPORT_COLUMNS_HEADER,
   EXPORT_FILTER_VALUE_MAX_LENGTH,
@@ -70,6 +71,12 @@ const EXPORTS = {
     api.POST('/api/people/students/export', {
       params: header(),
       body: studentExportSchema.parse(body),
+      parseAs: 'blob',
+    }),
+  classes: (body: Body) =>
+    api.POST('/api/classes/export', {
+      params: header(),
+      body: classExportSchema.parse(body),
       parseAs: 'blob',
     }),
   subjects: (body: Body) =>

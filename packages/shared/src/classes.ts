@@ -213,8 +213,14 @@ export const classListSchema = z.object({ classes: z.array(classSchema) });
 
 export type ClassList = z.infer<typeof classListSchema>;
 
-/** A class and every Tutor row it had, has and will have, newest start first. */
-export const classDetailSchema = classSchema.extend({ tutors: z.array(classTutorSchema) });
+/**
+ * A class and every Tutor row it had, has and will have, newest start first;
+ * `today` in the branch's time zone, the first date a give or an end takes.
+ */
+export const classDetailSchema = classSchema.extend({
+  tutors: z.array(classTutorSchema),
+  today: schoolDateSchema,
+});
 
 export type ClassDetail = z.infer<typeof classDetailSchema>;
 

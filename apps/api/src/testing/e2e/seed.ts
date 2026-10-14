@@ -1379,6 +1379,18 @@ try {
         })),
       )
       .execute();
+    // Task 3.1a: a class, so that the class list opens with a record.
+    await transaction
+      .insertInto('classes')
+      .values({
+        branch_id: pagesBranch,
+        academic_year_id: year.id,
+        grade: 5,
+        name: 'Cambridge',
+        language: 'uz',
+        max_size: 24,
+      })
+      .execute();
     const lesson = await transaction
       .insertInto('slot_types')
       .values({ branch_id: pagesBranch, name: 'Lesson 45', kind: 'lesson' })
@@ -1588,6 +1600,107 @@ try {
     }),
   );
   seeded.pages = { login: pages.login, password: pages.firstPassword };
+
+  // The Academic Vice Principal of the classes test (task 3.1a), in a branch
+  // of its own with a planned year around today and two people with the Tutor
+  // role there: one who teaches in Uzbek, one in Russian only.
+  const classesBranch = await insertBranch(migrator, 'Classes browser test branch');
+  const classesVice = await create('Feruza', 'Olimova');
+  await transactions.run([classesBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: classesVice.id,
+      role: 'academic_vice_principal',
+      branchId: classesBranch,
+      givenBy: null,
+    }),
+  );
+  const tutors = [
+    { first: 'Zuhra', last: 'Salimova', phone: '+998901110301', languages: ['uz'] },
+    { first: 'Pavel', last: 'Smirnov', phone: '+998901110302', languages: ['ru'] },
+  ];
+  for (const [index, tutor] of tutors.entries()) {
+    const account = await create(tutor.first, tutor.last);
+    await transactions.run([classesBranch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: account.id,
+        role: 'tutor',
+        branchId: classesBranch,
+        givenBy: null,
+      }),
+    );
+    await migrator.transaction().execute(async (transaction) => {
+      const academic = await transaction
+        .selectFrom('divisions')
+        .select('id')
+        .where('name_en', '=', 'Academic')
+        .executeTakeFirstOrThrow();
+      const steam = await transaction
+        .selectFrom('departments')
+        .select('id')
+        .where('name_en', '=', 'STEAM')
+        .executeTakeFirstOrThrow();
+      const person = await transaction
+        .insertInto('staff')
+        .values({
+          kind: 'person',
+          staff_id: `S-2698${String(index + 1).padStart(2, '0')}`,
+          account_id: account.id,
+          first_name: tutor.first,
+          last_name: tutor.last,
+          sex: 'female',
+          birth_date: '1991-02-03',
+          phone: tutor.phone,
+          admission_date: '2026-09-01',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('staff_branches')
+        .values({ staff_id: person.id, branch_id: classesBranch, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_divisions')
+        .values({
+          staff_id: person.id,
+          division_id: academic.id,
+          department_id: steam.id,
+          is_main: true,
+        })
+        .execute();
+      for (const language of tutor.languages) {
+        await transaction
+          .insertInto('staff_languages')
+          .values({ staff_id: person.id, language })
+          .execute();
+      }
+      await transaction
+        .insertInto('staff_statuses')
+        .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+        .execute();
+    });
+  }
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: classesBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: classesBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+  });
+  seeded.classes = { login: classesVice.login, password: classesVice.firstPassword };
 
   console.log(JSON.stringify(seeded));
 } finally {

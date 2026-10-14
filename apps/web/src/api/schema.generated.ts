@@ -17859,6 +17859,8 @@ export interface operations {
                             /** @enum {string|null} */
                             endCause: "ended" | "role" | "archive" | null;
                         }[];
+                        /** Format: date */
+                        today: string;
                     };
                 };
             };
@@ -18160,6 +18162,8 @@ export interface operations {
                             /** @enum {string|null} */
                             endCause: "ended" | "role" | "archive" | null;
                         }[];
+                        /** Format: date */
+                        today: string;
                     };
                 };
             };
@@ -18321,6 +18325,8 @@ export interface operations {
                             /** @enum {string|null} */
                             endCause: "ended" | "role" | "archive" | null;
                         }[];
+                        /** Format: date */
+                        today: string;
                     };
                 };
             };
@@ -18469,6 +18475,8 @@ export interface operations {
                             /** @enum {string|null} */
                             endCause: "ended" | "role" | "archive" | null;
                         }[];
+                        /** Format: date */
+                        today: string;
                     };
                 };
             };
@@ -18617,6 +18625,8 @@ export interface operations {
                             /** @enum {string|null} */
                             endCause: "ended" | "role" | "archive" | null;
                         }[];
+                        /** Format: date */
+                        today: string;
                     };
                 };
             };
@@ -18778,6 +18788,8 @@ export interface operations {
                             /** @enum {string|null} */
                             endCause: "ended" | "role" | "archive" | null;
                         }[];
+                        /** Format: date */
+                        today: string;
                     };
                 };
             };
@@ -18934,6 +18946,8 @@ export interface operations {
                             /** @enum {string|null} */
                             endCause: "ended" | "role" | "archive" | null;
                         }[];
+                        /** Format: date */
+                        today: string;
                     };
                 };
             };

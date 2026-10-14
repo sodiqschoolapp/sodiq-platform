@@ -322,7 +322,7 @@ How to read the task lines:
 
 ## Phase 3. Classes, groups and teaching load
 
-- [ ] **3.1a Classes and their Tutors** (3.1 split in three, pull request #88, decision 1)
+- [x] **3.1a Classes and their Tutors** (3.1 split in three, pull request #88, decision 1)
   - Read: `05`, `edge/students-classes-groups`, `edge/developer-rules`, `edge/academic-year`, `edge/people-roles-accounts`, the plan of pull request #88.
   - Build: class as grade plus name (shown as "7 Oxford"), language of instruction, main classroom, maximum size, academic year; the list, the cards and the side panel; Tutors of a class with dates and acting Tutors (`class_tutors`), named by the Academic Vice Principal; the Tutor language rule in the database from the class, the Tutor and the staff record; the "classes" item of the setup checklist.
   - Done when: the Tutor language rule is enforced by the database from all three sides, and a Tutor row follows the end of its role.

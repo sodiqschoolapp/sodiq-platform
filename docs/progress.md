@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 14 October 2026: task 3.1a Classes and their Tutors
+
+- Built: migration 0042 (`classes`, `class_tutors`, the folded name key, the closed-year and closed-room guards, one Tutor and one acting Tutor at a moment, the Tutor language rule checked from the Tutor's, the class's and the staff record's side across branches, the mirror of a role end); routes under `api/classes` (list, record, create, edit, archive, restore, export, Tutor candidates, give, end) in the new area `classes`.
+- The Classes page (menu item "Classes and subjects"): rows, cards at phone width, a "No Tutor" mark and filter, the side panel with the record, its dated Tutors and their forms; the setup checklist item `classes`.
+- A role end, a `left` and its taking back name the Tutor rows they move; the staff record refuses to drop a language a tutored class needs (`tutor_language_held`).
+- Left out: membership, the size limit and the student list's class columns (3.1b); the Tutor's class scope, menu and export (3.1c); Ctrl+K search of class records (with groups, 3.2); Tutor subjects (3.4); rollover of Tutors and rooms (the rollover task).
+
+The next sessions must know:
+
+- `ClassesKit` (`apps/api/src/testing/classes-kit.ts`) writes years, rooms, people with languages, roles and Tutor rows through the migrator.
+- `fast-check` is a dev dependency of `apps/api` from this task.
+- The next task is 3.1b.
+
 ## 14 October 2026: task 2.7d The Super Admin's own staff record
 
 - Built: `POST /api/people/staff/:id/account/own` (Super Admin, `accounts` `create`) links a record of the branch to the account of the session, once, with the audit entry `account.linked`; it refuses a record with an account (`account_exists`), an account with a record (`own_record_exists`), and an inactive or left status in force or planned or an employment that begins later (`own_link_status`).

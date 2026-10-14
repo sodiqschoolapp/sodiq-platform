@@ -70,6 +70,8 @@ export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
     // Tutor only the students (task 2.4a).
     areas: ['staff', 'head_teachers', 'students'],
   },
+  // The classes (task 3.1a): the area `classes` of the same name decides who sees it.
+  classes: { titleKey: 'menu.classes', to: '/classes', icon: MENU_ICONS.classes },
   // The Audit log (task 2.6a): the area `audit_log` of the same name decides who sees it.
   audit_log: { titleKey: 'menu.audit_log', to: '/audit', icon: MENU_ICONS.audit_log },
 };

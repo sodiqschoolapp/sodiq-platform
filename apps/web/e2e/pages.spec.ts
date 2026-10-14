@@ -46,6 +46,8 @@ const LISTS = [
   ['people-vacancies', '/people/vacancies', en.people.vacancies.title],
   ['audit', '/audit', en.audit.title],
   ['people-parents', '/people/parents', en.people.relatives.title],
+  // Task 3.1a: the seeded class.
+  ['classes', '/classes', en.classes.title],
 ] as const;
 
 /** The lists the Academic Vice Principal adds to, with the "New …" button and the panel's title. */
@@ -92,6 +94,7 @@ const NEW_RECORDS = [
     en.people.vacancies.add,
     en.people.vacancies.newTitle,
   ],
+  ['classes', '/classes', en.classes.title, en.classes.add, en.classes.newTitle],
 ] as const;
 
 /**
@@ -166,6 +169,9 @@ const EDITS = [
     en.setup.templateSettings.levels.weekday,
     en.setup.templateSettings.endTitle,
   ],
+  // Task 3.1a: the record and the forms of its Tutors.
+  ['classes', '/classes', en.classes.title, null, en.form.edit],
+  ['classes-tutor', '/classes', en.classes.title, null, en.classes.giveTutor],
 ] as const;
 
 /** The other pages of Phases 0 to 2 the Academic Vice Principal opens. */
