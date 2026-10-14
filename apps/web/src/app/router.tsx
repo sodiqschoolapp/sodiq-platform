@@ -40,7 +40,7 @@ import { SettingsPage } from '@/features/setup/settings-page';
 import { TravelTimesPage } from '@/features/setup/travel-times-page';
 import { DayTemplatesPage } from '@/features/setup/day-templates-page';
 import { TemplateSettingsPage } from '@/features/setup/template-settings-page';
-import { RoomsPage } from '@/features/setup/rooms-page';
+import { RoomsPage, roomsSearch } from '@/features/setup/rooms-page';
 import { SetupPage } from '@/features/setup/setup-page';
 import { listSearch } from '@/components/list/list-state';
 import { SignInPage } from '@/features/auth/sign-in-page';
@@ -224,7 +224,7 @@ const buildingsRoute = createRoute({
 const roomsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/rooms',
-  validateSearch: listSearch,
+  validateSearch: roomsSearch,
   component: guarded('rooms', RoomsPage),
 });
 

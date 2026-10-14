@@ -16,14 +16,47 @@ import { answerOf } from '@/api/failure';
 import { ListPage, type BulkAction } from '@/components/list/list-page';
 import { useExport } from '@/components/list/use-export';
 import { useNewRecord } from '@/components/list/use-new-record';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  listSearch,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Segmented } from '@/components/ui/segmented';
 import { useView } from '@/features/access/use-view';
 import { isNamedRefusal } from './building-panel';
 import { RoomForm } from './room-form';
 import { RoomPanel } from './room-panel';
+import { RoomsByFloor } from './rooms-by-floor';
 import { activeFloorsOf, buildingsQuery, roomsQuery, SETUP_KEY } from './setup-api';
+
+/**
+ * The address of the Rooms page: the list's state, and the "By floor" view
+ * with its building and floor (task 2.7c-3, decision 8), so Back and a link
+ * return to the view.
+ */
+export interface RoomsSearch extends ListSearch {
+  view?: 'floors';
+  building?: string;
+  floor?: string;
+}
+
+/** `validateSearch` of the Rooms page: `listSearch` with the view, a building and a floor. */
+export function roomsSearch(search: Record<string, unknown>): RoomsSearch {
+  const result: RoomsSearch = listSearch(search);
+  if (search.view === 'floors') {
+    result.view = 'floors';
+    if (typeof search.building === 'string' && search.building !== '') {
+      result.building = search.building;
+    }
+    if (typeof search.floor === 'string' && search.floor !== '') {
+      result.floor = search.floor;
+    }
+  }
+  return result;
+}
 
 /** The fields of a room as the edit route takes them. */
 const recordOf = (room: Room, status: RoomStatus): RoomRecord => ({
@@ -187,6 +220,8 @@ export function RoomsPage() {
     [t, number],
   );
 
+  const byFloor = search.view === 'floors';
+
   const filters = useMemo((): Filter<Room>[] => {
     const list = rooms.data?.rooms ?? [];
     const buildingOptions = [...new Map(list.map((room) => [room.buildingId, room.buildingName]))]
@@ -197,19 +232,26 @@ export function RoomsPage() {
     ]
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label, i18n.language));
+    // In "By floor" the buildings on the left and the floor tabs are that
+    // choice: the two filters are not offered there (review finding 3).
+    const place: Filter<Room>[] = byFloor
+      ? []
+      : [
+          {
+            key: 'building',
+            label: t('setup.rooms.building'),
+            options: buildingOptions,
+            matches: (row, value) => row.buildingId === value,
+          },
+          {
+            key: 'floor',
+            label: t('setup.rooms.floor'),
+            options: floorOptions,
+            matches: (row, value) => row.floorId === value,
+          },
+        ];
     return [
-      {
-        key: 'building',
-        label: t('setup.rooms.building'),
-        options: buildingOptions,
-        matches: (row, value) => row.buildingId === value,
-      },
-      {
-        key: 'floor',
-        label: t('setup.rooms.floor'),
-        options: floorOptions,
-        matches: (row, value) => row.floorId === value,
-      },
+      ...place,
       {
         key: 'type',
         label: t('setup.rooms.type'),
@@ -226,7 +268,7 @@ export function RoomsPage() {
         matches: (row, value) => row.status === value,
       },
     ];
-  }, [t, rooms.data, i18n.language]);
+  }, [t, rooms.data, i18n.language, byFloor]);
 
   const bulkActions = useMemo((): BulkAction<Room>[] => {
     if (!canEdit) {
@@ -250,8 +292,44 @@ export function RoomsPage() {
     }));
   }, [canEdit, t, number, setStatus]);
 
+  /** The list's state with the view of the address, which the list does not know. */
   const open = (next: ListSearch, how: 'push' | 'replace'): void => {
-    void navigate({ to: '/setup/rooms', search: next, replace: how === 'replace' });
+    const place: RoomsSearch = byFloor
+      ? {
+          view: 'floors',
+          ...(search.building === undefined ? {} : { building: search.building }),
+          ...(search.floor === undefined ? {} : { floor: search.floor }),
+        }
+      : {};
+    void navigate({
+      to: '/setup/rooms',
+      search: { ...next, ...place },
+      replace: how === 'replace',
+    });
+  };
+
+  /**
+   * The list or "By floor". A building or floor chosen in the list's filters
+   * becomes the view's building and floor, and the two filters are dropped
+   * (review finding 3); back in the list they stay dropped.
+   */
+  const changeView = (next: 'list' | 'floors'): void => {
+    const { building, floor, ...others } = search.f ?? {};
+    const f = Object.keys(others).length === 0 ? undefined : others;
+    const list = listSearch({ ...search, f: undefined });
+    void navigate({
+      to: '/setup/rooms',
+      search:
+        next === 'floors'
+          ? {
+              ...list,
+              ...(f === undefined ? {} : { f }),
+              view: 'floors',
+              ...(building === undefined ? {} : { building }),
+              ...(floor === undefined ? {} : { floor }),
+            }
+          : { ...list, ...(f === undefined ? {} : { f }) },
+    });
   };
 
   const noFloor = floorsKnown && floors.length === 0;
@@ -280,6 +358,18 @@ export function RoomsPage() {
     addButton
   );
 
+  const viewSwitch = (
+    <Segmented
+      label={t('setup.rooms.views')}
+      options={[
+        { value: 'list', label: t('setup.rooms.viewList') },
+        { value: 'floors', label: t('setup.rooms.viewFloors') },
+      ]}
+      value={byFloor ? 'floors' : 'list'}
+      onChange={changeView}
+    />
+  );
+
   return (
     <>
       <PageHeader
@@ -288,7 +378,12 @@ export function RoomsPage() {
           { label: t('home.title'), to: '/' },
           { label: t('setup.title'), to: '/setup' },
         ]}
-        actions={addButton === false ? undefined : addButton}
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
+            {viewSwitch}
+            {addButton}
+          </div>
+        }
       />
       {changed !== null && (
         <p role="status" className="mb-3 text-sm">
@@ -321,6 +416,31 @@ export function RoomsPage() {
           action: emptyAction,
         }}
         bulkActions={bulkActions}
+        view={
+          byFloor && buildings.data !== undefined
+            ? ({ rows, sorted, open: openRoom }) => (
+                <RoomsByFloor
+                  rooms={rows}
+                  sorted={sorted}
+                  allRooms={rooms.data?.rooms ?? []}
+                  buildings={buildings.data.buildings}
+                  chosen={{ building: search.building, floor: search.floor }}
+                  onChoose={(place) => {
+                    void navigate({
+                      to: '/setup/rooms',
+                      search: {
+                        ...listSearch(search),
+                        view: 'floors',
+                        building: place.building,
+                        ...(place.floor === undefined ? {} : { floor: place.floor }),
+                      },
+                    });
+                  }}
+                  open={openRoom}
+                />
+              )
+            : undefined
+        }
         creating={
           newRecord.value === null
             ? undefined

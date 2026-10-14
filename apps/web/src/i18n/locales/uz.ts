@@ -1056,11 +1056,13 @@ export const uz: Texts<'one' | 'other'> = {
       buildingsNav: 'Binolar',
       floorsTabs: 'Qavatlar',
       legend: 'Xona turlari',
-      chooseBuildingShort: 'Bino',
       seats_one: '{{n}} oʻrin',
       seats_other: '{{n}} oʻrin',
-      cardCount_one: '{{n}} ta xona koʻrsatilgan',
-      cardCount_other: '{{n}} ta xona koʻrsatilgan',
+      buildingCards_one: '{{name}}, {{n}} ta xona koʻrsatilgan',
+      buildingCards_other: '{{name}}, {{n}} ta xona koʻrsatilgan',
+      sharedCard_one: 'Umumiy: bir vaqtda {{n}} ta dars',
+      sharedCard_other: 'Umumiy: bir vaqtda {{n}} ta dars',
+      buildingOption: '{{name}} ({{n}})',
       noActiveBuilding:
         'Filialda foydalanilayotgan bino yoʻq. Uni Binolar va qavatlar boʻlimida qoʻshing.',
       noFloorInBuilding:
