@@ -9,8 +9,6 @@ import {
   type Weekday,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { SavedSign } from '@/components/form/saved-sign';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
@@ -19,7 +17,7 @@ import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { useLeave } from '@/components/unsent/unsent-changes';
+import type { PanelEditing } from '@/components/list/use-panel-editing';
 import { useView } from '@/features/access/use-view';
 import { branchQuery } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
@@ -50,20 +48,26 @@ const inForceOn = (entry: AvailabilityEntry, date: string) =>
  * Academic Vice Principal edits the hours of own branch and sees the others
  * read only"; task 2.2b). The entries of the branch of the switcher, each from
  * a date, with a change from a date for a role that may edit; the other
- * branches below, read only.
+ * branches below, read only. The change opens behind its button through the
+ * panel's one open form, and its "Saved." is the panel's (task 2.7c-2b-2a).
  */
-export function AvailabilitySection({ id, label }: { id: string; label: string }) {
+export function AvailabilitySection({
+  id,
+  label,
+  panel,
+  onOpen,
+}: {
+  id: string;
+  label: string;
+  panel: PanelEditing;
+  /** Runs as the change opens: the panel forgets what its own actions said. */
+  onOpen?: () => void;
+}) {
   const { t } = useTranslation();
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
   const hours = useQuery(availabilityQuery(branchId, id));
   const branch = useQuery(branchQuery(branchId));
-  const [changing, setChanging] = useState(false);
-  // The record whose change was saved last: "Saved." beside "Change
-  // availability" until the next change starts or the panel shows another
-  // record (finding 18).
-  const [savedFor, setSavedFor] = useState<string | null>(null);
   const canEdit = role !== null && permits(PERMISSIONS, role, 'staff_teaching', 'edit');
   const set = useMutation({
     mutationFn: (input: AvailabilitySet) =>
@@ -78,8 +82,6 @@ export function AvailabilitySection({ id, label }: { id: string; label: string }
         availabilityQuery(branchId, id).queryKey,
         availabilitySchema.parse(answer),
       );
-      setChanging(false);
-      setSavedFor(id);
     },
   });
 
@@ -108,42 +110,40 @@ export function AvailabilitySection({ id, label }: { id: string; label: string }
     body = (
       <>
         <Entries entries={data.entries} today={data.today} days={days} />
-        {/* The sign is always in the page, so it is read out when it arrives. */}
-        {canEdit && (
-          <div className="flex flex-wrap items-center gap-3">
-            {!changing && (
+        {canEdit &&
+          (panel.editing === 'availability' ? (
+            <ChangeForm
+              key={`${id}-${String(data.entries.length)}`}
+              current={current ?? data.entries.at(-1)}
+              earliest={data.earliestFrom}
+              days={days}
+              label={t('people.availability.changeOf', { name: label })}
+              onSave={async (input) => {
+                await set.mutateAsync(input);
+                panel.stop({ saved: true, key: 'availability' });
+              }}
+              onCancel={() => {
+                set.reset();
+                panel.stop();
+              }}
+            />
+          ) : (
+            <div>
               <Button
                 variant="secondary"
+                {...panel.opener('availability')}
                 onClick={() => {
-                  setChanging(true);
-                  setSavedFor(null);
+                  // A refusal of the last change is not shown beside a new one.
+                  panel.start('availability', () => {
+                    set.reset();
+                    onOpen?.();
+                  });
                 }}
               >
                 {t('people.availability.change')}
               </Button>
-            )}
-            <SavedSign saved={savedFor === id && !changing} />
-          </div>
-        )}
-        {canEdit && changing && (
-          <ChangeForm
-            key={`${id}-${String(data.entries.length)}`}
-            current={current ?? data.entries.at(-1)}
-            earliest={data.earliestFrom}
-            days={days}
-            label={t('people.availability.changeOf', { name: label })}
-            onSave={async (input) => {
-              await set.mutateAsync(input);
-            }}
-            onCancel={() => {
-              void leave.leave().then((leaves) => {
-                if (leaves) {
-                  setChanging(false);
-                }
-              });
-            }}
-          />
-        )}
+            </div>
+          ))}
         <OverlapDays error={set.error} />
         {data.elsewhere.map((other) => (
           <section key={other.branchId} className="grid gap-2">
@@ -280,7 +280,7 @@ function ChangeForm({
   });
   return (
     <div className="grid gap-3 rounded-lg border p-4">
-      <RecordForm form={form} label={label}>
+      <RecordForm form={form} label={label} onCancel={onCancel}>
         <DateField label={t('people.availability.from')} min={earliest} {...form.bind('from')} />
         {days.map((day) => (
           <Field
@@ -292,11 +292,6 @@ function ChangeForm({
           />
         ))}
       </RecordForm>
-      <div>
-        <Button variant="ghost" onClick={onCancel}>
-          {t('people.availability.cancel')}
-        </Button>
-      </div>
     </div>
   );
 }

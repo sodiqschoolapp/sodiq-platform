@@ -348,6 +348,19 @@ const PANEL_FILES = [
   'src/features/setup/subject-panel.tsx',
   'src/features/setup/template-assignment-panel.tsx',
   'src/features/sample/sample-panel.tsx',
+  // The People panels (task 2.7c-2b-2a).
+  'src/features/people/staff-panel.tsx',
+  'src/features/people/vacancy-panel.tsx',
+];
+
+/**
+ * Sections that a panel draws with its `usePanelEditing` value (task
+ * 2.7c-2b-2a): they draw no `PanelActions` of their own, but every form in
+ * them opens behind a button of the panel.
+ */
+const SECTION_FILES = [
+  'src/features/people/availability-section.tsx',
+  'src/features/people/account-section.tsx',
 ];
 
 /**
@@ -377,29 +390,43 @@ function staysInBranch(between: string): boolean {
   return true;
 }
 
+const CONDITION = /\bediting\s*===\s*(?:'[^']*'|`[^`]*`)\s*(?:\?|&&)/g;
+
 /**
- * The forms of a panel's source drawn without a condition on the open form of
- * `usePanelEditing` (`editing === '…'` or ``editing === `…` `` before `?` or
- * `&&`), as `line: form`. A form inside a function that is itself a form
- * (`BuildingForm`, `QuartersFormView`) is its body, not a form of the panel.
+ * Whether the element at `index` is drawn only while a form of
+ * `usePanelEditing` is open: after a condition on the open form
+ * (`editing === '…'` or ``editing === `…` `` before `?` or `&&`), inside a
+ * function that is itself a form (`BuildingForm`, `QuartersFormView`: its
+ * body, not a form of the panel), or inside a wrapper component of the same
+ * file (`CreateAccount`) whose every element is held so (task 2.7c-2b-2a).
  */
-function formsOutsideEditing(text: string): string[] {
-  const condition = /\bediting\s*===\s*(?:'[^']*'|`[^`]*`)\s*(?:\?|&&)/g;
-  return [...text.matchAll(/<([A-Z]\w*Form)\b/g)].flatMap((match) => {
-    const before = text.slice(0, match.index);
-    const owner = [...before.matchAll(/\bfunction\s+(\w+)/g)].at(-1)?.[1] ?? '';
-    if (/Form(View)?$/.test(owner)) {
-      return [];
-    }
-    const last = [...before.matchAll(condition)].at(-1);
-    const between = last === undefined ? null : before.slice((last.index ?? 0) + last[0].length);
-    return between !== null && staysInBranch(between)
-      ? []
-      : [`${String(before.split('\n').length)}: ${match[1] ?? ''}`];
-  });
+function heldAt(text: string, index: number, depth = 0): boolean {
+  const before = text.slice(0, index);
+  const owner = [...before.matchAll(/\bfunction\s+(\w+)/g)].at(-1)?.[1] ?? '';
+  if (/Form(View)?$/.test(owner)) {
+    return true;
+  }
+  const last = [...before.matchAll(CONDITION)].at(-1);
+  if (last !== undefined && staysInBranch(before.slice((last.index ?? 0) + last[0].length))) {
+    return true;
+  }
+  if (depth > 3 || !/^[A-Z]/.test(owner)) {
+    return false;
+  }
+  const uses = [...text.matchAll(new RegExp(`<${owner}\\b`, 'g'))];
+  return uses.length > 0 && uses.every((use) => heldAt(text, use.index, depth + 1));
 }
 
-describe('the side panels of School setup', () => {
+/** The forms of a panel's source drawn without a condition on the open form, as `line: form`. */
+function formsOutsideEditing(text: string): string[] {
+  return [...text.matchAll(/<([A-Z]\w*Form)\b/g)].flatMap((match) =>
+    heldAt(text, match.index)
+      ? []
+      : [`${String(text.slice(0, match.index).split('\n').length)}: ${match[1] ?? ''}`],
+  );
+}
+
+describe('the side panels of School setup and People', () => {
   it('draw their actions with PanelActions, and every form behind a button of usePanelEditing', () => {
     for (const file of PANEL_FILES) {
       const text = read(file);
@@ -407,6 +434,32 @@ describe('the side panels of School setup', () => {
       expect(text, file).toMatch(/\busePanelEditing\(|\bpanel: PanelEditing\b/);
       expect(formsOutsideEditing(text), file).toEqual([]);
     }
+  });
+
+  it('draw every form of a shared section behind a button of the panel', () => {
+    for (const file of SECTION_FILES) {
+      const text = read(file);
+      expect(text, file).toMatch(/\bpanel: PanelEditing\b/);
+      expect(formsOutsideEditing(text), file).toEqual([]);
+    }
+  });
+
+  it('accept a form in a wrapper only when every element of the wrapper is held', () => {
+    const wrapper =
+      'function CreateAccount() {\n  return <CreateAccountForm staff={staff} />;\n}\n\n';
+    expect(
+      formsOutsideEditing(
+        `${wrapper}export function AccountSection() {\n  return (\n    <div>\n      {panel.editing === 'account-new' ? (\n        <CreateAccount />\n      ) : (\n        <p />\n      )}\n    </div>\n  );\n}\n`,
+      ),
+    ).toEqual([]);
+    // Drawn openly once: the form in it is refused.
+    expect(
+      formsOutsideEditing(
+        `${wrapper}export function AccountSection() {\n  return (\n    <div>\n      {panel.editing === 'account-new' && <CreateAccount />}\n      <CreateAccount />\n    </div>\n  );\n}\n`,
+      ),
+    ).toEqual(['2: CreateAccountForm']);
+    // Never drawn in the file: nothing holds it.
+    expect(formsOutsideEditing(wrapper)).toEqual(['2: CreateAccountForm']);
   });
 
   it('refuse a form drawn openly or under another condition, and accept the conditions of the panels', () => {

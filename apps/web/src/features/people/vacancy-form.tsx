@@ -46,12 +46,15 @@ export function VacancyForm({
   subjects,
   label,
   onSave,
+  onCancel,
 }: {
   vacancy: VacancyDetail | null;
   divisions: DivisionList;
   subjects: readonly Subject[];
   label: string;
   onSave: (record: VacancyRecord) => Promise<void>;
+  /** Closes the form (opened by Edit in the side panel). */
+  onCancel?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -110,7 +113,7 @@ export function VacancyForm({
   );
   const chosen = listValues(form.bind('subjects').value);
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       <Field label={t('people.vacancies.name')} autoComplete="off" {...form.bind('name')} />
       <SelectField
         label={t('people.vacancies.department')}

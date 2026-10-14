@@ -73,7 +73,7 @@ const VIEWS = [
 ] as const;
 
 /** Where `checkPage` saves its screenshots with SCREENSHOTS=1, for the report. */
-const PAGE_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.7c-2b-1');
+const PAGE_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.7c-2b-2a');
 
 interface Measured {
   h1: number;
@@ -102,7 +102,7 @@ interface Measured {
  * At phone width every checkbox's target is 44 px (task 2.7c-2a). A side
  * panel shows at most one primary button, and nothing of it follows its row of
  * actions (task 2.7c-2b-1).
- * With SCREENSHOTS=1 it saves docs/screens/2.7c-2b-1/<name>-<view>.png. The page
+ * With SCREENSHOTS=1 it saves docs/screens/2.7c-2b-2a/<name>-<view>.png. The page
  * is left in light at 1440 x 900.
  */
 export async function checkPage(
@@ -113,7 +113,7 @@ export async function checkPage(
     panelActionsLater = false,
   }: {
     signInFrame?: boolean;
-    /** A People panel, pinned in `PANEL_ACTIONS_LATER` until task 2.7c-2b-2. */
+    /** A People panel, pinned in `PANEL_ACTIONS_LATER` until task 2.7c-2b-2b. */
     panelActionsLater?: boolean;
   } = {},
 ): Promise<void> {

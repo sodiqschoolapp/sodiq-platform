@@ -54,7 +54,16 @@ const actorText = (actor: Actor | null): string =>
  * state of this part while its slip is shown: the mutations keep nothing
  * (`gcTime: 0`, reset once handed over) and no query holds it.
  */
-export function AccountAccessSection({ staff, label }: { staff: StaffDetail; label: string }) {
+export function AccountAccessSection({
+  staff,
+  label,
+  quiet = false,
+}: {
+  staff: StaffDetail;
+  label: string;
+  /** A form of the panel is open: these actions give way (task 2.7c-2b-2a, decision 6). */
+  quiet?: boolean;
+}) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const { branchId } = useView();
@@ -157,85 +166,87 @@ export function AccountAccessSection({ staff, label }: { staff: StaffDetail; lab
               <li data-state="second-step">{t('people.access.secondStepOn')}</li>
             )}
           </ul>
-          <div className="flex flex-wrap gap-2">
-            {can.lock && (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => {
-                  setLocking(true);
-                }}
-              >
-                {t('people.access.lock')}
-              </Button>
-            )}
-            {can.unlock && (
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={unlock.isPending}
-                onClick={() => {
-                  void (async () => {
-                    const go = await confirm({
-                      title: t('people.access.unlockTitle'),
-                      names: [`${label}: ${account.login}`],
-                      action: t('people.access.unlock'),
-                    });
-                    if (go) {
-                      await unlock.mutateAsync();
-                      await refresh();
-                    }
-                  })().catch(() => undefined);
-                }}
-              >
-                {t('people.access.unlock')}
-              </Button>
-            )}
-            {can.resetPassword && (
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={resetPassword.isPending}
-                onClick={() => {
-                  void (async () => {
-                    const go = await confirm({
-                      title: t('people.access.resetTitle'),
-                      text: t('people.access.resetText'),
-                      names: [`${label}: ${account.login}`],
-                      action: t('people.access.resetPassword'),
-                    });
-                    if (go) {
-                      await handOver(resetPassword);
-                    }
-                  })().catch(() => undefined);
-                }}
-              >
-                {t('people.access.resetPassword')}
-              </Button>
-            )}
-            {can.resetSecondStep && (
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={resetSecondStep.isPending}
-                onClick={() => {
-                  void (async () => {
-                    const go = await confirm({
-                      title: t('people.access.secondStepTitle'),
-                      text: t('people.access.secondStepText'),
-                      names: [`${label}: ${account.login}`],
-                      action: t('people.access.resetSecondStep'),
-                    });
-                    if (go) {
-                      await handOver(resetSecondStep);
-                    }
-                  })().catch(() => undefined);
-                }}
-              >
-                {t('people.access.resetSecondStep')}
-              </Button>
-            )}
-          </div>
+          {!quiet && (
+            <div className="flex flex-wrap gap-2">
+              {can.lock && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => {
+                    setLocking(true);
+                  }}
+                >
+                  {t('people.access.lock')}
+                </Button>
+              )}
+              {can.unlock && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={unlock.isPending}
+                  onClick={() => {
+                    void (async () => {
+                      const go = await confirm({
+                        title: t('people.access.unlockTitle'),
+                        names: [`${label}: ${account.login}`],
+                        action: t('people.access.unlock'),
+                      });
+                      if (go) {
+                        await unlock.mutateAsync();
+                        await refresh();
+                      }
+                    })().catch(() => undefined);
+                  }}
+                >
+                  {t('people.access.unlock')}
+                </Button>
+              )}
+              {can.resetPassword && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={resetPassword.isPending}
+                  onClick={() => {
+                    void (async () => {
+                      const go = await confirm({
+                        title: t('people.access.resetTitle'),
+                        text: t('people.access.resetText'),
+                        names: [`${label}: ${account.login}`],
+                        action: t('people.access.resetPassword'),
+                      });
+                      if (go) {
+                        await handOver(resetPassword);
+                      }
+                    })().catch(() => undefined);
+                  }}
+                >
+                  {t('people.access.resetPassword')}
+                </Button>
+              )}
+              {can.resetSecondStep && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={resetSecondStep.isPending}
+                  onClick={() => {
+                    void (async () => {
+                      const go = await confirm({
+                        title: t('people.access.secondStepTitle'),
+                        text: t('people.access.secondStepText'),
+                        names: [`${label}: ${account.login}`],
+                        action: t('people.access.resetSecondStep'),
+                      });
+                      if (go) {
+                        await handOver(resetSecondStep);
+                      }
+                    })().catch(() => undefined);
+                  }}
+                >
+                  {t('people.access.resetSecondStep')}
+                </Button>
+              )}
+            </div>
+          )}
           <FailureAlert error={failure} />
         </div>
       )}

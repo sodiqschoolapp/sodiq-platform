@@ -167,6 +167,38 @@ describe('the sign-in access section', () => {
     ).toBeNull();
   });
 
+  // Task 2.7c-2b-2a, decision 6: they give way while a form of the panel is open.
+  it('hides its buttons while a form of the panel is open', async () => {
+    open('academic_vice_principal', {
+      [`GET /api/people/staff/${ODIL.id}/account/access`]: () => json(stateOf()),
+      [`GET /api/people/staff/${ODIL.id}/availability`]: () =>
+        json({ entries: [], elsewhere: [], today: '2026-10-10', earliestFrom: '2026-10-11' }),
+      // The availability's weekdays come from the branch.
+      'GET /api/setup/branch': () =>
+        json({
+          id: NORTH.id,
+          name: 'North',
+          address: null,
+          phone: null,
+          email: null,
+          workingWeekdays: [1, 2, 3, 4, 5],
+          timeZone: 'Asia/Tashkent',
+          goLiveDate: null,
+        }),
+    });
+    const found = await section();
+    const panel = screen.getByRole('complementary', { name: 'Odil Nazarov' });
+    expect(within(found).getByRole('button', { name: en.people.access.lock })).toBeDefined();
+    fireEvent.click(
+      await within(panel).findByRole('button', { name: en.people.availability.change }),
+    );
+    await within(panel).findByRole('form', {
+      name: en.people.availability.changeOf.replace('{{name}}', 'Odil Nazarov'),
+    });
+    expect(within(found).queryByRole('button')).toBeNull();
+    expect(within(found).getByText('o.nazarov')).toBeDefined();
+  });
+
   it('shows the Principal the state and no button', async () => {
     open('principal', {
       [`GET /api/people/staff/${ODIL.id}/account/access`]: () =>

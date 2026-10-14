@@ -9,14 +9,14 @@ import {
   type VacancyRecord,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { SavedSign } from '@/components/form/saved-sign';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
-import { FailureAlert } from '@/components/failure-alert';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
+import { PanelActions } from '@/components/list/panel-actions';
+import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { AvailabilitySection } from './availability-section';
@@ -28,7 +28,8 @@ import { SECTION_TITLE } from '@/components/ui/control';
 /**
  * A vacancy in the side panel of the vacancy list (`04`, Vacancy; task 2.2b):
  * its record, its availability, its status with the history, close and
- * reopen, and the delete of a vacancy that never held a load.
+ * reopen, and the delete of a vacancy that never held a load. It reads first,
+ * with Edit, Close or Reopen and Delete at the bottom (task 2.7c-2b-2a).
  */
 export function VacancyPanel({
   id,
@@ -48,6 +49,8 @@ export function VacancyPanel({
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const detail = useQuery(vacancyDetailQuery(branchId, id));
+  // One form open at a time: the record or the availability.
+  const panel = usePanelEditing();
   const canEdit = role !== null && permits(PERMISSIONS, role, 'vacancies', 'edit');
   const canArchive = role !== null && permits(PERMISSIONS, role, 'vacancies', 'archive');
   const where = () => ({ header: branchHeader(), path: { id } });
@@ -92,11 +95,17 @@ export function VacancyPanel({
     return <LoadingOutline />;
   }
   const vacancy = detail.data;
+  // A close or reopen, or a delete refused, is not shown beside a form opened after it.
+  const forget = () => {
+    status.reset();
+    remove.reset();
+  };
   return (
     <div className="grid gap-6">
-      <section className="grid gap-3">
-        <h3 className={SECTION_TITLE}>{t('people.vacancies.recordTitle')}</h3>
-        {canEdit ? (
+      {panel.editing === 'record' ? (
+        // The record's form takes the read view's place; its Save and Cancel are last.
+        <section className="grid gap-3">
+          <h3 className={SECTION_TITLE}>{t('people.vacancies.recordTitle')}</h3>
           <VacancyForm
             key={`${vacancy.id}-record`}
             vacancy={vacancy}
@@ -105,55 +114,89 @@ export function VacancyPanel({
             label={name}
             onSave={async (record) => {
               await edit.mutateAsync(record);
+              panel.stop({ saved: true, key: 'record' });
+            }}
+            onCancel={() => {
+              panel.stop();
             }}
           />
-        ) : (
-          <Overview vacancy={vacancy} divisions={divisions} subjects={subjects} />
-        )}
-      </section>
-      <AvailabilitySection id={vacancy.id} label={name} />
-      <section className="grid gap-3">
-        <h3 className={SECTION_TITLE}>{t('people.vacancies.statusTitle')}</h3>
-        <p className="text-sm">{t(`people.vacancies.statuses.${vacancy.status}`)}</p>
-        <History vacancy={vacancy} />
-        {canArchive && (
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="secondary"
-              disabled={status.isPending}
-              onClick={() => {
-                status.mutate(vacancy.status === 'open' ? 'close' : 'reopen');
-              }}
-            >
-              {vacancy.status === 'open'
-                ? t('people.vacancies.close')
-                : t('people.vacancies.reopen')}
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={remove.isPending}
-              onClick={() => {
-                void confirm({
-                  title: t('people.vacancies.deleteTitle'),
-                  text: t('people.vacancies.deleteText'),
-                  names: [name],
-                  action: t('people.vacancies.delete'),
-                  destructive: true,
-                }).then((go) => {
-                  if (go) {
-                    remove.mutate();
-                  }
-                });
-              }}
-            >
-              {t('people.vacancies.delete')}
-            </Button>
-            {/* After a close or reopen, until another action starts (finding 18). */}
-            <SavedSign saved={status.isSuccess && remove.isIdle} />
-          </div>
-        )}
-        <FailureAlert error={status.error ?? remove.error} />
-      </section>
+        </section>
+      ) : (
+        <>
+          <section className="grid gap-3">
+            <h3 className={SECTION_TITLE}>{t('people.vacancies.recordTitle')}</h3>
+            <Overview vacancy={vacancy} divisions={divisions} subjects={subjects} />
+          </section>
+          <AvailabilitySection id={vacancy.id} label={name} panel={panel} onOpen={forget} />
+          <section className="grid gap-3">
+            <h3 className={SECTION_TITLE}>{t('people.vacancies.statusTitle')}</h3>
+            <p className="text-sm">{t(`people.vacancies.statuses.${vacancy.status}`)}</p>
+            <History vacancy={vacancy} />
+          </section>
+        </>
+      )}
+      {panel.editing === null && (
+        <PanelActions
+          primary={
+            canEdit && (
+              <Button
+                {...panel.opener('record')}
+                onClick={() => {
+                  panel.start('record', forget);
+                }}
+              >
+                {t('form.edit')}
+              </Button>
+            )
+          }
+          secondary={
+            canArchive && (
+              <Button
+                variant="secondary"
+                disabled={status.isPending}
+                onClick={() => {
+                  remove.reset();
+                  status.mutate(vacancy.status === 'open' ? 'close' : 'reopen');
+                }}
+              >
+                {vacancy.status === 'open'
+                  ? t('people.vacancies.close')
+                  : t('people.vacancies.reopen')}
+              </Button>
+            )
+          }
+          danger={
+            canArchive && (
+              <Button
+                variant="destructive"
+                disabled={remove.isPending}
+                onClick={() => {
+                  void confirm({
+                    title: t('people.vacancies.deleteTitle'),
+                    text: t('people.vacancies.deleteText'),
+                    names: [name],
+                    action: t('people.vacancies.delete'),
+                    destructive: true,
+                  }).then((go) => {
+                    if (go) {
+                      status.reset();
+                      remove.mutate();
+                    }
+                  });
+                }}
+              >
+                {t('people.vacancies.delete')}
+              </Button>
+            )
+          }
+          error={status.error ?? remove.error}
+          // After a save of a form, or a close or reopen until another action starts (finding 18).
+          // A form's "Saved." goes once a close, a reopen or a delete starts.
+          saved={
+            (panel.saved && status.isIdle && remove.isIdle) || (status.isSuccess && remove.isIdle)
+          }
+        />
+      )}
     </div>
   );
 }

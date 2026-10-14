@@ -213,6 +213,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 14 October 2026: record actions at the bottom of the staff and vacancy panels (task 2.7c-2b-2a)
+
+Plan approved on pull request #84 with no correction; decisions 1 to 13 confirmed there; 1, 2 and 3 marked Look first. The decisions after 13 came from the build and its spec review. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 2.7c-2b-2 is 2.7c-2b-2a (the staff and vacancy panels) and 2.7c-2b-2b (the student and parent panels, `PANEL_ACTIONS_LATER` empty) | Decision 1 |
+| **Look first** (tests changed by a requirement). Page and browser tests that type into a staff, account, availability or vacancy form press Edit or the section's button first; a form saved twice in one test is opened again; "Saved." is read in the bottom row after the form closes; bodies, prompts and refusals stay asserted | Decision 2; build |
+| **Look first** (a pinned list). `PANEL_ACTIONS_LATER` shrinks to `people-students` and `people-parents` | Decision 3 |
+| The staff read view shows every field of the record with its form's label; Edit is the primary for `rights.contact`; "Change status" is secondary at the bottom, with no danger action | Decisions 4, 5 |
+| The photo and sign-in access actions stay in their parts and give way (`quiet`) while any form of the panel is open; the openers of the other sections stay drawn, as the floor rows of 2.7c-2b-1, and ask `useLeave()` first | Decision 6; build, spec review |
+| The vacancy: Edit, Close or Reopen, Delete; a form's "Saved." goes once a close, a reopen or a delete starts, and a form opened resets them (`AvailabilitySection`'s `onOpen`) | Decision 7; build, spec review |
+| "Give a role" behind its button; the role rows' "Change subjects" and "End" open their form in the section | Decision 8 |
+| `AvailabilitySection` takes `panel`, its Cancel and "Saved." are the shared ones, `people.availability.cancel` is gone; Cancel also takes the last refusal away | Decision 9; build |
+| `SECTION_FILES` in the source check; a wrapper (`CreateAccount`) holds its form only when every element of it in the file is held | Decision 10 |
+| `usePanelEditing().stop({ focus })`: a save that takes its own button away (an account created, a role ended, a role's subjects changed) gives the focus to the account section's heading; the first-password slip has it while open | Decision 11; build |
+| The status form is drawn below the status and its history, in the read view's place | Build |
+| The Branches section holds its title and "Change branches"; the teaching opener is "Change subjects and languages", switched off with its reason without an Academic department | Decisions 12, 13 |
+
 ## 13 October 2026: record actions at the bottom of the side panel (task 2.7c-2b-1)
 
 Plan approved on pull request #83 with corrections 1 and 2; decisions 1 to 12 confirmed there; 1, 2 and 3 marked Look first. The decisions after 12 came from the build. Flagged on issue #42.

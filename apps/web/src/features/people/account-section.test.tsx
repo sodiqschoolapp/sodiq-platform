@@ -10,11 +10,18 @@ import type {
 } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { edit } from '@/testing/panel';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
 import { accountAccessKey } from './people-api';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+
+/** A form of the account section, opened by its button (task 2.7c-2b-2a). */
+async function opened(found: HTMLElement, button: string, name: string): Promise<HTMLElement> {
+  fireEvent.click(await within(found).findByRole('button', { name: button }));
+  return within(found).findByRole('form', { name });
+}
 
 const PATH = '/people/staff';
 
@@ -195,9 +202,11 @@ describe('the account section', () => {
       },
     });
     const found = await section();
-    const form = await within(found).findByRole('form', {
-      name: en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
-    });
+    const form = await opened(
+      found,
+      en.people.account.create,
+      en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
+    );
     const login = within(form).getByLabelText(en.people.account.login);
     expect((login as HTMLInputElement).value).toBe('l.tursunova');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
@@ -205,6 +214,10 @@ describe('the account section', () => {
     const dialog = await screen.findByRole('dialog', { name: en.people.account.slipTitle });
     expect(within(dialog).getByText(PASSWORD)).toBeDefined();
     expect(within(dialog).getByText(en.people.account.slipOnce)).toBeDefined();
+    // Task 2.7c-2b-2a, decision 11: the slip has the focus while it is open.
+    await waitFor(() => {
+      expect(dialog.contains(document.activeElement)).toBe(true);
+    });
     expect(
       calls.find((call) => call.route.endsWith('/account') && call.route.startsWith('POST'))?.body,
     ).toEqual({
@@ -216,6 +229,12 @@ describe('the account section', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.account.closeSlip }));
     await waitFor(() => {
       expect(document.body.textContent).not.toContain(PASSWORD);
+    });
+    // Task 2.7c-2b-2a, decision 11: its button is gone, the section's heading has the focus.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(found).getByRole('heading', { name: en.people.account.title }),
+      );
     });
     // Correction 4: nothing keeps the password, neither a query nor a mutation.
     await waitFor(() => {
@@ -258,9 +277,11 @@ describe('the account section', () => {
         ),
     });
     const found = await section();
-    const form = await within(found).findByRole('form', {
-      name: en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
-    });
+    const form = await opened(
+      found,
+      en.people.account.create,
+      en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
+    );
     const login = within(form).getByLabelText(en.people.account.login);
     expect((login as HTMLInputElement).value).toBe('');
     fireEvent.change(login, { target: { value: 'l.tursunova' } });
@@ -280,9 +301,11 @@ describe('the account section', () => {
     const row = found.querySelector('tr[data-role="teacher"]');
     expect(row?.textContent).toContain(en.roles.teacher);
     expect(row?.textContent).toContain('Aziza Karimova');
-    const form = within(found).getByRole('form', {
-      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
-    });
+    let form = await opened(
+      found,
+      en.people.account.give,
+      en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+    );
     fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
       target: { value: 'tutor' },
     });
@@ -299,10 +322,31 @@ describe('the account section', () => {
       ).toEqual([{ role: 'tutor', branchId: SOUTH.id, from: '2026-10-11' }]);
     });
 
+    // Task 2.7c-2b-2a: the form closes on a save and opens again behind its button.
+    await waitFor(() => {
+      expect(form.isConnected).toBe(false);
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(found).getByRole('button', { name: en.people.account.give }),
+      );
+    });
+    form = await opened(
+      found,
+      en.people.account.give,
+      en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+    );
     fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
       target: { value: 'super_admin' },
     });
     expect(within(form).queryByLabelText(en.people.account.branch)).toBeNull();
+    // The form opened again starts fresh, from today.
+    expect(within(form).getByLabelText<HTMLInputElement>(en.people.account.from).value).toBe(
+      '2026-10-10',
+    );
+    fireEvent.change(within(form).getByLabelText(en.people.account.from), {
+      target: { value: '2026-10-11' },
+    });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     await waitFor(() => {
       expect(calls.filter((call) => call.route.endsWith('/roles')).at(-1)?.body).toEqual({
@@ -320,9 +364,11 @@ describe('the account section', () => {
       [`POST /api/people/staff/${LOLA.id}/roles`]: () => json(withAccount(), 201),
     });
     const found = await section();
-    const form = within(found).getByRole('form', {
-      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
-    });
+    let form = await opened(
+      found,
+      en.people.account.give,
+      en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+    );
     expect(within(form).queryByRole('group', { name: en.people.account.subjects })).toBeNull();
     fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
       target: { value: 'head_teacher' },
@@ -345,6 +391,20 @@ describe('the account section', () => {
       ]);
     });
 
+    // Task 2.7c-2b-2a: the form closes on a save and opens again behind its button.
+    await waitFor(() => {
+      expect(form.isConnected).toBe(false);
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(found).getByRole('button', { name: en.people.account.give }),
+      );
+    });
+    form = await opened(
+      found,
+      en.people.account.give,
+      en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+    );
     fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
       target: { value: 'senior_head_teacher' },
     });
@@ -368,9 +428,11 @@ describe('the account section', () => {
       [`GET /api/people/staff/${LOLA.id}/account`]: () => json(withAccount()),
     });
     const found = await section();
-    const form = within(found).getByRole('form', {
-      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
-    });
+    const form = await opened(
+      found,
+      en.people.account.give,
+      en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+    );
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
       target: { value: 'head_teacher' },
@@ -423,6 +485,12 @@ describe('the account section', () => {
           .map((call) => call.body),
       ).toEqual([{ subjectIds: [MATHEMATICS.id, PHYSICS.id], from: '2026-10-12' }]);
     });
+    // Task 2.7c-2b-2a, decision 11: its button is gone, the section's heading has the focus.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(found).getByRole('heading', { name: en.people.account.title }),
+      );
+    });
   });
 
   it('says when a chosen subject has another Head Teacher', async () => {
@@ -442,9 +510,11 @@ describe('the account section', () => {
         ),
     });
     const found = await section();
-    const form = within(found).getByRole('form', {
-      name: en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
-    });
+    const form = await opened(
+      found,
+      en.people.account.give,
+      en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+    );
     fireEvent.change(within(form).getByLabelText(en.people.account.newRole), {
       target: { value: 'head_teacher' },
     });
@@ -482,12 +552,53 @@ describe('the account section', () => {
         from: '2026-10-10',
       });
     });
+    // Task 2.7c-2b-2a, decision 11: its button is gone, the section's heading has the focus.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(found).getByRole('heading', { name: en.people.account.title }),
+      );
+    });
     // Task 2.3c-1: what the sign-in access allows follows the roles.
     await waitFor(() => {
       expect(invalidated.mock.calls.map(([filters]) => filters?.queryKey)).toContainEqual(
         accountAccessKey(LOLA.id),
       );
     });
+  });
+
+  // Task 2.7c-2b-2a: one form at a time, behind its button, closed by Cancel.
+  it('opens the forms of the roles one at a time, and closes them without a call on Cancel', async () => {
+    const calls = open('super_admin', {
+      [`GET /api/people/staff/${LOLA.id}/account`]: () =>
+        json(withAccount({ account: { ...ACCOUNT, roles: [TEACHER, HEAD_TEACHER] } })),
+    });
+    const found = await section();
+    const give = await opened(
+      found,
+      en.people.account.give,
+      en.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+    );
+    fireEvent.click(
+      within(found).getByRole('button', {
+        name: en.people.account.endOf.replace('{{role}}', en.roles.teacher),
+      }),
+    );
+    const end = await within(found).findByRole('form', {
+      name: en.people.account.endOf.replace('{{role}}', en.roles.teacher),
+    });
+    expect(give.isConnected).toBe(false);
+    fireEvent.click(within(end).getByRole('button', { name: en.form.cancel }));
+    await waitFor(() => {
+      expect(within(found).queryByRole('form')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(found).getByRole('button', {
+          name: en.people.account.endOf.replace('{{role}}', en.roles.teacher),
+        }),
+      );
+    });
+    expect(calls.some((call) => call.route.startsWith('POST'))).toBe(false);
   });
 
   it('shows the Principal the account and roles, with no form', async () => {
@@ -518,9 +629,11 @@ describe('the account section', () => {
     const found = await section('ru');
     expect(found.querySelector('tr[data-role="teacher"]')?.textContent).toContain(ru.roles.teacher);
     expect(
-      within(found).getByRole('form', {
-        name: ru.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
-      }),
+      await opened(
+        found,
+        ru.people.account.give,
+        ru.people.account.giveOf.replace('{{name}}', 'Lola Tursunova'),
+      ),
     ).toBeDefined();
   });
 
@@ -555,9 +668,11 @@ describe('the account section', () => {
         language,
       );
       const found = await section(language);
-      const form = await within(found).findByRole('form', {
-        name: texts.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
-      });
+      const form = await opened(
+        found,
+        texts.people.account.create,
+        texts.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
+      );
       fireEvent.click(within(form).getByRole('button', { name: texts.form.save }));
       const dialog = await screen.findByRole('dialog', { name: texts.people.account.slipTitle });
       const value = (label: string) =>
@@ -591,9 +706,11 @@ describe('the account section', () => {
       [`POST /api/people/staff/${LOLA.id}/account`]: () => json(SLIP, 201),
     });
     const found = await section();
-    const form = await within(found).findByRole('form', {
-      name: en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
-    });
+    const form = await opened(
+      found,
+      en.people.account.create,
+      en.people.account.createOf.replace('{{name}}', 'Lola Tursunova'),
+    );
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     const dialog = await screen.findByRole('dialog', { name: en.people.account.slipTitle });
     expect((await within(dialog).findByRole('alert')).textContent).toBe(en.errors.internal_error);
@@ -628,9 +745,11 @@ describe('the account section', () => {
     shell = renderApp(PATH);
     fireEvent.click(await screen.findByText('Tursunova Lola', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Lola Tursunova' });
-    const status = await within(panel).findByRole('form', {
-      name: en.people.staff.statusOf.replace('{{name}}', 'Lola Tursunova'),
-    });
+    const status = await edit(
+      panel,
+      en.people.staff.statusOf.replace('{{name}}', 'Lola Tursunova'),
+      en.people.staff.changeStatus,
+    );
     fireEvent.change(within(status).getByLabelText(en.people.staff.newStatus), {
       target: { value: 'active' },
     });
@@ -648,6 +767,12 @@ describe('the account section', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.account.closeSlip }));
     await waitFor(() => {
       expect(document.body.textContent).not.toContain(PASSWORD);
+    });
+    // Task 2.7c-2b-2a: the focus is back on the button the status form came from.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: en.people.staff.changeStatus }),
+      );
     });
     // Correction 4: nothing keeps the password, neither a query nor a mutation.
     await waitFor(() => {

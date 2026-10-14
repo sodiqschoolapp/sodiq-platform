@@ -39,6 +39,8 @@ import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
+import { PanelActions } from '@/components/list/panel-actions';
+import { usePanelEditing, type PanelEditing } from '@/components/list/use-panel-editing';
 import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
 import { HistoryLink } from '@/features/audit/history-link';
 import { ReportLink } from './report-link';
@@ -83,6 +85,7 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
   const { branchId } = useView();
   const queryClient = useQueryClient();
   const detail = useQuery(staffDetailQuery(branchId, id));
+  const panel = usePanelEditing();
   /** The answer of a change is the record as it now is; the lists are read again. */
   const refresh = async (answer: unknown) => {
     queryClient.setQueryData(
@@ -149,13 +152,12 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
   }
   const staff = detail.data;
 
+  // One form open at a time (task 2.7c-2b-2a): the record, the status, or
+  // a form of a section (subjects, availability, branches, the account).
   return (
     <div className="grid gap-6">
-      <PhotoSection staff={staff} name={name} onChange={refresh} />
-      <Overview staff={staff} divisions={divisions} />
-      <HistoryLink kind="staff" id={staff.id} />
-      <ReportLink kind="staff" id={staff.id} />
-      {staff.rights.contact && (
+      {panel.editing === 'record' ? (
+        // The record's form takes the read view's place; its Save and Cancel are last.
         <section className="grid gap-3">
           <h3 className={SECTION_TITLE}>{t('people.staff.recordTitle')}</h3>
           <StaffForm
@@ -166,39 +168,69 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
             label={name}
             onSave={async (record) => {
               await edit.mutateAsync(record);
+              panel.stop({ saved: true, key: 'record' });
+            }}
+            onCancel={() => {
+              panel.stop();
             }}
           />
         </section>
+      ) : panel.editing === 'status' ? (
+        // The status and its history above the form that changes it.
+        <div className="grid gap-3">
+          <StatusSection staff={staff} />
+          <StatusForm
+            staff={staff}
+            label={name}
+            onSave={async (change) => {
+              await status.mutateAsync(change);
+              status.reset();
+              panel.stop({ saved: true, key: 'status' });
+            }}
+            onCancel={() => {
+              panel.stop();
+            }}
+          />
+        </div>
+      ) : (
+        <>
+          <PhotoSection
+            staff={staff}
+            name={name}
+            onChange={refresh}
+            quiet={panel.editing !== null}
+          />
+          <Overview staff={staff} divisions={divisions} />
+          <HistoryLink kind="staff" id={staff.id} />
+          <ReportLink kind="staff" id={staff.id} />
+          <TeachingSection
+            staff={staff}
+            divisions={divisions}
+            subjects={subjects}
+            label={name}
+            panel={panel}
+            onSave={async (record) => {
+              await teaching.mutateAsync(record);
+            }}
+          />
+          <AvailabilitySection id={staff.id} label={name} panel={panel} />
+          {staff.rights.all && (
+            <BranchesSection
+              staff={staff}
+              label={name}
+              panel={panel}
+              onSave={async (record) => {
+                await branches.mutateAsync(record);
+              }}
+            />
+          )}
+          <StatusSection staff={staff} />
+          {staff.rights.accounts && <AccountSection staff={staff} label={name} panel={panel} />}
+          {staff.rights.accountAccess && (
+            <AccountAccessSection staff={staff} label={name} quiet={panel.editing !== null} />
+          )}
+        </>
       )}
-      <TeachingSection
-        staff={staff}
-        divisions={divisions}
-        subjects={subjects}
-        label={name}
-        onSave={async (record) => {
-          await teaching.mutateAsync(record);
-        }}
-      />
-      <AvailabilitySection id={staff.id} label={name} />
-      {staff.rights.all && (
-        <BranchesSection
-          staff={staff}
-          label={name}
-          onSave={async (record) => {
-            await branches.mutateAsync(record);
-          }}
-        />
-      )}
-      <StatusSection
-        staff={staff}
-        label={name}
-        onSave={async (change) => {
-          await status.mutateAsync(change);
-          status.reset();
-        }}
-      />
-      {staff.rights.accounts && <AccountSection staff={staff} label={name} />}
-      {staff.rights.accountAccess && <AccountAccessSection staff={staff} label={name} />}
       {slip !== null && (
         <FirstPasswordSlipDialog
           slip={slip}
@@ -206,6 +238,36 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
           onClose={() => {
             setSlip(null);
           }}
+        />
+      )}
+      {panel.editing === null && (
+        <PanelActions
+          primary={
+            staff.rights.contact && (
+              <Button
+                {...panel.opener('record')}
+                onClick={() => {
+                  panel.start('record');
+                }}
+              >
+                {t('form.edit')}
+              </Button>
+            )
+          }
+          secondary={
+            staff.rights.all && (
+              <Button
+                variant="secondary"
+                {...panel.opener('status')}
+                onClick={() => {
+                  panel.start('status');
+                }}
+              >
+                {t('people.staff.changeStatus')}
+              </Button>
+            )
+          }
+          saved={panel.saved}
         />
       )}
     </div>
@@ -222,10 +284,13 @@ function PhotoSection({
   staff,
   name,
   onChange,
+  quiet,
 }: {
   staff: StaffDetail;
   name: string;
   onChange: (answer: unknown) => Promise<void>;
+  /** A form of the panel is open: the photo's actions give way (task 2.7c-2b-2a). */
+  quiet: boolean;
 }) {
   const { t } = useTranslation();
   const { branchId } = useView();
@@ -268,7 +333,7 @@ function PhotoSection({
           photo={staff.photoId === null ? null : staffPhotoQuery(branchId, staff.id, staff.photoId)}
           size="lg"
         />
-        {staff.rights.contact && (
+        {staff.rights.contact && !quiet && (
           <div className="flex flex-wrap gap-2">
             <input
               ref={input}
@@ -352,8 +417,13 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
           .find((department) => department.id === id);
   const birthDate = shown?.birthDate ?? staff.birthDate;
   const jshshir = shown === null ? staff.jshshir : shown.jshshir;
+  const number = new Intl.NumberFormat(language);
+  const notSet = t('people.staff.notSet');
+  // Every field of the record, named as its form names it (task 2.7c-2b-2a,
+  // decision 4): the form now opens behind Edit.
   const rows: [string, string][] = [
     [t('people.staff.staffId'), staff.staffId],
+    [t('people.staff.fatherName'), staff.fatherName ?? notSet],
     [
       t('people.staff.categories'),
       staff.categories.length === 0
@@ -366,13 +436,17 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
       birthDate === null ? t('people.staff.hidden') : schoolDateText(birthDate, language),
     ],
     [
+      t('people.staff.educationLevel'),
+      staff.educationLevel === null
+        ? notSet
+        : t(`people.staff.educationLevels.${staff.educationLevel}`),
+    ],
+    [
       t('people.staff.jshshir'),
-      staff.identityHidden && shown === null
-        ? t('people.staff.hidden')
-        : (jshshir ?? t('people.staff.notSet')),
+      staff.identityHidden && shown === null ? t('people.staff.hidden') : (jshshir ?? notSet),
     ],
     [t('people.staff.phone'), phoneText(staff.phone)],
-    [t('people.staff.email'), staff.email ?? t('people.staff.notSet')],
+    [t('people.staff.email'), staff.email ?? notSet],
     [
       t('people.staff.branches'),
       staff.branches
@@ -400,6 +474,22 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
         .join('; '),
     ],
     [t('people.staff.admissionDate'), schoolDateText(staff.admissionDate, language)],
+    [
+      t('people.staff.contractType'),
+      staff.contractType === null ? notSet : t(`people.staff.contractTypes.${staff.contractType}`),
+    ],
+    [
+      t('people.staff.contractDate'),
+      staff.contractDate === null ? notSet : schoolDateText(staff.contractDate, language),
+    ],
+    [
+      t('people.staff.weeklyLessons'),
+      staff.weeklyLessons === null ? notSet : number.format(staff.weeklyLessons),
+    ],
+    [
+      t('people.staff.dailyLessons'),
+      staff.dailyLessons === null ? notSet : number.format(staff.dailyLessons),
+    ],
   ];
   return (
     <section className="grid gap-3">
@@ -454,12 +544,14 @@ function TeachingSection({
   divisions,
   subjects,
   label,
+  panel,
   onSave,
 }: {
   staff: StaffDetail;
   divisions: DivisionList;
   subjects: readonly Subject[];
   label: string;
+  panel: PanelEditing;
   onSave: (record: StaffTeaching) => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
@@ -486,34 +578,57 @@ function TeachingSection({
   return (
     <section className="grid gap-3">
       <h3 className={SECTION_TITLE}>{t('people.staff.teachingTitle')}</h3>
-      {staff.rights.teaching && department !== undefined && department !== null ? (
+      {panel.editing === 'teaching' && department !== undefined && department !== null ? (
         <TeachingForm
           key={`${staff.id}-teaching-${department}`}
           staff={staff}
           offered={offered}
           label={t('people.staff.teachingOf', { name: label })}
-          onSave={onSave}
+          onSave={async (record) => {
+            await onSave(record);
+            panel.stop({ saved: true, key: 'teaching' });
+          }}
+          onCancel={() => {
+            panel.stop();
+          }}
         />
       ) : (
-        <dl className="grid gap-2 text-sm">
-          <div className="grid gap-0.5">
-            <dt className="text-muted-foreground">{t('people.staff.subjects')}</dt>
-            <dd>
-              {staff.subjects.length === 0
-                ? t('people.staff.none')
-                : staff.subjects
-                    .map((own) => `${subjectName(own.subjectId)} (${gradeText(own.grades)})`)
-                    .join('; ')}
-            </dd>
-          </div>
-          <div className="grid gap-0.5">
-            <dt className="text-muted-foreground">{t('people.staff.languagesTitle')}</dt>
-            <dd>{languageText(staff.languages)}</dd>
-          </div>
-        </dl>
-      )}
-      {staff.rights.teaching && (department === undefined || department === null) && (
-        <p className="text-sm text-muted-foreground">{t('people.staff.needsAcademic')}</p>
+        <>
+          <dl className="grid gap-2 text-sm">
+            <div className="grid gap-0.5">
+              <dt className="text-muted-foreground">{t('people.staff.subjects')}</dt>
+              <dd>
+                {staff.subjects.length === 0
+                  ? t('people.staff.none')
+                  : staff.subjects
+                      .map((own) => `${subjectName(own.subjectId)} (${gradeText(own.grades)})`)
+                      .join('; ')}
+              </dd>
+            </div>
+            <div className="grid gap-0.5">
+              <dt className="text-muted-foreground">{t('people.staff.languagesTitle')}</dt>
+              <dd>{languageText(staff.languages)}</dd>
+            </div>
+          </dl>
+          {staff.rights.teaching && (
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Switched off without an Academic department, with the line that says why. */}
+              <Button
+                variant="secondary"
+                disabled={department === undefined || department === null}
+                {...panel.opener('teaching')}
+                onClick={() => {
+                  panel.start('teaching');
+                }}
+              >
+                {t('people.staff.changeTeaching')}
+              </Button>
+              {(department === undefined || department === null) && (
+                <p className="text-sm text-muted-foreground">{t('people.staff.needsAcademic')}</p>
+              )}
+            </div>
+          )}
+        </>
       )}
     </section>
   );
@@ -524,11 +639,13 @@ function TeachingForm({
   offered,
   label,
   onSave,
+  onCancel,
 }: {
   staff: StaffDetail;
   offered: readonly Subject[];
   label: string;
   onSave: (record: StaffTeaching) => Promise<void>;
+  onCancel: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -570,7 +687,7 @@ function TeachingForm({
   });
   const chosen = listValues(form.bind('subjects').value);
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       <CheckboxGroupField
         label={t('people.staff.subjects')}
         options={offered.map((subject) => ({
@@ -604,15 +721,65 @@ function TeachingForm({
   );
 }
 
-/** The main and further branches (`04`): the Super Admin only (decision 18). */
+/**
+ * The main and further branches (`04`): the Super Admin only (decision 18).
+ * The overview reads them; the section holds the button of the form (task
+ * 2.7c-2b-2a, decision 12).
+ */
 function BranchesSection({
   staff,
   label,
+  panel,
   onSave,
 }: {
   staff: StaffDetail;
   label: string;
+  panel: PanelEditing;
   onSave: (record: StaffBranches) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  return (
+    <section className="grid gap-3">
+      <h3 className={SECTION_TITLE}>{t('people.staff.branchesTitle')}</h3>
+      {panel.editing === 'branches' ? (
+        <BranchesForm
+          staff={staff}
+          label={label}
+          onSave={async (record) => {
+            await onSave(record);
+            panel.stop({ saved: true, key: 'branches' });
+          }}
+          onCancel={() => {
+            panel.stop();
+          }}
+        />
+      ) : (
+        <div>
+          <Button
+            variant="secondary"
+            {...panel.opener('branches')}
+            onClick={() => {
+              panel.start('branches');
+            }}
+          >
+            {t('people.staff.changeBranches')}
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function BranchesForm({
+  staff,
+  label,
+  onSave,
+  onCancel,
+}: {
+  staff: StaffDetail;
+  label: string;
+  onSave: (record: StaffBranches) => Promise<void>;
+  onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const { branches } = useView();
@@ -635,68 +802,34 @@ function BranchesSection({
   });
   const chosenMain = form.bind('mainBranchId').value;
   return (
-    <section className="grid gap-3">
-      <h3 className={SECTION_TITLE}>{t('people.staff.branchesTitle')}</h3>
-      <RecordForm form={form} label={t('people.staff.branchesOf', { name: label })}>
-        <SelectField
-          label={t('people.staff.mainBranchField')}
-          options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
-          {...form.bind('mainBranchId')}
-        />
-        <CheckboxGroupField
-          label={t('people.staff.furtherBranches')}
-          options={branches
-            .filter((branch) => branch.id !== chosenMain)
-            .map((branch) => ({ value: branch.id, label: branch.name }))}
-          {...form.bind('furtherBranchIds')}
-        />
-      </RecordForm>
-    </section>
+    <RecordForm
+      form={form}
+      label={t('people.staff.branchesOf', { name: label })}
+      onCancel={onCancel}
+    >
+      <SelectField
+        label={t('people.staff.mainBranchField')}
+        options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
+        {...form.bind('mainBranchId')}
+      />
+      <CheckboxGroupField
+        label={t('people.staff.furtherBranches')}
+        options={branches
+          .filter((branch) => branch.id !== chosenMain)
+          .map((branch) => ({ value: branch.id, label: branch.name }))}
+        {...form.bind('furtherBranchIds')}
+      />
+    </RecordForm>
   );
 }
 
 /**
  * The status with its history (`edge/people-roles-accounts`, Staff over time:
- * "Each status change has a date, which can be in the future"). A change is
- * the Super Admin's; it replaces a change planned after today.
+ * "Each status change has a date, which can be in the future").
  */
-function StatusSection({
-  staff,
-  label,
-  onSave,
-}: {
-  staff: StaffDetail;
-  label: string;
-  onSave: (change: StaffStatusChange) => Promise<void>;
-}) {
+function StatusSection({ staff }: { staff: StaffDetail }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
-  const confirm = useConfirm();
-  const form = useRecordForm<'status' | 'from', StaffStatusChange>({
-    schema: asFormSchema<StaffStatusChange>(staffStatusChangeSchema, (path) => [...path]),
-    initial: { status: '', from: staff.today },
-    // A status change cannot be taken back once its date has come, and "left"
-    // ends every role of the person's account (`.claude/rules/web.md`).
-    save: async (change) => {
-      const go = await confirm({
-        title: t('people.staff.statusConfirmTitle', {
-          status: t(`people.staff.statuses.${change.status}`),
-          date: schoolDateText(change.from, language),
-        }),
-        text:
-          change.status === 'left'
-            ? t('people.staff.statusConfirmLeft')
-            : t('people.staff.statusConfirmText'),
-        names: [label],
-        action: t('people.staff.statusConfirmAction'),
-        destructive: change.status !== 'active',
-      });
-      if (!go) {
-        throw new SaveCancelled();
-      }
-      await onSave(change);
-    },
-  });
   return (
     <section className="grid gap-3">
       <h3 className={SECTION_TITLE}>{t('people.staff.statusTitle')}</h3>
@@ -741,22 +874,68 @@ function StatusSection({
           ))}
         </tbody>
       </table>
-      {staff.rights.all && (
-        <RecordForm form={form} label={t('people.staff.statusOf', { name: label })}>
-          <SelectField
-            label={t('people.staff.newStatus')}
-            options={[
-              { value: '', label: t('people.staff.choose') },
-              ...STAFF_STATUSES.map((one) => ({
-                value: one,
-                label: t(`people.staff.statuses.${one}`),
-              })),
-            ]}
-            {...form.bind('status')}
-          />
-          <DateField label={t('people.staff.from')} min={staff.today} {...form.bind('from')} />
-        </RecordForm>
-      )}
     </section>
+  );
+}
+
+/**
+ * A change of the status, the Super Admin's, opened by "Change status" at the
+ * bottom of the panel (task 2.7c-2b-2a); it replaces a change planned after
+ * today.
+ */
+function StatusForm({
+  staff,
+  label,
+  onSave,
+  onCancel,
+}: {
+  staff: StaffDetail;
+  label: string;
+  onSave: (change: StaffStatusChange) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
+  const confirm = useConfirm();
+  const form = useRecordForm<'status' | 'from', StaffStatusChange>({
+    schema: asFormSchema<StaffStatusChange>(staffStatusChangeSchema, (path) => [...path]),
+    initial: { status: '', from: staff.today },
+    // A status change cannot be taken back once its date has come, and "left"
+    // ends every role of the person's account (`.claude/rules/web.md`).
+    save: async (change) => {
+      const go = await confirm({
+        title: t('people.staff.statusConfirmTitle', {
+          status: t(`people.staff.statuses.${change.status}`),
+          date: schoolDateText(change.from, language),
+        }),
+        text:
+          change.status === 'left'
+            ? t('people.staff.statusConfirmLeft')
+            : t('people.staff.statusConfirmText'),
+        names: [label],
+        action: t('people.staff.statusConfirmAction'),
+        destructive: change.status !== 'active',
+      });
+      if (!go) {
+        throw new SaveCancelled();
+      }
+      await onSave(change);
+    },
+  });
+  return (
+    <RecordForm form={form} label={t('people.staff.statusOf', { name: label })} onCancel={onCancel}>
+      <SelectField
+        label={t('people.staff.newStatus')}
+        options={[
+          { value: '', label: t('people.staff.choose') },
+          ...STAFF_STATUSES.map((one) => ({
+            value: one,
+            label: t(`people.staff.statuses.${one}`),
+          })),
+        ]}
+        {...form.bind('status')}
+      />
+      <DateField label={t('people.staff.from')} min={staff.today} {...form.bind('from')} />
+    </RecordForm>
   );
 }

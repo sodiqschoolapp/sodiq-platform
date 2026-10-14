@@ -164,6 +164,27 @@ async function checkSuperAdminPages(page: Page): Promise<void> {
   await year.getByRole('button', { name: en.form.edit, exact: true }).click();
   await expect(year.getByRole('form')).toBeVisible();
   await checkPage(page, 'setup-years-edit');
+  // Task 2.7c-2b-2a: the staff record of the pages branch, read, and with each
+  // form only the Super Admin opens there (the role forms need an account,
+  // which this person has not: the page tests open them). Nothing is saved.
+  await page.goto('/people/staff');
+  await expect(heading(page, en.people.staff.title)).toBeVisible();
+  await page.getByRole('button', { name: 'Saidova Lola', exact: true }).click();
+  const staff = page.getByRole('complementary', { name: 'Lola Saidova' });
+  await expect(staff.locator('[data-slot="panel-actions"]')).toBeVisible();
+  await checkPage(page, 'people-staff-record-super-admin');
+  for (const [name, opener] of [
+    ['people-staff-super-admin', en.form.edit],
+    ['people-staff-status', en.people.staff.changeStatus],
+    ['people-staff-branches', en.people.staff.changeBranches],
+    ['people-staff-account', en.people.account.create],
+  ] as const) {
+    await staff.getByRole('button', { name: opener, exact: true }).click();
+    await expect(staff.getByRole('form')).toBeVisible();
+    await checkPage(page, `${name}-edit`);
+    await staff.getByRole('button', { name: en.form.cancel, exact: true }).click();
+    await expect(staff.getByRole('form')).toHaveCount(0);
+  }
 }
 
 /**
@@ -382,6 +403,8 @@ async function createAccountAndSignIn(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Aminova Feruza', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Feruza Aminova' });
   const section = panel.getByRole('region', { name: en.people.account.title });
+  // Task 2.7c-2b-2a: each form of the section opens behind its button.
+  await section.getByRole('button', { name: en.people.account.create, exact: true }).click();
   const create = section.getByRole('form', {
     name: en.people.account.createOf.replace('{{name}}', 'Feruza Aminova'),
   });
@@ -403,6 +426,7 @@ async function createAccountAndSignIn(page: Page): Promise<void> {
   await expect(slip).toBeHidden();
   await expect(page.getByText(password)).toHaveCount(0);
 
+  await section.getByRole('button', { name: en.people.account.give, exact: true }).click();
   const give = section.getByRole('form', {
     name: en.people.account.giveOf.replace('{{name}}', 'Feruza Aminova'),
   });
@@ -443,6 +467,8 @@ async function giveFormOf(page: Page, firstName: string, lastName: string) {
   const name = `${firstName} ${lastName}`;
   const panel = page.getByRole('complementary', { name });
   const section = panel.getByRole('region', { name: en.people.account.title });
+  // Task 2.7c-2b-2a: the form opens behind its button.
+  await section.getByRole('button', { name: en.people.account.give, exact: true }).click();
   const give = section.getByRole('form', {
     name: en.people.account.giveOf.replace('{{name}}', name),
   });
