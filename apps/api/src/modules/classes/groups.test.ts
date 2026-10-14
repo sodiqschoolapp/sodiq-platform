@@ -122,7 +122,7 @@ describe('groups', () => {
     const browser = await t.kit.completeSession(first, last);
     const given = await t.kit.giveRole(browser.account.id, {
       role: role as never,
-      branchId: role === 'senior_head_teacher' ? null : t.north,
+      ...(role === 'senior_head_teacher' ? {} : { branchId: t.north }),
       ...(role === 'tutor' ? { validFrom: FROM } : {}),
       ...(subjectIds === undefined ? {} : { subjectIds }),
     });
