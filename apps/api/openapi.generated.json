@@ -56993,6 +56993,9 @@
                             "type": "integer",
                             "minimum": 0,
                             "maximum": 9007199254740991
+                          },
+                          "opens": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -57012,7 +57015,8 @@
                           "plannedClass",
                           "tutor",
                           "actingTutor",
-                          "version"
+                          "version",
+                          "opens"
                         ],
                         "additionalProperties": false
                       }
@@ -57997,6 +58001,9 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     },
+                    "opens": {
+                      "type": "boolean"
+                    },
                     "contact": {
                       "nullable": true,
                       "type": "object",
@@ -58290,6 +58297,7 @@
                     "tutor",
                     "actingTutor",
                     "version",
+                    "opens",
                     "contact",
                     "identity",
                     "identityHidden",
@@ -59970,6 +59978,9 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     },
+                    "opens": {
+                      "type": "boolean"
+                    },
                     "contact": {
                       "nullable": true,
                       "type": "object",
@@ -60263,6 +60274,7 @@
                     "tutor",
                     "actingTutor",
                     "version",
+                    "opens",
                     "contact",
                     "identity",
                     "identityHidden",
@@ -60984,6 +60996,9 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     },
+                    "opens": {
+                      "type": "boolean"
+                    },
                     "contact": {
                       "nullable": true,
                       "type": "object",
@@ -61277,6 +61292,7 @@
                     "tutor",
                     "actingTutor",
                     "version",
+                    "opens",
                     "contact",
                     "identity",
                     "identityHidden",
@@ -61854,6 +61870,9 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     },
+                    "opens": {
+                      "type": "boolean"
+                    },
                     "contact": {
                       "nullable": true,
                       "type": "object",
@@ -62147,6 +62166,7 @@
                     "tutor",
                     "actingTutor",
                     "version",
+                    "opens",
                     "contact",
                     "identity",
                     "identityHidden",
@@ -63111,6 +63131,9 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     },
+                    "opens": {
+                      "type": "boolean"
+                    },
                     "contact": {
                       "nullable": true,
                       "type": "object",
@@ -63404,6 +63427,7 @@
                     "tutor",
                     "actingTutor",
                     "version",
+                    "opens",
                     "contact",
                     "identity",
                     "identityHidden",
@@ -63972,6 +63996,9 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     },
+                    "opens": {
+                      "type": "boolean"
+                    },
                     "contact": {
                       "nullable": true,
                       "type": "object",
@@ -64265,6 +64292,7 @@
                     "tutor",
                     "actingTutor",
                     "version",
+                    "opens",
                     "contact",
                     "identity",
                     "identityHidden",
@@ -64839,6 +64867,9 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     },
+                    "opens": {
+                      "type": "boolean"
+                    },
                     "contact": {
                       "nullable": true,
                       "type": "object",
@@ -65132,6 +65163,7 @@
                     "tutor",
                     "actingTutor",
                     "version",
+                    "opens",
                     "contact",
                     "identity",
                     "identityHidden",
@@ -65737,6 +65769,9 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     },
+                    "opens": {
+                      "type": "boolean"
+                    },
                     "contact": {
                       "nullable": true,
                       "type": "object",
@@ -66030,6 +66065,7 @@
                     "tutor",
                     "actingTutor",
                     "version",
+                    "opens",
                     "contact",
                     "identity",
                     "identityHidden",
@@ -66610,6 +66646,9 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     },
+                    "opens": {
+                      "type": "boolean"
+                    },
                     "contact": {
                       "nullable": true,
                       "type": "object",
@@ -66903,6 +66942,7 @@
                     "tutor",
                     "actingTutor",
                     "version",
+                    "opens",
                     "contact",
                     "identity",
                     "identityHidden",

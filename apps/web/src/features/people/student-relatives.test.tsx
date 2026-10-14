@@ -34,6 +34,7 @@ const OTKIR: StudentListItem = {
   tutor: null,
   actingTutor: null,
   version: 1,
+  opens: true,
 };
 
 const DETAIL: StudentDetail = {

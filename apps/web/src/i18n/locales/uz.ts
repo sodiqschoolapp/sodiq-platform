@@ -466,6 +466,10 @@ export const uz: Texts<'one' | 'other'> = {
     exportAlsoChosen_other: 'Qoʻshimcha maydonlar: {{n}} guruh',
     exportColumnsLeftOut:
       'Faylga kirmadi, chunki rolingiz ularni eksport qila olmaydi: {{columns}}.',
+    exportRowsLeftOut_one:
+      '{{count}} ta qator faylga kirmadi, chunki u sizning sinflaringizdan emas.',
+    exportRowsLeftOut_other:
+      '{{count}} ta qator faylga kirmadi, chunki ular sizning sinflaringizdan emas.',
     selectAll: 'Qidiruv va filtrlarga mos barcha qatorlarni tanlash',
     selectRow: 'Tanlash: {{name}}',
     bulkActions: 'Tanlangan qatorlar bilan amallar',
@@ -2147,6 +2151,7 @@ export const uz: Texts<'one' | 'other'> = {
     emptyTitle: 'Hozircha sinflar yoʻq',
     empty: 'Sinfda bir parallel oʻquvchilari oʻqiydi. Birinchi sinfni qoʻshing.',
     emptyNoYear: 'Sinflar oʻquv yiliga tegishli. Uni qoʻshishni Super administratordan soʻrang.',
+    emptyTutor: 'Siz hali hech bir sinfning tyutori emassiz.',
     name: 'Sinf',
     className: 'Nomi',
     grade: 'Parallel',

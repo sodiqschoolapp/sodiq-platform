@@ -101,6 +101,8 @@ describe('the role switcher', () => {
     renderApp('/');
     await heading(en.home.title);
     expect(screen.getByText(en.home.tutor)).toBeDefined();
+    // Task 3.1c (decision 4 of pull request #90): the Tutor's own classes.
+    expect(side().queryByText(en.menu.classes)).not.toBeNull();
     const before = calls.length;
 
     fireEvent.change(screen.getByLabelText(en.switcher.role), { target: { value: 'teacher' } });
@@ -108,6 +110,7 @@ describe('the role switcher', () => {
     expect(await screen.findByText(en.home.teaching)).toBeDefined();
     expect(side().queryByText(en.menu.plans)).not.toBeNull();
     expect(side().queryByText(en.menu.people)).toBeNull();
+    expect(side().queryByText(en.menu.classes)).toBeNull();
     expect(calls).toHaveLength(before);
     expect(window.sessionStorage.getItem(ROLE_STORAGE_KEY)).toBe('teacher');
   });

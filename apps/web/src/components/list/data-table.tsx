@@ -43,6 +43,11 @@ interface DataTableProps<Row> {
   openId?: string | undefined;
   /** With it the cells of the `opens` column open the record. */
   onOpen?: ((id: string) => void) | undefined;
+  /**
+   * Whether a row opens, as the server answered it (a Tutor opens the
+   * students of own classes only, task 3.1c); every row when absent.
+   */
+  rowOpens?: ((row: Row) => boolean) | undefined;
 }
 
 function TickAll({ selection }: { selection: Selection }) {
@@ -95,6 +100,7 @@ export function DataTable<Row>({
   selection,
   openId,
   onOpen,
+  rowOpens,
 }: DataTableProps<Row>) {
   const { t } = useTranslation();
   return (
@@ -185,7 +191,7 @@ export function DataTable<Row>({
                   key={column.key}
                   className={cn(column.numeric === true && 'text-right tabular-nums')}
                 >
-                  {column.opens === true && onOpen !== undefined ? (
+                  {column.opens === true && onOpen !== undefined && (rowOpens?.(row) ?? true) ? (
                     <button
                       type="button"
                       data-open-row={id}

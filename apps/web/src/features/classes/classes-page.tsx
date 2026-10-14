@@ -241,7 +241,13 @@ export function ClassesPage() {
         onSearchChange={open}
         empty={{
           title: t('classes.emptyTitle'),
-          text: noYear ? t('classes.emptyNoYear') : t('classes.empty'),
+          // A Tutor lists own classes only (task 3.1c): an empty list says why.
+          text:
+            role === 'tutor'
+              ? t('classes.emptyTutor')
+              : noYear
+                ? t('classes.emptyNoYear')
+                : t('classes.empty'),
           // The header holds "New class" with its id; the empty page offers it once more.
           action:
             canCreate && newRecord.value === null && !noYear ? (
