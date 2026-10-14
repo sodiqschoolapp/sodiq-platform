@@ -204,6 +204,9 @@ const CHECKLIST: SetupChecklist = {
     { key: 'defaultTemplate', done: false, count: null, years: [] },
     { key: 'calendar', done: null, count: 3, years: [] },
     { key: 'subjects', done: false, count: 2, years: [] },
+    { key: 'classes', done: true, count: null, years: [] },
+    // Task 3.2a, decision 14.
+    { key: 'groups', done: false, count: null, years: [] },
   ],
 };
 
@@ -246,6 +249,12 @@ describe('the setup checklist', () => {
         .getByRole('link', { name: en.setup.checklist.items.defaultTemplate })
         .getAttribute('href'),
     ).toBe('/setup/day-template-settings');
+    // Task 3.2a, decision 14: the groups, on the Groups list.
+    expect(
+      within(items[10] as HTMLElement)
+        .getByRole('link', { name: en.setup.checklist.items.groups })
+        .getAttribute('href'),
+    ).toBe('/groups');
   });
 
   it.each(['super_admin', 'principal'] as const)('is shown to the %s', async (role) => {

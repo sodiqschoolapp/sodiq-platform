@@ -265,6 +265,33 @@ export const en = {
       'The class holds more students than that on some day from today on. Choose a larger maximum size.',
     academic_year_has_members:
       'Classes of this year have students, so its dates can no longer change.',
+    group_year_closed: 'The academic year of this group is closed. Its groups stay as they were.',
+    group_needs_year:
+      'This branch has no planned or current academic year. Ask the Super Admin to add one.',
+    group_changed:
+      'Someone changed this group a moment ago. Reload it, then make the change again.',
+    group_archived: 'This group is archived. Restore it first.',
+    group_class_year:
+      "A class of the group is archived or of another academic year. Choose active classes of the group's year.",
+    group_grades:
+      'A group takes classes of one grade or two. Choose classes of at most two grades.',
+    group_subject_grade:
+      'The subject is not taught in a grade of these classes. Choose another subject, or add the grade to the subject.',
+    group_subject_archived: 'The subject is archived. Choose an active subject.',
+    group_language:
+      'These classes share a language, and the group takes it. Leave the language as it is.',
+    group_language_needed: 'These classes differ in language. Choose the language of the group.',
+    group_mixed_language:
+      'The group mixes Uzbek and Russian classes. Confirm the warning to save it.',
+    class_grade_groups:
+      'The class feeds a group, so its grade cannot change. Take it out of its groups first.',
+    class_in_groups:
+      'The class feeds an active group. Take it out of the group, or archive the group, first.',
+    class_language_mixes_groups:
+      "The change makes a group of this class mix Uzbek and Russian classes. Confirm it to keep that group's language.",
+    subject_grade_groups:
+      'An active group of that grade needs the subject. Archive the group or change its classes first.',
+    subject_has_groups: 'The subject has active groups. Archive them first.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -933,6 +960,7 @@ export const en = {
         calendar: 'Calendar',
         subjects: 'Subjects and weights',
         classes: 'Classes',
+        groups: 'Groups',
       },
       calendarCount_one: '{{count}} entry',
       calendarCount_other: '{{count}} entries',
@@ -1916,6 +1944,7 @@ export const en = {
       vacancy: 'Vacancy',
       audit_entry: 'Log entry',
       class: 'Class',
+      group: 'Group',
     },
     actions: {
       auth: {
@@ -2115,6 +2144,13 @@ export const en = {
         tutor_ended: 'Tutor of a class ended',
         export: 'Classes exported',
       },
+      group: {
+        create: 'Group created',
+        edit: 'Group changed',
+        archive: 'Group archived',
+        restore: 'Group restored',
+        export: 'Groups exported',
+      },
       audit: {
         entry_shown: 'Hidden values of a log entry shown',
       },
@@ -2205,6 +2241,79 @@ export const en = {
     placeTitle_other: 'Put {{n}} students into a class',
     classYear: '{{class}} · {{year}}',
     endCauses: { ended: 'Ended', role: 'Role ended', archive: 'Class archived' },
+    groupsLink: 'Groups',
+    mixedGroupsTitle: 'Keep the language of these groups?',
+    mixedGroupsText:
+      'These groups of the class then mix Uzbek and Russian classes and keep their language.',
+    mixedGroupsConfirm: 'Change the language',
+    mixedGroupsUnnamed: 'A group of this class',
+  },
+  groups: {
+    title: 'Groups',
+    classesLink: 'Classes',
+    caption: 'Groups of the branch',
+    add: 'New group',
+    newTitle: 'New group',
+    cancel: 'Cancel',
+    needYear: 'Add an academic year first',
+    needClass: 'Add a class first',
+    needSubject: 'Add a subject first',
+    emptyTitle: 'No groups yet',
+    empty:
+      'A group holds the students of one subject, from one class or several. Add the first group.',
+    emptyNoYear: 'Groups belong to an academic year. Ask the Super Admin to add one.',
+    emptyTutor: 'No group draws from your classes yet.',
+    columns: {
+      name: 'Group',
+      subject: 'Subject',
+      classes: 'Classes',
+      language: 'Language of instruction',
+      maxSize: 'Maximum size',
+      status: 'Status',
+    },
+    groupName: 'Name',
+    year: 'Academic year',
+    subject: 'Subject',
+    chooseSubject: 'Choose a subject',
+    classes: 'Classes',
+    chooseClasses: 'Choose at least one class',
+    noClasses: 'This year has no active class yet.',
+    grade: 'Grade',
+    gradeOption: 'Grade {{grade}}',
+    language: 'Language of instruction',
+    languageOfClasses: 'As its classes: {{language}}',
+    maxSize: 'Maximum size',
+    maxSizeNote: 'From {{min}} to {{max}} students',
+    status: 'Status',
+    active: 'Active',
+    archived: 'Archived',
+    kind: 'Kind',
+    kinds: {
+      split: 'Split of a class',
+      across: 'Group across classes',
+    },
+    teacher: 'Teacher',
+    students: 'Students',
+    average: 'Average',
+    attendance: 'Attendance',
+    notYet: '—',
+    sharedSlots: 'Lesson slots of both grades',
+    noSharedSlot:
+      'No weekday has a lesson slot at the same time in both grades. The teaching load will refuse this group.',
+    slotsLoading: 'Reading the lesson slots…',
+    slotDay: '{{day}}: {{slots}}',
+    slotDayNone: '{{day}}: none',
+    mixedTitle: 'Mix Uzbek and Russian classes?',
+    mixedText:
+      'The classes of this group differ in language. The group is taught in the language chosen.',
+    mixedConfirm: 'Save the group',
+    archiveGroup: 'Archive group',
+    restoreGroup: 'Restore group',
+    archiveTitle: 'Archive this group?',
+    archiveText: 'It stays in the history and can be restored.',
+    restoreTitle: 'Restore this group?',
+    restoreText: 'It is checked again against its classes and subject.',
+    takenOpen: 'Open the group with this name',
   },
   account: {
     title: 'Account',

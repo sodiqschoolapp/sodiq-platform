@@ -18,7 +18,9 @@ import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
+import { SaveCancelled } from '@/components/form/save-cancelled';
 import { ClassForm } from './class-form';
+import { groupsQuery, invalidateGroups } from './groups-api';
 import { ClassMembers } from './class-members';
 import { ClassTutors, tutorName } from './class-tutors';
 import {
@@ -52,7 +54,10 @@ export function ClassPanel({ row, columns, years, rooms, canEdit, canArchive }: 
   const confirm = useConfirm();
   const panel = usePanelEditing();
   const detail = useQuery(classQuery(branchId, row.id));
-  const refresh = () => invalidateClasses(queryClient);
+  // The names of the groups a language change would make mix languages (task 3.2a).
+  const groups = useQuery({ ...groupsQuery(branchId), enabled: branchId !== null && canEdit });
+  const refresh = () =>
+    Promise.all([invalidateClasses(queryClient), invalidateGroups(queryClient)]);
 
   // "Class changed, reload": the form closes, the class is read again and the
   // refusal stays at the bottom of the panel (.claude/rules/web.md).
@@ -133,7 +138,35 @@ export function ClassPanel({ row, columns, years, rooms, canEdit, canArchive }: 
           label={name}
           onSave={async (record: ClassCreate | ClassEdit) => {
             if ('version' in record) {
-              await edit.mutateAsync(record);
+              try {
+                await edit.mutateAsync(record);
+              } catch (error) {
+                // Task 3.2a, decision 8: a language change that makes a group of
+                // the class mix languages is confirmed, naming the groups.
+                if (
+                  !(error instanceof ApiFailure) ||
+                  error.code !== 'class_language_mixes_groups'
+                ) {
+                  throw error;
+                }
+                const names = (error.details ?? [])
+                  .filter((one) => one.path.startsWith('group.'))
+                  .map(
+                    (one) =>
+                      groups.data?.groups.find((group) => `group.${group.id}` === one.path)?.name ??
+                      t('classes.mixedGroupsUnnamed'),
+                  );
+                const confirmed = await confirm({
+                  title: t('classes.mixedGroupsTitle'),
+                  text: t('classes.mixedGroupsText'),
+                  names,
+                  action: t('classes.mixedGroupsConfirm'),
+                });
+                if (!confirmed) {
+                  throw new SaveCancelled();
+                }
+                await edit.mutateAsync({ ...record, confirmMixedGroups: true });
+              }
             }
             panel.stop({ saved: true, key: 'record' });
           }}

@@ -55,6 +55,15 @@ export const PEOPLE_PAGES: readonly (IndexedPage & { area: string })[] = [
   { titleKey: 'people.neverUsed.title', to: '/people/never-used', area: 'account_access' },
 ];
 
+/**
+ * The pages under "Classes" (task 3.2a): the Groups list, reached from the
+ * Classes page, indexed when the menu of the role has the item and the role
+ * views groups.
+ */
+export const CLASS_PAGES: readonly (IndexedPage & { area: string })[] = [
+  { titleKey: 'groups.title', to: '/groups', area: 'groups' },
+];
+
 /** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */
 export function indexedPages(
   menuPages: readonly IndexedPage[],
@@ -68,5 +77,8 @@ export function indexedPages(
   const people = menuPages.some((page) => page.to === '/people')
     ? PEOPLE_PAGES.filter((page) => views(page.area)).map(({ titleKey, to }) => ({ titleKey, to }))
     : [];
-  return [...menuPages, ...setup, ...people, ...COMMON_PAGES];
+  const classes = menuPages.some((page) => page.to === '/classes')
+    ? CLASS_PAGES.filter((page) => views(page.area)).map(({ titleKey, to }) => ({ titleKey, to }))
+    : [];
+  return [...menuPages, ...setup, ...people, ...classes, ...COMMON_PAGES];
 }

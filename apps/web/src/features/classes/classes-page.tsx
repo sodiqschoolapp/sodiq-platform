@@ -9,7 +9,7 @@ import {
   type SchoolClass,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WarningIcon } from '@/components/icons';
@@ -210,18 +210,29 @@ export function ClassesPage() {
     ];
   }, [t, number, classes.data]);
 
-  const addButton = canCreate && newRecord.value === null && (
+  // Task 3.2a: the groups are reached from the Classes item of the menu.
+  const canViewGroups = role !== null && permits(PERMISSIONS, role, 'groups', 'view');
+  const addButton = (canViewGroups || (canCreate && newRecord.value === null)) && (
     <div className="flex flex-wrap items-center gap-3">
-      <Button
-        id={newRecord.buttonId}
-        disabled={years.data === undefined || noYear || rooms.data === undefined}
-        onClick={() => {
-          newRecord.start(true);
-        }}
-      >
-        {t('classes.add')}
-      </Button>
-      {noYear && <span className="text-sm text-muted-foreground">{t('classes.needYear')}</span>}
+      {canViewGroups && (
+        <Link to="/groups" className="text-link">
+          {t('classes.groupsLink')}
+        </Link>
+      )}
+      {canCreate && newRecord.value === null && (
+        <>
+          <Button
+            id={newRecord.buttonId}
+            disabled={years.data === undefined || noYear || rooms.data === undefined}
+            onClick={() => {
+              newRecord.start(true);
+            }}
+          >
+            {t('classes.add')}
+          </Button>
+          {noYear && <span className="text-sm text-muted-foreground">{t('classes.needYear')}</span>}
+        </>
+      )}
     </div>
   );
 

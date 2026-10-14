@@ -436,6 +436,8 @@ describe('a class in the side panel', () => {
     await savedInPanel(panel);
     expect(calls.find((call) => call.route === `PUT /api/classes/${OXFORD.id}`)?.body).toEqual({
       version: 0,
+      // Task 3.2a, decision 8: nothing to confirm about its groups.
+      confirmMixedGroups: false,
       grade: 7,
       name: 'Oxford',
       language: 'uz',

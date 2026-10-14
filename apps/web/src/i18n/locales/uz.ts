@@ -273,6 +273,32 @@ export const uz: Texts<'one' | 'other'> = {
       'Bugundan boshlab qaysidir kuni sinfda bundan koʻp oʻquvchi bor. Kattaroq sonni tanlang.',
     academic_year_has_members:
       'Bu yil sinflarida oʻquvchilar bor, shuning uchun uning sanalarini endi oʻzgartirib boʻlmaydi.',
+    group_year_closed: 'Bu guruhning oʻquv yili yopilgan. Uning guruhlari avvalgidek qoladi.',
+    group_needs_year:
+      'Filialda rejalashtirilgan yoki joriy oʻquv yili yoʻq. Uni qoʻshishni Super administratordan soʻrang.',
+    group_changed:
+      'Kimdir bu guruhni hozirgina oʻzgartirdi. Uni qayta yuklang va oʻzgarishni yana kiriting.',
+    group_archived: 'Guruh arxivda. Avval uni tiklang.',
+    group_class_year:
+      'Guruhning sinfi arxivda yoki boshqa oʻquv yiliga tegishli. Guruh oʻquv yilining faol sinflarini tanlang.',
+    group_grades:
+      'Guruh bir yoki ikki parallel sinflaridan tuziladi. Koʻpi bilan ikki parallel sinflarini tanlang.',
+    group_subject_grade:
+      'Bu sinflar paralleliga fan oʻqitilmaydi. Boshqa fanni tanlang yoki fanga parallelni qoʻshing.',
+    group_subject_archived: 'Fan arxivda. Faol fanni tanlang.',
+    group_language: 'Bu sinflarning tili bitta, guruh ham shu tilni oladi. Tilni oʻzgartirmang.',
+    group_language_needed: 'Bu sinflarning tillari har xil. Guruh tilini tanlang.',
+    group_mixed_language:
+      'Guruhda oʻzbek va rus sinflari aralashgan. Saqlash uchun ogohlantirishni tasdiqlang.',
+    class_grade_groups:
+      'Sinf guruhga kiradi, shuning uchun uning paralleli oʻzgarmaydi. Avval uni guruhlardan chiqaring.',
+    class_in_groups:
+      'Sinf faol guruhga kiradi. Avval uni guruhdan chiqaring yoki guruhni arxivlang.',
+    class_language_mixes_groups:
+      'Bu oʻzgarishdan keyin sinfning guruhi oʻzbek va rus sinflarini aralashtiradi. Guruh tilini saqlash uchun tasdiqlang.',
+    subject_grade_groups:
+      'Shu parallelning faol guruhiga fan kerak. Avval guruhni arxivlang yoki uning sinflarini oʻzgartiring.',
+    subject_has_groups: 'Fanning faol guruhlari bor. Avval ularni arxivlang.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
@@ -947,6 +973,7 @@ export const uz: Texts<'one' | 'other'> = {
         calendar: 'Taqvim',
         subjects: 'Fanlar va vaznlar',
         classes: 'Sinflar',
+        groups: 'Guruhlar',
       },
       calendarCount_one: '{{count}} ta yozuv',
       calendarCount_other: '{{count}} ta yozuv',
@@ -1937,6 +1964,7 @@ export const uz: Texts<'one' | 'other'> = {
       vacancy: 'Boʻsh oʻrin',
       audit_entry: 'Jurnal yozuvi',
       class: 'Sinf',
+      group: 'Guruh',
     },
     actions: {
       auth: {
@@ -2136,6 +2164,13 @@ export const uz: Texts<'one' | 'other'> = {
         tutor_ended: 'Sinf tyutori yakunlandi',
         export: 'Sinflar eksport qilindi',
       },
+      group: {
+        create: 'Guruh yaratildi',
+        edit: 'Guruh oʻzgartirildi',
+        archive: 'Guruh arxivlandi',
+        restore: 'Guruh tiklandi',
+        export: 'Guruhlar eksport qilindi',
+      },
       audit: {
         entry_shown: 'Jurnal yozuvining yashirin qiymatlari koʻrsatildi',
       },
@@ -2227,6 +2262,78 @@ export const uz: Texts<'one' | 'other'> = {
     placeTitle_other: 'Sinfga joylashtirish: {{n}} ta oʻquvchi',
     classYear: '{{class}} · {{year}}',
     endCauses: { ended: 'Yakunlangan', role: 'Rol yakunlangan', archive: 'Sinf arxivlangan' },
+    groupsLink: 'Guruhlar',
+    mixedGroupsTitle: 'Bu guruhlarning tili saqlansinmi?',
+    mixedGroupsText:
+      'Sinfning bu guruhlari oʻzbek va rus sinflarini aralashtiradi va oʻz tilini saqlaydi.',
+    mixedGroupsConfirm: 'Tilni oʻzgartirish',
+    mixedGroupsUnnamed: 'Bu sinfning guruhi',
+  },
+  groups: {
+    title: 'Guruhlar',
+    classesLink: 'Sinflar',
+    caption: 'Filial guruhlari',
+    add: 'Yangi guruh',
+    newTitle: 'Yangi guruh',
+    cancel: 'Bekor qilish',
+    needYear: 'Avval oʻquv yilini qoʻshing',
+    needClass: 'Avval sinf qoʻshing',
+    needSubject: 'Avval fan qoʻshing',
+    emptyTitle: 'Hozircha guruhlar yoʻq',
+    empty:
+      'Guruhda bir yoki bir nechta sinfning bir fan boʻyicha oʻquvchilari oʻqiydi. Birinchi guruhni qoʻshing.',
+    emptyNoYear: 'Guruhlar oʻquv yiliga tegishli. Uni qoʻshishni Super administratordan soʻrang.',
+    emptyTutor: 'Hali sizning sinflaringizdan hech bir guruh tuzilmagan.',
+    columns: {
+      name: 'Guruh',
+      subject: 'Fan',
+      classes: 'Sinflar',
+      language: 'Taʼlim tili',
+      maxSize: 'Eng koʻp oʻquvchi',
+      status: 'Holati',
+    },
+    groupName: 'Nomi',
+    year: 'Oʻquv yili',
+    subject: 'Fan',
+    chooseSubject: 'Fanni tanlang',
+    classes: 'Sinflar',
+    chooseClasses: 'Kamida bitta sinfni tanlang',
+    noClasses: 'Bu yilda hali faol sinf yoʻq.',
+    grade: 'Parallel',
+    gradeOption: '{{grade}}-sinf',
+    language: 'Taʼlim tili',
+    languageOfClasses: 'Sinflaridagidek: {{language}}',
+    maxSize: 'Eng koʻp oʻquvchi',
+    maxSizeNote: '{{min}} dan {{max}} gacha oʻquvchi',
+    status: 'Holati',
+    active: 'Faol',
+    archived: 'Arxivda',
+    kind: 'Turi',
+    kinds: {
+      split: 'Sinfning boʻlinishi',
+      across: 'Sinflardan tuzilgan guruh',
+    },
+    teacher: 'Oʻqituvchi',
+    students: 'Oʻquvchilar',
+    average: 'Oʻrtacha baho',
+    attendance: 'Davomat',
+    notYet: '—',
+    sharedSlots: 'Ikkala parallel uchun umumiy darslar',
+    noSharedSlot:
+      'Hech bir kunda ikkala parallelda bir vaqtda dars yoʻq. Oʻquv yuklamasi bu guruhni qabul qilmaydi.',
+    slotsLoading: 'Darslar oʻqilmoqda…',
+    slotDay: '{{day}}: {{slots}}',
+    slotDayNone: '{{day}}: yoʻq',
+    mixedTitle: 'Oʻzbek va rus sinflari aralashtirilsinmi?',
+    mixedText: 'Bu guruh sinflarining tillari har xil. Guruh tanlangan tilda oʻqiydi.',
+    mixedConfirm: 'Guruhni saqlash',
+    archiveGroup: 'Arxivlash',
+    restoreGroup: 'Guruhni tiklash',
+    archiveTitle: 'Bu guruh arxivlansinmi?',
+    archiveText: 'U tarixda qoladi va uni tiklash mumkin.',
+    restoreTitle: 'Bu guruh tiklansinmi?',
+    restoreText: 'Uning sinflari va fani qayta tekshiriladi.',
+    takenOpen: 'Shu nomdagi guruhni ochish',
   },
   account: {
     title: 'Hisob',
