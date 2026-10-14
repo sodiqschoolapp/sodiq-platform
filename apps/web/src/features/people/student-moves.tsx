@@ -177,7 +177,7 @@ export function ClassMoveForm({
                   api.POST('/api/classes/transfers/{id}/change', {
                     params: { header: branchHeader(), path: { id: move.id } },
                     body: {
-                      ...(input as ClassTransferChange),
+                      ...(input),
                       ...(confirmLanguage ? { confirmLanguage } : {}),
                     },
                   }),
@@ -269,7 +269,7 @@ export function GroupMoveForm({
             : answerOf(
                 api.POST('/api/groups/transfers/{id}/change', {
                   params: { header: branchHeader(), path: { id: move.id } },
-                  body: input as GroupTransferChange,
+                  body: input,
                 }),
               ),
         onStale,
