@@ -682,6 +682,34 @@ describe('class membership', () => {
       );
     });
 
+    it('gives the class back without an overlap after a leaving, its cancel, an earlier leaving and its undo', async () => {
+      // Found by the browser test of the build: the first row and the row the
+      // cancel wrote back both keep the year as their own end.
+      const oxford = await schoolClass();
+      const one = await student({ startsOn: '2026-09-02', classId: oxford });
+      const scheduled = studentDetailSchema.parse((await leave(one, '2026-10-20')).body);
+      const cancelled = await t.post(`/api/people/students/${one.id}/leaving/cancel`, t.north, {
+        version: scheduled.version,
+      });
+      expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      const gone = studentDetailSchema.parse(
+        (await leave(studentDetailSchema.parse(cancelled.body), '2026-10-01')).body,
+      );
+      expect(gone.class).toBeNull();
+      const undone = await t.post(`/api/people/students/${one.id}/leaving/undo`, t.north, {
+        reason: 'Entered for the wrong student.',
+        version: gone.version,
+      });
+      expect(undone.status, JSON.stringify(undone.body)).toBe(200);
+      expect(studentDetailSchema.parse(undone.body).class).toMatchObject({ id: oxford });
+      const live = (await rowsOfStudent(one.id)).filter((row) => row.valid_from < row.valid_until);
+      expect(live.map((row) => [row.valid_from, row.valid_until, row.cause])).toEqual([
+        ['2026-09-02', '2026-10-02', 'create'],
+        ['2026-10-02', '2026-10-21', 'undo'],
+        ['2026-10-21', '2027-06-01', 'undo'],
+      ]);
+    });
+
     it('names a class archived meanwhile and does not give it back', async () => {
       const oxford = await schoolClass();
       const one = await student({ startsOn: '2026-09-02', classId: oxford });

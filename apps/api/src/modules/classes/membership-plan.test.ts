@@ -47,7 +47,12 @@ describe('the class rows through a change of a leaving', () => {
   });
 
   it('gives back the rows a cancelled leaving cut, from its first inactive day to their own end', () => {
-    const cut = row('now', '2026-09-01', '2026-11-02', { endedBy: 'leaving', leavingId: 'L0' });
+    // The row in force ends where the planned one begins (its own end).
+    const cut = row('now', '2026-09-01', '2026-11-02', {
+      endedBy: 'leaving',
+      leavingId: 'L0',
+      ownUntil: '2027-01-04',
+    });
     const withdrawn = row('later', '2027-01-04', '2027-01-04', {
       endedBy: 'leaving',
       leavingId: 'L0',
@@ -64,8 +69,8 @@ describe('the class rows through a change of a leaving', () => {
       {
         classId: 'oxford',
         validFrom: '2026-11-02',
-        validUntil: YEAR_END,
-        ownUntil: YEAR_END,
+        validUntil: '2027-01-04',
+        ownUntil: '2027-01-04',
         cut: false,
       },
       {
@@ -108,8 +113,17 @@ describe('the class rows through a change of a leaving', () => {
   });
 
   it('replaces a scheduled leaving by a later date: the rows come back up to the new date', () => {
-    const cut = row('now', '2026-09-01', '2026-11-02', { endedBy: 'leaving', leavingId: 'L0' });
-    const before = row('dec', '2026-12-01', '2026-12-01', { endedBy: 'leaving', leavingId: 'L0' });
+    // Three rows one after another, each to the start of the next.
+    const cut = row('now', '2026-09-01', '2026-11-02', {
+      endedBy: 'leaving',
+      leavingId: 'L0',
+      ownUntil: '2026-12-01',
+    });
+    const before = row('dec', '2026-12-01', '2026-12-01', {
+      endedBy: 'leaving',
+      leavingId: 'L0',
+      ownUntil: '2027-02-01',
+    });
     const after = row('feb', '2027-02-01', '2027-02-01', { endedBy: 'leaving', leavingId: 'L0' });
     const plan = planMemberships(
       [cut, before, after],
@@ -121,16 +135,44 @@ describe('the class rows through a change of a leaving', () => {
       {
         classId: 'oxford',
         validFrom: '2026-11-02',
-        validUntil: '2027-01-04',
-        ownUntil: YEAR_END,
-        cut: true,
+        validUntil: '2026-12-01',
+        ownUntil: '2026-12-01',
+        cut: false,
       },
       {
         classId: 'oxford',
         validFrom: '2026-12-01',
         validUntil: '2027-01-04',
-        ownUntil: YEAR_END,
+        ownUntil: '2027-02-01',
         cut: true,
+      },
+    ]);
+  });
+
+  it('gives back a row and the row a cancel wrote after it without an overlap', async () => {
+    // A leaving, its cancel, then an earlier leaving in force: it cut the first
+    // row and emptied the one the cancel wrote back; both keep the year as their own end.
+    const first = row('first', '2026-09-02', '2026-10-01', { endedBy: 'leaving', leavingId: 'L2' });
+    const back = row('back', '2026-10-11', '2026-10-11', { endedBy: 'leaving', leavingId: 'L2' });
+    const plan = planMemberships(
+      [first, back],
+      { takeBack: { leavingId: 'L2', from: '2026-10-01' }, leave: null },
+      always,
+    );
+    expect(plan.inserts).toEqual([
+      {
+        classId: 'oxford',
+        validFrom: '2026-10-01',
+        validUntil: '2026-10-11',
+        ownUntil: '2026-10-11',
+        cut: false,
+      },
+      {
+        classId: 'oxford',
+        validFrom: '2026-10-11',
+        validUntil: YEAR_END,
+        ownUntil: YEAR_END,
+        cut: false,
       },
     ]);
   });

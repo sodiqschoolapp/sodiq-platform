@@ -115,7 +115,10 @@ export interface MembershipPlan {
  *   before, and names itself on it;
  * - a leaving taken back gives back, as new rows, the rows it cut, each from
  *   the later of its first inactive day and the row's own start (a withdrawn
- *   planned row comes back on its planned date) to the row's own end;
+ *   planned row comes back on its planned date) to the row's own end, or to
+ *   the start of the next row given back when that comes first (a leaving,
+ *   its cancel and an earlier leaving cut both the first row and the row the
+ *   cancel wrote back);
  * - the replace of a scheduled leaving does both: by an earlier date the new
  *   leaving cuts the rows the old one cut, which keep their own end, and takes
  *   over the planned rows it withdrew; by a later date the rows come back up
@@ -138,6 +141,7 @@ export function planMemberships(
     cut: boolean;
   }[] = [];
   const notRestored: StoredMembership[] = [];
+  const given: { row: StoredMembership; start: SchoolDate }[] = [];
   const { takeBack, leave } = change;
   for (const row of rows) {
     const cutByTakenBack =
@@ -153,34 +157,41 @@ export function planMemberships(
         continue;
       }
     }
-    if (!cutByTakenBack || takeBack === null) {
-      continue;
+    if (cutByTakenBack && takeBack !== null) {
+      given.push({ row, start: later(takeBack.from, row.validFrom) });
     }
-    const start = later(takeBack.from, row.validFrom);
-    if (start >= row.ownUntil) {
-      continue;
+  }
+  // The rows the leaving cut never overlapped before it: each comes back up
+  // to its own end, but not past the start of the next one that comes back
+  // (a row a cancel wrote back continues one the leaving cut first).
+  given.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+  given.forEach(({ row, start }, index) => {
+    const next = given[index + 1];
+    const end = next !== undefined && next.start < row.ownUntil ? next.start : row.ownUntil;
+    if (start >= end) {
+      return;
     }
     if (!inService(row.classId)) {
       notRestored.push(row);
-      continue;
+      return;
     }
-    if (leave !== null && leave.from < row.ownUntil) {
+    if (leave !== null && leave.from < end) {
       inserts.push({
         classId: row.classId,
         validFrom: start,
         validUntil: later(start, leave.from),
-        ownUntil: row.ownUntil,
+        ownUntil: end,
         cut: true,
       });
     } else {
       inserts.push({
         classId: row.classId,
         validFrom: start,
-        validUntil: row.ownUntil,
-        ownUntil: row.ownUntil,
+        validUntil: end,
+        ownUntil: end,
         cut: false,
       });
     }
-  }
+  });
   return { cuts, inserts, notRestored };
 }
