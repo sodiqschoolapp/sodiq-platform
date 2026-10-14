@@ -1,0 +1,238 @@
+import { describe, expect, it } from 'vitest';
+import {
+  placementEnd,
+  planMemberships,
+  type PlacementStatus,
+  type StoredMembership,
+} from './membership-plan.js';
+
+const YEAR_END = '2027-06-01';
+
+const row = (
+  id: string,
+  validFrom: string,
+  validUntil = YEAR_END,
+  extra: Partial<StoredMembership> = {},
+): StoredMembership => ({
+  id,
+  classId: 'oxford',
+  validFrom,
+  validUntil,
+  ownUntil: YEAR_END,
+  endedBy: null,
+  leavingId: null,
+  ...extra,
+});
+
+const always = () => true;
+
+// The class rows of a student through a leaving, its cancel, undo and
+// replace (task 3.1b, decision 1 with correction 1 of the plan review).
+describe('the class rows through a change of a leaving', () => {
+  it('cuts the rows in force at the first inactive day and withdraws the planned ones', () => {
+    const plan = planMemberships(
+      [
+        row('now', '2026-09-01'),
+        row('past', '2026-01-10', '2026-06-01'),
+        row('later', '2027-01-04'),
+      ],
+      { takeBack: null, leave: { from: '2026-11-02' } },
+      always,
+    );
+    expect(plan.cuts).toEqual([
+      { id: 'now', validUntil: '2026-11-02' },
+      { id: 'later', validUntil: '2027-01-04' },
+    ]);
+    expect(plan.inserts).toEqual([]);
+  });
+
+  it('gives back the rows a cancelled leaving cut, from its first inactive day to their own end', () => {
+    const cut = row('now', '2026-09-01', '2026-11-02', { endedBy: 'leaving', leavingId: 'L0' });
+    const withdrawn = row('later', '2027-01-04', '2027-01-04', {
+      endedBy: 'leaving',
+      leavingId: 'L0',
+    });
+    const other = row('other', '2026-09-01', '2026-10-01', { endedBy: 'leaving', leavingId: 'X' });
+    const plan = planMemberships(
+      [cut, withdrawn, other],
+      { takeBack: { leavingId: 'L0', from: '2026-11-02' }, leave: null },
+      always,
+    );
+    expect(plan.cuts).toEqual([]);
+    // Correction 1: the withdrawn planned row comes back on its planned date.
+    expect(plan.inserts).toEqual([
+      {
+        classId: 'oxford',
+        validFrom: '2026-11-02',
+        validUntil: YEAR_END,
+        ownUntil: YEAR_END,
+        cut: false,
+      },
+      {
+        classId: 'oxford',
+        validFrom: '2027-01-04',
+        validUntil: YEAR_END,
+        ownUntil: YEAR_END,
+        cut: false,
+      },
+    ]);
+  });
+
+  it('names the rows of a class out of service and does not give them back', () => {
+    const cut = row('now', '2026-09-01', '2026-11-02', { endedBy: 'leaving', leavingId: 'L0' });
+    const plan = planMemberships(
+      [cut],
+      { takeBack: { leavingId: 'L0', from: '2026-11-02' }, leave: null },
+      () => false,
+    );
+    expect(plan.inserts).toEqual([]);
+    expect(plan.notRestored).toEqual([cut]);
+  });
+
+  it('replaces a scheduled leaving by an earlier date: the cut rows are cut again, the withdrawn ones taken over', () => {
+    const cut = row('now', '2026-09-01', '2026-12-01', { endedBy: 'leaving', leavingId: 'L0' });
+    const withdrawn = row('later', '2027-01-04', '2027-01-04', {
+      endedBy: 'leaving',
+      leavingId: 'L0',
+    });
+    const plan = planMemberships(
+      [cut, withdrawn],
+      { takeBack: { leavingId: 'L0', from: '2026-12-01' }, leave: { from: '2026-11-02' } },
+      always,
+    );
+    expect(plan.cuts).toEqual([
+      { id: 'now', validUntil: '2026-11-02' },
+      { id: 'later', validUntil: '2027-01-04' },
+    ]);
+    expect(plan.inserts).toEqual([]);
+  });
+
+  it('replaces a scheduled leaving by a later date: the rows come back up to the new date', () => {
+    const cut = row('now', '2026-09-01', '2026-11-02', { endedBy: 'leaving', leavingId: 'L0' });
+    const before = row('dec', '2026-12-01', '2026-12-01', { endedBy: 'leaving', leavingId: 'L0' });
+    const after = row('feb', '2027-02-01', '2027-02-01', { endedBy: 'leaving', leavingId: 'L0' });
+    const plan = planMemberships(
+      [cut, before, after],
+      { takeBack: { leavingId: 'L0', from: '2026-11-02' }, leave: { from: '2027-01-04' } },
+      always,
+    );
+    expect(plan.cuts).toEqual([{ id: 'feb', validUntil: '2027-02-01' }]);
+    expect(plan.inserts).toEqual([
+      {
+        classId: 'oxford',
+        validFrom: '2026-11-02',
+        validUntil: '2027-01-04',
+        ownUntil: YEAR_END,
+        cut: true,
+      },
+      {
+        classId: 'oxford',
+        validFrom: '2026-12-01',
+        validUntil: '2027-01-04',
+        ownUntil: YEAR_END,
+        cut: true,
+      },
+    ]);
+  });
+
+  it('leaves a withdrawn row withdrawn', () => {
+    const withdrawn = row('w', '2026-12-01', '2026-12-01', { endedBy: 'withdrawn' });
+    expect(
+      planMemberships([withdrawn], { takeBack: null, leave: { from: '2026-11-02' } }, always),
+    ).toEqual({ cuts: [], inserts: [], notRestored: [] });
+  });
+});
+
+const active = (
+  id: string,
+  from: string,
+  until: string | null,
+  cause = 'start',
+): PlacementStatus => ({
+  id,
+  status: 'active',
+  validFrom: from,
+  validUntil: until,
+  cause,
+});
+
+// The end of a placement (decision 6; should-fix 9 of the plan review).
+describe('the end of a placement', () => {
+  it('runs to the day after the year while the student stays active', () => {
+    expect(
+      placementEnd([active('a', '2026-09-01', null)], '2026-09-01', '2026-10-14', YEAR_END),
+    ).toEqual({
+      until: YEAR_END,
+      leavingId: null,
+    });
+    // A cancel fill: two active rows back to back are one active time.
+    expect(
+      placementEnd(
+        [
+          active('a', '2026-09-01', '2026-11-02'),
+          {
+            id: 'l',
+            status: 'inactive',
+            validFrom: '2026-11-02',
+            validUntil: '2026-11-02',
+            cause: 'leaving',
+          },
+          active('b', '2026-11-02', null, 'cancel'),
+        ],
+        '2026-09-01',
+        '2026-10-14',
+        YEAR_END,
+      ),
+    ).toEqual({ until: YEAR_END, leavingId: null });
+  });
+
+  it('ends at a scheduled leaving and names it', () => {
+    expect(
+      placementEnd(
+        [
+          active('a', '2026-09-01', '2026-12-01'),
+          {
+            id: 'l',
+            status: 'inactive',
+            validFrom: '2026-12-01',
+            validUntil: null,
+            cause: 'leaving',
+          },
+        ],
+        '2026-09-01',
+        '2026-10-14',
+        YEAR_END,
+      ),
+    ).toEqual({ until: '2026-12-01', leavingId: 'l' });
+  });
+
+  it('refuses before the start date, outside the active time, and up to a graduation', () => {
+    const rows = [
+      active('a', '2026-09-01', '2026-12-01'),
+      { id: 'l', status: 'inactive', validFrom: '2026-12-01', validUntil: null, cause: 'leaving' },
+    ];
+    expect(placementEnd(rows, '2026-09-01', '2026-08-31', YEAR_END)).toEqual({
+      refusal: 'membership_before_start',
+    });
+    expect(placementEnd(rows, '2026-09-01', '2026-12-01', YEAR_END)).toEqual({
+      refusal: 'student_not_active_on',
+    });
+    expect(
+      placementEnd(
+        [
+          active('a', '2026-09-01', '2027-05-01'),
+          {
+            id: 'g',
+            status: 'graduated',
+            validFrom: '2027-05-01',
+            validUntil: null,
+            cause: 'graduation',
+          },
+        ],
+        '2026-09-01',
+        '2026-10-14',
+        YEAR_END,
+      ),
+    ).toEqual({ refusal: 'student_not_active_on' });
+  });
+});

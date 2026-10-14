@@ -192,11 +192,7 @@ describe('the audit log page', () => {
   }
 
   async function student(branch = '', overrides: Record<string, unknown> = {}) {
-    const response = await t.post(
-      '/api/people/students',
-      branch || t.north,
-      studentBody(overrides),
-    );
+    const response = await t.postStudent(branch || t.north, studentBody(overrides));
     expect(response.status, JSON.stringify(response.body)).toBe(201);
     return studentDetailSchema.parse(response.body);
   }

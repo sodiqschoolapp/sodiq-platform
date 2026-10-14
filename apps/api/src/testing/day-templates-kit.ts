@@ -48,6 +48,16 @@ export interface DayTemplatesKit {
   post(path: string, branch: string, body?: object, cookie?: string): Test;
   patch(path: string, branch: string, body: object, cookie?: string): Test;
   put(path: string, branch: string, body: object, cookie?: string): Test;
+  /**
+   * The create of a student (`POST /api/people/students`). A body that names
+   * no `classId` joins the kit's class of its grade in the year of the
+   * branch that holds its start date (task 3.1b, decision 2: a student who
+   * starts today or earlier is created with a class); a test of that rule
+   * names `classId` itself.
+   */
+  postStudent(branch: string, body: object, cookie?: string): Promise<Response>;
+  /** The kit's class of a grade in the year of the branch that holds `on`, created once; `null` without a year. */
+  classOf(branch: string, grade: number, on: string): Promise<string | null>;
   /** The audit entries of an action, oldest first, of one record when named. */
   entries(action: string, recordId?: string): Promise<Record<string, unknown>[]>;
   auditCount(): Promise<number>;
@@ -131,6 +141,46 @@ export async function dayTemplatesKit(
     expect(response.status, `${what}: ${JSON.stringify(response.body)}`).toBe(201);
   };
 
+  /** The kit's classes by year and grade, with the students the kit put in each. */
+  const kitClasses = new Map<string, { id: string; placed: number }>();
+  let kitClassCount = 0;
+  /** The kit's class of a grade in the year of the branch that holds `on`, written by the migrator. */
+  async function classOf(branch: string, grade: number, on: string): Promise<string | null> {
+    const year = await database.migrator
+      .selectFrom('academic_years')
+      .select('id')
+      .where('branch_id', '=', branch)
+      .where('start_date', '<=', on)
+      .where('end_date', '>=', on)
+      .executeTakeFirst();
+    if (year === undefined) {
+      return null;
+    }
+    const key = `${year.id} ${String(grade)}`;
+    const known = kitClasses.get(key);
+    // A class holds 60 (CLASS_MAX_SIZE): the next one is opened when it is full.
+    if (known !== undefined && known.placed < 60) {
+      known.placed += 1;
+      return known.id;
+    }
+    kitClassCount += 1;
+    const row = await database.migrator
+      .insertInto('classes')
+      .values({
+        branch_id: branch,
+        academic_year_id: year.id,
+        grade,
+        name: `Kit ${'abcdefghijklmnopqrstuvwxyz'.charAt(kitClassCount % 26)}${'k'.repeat(Math.floor(kitClassCount / 26))}`,
+        language: 'uz',
+        main_room_id: null,
+        max_size: 60,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    kitClasses.set(key, { id: row.id, placed: 1 });
+    return row.id;
+  }
+
   let branches = 0;
   return {
     database,
@@ -157,6 +207,19 @@ export async function dayTemplatesKit(
     post,
     patch,
     put,
+    async postStudent(branch, body, cookie) {
+      const fields = body as { classId?: unknown; grade?: unknown; startsOn?: unknown };
+      if (
+        fields.classId === undefined &&
+        typeof fields.grade === 'number' &&
+        typeof fields.startsOn === 'string'
+      ) {
+        const classId = await classOf(branch, fields.grade, fields.startsOn);
+        return post('/api/people/students', branch, { ...body, classId }, cookie);
+      }
+      return post('/api/people/students', branch, body, cookie);
+    },
+    classOf,
     async entries(action, recordId) {
       let query = database.migrator
         .selectFrom('audit_log')

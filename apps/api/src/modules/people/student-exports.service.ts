@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  classDisplayName,
   listName,
   phoneText,
   STUDENT_EXPORT_GROUPS,
@@ -206,7 +207,7 @@ const date = (value: string | null | undefined) =>
 
 /**
  * The columns of the student file: the list's columns as the page writes them
- * (the class "Grade 7, no class" until task 3.1; the status with the planned
+ * (the class in force today and its Tutor, task 3.1b; the status with the planned
  * status and its first day), then the fields of the groups, with dates as
  * date cells and numbers as numbers (edge cases, system behaviour: "Excel
  * exports contain real numbers and dates").
@@ -215,12 +216,15 @@ const STUDENT_EXPORT_SPECS: Readonly<Record<StudentExportColumn, ExportColumn<Ex
   uid: oneCell(heading('uid'), (row) => row.item.uid),
   // Surname first in every list and export (owner's answer to finding 27).
   name: oneCell(heading('name'), (row) => listName(row.item)),
-  class: oneCell(heading('class'), (row, texts) =>
-    texts.student.gradeNoClass.replace(
-      '{{grade}}',
-      texts.grade.replace('{{grade}}', String(row.item.grade)),
-    ),
+  // Task 3.1b: the class in force today, "7 Oxford"; empty without one.
+  class: oneCell(heading('class'), (row) =>
+    row.item.class === null ? null : classDisplayName(row.item.class.grade, row.item.class.name),
   ),
+  // The Tutor of that class in force today, else the acting one.
+  tutor: oneCell(heading('tutor'), (row) => {
+    const tutor = row.item.tutor ?? row.item.actingTutor;
+    return tutor === null ? null : listName(tutor);
+  }),
   status: {
     headings: (texts) => [texts.students.columns.status, texts.plannedStatus, texts.plannedFrom],
     cells: (row, texts) => [

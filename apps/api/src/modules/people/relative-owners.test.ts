@@ -113,12 +113,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
     branch: string,
     cookie = '',
   ): Promise<StudentDetail> {
-    const response = await t.post(
-      '/api/people/students',
-      branch,
-      body(relatives),
-      cookie || t.admin,
-    );
+    const response = await t.postStudent(branch, body(relatives), cookie || t.admin);
     expect(response.status, JSON.stringify(response.body)).toBe(201);
     return studentDetailSchema.parse(response.body);
   }
@@ -369,11 +364,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
       const other = await withRelative(phone(), t.north);
       for (const previousId of [UNKNOWN, other.relativeId]) {
         const before = await snapshot();
-        const response = await t.post(
-          '/api/people/students',
-          t.north,
-          body([newOwner(number, previousId, null)]),
-        );
+        const response = await t.postStudent(t.north, body([newOwner(number, previousId, null)]));
         refusedWith(response, 409, 'relative_phone_changed');
         expect(await snapshot()).toEqual(before);
       }
@@ -385,8 +376,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
       const earlier = await withRelative(number, t.north);
       await withRelative(taken, t.south, { fullName: 'Shoira Nazarova' });
       const before = await snapshot();
-      const response = await t.post(
-        '/api/people/students',
+      const response = await t.postStudent(
         t.north,
         body([newOwner(number, earlier.relativeId, taken)]),
       );
@@ -401,8 +391,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
     it('is refused validation when the earlier relative would keep the number', async () => {
       const number = phone();
       const earlier = await withRelative(number, t.north);
-      const response = await t.post(
-        '/api/people/students',
+      const response = await t.postStudent(
         t.north,
         body([newOwner(number, earlier.relativeId, number)]),
       );
@@ -449,7 +438,7 @@ describe('phone owners, merges and the notice to the other branch', () => {
           .execute();
       });
       const waiting = t
-        .post('/api/people/students', t.north, body([newOwner(number, earlier.relativeId, null)]))
+        .postStudent(t.north, body([newOwner(number, earlier.relativeId, null)]))
         .then((response) => response);
       await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
       held.release();
@@ -1586,13 +1575,12 @@ describe('phone owners, merges and the notice to the other branch', () => {
       const extra = phone();
       const before = await snapshot();
       refusedWith(
-        await t.post('/api/people/students', t.north, body([withExtra(phone(), [extra, extra])])),
+        await t.postStudent(t.north, body([withExtra(phone(), [extra, extra])])),
         400,
         'validation_failed',
       );
       refusedWith(
-        await t.post(
-          '/api/people/students',
+        await t.postStudent(
           t.north,
           body([withExtra(phone(), [phone(), phone(), phone(), phone()])]),
         ),

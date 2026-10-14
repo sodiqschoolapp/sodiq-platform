@@ -206,6 +206,8 @@ export const classSchema = z.object({
   language: instructionLanguageSchema,
   mainRoom: z.object({ id: z.uuid(), name: z.string(), status: roomStatusSchema }).nullable(),
   maxSize: z.int().min(1),
+  /** The members in force today in the branch's time zone (task 3.1b: "the student count of the class card"). */
+  students: z.int().min(0),
   /** The Tutor and the acting Tutor in force now; `null` when there is none (decision 11). */
   tutor: classTutorSchema.nullable(),
   acting: classTutorSchema.nullable(),
@@ -254,3 +256,91 @@ export type TutorCandidate = z.infer<typeof tutorCandidateSchema>;
 export const tutorCandidateListSchema = z.object({ candidates: z.array(tutorCandidateSchema) });
 
 export type TutorCandidateList = z.infer<typeof tutorCandidateListSchema>;
+
+/**
+ * Class membership (task 3.1b, pull request #89). "Put into a class" places 1
+ * to PLACEMENT_MAX_STUDENTS students at once, all or none (decision 5): a
+ * class holds at most CLASS_MAX_SIZE.
+ */
+export const PLACEMENT_MAX_STUDENTS = CLASS_MAX_SIZE;
+
+export const classMemberParamsSchema = z.object({ id: z.uuid(), memberId: z.uuid() });
+
+export type ClassMemberParams = z.infer<typeof classMemberParamsSchema>;
+
+/**
+ * "Put into a class" from a date (decision 6): each student with the state
+ * the person saw (`version` of the list or the record), so that a student
+ * changed meanwhile is refused `student_changed` (decision 17).
+ */
+export const classPlacementSchema = z.strictObject({
+  students: z
+    .array(z.strictObject({ id: z.uuid(), version: z.int().min(0) }))
+    .min(1)
+    .max(PLACEMENT_MAX_STUDENTS)
+    .refine((students) => new Set(students.map((student) => student.id)).size === students.length, {
+      message: 'A student is named once.',
+    }),
+  from: schoolDateSchema,
+});
+
+export type ClassPlacement = z.infer<typeof classPlacementSchema>;
+
+/** `current`: in the class today; `planned`: joins after today. */
+export const CLASS_MEMBER_STATES = ['current', 'planned'] as const;
+
+export const classMemberStateSchema = z.enum(CLASS_MEMBER_STATES);
+
+export type ClassMemberState = z.infer<typeof classMemberStateSchema>;
+
+/** A member of a class as its Students tab shows them: the Basic group and the dates. */
+export const classMemberSchema = z.object({
+  /** The membership row; a planned one is withdrawn by it. */
+  id: z.uuid(),
+  studentId: z.uuid(),
+  uid: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  from: schoolDateSchema,
+  /** The first day without the class: a scheduled leaving, or the day after the year's end. */
+  until: schoolDateSchema,
+  state: classMemberStateSchema,
+});
+
+export type ClassMember = z.infer<typeof classMemberSchema>;
+
+/**
+ * The Students tab: the members in force today and the planned ones, by
+ * surname; the free seats today and the fewest free seats on any date from
+ * today on, scheduled joins and leaves counted (edge, "A class is full").
+ */
+export const classMembersSchema = z.object({
+  members: z.array(classMemberSchema),
+  freeToday: z.int(),
+  freeLeast: z.int(),
+  today: schoolDateSchema,
+});
+
+export type ClassMembers = z.infer<typeof classMembersSchema>;
+
+/** A class as a student names it, with the dates of that membership. */
+export const studentClassSchema = z.object({
+  id: z.uuid(),
+  grade: classGradeSchema,
+  name: z.string(),
+  language: instructionLanguageSchema,
+  from: schoolDateSchema,
+  /** The first day without the class. */
+  until: schoolDateSchema,
+});
+
+export type StudentClass = z.infer<typeof studentClassSchema>;
+
+/** A class a change of a leaving could not give back: archived meanwhile, or its year closed (decision 1). */
+export const classNotRestoredSchema = z.object({
+  classId: z.uuid(),
+  grade: classGradeSchema,
+  name: z.string(),
+});
+
+export type ClassNotRestored = z.infer<typeof classNotRestoredSchema>;

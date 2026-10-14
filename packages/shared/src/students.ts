@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
+import { personNameSchema } from './accounts.js';
+import { classNotRestoredSchema, studentClassSchema } from './classes.js';
 import { spellingKey, storedStudentName, validName } from './names.js';
 import { studentRelativesInputSchema } from './relatives.js';
 import { jshshirSchema, sexSchema, staffPhoneSchema } from './staff.js';
@@ -305,6 +307,12 @@ export const studentCreateSchema = z
     confirmUidSet: z.boolean(),
     /** At least one relative, exactly one main contact (`04`, Close relatives; task 2.5a). */
     relatives: studentRelativesInputSchema,
+    /**
+     * The class the student joins on the start date (task 3.1b, decision 2):
+     * required when the start date is today or earlier in the branch's time
+     * zone (`student_needs_class`), optional for a later start.
+     */
+    classId: z.uuid().nullable().default(null),
   })
   .refine(documentPair, DOCUMENT_PAIR);
 
@@ -389,10 +397,18 @@ export const studentListItemSchema = z.object({
    * current class with a badge"). `from` is the first day of the new status.
    */
   planned: z.object({ status: studentStatusSchema, from: schoolDateSchema }).nullable(),
+  /** The class in force today; `null` shows "—" (task 3.1b). */
+  class: studentClassSchema.nullable(),
+  /** A class the student joins after today: a placement before the start, or before the date (decision 6). */
+  plannedClass: studentClassSchema.nullable(),
+  /** The Tutor of the class in force today, and the acting Tutor beside them. */
+  tutor: personNameSchema.nullable(),
+  actingTutor: personNameSchema.nullable(),
   /**
-   * The number of status rows: every status change writes one or more, so a
-   * change sent with an older number is refused `student_changed` (edge:
-   * "The second one gets \"student changed, reload\"").
+   * The number of status rows and class rows: every status change and every
+   * placement writes one or more, so a change sent with an older number is
+   * refused `student_changed` (edge: "The second one gets \"student changed,
+   * reload\""; task 3.1b, decision 17).
    */
   version: z.int().min(0),
 });
@@ -496,6 +512,13 @@ export const studentDetailSchema = studentListItemSchema.extend({
   identityHidden: z.boolean(),
   financial: studentFinancialSchema.nullable(),
   statuses: z.array(studentStatusRowSchema),
+  /** The Academic block (task 3.1b): the main classroom of the class shown, by name. */
+  mainRoom: z.string().nullable(),
+  /**
+   * The classes a cancel or an undo of a leaving could not give back: archived
+   * meanwhile, or in a closed year (decision 1). Answered by those changes only.
+   */
+  classesNotRestored: z.array(classNotRestoredSchema).optional(),
   /** Edit and UID correction: the Super Admin and the Academic Vice Principal. */
   canEdit: z.boolean(),
   /** Leave, cancel, undo, return and delete (task 2.4b-1). */

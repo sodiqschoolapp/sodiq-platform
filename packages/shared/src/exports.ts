@@ -90,9 +90,9 @@ export const SUBJECT_EXPORT_COLUMNS = [
 /**
  * The column keys of the student list's file (task 2.4b-2, pull request #70):
  * the one exception to "equal to the `key`s of the columns of its page". The
- * first part is the page's exported columns, in its order (its photo, groups
- * and tutor columns are not exported: `groups` and `tutor` have no data
- * before tasks 3.1 and 3.2); the rest are export-only columns, chosen by
+ * first part is the page's exported columns, in its order (its photo and
+ * groups columns are not exported: `groups` has no data before task 3.2;
+ * `tutor` joined with task 3.1b); the rest are export-only columns, chosen by
  * group under the Export button, because the list shows no phone or document
  * (`04`: "Phone numbers are not shown in the list"; decision 2). A web test
  * pins both parts.
@@ -104,6 +104,8 @@ export const CLASS_EXPORT_COLUMNS = [
   'language',
   'tutor',
   'mainRoom',
+  // Task 3.1b: the members today, the count of the card.
+  'students',
   'maxSize',
   'status',
 ] as const;
@@ -112,6 +114,8 @@ export const STUDENT_EXPORT_COLUMNS = [
   'uid',
   'name',
   'class',
+  // Task 3.1b: the Tutor of the class in force today.
+  'tutor',
   'status',
   'paternalName',
   'sex',
@@ -148,6 +152,7 @@ export const STUDENT_LIST_EXPORT_COLUMNS = [
   'uid',
   'name',
   'class',
+  'tutor',
   'status',
 ] as const satisfies readonly StudentExportColumn[];
 
@@ -156,6 +161,7 @@ export const STUDENT_EXPORT_GROUPS: Readonly<Record<StudentExportColumn, Student
   uid: 'basic',
   name: 'basic',
   class: 'basic',
+  tutor: 'basic',
   status: 'basic',
   paternalName: 'basic',
   sex: 'basic',
@@ -405,6 +411,7 @@ const en: ExportTexts = {
       language: 'Language of instruction',
       tutor: 'Tutor',
       mainRoom: 'Main classroom',
+      students: 'Students',
       maxSize: 'Maximum size',
       status: 'Status',
     },
@@ -415,6 +422,7 @@ const en: ExportTexts = {
       uid: 'UID',
       name: 'Name and surname',
       class: 'Class',
+      tutor: 'Tutor',
       status: 'Status',
       paternalName: 'Paternal name',
       sex: 'Sex',
@@ -621,6 +629,7 @@ const ru: ExportTexts = {
       language: 'Язык обучения',
       tutor: 'Тьютор',
       mainRoom: 'Основной кабинет',
+      students: 'Учеников',
       maxSize: 'Наибольший размер',
       status: 'Состояние',
     },
@@ -631,6 +640,7 @@ const ru: ExportTexts = {
       uid: 'UID',
       name: 'Имя и фамилия',
       class: 'Класс',
+      tutor: 'Тьютор',
       status: 'Статус',
       paternalName: 'Отчество',
       sex: 'Пол',
@@ -836,6 +846,7 @@ const uz: ExportTexts = {
       language: 'Taʼlim tili',
       tutor: 'Tyutor',
       mainRoom: 'Asosiy xona',
+      students: 'Oʻquvchilar',
       maxSize: 'Eng koʻp oʻquvchi',
       status: 'Holati',
     },
@@ -846,6 +857,7 @@ const uz: ExportTexts = {
       uid: 'UID',
       name: 'Ism va familiya',
       class: 'Sinf',
+      tutor: 'Tyutor',
       status: 'Holat',
       paternalName: 'Otasining ismi',
       sex: 'Jinsi',

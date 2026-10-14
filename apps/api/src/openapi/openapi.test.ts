@@ -64,6 +64,8 @@ describe('OpenAPI document', () => {
         '/api/classes/tutor-candidates',
         '/api/classes/{id}',
         '/api/classes/{id}/archive',
+        '/api/classes/{id}/members',
+        '/api/classes/{id}/members/{memberId}/withdraw',
         '/api/classes/{id}/restore',
         '/api/classes/{id}/tutors',
         '/api/classes/{id}/tutors/{tutorId}/end',

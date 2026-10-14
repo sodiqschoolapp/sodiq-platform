@@ -5,7 +5,10 @@ import {
   classEditSchema,
   classExportSchema,
   classListSchema,
+  classMemberParamsSchema,
+  classMembersSchema,
   classParamsSchema,
+  classPlacementSchema,
   classTutorEndSchema,
   classTutorGiveSchema,
   classTutorParamsSchema,
@@ -15,7 +18,10 @@ import {
   type ClassEdit,
   type ClassExport,
   type ClassList,
+  type ClassMemberParams,
+  type ClassMembers as ClassMembersAnswer,
   type ClassParams,
+  type ClassPlacement,
   type ClassTutorEnd,
   type ClassTutorGive,
   type ClassTutorParams,
@@ -26,6 +32,7 @@ import { Returns, ReturnsFile, ValidBody, ValidParams } from '../../http/schemas
 import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
+import { ClassMembers } from './class-members.service.js';
 import { ClassTutors } from './class-tutors.service.js';
 import { Classes } from './classes.service.js';
 
@@ -41,6 +48,7 @@ export class ClassesController {
   constructor(
     private readonly classes: Classes,
     private readonly tutors: ClassTutors,
+    private readonly members: ClassMembers,
   ) {}
 
   @Get()
@@ -154,5 +162,42 @@ export class ClassesController {
     @RequestId() requestId: string,
   ): Promise<ClassDetail> {
     return this.tutors.end(access, params.id, params.tutorId, end, requestId);
+  }
+
+  /** The Students tab (task 3.1b): members in force today and planned, and the free seats. */
+  @Get(':id/members')
+  @Requires('classes', 'view')
+  @Returns(classMembersSchema)
+  membersOf(
+    @CurrentAccess() access: Access,
+    @ValidParams(classParamsSchema) params: ClassParams,
+  ): Promise<ClassMembersAnswer> {
+    return this.members.members(access, params.id);
+  }
+
+  /** "Put into a class" from a date, all or none (task 3.1b, decisions 5 and 6). */
+  @Post(':id/members')
+  @Requires('classes', 'edit')
+  @Returns(classMembersSchema, 201)
+  place(
+    @CurrentAccess() access: Access,
+    @ValidParams(classParamsSchema) params: ClassParams,
+    @ValidBody(classPlacementSchema) placement: ClassPlacement,
+    @RequestId() requestId: string,
+  ): Promise<ClassMembersAnswer> {
+    return this.members.place(access, params.id, placement, requestId);
+  }
+
+  /** The withdraw of a planned placement (task 3.1b, decision 10). */
+  @Post(':id/members/:memberId/withdraw')
+  @HttpCode(200)
+  @Requires('classes', 'edit')
+  @Returns(classMembersSchema)
+  withdraw(
+    @CurrentAccess() access: Access,
+    @ValidParams(classMemberParamsSchema) params: ClassMemberParams,
+    @RequestId() requestId: string,
+  ): Promise<ClassMembersAnswer> {
+    return this.members.withdraw(access, params.id, params.memberId, requestId);
   }
 }

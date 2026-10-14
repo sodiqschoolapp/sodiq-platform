@@ -28,6 +28,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { exportList, oneCell, type ExportColumn } from '../audit/export-list.js';
 import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusals.js';
+import { memberCountsOn, MEMBERSHIP_REFUSALS } from './class-membership-rows.js';
 import {
   CLASS_EDIT_REFUSALS,
   CLASS_REFUSALS,
@@ -102,6 +103,7 @@ function classesIn(transaction: Transaction) {
 function toClass(
   row: ClassRow,
   inForce: { tutor: ClassTutor | null; acting: ClassTutor | null },
+  students: number,
 ): SchoolClass {
   return {
     id: row.id,
@@ -121,6 +123,7 @@ function toClass(
             status: roomStatusSchema.parse(row.room_status),
           },
     maxSize: row.max_size,
+    students,
     tutor: inForce.tutor,
     acting: inForce.acting,
     archived: row.archived_at !== null,
@@ -149,7 +152,7 @@ function inForceOf(rows: readonly ClassTutor[]): {
   };
 }
 
-/** The classes of the branch with their Tutors in force, by grade and name. */
+/** The classes of the branch with their Tutors in force and their members today, by grade and name. */
 async function readClasses(transaction: Transaction, branchId: string): Promise<SchoolClass[]> {
   const now = await transactionMoment(transaction);
   const zone = await zoneOf(transaction, branchId);
@@ -168,6 +171,7 @@ async function readClasses(transaction: Transaction, branchId: string): Promise<
       ]),
     )
     .execute();
+  const members = await memberCountsOn(transaction, schoolDateOf(now, zone));
   return rows.map((row) =>
     toClass(
       row,
@@ -176,6 +180,7 @@ async function readClasses(transaction: Transaction, branchId: string): Promise<
           .filter((tutor) => tutor.class_id === row.id)
           .map((tutor) => toClassTutor(tutor, now, zone)),
       ),
+      members.get(row.id) ?? 0,
     ),
   );
 }
@@ -198,7 +203,9 @@ export async function readClassDetail(
   const tutors = (
     await tutorRowsIn(transaction).where('class_tutors.class_id', '=', id).execute()
   ).map((tutor: TutorRow) => toClassTutor(tutor, now, zone));
-  return { ...toClass(row, inForceOf(tutors)), tutors, today: schoolDateOf(now, zone) };
+  const today = schoolDateOf(now, zone);
+  const members = await memberCountsOn(transaction, today);
+  return { ...toClass(row, inForceOf(tutors), members.get(id) ?? 0), tutors, today };
 }
 /** The file's columns, the same words as the list's headers. */
 const CLASS_EXPORT: Record<ClassExportColumn, ExportColumn<SchoolClass>> = {
@@ -221,6 +228,10 @@ const CLASS_EXPORT: Record<ClassExportColumn, ExportColumn<SchoolClass>> = {
   mainRoom: oneCell(
     (texts) => texts.classes.columns.mainRoom,
     (row) => row.mainRoom?.name ?? null,
+  ),
+  students: oneCell(
+    (texts) => texts.classes.columns.students,
+    (row) => row.students,
   ),
   maxSize: oneCell(
     (texts) => texts.classes.columns.maxSize,
@@ -312,53 +323,58 @@ export class Classes {
   /** Every field but the year. Nothing is written when nothing changed. */
   edit(access: Access, id: string, input: ClassEdit, requestId: string): Promise<ClassDetail> {
     const branchId = branchOf(access);
-    return this.refusingName(access, null, { ...input, id }, CLASS_EDIT_REFUSALS, () =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        const before = await this.lockClass(transaction, id);
-        if (before.archived_at !== null) {
-          throw new ApiException('class_archived', 409);
-        }
-        if (before.version !== input.version) {
-          throw new ApiException('class_changed', 409);
-        }
-        await this.requireOpenYear(transaction, before.academic_year_id);
-        const record: ClassRecord = {
-          grade: input.grade,
-          name: input.name,
-          language: input.language,
-          mainRoomId: input.mainRoomId,
-          maxSize: input.maxSize,
-        };
-        const changes = changesOf(fieldsOf(before), record);
-        if (changes === null) {
+    return this.refusingName(
+      access,
+      null,
+      { ...input, id },
+      { ...MEMBERSHIP_REFUSALS, ...CLASS_EDIT_REFUSALS },
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          const before = await this.lockClass(transaction, id);
+          if (before.archived_at !== null) {
+            throw new ApiException('class_archived', 409);
+          }
+          if (before.version !== input.version) {
+            throw new ApiException('class_changed', 409);
+          }
+          await this.requireOpenYear(transaction, before.academic_year_id);
+          const record: ClassRecord = {
+            grade: input.grade,
+            name: input.name,
+            language: input.language,
+            mainRoomId: input.mainRoomId,
+            maxSize: input.maxSize,
+          };
+          const changes = changesOf(fieldsOf(before), record);
+          if (changes === null) {
+            return readClassDetail(transaction, branchId, id);
+          }
+          if (record.mainRoomId !== before.main_room_id) {
+            await this.requireRoom(transaction, record.mainRoomId);
+          }
+          await transaction
+            .updateTable('classes')
+            .set({
+              grade: record.grade,
+              name: record.name,
+              language: record.language,
+              main_room_id: record.mainRoomId,
+              max_size: record.maxSize,
+            })
+            .where('id', '=', id)
+            .execute();
+          await this.audit.record(transaction, {
+            branchId,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'class.edit',
+            record: { type: 'class', id },
+            oldValue: changes.oldValue,
+            newValue: changes.newValue,
+            requestId,
+          });
           return readClassDetail(transaction, branchId, id);
-        }
-        if (record.mainRoomId !== before.main_room_id) {
-          await this.requireRoom(transaction, record.mainRoomId);
-        }
-        await transaction
-          .updateTable('classes')
-          .set({
-            grade: record.grade,
-            name: record.name,
-            language: record.language,
-            main_room_id: record.mainRoomId,
-            max_size: record.maxSize,
-          })
-          .where('id', '=', id)
-          .execute();
-        await this.audit.record(transaction, {
-          branchId,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'class.edit',
-          record: { type: 'class', id },
-          oldValue: changes.oldValue,
-          newValue: changes.newValue,
-          requestId,
-        });
-        return readClassDetail(transaction, branchId, id);
-      }),
+        }),
     );
   }
 
@@ -422,7 +438,7 @@ export class Classes {
           });
           return readClassDetail(transaction, branchId, id);
         }),
-      CLASS_REFUSALS,
+      { ...CLASS_REFUSALS, ...MEMBERSHIP_REFUSALS },
     );
   }
 

@@ -335,6 +335,34 @@ export const ERROR_CODES = [
   'role_tutor_taken',
   /** A role end moved later or taken back would bring back a Tutor of a class whose language the person no longer teaches (task 3.1a). */
   'role_tutor_language',
+  /** The student is in a class on or after that date: a move between classes is a transfer (task 3.1b, decision 5; task 3.3). */
+  'student_has_class',
+  /** The student is not active on every day from that date to the end of the class's year or of a scheduled leaving (task 3.1b). */
+  'student_not_active_on',
+  /** The class is of another grade than the student (task 3.1b, decision 4). */
+  'class_grade_differs',
+  /** The class would hold more students than its maximum size on some date, scheduled joins and leaves counted (`edge/students-classes-groups`, "A class is full"; task 3.1b). `details` names the fewest free seats. */
+  'class_full',
+  /** The date lies outside the academic year of the class (task 3.1b, decision 7). */
+  'membership_outside_year',
+  /** The date is before the student's start date (task 3.1b, decision 6). */
+  'membership_before_start',
+  /** A placement in force is not withdrawn: a transfer moves the student (task 3.1b, decision 10; task 3.3). */
+  'membership_in_force',
+  /** The placement has ended: there is nothing to withdraw (task 3.1b). */
+  'membership_not_planned',
+  /** A student who starts today or earlier is created with a class (`edge/students-classes-groups`, "An active student with no class is allowed only before their start date"; task 3.1b, decision 2). */
+  'student_needs_class',
+  /** The grade of a student in a class, now or planned, cannot change away from the class's grade (task 3.1b, decision 4). */
+  'student_grade_class',
+  /** A class with members in force or planned is not archived (task 3.1b). */
+  'class_has_members',
+  /** The grade of a class with members is not changed (task 3.1b, decision 4). */
+  'class_grade_members',
+  /** The maximum size cannot drop below the members of a date from today on (task 3.1b, decision 11). */
+  'class_size_below_members',
+  /** The dates of an academic year cannot change while its classes hold members (task 3.1b, decision 3). */
+  'academic_year_has_members',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
@@ -375,6 +403,8 @@ export const errorDetailSchema = z.object({
    * the grade on a `uid_set_mismatch` (task 2.7b-1, decision 7).
    */
   expected: z.string().optional(),
+  /** The fewest free seats of a class on any date of the placement, on a `class_full` (task 3.1b). */
+  freeSeats: z.int().optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;
