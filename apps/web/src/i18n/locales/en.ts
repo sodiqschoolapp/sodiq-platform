@@ -1418,6 +1418,8 @@ export const en = {
       stepTitle: 'Relative',
       notSet: 'Not set',
       linkLabel: 'Link of {{name}}',
+      changeLink: 'Change the link',
+      closeChoices: 'Close the choices',
       extraPhones: 'Extra phones',
       extraPhone: 'Extra phone {{n}}',
       addExtraPhone: 'Add an extra phone',

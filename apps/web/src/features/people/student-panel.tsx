@@ -9,7 +9,7 @@ import {
   type StudentUidCorrection,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
@@ -22,6 +22,8 @@ import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { useLeave } from '@/components/unsent/unsent-changes';
+import { PanelActions } from '@/components/list/panel-actions';
+import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { Button } from '@/components/ui/button';
 import { Segmented } from '@/components/ui/segmented';
 import { HistoryLink } from '@/features/audit/history-link';
@@ -32,11 +34,28 @@ import { invalidateStudents, studentDetailQuery, studentRelativesQuery } from '.
 import { StudentForm, takenOf, takenText } from './student-form';
 import { StudentPhotoSection } from './student-photo-section';
 import { StudentRelativesTab } from './student-relatives';
-import { StatusSection } from './student-status-section';
+import {
+  DeleteForm,
+  isStatusForm,
+  LeavingForm,
+  RestoreForm,
+  ReturnForm,
+  StatusSection,
+  statusActions,
+  UndoForm,
+  useCancelLeaving,
+  type StatusForm,
+} from './student-status-section';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
 
 type Tab = 'overview' | 'relatives' | 'contract';
+
+/** The forms of the whole record: they take the place of the tabs and their content. */
+const RECORD_FORMS = ['record', 'uid'] as const;
+
+const isRecordForm = (key: string | null): boolean =>
+  isStatusForm(key) || RECORD_FORMS.some((one) => one === key);
 
 interface StudentPanelProps {
   id: string;
@@ -50,8 +69,10 @@ interface StudentPanelProps {
  * tabs"; task 2.4a): the tabs that have data so far, Overview and Contract and
  * scholarship. Each group of fields is drawn only when the server answers it
  * (edge/people-roles-accounts, Personal data and the audit log); the Principal
- * sees the identity fields behind a logged show. The status, its history
- * and its changes (task 2.4b-1) follow the overview.
+ * sees the identity fields behind a logged show. The status and its history
+ * (task 2.4b-1) follow the overview. The panel reads first (task 2.7c-2b-2b):
+ * the record's actions are at the bottom under every tab, each form opens
+ * behind its button, one at a time.
  */
 export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const { t } = useTranslation();
@@ -59,6 +80,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const leave = useLeave();
+  const panel = usePanelEditing();
   // After the delete of a student created twice the panel says so and reads nothing more (task 2.4b-1).
   const [deleted, setDeleted] = useState(false);
   const detail = useQuery({
@@ -67,6 +89,8 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   });
   // Unchosen, a student with no relative opens on the Relatives tab (task 2.5a, decision 11).
   const [tab, setTab] = useState<Tab | null>(null);
+  // A status form closed because the student changed under it: its refusal stays in the bottom row.
+  const [staleClosed, setStaleClosed] = useState(false);
   const relatives = useQuery({
     ...studentRelativesQuery(branchId, id),
     enabled:
@@ -78,6 +102,12 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
       studentDetailQuery(branchId, id).queryKey,
       studentDetailSchema.parse(answer),
     );
+    await invalidateStudents(queryClient);
+  };
+  const reread = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: studentDetailQuery(branchId, id).queryKey,
+    });
     await invalidateStudents(queryClient);
   };
   // A holder saved after the list was read: the list is read again, so the
@@ -105,7 +135,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
         }
         const go = await confirm({
           title: t('people.students.setTitle'),
-          text: uidSetText(t, error, student.grade),
+          text: uidSetText(t, error, student?.grade ?? 1),
           names: [input.uid],
           action: t('people.students.saveAnyway'),
           destructive: false,
@@ -124,9 +154,30 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     onSuccess: refresh,
     onError: rereadOnTaken,
   });
+  const student = detail.data;
+  const allowed = student === undefined ? null : statusActions(student);
+  // A change of the status takes its button away: the panel shows Overview,
+  // where the status heading is, and the focus goes to that heading.
+  const statusChanged = async (answer: unknown) => {
+    setTab('overview');
+    await refresh(answer);
+  };
+  const cancelLeaving = useCancelLeaving(
+    student,
+    name,
+    async (answer) => {
+      await statusChanged(answer);
+      panel.point('status');
+    },
+    reread,
+  );
+  // A status form whose action is no longer allowed (the student was read
+  // again) is not drawn: the panel reads as with no form open.
+  const gone = isStatusForm(panel.editing) && allowed !== null && !allowed[panel.editing];
+  const editing = gone ? null : panel.editing;
 
   if (deleted) {
-    return <p role="status">{t('people.students.deleted')}</p>;
+    return <Deleted />;
   }
   if (detail.isError) {
     return (
@@ -138,10 +189,9 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
       />
     );
   }
-  if (detail.data === undefined) {
+  if (student === undefined || allowed === null) {
     return <LoadingOutline />;
   }
-  const student = detail.data;
   // The profile tabs that have data so far (`04`, "Profile tabs"), as the
   // segmented control of the design system; one tab draws no control.
   const tabs: { key: Tab; title: string }[] = [
@@ -157,85 +207,218 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const chosen = tab ?? (relatives.data?.relatives.length === 0 ? 'relatives' : 'overview');
   const shownTab = tabs.some((one) => one.key === chosen) ? chosen : 'overview';
 
+  /** Opens a form; an open one with typed text is asked about first. */
+  const start = (key: string) => {
+    panel.start(key, () => {
+      setStaleClosed(false);
+      cancelLeaving.reset();
+    });
+  };
+  const opens = (key: string, text: string, variant: 'default' | 'secondary' | 'destructive') => (
+    <Button
+      key={key}
+      variant={variant}
+      {...panel.opener(key)}
+      onClick={() => {
+        start(key);
+      }}
+    >
+      {text}
+    </Button>
+  );
+  /** The props every status form shares; a save closes it with "Saved.". */
+  const change = (key: StatusForm) => ({
+    student,
+    label: name,
+    onChanged: async (answer: unknown) => {
+      // Closed first: the re-read takes the form's action away.
+      panel.stop({ saved: true, key, focus: 'status' });
+      await statusChanged(answer);
+    },
+    // "Student changed, reload" (edge/students-classes-groups): after the
+    // re-read a form whose action is gone closes, and its refusal stays in
+    // the bottom row.
+    onStale: async () => {
+      await reread();
+      const now = queryClient.getQueryData<StudentDetail>(
+        studentDetailQuery(branchId, id).queryKey,
+      );
+      if (now !== undefined && !statusActions(now)[key]) {
+        setStaleClosed(true);
+        panel.stop({ key });
+      }
+    },
+    onCancel: () => {
+      panel.stop();
+    },
+  });
+  const secondary = [
+    student.canEdit && opens('uid', t('people.students.uidTitle'), 'secondary'),
+    allowed.cancel && (
+      <Button
+        key="cancel"
+        variant="secondary"
+        disabled={cancelLeaving.isPending}
+        onClick={() => {
+          setStaleClosed(false);
+          cancelLeaving.mutate();
+        }}
+      >
+        {t('people.students.cancelLeaving')}
+      </Button>
+    ),
+    allowed.undo && opens('undo', t('people.students.undoTitle'), 'secondary'),
+    allowed.return && opens('return', t('people.students.returnTitle'), 'secondary'),
+    allowed.restore && opens('restore', t('people.students.restoreTitle'), 'secondary'),
+  ].filter((one) => one !== false);
+  const danger = [
+    allowed.leave && opens('leave', t('people.students.leaveTitle'), 'destructive'),
+    allowed.delete && opens('delete', t('people.students.deleteAction'), 'destructive'),
+  ].filter((one) => one !== false);
+
   return (
     <div className="grid gap-6">
-      <StudentPhotoSection student={student} name={name} />
-      <HistoryLink kind="student" id={student.id} />
-      <ReportLink kind="student" id={student.id} />
-      {tabs.length > 1 && (
-        <Segmented
-          label={t('people.students.tabs.label')}
-          options={tabs.map((one) => ({ value: one.key, label: one.title }))}
-          value={shownTab}
-          onChange={(next) => {
-            // Another tab takes the forms of this one away: ask first when
-            // something is unsaved; otherwise the tab changes at once.
-            if (!leave.unsent()) {
-              setTab(next);
-              return;
-            }
-            void leave.leave().then((leaves) => {
-              if (leaves) {
-                setTab(next);
-              }
-            });
-          }}
-        />
-      )}
-      {/* Each tab holds only its own content (issue #39, hand test of 13 October
-          2026, finding 5): the status, the record and the UID belong to Overview. */}
-      {shownTab === 'overview' ? (
-        <>
-          <Overview student={student} />
-          <StatusSection
+      {/* One form open at a time (task 2.7c-2b-2b): a form of the whole record
+          takes the place of the tabs, so its Save and Cancel are last. */}
+      {editing === 'record' ? (
+        <section className="grid gap-3">
+          <h3 className={SECTION_TITLE}>{t('people.students.recordTitle')}</h3>
+          <StudentForm
+            key={`${student.id}-record`}
             student={student}
             label={name}
             holderText={holderText}
-            onChanged={refresh}
-            onStale={async () => {
-              await queryClient.invalidateQueries({
-                queryKey: studentDetailQuery(branchId, id).queryKey,
-              });
-              await invalidateStudents(queryClient);
+            onEdit={async (record) => {
+              await edit.mutateAsync(record);
+              panel.stop({ saved: true, key: 'record' });
             }}
-            onDeleted={async () => {
-              setDeleted(true);
-              queryClient.removeQueries({ queryKey: studentDetailQuery(branchId, id).queryKey });
-              await invalidateStudents(queryClient);
+            onCancel={() => {
+              panel.stop();
             }}
           />
-          {student.canEdit && (
+        </section>
+      ) : editing === 'uid' ? (
+        <UidCorrection
+          key={student.id}
+          student={student}
+          label={name}
+          holderText={holderText}
+          onSave={async (input) => {
+            await correct.mutateAsync(input);
+            panel.stop({ saved: true, key: 'uid' });
+          }}
+          onCancel={() => {
+            panel.stop();
+          }}
+        />
+      ) : isRecordForm(editing) ? (
+        // A status form below the status and its history, each only while
+        // its action is allowed, keyed by the status state read (task 2.4b-1).
+        <div className="grid gap-4">
+          <StatusSection student={student} panel={panel} />
+          {editing === 'leave' && allowed.leave && (
+            <LeavingForm key={`leave-${String(student.version)}`} {...change('leave')} />
+          )}
+          {editing === 'undo' && allowed.undo && (
+            <UndoForm key={`undo-${String(student.version)}`} {...change('undo')} />
+          )}
+          {editing === 'return' && allowed.return && (
+            <ReturnForm
+              key={`return-${String(student.version)}`}
+              {...change('return')}
+              holderText={holderText}
+            />
+          )}
+          {editing === 'restore' && allowed.restore && (
+            <RestoreForm key={`restore-${String(student.version)}`} {...change('restore')} />
+          )}
+          {editing === 'delete' && allowed.delete && (
+            <DeleteForm
+              key={`delete-${String(student.version)}`}
+              student={student}
+              label={name}
+              onStale={reread}
+              onCancel={() => {
+                panel.stop();
+              }}
+              onDeleted={async () => {
+                setDeleted(true);
+                queryClient.removeQueries({ queryKey: studentDetailQuery(branchId, id).queryKey });
+                await invalidateStudents(queryClient);
+              }}
+            />
+          )}
+        </div>
+      ) : (
+        <>
+          <StudentPhotoSection student={student} name={name} quiet={editing !== null} />
+          <HistoryLink kind="student" id={student.id} />
+          <ReportLink kind="student" id={student.id} />
+          {tabs.length > 1 && (
+            <Segmented
+              label={t('people.students.tabs.label')}
+              options={tabs.map((one) => ({ value: one.key, label: one.title }))}
+              value={shownTab}
+              onChange={(next) => {
+                // Another tab takes the forms of this one away: ask first when
+                // something is unsaved, then close the open form.
+                const go = () => {
+                  if (panel.editing !== null) {
+                    panel.stop();
+                  }
+                  setTab(next);
+                };
+                if (!leave.unsent()) {
+                  go();
+                  return;
+                }
+                void leave.leave().then((leaves) => {
+                  if (leaves) {
+                    go();
+                  }
+                });
+              }}
+            />
+          )}
+          {/* Each tab holds only its own content (issue #39, hand test of 13 October
+              2026, finding 5): the status belongs to Overview. */}
+          {shownTab === 'overview' ? (
             <>
-              <section className="grid gap-3">
-                <h3 className={SECTION_TITLE}>{t('people.students.recordTitle')}</h3>
-                <StudentForm
-                  key={`${student.id}-record`}
-                  student={student}
-                  label={name}
-                  holderText={holderText}
-                  onEdit={async (record) => {
-                    await edit.mutateAsync(record);
-                  }}
-                />
-              </section>
-              <UidCorrection
-                key={student.id}
-                student={student}
-                label={name}
-                holderText={holderText}
-                onSave={async (input) => {
-                  await correct.mutateAsync(input);
-                }}
-              />
+              <Overview student={student} />
+              <StatusSection student={student} panel={panel} />
             </>
+          ) : shownTab === 'relatives' ? (
+            <StudentRelativesTab studentId={student.id} name={name} panel={panel} />
+          ) : (
+            <ContractTab student={student} />
           )}
         </>
-      ) : shownTab === 'relatives' ? (
-        <StudentRelativesTab studentId={student.id} name={name} />
-      ) : (
-        <ContractTab student={student} />
+      )}
+      {editing === null && (
+        <PanelActions
+          primary={student.canEdit && opens('record', t('form.edit'), 'default')}
+          secondary={secondary.length === 0 ? undefined : secondary}
+          danger={danger.length === 0 ? undefined : danger}
+          error={cancelLeaving.error ?? (staleClosed ? new ApiFailure('student_changed') : null)}
+          // After a save of a form, or "Cancel the leaving" until another action starts.
+          saved={(panel.saved && cancelLeaving.isIdle) || cancelLeaving.isSuccess}
+        />
       )}
     </div>
+  );
+}
+
+/** The line after a delete; it takes the focus, since the panel's buttons are gone. */
+function Deleted() {
+  const { t } = useTranslation();
+  const line = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    line.current?.focus();
+  }, []);
+  return (
+    <p ref={line} role="status" tabIndex={-1}>
+      {t('people.students.deleted')}
+    </p>
   );
 }
 
@@ -273,6 +456,8 @@ function Overview({ student }: { student: StudentDetail }) {
   const identity = student.identity ?? shown;
   const rows: [string, string][] = [
     [t('people.students.uid'), student.uid],
+    // The one field of the record's form the overview lacked (task 2.7c-2b-2b, decision 4).
+    [t('people.students.paternalName'), student.paternalName ?? notSet],
     [t('people.students.class'), t('people.students.noClass')],
     [t('people.students.grade'), t('setup.subjects.grade', { grade: student.grade })],
     [t('people.students.sex'), t(`people.staff.sexes.${student.sex}`)],
@@ -404,11 +589,13 @@ function UidCorrection({
   label,
   holderText,
   onSave,
+  onCancel,
 }: {
   student: StudentDetail;
   label: string;
   holderText: (id: string) => string | null;
   onSave: (input: StudentUidCorrection) => Promise<void>;
+  onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const form = useRecordForm<UidField, StudentUidCorrection>({
@@ -425,7 +612,11 @@ function UidCorrection({
   return (
     <section className="grid gap-3">
       <h3 className={SECTION_TITLE}>{t('people.students.uidTitle')}</h3>
-      <RecordForm form={form} label={t('people.students.uidLabel', { name: label })}>
+      <RecordForm
+        form={form}
+        label={t('people.students.uidLabel', { name: label })}
+        onCancel={onCancel}
+      >
         <Field
           label={t('people.students.uid')}
           inputMode="numeric"

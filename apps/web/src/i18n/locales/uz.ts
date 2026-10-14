@@ -1432,6 +1432,8 @@ export const uz: Texts<'one' | 'other'> = {
       stepTitle: 'Qarindosh',
       notSet: 'Koʻrsatilmagan',
       linkLabel: 'Bogʻlanish: {{name}}',
+      changeLink: 'Bogʻlanishni oʻzgartirish',
+      closeChoices: 'Variantlarni yopish',
       extraPhones: 'Qoʻshimcha telefonlar',
       extraPhone: '{{n}}-qoʻshimcha telefon',
       addExtraPhone: 'Qoʻshimcha telefon qoʻshish',

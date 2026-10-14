@@ -208,6 +208,8 @@ interface StudentFormProps {
   onOpenHolder?: (id: string) => void;
   /** The phone typed first (`04`, Adding a relative): the holder of a phone, or none. */
   onPhoneMatch?: (phone: string) => Promise<RelativeHolder | null>;
+  /** Closes the form of a student in the side panel without a change (task 2.7c-2b-2b). */
+  onCancel?: () => void;
 }
 
 /** A holder found for a phone, with the phone it was found by. */
@@ -231,6 +233,7 @@ export function StudentForm({
   holderRestorable,
   onOpenHolder,
   onPhoneMatch,
+  onCancel,
 }: StudentFormProps) {
   const { t } = useTranslation();
   const creating = student === null;
@@ -428,7 +431,7 @@ export function StudentForm({
 
   return (
     <>
-      <RecordForm form={form} label={label}>
+      <RecordForm form={form} label={label} onCancel={onCancel}>
         {creating && (
           <Field label={t('people.students.uid')} inputMode="numeric" {...bind('uid')} />
         )}

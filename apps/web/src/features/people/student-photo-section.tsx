@@ -24,7 +24,16 @@ import { photoRefusalOf, shrinkPhoto } from './shrink-photo';
  * checks the type and the 5 MB, then shrinks the photo before it is sent
  * (answer 2).
  */
-export function StudentPhotoSection({ student, name }: { student: StudentDetail; name: string }) {
+export function StudentPhotoSection({
+  student,
+  name,
+  quiet,
+}: {
+  student: StudentDetail;
+  name: string;
+  /** A form of the panel is open: the photo's actions give way (task 2.7c-2b-2b). */
+  quiet: boolean;
+}) {
   const { t } = useTranslation();
   const { branchId } = useView();
   const queryClient = useQueryClient();
@@ -72,7 +81,7 @@ export function StudentPhotoSection({ student, name }: { student: StudentDetail;
           }
           size="lg"
         />
-        {student.canEdit && (
+        {student.canEdit && !quiet && (
           <div className="flex flex-wrap gap-2">
             <input
               ref={input}

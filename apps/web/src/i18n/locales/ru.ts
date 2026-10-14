@@ -1516,6 +1516,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       stepTitle: 'Родственник',
       notSet: 'Не указано',
       linkLabel: 'Связь: {{name}}',
+      changeLink: 'Изменить связь',
+      closeChoices: 'Закрыть варианты',
       extraPhones: 'Дополнительные телефоны',
       extraPhone: 'Дополнительный телефон {{n}}',
       addExtraPhone: 'Добавить дополнительный телефон',

@@ -41,6 +41,7 @@ import {
   type ExtraPhoneFields,
 } from './relative-form';
 import { SECTION_TITLE } from '@/components/ui/control';
+import type { PanelEditing } from '@/components/list/use-panel-editing';
 
 type AddField =
   | 'owner'
@@ -86,13 +87,21 @@ const checked = (on: boolean) => (on ? CHECKED : '');
  * the link switches and workplace and email as far as the reader may see them.
  * The Super Admin and the Academic Vice Principal add, change and unlink, the
  * phone typed first; the last relative stays, and unlinking the main contact
- * names the next one.
+ * names the next one. Each row reads first; its form opens behind its button
+ * through the side panel, one at a time (task 2.7c-2b-2b).
  */
-export function StudentRelativesTab({ studentId, name }: { studentId: string; name: string }) {
+export function StudentRelativesTab({
+  studentId,
+  name,
+  panel,
+}: {
+  studentId: string;
+  name: string;
+  panel: PanelEditing;
+}) {
   const { t } = useTranslation();
   const { branchId } = useView();
   const relatives = useQuery(studentRelativesQuery(branchId, studentId));
-  const [adding, setAdding] = useState(false);
   if (relatives.isError) {
     return (
       <ErrorState
@@ -108,11 +117,12 @@ export function StudentRelativesTab({ studentId, name }: { studentId: string; na
   }
   const { canEdit } = relatives.data;
   const list = relatives.data.relatives;
-  const addButton = canEdit && !adding && (
+  const addButton = canEdit && panel.editing !== 'relative-new' && (
     <Button
       variant="secondary"
+      {...panel.opener('relative-new')}
       onClick={() => {
-        setAdding(true);
+        panel.start('relative-new');
       }}
     >
       {t('people.relatives.add')}
@@ -131,11 +141,12 @@ export function StudentRelativesTab({ studentId, name }: { studentId: string; na
             <li key={relative.relativeId} className="grid gap-3 rounded-lg border p-4">
               <RelativeRow relative={relative} />
               {canEdit && (
-                <LinkEditor
+                <LinkActions
                   studentId={studentId}
                   studentName={name}
                   relative={relative}
                   others={list.filter((one) => one.relativeId !== relative.relativeId)}
+                  panel={panel}
                 />
               )}
             </li>
@@ -143,13 +154,16 @@ export function StudentRelativesTab({ studentId, name }: { studentId: string; na
         </ul>
       )}
       {list.length > 0 && addButton !== false && <div>{addButton}</div>}
-      {adding && (
+      {panel.editing === 'relative-new' && (
         <AddRelative
           studentId={studentId}
           studentName={name}
           first={list.length === 0}
           onDone={() => {
-            setAdding(false);
+            panel.stop({ saved: true, key: 'relative-new' });
+          }}
+          onCancel={() => {
+            panel.stop();
           }}
         />
       )}
@@ -223,20 +237,31 @@ function useLinkChange<Input>(
   });
 }
 
-/** The switches of one link and its unlink (decision 12: the main contact moves in one change). */
-function LinkEditor({
+/**
+ * The actions of one link in its row (decision 12 of task 2.5a: the main
+ * contact moves in one change): "Change the link" opens its form, and
+ * "Unlink", only while another relative is linked (`04`: the last relative
+ * stays), acts behind its confirmation, or first asks for the new main
+ * contact when this one is the main contact. Both give way while another
+ * form of the panel is open.
+ */
+function LinkActions({
   studentId,
   studentName,
   relative,
   others,
+  panel,
 }: {
   studentId: string;
   studentName: string;
   relative: StudentRelative;
   others: StudentRelative[];
+  panel: PanelEditing;
 }) {
   const { t } = useTranslation();
   const confirm = useConfirm();
+  const linkKey = `link:${relative.relativeId}`;
+  const unlinkKey = `unlink:${relative.relativeId}`;
   const where = {
     header: branchHeader(),
     path: { id: studentId, relativeId: relative.relativeId },
@@ -246,18 +271,102 @@ function LinkEditor({
       api.PATCH('/api/people/students/{id}/relatives/{relativeId}', { params: where, body: input }),
     ),
   );
-  const unlink = useLinkChange(studentId, (newMainContactId: string | null) =>
-    answerOf(
-      api.POST('/api/people/students/{id}/relatives/{relativeId}/unlink', {
-        params: where,
-        body: { newMainContactId },
-      }),
-    ),
+  // The row goes with the unlink: the focus goes to "Add relative".
+  const unlink = useLinkChange(
+    studentId,
+    (newMainContactId: string | null) =>
+      answerOf(
+        api.POST('/api/people/students/{id}/relatives/{relativeId}/unlink', {
+          params: where,
+          body: { newMainContactId },
+        }),
+      ),
+    () => {
+      panel.stop({ saved: true, key: unlinkKey, focus: 'relative-new' });
+      panel.point('relative-new');
+    },
   );
-  const [nextMain, setNextMain] = useState('');
-  // Unlink pressed with no new main contact chosen (issue #39, hand test of
-  // 13 October 2026, finding 6): the select says what to do first.
-  const [mainMissing, setMainMissing] = useState(false);
+  const askUnlink = async (newMainContactId: string | null) => {
+    const go = await confirm({
+      title: t('people.relatives.unlinkTitle'),
+      text: t('people.relatives.unlinkText'),
+      names: [relative.fullName, studentName],
+      action: t('people.relatives.unlink'),
+      destructive: true,
+    });
+    if (go) {
+      unlink.mutate(newMainContactId);
+    }
+  };
+  const needsNext = relative.mainContact && others.length > 0;
+  return panel.editing === `link:${relative.relativeId}` ? (
+    <LinkForm
+      relative={relative}
+      onSave={async (input) => {
+        await save.mutateAsync(input);
+        panel.stop({ saved: true, key: linkKey });
+      }}
+      onCancel={() => {
+        panel.stop();
+      }}
+    />
+  ) : panel.editing === `unlink:${relative.relativeId}` ? (
+    <UnlinkChoiceForm
+      others={others}
+      pending={unlink.isPending}
+      failure={unlink.error}
+      onUnlink={(newMainContactId) => {
+        void askUnlink(newMainContactId);
+      }}
+      onCancel={() => {
+        unlink.reset();
+        panel.stop();
+      }}
+    />
+  ) : panel.editing === null ? (
+    <div className="flex flex-wrap items-center gap-3">
+      <Button
+        variant="secondary"
+        {...panel.opener(linkKey)}
+        onClick={() => {
+          panel.start(linkKey);
+        }}
+      >
+        {t('people.relatives.changeLink')}
+      </Button>
+      {others.length > 0 && (
+        <Button
+          variant="secondary"
+          {...panel.opener(unlinkKey)}
+          disabled={unlink.isPending}
+          onClick={() => {
+            if (needsNext) {
+              unlink.reset();
+              panel.start(unlinkKey);
+              return;
+            }
+            void askUnlink(null);
+          }}
+        >
+          {t('people.relatives.unlink')}
+        </Button>
+      )}
+      <FailureAlert error={unlink.error} />
+    </div>
+  ) : null;
+}
+
+/** The switches of one link. */
+function LinkForm({
+  relative,
+  onSave,
+  onCancel,
+}: {
+  relative: StudentRelative;
+  onSave: (input: RelativeLinkEdit) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
   const form = useRecordForm<LinkField, RelativeLinkEdit>({
     schema: LINK_SCHEMA,
     initial: {
@@ -272,86 +381,102 @@ function LinkEditor({
       portalAccess: typed.portalAccess === CHECKED,
       receivesNotices: typed.receivesNotices === CHECKED,
     }),
-    save: async (input) => {
-      await save.mutateAsync(input);
-    },
+    save: onSave,
   });
   const option = (value: string, text: string) => ({ value, label: text });
-  const needsNext = relative.mainContact && others.length > 0;
+  return (
+    <RecordForm
+      form={form}
+      label={t('people.relatives.linkLabel', { name: relative.fullName })}
+      onCancel={onCancel}
+    >
+      <SelectField
+        label={t('people.relatives.relationship')}
+        options={RELATIONSHIPS.map((one) =>
+          option(one, t(`people.relatives.relationships.${one}`)),
+        )}
+        {...form.bind('relationship')}
+      />
+      {/* The main contact is moved by marking another one (decision 12). */}
+      {!relative.mainContact && (
+        <CheckboxField label={t('people.relatives.mainContact')} {...form.bind('mainContact')} />
+      )}
+      <CheckboxField label={t('people.relatives.portalAccess')} {...form.bind('portalAccess')} />
+      <NoticesField
+        label={t('people.relatives.receivesNotices')}
+        hasPhone={relative.phone !== null}
+        note={
+          relative.phone === null && relative.mainContact
+            ? t('people.relatives.noPhoneMain')
+            : undefined
+        }
+        {...form.bind('receivesNotices')}
+      />
+    </RecordForm>
+  );
+}
+
+/**
+ * The unlink of the main contact: another relative is chosen as the main
+ * contact in the same action (`edge/close-relatives`, row 6).
+ */
+function UnlinkChoiceForm({
+  others,
+  pending,
+  failure,
+  onUnlink,
+  onCancel,
+}: {
+  others: StudentRelative[];
+  pending: boolean;
+  failure: unknown;
+  onUnlink: (newMainContactId: string) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const [nextMain, setNextMain] = useState('');
+  // Unlink pressed with no new main contact chosen (issue #39, hand test of
+  // 13 October 2026, finding 6): the select says what to do first.
+  const [mainMissing, setMainMissing] = useState(false);
   const choice = others.some((one) => one.relativeId === nextMain) ? nextMain : '';
   return (
-    <div className="grid gap-3">
-      <RecordForm form={form} label={t('people.relatives.linkLabel', { name: relative.fullName })}>
-        <SelectField
-          label={t('people.relatives.relationship')}
-          options={RELATIONSHIPS.map((one) =>
-            option(one, t(`people.relatives.relationships.${one}`)),
-          )}
-          {...form.bind('relationship')}
-        />
-        {/* The main contact is moved by marking another one (decision 12). */}
-        {!relative.mainContact && (
-          <CheckboxField label={t('people.relatives.mainContact')} {...form.bind('mainContact')} />
-        )}
-        <CheckboxField label={t('people.relatives.portalAccess')} {...form.bind('portalAccess')} />
-        <NoticesField
-          label={t('people.relatives.receivesNotices')}
-          hasPhone={relative.phone !== null}
-          note={
-            relative.phone === null && relative.mainContact
-              ? t('people.relatives.noPhoneMain')
-              : undefined
-          }
-          {...form.bind('receivesNotices')}
-        />
-      </RecordForm>
-      {others.length > 0 && (
-        <div className="flex flex-wrap items-end gap-3">
-          {needsNext && (
-            <SelectField
-              label={t('people.relatives.newMain')}
-              options={[
-                option('', t('people.relatives.choose')),
-                ...others.map((one) => option(one.relativeId, one.fullName)),
-              ]}
-              name="newMain"
-              value={choice}
-              error={
-                mainMissing && choice === '' ? t('people.relatives.chooseMainFirst') : undefined
-              }
-              onChange={(event) => {
-                setNextMain(event.target.value);
-                setMainMissing(false);
-              }}
-            />
-          )}
-          <Button
-            variant="secondary"
-            disabled={unlink.isPending}
-            onClick={() => {
-              if (needsNext && choice === '') {
-                setMainMissing(true);
-                return;
-              }
-              void confirm({
-                title: t('people.relatives.unlinkTitle'),
-                text: t('people.relatives.unlinkText'),
-                names: [relative.fullName, studentName],
-                action: t('people.relatives.unlink'),
-                destructive: true,
-              }).then((go) => {
-                if (go) {
-                  unlink.mutate(needsNext ? choice : null);
-                }
-              });
-            }}
-          >
-            {t('people.relatives.unlink')}
-          </Button>
-          <FailureAlert error={unlink.error} />
-        </div>
-      )}
-    </div>
+    <form
+      data-slot="panel-form"
+      className="grid gap-3"
+      aria-label={t('people.relatives.newMain')}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (choice === '') {
+          setMainMissing(true);
+          return;
+        }
+        onUnlink(choice);
+      }}
+    >
+      <SelectField
+        label={t('people.relatives.newMain')}
+        options={[
+          { value: '', label: t('people.relatives.choose') },
+          ...others.map((one) => ({ value: one.relativeId, label: one.fullName })),
+        ]}
+        name="newMain"
+        value={choice}
+        error={mainMissing && choice === '' ? t('people.relatives.chooseMainFirst') : undefined}
+        onChange={(event) => {
+          setNextMain(event.target.value);
+          setMainMissing(false);
+        }}
+      />
+      <FailureAlert error={failure} />
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" variant="destructive" disabled={pending}>
+          {t('people.relatives.unlink')}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          {t('form.cancel')}
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -361,11 +486,13 @@ function AddRelative({
   studentName,
   first,
   onDone,
+  onCancel,
 }: {
   studentId: string;
   studentName: string;
   first: boolean;
   onDone: () => void;
+  onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const [match, setMatch] = useState<{ phone: string; holder: RelativeHolder } | null>(null);
@@ -470,7 +597,11 @@ function AddRelative({
   return (
     <section className="grid gap-3">
       <h3 className={SECTION_TITLE}>{t('people.relatives.add')}</h3>
-      <RecordForm form={form} label={t('people.relatives.formLabel', { name: studentName })}>
+      <RecordForm
+        form={form}
+        label={t('people.relatives.formLabel', { name: studentName })}
+        onCancel={onCancel}
+      >
         <CheckboxField
           label={t('people.relatives.noPhone')}
           {...form.bind('noPhone')}

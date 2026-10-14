@@ -17,16 +17,15 @@ import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
-import { FailureAlert } from '@/components/failure-alert';
 import { DateField, Field, SelectField } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
-import { Button } from '@/components/ui/button';
 import { asFormSchema } from './form-schema';
 import { takenOf, takenText } from './student-form';
 import { schoolDateText } from '@/lib/dates';
-import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
+import { SECTION_TITLE } from '@/components/ui/control';
+import type { PanelEditing } from '@/components/list/use-panel-editing';
 
 /** Every path of an issue is the field of the same name; a contract is two fields. */
 const fieldOf = (path: readonly PropertyKey[]): PropertyKey[] => {
@@ -43,81 +42,61 @@ const RETURN_SCHEMA = asFormSchema<StudentReturn>(studentReturnSchema, fieldOf);
 const RESTORE_SCHEMA = asFormSchema<StudentRestore>(studentRestoreSchema, fieldOf);
 const DELETE_SCHEMA = asFormSchema<StudentDelete>(studentDeleteSchema, fieldOf);
 
-interface StatusSectionProps {
-  student: StudentDetail;
-  /** The name of the student, for the forms and the confirmations. */
-  label: string;
-  holderText: (id: string) => string | null;
-  /** After a change: the answer of the server, the student as it is now. */
-  onChanged: (answer: unknown) => Promise<void>;
-  /** After a refusal that says the student changed: read it again. */
-  onStale: () => Promise<void>;
-  onDeleted: () => Promise<void>;
+/** The status actions the answer of the server allows, by today's conditions (task 2.4b-1). */
+export interface StatusActions {
+  /** "Cancel the leaving": a leaving is scheduled. */
+  cancel: boolean;
+  /** "Leave school": active or not started, nothing scheduled (finding 29). */
+  leave: boolean;
+  /** "Undo leaving": inactive after a leaving. */
+  undo: boolean;
+  /** "Return to school": inactive. */
+  return: boolean;
+  /** "Delete" of a student created twice: no data. */
+  delete: boolean;
+  /** "Restore to active": graduated, the Super Admin. */
+  restore: boolean;
 }
 
-/**
- * The status of a student and its changes (`04`, Movements;
- * edge/students-classes-groups; task 2.4b-1): the history of status rows,
- * and the actions the answer of the server allows (`canArchive`,
- * `canRestoreGraduated`, `deletable`). Each change sends the `version` the
- * panel read; a change made by someone else in between is refused and the
- * student read again (edge: "student changed, reload").
- */
-export function StatusSection({
-  student,
-  label,
-  holderText,
-  onChanged,
-  onStale,
-  onDeleted,
-}: StatusSectionProps) {
-  const { t, i18n } = useTranslation();
-  const language = i18n.language;
-  const confirm = useConfirm();
-  const where = { header: branchHeader(), path: { id: student.id } };
-  const rereadOnStale = async (error: Error) => {
-    if (error instanceof ApiFailure && error.code === 'student_changed') {
-      await onStale();
-    }
-  };
-  const cancel = useMutation({
-    mutationFn: async () => {
-      const go = await confirm({
-        title: t('people.students.cancelConfirmTitle'),
-        text: t('people.students.cancelConfirmText'),
-        names: [label],
-        action: t('people.students.cancelLeaving'),
-        // Finding 26: two buttons that both say "Cancel" do not tell which one
-        // keeps the leaving.
-        cancel: t('people.students.keepLeaving'),
-        destructive: false,
-      });
-      if (!go) {
-        return null;
-      }
-      return answerOf(
-        api.POST('/api/people/students/{id}/leaving/cancel', {
-          params: where,
-          body: { version: student.version },
-        }),
-      );
-    },
-    onSuccess: async (answer) => {
-      if (answer !== null) {
-        await onChanged(answer);
-      }
-    },
-    onError: rereadOnStale,
-  });
-
+export function statusActions(student: StudentDetail): StatusActions {
   const last = student.statuses.at(-1);
   const inactive = student.status === 'inactive' && student.planned === null;
   const graduated = student.status === 'graduated' && student.planned === null;
   const scheduled = student.planned?.status === 'inactive';
+  const archive = student.canArchive;
+  return {
+    cancel: archive && scheduled,
+    // A scheduled leaving is cancelled first, not recorded again (finding 29).
+    leave: archive && (student.status === 'active' || student.status === null) && !scheduled,
+    undo: archive && inactive && last?.cause === 'leaving',
+    return: archive && inactive,
+    delete: archive && student.deletable,
+    restore: student.canRestoreGraduated && graduated,
+  };
+}
 
+/** The keys of the status forms in the side panel, by their action. */
+export const STATUS_FORMS = ['leave', 'undo', 'return', 'restore', 'delete'] as const;
+
+export type StatusForm = (typeof STATUS_FORMS)[number];
+
+export const isStatusForm = (key: string | null): key is StatusForm =>
+  STATUS_FORMS.some((one) => one === key);
+
+/**
+ * The status of a student and its history (`04`, Movements;
+ * edge/students-classes-groups; task 2.4b-1). Its changes are actions of the
+ * side panel (task 2.7c-2b-2b): each opens its form below this section. The
+ * heading takes the focus after a change takes its button away.
+ */
+export function StatusSection({ student, panel }: { student: StudentDetail; panel: PanelEditing }) {
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   return (
     <section className="grid gap-4">
-      <h3 className={SECTION_TITLE}>{t('people.students.statusTitle')}</h3>
+      <h3 className={SECTION_TITLE} tabIndex={-1} {...panel.opener('status')}>
+        {t('people.students.statusTitle')}
+      </h3>
       <ol className="grid gap-2 text-sm">
         {student.statuses.map((row) => (
           <li key={`${row.from}-${row.cause}`} className="grid gap-0.5">
@@ -145,73 +124,60 @@ export function StatusSection({
           </li>
         ))}
       </ol>
-      {student.canArchive && (
-        <>
-          {scheduled && (
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                variant="secondary"
-                disabled={cancel.isPending}
-                onClick={() => {
-                  cancel.mutate();
-                }}
-              >
-                {t('people.students.cancelLeaving')}
-              </Button>
-              <FailureAlert error={cancel.error} />
-            </div>
-          )}
-          {/* A scheduled leaving is cancelled first, not recorded again (finding 29). */}
-          {(student.status === 'active' || student.status === null) && !scheduled && (
-            <LeavingForm
-              key={`leave-${String(student.version)}`}
-              student={student}
-              label={label}
-              onChanged={onChanged}
-              onStale={onStale}
-            />
-          )}
-          {inactive && last?.cause === 'leaving' && (
-            <UndoForm
-              key={`undo-${String(student.version)}`}
-              student={student}
-              label={label}
-              onChanged={onChanged}
-              onStale={onStale}
-            />
-          )}
-          {inactive && (
-            <ReturnForm
-              key={`return-${String(student.version)}`}
-              student={student}
-              label={label}
-              holderText={holderText}
-              onChanged={onChanged}
-              onStale={onStale}
-            />
-          )}
-          {student.deletable && (
-            <DeleteForm
-              key={`delete-${String(student.version)}`}
-              student={student}
-              label={label}
-              onDeleted={onDeleted}
-              onStale={onStale}
-            />
-          )}
-        </>
-      )}
-      {student.canRestoreGraduated && graduated && (
-        <RestoreForm
-          key={`restore-${String(student.version)}`}
-          student={student}
-          label={label}
-          onChanged={onChanged}
-          onStale={onStale}
-        />
-      )}
     </section>
   );
+}
+
+/**
+ * "Cancel the leaving" (edge: "It can be changed or cancelled until the
+ * date"), after a confirmation naming the student; `null` when the person
+ * keeps the leaving. Each change sends the `version` the panel read; a change
+ * made by someone else in between is refused (edge: "student changed, reload").
+ */
+export function useCancelLeaving(
+  student: StudentDetail | undefined,
+  label: string,
+  onChanged: (answer: unknown) => Promise<void>,
+  onStale: () => Promise<void>,
+) {
+  const { t } = useTranslation();
+  const confirm = useConfirm();
+  return useMutation({
+    mutationFn: async () => {
+      if (student === undefined) {
+        return null;
+      }
+      const go = await confirm({
+        title: t('people.students.cancelConfirmTitle'),
+        text: t('people.students.cancelConfirmText'),
+        names: [label],
+        action: t('people.students.cancelLeaving'),
+        // Finding 26: two buttons that both say "Cancel" do not tell which one
+        // keeps the leaving.
+        cancel: t('people.students.keepLeaving'),
+        destructive: false,
+      });
+      if (!go) {
+        return null;
+      }
+      return answerOf(
+        api.POST('/api/people/students/{id}/leaving/cancel', {
+          params: { header: branchHeader(), path: { id: student.id } },
+          body: { version: student.version },
+        }),
+      );
+    },
+    onSuccess: async (answer) => {
+      if (answer !== null) {
+        await onChanged(answer);
+      }
+    },
+    onError: async (error) => {
+      if (error instanceof ApiFailure && error.code === 'student_changed') {
+        await onStale();
+      }
+    },
+  });
 }
 
 interface ChangeFormProps {
@@ -219,6 +185,8 @@ interface ChangeFormProps {
   label: string;
   onChanged: (answer: unknown) => Promise<void>;
   onStale: () => Promise<void>;
+  /** Closes the form without a change (`RecordForm`'s Cancel). */
+  onCancel: () => void;
 }
 
 /** Sends a change; on "student changed" the student is read again before the refusal shows. */
@@ -234,7 +202,7 @@ async function sending(send: () => Promise<unknown>, onStale: () => Promise<void
 }
 
 /** Leaving the school: the last day and a reason, after a confirmation naming the student. */
-function LeavingForm({ student, label, onChanged, onStale }: ChangeFormProps) {
+export function LeavingForm({ student, label, onChanged, onStale, onCancel }: ChangeFormProps) {
   const { t } = useTranslation();
   const confirm = useConfirm();
   const form = useRecordForm<'lastDay' | 'reason', StudentLeaving>({
@@ -268,8 +236,8 @@ function LeavingForm({ student, label, onChanged, onStale }: ChangeFormProps) {
   });
   return (
     <section className="grid gap-3">
-      <h4 className={SUBSECTION_TITLE}>{t('people.students.leaveTitle')}</h4>
-      <RecordForm form={form} label={t('people.students.leaveTitle')}>
+      <h3 className={SECTION_TITLE}>{t('people.students.leaveTitle')}</h3>
+      <RecordForm form={form} label={t('people.students.leaveTitle')} onCancel={onCancel}>
         <DateField label={t('people.students.lastDay')} {...form.bind('lastDay')} />
         <Field label={t('people.students.reason')} {...form.bind('reason')} />
       </RecordForm>
@@ -278,7 +246,7 @@ function LeavingForm({ student, label, onChanged, onStale }: ChangeFormProps) {
 }
 
 /** "Undo leaving" with a reason. */
-function UndoForm({ student, onChanged, onStale }: ChangeFormProps) {
+export function UndoForm({ student, onChanged, onStale, onCancel }: ChangeFormProps) {
   const { t } = useTranslation();
   const form = useRecordForm<'reason', StudentUndoLeaving>({
     schema: UNDO_SCHEMA,
@@ -301,8 +269,8 @@ function UndoForm({ student, onChanged, onStale }: ChangeFormProps) {
   });
   return (
     <section className="grid gap-3">
-      <h4 className={SUBSECTION_TITLE}>{t('people.students.undoTitle')}</h4>
-      <RecordForm form={form} label={t('people.students.undoTitle')}>
+      <h3 className={SECTION_TITLE}>{t('people.students.undoTitle')}</h3>
+      <RecordForm form={form} label={t('people.students.undoTitle')} onCancel={onCancel}>
         <Field label={t('people.students.reason')} {...form.bind('reason')} />
       </RecordForm>
     </section>
@@ -312,11 +280,12 @@ function UndoForm({ student, onChanged, onStale }: ChangeFormProps) {
 type ReturnField = 'from' | 'grade' | 'contractNumber' | 'contractSignedOn' | 'reason';
 
 /** Coming back from the Inactive list: the first day back, the grade and a new contract. */
-function ReturnForm({
+export function ReturnForm({
   student,
   label,
   onChanged,
   onStale,
+  onCancel,
   holderText,
 }: ChangeFormProps & { holderText: (id: string) => string | null }) {
   const { t } = useTranslation();
@@ -366,8 +335,8 @@ function ReturnForm({
   const contractNumber = form.bind('contractNumber');
   return (
     <section className="grid gap-3">
-      <h4 className={SUBSECTION_TITLE}>{t('people.students.returnTitle')}</h4>
-      <RecordForm form={form} label={t('people.students.returnTitle')}>
+      <h3 className={SECTION_TITLE}>{t('people.students.returnTitle')}</h3>
+      <RecordForm form={form} label={t('people.students.returnTitle')} onCancel={onCancel}>
         <DateField label={t('people.students.returnFrom')} {...form.bind('from')} />
         <SelectField
           label={t('people.students.grade')}
@@ -397,7 +366,7 @@ function ReturnForm({
 }
 
 /** The Super Admin's restore of a graduated student, from a date with a reason. */
-function RestoreForm({ student, label, onChanged, onStale }: ChangeFormProps) {
+export function RestoreForm({ student, label, onChanged, onStale, onCancel }: ChangeFormProps) {
   const { t } = useTranslation();
   const confirm = useConfirm();
   const form = useRecordForm<'from' | 'reason', StudentRestore>({
@@ -431,8 +400,8 @@ function RestoreForm({ student, label, onChanged, onStale }: ChangeFormProps) {
   });
   return (
     <section className="grid gap-3">
-      <h4 className={SUBSECTION_TITLE}>{t('people.students.restoreTitle')}</h4>
-      <RecordForm form={form} label={t('people.students.restoreTitle')}>
+      <h3 className={SECTION_TITLE}>{t('people.students.restoreTitle')}</h3>
+      <RecordForm form={form} label={t('people.students.restoreTitle')} onCancel={onCancel}>
         <DateField label={t('people.students.restoreFrom')} {...form.bind('from')} />
         <Field label={t('people.students.reason')} {...form.bind('reason')} />
       </RecordForm>
@@ -441,11 +410,12 @@ function RestoreForm({ student, label, onChanged, onStale }: ChangeFormProps) {
 }
 
 /** The delete of a student created twice, with a reason, after a confirmation naming the student. */
-function DeleteForm({
+export function DeleteForm({
   student,
   label,
   onDeleted,
   onStale,
+  onCancel,
 }: Omit<ChangeFormProps, 'onChanged'> & { onDeleted: () => Promise<void> }) {
   const { t } = useTranslation();
   const confirm = useConfirm();
@@ -479,8 +449,8 @@ function DeleteForm({
   });
   return (
     <section className="grid gap-3">
-      <h4 className={SUBSECTION_TITLE}>{t('people.students.deleteTitle')}</h4>
-      <RecordForm form={form} label={t('people.students.deleteTitle')}>
+      <h3 className={SECTION_TITLE}>{t('people.students.deleteTitle')}</h3>
+      <RecordForm form={form} label={t('people.students.deleteTitle')} onCancel={onCancel}>
         <Field label={t('people.students.reason')} {...form.bind('reason')} />
       </RecordForm>
     </section>
