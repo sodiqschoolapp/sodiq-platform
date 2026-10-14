@@ -25,6 +25,7 @@ import {
 import { sql } from 'kysely';
 import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import { classesOfStudent, studentReaderOf } from '../access/class-scope.js';
 import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
@@ -1258,6 +1259,13 @@ export class Relatives {
       .executeTakeFirst();
     if (student === undefined) {
       throw notFound();
+    }
+    // The class Tutor reads the Contact group of own classes only (task 3.1c,
+    // decision 2 of pull request #90): checked after the 404, decided from
+    // every assignment that reads Contact in the branch.
+    const classes = await classesOfStudent(transaction, branchId, studentId);
+    if (studentReaderOf(access, 'student_contact', classes) === undefined) {
+      throw new ApiException('permission_denied', 403);
     }
     const rows = await transaction
       .selectFrom('student_relatives as l')

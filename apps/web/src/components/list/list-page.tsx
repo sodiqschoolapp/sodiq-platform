@@ -100,6 +100,11 @@ export interface ExportState {
   error: unknown;
   /** The keys of the columns sent that the server did not write (decision 4 of pull request #58). */
   leftOut: readonly string[];
+  /**
+   * How many rows sent the server left out because the reader's scope does
+   * not hold them (a Tutor's own classes, task 3.1c); absent or 0 for none.
+   */
+  rowsLeftOut?: number;
 }
 
 /**
@@ -182,6 +187,11 @@ interface ListPageProps<Row> {
    * about first.
    */
   onOpenRow?: ((row: Row) => void) | undefined;
+  /**
+   * Whether a row opens in the side panel, as the server answered it (the
+   * `opens` of a student row, task 3.1c); every row when absent.
+   */
+  rowOpens?: ((row: Row) => boolean) | undefined;
   /**
    * A new record in the side panel, in the place of an opened record. Needs
    * `panel` or `onOpenRow`; with `onOpenRow` its save writes no record into
@@ -269,6 +279,7 @@ export function ListPage<Row>({
   exportExtras = NO_EXTRAS,
   panel,
   onOpenRow,
+  rowOpens,
   creating,
   view,
   more,
@@ -776,6 +787,13 @@ export function ListPage<Row>({
           exportState !== undefined &&
           exportState.error !== null &&
           exportState.error !== undefined && <FailureAlert error={exportState.error} />}
+        {onExport !== undefined &&
+          exportState !== undefined &&
+          (exportState.rowsLeftOut ?? 0) > 0 && (
+            <p role="status" className="text-sm text-muted-foreground">
+              {t('list.exportRowsLeftOut', { count: exportState.rowsLeftOut ?? 0 })}
+            </p>
+          )}
         {onExport !== undefined && exportState !== undefined && exportState.leftOut.length > 0 && (
           <p role="status" className="text-sm text-muted-foreground">
             {t('list.exportColumnsLeftOut', {
@@ -888,6 +906,7 @@ export function ListPage<Row>({
               selection={selection}
               openId={openId}
               onOpen={onOpen}
+              rowOpens={rowOpens}
             />
             {/* Read out as the search narrows the list. */}
             <div aria-live="polite" className="grid justify-items-start gap-2">

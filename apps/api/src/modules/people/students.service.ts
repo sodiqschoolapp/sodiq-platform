@@ -30,6 +30,7 @@ import {
 import { sql, type RawBuilder } from 'kysely';
 import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import { studentClasses, studentReaderOf } from '../access/class-scope.js';
 import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
@@ -199,14 +200,17 @@ function branchOf(access: Access): string {
 
 const refused = (code: 'no_academic_year'): ApiException => new ApiException(code, 409);
 
-/** The assignment that lets the account read a group of fields in the branch of the request. */
-const readerOf = (access: Access, area: string): string | undefined =>
-  decide(
-    { area, action: 'view', branch: 'request' },
-    access.assignments,
-    access.branchId,
-    PERMISSIONS,
-  )?.id;
+/**
+ * The assignment that lets the account read a group of fields in the branch
+ * of the request, for a student of `classIds` (task 3.1c: a Tutor reads the
+ * groups of own classes only, `class-scope.ts`). With no class given (the
+ * list, a show), only a class-wide reader counts.
+ */
+const readerOf = (
+  access: Access,
+  area: string,
+  classIds: readonly string[] = [],
+): string | undefined => studentReaderOf(access, area, classIds)?.id;
 
 /**
  * The status of a student on a date: the row in force, or before the start
@@ -338,6 +342,9 @@ export class Students {
     const counts = await membershipCounts(transaction, null);
     const classes = await studentClassesOn(transaction, today, null);
     const tutors = await tutorsInForce(transaction);
+    // One rule with the record (decision 8 of pull request #90): a row opens
+    // when the record would be answered to this reader.
+    const scope = await studentClasses(transaction, today, null);
     return rows.map((row) => {
       const own = statuses.get(row.id) ?? [];
       const held = classes.get(row.id);
@@ -361,6 +368,7 @@ export class Students {
         tutor: tutor?.tutor ?? null,
         actingTutor: tutor?.acting ?? null,
         version: own.length + (counts.get(row.id) ?? 0),
+        opens: readerOf(access, 'students', scope.get(row.id) ?? []) !== undefined,
       };
     });
   }
@@ -608,10 +616,19 @@ export class Students {
 
   /** One student of the branch of the request, with the groups its reader may see. */
   detail(access: Access, id: string): Promise<StudentDetail> {
-    this.refuseTutorOnly(access);
-    return this.transactions.run(access.branchIds, (transaction) =>
-      this.readDetail(transaction, access, id),
-    );
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      // An unknown id or another branch's is 404 before the scope is looked
+      // at (decision 9 of pull request #90).
+      await this.readStudent(transaction, id);
+      const today = await this.todayIn(transaction, branchId);
+      const classes = (await studentClasses(transaction, today, id)).get(id) ?? [];
+      if (readerOf(access, 'students', classes) === undefined) {
+        // `02`, Tutor: "the profiles of own class" (task 3.1c).
+        throw new ApiException('permission_denied', 403);
+      }
+      return this.readDetail(transaction, access, id);
+    });
   }
 
   /**
@@ -770,17 +787,6 @@ export class Students {
   }
 
   // ---------------------------------------------------------------------------
-
-  /**
-   * A Tutor opens the profiles of their own class only (`02`), and no class
-   * exists before task 3.1 (decision 6): a reader whose only permitting
-   * assignments are Tutor ones is refused.
-   */
-  private refuseTutorOnly(access: Access): void {
-    if (access.permitting.every((assignment) => assignment.role === 'tutor')) {
-      throw new ApiException('permission_denied', 403);
-    }
-  }
 
   /**
    * The UID set warning (`04`, UID sets, Release 1; decision 5 as changed by
@@ -990,9 +996,10 @@ export class Students {
       .where('student_id', '=', id)
       .executeTakeFirstOrThrow();
     const canArchive = archiverOf(access) !== undefined;
-    const contact = readerOf(access, 'student_contact') !== undefined;
-    const identity = readerOf(access, 'student_identity') !== undefined;
-    const financial = readerOf(access, 'student_financial') !== undefined;
+    const scope = (await studentClasses(transaction, today, id)).get(id) ?? [];
+    const contact = readerOf(access, 'student_contact', scope) !== undefined;
+    const identity = readerOf(access, 'student_identity', scope) !== undefined;
+    const financial = readerOf(access, 'student_financial', scope) !== undefined;
     const contracts = financial
       ? await transaction
           .selectFrom('student_contracts')
@@ -1050,6 +1057,7 @@ export class Students {
       actingTutor: tutor?.acting ?? null,
       mainRoom: held?.mainRoom ?? null,
       version: rows.length + memberships,
+      opens: readerOf(access, 'students', scope) !== undefined,
       canEdit:
         decide(
           { area: 'students', action: 'edit', branch: 'request' },

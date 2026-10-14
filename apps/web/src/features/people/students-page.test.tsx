@@ -52,6 +52,7 @@ const OTKIR: StudentListItem = {
   tutor: { firstName: 'Dilnoza', lastName: 'Tursunova' },
   actingTutor: null,
   version: 2,
+  opens: true,
 };
 
 const ZARINA: StudentListItem = {
@@ -80,6 +81,7 @@ const ZARINA: StudentListItem = {
   tutor: null,
   actingTutor: null,
   version: 1,
+  opens: true,
 };
 
 // Task 2.4b-1: an inactive student, who left on 30 September.
@@ -101,6 +103,7 @@ const LOLA: StudentListItem = {
   tutor: null,
   actingTutor: null,
   version: 2,
+  opens: true,
 };
 
 const detailOf = (row: StudentListItem, fields: Partial<StudentDetail> = {}): StudentDetail => ({
@@ -2330,5 +2333,76 @@ describe('the classes of the students', () => {
         [texts.people.students.mainRoom, '204'],
       ]);
     }
+  });
+});
+
+// Task 3.1c, pull request #90: the Tutor reads the whole list and opens the
+// rows the server marks (`opens`, decision 8); the export of a Tutor names
+// the rows the server left out (decision 5).
+describe('the student list of a Tutor', () => {
+  it('opens only the rows the server marks, in the table', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('tutor')),
+      'GET /api/people/students': () =>
+        json({
+          students: [OTKIR, { ...ZARINA, opens: false }],
+          canArchive: false,
+          exportGroups: ['basic'],
+          readsFinancial: false,
+          today: '2026-10-10',
+        }),
+      [`GET /api/people/students/${OTKIR.id}`]: () => json(detailOf(OTKIR)),
+      [`GET /api/people/students/${OTKIR.id}/relatives`]: () => json(MOTHER),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    expect(document.querySelector(`[data-open-row="${ZARINA.id}"]`)).toBeNull();
+    const open = document.querySelector<HTMLButtonElement>(`[data-open-row="${OTKIR.id}"]`);
+    expect(open).not.toBeNull();
+    open?.click();
+    expect(await screen.findByRole('complementary')).toBeDefined();
+  });
+
+  it('says how many rows the server left out of the file', async () => {
+    class FileUrl extends URL {
+      static override createObjectURL = (): string => 'blob:file';
+      static override revokeObjectURL = (): void => undefined;
+    }
+    vi.stubGlobal('URL', FileUrl);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('tutor')),
+      'GET /api/people/students': () =>
+        json({
+          students: [OTKIR, { ...ZARINA, opens: false }],
+          canArchive: false,
+          exportGroups: ['basic'],
+          readsFinancial: false,
+          today: '2026-10-10',
+        }),
+      'POST /api/people/students/export': (body) =>
+        new Response(new Blob(['PK']), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'X-Export-Columns': (body as { columns: string[] }).columns.join(','),
+            'X-Export-Rows-Left-Out': '1',
+          },
+        }),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.list.export }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/students/export')).toBe(true);
+    });
+    expect(
+      await screen.findByText('1 row is not in the file, because it is outside your classes.'),
+    ).toBeDefined();
+    vi.restoreAllMocks();
   });
 });

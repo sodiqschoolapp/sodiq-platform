@@ -140,3 +140,58 @@ test('an Academic Vice Principal puts two students into a class', async ({ page 
   }
   await memberScreenshot(page, 'student-list');
 });
+
+// Task 3.1c, pull request #90 (`02`, the Tutor row: "Own class or classes ...
+// the profiles of own class"; edge/people-roles-accounts, Contact: "and the
+// class Tutor"): the Tutor of 7 Oxford sees 7 Oxford only under Classes, opens
+// the profile of a student of it with the mother's phone, and the row of a
+// student of 7 Yale does not open. With SCREENSHOTS=1 the pages are saved for
+// the report under docs/screens/3.1c/. All names are invented.
+const SCOPE_SCREENS = path.join(import.meta.dirname, '../../../docs/screens/3.1c');
+
+async function scopeScreenshot(page: Page, name: string): Promise<void> {
+  if (process.env.SCREENSHOTS !== '1') {
+    return;
+  }
+  await page.waitForTimeout(400);
+  mkdirSync(SCOPE_SCREENS, { recursive: true });
+  await page.screenshot({ path: path.join(SCOPE_SCREENS, `${name}.png`) });
+}
+
+test('a Tutor reads the own class and nothing of another class', async ({ page }) => {
+  const account = accountOf('tutorScope');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page
+    .getByRole('navigation', { name: en.layout.menu })
+    .getByRole('link', { name: new RegExp(en.menu.classes) })
+    .click();
+  await expect(heading(page, en.classes.title)).toBeVisible();
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  const row = page.getByRole('row').filter({ hasText: '7 Oxford' });
+  await expect(row).toContainText('Ahmedova Shoira');
+  await expect(page.getByRole('button', { name: en.classes.add, exact: true })).toHaveCount(0);
+  await row.getByRole('button', { name: '7 Oxford' }).click();
+  const panel = page.getByRole('complementary', { name: '7 Oxford' });
+  await expect(panel.getByText('Tojiyeva Nilufar')).toBeVisible();
+  await scopeScreenshot(page, 'tutor-classes');
+
+  await page.goto('/people/students');
+  await expect(heading(page, en.people.students.title)).toBeVisible();
+  // The whole list of the branch, and only the own class's student opens.
+  const yale = page.locator('tbody tr').filter({ hasText: 'Aliyev Sherzod' });
+  await expect(yale).toContainText('7 Yale');
+  await expect(yale.getByRole('button', { name: 'Aliyev Sherzod' })).toHaveCount(0);
+  const oxford = page.locator('tbody tr').filter({ hasText: 'Tojiyeva Nilufar' });
+  await oxford.getByRole('button', { name: 'Tojiyeva Nilufar' }).click();
+  const profile = page.getByRole('complementary', { name: 'Nilufar Tojiyeva' });
+  await expect(profile).toBeVisible();
+  await profile.getByText(en.people.students.tabs.relatives, { exact: true }).click();
+  await expect(profile.getByText('Dilnoza Tojiyeva')).toBeVisible();
+  await expect(profile.getByText('+998 90 555 02 61')).toBeVisible();
+  await scopeScreenshot(page, 'tutor-student');
+});

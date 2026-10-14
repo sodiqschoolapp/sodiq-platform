@@ -185,8 +185,16 @@ describe('classes', () => {
       await kit.giveRole(teacher.account.id, { role: 'teacher', branchId: north });
       const tutor = await kit.completeSession('Malika', 'Qodirova');
       await kit.giveRole(tutor.account.id, { role: 'tutor', branchId: north });
+      expect(errorCode(await get('/api/classes', teacher.cookie).expect(403))).toBe(
+        'permission_denied',
+      );
+      // Task 3.1c (decision 1 of pull request #90): the Tutor reads own classes
+      // only, so a Tutor of no class lists none and is refused the record.
+      const listed = classListSchema.parse(
+        (await get('/api/classes', tutor.cookie).expect(200)).body,
+      );
+      expect(listed.classes).toEqual([]);
       for (const cookie of [teacher.cookie, tutor.cookie]) {
-        expect(errorCode(await get('/api/classes', cookie).expect(403))).toBe('permission_denied');
         expect(errorCode(await get(`/api/classes/${created.id}`, cookie).expect(403))).toBe(
           'permission_denied',
         );

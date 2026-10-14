@@ -452,6 +452,9 @@ export const en = {
     exportAlsoChosen_one: 'Also export: {{n}} group',
     exportAlsoChosen_other: 'Also export: {{n}} groups',
     exportColumnsLeftOut: 'Not in the file, because your role may not export them: {{columns}}.',
+    exportRowsLeftOut_one: '{{count}} row is not in the file, because it is outside your classes.',
+    exportRowsLeftOut_other:
+      '{{count}} rows are not in the file, because they are outside your classes.',
     selectAll: 'Select every row that matches the search and filters',
     selectRow: 'Select {{name}}',
     bulkActions: 'Actions for the selected rows',
@@ -2127,6 +2130,7 @@ export const en = {
     emptyTitle: 'No classes yet',
     empty: 'A class holds the students of one grade. Add the first class.',
     emptyNoYear: 'Classes belong to an academic year. Ask the Super Admin to add one.',
+    emptyTutor: 'You are not the Tutor of a class yet.',
     name: 'Class',
     className: 'Name',
     grade: 'Grade',

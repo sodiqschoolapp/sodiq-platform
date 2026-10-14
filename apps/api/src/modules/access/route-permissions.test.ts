@@ -80,12 +80,15 @@ const ACCESS_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal
 const EXPORTERS = SETUP_VIEWERS;
 
 // Task 3.1a, decision 5 of pull request #88 (Look first): the area `classes`.
+// Task 3.1c (decision 1 of pull request #90): the Tutor reads own classes;
+// the route decides the class (classes/tutor-scope.test.ts).
 const CLASS_VIEWERS: readonly Role[] = [
   'super_admin',
   'principal',
   'academic_vice_principal',
   'spiritual_vice_principal',
   'head_tutor',
+  'tutor',
   'senior_head_teacher',
   'head_teacher',
 ];
@@ -262,9 +265,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/people/students/:id/restore': { branch: 'request', roles: ['super_admin'] },
   'POST /api/people/students/:id/delete': { branch: 'request', roles: STUDENT_EDITORS },
   // Task 2.4b-2: the export (decision 1), the photos and the "No class" counter.
+  // Task 3.1c (decision 3 of pull request #90): the Tutor, own classes only
+  // (classes/tutor-scope.test.ts).
   'POST /api/people/students/export': {
     branch: 'request',
-    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+    roles: ['super_admin', 'principal', 'academic_vice_principal', 'tutor'],
   },
   'GET /api/people/students/no-class': { branch: 'request', roles: STUDENT_VIEWERS },
   'PUT /api/people/students/:id/photo': { branch: 'request', roles: STUDENT_EDITORS },
@@ -296,6 +301,8 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // staff member of another branch is refused to all but the Super Admin (same-person.test.ts).
   'PUT /api/people/relatives/:id/same-person': { branch: 'request', roles: STUDENT_EDITORS },
   'DELETE /api/people/relatives/:id/same-person': { branch: 'request', roles: STUDENT_EDITORS },
+  // Task 3.1c (decision 2 of pull request #90): the class Tutor, own classes
+  // only (classes/tutor-scope.test.ts).
   'GET /api/people/students/:id/relatives': {
     branch: 'request',
     roles: [
@@ -304,6 +311,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
       'academic_vice_principal',
       'spiritual_vice_principal',
       'head_tutor',
+      'tutor',
     ],
   },
   'POST /api/people/students/:id/relatives': { branch: 'request', roles: STUDENT_EDITORS },

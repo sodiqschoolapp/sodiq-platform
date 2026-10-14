@@ -469,6 +469,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     exportAlsoChosen_other: 'Дополнительные поля: {{n}} группы',
     exportColumnsLeftOut:
       'Не вошли в файл, потому что ваша роль не может их экспортировать: {{columns}}.',
+    exportRowsLeftOut_one: '{{count}} строка не вошла в файл: она не из ваших классов.',
+    exportRowsLeftOut_few: '{{count}} строки не вошли в файл: они не из ваших классов.',
+    exportRowsLeftOut_many: '{{count}} строк не вошли в файл: они не из ваших классов.',
+    exportRowsLeftOut_other: '{{count}} строки не вошли в файл: они не из ваших классов.',
     selectAll: 'Выбрать все строки, подходящие под поиск и фильтры',
     selectRow: 'Выбрать: {{name}}',
     bulkActions: 'Действия с выбранными строками',
@@ -2234,6 +2238,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     emptyTitle: 'Классов пока нет',
     empty: 'В классе учатся ученики одной параллели. Добавьте первый класс.',
     emptyNoYear: 'Классы относятся к учебному году. Попросите Супер-администратора добавить его.',
+    emptyTutor: 'Вы пока не тьютор ни одного класса.',
     name: 'Класс',
     className: 'Название',
     grade: 'Параллель',

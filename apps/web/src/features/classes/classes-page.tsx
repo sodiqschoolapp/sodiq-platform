@@ -21,6 +21,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { PANEL } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
+import { sessionQuery } from '@/features/auth/session';
 import { roomsQuery, yearsQuery } from '@/features/setup/setup-api';
 import { SM, useMinWidth } from '@/lib/use-min-width';
 import { ClassForm } from './class-form';
@@ -51,6 +52,16 @@ export function ClassesPage() {
   const canExport = role !== null && permits(PERMISSIONS, role, 'classes', 'export');
   const exporter = useExport<SchoolClass>('classes', (row) => row.id);
   const classes = useQuery(classesQuery(branchId));
+  // Whether the server lists own classes only: every assignment of the
+  // account that reads classes in the branch is a Tutor one (task 3.1c), as
+  // the server decides it from all of them, not from the role shown.
+  const { data: session } = useQuery(sessionQuery);
+  const readers = (session?.assignments ?? []).filter(
+    (held) =>
+      permits(PERMISSIONS, held.role, 'classes', 'view') &&
+      (held.branchId === null || held.branchId === branchId),
+  );
+  const ownClassesOnly = readers.length > 0 && readers.every((held) => held.role === 'tutor');
   // The years and rooms of the forms: read only by those who change classes.
   const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null && canEdit });
   const rooms = useQuery({ ...roomsQuery(branchId), enabled: branchId !== null && canEdit });
@@ -241,7 +252,12 @@ export function ClassesPage() {
         onSearchChange={open}
         empty={{
           title: t('classes.emptyTitle'),
-          text: noYear ? t('classes.emptyNoYear') : t('classes.empty'),
+          // A Tutor lists own classes only (task 3.1c): an empty list says why.
+          text: ownClassesOnly
+            ? t('classes.emptyTutor')
+            : noYear
+              ? t('classes.emptyNoYear')
+              : t('classes.empty'),
           // The header holds "New class" with its id; the empty page offers it once more.
           action:
             canCreate && newRecord.value === null && !noYear ? (

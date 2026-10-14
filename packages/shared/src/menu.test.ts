@@ -45,7 +45,8 @@ const EXPECTED: Record<Role, MenuItem[]> = {
   ],
   spiritual_vice_principal: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   head_tutor: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
-  tutor: ['home', 'people', 'timetable', 'journal', 'results'],
+  // Task 3.1c, decision 4 of pull request #90 (Look first): own classes.
+  tutor: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   senior_head_teacher: [
     'home',
     'people',

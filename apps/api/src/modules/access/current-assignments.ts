@@ -29,6 +29,14 @@ export interface CurrentAssignment {
    * life of the assignment (db/migrations/0028).
    */
   subjectIds: readonly string[];
+  /**
+   * The classes of a Tutor assignment whose Tutor or acting Tutor row is in
+   * force at the moment of the request, in small letters (task 3.1c). Empty
+   * as the session reads it: the permission guard fills it in the branch of
+   * the request (`class-scope.ts`), and a Tutor assignment of another branch
+   * keeps it empty and fits no class.
+   */
+  classIds: readonly string[];
 }
 
 /**
@@ -71,6 +79,7 @@ export async function currentAssignments(
     subjectIds: subjects
       .filter((subject) => subject.assignment_id === row.id)
       .map((subject) => subject.subject_id.toLowerCase()),
+    classIds: [],
   }));
 }
 

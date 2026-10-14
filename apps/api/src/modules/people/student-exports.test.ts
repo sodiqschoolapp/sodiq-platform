@@ -193,7 +193,8 @@ describe('the student export, the consent list and the "No class" counter', () =
         [t.principal, ['basic', 'financial'], true],
         [spiritual, [], false],
         [headTutor, [], false],
-        [tutor, [], false],
+        // Task 3.1c (decision 3 of pull request #90): own classes, Basic only.
+        [tutor, ['basic'], false],
         [headTeacher, [], false],
         [seniorHeadTeacher, [], false],
       ] as const) {

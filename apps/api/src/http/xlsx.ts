@@ -5,7 +5,7 @@ import {
   type ExecutionContext,
   type NestInterceptor,
 } from '@nestjs/common';
-import { EXPORT_COLUMNS_HEADER } from '@sodiq/shared';
+import { EXPORT_COLUMNS_HEADER, EXPORT_ROWS_LEFT_OUT_HEADER } from '@sodiq/shared';
 import ExcelJS from 'exceljs';
 import type { Response } from 'express';
 import { map, type Observable } from 'rxjs';
@@ -86,6 +86,11 @@ export class XlsxFile {
     /** The keys of the columns written, in their order. */
     readonly columns: readonly string[],
     readonly content: Buffer,
+    /**
+     * The rows sent that a scope left out (task 3.1c); `undefined` for a list
+     * without a scope, whose file holds every row sent.
+     */
+    readonly rowsLeftOut?: number,
   ) {}
 }
 
@@ -113,6 +118,9 @@ export class XlsxFileInterceptor implements NestInterceptor {
         }
         const response = context.switchToHttp().getResponse<Response>();
         response.setHeader(EXPORT_COLUMNS_HEADER, answer.columns.join(','));
+        if (answer.rowsLeftOut !== undefined) {
+          response.setHeader(EXPORT_ROWS_LEFT_OUT_HEADER, String(answer.rowsLeftOut));
+        }
         return new StreamableFile(answer.content, {
           type: XLSX_MEDIA_TYPE,
           disposition: contentDisposition(answer),

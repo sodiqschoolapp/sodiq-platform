@@ -14107,6 +14107,7 @@ export interface operations {
                                 lastName: string;
                             } | null;
                             version: number;
+                            opens: boolean;
                         }[];
                         canArchive: boolean;
                         exportGroups: ("basic" | "contact" | "identity" | "financial")[];
@@ -14320,6 +14321,7 @@ export interface operations {
                             lastName: string;
                         } | null;
                         version: number;
+                        opens: boolean;
                         contact: {
                             phone: string | null;
                             email: string | null;
@@ -14711,6 +14713,7 @@ export interface operations {
                             lastName: string;
                         } | null;
                         version: number;
+                        opens: boolean;
                         contact: {
                             phone: string | null;
                             email: string | null;
@@ -14926,6 +14929,7 @@ export interface operations {
                             lastName: string;
                         } | null;
                         version: number;
+                        opens: boolean;
                         contact: {
                             phone: string | null;
                             email: string | null;
@@ -15111,6 +15115,7 @@ export interface operations {
                             lastName: string;
                         } | null;
                         version: number;
+                        opens: boolean;
                         contact: {
                             phone: string | null;
                             email: string | null;
@@ -15368,6 +15373,7 @@ export interface operations {
                             lastName: string;
                         } | null;
                         version: number;
+                        opens: boolean;
                         contact: {
                             phone: string | null;
                             email: string | null;
@@ -15551,6 +15557,7 @@ export interface operations {
                             lastName: string;
                         } | null;
                         version: number;
+                        opens: boolean;
                         contact: {
                             phone: string | null;
                             email: string | null;
@@ -15735,6 +15742,7 @@ export interface operations {
                             lastName: string;
                         } | null;
                         version: number;
+                        opens: boolean;
                         contact: {
                             phone: string | null;
                             email: string | null;
@@ -15927,6 +15935,7 @@ export interface operations {
                             lastName: string;
                         } | null;
                         version: number;
+                        opens: boolean;
                         contact: {
                             phone: string | null;
                             email: string | null;
@@ -16113,6 +16122,7 @@ export interface operations {
                             lastName: string;
                         } | null;
                         version: number;
+                        opens: boolean;
                         contact: {
                             phone: string | null;
                             email: string | null;

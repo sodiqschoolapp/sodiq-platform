@@ -3,6 +3,7 @@ import {
   classExportSchema,
   divisionExportSchema,
   EXPORT_COLUMNS_HEADER,
+  EXPORT_ROWS_LEFT_OUT_HEADER,
   EXPORT_FILTER_VALUE_MAX_LENGTH,
   EXPORT_FILTERS_MAX,
   EXPORT_SEARCH_MAX_LENGTH,
@@ -152,13 +153,21 @@ export function useExport<Row>(list: ExportListName, rowId: (row: Row) => string
         .split(',')
         .filter((key) => key !== '');
       save(file, fileNameOf(result.response.headers.get('Content-Disposition'), `${list}.xlsx`));
-      return columns.filter((key) => !written.includes(key));
+      // A list with a scope counts the rows it left out (task 3.1c).
+      const rowsLeftOut = Number(result.response.headers.get(EXPORT_ROWS_LEFT_OUT_HEADER) ?? '0');
+      return {
+        leftOut: columns.filter((key) => !written.includes(key)),
+        rowsLeftOut: Number.isInteger(rowsLeftOut) && rowsLeftOut > 0 ? rowsLeftOut : 0,
+      };
     },
   });
   const state: ExportState = {
     pending: mutation.isPending,
     error: mutation.error,
-    leftOut: mutation.data ?? [],
+    leftOut: mutation.data?.leftOut ?? [],
+    ...(mutation.data !== undefined && mutation.data.rowsLeftOut > 0
+      ? { rowsLeftOut: mutation.data.rowsLeftOut }
+      : {}),
   };
   return {
     onExport: (

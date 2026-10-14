@@ -170,10 +170,13 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   Teacher view (`02`: each "Sees the student list of the branch" or the
  *   "Full student list across classes and groups"; a Senior Head Teacher in
  *   each branch of a request). Teachers have no list (`02`: "Own lessons").
- *   The Tutor opens no profile until the class scope of task 3.1.
+ *   The Tutor opens the profiles of own classes only (`02`: "the profiles
+ *   of own class"; the class scope of task 3.1c, `class-scope.ts`).
  *   `student_contact`: the Super Admin, the Principal, the Academic Vice
- *   Principal, the Vice Principal for Spiritual and Moral Education and the
- *   Head Tutor (the class Tutor with task 3.1). `student_identity`: the
+ *   Principal, the Vice Principal for Spiritual and Moral Education, the
+ *   Head Tutor and the class Tutor, for the students of own classes only
+ *   (task 3.1c, decision 2 of pull request #90, Look first: a widening of an
+ *   existing role). `student_identity`: the
  *   Super Admin and the Academic Vice Principal; the Principal sees it hidden
  *   with a logged show under `students` `view`. `student_financial`: the
  *   Super Admin, the Academic Vice Principal and the Principal. Four new areas
@@ -194,9 +197,10 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   export is logged"; task 2.4b-2): the Super Admin, the Academic Vice
  *   Principal and the Principal ("Exports are allowed, without identity
  *   documents"). The Spiritual VP and the Head Tutor are "view only" in `02`
- *   and the Head Teachers have no export line; Tutors export their own class
- *   with the class scope of task 3.1. Which groups a file holds is decided by
- *   the route. Decided without the owner on pull request #70 (decision 1,
+ *   and the Head Teachers have no export line; Tutors export their own
+ *   class, Basic columns of the students of own classes only (task 3.1c,
+ *   decision 3 of pull request #90, Look first). Which groups a file holds
+ *   is decided by the route. Decided without the owner on pull request #70 (decision 1,
  *   Look first), confirmed at its review and flagged on issue #42.
  * - `relatives` (`04`, Close relatives; `edge/close-relatives`; task 2.5a): the
  *   Parents list and page, the relative record and the phone typed first.
@@ -221,8 +225,10 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   of a class included (decision 8); the Principal views and exports (`02`:
  *   "Views everything in the branch"; edge: "Exports are allowed"); the
  *   Vice Principal for Spiritual and Moral Education, the Head Tutor, the
- *   Head Teacher and the Senior Head Teacher view (`02`). The Tutor gets the
- *   classes of their own class scope in task 3.1c; the Teacher none. A new
+ *   Head Teacher and the Senior Head Teacher view (`02`). The Tutor views
+ *   own classes only (`02`: "Own class or classes"; task 3.1c, decision 1 of
+ *   pull request #90, Look first: a widening of an existing role); the
+ *   Teacher none. A new
  *   area for new routes, decided without the owner on pull request #88
  *   (decision 5, Look first), confirmed at its review and flagged on issue #42.
  */
@@ -309,7 +315,7 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['view', 'create', 'edit', 'archive', 'export'],
     spiritual_vice_principal: ['view'],
     head_tutor: ['view'],
-    tutor: ['view'],
+    tutor: ['view', 'export'],
     senior_head_teacher: ['view'],
     head_teacher: ['view'],
   }),
@@ -319,6 +325,7 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['view'],
     spiritual_vice_principal: ['view'],
     head_tutor: ['view'],
+    tutor: ['view'],
   }),
   student_identity: rows({
     super_admin: ['view'],
@@ -338,6 +345,7 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['view', 'create', 'edit', 'archive', 'export'],
     spiritual_vice_principal: ['view'],
     head_tutor: ['view'],
+    tutor: ['view'],
     senior_head_teacher: ['view'],
     head_teacher: ['view'],
   }),

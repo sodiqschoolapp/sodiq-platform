@@ -17,7 +17,7 @@ import {
   writePlacement,
   type PlacementClass,
 } from './class-placement.js';
-import { branchOf, zoneOf } from './classes.service.js';
+import { branchOf, refuseOutsideClassScope, zoneOf } from './classes.service.js';
 
 /**
  * Class membership from the class's side (task 3.1b, pull request #89): its
@@ -33,10 +33,13 @@ export class ClassMembers {
     private readonly audit: Audit,
   ) {}
 
+  /** The Students tab; a Tutor's own class only (task 3.1c, decision 9 of pull request #90). */
   members(access: Access, classId: string): Promise<ClassMembersAnswer> {
-    return this.transactions.run(access.branchIds, async (transaction) =>
-      this.readMembers(transaction, branchOf(access), await this.classOf(transaction, classId)),
-    );
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const found = await this.classOf(transaction, classId);
+      refuseOutsideClassScope(access, classId);
+      return this.readMembers(transaction, branchOf(access), found);
+    });
   }
 
   /** "Put into a class" from a date, all or none (decisions 5 and 6). */

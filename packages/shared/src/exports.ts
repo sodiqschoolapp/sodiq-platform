@@ -217,6 +217,14 @@ export const EXPORT_FILTER_VALUE_MAX_LENGTH = 100;
 /** The header naming the column keys written to the file, in their order, separated by commas. */
 export const EXPORT_COLUMNS_HEADER = 'X-Export-Columns';
 
+/**
+ * The header counting the rows sent that the server left out of the file
+ * because the reader's scope does not hold them (task 3.1c: a Tutor exports
+ * the students of own classes only, decision 5 of pull request #90). Sent
+ * only by a list with a scope.
+ */
+export const EXPORT_ROWS_LEFT_OUT_HEADER = 'X-Export-Rows-Left-Out';
+
 /** The rows of an export: the ticked ones (decision 12), or every row that matched. */
 export const EXPORT_SELECTIONS = ['ticked', 'matching'] as const;
 

@@ -698,6 +698,7 @@ export function StudentsPage() {
                 ? placePanel(newRecord.value.rows)
                 : leavingPanel(newRecord.value.rows)
         }
+        rowOpens={(row) => row.opens}
         panel={(row) => (
           <StudentPanel key={row.id} id={row.id} name={typedName(row)} holderText={holderText} />
         )}

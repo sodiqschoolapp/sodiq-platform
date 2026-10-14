@@ -605,6 +605,7 @@ describe('the students of a class', () => {
     tutor: null,
     actingTutor: null,
     version: 1,
+    opens: true,
     ...fields,
   });
 
@@ -765,5 +766,58 @@ describe('the students of a class', () => {
     expect(await within(panel).findByText('Rahimovaa Malika')).toBeDefined();
     expect(within(panel).queryByRole('button', { name: en.classes.withdraw })).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.classes.putIntoClass })).toBeNull();
+  });
+});
+
+// Task 3.1c, pull request #90: the Tutor sees own classes (the server answers
+// them, decision 1), read only, and an empty list says why.
+describe('the classes of a Tutor', () => {
+  const tutor = () =>
+    sessionOf({ assignments: [{ role: 'tutor', branchId: NORTH.id }], branches: [NORTH] });
+
+  it('shows the classes the server answers, read only, with no form data asked', async () => {
+    const calls = await openList({ session: tutor(), classes: [OXFORD] });
+    expect(screen.queryByRole('button', { name: en.classes.add })).toBeNull();
+    fireEvent.click(rowButton('7 Oxford'));
+    const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
+    await within(panel).findByText(en.classes.tutors);
+    expect(panelActionNames(panel)).toEqual([]);
+    expect(within(panel).queryByRole('button', { name: en.classes.giveTutor })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.classes.putIntoClass })).toBeNull();
+    for (const route of [
+      'GET /api/classes/tutor-candidates',
+      'GET /api/setup/academic-years',
+      'GET /api/setup/rooms',
+    ]) {
+      expect(calls.some((call) => call.route === route)).toBe(false);
+    }
+  });
+
+  it('says a Tutor of no class has none', async () => {
+    await openList({ session: tutor(), classes: [] });
+    expect(await screen.findByText(en.classes.emptyTutor)).toBeDefined();
+    expect(screen.queryByText(en.classes.empty)).toBeNull();
+  });
+
+  it('says it in Russian when Russian is chosen', async () => {
+    await openList({ session: tutor(), classes: [], language: 'ru' });
+    expect(await screen.findByText(ru.classes.emptyTutor)).toBeDefined();
+  });
+});
+
+describe('the classes of a Tutor who also reads every class', () => {
+  it('says the general line when another role of the branch reads every class', async () => {
+    await openList({
+      session: sessionOf({
+        assignments: [
+          { role: 'tutor', branchId: NORTH.id },
+          { role: 'head_tutor', branchId: NORTH.id },
+        ],
+        branches: [NORTH],
+      }),
+      classes: [],
+    });
+    expect(await screen.findByText(en.classes.empty)).toBeDefined();
+    expect(screen.queryByText(en.classes.emptyTutor)).toBeNull();
   });
 });
