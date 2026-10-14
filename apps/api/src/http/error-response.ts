@@ -233,6 +233,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   move_not_scheduled: 'Only a scheduled move is changed or cancelled.',
   move_not_undoable: 'The move cannot be undone.',
   move_scheduled: 'Another move of the student is scheduled.',
+  move_before_later: 'A later move of the student has begun.',
   move_no_membership: 'The student is in no class or group of the subject on that date.',
   move_same_target: 'The student is already in that class or group on that date.',
   class_language_differs: 'The two classes differ in language of instruction.',

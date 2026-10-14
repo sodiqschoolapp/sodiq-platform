@@ -482,6 +482,7 @@ export class StudentStatuses {
       },
       (classId) => inService.has(classId),
       cancelledMoves,
+      new Set(movesCancelled),
     );
     // Task 3.2c, decision 9: every group the change may touch, locked FOR
     // UPDATE in the order of their id in one call, after the classes and
@@ -500,7 +501,14 @@ export class StudentStatuses {
     const groupsCut =
       leaving === undefined || leavingId === null
         ? []
-        : await cutGroupRows(transaction, id, leaving.validFrom, leavingId, takenBack?.id ?? null);
+        : await cutGroupRows(
+            transaction,
+            id,
+            leaving.validFrom,
+            leavingId,
+            takenBack?.id ?? null,
+            new Set(movesCancelled),
+          );
     // Task 3.2c: the class rows written back need their groups, every day:
     // the rows the leaving taken back cut come back first (decision 6), then
     // every day still without a group of a split or group subject gets the

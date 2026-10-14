@@ -328,6 +328,8 @@ export const en = {
       'This move has already begun, or was cancelled or undone, so it can no longer be changed or cancelled. Reload to see it as it is now.',
     move_not_undoable:
       "This move can no longer be undone: something changed the student's classes or groups after it, or its year is closed. Make a transfer back instead.",
+    move_before_later:
+      'A later move of this student has already begun. Choose a date after it, or undo that move first.',
     move_scheduled:
       'Another move of this student is already scheduled. Change or cancel that move first.',
     move_no_membership:

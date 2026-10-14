@@ -395,6 +395,16 @@ export class StudentMoves {
     if (moves.some((move) => move.kind === 'class' && moveState(move, today) === 'scheduled')) {
       throw new ApiException('move_scheduled', 409);
     }
+    // A later class move that has begun is not overwritten by one dated
+    // before it (spec review of the build, should-fix 3).
+    if (
+      moves.some(
+        (move) =>
+          move.kind === 'class' && moveState(move, today) === 'done' && move.effectiveOn > from,
+      )
+    ) {
+      throw new ApiException('move_before_later', 409);
+    }
     // The two classes FOR UPDATE in the order of their id, then read.
     await classesInService(transaction, [held.classId, target.id]);
     const classes = await transaction
@@ -618,6 +628,27 @@ export class StudentMoves {
       [fromClassId],
       own.map((row) => row.groupId),
     );
+    // A live group move inside the days the class move gave is changed or
+    // cancelled first (spec review of the build, should-fix 2).
+    const live = new Set(
+      (await movesOf(transaction, student.id))
+        .filter((one) => one.kind === 'group' && one.cancelledAt === null && one.undoneAt === null)
+        .map((one) => one.id),
+    );
+    if (
+      target !== undefined &&
+      own.some(
+        (row) =>
+          holdsDays(row) &&
+          row.validFrom >= target.validFrom &&
+          row.validFrom < target.validUntil &&
+          row.writtenByMoveId !== null &&
+          row.cause === 'transfer' &&
+          live.has(row.writtenByMoveId),
+      )
+    ) {
+      throw new ApiException('move_scheduled', 409);
+    }
     const moment = await transactionMoment(transaction);
     await transaction
       .updateTable('student_moves')
@@ -861,6 +892,17 @@ export class StudentMoves {
       )
     ) {
       throw new ApiException('move_scheduled', 409);
+    }
+    if (
+      moves.some(
+        (move) =>
+          move.kind === 'group' &&
+          move.subjectId === source.subjectId &&
+          moveState(move, today) === 'done' &&
+          move.effectiveOn > from,
+      )
+    ) {
+      throw new ApiException('move_before_later', 409);
     }
     await lockGroups(transaction, [source.id, target.id]);
     const classes = new Set(target.classIds);

@@ -150,13 +150,16 @@ export interface MembershipPlan {
  *   not given back and is named (`.claude/rules/database.md`, a mirror brings
  *   back only rows whose own record is in service);
  * - a row a cancelled move wrote into its target is never given back, so the
- *   row the move cut comes back to its own end (task 3.3a, decision 8).
+ *   row the move cut comes back to its own end (task 3.3a, decision 8); a
+ *   row a move the new leaving cancels (`cancelledNow`) cut on the leaving's
+ *   first inactive day is named by the leaving too.
  */
 export function planMemberships(
   rows: readonly StoredMembership[],
   change: MembershipChange,
   inService: (classId: string) => boolean,
   cancelledMoves: ReadonlySet<string> = new Set(),
+  cancelledNow: ReadonlySet<string> = new Set(),
 ): MembershipPlan {
   const cuts: { id: string; validUntil: SchoolDate }[] = [];
   const inserts: {
@@ -175,6 +178,19 @@ export function planMemberships(
     if (leave !== null) {
       if (holdsDays(row) && row.validUntil > leave.from) {
         cuts.push({ id: row.id, validUntil: later(row.validFrom, leave.from) });
+        continue;
+      }
+      // A row a move cancelled by this leaving cut at the leaving's own first
+      // inactive day is named by the leaving, so taking it back gives the
+      // row back to its own end (spec review of the build, must-fix 1).
+      if (
+        holdsDays(row) &&
+        row.endedBy === 'transfer' &&
+        row.endedByMoveId !== null &&
+        cancelledNow.has(row.endedByMoveId) &&
+        row.validUntil >= leave.from
+      ) {
+        cuts.push({ id: row.id, validUntil: row.validUntil });
         continue;
       }
       if (!holdsDays(row) && cutByTakenBack && row.validFrom >= leave.from) {

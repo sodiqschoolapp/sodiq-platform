@@ -433,6 +433,8 @@ export const ERROR_CODES = [
   'move_not_undoable',
   /** Another move of the student of the same kind (and subject) is scheduled: it is changed or cancelled first (task 3.3a). */
   'move_scheduled',
+  /** A later move of the student (of the same kind and subject) has begun: a move is not dated before it (task 3.3a, spec review of the build). */
+  'move_before_later',
   /** The student is in no class (or no group of the subject) on the date of the move (task 3.3a). */
   'move_no_membership',
   /** The student is already in that class or group on the date (task 3.3a). */

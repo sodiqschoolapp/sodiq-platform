@@ -14733,6 +14733,8 @@ export interface operations {
                             groups: {
                                 /** Format: uuid */
                                 id: string;
+                                /** Format: uuid */
+                                membershipId: string;
                                 name: string;
                                 /** Format: uuid */
                                 subjectId: string;
@@ -14961,6 +14963,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -15449,6 +15453,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -15755,6 +15761,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -16031,6 +16039,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -16381,6 +16391,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -16655,6 +16667,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -16930,6 +16944,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -17213,6 +17229,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -17490,6 +17508,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -17837,6 +17857,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -18116,6 +18138,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -18390,6 +18414,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -18665,6 +18691,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -18944,6 +18972,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -19221,6 +19251,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -19493,6 +19525,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;
@@ -19767,6 +19801,8 @@ export interface operations {
                         groups: {
                             /** Format: uuid */
                             id: string;
+                            /** Format: uuid */
+                            membershipId: string;
                             name: string;
                             /** Format: uuid */
                             subjectId: string;

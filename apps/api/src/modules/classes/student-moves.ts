@@ -26,6 +26,7 @@ export const MOVE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   student_moves_state: 'request_refused',
   student_moves_student_branch: 'request_refused',
   group_memberships_move: 'request_refused',
+  memberships_move_end: 'request_refused',
 };
 
 /** A move as it is stored. */

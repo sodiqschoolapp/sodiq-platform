@@ -220,10 +220,11 @@ describe('class transfers', () => {
     studentId: string,
     first: () => Promise<Response>,
     second: () => Promise<Response>,
+    table: 'students' | 'groups' = 'students',
   ): Promise<[Response, Response]> {
     const gate = await holdOpen(async (transaction) => {
       await transaction
-        .selectFrom('students')
+        .selectFrom(table)
         .select('id')
         .where('id', '=', studentId)
         .forUpdate()
@@ -796,6 +797,222 @@ describe('class transfers', () => {
         refusedWith(second, 409, 'student_changed');
         expect((await fresh(one.id)).plannedClass?.id ?? null).toBe(order === 0 ? harvard : null);
       }
+    });
+
+    // Spec review of the build, must-fix 3: the other pairs that meet on a row.
+    const placeGroup = async (groupId: string, studentId: string, from = TOMORROW) => {
+      const response = await post(`/api/groups/${groupId}/members`, {
+        students: [{ id: studentId }],
+        from,
+      });
+      expect(response.status, JSON.stringify(response.body)).toBe(201);
+    };
+    const groupRowOf = async (studentId: string, groupId: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('group_memberships')
+          .select('id')
+          .where('student_id', '=', studentId)
+          .where('group_id', '=', groupId)
+          .orderBy('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+
+    it('meets a class transfer and a group transfer of the same student, both directions', async () => {
+      for (const order of [0, 1]) {
+        const maths = await subject();
+        const oxford = await schoolClass();
+        const yale = await schoolClass();
+        const one = await pupil(oxford);
+        const [first, second] = [await group(maths, [oxford]), await group(maths, [oxford])];
+        await placeGroup(first, one.id);
+        const member = await groupRowOf(one.id, first);
+        const version = (await fresh(one.id)).version;
+        const moving = () =>
+          post('/api/classes/transfers', {
+            studentId: one.id,
+            version,
+            toClassId: yale,
+            from: '2026-10-19',
+          });
+        const grouping = () =>
+          post('/api/groups/transfers', {
+            studentId: one.id,
+            memberId: member,
+            toGroupId: second,
+            from: '2026-10-19',
+          });
+        const [a, b] = await inOrder(
+          one.id,
+          order === 0 ? moving : grouping,
+          order === 0 ? grouping : moving,
+        );
+        expect(a.status, JSON.stringify(a.body)).toBe(200);
+        if (order === 0) {
+          // The class move ended the group row at the date: it no longer holds it.
+          refusedWith(b, 409, 'student_changed');
+        } else {
+          // Group rows are no part of the version; the class move ends the new row.
+          expect(b.status, JSON.stringify(b.body)).toBe(200);
+        }
+        expect((await fresh(one.id)).plannedClass?.id).toBe(yale);
+      }
+    });
+
+    it('refuses the second of two group transfers of one row "student changed", both directions', async () => {
+      for (const order of [0, 1]) {
+        const maths = await subject();
+        const oxford = await schoolClass();
+        const one = await pupil(oxford);
+        const [a, b, c] = [
+          await group(maths, [oxford]),
+          await group(maths, [oxford]),
+          await group(maths, [oxford]),
+        ];
+        await placeGroup(a, one.id);
+        const member = await groupRowOf(one.id, a);
+        const send = (toGroupId: string) => () =>
+          post('/api/groups/transfers', {
+            studentId: one.id,
+            memberId: member,
+            toGroupId,
+            from: '2026-10-19',
+          });
+        const [first, second] = await inOrder(
+          one.id,
+          send(order === 0 ? b : c),
+          send(order === 0 ? c : b),
+        );
+        expect(first.status, JSON.stringify(first.body)).toBe(200);
+        refusedWith(second, 409, 'student_changed');
+      }
+    });
+
+    it('meets a transfer and the cancel of a leaving, both directions', async () => {
+      for (const order of [0, 1]) {
+        const oxford = await schoolClass();
+        const yale = await schoolClass();
+        const one = await pupil(oxford);
+        await leave(one.id, '2026-10-30');
+        const version = (await fresh(one.id)).version;
+        const moving = () =>
+          post('/api/classes/transfers', {
+            studentId: one.id,
+            version,
+            toClassId: yale,
+            from: '2026-10-19',
+          });
+        const cancelling = () => post(`/api/people/students/${one.id}/leaving/cancel`, { version });
+        const [first, second] = await inOrder(
+          one.id,
+          order === 0 ? moving : cancelling,
+          order === 0 ? cancelling : moving,
+        );
+        expect(first.status, JSON.stringify(first.body)).toBe(200);
+        refusedWith(second, 409, 'student_changed');
+        const after = await fresh(one.id);
+        expect(after.scheduledMoves).toHaveLength(order === 0 ? 1 : 0);
+        expect(after.planned === null).toBe(order === 1);
+      }
+    });
+
+    it('meets a transfer and a placement into the last seat of the target group, both directions', async () => {
+      for (const order of [0, 1]) {
+        const maths = await subject();
+        const oxford = await schoolClass();
+        const yale = await schoolClass();
+        const one = await pupil(oxford);
+        const other = await pupil(yale);
+        const last = await group(maths, [yale], 1);
+        const version = (await fresh(one.id)).version;
+        const moving = () =>
+          post('/api/classes/transfers', {
+            studentId: one.id,
+            version,
+            toClassId: yale,
+            from: '2026-10-19',
+          });
+        const placing = () =>
+          post(`/api/groups/${last}/members`, {
+            students: [{ id: other.id }],
+            from: '2026-10-19',
+          });
+        const [first, second] = await inOrder(
+          last,
+          order === 0 ? moving : placing,
+          order === 0 ? placing : moving,
+          'groups',
+        );
+        expect([200, 201]).toContain(first.status);
+        refusedWith(second, 409, order === 0 ? 'group_full' : 'class_group_no_seat');
+      }
+    });
+  });
+
+  // Spec review of the build: must-fix 1, should-fixes 2 and 3.
+  describe('a move and what came after it', () => {
+    it('cancels a move dated on the first inactive day, and the cancel of the leaving gives the class and groups back', async () => {
+      const maths = await subject();
+      const oxford = await schoolClass();
+      const yale = await schoolClass();
+      const one = await pupil(oxford);
+      const ofOxford = await group(maths, [oxford]);
+      const response = await post(`/api/groups/${ofOxford}/members`, {
+        students: [{ id: one.id }],
+        from: TOMORROW,
+      });
+      expect(response.status, JSON.stringify(response.body)).toBe(201);
+      ok(await transfer(one.id, yale, '2026-10-19'));
+      // The last day the day before the move: its first inactive day is the move's date.
+      const left = await leave(one.id, '2026-10-18');
+      expect(left.scheduledMoves).toEqual([]);
+      ok(
+        await post(`/api/people/students/${one.id}/leaving/cancel`, {
+          version: (await fresh(one.id)).version,
+        }),
+      );
+      expect(await held(one.id)).toEqual([
+        [oxford, '2026-09-02', '2026-10-19'],
+        [oxford, '2026-10-19', '2027-06-01'],
+      ]);
+      expect(await heldGroups(one.id)).toEqual([
+        [ofOxford, TOMORROW, '2026-10-19'],
+        [ofOxford, '2026-10-19', '2027-06-01'],
+      ]);
+    });
+
+    it('refuses the cancel of a class move while a group move inside it is scheduled', async () => {
+      const maths = await subject();
+      const oxford = await schoolClass();
+      const yale = await schoolClass();
+      const one = await pupil(oxford);
+      const [a, b] = [await group(maths, [yale]), await group(maths, [yale])];
+      const move = moveOf(ok(await transfer(one.id, yale, '2026-10-19')));
+      const placed = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select(['id', 'group_id'])
+        .where('student_id', '=', one.id)
+        .executeTakeFirstOrThrow();
+      ok(
+        await post('/api/groups/transfers', {
+          studentId: one.id,
+          memberId: placed.id,
+          toGroupId: placed.group_id === a ? b : a,
+          from: '2026-10-26',
+        }),
+      );
+      const before = await rowsOf();
+      refusedWith(await cancelMove(one.id, move), 409, 'move_scheduled');
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('refuses a move dated before a later move that has begun', async () => {
+      const oxford = await schoolClass();
+      const yale = await schoolClass();
+      const harvard = await schoolClass();
+      const one = await pupil(oxford);
+      ok(await transfer(one.id, yale, '2026-10-05'));
+      refusedWith(await transfer(one.id, harvard, '2026-10-03'), 409, 'move_before_later');
     });
   });
 });

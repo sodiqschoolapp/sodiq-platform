@@ -143,6 +143,8 @@ export async function cutGroupRows(
   firstInactiveDay: SchoolDate,
   leavingId: string,
   takenBack: string | null,
+  /** Moves this leaving cancels (task 3.3a): the rows they cut on its first inactive day are named by it. */
+  cancelledNow: ReadonlySet<string> = new Set(),
 ): Promise<GroupRowEnded[]> {
   const rows = await groupMembershipsOf(transaction, studentId);
   const plan: { row: StoredGroupMembership; until: SchoolDate }[] = [];
@@ -153,6 +155,14 @@ export async function cutGroupRows(
         row,
         until: row.validFrom > firstInactiveDay ? row.validFrom : firstInactiveDay,
       });
+    } else if (
+      holds &&
+      row.endedBy === 'transfer' &&
+      row.endedByMoveId !== null &&
+      cancelledNow.has(row.endedByMoveId) &&
+      row.validUntil >= firstInactiveDay
+    ) {
+      plan.push({ row, until: row.validUntil });
     } else if (
       !holds &&
       takenBack !== null &&

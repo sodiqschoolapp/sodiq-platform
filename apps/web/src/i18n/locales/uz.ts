@@ -334,6 +334,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu koʻchirish allaqachon boshlangan, bekor qilingan yoki qaytarilgan, shuning uchun uni oʻzgartirib yoki bekor qilib boʻlmaydi. Hozirgi holatini koʻrish uchun sahifani yangilang.',
     move_not_undoable:
       'Bu koʻchirishni endi qaytarib boʻlmaydi: undan keyin oʻquvchining sinflari yoki guruhlari oʻzgargan yoki oʻquv yili yopilgan. Oʻrniga orqaga koʻchirishni rasmiylashtiring.',
+    move_before_later:
+      'Oʻquvchining keyingi koʻchirishi allaqachon boshlangan. Undan keyingi sanani tanlang yoki avval oʻsha koʻchirishni qaytaring.',
     move_scheduled:
       'Bu oʻquvchining boshqa koʻchirishi allaqachon rejalashtirilgan. Avval uni oʻzgartiring yoki bekor qiling.',
     move_no_membership:
