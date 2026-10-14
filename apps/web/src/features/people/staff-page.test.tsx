@@ -783,6 +783,7 @@ describe('the actions of the staff panel', () => {
           language: 'ru',
           mainRoom: null,
           maxSize: 25,
+          students: 0,
           tutor: null,
           acting: null,
           archived: false,

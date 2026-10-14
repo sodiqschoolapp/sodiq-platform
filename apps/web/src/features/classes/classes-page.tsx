@@ -125,6 +125,14 @@ export function ClassesPage() {
         narrow: true,
       },
       {
+        // Task 3.1b: "the student count of the class card", the members today.
+        key: 'students',
+        header: t('classes.students'),
+        cell: (row) => number.format(row.students),
+        sortValue: (row) => row.students,
+        numeric: true,
+      },
+      {
         key: 'maxSize',
         header: t('classes.maxSize'),
         cell: (row) => number.format(row.maxSize),
@@ -268,7 +276,8 @@ export function ClassesPage() {
                         {(
                           [
                             [t('classes.language'), t(`people.staff.languages.${row.language}`)],
-                            [t('classes.students'), t('classes.notYet')],
+                            // Task 3.1b: "the student count of the class card".
+                            [t('classes.students'), number.format(row.students)],
                             [t('classes.tutor'), tutorCell(row)],
                             [
                               t('classes.mainRoom'),

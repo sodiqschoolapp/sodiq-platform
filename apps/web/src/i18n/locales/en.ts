@@ -240,6 +240,31 @@ export const en = {
       'This would bring back the person as Tutor of a class that has another Tutor at that time. Ask the Academic Vice Principal to change the Tutors of that class first.',
     role_tutor_language:
       'This would bring back the person as Tutor of a class whose language they no longer teach. Add the language to their staff record first.',
+    student_has_class:
+      'The student is already in a class on or after that date. A move between classes is a transfer.',
+    student_not_active_on:
+      'The student is not active on every day from that date. Check their status and choose another date.',
+    class_grade_differs:
+      "The class is of another grade than the student. Choose a class of the student's grade.",
+    class_full:
+      'The class does not have enough free seats on some day from that date. Raise its maximum size or choose fewer students.',
+    membership_outside_year:
+      'The date is outside the academic year of the class. Choose a date within the year.',
+    membership_before_start:
+      "The date is before the student's start date. Choose the start date or later.",
+    membership_in_force:
+      'The student is already in the class. Only a placement that has not begun can be withdrawn.',
+    membership_not_planned: 'This placement has ended. There is nothing to withdraw.',
+    student_needs_class: 'A student who starts today or earlier joins a class. Choose the class.',
+    student_grade_class:
+      'The student is in a class of their grade. The grade changes with a move to a class of the new grade.',
+    class_has_members:
+      'The class has students now or from a later date. Withdraw or move them first, then archive the class.',
+    class_grade_members: 'The class has students, so its grade cannot change.',
+    class_size_below_members:
+      'The class holds more students than that on some day from today on. Choose a larger maximum size.',
+    academic_year_has_members:
+      'Classes of this year have students, so its dates can no longer change.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -1270,7 +1295,13 @@ export const en = {
       showIdentity: 'Show documents and date of birth',
       takenHere: 'Already given to {{student}}.',
       takenHereUnknown: 'Already given to another student of this branch.',
-      gradeNoClass: '{{grade}}, no class',
+      classFrom: '{{class}} from {{date}}',
+      academic: 'Academic',
+      mainRoom: 'Main classroom',
+      actingTutor: 'Acting Tutor',
+      noClassYet: 'No class yet',
+      notRestored: 'Not given back to {{classes}}: the class was archived or its year closed.',
+      language: 'Language of instruction',
       takenElsewhere: 'Already given to a student of another branch.',
       uidReleased: 'Given to a student who was deleted; a UID is never given twice.',
       restoreThis: 'Restore this student',
@@ -2048,6 +2079,8 @@ export const en = {
         leave_undone: 'Leaving undone',
         return: 'Student returned',
         graduate_restored: 'Graduate restored',
+        class_joined: 'Placed in a class',
+        class_withdrawn: 'Placement in a class withdrawn',
         delete: 'Student created twice deleted',
         export: 'Students exported',
         identity_shown: 'Hidden fields of a student record shown',
@@ -2147,6 +2180,26 @@ export const en = {
     periodOpen: 'From {{from}}',
     kinds: { tutor: 'Tutor', acting: 'Acting Tutor' },
     states: { planned: 'Planned', current: 'Current', ended: 'Ended' },
+    noMembers: 'No students yet',
+    putIntoClass: 'Put into a class',
+    putIntoNamed: 'Put into {{class}}',
+    pickStudents: 'Students',
+    noPlaceable: 'No active student of this grade is without a class.',
+    joinsOn: 'Joins on {{date}}',
+    freeToday: 'Free seats today: {{n}}',
+    freeLeast: 'Fewest free seats from today on: {{n}}',
+    withdraw: 'Withdraw',
+    withdrawTitle: 'Withdraw this placement?',
+    withdrawText: 'The student will not join the class on that day.',
+    chooseClass: 'Choose a class',
+    oneGradeOnly: 'Tick students of one grade: a class holds one grade.',
+    noClassOfGrade: 'No active class of this grade.',
+    refusedNames: 'Nobody was placed. Refused: {{names}}.',
+    placed_one: '{{n}} student placed.',
+    placed_other: '{{n}} students placed.',
+    placeTitle_one: 'Put {{n}} student into a class',
+    placeTitle_other: 'Put {{n}} students into a class',
+    classYear: '{{class}} · {{year}}',
     endCauses: { ended: 'Ended', role: 'Role ended', archive: 'Class archived' },
   },
   account: {

@@ -305,7 +305,6 @@ export interface ExportTexts {
     /** A student before the start date (`status` null). */
     notStarted: string;
     /** The class cell until classes exist (task 3.1), with `{{grade}}` for the grade's text. */
-    gradeNoClass: string;
     sexes: Record<Sex, string>;
     documentTypes: Record<DocumentType, string>;
     regions: Record<Region, string>;
@@ -458,7 +457,6 @@ const en: ExportTexts = {
       graduated: 'Graduated',
     },
     notStarted: 'Starts later',
-    gradeNoClass: '{{grade}}, no class',
     sexes: {
       male: 'Male',
       female: 'Female',
@@ -629,7 +627,7 @@ const ru: ExportTexts = {
       language: 'Язык обучения',
       tutor: 'Тьютор',
       mainRoom: 'Основной кабинет',
-      students: 'Учеников',
+      students: 'Ученики',
       maxSize: 'Наибольший размер',
       status: 'Состояние',
     },
@@ -676,7 +674,6 @@ const ru: ExportTexts = {
       graduated: 'Выпускник',
     },
     notStarted: 'Начнёт позже',
-    gradeNoClass: '{{grade}}, без класса',
     sexes: {
       male: 'Мужской',
       female: 'Женский',
@@ -893,7 +890,6 @@ const uz: ExportTexts = {
       graduated: 'Bitiruvchi',
     },
     notStarted: 'Keyinroq boshlaydi',
-    gradeNoClass: '{{grade}}, sinfsiz',
     sexes: {
       male: 'Erkak',
       female: 'Ayol',

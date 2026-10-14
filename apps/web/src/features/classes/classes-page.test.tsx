@@ -3,9 +3,11 @@ import {
   EXPORT_TEXTS,
   type AcademicYear,
   type ClassDetail,
+  type ClassMember,
   type ClassTutor,
   type Room,
   type SchoolClass,
+  type StudentListItem,
   type TutorCandidate,
 } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -82,6 +84,7 @@ const schoolClass = (n: number, fields: Partial<SchoolClass> = {}): SchoolClass 
   language: 'uz',
   mainRoom: { id: uid(2), name: '204', status: 'in_use' },
   maxSize: 25,
+  students: 0,
   tutor: null,
   acting: null,
   archived: false,
@@ -89,7 +92,7 @@ const schoolClass = (n: number, fields: Partial<SchoolClass> = {}): SchoolClass 
   ...fields,
 });
 
-const OXFORD = schoolClass(1, { tutor: tutorRow(1) });
+const OXFORD = schoolClass(1, { tutor: tutorRow(1), students: 12 });
 const PRINCETON = schoolClass(2, {
   grade: 8,
   name: 'Princeton',
@@ -175,6 +178,22 @@ async function openList(
     ...Object.fromEntries(
       classes.map((one) => [`GET /api/classes/${one.id}`, () => json(detailOf(one))]),
     ),
+    // Task 3.1b: the Students tab, empty unless a test names its members.
+    ...Object.fromEntries(
+      classes.map((one) => [
+        `GET /api/classes/${one.id}/members`,
+        () => json({ members: [], freeToday: one.maxSize, freeLeast: one.maxSize, today: TODAY }),
+      ]),
+    ),
+    // The students a class can take (task 3.1b), none unless a test names them.
+    'GET /api/people/students': () =>
+      json({
+        students: [],
+        canArchive: true,
+        exportGroups: [],
+        readsFinancial: false,
+        today: TODAY,
+      }),
     ...options.extra,
   });
   renderApp(PATH, options.language ?? 'en');
@@ -198,8 +217,8 @@ describe('the class list', () => {
     setWindowWidth(1440);
     await openList();
     expect(rowsDrawn()).toEqual([
-      ['7 Oxford', '2026–2027', 'Uzbek', 'Tursunova Dilnoza', '204', '25', 'Active'],
-      ['8 Princeton', '2026–2027', 'Russian', en.classes.noTutor, 'None', '25', 'Active'],
+      ['7 Oxford', '2026–2027', 'Uzbek', 'Tursunova Dilnoza', '204', '12', '25', 'Active'],
+      ['8 Princeton', '2026–2027', 'Russian', en.classes.noTutor, 'None', '0', '25', 'Active'],
     ]);
     expect(document.querySelectorAll('[data-no-tutor]')).toHaveLength(1);
   });
@@ -238,7 +257,7 @@ describe('the class list', () => {
     expect(rowsDrawn()[0]?.[0]).toBe('8 Princeton');
   });
 
-  // `05`, class cards; decision 13: the figures show "—" until 3.1b and the journal.
+  // `05`, class cards; decision 13: the figures show "—" until the journal; the count comes with 3.1b.
   it('draws the classes as cards at phone width', async () => {
     setWindowWidth(400);
     await openList();
@@ -254,6 +273,12 @@ describe('the class list', () => {
       en.classes.attendance,
     ]);
     expect(card?.textContent).toContain(en.classes.noTutor);
+    // Task 3.1b: the members today.
+    const oxford = screen.getByRole('button', { name: '7 Oxford' }).closest('li');
+    const count = [...(oxford?.querySelectorAll('div') ?? [])].find(
+      (term) => term.querySelector('dt')?.textContent === en.classes.students,
+    );
+    expect(count?.querySelector('dd')?.textContent).toBe('12');
     setWindowWidth(1440);
   });
 
@@ -264,6 +289,7 @@ describe('the class list', () => {
       'language',
       'tutor',
       'mainRoom',
+      'students',
       'maxSize',
       'status',
     ]);
@@ -544,5 +570,196 @@ describe('a class in the side panel', () => {
     expect(panelActionNames(panel)).toEqual([]);
     expect(within(panel).queryByRole('button', { name: en.classes.giveTutor })).toBeNull();
     expect(calls.some((call) => call.route === 'GET /api/classes/tutor-candidates')).toBe(false);
+  });
+});
+
+// Task 3.1b, pull request #89: the Students tab of a class, "Put into a class"
+// from it, and the withdraw of a planned placement (decisions 5, 6 and 10).
+describe('the students of a class', () => {
+  const member = (n: number, fields: Partial<ClassMember> = {}): ClassMember => ({
+    id: uid(800 + n),
+    studentId: uid(900 + n),
+    uid: `26070${String(n).padStart(2, '0')}`,
+    firstName: 'Malika',
+    lastName: `Rahimova${'a'.repeat(n)}`,
+    from: '2026-09-02',
+    until: '2027-06-01',
+    state: 'current',
+    ...fields,
+  });
+  const pupil = (n: number, fields: Partial<StudentListItem> = {}): StudentListItem => ({
+    id: uid(950 + n),
+    uid: `26071${String(n).padStart(2, '0')}`,
+    firstName: 'Shahlo',
+    lastName: `Yusupova${'a'.repeat(n)}`,
+    paternalName: null,
+    sex: 'female',
+    grade: 7,
+    startsOn: '2026-09-02',
+    photoId: null,
+    consentMissing: null,
+    status: 'active',
+    planned: null,
+    class: null,
+    plannedClass: null,
+    tutor: null,
+    actingTutor: null,
+    version: 1,
+    ...fields,
+  });
+
+  it('lists the members with the free seats and puts the ticked students into the class from a date', async () => {
+    const tab = {
+      members: [member(1), member(2, { state: 'planned', from: '2026-11-02' })],
+      freeToday: 24,
+      freeLeast: 23,
+      today: TODAY,
+    };
+    const calls = await openList({
+      extra: {
+        [`GET /api/classes/${OXFORD.id}/members`]: () => json(tab),
+        'GET /api/people/students': () =>
+          json({
+            students: [
+              pupil(1),
+              pupil(2, { version: 3 }),
+              // Of another grade, or in a class already: not offered.
+              pupil(3, { grade: 8 }),
+              pupil(4, {
+                plannedClass: {
+                  id: PRINCETON.id,
+                  grade: 7,
+                  name: 'Yale',
+                  language: 'uz',
+                  from: '2026-11-02',
+                  until: '2027-06-01',
+                },
+              }),
+            ],
+            canArchive: true,
+            exportGroups: [],
+            readsFinancial: false,
+            today: TODAY,
+          }),
+        [`POST /api/classes/${OXFORD.id}/members`]: () => json(tab, 201),
+      },
+    });
+    fireEvent.click(rowButton('7 Oxford'));
+    const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
+    expect(await within(panel).findByText('Rahimovaa Malika')).toBeDefined();
+    expect(
+      within(panel).getByText(en.classes.joinsOn.replace('{{date}}', '2 November 2026')),
+    ).toBeDefined();
+    expect(panel.textContent).toContain(en.classes.freeToday.replace('{{n}}', '24'));
+    expect(panel.textContent).toContain(en.classes.freeLeast.replace('{{n}}', '23'));
+    fireEvent.click(within(panel).getByRole('button', { name: en.classes.putIntoClass }));
+    const form = await within(panel).findByRole('form', {
+      name: en.classes.putIntoNamed.replace('{{class}}', '7 Oxford'),
+    });
+    const offered = within(form)
+      .getAllByRole('checkbox')
+      .map((box) => box.closest('label')?.textContent);
+    expect(offered).toEqual(['Yusupovaa Shahlo (2607101)', 'Yusupovaaa Shahlo (2607102)']);
+    // The date takes today by default (decision 6).
+    expect(field(form, en.classes.from).value).toBe(TODAY);
+    fireEvent.click(within(form).getByLabelText('Yusupovaaa Shahlo (2607102)'));
+    type(field(form, en.classes.from), '2026-10-20');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await savedInPanel(panel);
+    expect(
+      calls.find((call) => call.route === `POST /api/classes/${OXFORD.id}/members`)?.body,
+    ).toEqual({ students: [{ id: uid(952), version: 3 }], from: '2026-10-20' });
+  });
+
+  it('names the students a placement refused', async () => {
+    await openList({
+      extra: {
+        'GET /api/people/students': () =>
+          json({
+            students: [pupil(1), pupil(2)],
+            canArchive: true,
+            exportGroups: [],
+            readsFinancial: false,
+            today: TODAY,
+          }),
+        [`POST /api/classes/${OXFORD.id}/members`]: () =>
+          Response.json(
+            {
+              error: {
+                code: 'student_changed',
+                message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                requestId: 'test-request',
+                details: [
+                  { path: 'students.1', code: 'student_changed', message: '', recordId: uid(952) },
+                ],
+              },
+            },
+            { status: 409 },
+          ),
+      },
+    });
+    fireEvent.click(rowButton('7 Oxford'));
+    const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
+    fireEvent.click(await within(panel).findByRole('button', { name: en.classes.putIntoClass }));
+    const form = await within(panel).findByRole('form', {
+      name: en.classes.putIntoNamed.replace('{{class}}', '7 Oxford'),
+    });
+    fireEvent.click(within(form).getByLabelText('Yusupovaa Shahlo (2607101)'));
+    fireEvent.click(within(form).getByLabelText('Yusupovaaa Shahlo (2607102)'));
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(
+      await within(form).findByText(
+        en.classes.refusedNames.replace('{{names}}', 'Yusupovaaa Shahlo'),
+      ),
+    ).toBeDefined();
+    expect((await within(form).findByRole('alert')).textContent).toBe(en.errors.student_changed);
+  });
+
+  it('withdraws a planned placement after asking, naming the student', async () => {
+    const planned = member(2, { state: 'planned', from: '2026-11-02' });
+    const calls = await openList({
+      extra: {
+        [`GET /api/classes/${OXFORD.id}/members`]: () =>
+          json({ members: [member(1), planned], freeToday: 24, freeLeast: 23, today: TODAY }),
+        [`POST /api/classes/${OXFORD.id}/members/${planned.id}/withdraw`]: () =>
+          json({ members: [member(1)], freeToday: 24, freeLeast: 24, today: TODAY }),
+      },
+    });
+    fireEvent.click(rowButton('7 Oxford'));
+    const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
+    const withdraws = await within(panel).findAllByRole('button', { name: en.classes.withdraw });
+    // Only the planned one: a placement in force is moved by a transfer.
+    expect(withdraws).toHaveLength(1);
+    fireEvent.click(withdraws[0] as HTMLElement);
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toContain('Rahimovaaa Malika');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.classes.withdraw }));
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (call) => call.route === `POST /api/classes/${OXFORD.id}/members/${planned.id}/withdraw`,
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it('shows the Principal the members without the actions', async () => {
+    await openList({
+      session: principal(),
+      extra: {
+        [`GET /api/classes/${OXFORD.id}/members`]: () =>
+          json({
+            members: [member(1), member(2, { state: 'planned', from: '2026-11-02' })],
+            freeToday: 24,
+            freeLeast: 23,
+            today: TODAY,
+          }),
+      },
+    });
+    fireEvent.click(rowButton('7 Oxford'));
+    const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
+    expect(await within(panel).findByText('Rahimovaa Malika')).toBeDefined();
+    expect(within(panel).queryByRole('button', { name: en.classes.withdraw })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.classes.putIntoClass })).toBeNull();
   });
 });

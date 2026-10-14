@@ -1,4 +1,5 @@
 import {
+  classDisplayName,
   DEFAULT_PHONE_PREFIX,
   phoneText,
   DOCUMENT_TYPES,
@@ -15,6 +16,7 @@ import {
   type RelativeHolder,
   type StudentRecord,
 } from '@sodiq/shared';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
@@ -29,7 +31,10 @@ import {
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
+import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
+import { useView } from '@/features/access/use-view';
+import { classesQuery } from '@/features/classes/classes-api';
 import { asFormSchema } from './form-schema';
 import {
   extraPhoneIssueField,
@@ -55,6 +60,8 @@ export type StudentField =
   | 'birthDate'
   | 'grade'
   | 'startsOn'
+  // The class of a new student (task 3.1b, decision 2).
+  | 'classId'
   | 'documentType'
   | 'documentNumber'
   | 'jshshir'
@@ -236,8 +243,11 @@ export function StudentForm({
   onCancel,
 }: StudentFormProps) {
   const { t } = useTranslation();
+  const { branchId } = useView();
   const creating = student === null;
   const [match, setMatch] = useState<Match | null>(null);
+  // The classes a new student can join (task 3.1b): active, in an open year.
+  const classes = useQuery({ ...classesQuery(branchId), enabled: branchId !== null && creating });
   /** The typed phone of the relative in its stored form, or null. */
   const storedPhone = (typed: string): string | null => {
     const parsed = relativePhoneSchema.safeParse(typed);
@@ -255,6 +265,7 @@ export function StudentForm({
       birthDate: student?.identity?.birthDate ?? '',
       grade: student === null ? '' : String(student.grade),
       startsOn: student?.startsOn ?? '',
+      classId: '',
       documentType: student?.identity?.documentType ?? '',
       documentNumber: student?.identity?.documentNumber ?? '',
       jshshir: student?.identity?.jshshir ?? '',
@@ -373,6 +384,7 @@ export function StudentForm({
         ...record,
         uid: typed.uid,
         startsOn: typed.startsOn,
+        classId: orNull(typed.classId),
         confirmUidSet: false,
         relatives: [relative],
       };
@@ -462,6 +474,41 @@ export function StudentForm({
           {...bind('grade')}
         />
         {creating && <DateField label={t('people.students.startsOn')} {...bind('startsOn')} />}
+        {creating &&
+          (classes.isError ? (
+            <ErrorState
+              error={classes.error}
+              onRetry={() => {
+                void classes.refetch();
+              }}
+            />
+          ) : (
+            // Required when the start date is today or earlier; the server says so
+            // (`student_needs_class`). Only classes of the grade chosen are offered.
+            <SelectField
+              label={t('people.students.class')}
+              options={[
+                option('', t('people.students.noClassYet')),
+                ...(classes.data?.classes ?? [])
+                  .filter(
+                    (one) =>
+                      !one.archived &&
+                      one.yearStatus !== 'closed' &&
+                      String(one.grade) === form.bind('grade').value,
+                  )
+                  .map((one) =>
+                    option(
+                      one.id,
+                      t('classes.classYear', {
+                        class: classDisplayName(one.grade, one.name),
+                        year: one.yearName,
+                      }),
+                    ),
+                  ),
+              ]}
+              {...bind('classId')}
+            />
+          ))}
         <SelectField
           label={t('people.students.documentType')}
           options={[
