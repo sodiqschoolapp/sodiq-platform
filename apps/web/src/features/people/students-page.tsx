@@ -52,7 +52,7 @@ import {
   studentsQuery,
 } from './people-api';
 import { PeopleTabs } from './people-tabs';
-import { PlaceTickedForm } from '@/features/classes/class-members';
+import { GroupsPlacedNotice, PlaceTickedForm } from '@/features/classes/class-members';
 import { PlaceTickedInGroupForm } from '@/features/classes/group-members';
 import { StudentForm } from './student-form';
 import { StudentPanel } from './student-panel';
@@ -180,6 +180,8 @@ export function StudentsPage() {
   const canPlaceInGroup = role !== null && permits(PERMISSIONS, role, 'groups', 'edit');
   const [placedInGroup, setPlacedInGroup] = useState<number | null>(null);
   const [placed, setPlaced] = useState<number | null>(null);
+  // Task 3.2c: the students the last placement put into groups automatically.
+  const [groupsPlaced, setGroupsPlaced] = useState(0);
   const exporter = useExport<StudentListItem>('students', (row) => row.id);
   const all = useQuery(studentsQuery(branchId));
   // The consent list comes from the server, which gives it to the Financial
@@ -592,8 +594,9 @@ export function StudentsPage() {
             key={rows.map((row) => row.id).join()}
             rows={rows}
             title={title}
-            onPlaced={(count) => {
+            onPlaced={(count, inGroups) => {
               setPlaced(count);
+              setGroupsPlaced(inGroups);
               close();
             }}
           />
@@ -692,6 +695,11 @@ export function StudentsPage() {
         <p role="status" className="mb-3 text-sm">
           {t('classes.placed', { count: placed, n: number.format(placed) })}
         </p>
+      )}
+      {placed !== null && (
+        <div className="mb-3">
+          <GroupsPlacedNotice count={groupsPlaced} />
+        </div>
       )}
       {placedInGroup !== null && (
         <p role="status" className="mb-3 text-sm">

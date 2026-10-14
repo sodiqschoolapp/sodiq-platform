@@ -2,6 +2,7 @@ import {
   classDetailSchema,
   classListSchema,
   classMembersSchema,
+  classPlacementResultSchema,
   tutorCandidateListSchema,
   type ClassCreate,
   type ClassEdit,
@@ -69,14 +70,18 @@ export const classMembersQuery = (branchId: string | null, id: string) =>
     enabled: branchId !== null,
   });
 
-/** "Put into a class" from a date, all or none (task 3.1b, decision 5). */
+/**
+ * "Put into a class" from a date, all or none (task 3.1b, decision 5); the
+ * answer names the groups each student was placed into automatically (task
+ * 3.2c, decision 10).
+ */
 export const placeStudents = (id: string, placement: ClassPlacement) =>
   answerOf(
     api.POST('/api/classes/{id}/members', {
       params: { header: branchHeader(), path: { id } },
       body: placement,
     }),
-  ).then((answer) => classMembersSchema.parse(answer));
+  ).then((answer) => classPlacementResultSchema.parse(answer));
 
 /** The withdraw of a planned placement (task 3.1b, decision 10). */
 export const withdrawMember = (id: string, memberId: string) =>

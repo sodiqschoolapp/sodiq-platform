@@ -8,9 +8,10 @@ import {
   type Room,
   type SchoolClass,
   type StudentListItem,
+  type Subject,
   type TutorCandidate,
 } from '@sodiq/shared';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
@@ -645,7 +646,8 @@ describe('the students of a class', () => {
             readsFinancial: false,
             today: TODAY,
           }),
-        [`POST /api/classes/${OXFORD.id}/members`]: () => json(tab, 201),
+        // Task 3.2c: the answer names the groups placed automatically, none here.
+        [`POST /api/classes/${OXFORD.id}/members`]: () => json({ ...tab, groupsPlaced: [] }, 201),
       },
     });
     fireEvent.click(rowButton('7 Oxford'));
@@ -721,6 +723,92 @@ describe('the students of a class', () => {
       ),
     ).toBeDefined();
     expect((await within(form).findByRole('alert')).textContent).toBe(en.errors.student_changed);
+  });
+
+  // Task 3.2c, decision 3 and should-fix 8 of the plan review: the refusal
+  // names the subject from the subjects list, and says it without the name
+  // when the list does not hold it.
+  it('names the subject without a group seat, and falls back without the name, in Russian too', async () => {
+    const maths: Subject = {
+      id: uid(201),
+      names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+      departmentId: uid(9),
+      grades: [7, 8],
+      colour: 'blue',
+      journalType: 'graded',
+      ratingExam: false,
+      groupSubject: true,
+      languageRule: true,
+      demanding: false,
+      archivedAt: null,
+      daily: { attendance: 10, classwork: 50, homework: 40 },
+      quarterWeightsMissing: 0,
+      quarterCount: 4,
+    };
+    for (const [language, subjects] of [
+      ['en', [maths]],
+      ['ru', []],
+    ] as const) {
+      cleanup();
+      await openList({
+        language,
+        extra: {
+          'GET /api/people/students': () =>
+            json({
+              students: [pupil(1)],
+              canArchive: true,
+              exportGroups: [],
+              readsFinancial: false,
+              today: TODAY,
+            }),
+          'GET /api/setup/subjects': () => json({ subjects, mayMoveDepartment: false }),
+          [`POST /api/classes/${OXFORD.id}/members`]: () =>
+            Response.json(
+              {
+                error: {
+                  code: 'class_group_no_seat',
+                  message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                  requestId: 'test-request',
+                  details: [
+                    {
+                      path: 'students.0',
+                      code: 'class_group_no_seat',
+                      message: '',
+                      recordId: uid(951),
+                      subjectId: maths.id,
+                    },
+                  ],
+                },
+              },
+              { status: 409 },
+            ),
+        },
+      });
+      const texts = language === 'en' ? en : ru;
+      fireEvent.click(rowButton('7 Oxford'));
+      const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
+      fireEvent.click(
+        await within(panel).findByRole('button', { name: texts.classes.putIntoClass }),
+      );
+      const form = await within(panel).findByRole('form', {
+        name: texts.classes.putIntoNamed.replace('{{class}}', '7 Oxford'),
+      });
+      fireEvent.click(within(form).getByLabelText('Yusupovaa Shahlo (2607101)'));
+      fireEvent.click(within(form).getByRole('button', { name: texts.form.save }));
+      expect((await within(form).findByRole('alert')).textContent).toBe(
+        texts.errors.class_group_no_seat,
+      );
+      expect(
+        await within(form).findByText(
+          language === 'en'
+            ? en.classes.groupNoSeat.replace('{{subjects}}', 'Mathematics')
+            : ru.classes.groupNoSeatUnnamed,
+        ),
+      ).toBeDefined();
+      expect(
+        within(form).getByText(texts.classes.refusedNames.replace('{{names}}', 'Yusupovaa Shahlo')),
+      ).toBeDefined();
+    }
   });
 
   it('withdraws a planned placement after asking, naming the student', async () => {

@@ -324,6 +324,10 @@ export const uz: Texts<'one' | 'other'> = {
       'Oʻzgarish oʻquvchini shu guruh sinfisiz guruhda qoldirardi. Hech narsa saqlanmadi. Qayta yuklang va yana urinib koʻring.',
     placement_no_seat:
       'Ayrim oʻquvchilar uchun ekrandagi guruhlarning birortasida boʻsh oʻrin yoʻq, shuning uchun hech kim joylashtirilmadi. Guruhning eng koʻp sonini oshiring yoki guruh qoʻshing.',
+    class_group_no_seat:
+      'Sinfning boʻlinadigan yoki guruhli fanlaridan birining hech bir guruhida shu sanadan boshlab har kuni boʻsh oʻrin yoʻq, shuning uchun hech narsa saqlanmadi. Guruhning eng koʻp sonini oshiring yoki guruh qoʻshing va qayta urinib koʻring.',
+    class_group_missing:
+      'Oʻquvchi guruhli fanlaridan birining guruhisiz sinfda qolar edi. Hech narsa saqlanmadi. Sahifani yangilang va qayta urinib koʻring.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
@@ -2290,6 +2294,11 @@ export const uz: Texts<'one' | 'other'> = {
     refusedNames: 'Hech kim joylashtirilmadi. Rad etilganlar: {{names}}.',
     placed_one: '{{n}} ta oʻquvchi joylashtirildi.',
     placed_other: '{{n}} ta oʻquvchi joylashtirildi.',
+    groupsPlaced_one: '{{n}} ta oʻquvchi guruhlarga avtomatik joylashtirildi.',
+    groupsPlaced_other: '{{n}} ta oʻquvchi guruhlarga avtomatik joylashtirildi.',
+    reviewGroups: 'Ularni guruhlarga joylashtirish ekranida tekshiring',
+    groupNoSeat: 'Boʻsh oʻrinli guruh yoʻq: {{subjects}}.',
+    groupNoSeatUnnamed: 'Sinfning guruhli fanlaridan birida boʻsh oʻrinli guruh yoʻq.',
     placeTitle_one: 'Sinfga joylashtirish: {{n}} ta oʻquvchi',
     placeTitle_other: 'Sinfga joylashtirish: {{n}} ta oʻquvchi',
     classYear: '{{class}} · {{year}}',

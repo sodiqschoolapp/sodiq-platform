@@ -2266,7 +2266,20 @@ describe('the classes of the students', () => {
   it('puts the ticked students into a class of their grade from a date', async () => {
     const calls = openList('academic_vice_principal', {
       [`POST /api/classes/${uid(50)}/members`]: () =>
-        json({ members: [], freeToday: 23, freeLeast: 23, today: '2026-10-10' }, 201),
+        json(
+          {
+            members: [],
+            freeToday: 23,
+            freeLeast: 23,
+            today: '2026-10-10',
+            // Task 3.2c: the student was placed into two groups automatically.
+            groupsPlaced: [
+              { studentId: OTKIR.id, groupId: uid(70), subjectId: uid(71) },
+              { studentId: OTKIR.id, groupId: uid(72), subjectId: uid(73) },
+            ],
+          },
+          201,
+        ),
     });
     renderApp(PATH);
     await waitFor(() => {
@@ -2294,6 +2307,15 @@ describe('the classes of the students', () => {
     });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     expect(await screen.findByText(en.classes.placed_one.replace('{{n}}', '1'))).toBeDefined();
+    // One student, counted once however many groups (task 3.2c, decision 10).
+    const notice = await screen.findByText(
+      (_, element) =>
+        element?.getAttribute('role') === 'status' &&
+        (element.textContent ?? '').startsWith(en.classes.groupsPlaced_one.replace('{{n}}', '1')),
+    );
+    expect(
+      within(notice).getByRole('link', { name: en.classes.reviewGroups }).getAttribute('href'),
+    ).toBe('/groups/placement');
     expect(
       calls.find((call) => call.route === `POST /api/classes/${uid(50)}/members`)?.body,
     ).toEqual({ students: [{ id: OTKIR.id, version: OTKIR.version }], from: '2026-10-12' });
