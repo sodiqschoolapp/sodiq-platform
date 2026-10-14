@@ -213,6 +213,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 14 October 2026: the Super Admin's own staff record (task 2.7d)
+
+Plan approved on pull request #87 with corrections 1 to 5; decisions 1 to 9 confirmed there; none marked Look first. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| The link takes the account of the session only; no account id is read from the request | Answer 37 of #39; decision 1 |
+| `accounts` `create`, for the branch of the request: the Super Admin only; no new permission area | Decision 2 |
+| Refused for an inactive or left status in force or planned (`own_link_status`), read as `super_admin_active_count` reads them; an ended period and a taken-back plan do not refuse | Decision 3; correction 2; spec review of the build |
+| The link is final, as every account link (`staff_account_link_guard`); the dialog says so | Decision 4 |
+| A Super Admin without a record sees one line as the empty state of the Account page's Photo section | Decision 5; correction 4 |
+| No check that the record's name fits the login | Decision 6 |
+| One audit entry `account.linked`, group `accounts`, school-wide, record the account, person the record; in the person's report | Decision 7 |
+| "Given by" and "Locked by" show the name only where the reader may read the record | Decision 8 |
+| A record whose employment begins after today is refused, and `canLinkOwn` follows the route's whole rule | Decision 9; correction 3 |
+| The route takes no body, as `unlock` does, instead of a strict empty schema | Build: the convention of the routes without a body |
+| The statuses are read in the route's transaction, which holds every branch for a Super Admin, not through a SECURITY DEFINER function | Build: only a Super Admin reaches the read (spec review, should-fix 1) |
+
 ## 14 October 2026: Rooms "By floor", the Branches list and the category of every role (task 2.7c-3)
 
 Plan approved on pull request #86 with corrections 1 to 3; decisions 1 to 16 confirmed or changed there; 1 to 4 marked Look first. Flagged on issue #42.
