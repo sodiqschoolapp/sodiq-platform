@@ -1705,6 +1705,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2209,6 +2210,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2994,6 +2996,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3419,6 +3422,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3854,6 +3858,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4376,6 +4381,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4832,6 +4838,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5245,6 +5252,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5664,6 +5672,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6071,6 +6080,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6502,6 +6512,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6913,6 +6924,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -7324,6 +7336,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -7726,6 +7739,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8128,6 +8142,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8510,6 +8525,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8892,6 +8908,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -9320,6 +9337,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -9797,6 +9815,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10207,6 +10226,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10696,6 +10716,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -11177,6 +11198,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -11649,6 +11671,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12056,6 +12079,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12541,6 +12565,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12986,6 +13011,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -13431,6 +13457,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -13860,6 +13887,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -14289,6 +14317,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -14678,6 +14707,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15067,6 +15097,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15491,6 +15522,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15927,6 +15959,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -16375,6 +16408,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -16797,6 +16831,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -17260,6 +17295,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -17715,6 +17751,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18144,6 +18181,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18587,6 +18625,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19028,6 +19067,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19475,6 +19515,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19896,6 +19937,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -20317,6 +20359,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -20725,6 +20768,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -21238,6 +21282,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -21737,6 +21782,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -22244,6 +22290,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -22769,6 +22816,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -23258,6 +23306,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -23747,6 +23796,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -24211,6 +24261,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -24753,6 +24804,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -25229,6 +25281,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -25747,6 +25800,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -26738,6 +26792,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -27225,6 +27280,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -27810,6 +27866,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -28772,6 +28829,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -29369,6 +29427,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -29848,6 +29907,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -30327,6 +30387,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -30844,6 +30905,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -31223,6 +31285,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -31622,6 +31685,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -32039,6 +32103,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -32469,6 +32534,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -32892,6 +32958,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -33289,6 +33356,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -33667,6 +33735,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -34069,6 +34138,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -34574,6 +34644,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -35186,6 +35257,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -35598,6 +35670,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -36222,6 +36295,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -36753,6 +36827,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -37252,6 +37327,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -37751,6 +37827,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -38212,6 +38289,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -38712,6 +38790,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -39183,6 +39262,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -39737,6 +39817,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -40582,6 +40663,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -40995,6 +41077,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -41718,6 +41801,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -42573,6 +42657,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -43027,6 +43112,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -43804,6 +43890,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -44557,6 +44644,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -45341,6 +45429,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -45711,6 +45800,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -46296,6 +46386,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -46695,6 +46786,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -47061,6 +47153,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -47646,6 +47739,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -48282,6 +48376,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -48897,6 +48992,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -49522,6 +49618,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -49866,6 +49963,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -50226,6 +50324,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -50738,6 +50837,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -51270,6 +51370,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -51782,6 +51883,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -52163,6 +52265,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -52544,6 +52647,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -52948,6 +53052,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -53419,6 +53524,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -54159,6 +54265,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -54504,6 +54611,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -54863,6 +54971,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -55555,6 +55664,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -56235,6 +56345,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -56678,6 +56789,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -57226,6 +57338,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -57636,6 +57749,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -58116,6 +58230,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -58674,6 +58789,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -59154,6 +59270,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -59634,6 +59751,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -59981,6 +60099,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -60654,6 +60773,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -61986,6 +62106,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -62341,6 +62462,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -62775,6 +62897,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -63204,6 +63327,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -64122,6 +64246,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -65214,6 +65339,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -66162,6 +66288,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -66574,6 +66701,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -67525,6 +67653,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -68464,6 +68593,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -69409,6 +69539,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -70385,6 +70516,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -71336,6 +71468,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -71710,6 +71843,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -72074,6 +72208,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -72419,6 +72554,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -72778,6 +72914,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -73251,6 +73388,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -73606,6 +73744,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -74001,6 +74140,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -74499,6 +74639,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -75057,6 +75198,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -75602,6 +75744,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -76121,6 +76264,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -76466,6 +76610,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -76835,6 +76980,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -77282,6 +77428,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -77957,6 +78104,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -78457,6 +78605,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -78936,6 +79085,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -79949,6 +80099,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -81060,6 +81211,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -81824,6 +81976,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -82453,6 +82606,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -83217,6 +83371,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -83669,6 +83824,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -84080,6 +84236,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -84802,6 +84959,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -85580,6 +85738,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -86302,6 +86461,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -87024,6 +87184,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -87787,6 +87948,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -88539,6 +88701,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -88972,6 +89135,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -89450,6 +89614,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -89893,6 +90058,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -90410,6 +90576,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -91066,6 +91233,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -91514,6 +91682,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -92035,6 +92204,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -92446,6 +92616,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -92856,6 +93027,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -93461,6 +93633,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -94121,6 +94294,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -94726,6 +94900,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -95347,6 +95522,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -95815,6 +95991,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -96322,6 +96499,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -96800,6 +96978,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -97278,6 +97457,7 @@
                             "group_size_below_members",
                             "group_class_has_members",
                             "group_membership_in_class",
+                            "placement_no_seat",
                             "request_refused",
                             "internal_error"
                           ]
@@ -97653,6 +97833,7 @@
                   "group_size_below_members",
                   "group_class_has_members",
                   "group_membership_in_class",
+                  "placement_no_seat",
                   "request_refused",
                   "internal_error"
                 ]
