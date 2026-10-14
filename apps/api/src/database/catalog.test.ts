@@ -210,6 +210,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'Gives the holder of an exact main phone, visible to the branch or not, a new phone or "no valid phone", and nothing else of the record, answering the notice targets as ids (edge/close-relatives: "the number has a new owner"; task 2.5b-1, decision 2 of pull request #73, Look first).',
   'relatives_follow_links()':
     'The trigger that archives a relative with no live link in any branch and restores it on a new one (04: "A relative with no linked students is archived"; task 2.5a, decisions 3, 10 and 14); the links of other branches decide it, and an archived relative is visible to no branch.',
+  'subject_group_grades(uuid)':
+    'The grades of the active groups of a subject in every branch with the number of those groups outside the branches of the transaction, grades and counts only (task 3.2a, decision 12 of pull request #91, Look first): a subject cannot lose a grade, nor be archived, while a group of another branch needs it.',
   'tutor_classes_of_language(uuid,text)':
     'The classes of a language a person tutors now or later while not teaching in it: ids of the branches of the transaction only, a count of the others (task 3.1a, decision 19 and correction 4 of pull request #88, Look first); "blocked, not a warning" (05) from the staff side across branches.',
   'tutor_teaches_language(uuid,text)':

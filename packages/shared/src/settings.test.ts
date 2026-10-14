@@ -99,6 +99,8 @@ describe('the settings of a branch', () => {
       'subjects',
       // Task 3.1a, decision 12.
       'classes',
+      // Task 3.2a, decision 14.
+      'groups',
     ]);
   });
 });

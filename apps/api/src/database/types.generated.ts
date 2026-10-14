@@ -286,6 +286,26 @@ export interface Floors {
   name: string;
 }
 
+export interface GroupClasses {
+  branch_id: string;
+  class_id: string;
+  group_id: string;
+}
+
+export interface Groups {
+  academic_year_id: string;
+  archived_at: Timestamp | null;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  language: string;
+  max_size: number;
+  name: string;
+  name_key: Generated<string | null>;
+  subject_id: string;
+  version: Generated<number>;
+}
+
 export interface KnownDevices {
   account_id: string;
   first_signed_in_at: Timestamp;
@@ -664,6 +684,8 @@ export interface DB {
   divisions: Divisions;
   feedback_reports: FeedbackReports;
   floors: Floors;
+  group_classes: GroupClasses;
+  groups: Groups;
   known_devices: KnownDevices;
   notifications: Notifications;
   password_reset_links: PasswordResetLinks;
