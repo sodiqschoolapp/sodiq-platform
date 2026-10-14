@@ -386,6 +386,10 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/classes/:id/restore': { branch: 'request', roles: CLASS_EDITORS },
   'POST /api/classes/:id/tutors': { branch: 'request', roles: CLASS_EDITORS },
   'POST /api/classes/:id/tutors/:tutorId/end': { branch: 'request', roles: CLASS_EDITORS },
+  // Task 3.1b, decision 9: the Students tab for the readers, placement and withdraw for the editors.
+  'GET /api/classes/:id/members': { branch: 'request', roles: CLASS_VIEWERS },
+  'POST /api/classes/:id/members': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/classes/:id/members/:memberId/withdraw': { branch: 'request', roles: CLASS_EDITORS },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

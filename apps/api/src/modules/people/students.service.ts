@@ -33,7 +33,19 @@ import { ApiException } from '../../http/api-exception.js';
 import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
-import { changesOf, notFound } from '../setup/setup-refusals.js';
+import {
+  membershipCounts,
+  MEMBERSHIP_REFUSALS,
+  studentClassesOn,
+  tutorsInForce,
+} from '../classes/class-membership-rows.js';
+import {
+  lockPlacementStudents,
+  planPlacement,
+  readPlacementClass,
+  writePlacement,
+} from '../classes/class-placement.js';
+import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { refusingRelativeRaces, RelativeWrites } from './relative-writes.js';
 import { exportGroupsOf } from './student-export.js';
 import {
@@ -323,8 +335,14 @@ export class Students {
       .orderBy('students.uid')
       .execute();
     const statuses = await this.statusRowsOf(transaction, null);
+    const counts = await membershipCounts(transaction, null);
+    const classes = await studentClassesOn(transaction, today, null);
+    const tutors = await tutorsInForce(transaction);
     return rows.map((row) => {
       const own = statuses.get(row.id) ?? [];
+      const held = classes.get(row.id);
+      const current = held?.current ?? null;
+      const tutor = current === null ? undefined : tutors.get(current.id);
       return {
         id: row.id,
         uid: row.uid,
@@ -338,7 +356,11 @@ export class Students {
         consentMissing: readsFinancial ? row.consent_signed_on === null : null,
         status: row.status as StudentStatus | null,
         planned: plannedAfter(own, today),
-        version: own.length,
+        class: current,
+        plannedClass: held?.planned ?? null,
+        tutor: tutor?.tutor ?? null,
+        actingTutor: tutor?.acting ?? null,
+        version: own.length + (counts.get(row.id) ?? 0),
       };
     });
   }
@@ -346,8 +368,8 @@ export class Students {
   /**
    * The counter of the Academic Vice Principal's home page (edge: "An active
    * student with no class ... in a counter"; decision 9): the students of the
-   * branch active today, before the start date included, with no class. No
-   * class exists before task 3.1, so every active student counts.
+   * branch active today, before the start date included, with no class in
+   * force today and none planned (task 3.1b; should-fix 8 of the plan review).
    */
   noClass(access: Access): Promise<StudentNoClass> {
     const branchId = branchOf(access);
@@ -355,10 +377,13 @@ export class Students {
       const today = await this.todayIn(transaction, branchId);
       const rows = await transaction
         .selectFrom('students')
-        .select(statusOn(today))
+        .select(['students.id', statusOn(today)])
         .where('students.branch_id', '=', branchId)
         .execute();
-      return { count: rows.filter((row) => row.status === 'active').length };
+      const classes = await studentClassesOn(transaction, today, null);
+      return {
+        count: rows.filter((row) => row.status === 'active' && !classes.has(row.id)).length,
+      };
     });
   }
 
@@ -423,109 +448,159 @@ export class Students {
     return this.refusingTaken(access, () =>
       this.relatives.refusingHeldPhone(access, () =>
         refusingRelativeRaces(() =>
-          this.transactions.run(access.branchIds, async (transaction) => {
-            await this.checkSet(
-              transaction,
-              branchId,
-              input.uid,
-              input.grade,
-              input.startsOn,
-              input,
-            );
-            const moment = await transactionMoment(transaction);
-            const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
-            const id = found.rows[0]?.id;
-            if (id === undefined) {
-              throw new Error('No id for the new student.');
-            }
-            await this.inserting(
-              { uid: input.uid, jshshir: input.jshshir, documentNumber: input.documentNumber },
-              () =>
-                transaction
-                  .insertInto('students')
+          refusingConstraints(
+            () =>
+              this.transactions.run(access.branchIds, async (transaction) => {
+                // Task 3.1b, decision 2: a student who starts today or earlier
+                // joins a class on the start date; a class of another branch or
+                // an unknown one is not found.
+                const today = await this.todayIn(transaction, branchId);
+                if (input.classId === null && input.startsOn <= today) {
+                  throw new ApiException('student_needs_class', 422, undefined, [
+                    {
+                      path: 'classId',
+                      code: 'student_needs_class',
+                      message: 'A class is required.',
+                    },
+                  ]);
+                }
+                const placement =
+                  input.classId === null
+                    ? null
+                    : await readPlacementClass(transaction, input.classId);
+                if (placement === undefined) {
+                  throw notFound();
+                }
+                await this.checkSet(
+                  transaction,
+                  branchId,
+                  input.uid,
+                  input.grade,
+                  input.startsOn,
+                  input,
+                );
+                const moment = await transactionMoment(transaction);
+                const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
+                const id = found.rows[0]?.id;
+                if (id === undefined) {
+                  throw new Error('No id for the new student.');
+                }
+                await this.inserting(
+                  { uid: input.uid, jshshir: input.jshshir, documentNumber: input.documentNumber },
+                  () =>
+                    transaction
+                      .insertInto('students')
+                      .values({
+                        id,
+                        branch_id: branchId,
+                        uid: input.uid,
+                        starts_on: input.startsOn,
+                        created_by: access.accountId,
+                        ...columnsOf(input),
+                      })
+                      .execute(),
+                );
+                await this.inserting({ uid: input.uid }, () =>
+                  transaction
+                    .insertInto('student_uids')
+                    .values({
+                      uid: input.uid,
+                      student_id: id,
+                      branch_id: branchId,
+                      held_from: moment,
+                    })
+                    .execute(),
+                );
+                await this.inserting({ 'contract.number': input.contract.number }, () =>
+                  transaction
+                    .insertInto('student_contracts')
+                    .values({
+                      student_id: id,
+                      branch_id: branchId,
+                      number: input.contract.number,
+                      signed_on: input.contract.signedOn,
+                    })
+                    .execute(),
+                );
+                await transaction
+                  .insertInto('student_statuses')
                   .values({
-                    id,
+                    student_id: id,
                     branch_id: branchId,
-                    uid: input.uid,
-                    starts_on: input.startsOn,
-                    created_by: access.accountId,
-                    ...columnsOf(input),
+                    status: 'active',
+                    valid_from: input.startsOn,
+                    cause: 'start',
                   })
-                  .execute(),
-            );
-            await this.inserting({ uid: input.uid }, () =>
-              transaction
-                .insertInto('student_uids')
-                .values({ uid: input.uid, student_id: id, branch_id: branchId, held_from: moment })
-                .execute(),
-            );
-            await this.inserting({ 'contract.number': input.contract.number }, () =>
-              transaction
-                .insertInto('student_contracts')
-                .values({
-                  student_id: id,
-                  branch_id: branchId,
-                  number: input.contract.number,
-                  signed_on: input.contract.signedOn,
-                })
-                .execute(),
-            );
-            await transaction
-              .insertInto('student_statuses')
-              .values({
-                student_id: id,
-                branch_id: branchId,
-                status: 'active',
-                valid_from: input.startsOn,
-                cause: 'start',
-              })
-              .execute();
-            await transaction
-              .insertInto('student_accounts')
-              .values({ student_id: id, branch_id: branchId, created_at: moment })
-              .execute();
-            await this.audit.record(transaction, {
-              branchId,
-              actorId: access.accountId,
-              assignmentId: access.assignmentId,
-              action: 'student.create',
-              record: { type: 'student', id },
-              // Each relative and link has an entry of its own.
-              newValue: { ...input, confirmUidSet: undefined, relatives: undefined },
-              requestId,
-            });
-            // The relatives found by phone, and the earlier holders of a number
-            // with a new owner, in the order of their id, then the new ones: the
-            // lock order of the links (`relatives_follow_links`; task 2.5b-1).
-            const lockedId = (link: (typeof input.relatives)[number]): string | null =>
-              link.kind === 'existing'
-                ? link.relativeId
-                : link.kind === 'new_owner'
-                  ? link.previousId
-                  : null;
-            const links = input.relatives
-              .map((link, index) => ({ link, index, key: lockedId(link) }))
-              .sort((a, b) =>
-                a.key !== null && b.key !== null
-                  ? a.key.localeCompare(b.key)
-                  : a.key === null && b.key === null
-                    ? a.index - b.index
-                    : a.key !== null
-                      ? -1
-                      : 1,
-              );
-            for (const { link, index } of links) {
-              await this.relatives.link(
-                transaction,
-                access,
-                id,
-                link,
-                `relatives.${String(index)}`,
-                requestId,
-              );
-            }
-            return this.readDetail(transaction, access, id);
-          }),
+                  .execute();
+                await transaction
+                  .insertInto('student_accounts')
+                  .values({ student_id: id, branch_id: branchId, created_at: moment })
+                  .execute();
+                await this.audit.record(transaction, {
+                  branchId,
+                  actorId: access.accountId,
+                  assignmentId: access.assignmentId,
+                  action: 'student.create',
+                  record: { type: 'student', id },
+                  // Each relative and link has an entry of its own.
+                  newValue: { ...input, confirmUidSet: undefined, relatives: undefined },
+                  requestId,
+                });
+                if (placement !== null) {
+                  const [student] = (await lockPlacementStudents(transaction, [id])).values();
+                  if (student === undefined) {
+                    throw new Error('The new student is not found.');
+                  }
+                  const rows = await planPlacement(
+                    transaction,
+                    placement,
+                    [{ student, version: null }],
+                    input.startsOn,
+                  );
+                  await writePlacement(
+                    transaction,
+                    this.audit,
+                    access,
+                    placement,
+                    rows,
+                    'create',
+                    requestId,
+                  );
+                }
+                // The relatives found by phone, and the earlier holders of a number
+                // with a new owner, in the order of their id, then the new ones: the
+                // lock order of the links (`relatives_follow_links`; task 2.5b-1).
+                const lockedId = (link: (typeof input.relatives)[number]): string | null =>
+                  link.kind === 'existing'
+                    ? link.relativeId
+                    : link.kind === 'new_owner'
+                      ? link.previousId
+                      : null;
+                const links = input.relatives
+                  .map((link, index) => ({ link, index, key: lockedId(link) }))
+                  .sort((a, b) =>
+                    a.key !== null && b.key !== null
+                      ? a.key.localeCompare(b.key)
+                      : a.key === null && b.key === null
+                        ? a.index - b.index
+                        : a.key !== null
+                          ? -1
+                          : 1,
+                  );
+                for (const { link, index } of links) {
+                  await this.relatives.link(
+                    transaction,
+                    access,
+                    id,
+                    link,
+                    `relatives.${String(index)}`,
+                    requestId,
+                  );
+                }
+                return this.readDetail(transaction, access, id);
+              }),
+            MEMBERSHIP_REFUSALS,
+          ),
         ),
       ),
     );
@@ -550,53 +625,59 @@ export class Students {
     requestId: string,
   ): Promise<StudentDetail> {
     const branchId = branchOf(access);
+    // Task 3.1b, decision 4: the grade of a student in a class, now or
+    // planned, is refused by the database (`students_grade_class`).
     return this.refusingTaken(access, () =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        const row = await this.lockStudent(transaction, id);
-        // A student of 2.4a with no relative is edited once one is linked
-        // (task 2.5a, decision 11; `student_relatives_guard` of 0036).
-        if ((await this.relatives.linksOf(transaction, id)).length === 0) {
-          throw new ApiException('student_needs_relative', 422);
-        }
-        const contract = await this.lockNewestContract(transaction, id);
-        const before = fieldsOf(row, contract);
-        const changes = changesOf({ ...before }, { ...record });
-        if (changes === null) {
-          return this.readDetail(transaction, access, id);
-        }
-        await this.inserting(
-          { jshshir: record.jshshir, documentNumber: record.documentNumber },
-          () =>
-            transaction
-              .updateTable('students')
-              .set(columnsOf(record))
-              .where('id', '=', id)
-              .execute(),
-        );
-        if (
-          contract.number !== record.contract.number ||
-          contract.signed_on !== record.contract.signedOn
-        ) {
-          await this.inserting({ 'contract.number': record.contract.number }, () =>
-            transaction
-              .updateTable('student_contracts')
-              .set({ number: record.contract.number, signed_on: record.contract.signedOn })
-              .where('id', '=', contract.id)
-              .execute(),
-          );
-        }
-        await this.audit.record(transaction, {
-          branchId,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'student.edit',
-          record: { type: 'student', id },
-          oldValue: changes.oldValue,
-          newValue: changes.newValue,
-          requestId,
-        });
-        return this.readDetail(transaction, access, id);
-      }),
+      refusingConstraints(
+        () =>
+          this.transactions.run(access.branchIds, async (transaction) => {
+            const row = await this.lockStudent(transaction, id);
+            // A student of 2.4a with no relative is edited once one is linked
+            // (task 2.5a, decision 11; `student_relatives_guard` of 0036).
+            if ((await this.relatives.linksOf(transaction, id)).length === 0) {
+              throw new ApiException('student_needs_relative', 422);
+            }
+            const contract = await this.lockNewestContract(transaction, id);
+            const before = fieldsOf(row, contract);
+            const changes = changesOf({ ...before }, { ...record });
+            if (changes === null) {
+              return this.readDetail(transaction, access, id);
+            }
+            await this.inserting(
+              { jshshir: record.jshshir, documentNumber: record.documentNumber },
+              () =>
+                transaction
+                  .updateTable('students')
+                  .set(columnsOf(record))
+                  .where('id', '=', id)
+                  .execute(),
+            );
+            if (
+              contract.number !== record.contract.number ||
+              contract.signed_on !== record.contract.signedOn
+            ) {
+              await this.inserting({ 'contract.number': record.contract.number }, () =>
+                transaction
+                  .updateTable('student_contracts')
+                  .set({ number: record.contract.number, signed_on: record.contract.signedOn })
+                  .where('id', '=', contract.id)
+                  .execute(),
+              );
+            }
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'student.edit',
+              record: { type: 'student', id },
+              oldValue: changes.oldValue,
+              newValue: changes.newValue,
+              requestId,
+            });
+            return this.readDetail(transaction, access, id);
+          }),
+        MEMBERSHIP_REFUSALS,
+      ),
     );
   }
 
@@ -897,6 +978,10 @@ export class Students {
       ).map((status) => [status.id, status.reason]),
     );
     const statuses = rows.filter((status) => status.validFrom !== status.validUntil);
+    const memberships = (await membershipCounts(transaction, id)).get(id) ?? 0;
+    const held = (await studentClassesOn(transaction, today, id)).get(id);
+    const current = held?.current ?? null;
+    const tutor = current === null ? undefined : (await tutorsInForce(transaction)).get(current.id);
     // As `statusOn`: the row in force today, else the first one after today.
     const now = statuses.find((status) => status.validUntil === null || status.validUntil > today);
     const contractCount = await transaction
@@ -959,7 +1044,12 @@ export class Students {
         reason: financial ? (reasons.get(status.id) ?? null) : null,
       })),
       planned: plannedAfter(rows, today),
-      version: rows.length,
+      class: current,
+      plannedClass: held?.planned ?? null,
+      tutor: tutor?.tutor ?? null,
+      actingTutor: tutor?.acting ?? null,
+      mainRoom: held?.mainRoom ?? null,
+      version: rows.length + memberships,
       canEdit:
         decide(
           { area: 'students', action: 'edit', branch: 'request' },

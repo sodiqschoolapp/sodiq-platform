@@ -1,4 +1,6 @@
 import {
+  classDisplayName,
+  INSTRUCTION_LANGUAGES,
   listName,
   PERMISSIONS,
   permits,
@@ -49,6 +51,7 @@ import {
   studentsQuery,
 } from './people-api';
 import { PeopleTabs } from './people-tabs';
+import { PlaceTickedForm } from '@/features/classes/class-members';
 import { StudentForm } from './student-form';
 import { StudentPanel } from './student-panel';
 import { schoolDateText } from '@/lib/dates';
@@ -65,8 +68,15 @@ const fullName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) => listN
 const typedName = (row: Pick<StudentListItem, 'firstName' | 'lastName'>) =>
   `${row.firstName} ${row.lastName}`;
 
-/** No class, group or tutor exists before tasks 3.1 and 3.2 (answer 17: "every student shows No class"). */
+/**
+ * The "No class" option of the class filter (edge: "They appear with class
+ * \"—\", under a \"No class\" filter"): active, with no class today and none
+ * planned, the rule of the server's counter (task 3.1b).
+ */
 const NO_CLASS = 'none';
+
+/** The class a student is shown with: the one today, else the one planned. */
+const shownClass = (row: StudentListItem) => row.class ?? row.plannedClass;
 
 /** The one option of the consent filter (answer 23: "a list shows active students without it"). */
 const NO_CONSENT = 'missing';
@@ -126,8 +136,11 @@ const BULK_REFUSALS: ReadonlySet<string> = new Set([
   'not_found',
 ]);
 
-/** What the side panel holds besides a student: a new student, or the bulk leaving of the ticked ones. */
-type NewForm = { kind: 'student' } | { kind: 'leaving'; rows: StudentListItem[] };
+/** What the side panel holds besides a student: a new student, or a bulk change of the ticked ones. */
+type NewForm =
+  | { kind: 'student' }
+  | { kind: 'leaving'; rows: StudentListItem[] }
+  | { kind: 'place'; rows: StudentListItem[] };
 
 /** What a bulk leaving did: how many went through, the names of those refused, and a failure that stopped it. */
 interface Outcome {
@@ -158,6 +171,9 @@ export function StudentsPage() {
   const { start: startNew } = newRecord;
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const canCreate = role !== null && permits(PERMISSIONS, role, 'students', 'create');
+  // "Put into a class" (task 3.1b, decision 9): the editors of classes; the server decides.
+  const canPlace = role !== null && permits(PERMISSIONS, role, 'classes', 'edit');
+  const [placed, setPlaced] = useState<number | null>(null);
   const exporter = useExport<StudentListItem>('students', (row) => row.id);
   const all = useQuery(studentsQuery(branchId));
   // The consent list comes from the server, which gives it to the Financial
@@ -221,20 +237,33 @@ export function StudentsPage() {
   });
 
   const bulkActions = useMemo(
-    (): BulkAction<StudentListItem>[] =>
-      canArchive
+    (): BulkAction<StudentListItem>[] => [
+      ...(canPlace
+        ? [
+            {
+              key: 'place',
+              label: t('classes.putIntoClass'),
+              run: (rows: StudentListItem[]) => {
+                setPlaced(null);
+                startNew({ kind: 'place', rows });
+              },
+            },
+          ]
+        : []),
+      ...(canArchive
         ? [
             {
               key: 'leave',
               label: t('people.students.bulkLeave'),
-              run: (rows) => {
+              run: (rows: StudentListItem[]) => {
                 setOutcome(null);
                 startNew({ kind: 'leaving', rows });
               },
             },
           ]
-        : [],
-    [canArchive, t, startNew],
+        : []),
+    ],
+    [canArchive, canPlace, t, startNew],
   );
 
   /**
@@ -353,29 +382,46 @@ export function StudentsPage() {
         opens: true,
       },
       {
-        // `04`: "class (grade and name, for example 7 Oxford)". No class
-        // exists before task 3.1, so the cell shows the grade the student
-        // joins and "No class" (answer 17; spec review of the build).
+        // `04`: "class (grade and name, for example 7 Oxford)"; "—" with
+        // none (edge, "A student is enrolled in August"); a planned one with
+        // its first day (task 3.1b).
         key: 'class',
         header: t('people.students.class'),
         cell: (row) =>
-          t('people.students.gradeNoClass', {
-            grade: t('setup.subjects.grade', { grade: row.grade }),
-          }),
-        sortValue: (row) => row.grade,
+          row.class !== null
+            ? classDisplayName(row.class.grade, row.class.name)
+            : row.plannedClass !== null
+              ? t('people.students.classFrom', {
+                  class: classDisplayName(row.plannedClass.grade, row.plannedClass.name),
+                  date: schoolDateText(row.plannedClass.from, i18n.language),
+                })
+              : '—',
+        sortValue: (row) => {
+          const shown = shownClass(row);
+          return shown === null ? null : `${String(shown.grade).padStart(2, '0')} ${shown.name}`;
+        },
+        searchText: (row) => {
+          const shown = shownClass(row);
+          return shown === null ? '' : classDisplayName(shown.grade, shown.name);
+        },
       },
       {
-        // No group or tutor before tasks 3.1 and 3.2: not columns of the file yet (decision 6).
+        // No group before task 3.2: not a column of the file yet (2.4b-2, decision 6).
         key: 'groups',
         header: t('people.students.groups'),
         cell: () => '—',
         exported: false,
       },
       {
+        // The Tutor of the class in force today, the acting one beside them (task 3.1b).
         key: 'tutor',
         header: t('people.students.tutor'),
-        cell: () => '—',
-        exported: false,
+        cell: (row) =>
+          [row.tutor, row.actingTutor]
+            .filter((name) => name !== null)
+            .map((name) => listName(name))
+            .join(', ') || '—',
+        sortValue: (row) => (row.tutor === null ? null : listName(row.tutor)),
       },
       {
         key: 'status',
@@ -412,10 +458,38 @@ export function StudentsPage() {
         matches: (row, value) => row.grade === Number(value),
       },
       {
+        // The classes the rows name (the list's own answer: a Tutor reads no
+        // class list before 3.1c), and "No class" (task 3.1b).
         key: 'class',
         label: t('people.students.class'),
-        options: [{ value: NO_CLASS, label: t('people.students.noClass') }],
-        matches: (_row, value) => value === NO_CLASS,
+        options: [
+          ...[
+            ...new Map(
+              (all.data?.students ?? []).flatMap((row) => {
+                const shown = shownClass(row);
+                return shown === null ? [] : [[shown.id, shown] as const];
+              }),
+            ).values(),
+          ]
+            .sort((a, b) => a.grade - b.grade || a.name.localeCompare(b.name))
+            .map((one) => ({ value: one.id, label: classDisplayName(one.grade, one.name) })),
+          { value: NO_CLASS, label: t('people.students.noClass') },
+        ],
+        // "No class" is the server's rule of the counter whose link opens it:
+        // active today (before the start date included), no class now or planned.
+        matches: (row, value) =>
+          value === NO_CLASS
+            ? shownClass(row) === null && (row.status === 'active' || row.status === null)
+            : shownClass(row)?.id === value,
+      },
+      {
+        key: 'language',
+        label: t('people.students.language'),
+        options: INSTRUCTION_LANGUAGES.map((language) => ({
+          value: language,
+          label: t(`people.staff.languages.${language}`),
+        })),
+        matches: (row, value) => shownClass(row)?.language === value,
       },
       {
         key: 'status',
@@ -438,7 +512,7 @@ export function StudentsPage() {
           ]
         : []),
     ],
-    [t, readsFinancial],
+    [t, readsFinancial, all.data],
   );
 
   const open = (next: ListSearch, how: 'push' | 'replace'): void => {
@@ -455,6 +529,34 @@ export function StudentsPage() {
       {t('people.students.add')}
     </Button>
   );
+
+  /** "Put into a class" of the ticked students (task 3.1b), in the side panel of the list. */
+  const placePanel = (rows: StudentListItem[]): NewRecord => {
+    const title = t('classes.placeTitle', { count: rows.length, n: number.format(rows.length) });
+    return {
+      key: `place:${rows.map((row) => row.id).join()}`,
+      title,
+      content: ({ close }) => (
+        <div className="grid gap-4">
+          <PlaceTickedForm
+            key={rows.map((row) => row.id).join()}
+            rows={rows}
+            title={title}
+            onPlaced={(count) => {
+              setPlaced(count);
+              close();
+            }}
+          />
+          <div>
+            <Button variant="ghost" onClick={close}>
+              {t('people.students.cancel')}
+            </Button>
+          </div>
+        </div>
+      ),
+      ...newRecord.handlers,
+    };
+  };
 
   const leavingPanel = (rows: StudentListItem[]): NewRecord => {
     const title = t('people.students.bulkLeaveTitle', {
@@ -506,6 +608,11 @@ export function StudentsPage() {
           {outcome.refused.length > 0 && (
             <> {t('people.students.bulkRefused', { names: outcome.refused.join(', ') })}</>
           )}
+        </p>
+      )}
+      {placed !== null && (
+        <p role="status" className="mb-3 text-sm">
+          {t('classes.placed', { count: placed, n: number.format(placed) })}
         </p>
       )}
       {outcome !== null && outcome.failure !== null && (
@@ -587,7 +694,9 @@ export function StudentsPage() {
                   ),
                   ...newRecord.handlers,
                 }
-              : leavingPanel(newRecord.value.rows)
+              : newRecord.value.kind === 'place'
+                ? placePanel(newRecord.value.rows)
+                : leavingPanel(newRecord.value.rows)
         }
         panel={(row) => (
           <StudentPanel key={row.id} id={row.id} name={typedName(row)} holderText={holderText} />

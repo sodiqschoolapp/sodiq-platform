@@ -76,6 +76,8 @@ const SCREEN: Record<ExportList, Record<string, (texts: Texts) => string>> = {
     language: (texts) => texts.classes.language,
     tutor: (texts) => texts.classes.tutor,
     mainRoom: (texts) => texts.classes.mainRoom,
+    // Task 3.1b: the members today.
+    students: (texts) => texts.classes.students,
     maxSize: (texts) => texts.classes.maxSize,
     status: (texts) => texts.classes.status,
   },
@@ -84,6 +86,8 @@ const SCREEN: Record<ExportList, Record<string, (texts: Texts) => string>> = {
     uid: (texts) => texts.people.students.uid,
     name: (texts) => texts.people.students.name,
     class: (texts) => texts.people.students.class,
+    // Task 3.1b: the Tutor of the class.
+    tutor: (texts) => texts.people.students.tutor,
     status: (texts) => texts.people.students.status,
     paternalName: (texts) => texts.people.students.paternalName,
     sex: (texts) => texts.people.students.sex,
@@ -143,7 +147,6 @@ describe('the headings of the export files', () => {
       // Task 2.4b-2: the student file.
       expect(file.student.statuses).toEqual(screen.people.students.statuses);
       expect(file.student.notStarted).toBe(screen.people.students.notStarted);
-      expect(file.student.gradeNoClass).toBe(screen.people.students.gradeNoClass);
       expect(file.student.sexes).toEqual(screen.people.staff.sexes);
       expect(file.student.documentTypes).toEqual(screen.people.students.documentTypes);
       expect(file.student.regions).toEqual(screen.people.students.regions);

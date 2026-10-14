@@ -1,8 +1,11 @@
 import {
+  classDisplayName,
+  listName,
   phoneText,
   studentDetailSchema,
   studentIdentitySchema,
   studentUidCorrectionSchema,
+  type ClassNotRestored,
   type StudentDetail,
   type StudentIdentity,
   type StudentRecord,
@@ -91,6 +94,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const [tab, setTab] = useState<Tab | null>(null);
   // A status form closed because the student changed under it: its refusal stays in the bottom row.
   const [staleClosed, setStaleClosed] = useState(false);
+  const [notRestored, setNotRestored] = useState<readonly ClassNotRestored[]>([]);
   const relatives = useQuery({
     ...studentRelativesQuery(branchId, id),
     enabled:
@@ -160,6 +164,9 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   // where the status heading is, and the focus goes to that heading.
   const statusChanged = async (answer: unknown) => {
     setTab('overview');
+    // A cancel or an undo names the classes it could not give back (task 3.1b, decision 1).
+    const read = studentDetailSchema.safeParse(answer);
+    setNotRestored(read.success ? (read.data.classesNotRestored ?? []) : []);
     await refresh(answer);
   };
   const cancelLeaving = useCancelLeaving(
@@ -398,6 +405,16 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
           {shownTab === 'overview' ? (
             <>
               <Overview student={student} />
+              <Academic student={student} />
+              {notRestored.length > 0 && (
+                <p role="status" className="text-sm">
+                  {t('people.students.notRestored', {
+                    classes: notRestored
+                      .map((one) => classDisplayName(one.grade, one.name))
+                      .join(', '),
+                  })}
+                </p>
+              )}
               <StatusSection student={student} panel={shown} />
             </>
           ) : shownTab === 'relatives' ? (
@@ -432,6 +449,44 @@ function Deleted() {
     <p ref={line} role="status" tabIndex={-1}>
       {t('people.students.deleted')}
     </p>
+  );
+}
+
+/**
+ * The Academic block of the record (task 3.1b): the class today, else the one
+ * planned with its first day, its Tutor and acting Tutor in force, and its
+ * main classroom.
+ */
+function Academic({ student }: { student: StudentDetail }) {
+  const { t, i18n } = useTranslation();
+  const shown = student.class ?? student.plannedClass;
+  const name = shown === null ? null : classDisplayName(shown.grade, shown.name);
+  const rows: [string, string][] = [
+    [
+      t('people.students.class'),
+      name === null
+        ? t('people.students.noClass')
+        : student.class === null && shown !== null
+          ? t('people.students.classFrom', {
+              class: name,
+              date: schoolDateText(shown.from, i18n.language),
+            })
+          : name,
+    ],
+    [
+      t('people.students.tutor'),
+      student.tutor === null ? t('classes.noTutor') : listName(student.tutor),
+    ],
+  ];
+  if (student.actingTutor !== null) {
+    rows.push([t('people.students.actingTutor'), listName(student.actingTutor)]);
+  }
+  rows.push([t('people.students.mainRoom'), student.mainRoom ?? t('classes.noRoom')]);
+  return (
+    <section className="grid gap-3">
+      <h3 className={SECTION_TITLE}>{t('people.students.academic')}</h3>
+      <Terms rows={rows} />
+    </section>
   );
 }
 
@@ -471,7 +526,6 @@ function Overview({ student }: { student: StudentDetail }) {
     [t('people.students.uid'), student.uid],
     // The one field of the record's form the overview lacked (task 2.7c-2b-2b, decision 4).
     [t('people.students.paternalName'), student.paternalName ?? notSet],
-    [t('people.students.class'), t('people.students.noClass')],
     [t('people.students.grade'), t('setup.subjects.grade', { grade: student.grade })],
     [t('people.students.sex'), t(`people.staff.sexes.${student.sex}`)],
     [t('people.students.startsOn'), schoolDateText(student.startsOn, language)],

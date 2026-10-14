@@ -19,6 +19,7 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { ClassForm } from './class-form';
+import { ClassMembers } from './class-members';
 import { ClassTutors, tutorName } from './class-tutors';
 import {
   archiveClass,
@@ -156,12 +157,11 @@ export function ClassPanel({ row, columns, years, rooms, canEdit, canArchive }: 
           )}
           {(
             [
-              ['students', t('classes.students')],
               ['average', t('classes.average')],
               ['attendance', t('classes.attendance')],
             ] as const
           ).map(([key, term]) => (
-            // Decision 13: these come with memberships (3.1b) and the journal.
+            // Decision 13 of 3.1a: these come with the journal.
             <div key={key} className="grid gap-0.5">
               <dt className="text-sm text-muted-foreground">{term}</dt>
               <dd>{t('classes.notYet')}</dd>
@@ -182,6 +182,10 @@ export function ClassPanel({ row, columns, years, rooms, canEdit, canArchive }: 
             await end.mutateAsync({ tutorId, record });
           }}
         />
+      )}
+
+      {panel.editing !== 'record' && (
+        <ClassMembers schoolClass={schoolClass} years={years} canEdit={editable} panel={panel} />
       )}
 
       {(editable || (canArchive && schoolClass.yearStatus !== 'closed')) &&

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import type {
   AuditAction,
+  ClassNotRestored,
+  ErrorCode,
   StudentCancelLeaving,
   StudentDelete,
   StudentDetail,
@@ -14,6 +16,13 @@ import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import {
+  applyMembershipPlan,
+  classesInService,
+  membershipsOf,
+  MEMBERSHIP_REFUSALS,
+} from '../classes/class-membership-rows.js';
+import { planMemberships, type StoredMembership } from '../classes/membership-plan.js';
 import {
   holdsData,
   planCancelLeaving,
@@ -29,11 +38,14 @@ import { linkValueOf, RelativeWrites } from './relative-writes.js';
 import { Students } from './students.service.js';
 
 const CHECK_VIOLATION = '23514';
+const EXCLUSION_VIOLATION = '23P01';
 
-/** The database guards of 0033 and the refusal each gives. */
-const GUARDS: Readonly<Record<string, 'date_in_closed_year' | 'student_has_data'>> = {
+/** The database guards of 0033 and 0045 and the refusal each gives. */
+const GUARDS: Readonly<Record<string, ErrorCode>> = {
   student_statuses_closed_year: 'date_in_closed_year',
   students_delete_guard: 'student_has_data',
+  // Task 3.1b: a class row cut or written back by the change, a return's grade.
+  ...MEMBERSHIP_REFUSALS,
 };
 
 /** Runs work; a guard of 0033 that refused becomes its 409. */
@@ -43,7 +55,9 @@ async function guarded<T>(work: () => Promise<T>): Promise<T> {
   } catch (error) {
     const failure = error as { code?: unknown; constraint?: unknown };
     const code =
-      failure.code === CHECK_VIOLATION && typeof failure.constraint === 'string'
+      (failure.code === CHECK_VIOLATION || failure.code === EXCLUSION_VIOLATION) &&
+      typeof failure.constraint === 'string' &&
+      Object.hasOwn(GUARDS, failure.constraint)
         ? GUARDS[failure.constraint]
         : undefined;
     if (code === undefined) {
@@ -215,7 +229,8 @@ export class StudentStatuses {
       this.transactions.run(access.branchIds, async (transaction) => {
         const row = await this.students.lockStudent(transaction, id);
         const rows = (await this.students.statusRowsOf(transaction, id)).get(id) ?? [];
-        if (rows.length !== input.version) {
+        const memberships = await membershipsOf(transaction, id);
+        if (rows.length + memberships.length !== input.version) {
           throw new ApiException('student_changed', 409);
         }
         const contracts = await transaction
@@ -263,6 +278,8 @@ export class StudentStatuses {
             student: row,
             contracts,
             statuses: rows,
+            // Task 3.1b, decision 12: the class rows go with the student (the cascade).
+            memberships,
             uids: uids.map((uid) => uid.uid),
             relatives: links.map((link) => ({
               relativeId: link.relative_id,
@@ -299,7 +316,9 @@ export class StudentStatuses {
       this.transactions.run(access.branchIds, async (transaction) => {
         const student = await this.students.lockStudent(transaction, id);
         const rows = (await this.students.statusRowsOf(transaction, id)).get(id) ?? [];
-        if (rows.length !== change.version) {
+        const memberships = await membershipsOf(transaction, id);
+        // The version counts the class rows too (task 3.1b, decision 17).
+        if (rows.length + memberships.length !== change.version) {
           throw new ApiException('student_changed', 409);
         }
         const today = await this.students.todayIn(transaction, branchId);
@@ -307,7 +326,16 @@ export class StudentStatuses {
         if ('refusal' in outcome) {
           throw new ApiException(outcome.refusal, 409);
         }
-        await this.apply(transaction, branchId, id, outcome);
+        const written = await this.apply(transaction, branchId, id, outcome);
+        const classes = await this.followLeaving(
+          transaction,
+          id,
+          rows,
+          memberships,
+          outcome,
+          written,
+          change.action === 'student.leave_undone' ? 'undo' : 'cancel',
+        );
         await change.also?.(transaction);
         await this.audit.record(transaction, {
           branchId,
@@ -317,22 +345,100 @@ export class StudentStatuses {
           record: { type: 'student', id },
           // The grade too: a return writes it (permission review of the build).
           oldValue: asJson({ statuses: rows, grade: student.grade }),
-          newValue: asJson({ ...change.newValue, cuts: outcome.cuts, writes: outcome.writes }),
+          newValue: asJson({
+            ...change.newValue,
+            cuts: outcome.cuts,
+            writes: outcome.writes,
+            ...(classes === null ? {} : { memberships: classes.memberships }),
+          }),
           reason: change.reason ?? undefined,
           requestId,
         });
-        return this.students.readDetail(transaction, access, id);
+        const detail = await this.students.readDetail(transaction, access, id);
+        return classes === null || classes.notRestored.length === 0
+          ? detail
+          : { ...detail, classesNotRestored: classes.notRestored };
       }),
     );
   }
 
-  /** The cuts first, then the new rows: a new row never overlaps a row not yet cut. */
+  /**
+   * The class rows follow a change of a leaving (task 3.1b, decision 1 with
+   * correction 1): a leaving cuts them at its first inactive day; a cancel,
+   * an undo or the replace of a scheduled leaving gives back the rows the
+   * leaving taken back had cut, through every check of the guard; a row of a
+   * class out of service is named and not given back. The classes are locked
+   * FOR SHARE after the student (the lock order of every placement). `null`
+   * when the change touches no leaving (a return, a restore).
+   */
+  private async followLeaving(
+    transaction: Transaction,
+    id: string,
+    rows: readonly StoredStudentStatus[],
+    memberships: readonly StoredMembership[],
+    outcome: StudentStatusPlan,
+    written: readonly string[],
+    cause: 'cancel' | 'undo',
+  ): Promise<{
+    memberships: Awaited<ReturnType<typeof applyMembershipPlan>> & { notRestored: string[] };
+    notRestored: ClassNotRestored[];
+  } | null> {
+    const takenBack = outcome.cuts
+      .map((cut) => ({ cut, row: rows.find((row) => row.id === cut.id) }))
+      .find(
+        ({ cut, row }) =>
+          row !== undefined &&
+          row.status === 'inactive' &&
+          row.cause === 'leaving' &&
+          cut.validUntil === row.validFrom,
+      )?.row;
+    const leavingIndex = outcome.writes.findIndex((write) => write.cause === 'leaving');
+    const leaving = outcome.writes[leavingIndex];
+    const leavingId = written[leavingIndex] ?? null;
+    if (takenBack === undefined && leaving === undefined) {
+      return null;
+    }
+    const inService = await classesInService(
+      transaction,
+      memberships.map((row) => row.classId),
+    );
+    const plan = planMemberships(
+      memberships,
+      {
+        takeBack:
+          takenBack === undefined ? null : { leavingId: takenBack.id, from: takenBack.validFrom },
+        leave: leaving === undefined ? null : { from: leaving.validFrom },
+      },
+      (classId) => inService.has(classId),
+    );
+    const moved = await applyMembershipPlan(transaction, id, memberships, plan, leavingId, cause);
+    const notRestoredIds = [...new Set(plan.notRestored.map((row) => row.classId))];
+    const named =
+      notRestoredIds.length === 0
+        ? []
+        : await transaction
+            .selectFrom('classes')
+            .select(['id', 'grade', 'name'])
+            .where('id', 'in', notRestoredIds)
+            .orderBy('grade')
+            .orderBy('name_key')
+            .execute();
+    return {
+      memberships: { ...moved, notRestored: notRestoredIds },
+      notRestored: named.map((one) => ({ classId: one.id, grade: one.grade, name: one.name })),
+    };
+  }
+
+  /**
+   * The cuts first, then the new rows: a new row never overlaps a row not yet
+   * cut. Answers the id of each new row, in the order of `plan.writes`.
+   */
   private async apply(
     transaction: Transaction,
     branchId: string,
     id: string,
     plan: StudentStatusPlan,
-  ): Promise<void> {
+  ): Promise<string[]> {
     for (const cut of plan.cuts) {
       await transaction
         .updateTable('student_statuses')
@@ -341,8 +447,9 @@ export class StudentStatuses {
         .where('student_id', '=', id)
         .execute();
     }
+    const ids: string[] = [];
     for (const write of plan.writes) {
-      await transaction
+      const row = await transaction
         .insertInto('student_statuses')
         .values({
           student_id: id,
@@ -353,7 +460,10 @@ export class StudentStatuses {
           cause: write.cause,
           reason: write.reason,
         })
-        .execute();
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      ids.push(row.id);
     }
+    return ids;
   }
 }

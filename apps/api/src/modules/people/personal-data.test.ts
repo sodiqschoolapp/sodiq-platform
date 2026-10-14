@@ -81,7 +81,7 @@ describe('the personal data report', () => {
 
   async function student(branch: string, consent: string | null = '2026-08-25'): Promise<string> {
     count += 1;
-    const response = await t.post('/api/people/students', branch, {
+    const response = await t.postStudent(branch, {
       uid: String(2607700 + count),
       confirmUidSet: true,
       firstName: 'Gulnoza',

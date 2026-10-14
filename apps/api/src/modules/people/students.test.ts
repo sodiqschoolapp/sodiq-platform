@@ -101,12 +101,7 @@ describe('student records', () => {
     branch = '',
     cookie?: string,
   ): Promise<StudentDetail> {
-    const response = await t.post(
-      '/api/people/students',
-      branch || t.north,
-      body(overrides),
-      cookie,
-    );
+    const response = await t.postStudent(branch || t.north, body(overrides), cookie);
     expect(response.status, JSON.stringify(response.body)).toBe(201);
     return studentDetailSchema.parse(response.body);
   }
@@ -203,7 +198,7 @@ describe('student records', () => {
   describe('create', () => {
     it('writes the record, its reserved UID, contract, first status and switched-off account', async () => {
       const input = body();
-      const response = await t.post('/api/people/students', t.north, input, t.vicePrincipal);
+      const response = await t.postStudent(t.north, input, t.vicePrincipal);
       expect(response.status, JSON.stringify(response.body)).toBe(201);
       const student = studentDetailSchema.parse(response.body);
       expect(student).toMatchObject({
@@ -284,14 +279,14 @@ describe('student records', () => {
     it('refuses a UID outside the set of the grade until it is confirmed', async () => {
       const before = await snapshot();
       const input = body({ uid: '2606901', grade: 7 });
-      const refused = await t.post('/api/people/students', t.north, input);
+      const refused = await t.postStudent(t.north, input);
       refusedWith(refused, 409, 'uid_set_mismatch');
       // The warning names the set of the grade (finding 25; task 2.7b-1, decision 7).
       expect(detailsOf(refused)).toEqual([
         { path: 'uid', code: 'uid_set', message: expect.any(String) as string, expected: '2607' },
       ]);
       expect(await snapshot()).toEqual(before);
-      const response = await t.post('/api/people/students', t.north, {
+      const response = await t.postStudent(t.north, {
         ...input,
         confirmUidSet: true,
       });
@@ -303,11 +298,7 @@ describe('student records', () => {
       await create({ uid: '2607901', grade: 8, startsOn: '2027-09-02' });
       await create({ uid: '2701901', grade: 1, startsOn: '2027-07-01' });
       refusedWith(
-        await t.post(
-          '/api/people/students',
-          t.north,
-          body({ uid: '2607902', grade: 7, startsOn: '2027-07-01' }),
-        ),
+        await t.postStudent(t.north, body({ uid: '2607902', grade: 7, startsOn: '2027-07-01' })),
         409,
         'uid_set_mismatch',
       );
@@ -330,8 +321,7 @@ describe('student records', () => {
             .execute();
         }
       });
-      const response = await t.post(
-        '/api/people/students',
+      const response = await t.postStudent(
         t.south,
         body({ uid: '9911901', grade: 11, startsOn: '2026-01-12' }),
       );
@@ -340,7 +330,7 @@ describe('student records', () => {
 
     it('refuses a start date in no year of the branch and before none', async () => {
       refusedWith(
-        await t.post('/api/people/students', t.south, body({ startsOn: '2027-07-01' })),
+        await t.postStudent(t.south, body({ startsOn: '2027-07-01' })),
         409,
         'no_academic_year',
       );
@@ -351,7 +341,7 @@ describe('student records', () => {
     it('refuses a UID of this branch and names its holder', async () => {
       const holder = await create();
       const before = await snapshot();
-      const response = await t.post('/api/people/students', t.north, body({ uid: holder.uid }));
+      const response = await t.postStudent(t.north, body({ uid: holder.uid }));
       refusedWith(response, 409, 'student_value_taken');
       expect(detailsOf(response)).toEqual([
         expect.objectContaining({ path: 'uid', code: 'already_exists', recordId: holder.id }),
@@ -380,9 +370,9 @@ describe('student records', () => {
       ],
     ])('refuses a %s held in another branch without naming the holder', async (path, of) => {
       const held = body();
-      expect((await t.post('/api/people/students', t.south, held)).status).toBe(201);
+      expect((await t.postStudent(t.south, held)).status).toBe(201);
       const before = await snapshot();
-      const response = await t.post('/api/people/students', t.north, body(of(held)));
+      const response = await t.postStudent(t.north, body(of(held)));
       refusedWith(response, 409, 'student_value_taken');
       const details = detailsOf(response);
       expect(details).toEqual([
@@ -394,15 +384,13 @@ describe('student records', () => {
 
     it('refuses a JSHSHIR, document or contract of this branch with the holder', async () => {
       const held = body();
-      const holder = studentDetailSchema.parse(
-        (await t.post('/api/people/students', t.north, held)).body,
-      );
+      const holder = studentDetailSchema.parse((await t.postStudent(t.north, held)).body);
       for (const [path, overrides] of [
         ['jshshir', { jshshir: held.jshshir }],
         ['documentNumber', { documentNumber: held.documentNumber }],
         ['contract.number', { contract: held.contract }],
       ] as const) {
-        const response = await t.post('/api/people/students', t.north, body(overrides));
+        const response = await t.postStudent(t.north, body(overrides));
         refusedWith(response, 409, 'student_value_taken');
         expect(detailsOf(response), path).toEqual([
           expect.objectContaining({ path, recordId: holder.id }),
@@ -495,7 +483,7 @@ describe('student records', () => {
               : {}),
           }),
         );
-        const save = t.post('/api/people/students', t.north, input).then((response) => response);
+        const save = t.postStudent(t.north, input).then((response) => response);
         await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
         held.release();
         await held.done;
@@ -506,9 +494,7 @@ describe('student records', () => {
     );
 
     it('answers 409 to a create that waited for a UID correction to the same UID', async () => {
-      const other = studentDetailSchema.parse(
-        (await t.post('/api/people/students', t.south, body())).body,
-      );
+      const other = studentDetailSchema.parse((await t.postStudent(t.south, body())).body);
       const input = body();
       const uid = String(input.uid);
       // What the correction does, in its order: the current UID, then its reservation.
@@ -519,7 +505,7 @@ describe('student records', () => {
           .values({ uid, student_id: other.id, branch_id: t.south, held_from: MOMENT })
           .execute();
       });
-      const save = t.post('/api/people/students', t.north, input).then((response) => response);
+      const save = t.postStudent(t.north, input).then((response) => response);
       await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
       held.release();
       await held.done;
@@ -553,9 +539,7 @@ describe('student records', () => {
 
   describe('the duplicate warning (edge: a matching name and date of birth)', () => {
     it('answers 404 for a record of another branch or an unknown one in the body', async () => {
-      const south = studentDetailSchema.parse(
-        (await t.post('/api/people/students', t.south, body())).body,
-      );
+      const south = studentDetailSchema.parse((await t.postStudent(t.south, body())).body);
       for (const studentId of [south.id, UNKNOWN]) {
         refusedWith(
           await t.post('/api/people/students/check', t.north, {
@@ -578,8 +562,7 @@ describe('student records', () => {
       });
       expect(
         (
-          await t.post(
-            '/api/people/students',
+          await t.postStudent(
             t.south,
             body({ firstName: 'Otkir', lastName: 'Rahimov', birthDate: '2014-06-07' }),
           )
@@ -822,9 +805,7 @@ describe('student records', () => {
     });
 
     it('opens a student of either branch to a Senior Head Teacher, each in its own branch', async () => {
-      const south = studentDetailSchema.parse(
-        (await t.post('/api/people/students', t.south, body())).body,
-      );
+      const south = studentDetailSchema.parse((await t.postStudent(t.south, body())).body);
       const read = await detail(south.id, seniorHeadTeacher, t.south);
       expect(read).toMatchObject({
         contact: null,
@@ -872,16 +853,26 @@ describe('student records', () => {
           consentMissing: [t.admin, t.principal, t.vicePrincipal].includes(cookie) ? false : null,
           status: 'active',
           planned: null,
-          version: 1,
+          // Task 3.1b: the class of the create, its Tutors, and its row in the version.
+          class: {
+            id: expect.any(String) as string,
+            grade: 7,
+            name: expect.any(String) as string,
+            language: 'uz',
+            from: '2026-09-02',
+            until: '2027-06-01',
+          },
+          plannedClass: null,
+          tutor: null,
+          actingTutor: null,
+          version: 2,
         });
         expect(JSON.stringify(response.body)).not.toContain('+99890');
       }
     });
 
     it('shows each branch its own students; a Senior Head Teacher reads both', async () => {
-      const south = studentDetailSchema.parse(
-        (await t.post('/api/people/students', t.south, body())).body,
-      );
+      const south = studentDetailSchema.parse((await t.postStudent(t.south, body())).body);
       const ids = async (branch: string, cookie: string) =>
         studentListSchema
           .parse((await t.get('/api/people/students', branch, cookie)).body)
@@ -924,11 +915,7 @@ describe('student records', () => {
         seniorHeadTeacher,
         t.teacher,
       ]) {
-        refusedWith(
-          await t.post('/api/people/students', t.north, body(), cookie),
-          403,
-          'permission_denied',
-        );
+        refusedWith(await t.postStudent(t.north, body(), cookie), 403, 'permission_denied');
         refusedWith(
           await t.post(
             '/api/people/students/check',
@@ -959,9 +946,7 @@ describe('student records', () => {
     });
 
     it('answers 404 for a student of another branch or an unknown id on every record route', async () => {
-      const south = studentDetailSchema.parse(
-        (await t.post('/api/people/students', t.south, body())).body,
-      );
+      const south = studentDetailSchema.parse((await t.postStudent(t.south, body())).body);
       const before = await snapshot();
       for (const id of [south.id, UNKNOWN]) {
         refusedWith(await t.get(`/api/people/students/${id}`, t.north), 404, 'not_found');
@@ -991,7 +976,8 @@ describe('student records', () => {
 
   describe('edit', () => {
     it('changes the fields and corrects the newest contract, with the old and new values', async () => {
-      const student = await create();
+      // A student with no class yet: the grade of one in a class is held (task 3.1b, decision 4).
+      const student = await create({ startsOn: '2026-11-02', classId: null });
       const response = await t.put(
         `/api/people/students/${student.id}`,
         t.north,
@@ -1082,7 +1068,7 @@ describe('student records', () => {
         reason: 'Typed wrongly at enrolment.',
         assignment_id: t.viceAssignment,
       });
-      const taken = await t.post('/api/people/students', t.south, body({ uid: student.uid }));
+      const taken = await t.postStudent(t.south, body({ uid: student.uid }));
       refusedWith(taken, 409, 'student_value_taken');
       // The old UID is the student's for good; it can be taken back.
       const back = await t.put(`/api/people/students/${student.id}/uid`, t.north, {
@@ -1098,7 +1084,7 @@ describe('student records', () => {
       const student = await create();
       const holder = await create();
       const elsewhere = body();
-      expect((await t.post('/api/people/students', t.south, elsewhere)).status).toBe(201);
+      expect((await t.postStudent(t.south, elsewhere)).status).toBe(201);
       const before = await snapshot();
       const correct = (uid: string, reason = 'Typo.', confirmUidSet = false) =>
         t.put(`/api/people/students/${student.id}/uid`, t.north, { uid, reason, confirmUidSet });

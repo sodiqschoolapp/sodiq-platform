@@ -247,6 +247,32 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu shaxsni shu vaqtda boshqa tyutori bor sinfning tyutori sifatida qaytaradi. Avval oʻquv ishlari boʻyicha direktor oʻrinbosaridan oʻsha sinf tyutorlarini oʻzgartirishni soʻrang.',
     role_tutor_language:
       'Bu shaxsni u endi dars bermaydigan tildagi sinfning tyutori sifatida qaytaradi. Avval tilni uning xodim kartasiga qoʻshing.',
+    student_has_class:
+      'Oʻquvchi bu sanada yoki undan keyin sinfda. Sinflar oʻrtasida oʻtish — bu koʻchirish.',
+    student_not_active_on:
+      'Oʻquvchi bu sanadan boshlab har kuni oʻqimaydi. Holatini tekshiring va boshqa sanani tanlang.',
+    class_grade_differs:
+      'Sinf oʻquvchidan boshqa sinf darajasida. Oʻquvchining sinf darajasidagi sinfni tanlang.',
+    class_full:
+      'Bu sanadan boshlab qaysidir kuni sinfda boʻsh oʻrin yetmaydi. Eng koʻp oʻquvchi sonini oshiring yoki kamroq oʻquvchi tanlang.',
+    membership_outside_year: 'Sana sinfning oʻquv yilidan tashqarida. Yil ichidagi sanani tanlang.',
+    membership_before_start:
+      'Sana oʻquvchining oʻqish boshlanish sanasidan oldin. Boshlanish sanasini yoki undan keyingisini tanlang.',
+    membership_in_force:
+      'Oʻquvchi allaqachon sinfda. Faqat hali boshlanmagan joylashtirishni bekor qilish mumkin.',
+    membership_not_planned: 'Bu joylashtirish tugagan. Bekor qiladigan narsa yoʻq.',
+    student_needs_class:
+      'Bugun yoki undan oldin oʻqishni boshlaydigan oʻquvchi sinfga joylashtiriladi. Sinfni tanlang.',
+    student_grade_class:
+      'Oʻquvchi oʻz sinf darajasidagi sinfda. Sinf darajasi yangi darajadagi sinfga koʻchirish bilan oʻzgaradi.',
+    class_has_members:
+      'Sinfda hozir yoki keyingi sanadan oʻquvchilar bor. Avval ularning joylashtirishini bekor qiling yoki koʻchiring, keyin sinfni arxivlang.',
+    class_grade_members:
+      'Sinfda oʻquvchilar bor, shuning uchun uning sinf darajasini oʻzgartirib boʻlmaydi.',
+    class_size_below_members:
+      'Bugundan boshlab qaysidir kuni sinfda bundan koʻp oʻquvchi bor. Kattaroq sonni tanlang.',
+    academic_year_has_members:
+      'Bu yil sinflarida oʻquvchilar bor, shuning uchun uning sanalarini endi oʻzgartirib boʻlmaydi.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
@@ -1284,7 +1310,13 @@ export const uz: Texts<'one' | 'other'> = {
       showIdentity: 'Hujjatlar va tugʻilgan sanani koʻrsatish',
       takenHere: 'Allaqachon {{student}} ga berilgan.',
       takenHereUnknown: 'Allaqachon shu filialning boshqa oʻquvchisiga berilgan.',
-      gradeNoClass: '{{grade}}, sinfsiz',
+      classFrom: '{{class}}, {{date}} dan',
+      academic: 'Oʻqish',
+      mainRoom: 'Asosiy xona',
+      actingTutor: 'Vaqtinchalik tyutor',
+      noClassYet: 'Hali sinfsiz',
+      notRestored: '{{classes}} sinfiga qaytarilmadi: sinf arxivlangan yoki uning yili yopilgan.',
+      language: 'Taʼlim tili',
       takenElsewhere: 'Allaqachon boshqa filial oʻquvchisiga berilgan.',
       uidReleased: 'Oʻchirilgan oʻquvchiga berilgan; UID hech qachon ikki marta berilmaydi.',
       restoreThis: 'Bu oʻquvchini tiklash',
@@ -2067,6 +2099,8 @@ export const uz: Texts<'one' | 'other'> = {
         leave_undone: 'Ketish qaytarildi',
         return: 'Oʻquvchi qaytdi',
         graduate_restored: 'Bitiruvchi tiklandi',
+        class_joined: 'Sinfga joylashtirildi',
+        class_withdrawn: 'Sinfga joylashtirish bekor qilindi',
         delete: 'Ikki marta yaratilgan oʻquvchi oʻchirildi',
         export: 'Oʻquvchilar eksport qilindi',
         identity_shown: 'Oʻquvchi yozuvining yashirin maydonlari koʻrsatildi',
@@ -2166,6 +2200,27 @@ export const uz: Texts<'one' | 'other'> = {
     periodOpen: '{{from}} dan',
     kinds: { tutor: 'Tyutor', acting: 'Vaqtinchalik tyutor' },
     states: { planned: 'Rejalashtirilgan', current: 'Amalda', ended: 'Yakunlangan' },
+    noMembers: 'Hali oʻquvchilar yoʻq',
+    putIntoClass: 'Sinfga joylashtirish',
+    putIntoNamed: '{{class}} sinfiga joylashtirish',
+    pickStudents: 'Oʻquvchilar',
+    noPlaceable: 'Bu sinf darajasida sinfsiz faol oʻquvchi yoʻq.',
+    joinsOn: '{{date}} dan',
+    freeToday: 'Bugun boʻsh oʻrinlar: {{n}}',
+    freeLeast: 'Bugundan boshlab eng kam boʻsh oʻrin: {{n}}',
+    withdraw: 'Bekor qilish',
+    withdrawTitle: 'Joylashtirish bekor qilinsinmi?',
+    withdrawText: 'Oʻquvchi shu kuni sinfga kelmaydi.',
+    chooseClass: 'Sinfni tanlang',
+    oneGradeOnly:
+      'Bir sinf darajasidagi oʻquvchilarni belgilang: sinfda bitta sinf darajasi boʻladi.',
+    noClassOfGrade: 'Bu sinf darajasida faol sinf yoʻq.',
+    refusedNames: 'Hech kim joylashtirilmadi. Rad etilganlar: {{names}}.',
+    placed_one: '{{n}} ta oʻquvchi joylashtirildi.',
+    placed_other: '{{n}} ta oʻquvchi joylashtirildi.',
+    placeTitle_one: 'Sinfga joylashtirish: {{n}} ta oʻquvchi',
+    placeTitle_other: 'Sinfga joylashtirish: {{n}} ta oʻquvchi',
+    classYear: '{{class}} · {{year}}',
     endCauses: { ended: 'Yakunlangan', role: 'Rol yakunlangan', archive: 'Sinf arxivlangan' },
   },
   account: {

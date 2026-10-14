@@ -71,7 +71,7 @@ describe('the student export, the consent list and the "No class" counter', () =
     overrides: Record<string, unknown> = {},
     branch = '',
   ): Promise<StudentDetail> {
-    const response = await t.post('/api/people/students', branch || t.north, body(overrides));
+    const response = await t.postStudent(branch || t.north, body(overrides));
     expect(response.status, JSON.stringify(response.body)).toBe(201);
     return studentDetailSchema.parse(response.body);
   }
@@ -276,12 +276,21 @@ describe('the student export, the consent list and the "No class" counter', () =
         return studentNoClassSchema.parse(response.body).count;
       };
       const before = await count();
+      // Task 3.1b: a class in force or planned takes a student out of the count.
       await create();
       await create({ startsOn: '2026-11-02' });
+      // Before the start date, with no class: counted (edge: "An active student
+      // with no class is allowed only before their start date").
+      await create({ startsOn: '2026-11-02', classId: null });
+      await create({ startsOn: '2026-11-03', classId: null });
       await leave(await create(), '2026-10-01');
       await leave(await create(), '2026-10-25');
       // A graduated student, written by the migrator: no route graduates before task 9.5a.
       const graduated = await create();
+      await t.database.migrator
+        .deleteFrom('class_memberships')
+        .where('student_id', '=', graduated.id)
+        .execute();
       await t.database.migrator
         .updateTable('student_statuses')
         .set({ valid_until: '2026-10-01' })
@@ -299,14 +308,14 @@ describe('the student export, the consent list and the "No class" counter', () =
         .execute();
       // The last day is today: inactive from tomorrow.
       await leave(await create(), '2026-10-10');
-      await create({}, t.south);
-      expect(await count()).toBe(before + 4);
-      expect(await count(t.principal)).toBe(before + 4);
+      await create({ startsOn: '2026-11-02', classId: null }, t.south);
+      expect(await count()).toBe(before + 2);
+      expect(await count(t.principal)).toBe(before + 2);
 
       // Past midnight in Tashkent (five minutes on, so no session goes idle).
       t.clock.set(new Date('2026-10-11T00:00:30+05:00'));
       try {
-        expect(await count()).toBe(before + 3);
+        expect(await count()).toBe(before + 2);
       } finally {
         t.clock.set(new Date('2026-10-10T23:55:00+05:00'));
       }
@@ -399,7 +408,8 @@ describe('the student export, the consent list and the "No class" counter', () =
           student.uid,
           // Surname first (owner's answer to finding 27).
           `${student.lastName} Oʻtkir`,
-          'Grade 7, no class',
+          // Task 3.1b: the class of the membership, "7 Oxford".
+          `7 ${String(student.class?.name)}`,
           'Active',
         ]);
         expect(cells.slice(4, 6)).toEqual([null, null]);
@@ -578,7 +588,7 @@ describe('the student export, the consent list and the "No class" counter', () =
         expect(file.sheet.name).toBe('Ученики');
         expect(file.sheet.headings.slice(0, 2)).toEqual(['Класс', 'Статус']);
         expect(file.sheet.rows[0]).toEqual([
-          '7 класс, без класса',
+          `7 ${String(student.class?.name)}`,
           'Учится',
           null,
           null,

@@ -4,11 +4,13 @@ import {
   STUDENT_LIST_EXPORT_COLUMNS,
   type Role,
   type StudentDetail,
+  type SchoolClass,
   type StudentListItem,
 } from '@sodiq/shared';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import { schoolDateText } from '@/lib/dates';
 import { ru } from '@/i18n/locales/ru';
 import { savedRecordPanel } from '@/testing/new-record';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
@@ -22,7 +24,6 @@ import {
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const PATH = '/people/students';
-const grade = (n: number) => en.setup.subjects.grade.replace('{{grade}}', String(n));
 
 // All names are invented. Task 2.4a, pull request #67.
 const OTKIR: StudentListItem = {
@@ -38,7 +39,19 @@ const OTKIR: StudentListItem = {
   consentMissing: null,
   status: 'active',
   planned: null,
-  version: 1,
+  // Task 3.1b: in 7 Oxford with its Tutor.
+  class: {
+    id: uid(50),
+    grade: 7,
+    name: 'Oxford',
+    language: 'uz',
+    from: '2026-09-02',
+    until: '2027-06-01',
+  },
+  plannedClass: null,
+  tutor: { firstName: 'Dilnoza', lastName: 'Tursunova' },
+  actingTutor: null,
+  version: 2,
 };
 
 const ZARINA: StudentListItem = {
@@ -54,6 +67,18 @@ const ZARINA: StudentListItem = {
   consentMissing: null,
   status: null,
   planned: null,
+  class: null,
+  // Task 3.1b: joins 8 Princeton on the start date.
+  plannedClass: {
+    id: uid(51),
+    grade: 8,
+    name: 'Princeton',
+    language: 'ru',
+    from: '2026-11-02',
+    until: '2027-06-01',
+  },
+  tutor: null,
+  actingTutor: null,
   version: 1,
 };
 
@@ -71,6 +96,10 @@ const LOLA: StudentListItem = {
   consentMissing: null,
   status: 'inactive',
   planned: null,
+  class: null,
+  plannedClass: null,
+  tutor: null,
+  actingTutor: null,
   version: 2,
 };
 
@@ -86,6 +115,7 @@ const detailOf = (row: StudentListItem, fields: Partial<StudentDetail> = {}): St
     region: 'tashkent_city',
   },
   identityHidden: false,
+  mainRoom: null,
   financial: {
     contracts: [{ id: uid(31), number: 'SQ-2026/017', signedOn: '2026-08-20' }],
     scholarship: { type: 'merit', coverage: 'partial', amount: 1500000 },
@@ -136,6 +166,30 @@ const MOTHER = {
   canEdit: false,
 };
 
+/** The classes of the branch (task 3.1b): 7 Oxford, 8 Princeton, an archived 7 Yale. */
+const schoolClass = (n: number, fields: Partial<SchoolClass>): SchoolClass => ({
+  id: uid(n),
+  academicYearId: uid(60),
+  yearName: '2026–2027',
+  yearStatus: 'current',
+  grade: 7,
+  name: 'Oxford',
+  language: 'uz',
+  mainRoom: null,
+  maxSize: 25,
+  students: 1,
+  tutor: null,
+  acting: null,
+  archived: false,
+  version: 0,
+  ...fields,
+});
+const CLASSES: SchoolClass[] = [
+  schoolClass(50, {}),
+  schoolClass(51, { grade: 8, name: 'Princeton', language: 'ru' }),
+  schoolClass(52, { name: 'Yale', archived: true }),
+];
+
 function openList(
   role: Role,
   extra: Record<string, (body: unknown) => Response> = {},
@@ -143,6 +197,20 @@ function openList(
   detail: Partial<StudentDetail> = {},
 ) {
   return fakeApi({
+    'GET /api/classes': () => json({ classes: CLASSES }),
+    'GET /api/setup/academic-years': () =>
+      json({
+        years: [
+          {
+            id: uid(60),
+            name: '2026–2027',
+            startDate: '2026-09-01',
+            endDate: '2027-05-31',
+            status: 'current',
+            quarters: [],
+          },
+        ],
+      }),
     'GET /api/auth/session': () => json(sessionAs(role, language)),
     'GET /api/people/students': () =>
       json({
@@ -176,16 +244,18 @@ describe('the student list', () => {
         'OR',
         '2607001',
         'Rahimov Oʻtkir',
-        en.people.students.gradeNoClass.replace('{{grade}}', grade(7)),
+        '7 Oxford',
         '—',
-        '—',
+        'Tursunova Dilnoza',
         en.people.students.statuses.active,
       ],
       [
         'ZS',
         '2507014',
         'Saidova Zarina',
-        en.people.students.gradeNoClass.replace('{{grade}}', grade(8)),
+        en.people.students.classFrom
+          .replace('{{class}}', '8 Princeton')
+          .replace('{{date}}', schoolDateText('2026-11-02', 'en')),
         '—',
         '—',
         en.people.students.notStarted,
@@ -222,12 +292,7 @@ describe('the student list', () => {
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(2);
     });
-    expect(rowsDrawn()[0]?.[3]).toBe(
-      ru.people.students.gradeNoClass.replace(
-        '{{grade}}',
-        ru.setup.subjects.grade.replace('{{grade}}', '7'),
-      ),
-    );
+    expect(rowsDrawn()[0]?.[3]).toBe('7 Oxford');
     expect(rowsDrawn()[0]?.[6]).toBe(ru.people.students.statuses.active);
   });
 
@@ -441,7 +506,7 @@ describe('the profile of a student', () => {
 });
 
 describe('adding a student', () => {
-  async function fillAndSave() {
+  async function fillAndSave(classId?: string) {
     fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
     // In the side panel beside the list (task 2.7c-2a), not above it.
     const form = within(
@@ -463,6 +528,9 @@ describe('adding a student', () => {
     type(en.people.relatives.phone, '+998 90 111 22 33');
     type(en.people.relatives.fullName, 'Dilfuza Rahimova');
     type(en.people.relatives.relationship, 'mother');
+    if (classId !== undefined) {
+      type(en.people.students.class, classId);
+    }
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     return form;
   }
@@ -493,6 +561,60 @@ describe('adding a student', () => {
         en.people.students.setTextNamed.replace('{{grade}}', '7').replace('{{set}}', '2607'),
       ),
     ).toBeDefined();
+  });
+
+  // Task 3.1b, decision 2: the class of a new student, of the grade chosen.
+  it('offers a new student the classes of the grade and sends the one chosen', async () => {
+    const calls = openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/students': () => json(detailOf({ ...OTKIR, id: uid(9) }), 201),
+      [`GET /api/people/students/${uid(9)}`]: () => json(detailOf({ ...OTKIR, id: uid(9) })),
+    });
+    renderApp(PATH);
+    const form = await fillAndSave(uid(50));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/students')).toBe(true);
+    });
+    expect(calls.find((call) => call.route === 'POST /api/people/students')?.body).toMatchObject({
+      grade: 7,
+      startsOn: '2026-09-02',
+      classId: uid(50),
+    });
+    expect(form).toBeDefined();
+  });
+
+  it('offers the classes of the grade in the year of the start date and drops a choice no longer offered', async () => {
+    openList('academic_vice_principal');
+    renderApp(PATH);
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.students.newTitle }),
+    ).getByRole('form', { name: en.people.students.newTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2026-09-02');
+    const classField = await within(form).findByLabelText<HTMLSelectElement>(
+      en.people.students.class,
+    );
+    // Not 8 Princeton (another grade), not the archived Yale.
+    expect([...classField.querySelectorAll('option')].map((one) => one.textContent)).toEqual([
+      en.people.students.noClassYet,
+      '7 Oxford · 2026–2027',
+    ]);
+    type(en.people.students.class, uid(50));
+    expect(classField.value).toBe(uid(50));
+    type(en.people.students.grade, '8');
+    await waitFor(() => {
+      expect(classField.value).toBe('');
+    });
+    // A start date in no year offers no class.
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2027-08-01');
+    await waitFor(() => {
+      expect(classField.querySelectorAll('option')).toHaveLength(1);
+    });
   });
 
   // Owner's answer to finding 27 (task 2.7b-1, decision 3): a list of names
@@ -791,7 +913,7 @@ describe('leaving, return and delete', () => {
     expect(calls.find((call) => call.route.endsWith('/leaving'))?.body).toEqual({
       lastDay: '2026-10-20',
       reason: 'Moved to another city',
-      version: 1,
+      version: OTKIR.version,
     });
     expect(
       await within(panel).findByRole('button', { name: en.people.students.cancelLeaving }),
@@ -1379,7 +1501,7 @@ describe('leaving, return and delete', () => {
     });
     expect(calls.find((call) => call.route.endsWith('/delete'))?.body).toEqual({
       reason: 'Created twice',
-      version: 1,
+      version: OTKIR.version,
     });
   });
 });
@@ -1839,7 +1961,7 @@ describe('the export of the student list', () => {
     });
   };
 
-  it('sends the columns of the list, never the photo, groups or tutor; the headings are the file’s', async () => {
+  it('sends the columns of the list, never the photo or groups; the headings are the file’s', async () => {
     const calls = openExport(['basic', 'contact', 'identity', 'financial']);
     renderApp(PATH);
     await waitFor(() => {
@@ -1850,11 +1972,8 @@ describe('the export of the student list', () => {
       .map((cell) => cell.textContent ?? '')
       .filter(
         (text) =>
-          ![
-            en.people.staff.photo.column,
-            en.people.students.groups,
-            en.people.students.tutor,
-          ].includes(text),
+          // Task 3.1b: the Tutor joined the file; the groups come with 3.2.
+          ![en.people.staff.photo.column, en.people.students.groups].includes(text),
       );
     expect(exportedHeadings).toEqual(
       STUDENT_LIST_EXPORT_COLUMNS.map((key) => EXPORT_TEXTS.en.students.columns[key]),
@@ -2108,5 +2227,108 @@ describe('the personal data report link of a student', () => {
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await within(panel).findByRole('link', { name: en.audit.history });
     expect(within(panel).queryByRole('link', { name: en.people.report.link })).toBeNull();
+  });
+});
+
+// Task 3.1b, pull request #89: the class of a student in the list, its
+// filters, "Put into a class" of ticked rows (decisions 5 and 9), the class
+// of a new student (decision 2) and the Academic block of the record.
+describe('the classes of the students', () => {
+  it('filters by a class the rows name, by "No class" and by language', async () => {
+    openList('principal');
+    const shown = async (filters: Record<string, string>) => {
+      cleanup();
+      renderApp(`${PATH}?f=${encodeURIComponent(JSON.stringify(filters))}`);
+      await screen.findByRole('heading', { name: en.people.students.title });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return rowsDrawn().map((row) => row[2]);
+    };
+    await waitFor(async () => {
+      expect(await shown({ class: uid(51) })).toEqual(['Saidova Zarina']);
+    });
+    expect(await shown({ language: 'uz' })).toEqual(['Rahimov Oʻtkir']);
+    renderApp(PATH);
+    const select = await screen.findByLabelText(en.people.students.class, { selector: 'select' });
+    expect([...select.querySelectorAll('option')].map((option) => option.textContent)).toEqual([
+      en.list.all,
+      '7 Oxford',
+      '8 Princeton',
+      en.people.students.noClass,
+    ]);
+  });
+
+  it('puts the ticked students into a class of their grade from a date', async () => {
+    const calls = openList('academic_vice_principal', {
+      [`POST /api/classes/${uid(50)}/members`]: () =>
+        json({ members: [], freeToday: 23, freeLeast: 23, today: '2026-10-10' }, 201),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    const [first] = screen.getAllByRole('checkbox').slice(1);
+    fireEvent.click(first as HTMLElement);
+    fireEvent.click(await screen.findByRole('button', { name: en.classes.putIntoClass }));
+    const title = en.classes.placeTitle_one.replace('{{n}}', '1');
+    const form = await within(await screen.findByRole('complementary', { name: title })).findByRole(
+      'form',
+      { name: title },
+    );
+    const choice = within(form).getByLabelText<HTMLSelectElement>(en.classes.name);
+    // Classes of the grade ticked, active: not 8 Princeton, not the archived Yale.
+    expect([...choice.querySelectorAll('option')].map((option) => option.textContent)).toEqual([
+      en.classes.chooseClass,
+      '7 Oxford · 2026–2027',
+    ]);
+    fireEvent.change(choice, { target: { value: uid(50) } });
+    // Decision 6: the latest of today, the year's start and the students' start dates.
+    expect(within(form).getByLabelText<HTMLInputElement>(en.classes.from).value).toBe('2026-10-10');
+    fireEvent.change(within(form).getByLabelText(en.classes.from), {
+      target: { value: '2026-10-12' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(await screen.findByText(en.classes.placed_one.replace('{{n}}', '1'))).toBeDefined();
+    expect(
+      calls.find((call) => call.route === `POST /api/classes/${uid(50)}/members`)?.body,
+    ).toEqual({ students: [{ id: OTKIR.id, version: OTKIR.version }], from: '2026-10-12' });
+  });
+
+  it('asks for students of one grade', async () => {
+    openList('academic_vice_principal');
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    for (const box of screen.getAllByRole('checkbox').slice(1)) {
+      fireEvent.click(box);
+    }
+    fireEvent.click(await screen.findByRole('button', { name: en.classes.putIntoClass }));
+    const title = en.classes.placeTitle_other.replace('{{n}}', '2');
+    const panel = await screen.findByRole('complementary', { name: title });
+    expect(await within(panel).findByText(en.classes.oneGradeOnly)).toBeDefined();
+  });
+
+  it('shows the Academic block: the class, its Tutor and its main classroom, in Russian too', async () => {
+    for (const language of ['en', 'ru'] as const) {
+      cleanup();
+      openList('principal', {}, language, { mainRoom: '204' });
+      renderApp(PATH, language);
+      fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+      const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+      const texts = language === 'en' ? en : ru;
+      const block = (
+        await within(panel).findByRole('heading', { name: texts.people.students.academic })
+      ).closest('section');
+      expect(block).not.toBeNull();
+      const terms = [...(block?.querySelectorAll('dl > div') ?? [])].map((row) => [
+        row.querySelector('dt')?.textContent,
+        row.querySelector('dd')?.textContent,
+      ]);
+      expect(terms).toEqual([
+        [texts.people.students.class, '7 Oxford'],
+        [texts.people.students.tutor, 'Tursunova Dilnoza'],
+        [texts.people.students.mainRoom, '204'],
+      ]);
+    }
   });
 });

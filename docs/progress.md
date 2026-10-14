@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 14 October 2026: task 3.1b Class membership
+
+- Built: migration 0045 (`class_memberships`: one class per student per date across branches, the size on every date of a row with scheduled joins and leaves, the class inside the active time at the commit, the archive, grade, size and year dates against members, rows that only shrink with their own end); routes `GET`/`POST api/classes/:id/members` and the withdraw of a planned placement; the create of a student with a class; a leaving, its cancel, undo and replace moving the class rows.
+- The class panel's Students section, "Put into a class" from the class and from ticked rows of the student list, the class, Tutor and language of the list and its filters, the class field of a new student, the Academic block, the student count of the class list and cards, the Tutor in the student file.
+- Left out: groups and the group rule on every membership path (3.2, a line added there); transfers, the language confirmation, a return or restore into a class, the move to another branch and its old rows (3.3, lines added); the Tutor's class scope (3.1c); the journal effects of a backdated join (8.6); a graduation ending class rows (9.5a, a line added); rollover (9.5b).
+
+The next sessions must know:
+
+- `MembersKit` (`apps/api/src/testing/members-kit.ts`) writes students, leavings and class rows; `postStudent` of `day-templates-kit.ts` gives a created student a class unless the test names `classId`.
+- The student's `version` counts status rows and class rows.
+- The next task is 3.1c.
+
 ## 14 October 2026: task 3.1a Classes and their Tutors
 
 - Built: migration 0042 (`classes`, `class_tutors`, the folded name key, the closed-year and closed-room guards, one Tutor and one acting Tutor at a moment, the Tutor language rule checked from the Tutor's, the class's and the staff record's side across branches, the mirror of a role end); routes under `api/classes` (list, record, create, edit, archive, restore, export, Tutor candidates, give, end) in the new area `classes`.

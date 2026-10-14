@@ -176,6 +176,20 @@ export interface Classes {
   version: Generated<number>;
 }
 
+export interface ClassMemberships {
+  branch_id: string;
+  cause: string;
+  class_id: string;
+  created_at: Generated<Timestamp>;
+  ended_by: string | null;
+  id: Generated<string>;
+  leaving_id: string | null;
+  own_until: string;
+  student_id: string;
+  valid_from: string;
+  valid_until: string;
+}
+
 export interface ClassTutors {
   assignment_id: string;
   branch_id: string;
@@ -639,6 +653,7 @@ export interface DB {
   branches: Branches;
   buildings: Buildings;
   calendar_entries: CalendarEntries;
+  class_memberships: ClassMemberships;
   class_tutors: ClassTutors;
   classes: Classes;
   day_template_assignments: DayTemplateAssignments;

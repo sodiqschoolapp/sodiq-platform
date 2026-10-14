@@ -29,6 +29,10 @@ const OTKIR: StudentListItem = {
   consentMissing: null,
   status: 'active',
   planned: null,
+  class: null,
+  plannedClass: null,
+  tutor: null,
+  actingTutor: null,
   version: 1,
 };
 
@@ -44,6 +48,7 @@ const DETAIL: StudentDetail = {
     region: null,
   },
   identityHidden: false,
+  mainRoom: null,
   financial: {
     contracts: [{ id: uid(31), number: 'SQ-2026/017', signedOn: '2026-08-20' }],
     scholarship: { type: 'none', coverage: null, amount: null },

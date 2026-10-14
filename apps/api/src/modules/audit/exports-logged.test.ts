@@ -179,7 +179,7 @@ describe('every export is logged', () => {
       row: async () =>
         studentDetailSchema.parse(
           created(
-            await t.post('/api/people/students', t.north, {
+            await t.postStudent(t.north, {
               uid: '2607901',
               confirmUidSet: true,
               firstName: 'Shoira',
@@ -212,7 +212,7 @@ describe('every export is logged', () => {
   const reportStudent = async (uid: string, contract: string): Promise<string> =>
     studentDetailSchema.parse(
       created(
-        await t.post('/api/people/students', t.north, {
+        await t.postStudent(t.north, {
           uid,
           confirmUidSet: true,
           firstName: 'Nodira',

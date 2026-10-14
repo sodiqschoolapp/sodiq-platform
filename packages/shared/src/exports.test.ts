@@ -103,10 +103,12 @@ describe('the student export', () => {
   it('puts every column in the group of readers of its field', () => {
     const of = (group: string) =>
       STUDENT_EXPORT_COLUMNS.filter((column) => STUDENT_EXPORT_GROUPS[column] === group);
+    // Task 3.1b: the Tutor of the class joins once classes have Tutors and members.
     expect(of('basic')).toEqual([
       'uid',
       'name',
       'class',
+      'tutor',
       'status',
       'paternalName',
       'sex',

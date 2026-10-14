@@ -90,7 +90,7 @@ describe('close relatives', () => {
   }
 
   async function student(relatives: unknown[], branch = ''): Promise<StudentDetail> {
-    const response = await t.post('/api/people/students', branch || t.north, body(relatives));
+    const response = await t.postStudent(branch || t.north, body(relatives));
     expect(response.status, JSON.stringify(response.body)).toBe(201);
     return studentDetailSchema.parse(response.body);
   }
@@ -205,12 +205,7 @@ describe('close relatives', () => {
   describe('the create of a student', () => {
     it('writes a new relative with its switched-off Parent account and the main link', async () => {
       const number = phone();
-      const response = await t.post(
-        '/api/people/students',
-        t.north,
-        body([newRelative(number)]),
-        t.vicePrincipal,
-      );
+      const response = await t.postStudent(t.north, body([newRelative(number)]), t.vicePrincipal);
       expect(response.status, JSON.stringify(response.body)).toBe(201);
       const created = studentDetailSchema.parse(response.body);
       const link = await t.database.migrator
@@ -267,11 +262,7 @@ describe('close relatives', () => {
 
     it('is refused without a relative (the done-when of task 2.5)', async () => {
       const before = await snapshot();
-      refusedWith(
-        await t.post('/api/people/students', t.north, body([])),
-        422,
-        'student_needs_relative',
-      );
+      refusedWith(await t.postStudent(t.north, body([])), 422, 'student_needs_relative');
       expect(await snapshot()).toEqual(before);
     });
 
@@ -287,7 +278,7 @@ describe('close relatives', () => {
       const number = phone();
       const holder = await withRelative(number, t.south, 'Shoira Nazarova');
       const before = await snapshot();
-      const response = await t.post('/api/people/students', t.north, body([newRelative(number)]));
+      const response = await t.postStudent(t.north, body([newRelative(number)]));
       refusedWith(response, 409, 'relative_phone_exists');
       expect(detailsOf(response)).toEqual([
         {
@@ -335,15 +326,14 @@ describe('close relatives', () => {
       const other = phone();
       await withRelative(other);
       const before = await snapshot();
-      const response = await t.post(
-        '/api/people/students',
+      const response = await t.postStudent(
         t.north,
         body([existing(first.relativeId, other, true)]),
       );
       refusedWith(response, 409, 'relative_phone_changed');
       expect(await snapshot()).toEqual(before);
       refusedWith(
-        await t.post('/api/people/students', t.north, body([existing(UNKNOWN, phone(), true)])),
+        await t.postStudent(t.north, body([existing(UNKNOWN, phone(), true)])),
         409,
         'relative_phone_changed',
       );
@@ -389,7 +379,7 @@ describe('close relatives', () => {
       });
       await isReady;
       const saving = t
-        .post('/api/people/students', t.north, body([newRelative(number)]))
+        .postStudent(t.north, body([newRelative(number)]))
         .then((response) => response);
       await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
       const before = await snapshot();

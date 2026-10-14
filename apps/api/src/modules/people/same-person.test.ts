@@ -80,7 +80,7 @@ describe('the mark "same person" of a relative and a staff record', () => {
     branch: string,
   ): Promise<{ id: string; studentId: string; phone: string; version: number }> {
     const number = phone();
-    const created = await t.post('/api/people/students', branch, body(number), t.admin);
+    const created = await t.postStudent(branch, body(number), t.admin);
     expect(created.status, JSON.stringify(created.body)).toBe(201);
     const student = studentDetailSchema.parse(created.body);
     const tab = studentRelativesSchema.parse(
@@ -375,7 +375,7 @@ describe('the mark "same person" of a relative and a staff record', () => {
           receivesNotices: true,
         },
       ];
-      expect((await t.post('/api/people/students', t.south, southern, t.admin)).status).toBe(201);
+      expect((await t.postStudent(t.south, southern, t.admin)).status).toBe(201);
       const teacher = await staffMember(t.north);
       const response = await mark(parent.id, teacher, t.north, t.admin);
       expect(response.status, JSON.stringify(response.body)).toBe(200);
@@ -507,7 +507,7 @@ describe('the mark "same person" of a relative and a staff record', () => {
       // The archived record, linked again by its phone, comes back unmarked,
       // and the staff member is named as held by the other record.
       count += 1;
-      const restored = await t.post('/api/people/students', t.north, {
+      const restored = await t.postStudent(t.north, {
         ...body(phone()),
         relatives: [
           {

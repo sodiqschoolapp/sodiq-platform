@@ -114,6 +114,9 @@ export const ENTRY_ABOUT: Readonly<Record<PeopleAction, readonly About[]>> = {
   'student.return': ['record'],
   'student.graduate_restored': ['record'],
   'student.delete': ['record'],
+  // Task 3.1b: on the student record, so the report and the history read them.
+  'student.class_joined': ['record'],
+  'student.class_withdrawn': ['record'],
   'student.identity_shown': ['record'],
   'student.export': ['none'],
   'student.personal_data_report': ['record', 'person'],

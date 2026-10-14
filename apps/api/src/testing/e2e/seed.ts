@@ -50,6 +50,10 @@ try {
     );
 
   const seeded: Record<string, Credentials> = {};
+  // Task 3.1b, decision 2: a student who starts today or earlier joins a
+  // class, so the branches whose tests add students get a class of grades 7
+  // and 8 in each of their years.
+  const classBranches: string[] = [];
   for (const [key, [firstName, lastName]] of Object.entries(WITHOUT_ROLE)) {
     const account = await create(firstName, lastName);
     seeded[key] = { login: account.login, password: account.firstPassword };
@@ -703,6 +707,7 @@ try {
   // written by the migrator as for the settings test: the UID set of a new
   // student is read from the year of its start date.
   const studentsBranch = await insertBranch(migrator, 'Students browser test branch');
+  classBranches.push(studentsBranch);
   const studentsVice = await create('Nilufar', 'Ahmedova');
   await transactions.run([studentsBranch], (transaction) =>
     assignments.give(transaction, {
@@ -738,6 +743,7 @@ try {
   // The Academic Vice Principal of the leaving test (task 2.4b-1), in a branch
   // of its own with the same planned year around today.
   const leavingBranch = await insertBranch(migrator, 'Leaving browser test branch');
+  classBranches.push(leavingBranch);
   const leavingVice = await create('Sevara', 'Xolmatova');
   await transactions.run([leavingBranch], (transaction) =>
     assignments.give(transaction, {
@@ -773,6 +779,7 @@ try {
   // The Academic Vice Principal of the student export test (task 2.4b-2), in
   // a branch of its own with the same planned year around today.
   const exportBranch = await insertBranch(migrator, 'Student export browser test branch');
+  classBranches.push(exportBranch);
   const exportVice = await create('Dilfuza', 'Saidova');
   await transactions.run([exportBranch], (transaction) =>
     assignments.give(transaction, {
@@ -810,6 +817,7 @@ try {
   const relativesVice = await create('Shahlo', 'Mirzayeva');
   for (const name of ['Relatives browser test branch A', 'Relatives browser test branch B']) {
     const relativesBranch = await insertBranch(migrator, name);
+    classBranches.push(relativesBranch);
     await transactions.run([relativesBranch], (transaction) =>
       assignments.give(transaction, {
         accountId: relativesVice.id,
@@ -853,6 +861,7 @@ try {
     ['Phone owners browser test branch B', ownersOtherVice],
   ] as const) {
     const ownersBranch = await insertBranch(migrator, name);
+    classBranches.push(ownersBranch);
     await transactions.run([ownersBranch], (transaction) =>
       assignments.give(transaction, {
         accountId: vice.id,
@@ -948,6 +957,7 @@ try {
   // extra phone and the mark "same person" (task 2.5b-2).
   const sameVice = await create('Dildora', 'Rahmonova');
   const sameBranch = await insertBranch(migrator, 'Same person browser test branch');
+  classBranches.push(sameBranch);
   await transactions.run([sameBranch], (transaction) =>
     assignments.give(transaction, {
       accountId: sameVice.id,
@@ -1701,6 +1711,129 @@ try {
       .execute();
   });
   seeded.classes = { login: classesVice.login, password: classesVice.firstPassword };
+
+  // The Academic Vice Principal of the membership test (task 3.1b), in a
+  // branch of its own with the year around today, the class 7 Oxford and two
+  // active students of grade 7 with no class yet.
+  const membersBranch = await insertBranch(migrator, 'Members browser test branch');
+  const membersVice = await create('Gulnoza', 'Karimova');
+  await transactions.run([membersBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: membersVice.id,
+      role: 'academic_vice_principal',
+      branchId: membersBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: membersBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: membersBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    await transaction
+      .insertInto('classes')
+      .values({
+        branch_id: membersBranch,
+        academic_year_id: year.id,
+        grade: 7,
+        name: 'Oxford',
+        language: 'uz',
+        max_size: 25,
+      })
+      .execute();
+    for (const [index, [first, last]] of [
+      ['Madina', 'Qosimova'],
+      ['Javohir', 'Nurmatov'],
+    ].entries()) {
+      const uid = String(9999701 + index);
+      const student = await transaction
+        .insertInto('students')
+        .values({
+          branch_id: membersBranch,
+          uid,
+          first_name: first ?? '',
+          last_name: last ?? '',
+          name_key: studentNameKey(last ?? '', first ?? ''),
+          sex: index === 0 ? 'female' : 'male',
+          birth_date: '2013-09-0' + String(index + 1),
+          grade: 7,
+          starts_on: startDate,
+          created_by: membersVice.id,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('student_uids')
+        .values({ uid, student_id: student.id, branch_id: membersBranch, held_from: new Date() })
+        .execute();
+      await transaction
+        .insertInto('student_contracts')
+        .values({
+          student_id: student.id,
+          branch_id: membersBranch,
+          number: `E2E-MEMBER-${String(index + 1)}`,
+          signed_on: startDate,
+        })
+        .execute();
+      await transaction
+        .insertInto('student_statuses')
+        .values({
+          student_id: student.id,
+          branch_id: membersBranch,
+          status: 'active',
+          valid_from: startDate,
+          cause: 'start',
+        })
+        .execute();
+      await transaction
+        .insertInto('student_accounts')
+        .values({ student_id: student.id, branch_id: membersBranch, created_at: new Date() })
+        .execute();
+      await linkRelative(transaction, student.id, membersBranch, new Date(), {
+        fullName: `Dilbar ${last ?? ''}`,
+        phone: `+99890555016${String(index + 1)}`,
+      });
+    }
+  });
+  seeded.members = { login: membersVice.login, password: membersVice.firstPassword };
+
+  for (const branch of classBranches) {
+    const years = await migrator
+      .selectFrom('academic_years')
+      .select('id')
+      .where('branch_id', '=', branch)
+      .execute();
+    for (const year of years) {
+      for (const grade of [7, 8]) {
+        await migrator
+          .insertInto('classes')
+          .values({
+            branch_id: branch,
+            academic_year_id: year.id,
+            grade,
+            name: 'Seeded',
+            language: 'uz',
+            max_size: 30,
+          })
+          .execute();
+      }
+    }
+  }
 
   console.log(JSON.stringify(seeded));
 } finally {

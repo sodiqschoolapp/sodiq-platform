@@ -70,7 +70,7 @@ describe('leaving, return and delete of a student', () => {
     overrides: Record<string, unknown> = {},
     branch = '',
   ): Promise<StudentDetail> {
-    const response = await t.post('/api/people/students', branch || t.north, body(overrides));
+    const response = await t.postStudent(branch || t.north, body(overrides));
     expect(response.status, JSON.stringify(response.body)).toBe(201);
     return studentDetailSchema.parse(response.body);
   }
@@ -189,7 +189,7 @@ describe('leaving, return and delete of a student', () => {
   const lockStudent = (transaction: Transaction, id: string) =>
     transaction.selectFrom('students').select('id').where('id', '=', id).forUpdate().execute();
 
-  /** The writes of a leaving from a date, after the lock. */
+  /** The writes of a leaving from a date, after the lock, its class rows cut (task 3.1b). */
   async function heldLeave(transaction: Transaction, id: string, from: string): Promise<void> {
     await lockStudent(transaction, id);
     await transaction
@@ -198,7 +198,7 @@ describe('leaving, return and delete of a student', () => {
       .where('student_id', '=', id)
       .where('valid_until', 'is', null)
       .execute();
-    await transaction
+    const leaving = await transaction
       .insertInto('student_statuses')
       .values({
         student_id: id,
@@ -208,6 +208,18 @@ describe('leaving, return and delete of a student', () => {
         cause: 'leaving',
         reason: 'Held',
       })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .updateTable('class_memberships')
+      .set({
+        valid_until: sql<string>`greatest(valid_from, ${from}::date)`,
+        ended_by: 'leaving',
+        leaving_id: leaving.id,
+      })
+      .where('student_id', '=', id)
+      .where('valid_until', '>', from)
+      .whereRef('valid_from', '<', 'valid_until')
       .execute();
   }
 
@@ -294,6 +306,11 @@ describe('leaving, return and delete of a student', () => {
   /** A graduated student, as the year close of task 9.5a will write one (migrator). */
   async function graduated(): Promise<StudentDetail> {
     const student = await create();
+    // No route ends a class row at a graduation before 9.5a: the row goes first.
+    await t.database.migrator
+      .deleteFrom('class_memberships')
+      .where('student_id', '=', student.id)
+      .execute();
     await t.database.migrator
       .updateTable('student_statuses')
       .set({ valid_until: '2026-10-01' })
@@ -368,7 +385,8 @@ describe('leaving, return and delete of a student', () => {
       expect(left).toMatchObject({
         status: 'active',
         planned: { status: 'inactive', from: '2026-10-11' },
-        version: 2,
+        // Two status rows and the class row the leaving cut (task 3.1b, decision 17).
+        version: 3,
       });
       expect(left.statuses).toEqual([
         { status: 'active', from: '2026-09-02', until: '2026-10-11', cause: 'start', reason: null },
@@ -383,7 +401,7 @@ describe('leaving, return and delete of a student', () => {
       const list = studentListSchema.parse((await t.get('/api/people/students', t.north)).body);
       expect(list.students.find((item) => item.id === student.id)).toMatchObject({
         planned: { status: 'inactive', from: '2026-10-11' },
-        version: 2,
+        version: 3,
       });
       expect(list.canArchive).toBe(true);
       for (const viewer of [t.principal, headTutor]) {
@@ -485,7 +503,8 @@ describe('leaving, return and delete of a student', () => {
           version: scheduled.version,
         }),
       );
-      expect(cancelled).toMatchObject({ status: 'active', planned: null, version: 3 });
+      // Three status rows, the class row cut and the one written back (task 3.1b).
+      expect(cancelled).toMatchObject({ status: 'active', planned: null, version: 5 });
       expect(await t.entries('student.leave_cancelled', student.id)).toHaveLength(1);
       // One unbroken line (issue #39, hand test of 13 October 2026, finding 7).
       expect(cancelled.statuses.map((row) => [row.status, row.from, row.until, row.cause])).toEqual(
@@ -565,7 +584,9 @@ describe('leaving, return and delete of a student', () => {
     it('refuses a cancel with nothing scheduled and an undo of a scheduled leaving or a graduation', async () => {
       const student = await create();
       refusedWith(
-        await t.post(`/api/people/students/${student.id}/leaving/cancel`, t.north, { version: 1 }),
+        await t.post(`/api/people/students/${student.id}/leaving/cancel`, t.north, {
+          version: student.version,
+        }),
         409,
         'leaving_not_planned',
       );
@@ -602,7 +623,8 @@ describe('leaving, return and delete of a student', () => {
         t.vicePrincipal,
       );
       const back = accepted(response);
-      expect(back).toMatchObject({ uid: student.uid, status: 'active', grade: 8, version: 3 });
+      // Three status rows and the class row the leaving cut; a return places in no class (decision 2).
+      expect(back).toMatchObject({ uid: student.uid, status: 'active', grade: 8, version: 4 });
       expect(back.statuses.map((row) => [row.status, row.from, row.until, row.cause])).toEqual([
         ['active', '2026-09-02', '2026-10-01', 'start'],
         ['inactive', '2026-10-01', '2026-10-05', 'leaving'],
@@ -722,7 +744,7 @@ describe('leaving, return and delete of a student', () => {
       expect((old.contracts as unknown[]).length).toBe(1);
       expect((old.statuses as unknown[]).length).toBe(1);
 
-      const again = await t.post('/api/people/students', t.north, body({ uid: student.uid }));
+      const again = await t.postStudent(t.north, body({ uid: student.uid }));
       refusedWith(again, 409, 'student_value_taken');
       const detailOf = apiErrorSchema.parse(again.body).error.details?.[0];
       expect(detailOf).toMatchObject({ path: 'uid', code: 'uid_released' });
@@ -925,9 +947,10 @@ describe('leaving, return and delete of a student', () => {
       const afterEdit = await race(
         async (transaction) => {
           await lockStudent(transaction, three.id);
+          // A field the edit writes; the grade is held by the class (task 3.1b, decision 4).
           await transaction
             .updateTable('students')
-            .set({ grade: 8 })
+            .set({ paternal_name: 'Rustamovich' })
             .where('id', '=', three.id)
             .execute();
         },
@@ -972,8 +995,7 @@ describe('leaving, return and delete of a student', () => {
       const createWaited = await race(
         (transaction) => heldReturn(transaction, other.id, '2026-10-05', 'LV-CLAIM/2'),
         () =>
-          t.post(
-            '/api/people/students',
+          t.postStudent(
             t.north,
             body({ contract: { number: 'LV-CLAIM/2', signedOn: '2026-08-20' } }),
           ),

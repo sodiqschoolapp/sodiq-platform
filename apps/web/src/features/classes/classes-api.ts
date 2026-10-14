@@ -1,9 +1,11 @@
 import {
   classDetailSchema,
   classListSchema,
+  classMembersSchema,
   tutorCandidateListSchema,
   type ClassCreate,
   type ClassEdit,
+  type ClassPlacement,
   type ClassTutorEnd,
   type ClassTutorGive,
 } from '@sodiq/shared';
@@ -51,6 +53,38 @@ export const tutorCandidatesQuery = (branchId: string | null, enabled: boolean) 
       ),
     enabled: branchId !== null && enabled,
   });
+
+/** The Students tab of a class (task 3.1b): members in force today and planned, and the free seats. */
+export const classMembersQuery = (branchId: string | null, id: string) =>
+  queryOptions({
+    queryKey: [...classesKey(branchId), id, 'members'],
+    queryFn: async () =>
+      classMembersSchema.parse(
+        await answerOf(
+          api.GET('/api/classes/{id}/members', {
+            params: { header: branchHeader(), path: { id } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** "Put into a class" from a date, all or none (task 3.1b, decision 5). */
+export const placeStudents = (id: string, placement: ClassPlacement) =>
+  answerOf(
+    api.POST('/api/classes/{id}/members', {
+      params: { header: branchHeader(), path: { id } },
+      body: placement,
+    }),
+  ).then((answer) => classMembersSchema.parse(answer));
+
+/** The withdraw of a planned placement (task 3.1b, decision 10). */
+export const withdrawMember = (id: string, memberId: string) =>
+  answerOf(
+    api.POST('/api/classes/{id}/members/{memberId}/withdraw', {
+      params: { header: branchHeader(), path: { id, memberId } },
+    }),
+  ).then((answer) => classMembersSchema.parse(answer));
 
 /** After a change of a class or its Tutors: every class list, and the setup checklist. */
 export const invalidateClasses = (queryClient: QueryClient): Promise<unknown> =>

@@ -47,6 +47,7 @@ export type AccountKey =
   | 'peopleTabs'
   | 'pages'
   | 'classes'
+  | 'members'
   | 'topBar';
 
 /** Invented for the tests. */

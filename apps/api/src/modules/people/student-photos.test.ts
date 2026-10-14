@@ -121,7 +121,7 @@ describe('student photos', () => {
   /** A student of a branch, made through the route; without a scholarship, so it can be deleted. */
   async function student(branch = t.north): Promise<StudentDetail> {
     count += 1;
-    const response = await t.post('/api/people/students', branch, {
+    const response = await t.postStudent(branch, {
       uid: String(2607800 + count),
       confirmUidSet: false,
       firstName: 'Zarina',
