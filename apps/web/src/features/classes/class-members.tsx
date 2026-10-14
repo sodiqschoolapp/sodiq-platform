@@ -10,13 +10,14 @@ import {
   type StudentListItem,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { CheckboxGroupField, DateField, listValues, SelectField } from '@/components/field';
 import { FailureAlert } from '@/components/failure-alert';
 import { RecordForm } from '@/components/form/record-form';
-import { useRecordForm } from '@/components/form/use-record-form';
+import { useRecordForm, type FieldBinding } from '@/components/form/use-record-form';
 import type { PanelEditing } from '@/components/list/use-panel-editing';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ import { SECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
 import { asFormSchema } from '@/features/people/form-schema';
 import { invalidateStudents, studentsQuery } from '@/features/people/people-api';
+import { yearsQuery } from '@/features/setup/setup-api';
 import { schoolDateText } from '@/lib/dates';
 import {
   classMembersQuery,
@@ -39,9 +41,36 @@ export const placeable = (row: StudentListItem): boolean =>
   row.class === null &&
   row.plannedClass === null;
 
-/** The first day a placement takes by default: the later of today and the start of the class's year (decision 6). */
-export function placementDay(today: string, yearStart: string | undefined): string {
-  return yearStart !== undefined && yearStart > today ? yearStart : today;
+/**
+ * The first day a placement takes by default (decision 6): the latest of
+ * today, the start of the class's year and the start date of each student
+ * placed.
+ */
+export function placementDay(
+  today: string,
+  yearStart: string | undefined,
+  starts: readonly string[],
+): string {
+  return [yearStart ?? today, ...starts].reduce(
+    (latest, day) => (day > latest ? day : latest),
+    today,
+  );
+}
+
+/**
+ * Keeps a date field on its default while the person has not typed another
+ * date: when the default moves (a student ticked, a class chosen), a field
+ * still showing the last default takes the new one.
+ */
+function useFollowingDefault(binding: FieldBinding, value: string): void {
+  const last = useRef(binding.value);
+  const { value: shown, onChange } = binding;
+  useEffect(() => {
+    if (shown === last.current && value !== last.current) {
+      last.current = value;
+      onChange({ target: { value } });
+    }
+  }, [shown, value, onChange]);
 }
 
 /**
@@ -176,7 +205,7 @@ export function ClassMembers({ schoolClass, years, canEdit, panel }: ClassMember
         <PickForm
           schoolClass={schoolClass}
           label={t('classes.putIntoNamed', { class: name })}
-          from={placementDay(schoolClass.today, yearStart)}
+          yearStart={yearStart}
           onPlaced={() => {
             panel.stop({ saved: true, key: 'place' });
           }}
@@ -210,13 +239,13 @@ export function ClassMembers({ schoolClass, years, canEdit, panel }: ClassMember
 function PickForm({
   schoolClass,
   label,
-  from,
+  yearStart,
   onPlaced,
   onCancel,
 }: {
   schoolClass: ClassDetail;
   label: string;
-  from: string;
+  yearStart: string | undefined;
   onPlaced: () => void;
   onCancel: () => void;
 }) {
@@ -236,7 +265,7 @@ function PickForm({
   });
   const form = useRecordForm<'students' | 'from', ClassPlacement>({
     schema: PICKED_SCHEMA,
-    initial: { students: '', from },
+    initial: { students: '', from: placementDay(schoolClass.today, yearStart, []) },
     read: (typed) => ({
       students: listValues(typed.students).flatMap((id) => {
         const row = byId.get(id);
@@ -251,6 +280,17 @@ function PickForm({
       onPlaced();
     },
   });
+  useFollowingDefault(
+    form.bind('from'),
+    placementDay(
+      schoolClass.today,
+      yearStart,
+      listValues(form.bind('students').value).flatMap((id) => {
+        const row = byId.get(id);
+        return row === undefined ? [] : [row.startsOn];
+      }),
+    ),
+  );
   if (students.isError) {
     return (
       <ErrorState
@@ -308,6 +348,10 @@ export function PlaceTickedForm({
   const { branchId } = useView();
   const queryClient = useQueryClient();
   const classes = useQuery(classesQuery(branchId));
+  const years = useQuery(yearsQuery(branchId));
+  // Today in the branch, as the list read it (the list opened this form).
+  const today = useQuery(studentsQuery(branchId)).data?.today;
+  const starts = rows.map((row) => row.startsOn);
   const grades = new Set(rows.map((row) => row.grade));
   const [grade] = grades;
   const offered = (classes.data?.classes ?? []).filter(
@@ -321,7 +365,10 @@ export function PlaceTickedForm({
   });
   const form = useRecordForm<'classId' | 'from', ChosenPlacement>({
     schema: CHOSEN_SCHEMA,
-    initial: { classId: '', from: '' },
+    initial: {
+      classId: '',
+      from: today === undefined ? '' : placementDay(today, undefined, starts),
+    },
     read: (typed) => ({
       classId: typed.classId,
       students: rows.map((row) => ({ id: row.id, version: row.version })),
@@ -332,17 +379,29 @@ export function PlaceTickedForm({
       onPlaced(rows.length);
     },
   });
-  if (classes.isError) {
+  const chosen = offered.find((one) => one.id === form.bind('classId').value);
+  useFollowingDefault(
+    form.bind('from'),
+    today === undefined
+      ? ''
+      : placementDay(
+          today,
+          years.data?.years.find((year) => year.id === chosen?.academicYearId)?.startDate,
+          starts,
+        ),
+  );
+  if (classes.isError || years.isError) {
     return (
       <ErrorState
-        error={classes.error}
+        error={classes.error ?? years.error}
         onRetry={() => {
           void classes.refetch();
+          void years.refetch();
         }}
       />
     );
   }
-  if (classes.data === undefined) {
+  if (classes.data === undefined || years.data === undefined) {
     return <LoadingOutline lines={2} />;
   }
   if (grades.size !== 1) {

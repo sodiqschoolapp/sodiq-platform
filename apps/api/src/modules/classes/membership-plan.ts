@@ -171,6 +171,13 @@ export function planMemberships(
     if (start >= end) {
       return;
     }
+    if (leave !== null && leave.from <= start) {
+      // The new leaving takes the row over as it is: nothing comes back
+      // before its date (the replace of a scheduled leaving by the same or an
+      // earlier one of these days), so no empty row is written.
+      cuts.push({ id: row.id, validUntil: row.validUntil });
+      return;
+    }
     if (!inService(row.classId)) {
       notRestored.push(row);
       return;

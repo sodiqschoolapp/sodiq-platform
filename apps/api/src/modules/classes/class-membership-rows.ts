@@ -30,6 +30,7 @@ export const MEMBERSHIP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   class_memberships_only_shrink: 'request_refused',
   class_memberships_leaving: 'request_refused',
   class_memberships_insert_ended: 'request_refused',
+  class_memberships_withdraw_planned: 'membership_in_force',
 };
 
 /** The class rows of one student the transaction sees, by start. */
@@ -78,8 +79,11 @@ export async function membershipCounts(
 
 /**
  * The classes of a list that are in service: not archived, in a year that is
- * not closed. Each is locked FOR SHARE first and read afterwards, so that an
- * archive at the same moment waits or is waited for.
+ * not closed. Each is locked FOR UPDATE, in the order of its id, first and
+ * read afterwards, so that an archive at the same moment waits or is waited
+ * for, and the guard's own FOR UPDATE of a row written back is no upgrade of
+ * a share lock that two changes could hold at once (a deadlock; spec review
+ * of the build, must-fix 1).
  */
 export async function classesInService(
   transaction: Transaction,
@@ -94,7 +98,7 @@ export async function classesInService(
     .select('id')
     .where('id', 'in', ids)
     .orderBy('id')
-    .forShare()
+    .forUpdate()
     .execute();
   const rows = await transaction
     .selectFrom('classes')

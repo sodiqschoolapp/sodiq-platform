@@ -622,7 +622,7 @@ describe('the students of a class', () => {
           json({
             students: [
               pupil(1),
-              pupil(2, { version: 3 }),
+              pupil(2, { version: 3, startsOn: '2026-10-19' }),
               // Of another grade, or in a class already: not offered.
               pupil(3, { grade: 8 }),
               pupil(4, {
@@ -660,9 +660,13 @@ describe('the students of a class', () => {
       .getAllByRole('checkbox')
       .map((box) => box.closest('label')?.textContent);
     expect(offered).toEqual(['Yusupovaa Shahlo (2607101)', 'Yusupovaaa Shahlo (2607102)']);
-    // The date takes today by default (decision 6).
+    // The date takes today by default, and a student who starts later moves it
+    // while no other date is typed (decision 6).
     expect(field(form, en.classes.from).value).toBe(TODAY);
     fireEvent.click(within(form).getByLabelText('Yusupovaaa Shahlo (2607102)'));
+    await waitFor(() => {
+      expect(field(form, en.classes.from).value).toBe('2026-10-19');
+    });
     type(field(form, en.classes.from), '2026-10-20');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     await savedInPanel(panel);

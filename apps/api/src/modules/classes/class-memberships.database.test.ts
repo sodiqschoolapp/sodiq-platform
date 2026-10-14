@@ -1,5 +1,6 @@
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { Database } from '../../database/database.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
@@ -340,6 +341,16 @@ describe('class membership in the database', () => {
       await lower(2);
       // Raising is always allowed (edge: "The Academic Vice Principal can raise the maximum").
       await lower(5);
+      // Without a moment every date counts: the migrator cannot lower it either.
+      expect(
+        await refusal(
+          database.migrator
+            .updateTable('classes')
+            .set({ max_size: 1 })
+            .where('id', '=', oxford)
+            .execute(),
+        ),
+      ).toMatchObject({ constraint: 'classes_size_below_members' });
     });
   });
 
@@ -653,28 +664,130 @@ describe('class membership in the database', () => {
       ).toMatchObject({ constraint: 'class_memberships_leaving' });
     });
 
-    it('refuses an empty insert that no leaving withdrew, and a withdrawn insert', async () => {
+    it('refuses an empty insert that no leaving withdrew, a withdrawn insert and a leaving of another student', async () => {
       const oxford = await schoolClass(north, northYear);
       const student = await members.student(north);
+      const insert = (values: Record<string, unknown>) =>
+        inBranch(north, (transaction) =>
+          transaction
+            .insertInto('class_memberships')
+            .values({
+              ...memberValues({
+                branch: north,
+                classId: oxford,
+                studentId: student,
+                from: '2026-12-01',
+              }),
+              ...values,
+            })
+            .execute(),
+        );
+      expect(await refusal(insert({ valid_until: '2026-12-01' }))).toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'class_memberships_insert_ended',
+      });
+      expect(
+        await refusal(insert({ valid_until: '2026-12-01', ended_by: 'withdrawn' })),
+      ).toMatchObject({ constraint: 'class_memberships_insert_ended' });
+      const other = await members.student(north);
+      const foreign = await inBranch(north, (transaction) =>
+        members.leaving(transaction, north, other, '2027-01-04'),
+      );
+      expect(
+        await refusal(
+          insert({ valid_until: '2027-01-04', ended_by: 'leaving', leaving_id: foreign }),
+        ),
+      ).toMatchObject({ constraint: 'class_memberships_leaving' });
+    });
+
+    it('refuses to take back the cause of a leaving, and a change of the end in a closed year', async () => {
+      const oxford = await schoolClass(north, northYear);
+      const student = await members.student(north);
+      const id = await inBranch(north, async (transaction) => {
+        const leaving = await members.leaving(transaction, north, student, '2026-12-01');
+        return members.member(
+          {
+            branch: north,
+            classId: oxford,
+            studentId: student,
+            from: '2026-09-01',
+            until: '2026-12-01',
+            endedBy: 'leaving',
+            leavingId: leaving,
+          },
+          transaction,
+        );
+      });
       expect(
         await refusal(
           inBranch(north, (transaction) =>
             transaction
-              .insertInto('class_memberships')
-              .values({
-                ...memberValues({
-                  branch: north,
-                  classId: oxford,
-                  studentId: student,
-                  from: '2026-12-01',
-                  until: '2026-12-01',
-                }),
-                ended_by: 'withdrawn',
-              })
+              .updateTable('class_memberships')
+              .set({ ended_by: null, leaving_id: null })
+              .where('id', '=', id)
               .execute(),
           ),
         ),
-      ).toMatchObject({ code: CHECK_VIOLATION });
+      ).toMatchObject({ constraint: 'class_memberships_only_shrink' });
+
+      const branch = await insertBranch(database.migrator, 'Closed shrink');
+      const year = await classes.year(branch, 'current', '2025-09-01', '2026-05-31');
+      const old = await schoolClass(branch, year);
+      const pupil = await members.student(branch, { startsOn: '2025-09-01' });
+      const row = await members.member({
+        branch,
+        classId: old,
+        studentId: pupil,
+        from: '2025-09-01',
+        ownUntil: '2026-06-01',
+      });
+      await classes.setYear(year, 'closed');
+      expect(
+        await refusal(
+          inBranch(branch, async (transaction) => {
+            const leaving = await members.leaving(transaction, branch, pupil, '2026-06-01');
+            await transaction
+              .updateTable('class_memberships')
+              .set({ valid_until: '2026-05-01', ended_by: 'leaving', leaving_id: leaving })
+              .where('id', '=', row)
+              .execute();
+          }),
+        ),
+      ).toMatchObject({ constraint: 'class_year_closed' });
+    });
+
+    it('withdraws a placement only before its first day, and never without a moment', async () => {
+      const oxford = await schoolClass(north, northYear);
+      const student = await members.student(north);
+      const inForce = await place({
+        branch: north,
+        classId: oxford,
+        studentId: student,
+        from: '2026-09-01',
+      });
+      const withdraw = (db: Database | Transaction, id: string, from: string) =>
+        db
+          .updateTable('class_memberships')
+          .set({ valid_until: from, ended_by: 'withdrawn' })
+          .where('id', '=', id)
+          .execute();
+      expect(
+        await refusal(
+          inBranch(north, (transaction) => withdraw(transaction, inForce, '2026-09-01')),
+        ),
+      ).toMatchObject({ constraint: 'class_memberships_withdraw_planned' });
+      const later = await members.student(north);
+      const planned = await place({
+        branch: north,
+        classId: oxford,
+        studentId: later,
+        from: '2026-12-01',
+      });
+      // The migrator has no moment: refused.
+      expect(await refusal(withdraw(database.migrator, planned, '2026-12-01'))).toMatchObject({
+        constraint: 'class_memberships_withdraw_planned',
+      });
+      await inBranch(north, (transaction) => withdraw(transaction, planned, '2026-12-01'));
     });
   });
 
@@ -730,7 +843,8 @@ describe('class membership in the database', () => {
           .execute(),
       );
       expect(seen).toEqual([]);
-      // A transaction of the south writes no row of the north.
+      // A transaction of the south writes no row of the north: its guard sees
+      // no such student before the row filter would refuse the row.
       expect(
         await refusal(
           inBranch(south, (transaction) =>
@@ -740,7 +854,7 @@ describe('class membership in the database', () => {
             ),
           ),
         ),
-      ).toMatchObject({});
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'class_memberships_student_branch' });
       // A class of the south takes no student of the north.
       const southClass = await schoolClass(south, southYear);
       const northStudent = await members.student(north);

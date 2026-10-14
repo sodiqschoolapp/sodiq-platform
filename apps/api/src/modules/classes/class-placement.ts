@@ -189,7 +189,10 @@ export async function planPlacement(
   if (first !== undefined) {
     throw new ApiException(first.code as ErrorCode, 409, undefined, details);
   }
-  const free = placement.maxSize - (await membersPeak(transaction, placement.id, from, null));
+  // Counted over the days the rows hold: a row that ends at a scheduled
+  // leaving needs no seat after it (the guard counts `[from, until)` too).
+  const until = rows.reduce((latest, row) => (row.until > latest ? row.until : latest), from);
+  const free = placement.maxSize - (await membersPeak(transaction, placement.id, from, until));
   if (rows.length > free) {
     throw new ApiException('class_full', 409, undefined, [
       {

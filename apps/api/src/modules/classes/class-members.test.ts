@@ -359,11 +359,9 @@ describe('class membership', () => {
           404,
           'not_found',
         );
-        refusedWith(
-          await t.get(`/api/classes/${southClass}/members`, t.north, cookie),
-          404,
-          'not_found',
-        );
+        for (const id of [southClass, UNKNOWN]) {
+          refusedWith(await t.get(`/api/classes/${id}/members`, t.north, cookie), 404, 'not_found');
+        }
       }
       expect(await rowsOf()).toEqual(before);
     });
@@ -448,8 +446,25 @@ describe('class membership', () => {
       const tab = placed(await place(oxford, [await student()], '2026-10-12'));
       const memberId = tab.members[0]?.id ?? '';
       const southClass = await schoolClass({ branch: t.south, year: southYear });
+      // A member of a class of the south, sent under a class of the north.
+      const southTab = classMembersSchema.parse(
+        (
+          await t.post(
+            `/api/classes/${southClass}/members`,
+            t.south,
+            {
+              students: [{ id: (await student({}, t.south)).id, version: 1 }],
+              from: '2026-10-12',
+            },
+            t.admin,
+          )
+        ).body,
+      );
+      const southMember = southTab.members[0]?.id ?? '';
+      expect(southMember).not.toBe('');
       const before = await rowsOf();
       for (const path of [
+        `/api/classes/${oxford}/members/${southMember}/withdraw`,
         `/api/classes/${yale}/members/${memberId}/withdraw`,
         `/api/classes/${oxford}/members/${UNKNOWN}/withdraw`,
         `/api/classes/${southClass}/members/${memberId}/withdraw`,
@@ -478,6 +493,7 @@ describe('class membership', () => {
           version: detail.version,
           ...fields,
         });
+      const before = await rowsOf();
       refusedWith(await edit({ maxSize: 1 }), 409, 'class_size_below_members');
       refusedWith(await edit({ grade: 8 }), 409, 'class_grade_members');
       refusedWith(
@@ -485,6 +501,7 @@ describe('class membership', () => {
         409,
         'class_has_members',
       );
+      expect(await rowsOf()).toEqual(before);
       const raised = await edit({ maxSize: 5 });
       expect(raised.status, JSON.stringify(raised.body)).toBe(200);
     });
@@ -499,6 +516,7 @@ describe('class membership', () => {
         from: '2026-10-12',
       });
       expect(response.status, JSON.stringify(response.body)).toBe(201);
+      const before = await rowsOf();
       refusedWith(
         await t.put(`/api/setup/academic-years/${year}`, branch, {
           startDate: '2026-09-02',
@@ -507,6 +525,7 @@ describe('class membership', () => {
         409,
         'academic_year_has_members',
       );
+      expect(await rowsOf()).toEqual(before);
     });
 
     it('refuses the grade edit of a student in a class', async () => {
@@ -557,6 +576,7 @@ describe('class membership', () => {
       expect(created.class).toMatchObject({ id: oxford, from: '2026-09-02', until: '2027-06-01' });
       const [entry] = await t.entries('student.class_joined', created.id);
       expect(entry).toMatchObject({
+        assignment_id: t.adminAssignment,
         request_id: response.headers['x-request-id'],
         new_value: { classId: oxford, from: '2026-09-02', cause: 'create' },
       });
@@ -673,6 +693,7 @@ describe('class membership', () => {
       const classId = leaver.class?.id ?? '';
       const scheduled = studentDetailSchema.parse((await leave(leaver, '2026-10-31')).body);
       placed(await place(classId, [await student({ startsOn: '2026-11-01' })], '2026-11-01'));
+      const before = await rowsOf();
       refusedWith(
         await t.post(`/api/people/students/${leaver.id}/leaving/cancel`, t.north, {
           version: scheduled.version,
@@ -680,6 +701,7 @@ describe('class membership', () => {
         409,
         'class_full',
       );
+      expect(await rowsOf()).toEqual(before);
     });
 
     it('gives the class back without an overlap after a leaving, its cancel, an earlier leaving and its undo', async () => {
@@ -708,6 +730,53 @@ describe('class membership', () => {
         ['2026-10-02', '2026-10-21', 'undo'],
         ['2026-10-21', '2027-06-01', 'undo'],
       ]);
+    });
+
+    it('orders two cancels of students of one class at the same moment, without a deadlock', async () => {
+      // Spec review of the build, must-fix 1: each change locks the classes it
+      // gives back FOR UPDATE before the guard does, so two of them wait in turn.
+      const oxford = await schoolClass();
+      const scheduled: StudentDetail[] = [];
+      for (let n = 0; n < 2; n += 1) {
+        const one = await student({ startsOn: '2026-09-02', classId: oxford });
+        scheduled.push(studentDetailSchema.parse((await leave(one, '2026-10-31')).body));
+      }
+      const [first, second] = scheduled;
+      if (first === undefined || second === undefined) {
+        throw new Error('Two students are scheduled to leave.');
+      }
+      const cancel = (one: StudentDetail) =>
+        t.post(`/api/people/students/${one.id}/leaving/cancel`, t.north, { version: one.version });
+      // A held change of the first student, as the route makes it: its student,
+      // then the class FOR UPDATE; the second student's cancel waits on the class.
+      const held = await holdOpen(async (transaction) => {
+        await transaction
+          .selectFrom('students')
+          .select('id')
+          .where('id', '=', first.id)
+          .forUpdate()
+          .execute();
+        await transaction
+          .selectFrom('classes')
+          .select('id')
+          .where('id', '=', oxford)
+          .forUpdate()
+          .execute();
+      });
+      const waiting = cancel(second).then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      const answered = await waiting;
+      expect(answered.status, JSON.stringify(answered.body)).toBe(200);
+      // Both at once through the routes: each answers, neither is a deadlock.
+      const again = await Promise.all([
+        leave(await readStudent(first.id), '2026-10-31'),
+        leave(await readStudent(second.id), '2026-10-31'),
+      ]);
+      const left = again.map((response) => studentDetailSchema.parse(response.body));
+      const both = await Promise.all(left.map(cancel));
+      expect(both.map((response) => response.status)).toEqual([200, 200]);
     });
 
     it('names a class archived meanwhile and does not give it back', async () => {

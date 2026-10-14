@@ -144,6 +144,7 @@ export class ClassMembers {
               from: row.valid_from,
               until: row.valid_until,
             },
+            newValue: { until: row.valid_from, endedBy: 'withdrawn' },
             requestId,
           });
           return this.readMembers(transaction, branchId, placement);

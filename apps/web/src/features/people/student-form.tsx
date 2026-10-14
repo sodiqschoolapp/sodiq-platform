@@ -17,7 +17,7 @@ import {
   type StudentRecord,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import {
@@ -35,6 +35,7 @@ import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { classesQuery } from '@/features/classes/classes-api';
+import { yearsQuery } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import {
   extraPhoneIssueField,
@@ -248,6 +249,7 @@ export function StudentForm({
   const [match, setMatch] = useState<Match | null>(null);
   // The classes a new student can join (task 3.1b): active, in an open year.
   const classes = useQuery({ ...classesQuery(branchId), enabled: branchId !== null && creating });
+  const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null && creating });
   /** The typed phone of the relative in its stored form, or null. */
   const storedPhone = (typed: string): string | null => {
     const parsed = relativePhoneSchema.safeParse(typed);
@@ -438,6 +440,28 @@ export function StudentForm({
     };
   };
   const option = (value: string, text: string) => ({ value, label: text });
+  // The classes a new student can join (task 3.1b, decision 2): active, of
+  // the grade chosen, in the year that holds the start date.
+  const startsOn = form.bind('startsOn').value;
+  const startYear = years.data?.years.find(
+    (year) => year.startDate <= startsOn && startsOn <= year.endDate,
+  );
+  const offeredClasses = (classes.data?.classes ?? []).filter(
+    (one) =>
+      !one.archived &&
+      one.yearStatus !== 'closed' &&
+      String(one.grade) === form.bind('grade').value &&
+      one.academicYearId === startYear?.id,
+  );
+  // A choice no longer offered (another grade or start date) falls back to
+  // none, so what the field shows is what is sent (.claude/rules/web.md).
+  const { value: chosenClass, onChange: chooseClass } = form.bind('classId');
+  const classOffered = chosenClass === '' || offeredClasses.some((one) => one.id === chosenClass);
+  useEffect(() => {
+    if (!classOffered) {
+      chooseClass({ target: { value: '' } });
+    }
+  }, [classOffered, chooseClass]);
   const scholarshipType = form.bind('scholarshipType').value;
   const coverage = form.bind('scholarshipCoverage').value;
 
@@ -475,36 +499,30 @@ export function StudentForm({
         />
         {creating && <DateField label={t('people.students.startsOn')} {...bind('startsOn')} />}
         {creating &&
-          (classes.isError ? (
+          (classes.isError || years.isError ? (
             <ErrorState
-              error={classes.error}
+              error={classes.error ?? years.error}
               onRetry={() => {
                 void classes.refetch();
+                void years.refetch();
               }}
             />
           ) : (
             // Required when the start date is today or earlier; the server says so
-            // (`student_needs_class`). Only classes of the grade chosen are offered.
+            // (`student_needs_class`).
             <SelectField
               label={t('people.students.class')}
               options={[
                 option('', t('people.students.noClassYet')),
-                ...(classes.data?.classes ?? [])
-                  .filter(
-                    (one) =>
-                      !one.archived &&
-                      one.yearStatus !== 'closed' &&
-                      String(one.grade) === form.bind('grade').value,
-                  )
-                  .map((one) =>
-                    option(
-                      one.id,
-                      t('classes.classYear', {
-                        class: classDisplayName(one.grade, one.name),
-                        year: one.yearName,
-                      }),
-                    ),
+                ...offeredClasses.map((one) =>
+                  option(
+                    one.id,
+                    t('classes.classYear', {
+                      class: classDisplayName(one.grade, one.name),
+                      year: one.yearName,
+                    }),
                   ),
+                ),
               ]}
               {...bind('classId')}
             />

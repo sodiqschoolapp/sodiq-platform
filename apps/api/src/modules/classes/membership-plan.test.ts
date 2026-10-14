@@ -149,7 +149,7 @@ describe('the class rows through a change of a leaving', () => {
     ]);
   });
 
-  it('gives back a row and the row a cancel wrote after it without an overlap', async () => {
+  it('gives back a row and the row a cancel wrote after it without an overlap', () => {
     // A leaving, its cancel, then an earlier leaving in force: it cut the first
     // row and emptied the one the cancel wrote back; both keep the year as their own end.
     const first = row('first', '2026-09-02', '2026-10-01', { endedBy: 'leaving', leavingId: 'L2' });
@@ -175,6 +175,21 @@ describe('the class rows through a change of a leaving', () => {
         cut: false,
       },
     ]);
+  });
+
+  it('replaces a scheduled leaving by the same date without writing an empty row', () => {
+    const cut = row('now', '2026-09-01', '2026-11-02', { endedBy: 'leaving', leavingId: 'L0' });
+    const plan = planMemberships(
+      [cut],
+      { takeBack: { leavingId: 'L0', from: '2026-11-02' }, leave: { from: '2026-11-02' } },
+      always,
+    );
+    // The new leaving names the row; a later cancel gives it back from 2 November.
+    expect(plan).toEqual({
+      cuts: [{ id: 'now', validUntil: '2026-11-02' }],
+      inserts: [],
+      notRestored: [],
+    });
   });
 
   it('leaves a withdrawn row withdrawn', () => {

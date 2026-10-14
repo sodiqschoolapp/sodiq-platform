@@ -244,6 +244,13 @@ begin
     raise exception 'class_memberships_only_shrink'
       using errcode = 'check_violation', constraint = 'class_memberships_only_shrink';
   end if;
+  -- Decision 10: a placement is withdrawn only before its first day in the
+  -- branch's time zone; without a moment, never.
+  if new.ended_by = 'withdrawn' and old.ended_by is distinct from 'withdrawn'
+    and old.valid_from <= coalesce(branch_today(new.branch_id), 'infinity'::date) then
+    raise exception 'class_memberships_withdraw_planned'
+      using errcode = 'check_violation', constraint = 'class_memberships_withdraw_planned';
+  end if;
   if new.leaving_id is not null
     and new.leaving_id is distinct from old.leaving_id
     and not class_membership_leaving_valid(new.student_id, new.leaving_id) then
@@ -336,8 +343,9 @@ begin
     raise exception 'classes_grade_members'
       using errcode = 'check_violation', constraint = 'classes_grade_members';
   end if;
-  if new.max_size < old.max_size and today is not null
-    and class_members_peak(new.id, today, null) > new.max_size then
+  -- Without a moment every date counts, so a fault never escapes the rule.
+  if new.max_size < old.max_size
+    and class_members_peak(new.id, coalesce(today, '-infinity'::date), null) > new.max_size then
     raise exception 'classes_size_below_members'
       using errcode = 'check_violation', constraint = 'classes_size_below_members';
   end if;

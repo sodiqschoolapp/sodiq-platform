@@ -198,6 +198,19 @@ function openList(
 ) {
   return fakeApi({
     'GET /api/classes': () => json({ classes: CLASSES }),
+    'GET /api/setup/academic-years': () =>
+      json({
+        years: [
+          {
+            id: uid(60),
+            name: '2026–2027',
+            startDate: '2026-09-01',
+            endDate: '2027-05-31',
+            status: 'current',
+            quarters: [],
+          },
+        ],
+      }),
     'GET /api/auth/session': () => json(sessionAs(role, language)),
     'GET /api/people/students': () =>
       json({
@@ -568,6 +581,40 @@ describe('adding a student', () => {
       classId: uid(50),
     });
     expect(form).toBeDefined();
+  });
+
+  it('offers the classes of the grade in the year of the start date and drops a choice no longer offered', async () => {
+    openList('academic_vice_principal');
+    renderApp(PATH);
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.students.newTitle }),
+    ).getByRole('form', { name: en.people.students.newTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2026-09-02');
+    const classField = await within(form).findByLabelText<HTMLSelectElement>(
+      en.people.students.class,
+    );
+    // Not 8 Princeton (another grade), not the archived Yale.
+    expect([...classField.querySelectorAll('option')].map((one) => one.textContent)).toEqual([
+      en.people.students.noClassYet,
+      '7 Oxford · 2026–2027',
+    ]);
+    type(en.people.students.class, uid(50));
+    expect(classField.value).toBe(uid(50));
+    type(en.people.students.grade, '8');
+    await waitFor(() => {
+      expect(classField.value).toBe('');
+    });
+    // A start date in no year offers no class.
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2027-08-01');
+    await waitFor(() => {
+      expect(classField.querySelectorAll('option')).toHaveLength(1);
+    });
   });
 
   // Owner's answer to finding 27 (task 2.7b-1, decision 3): a list of names
@@ -2234,6 +2281,8 @@ describe('the classes of the students', () => {
       '7 Oxford · 2026–2027',
     ]);
     fireEvent.change(choice, { target: { value: uid(50) } });
+    // Decision 6: the latest of today, the year's start and the students' start dates.
+    expect(within(form).getByLabelText<HTMLInputElement>(en.classes.from).value).toBe('2026-10-10');
     fireEvent.change(within(form).getByLabelText(en.classes.from), {
       target: { value: '2026-10-12' },
     });
