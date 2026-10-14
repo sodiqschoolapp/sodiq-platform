@@ -219,6 +219,21 @@ function NewRecordContent({
   return content(actions);
 }
 
+/** Another view of the rows, handed what it may do. */
+function ViewContent<Row>({
+  view,
+  rows,
+  sorted,
+  open,
+}: {
+  view: NonNullable<ListPageProps<Row>['view']>;
+  rows: readonly Row[];
+  sorted: boolean;
+  open: (id: string) => void;
+}) {
+  return view({ rows, sorted, open });
+}
+
 const NO_FILTERS: readonly never[] = [];
 const NO_ACTIONS: readonly never[] = [];
 const NO_EXTRAS: readonly ExportExtra[] = [];
@@ -850,13 +865,12 @@ export function ListPage<Row>({
         ) : view !== undefined ? (
           <>
             {failed && <FailureAlert error={error} />}
-            {view({
-              rows: matching,
-              sorted: current.sort !== undefined,
-              open: (id) => {
-                openRecord(id);
-              },
-            })}
+            <ViewContent
+              view={view}
+              rows={matching}
+              sorted={current.sort !== undefined}
+              open={openRecord}
+            />
           </>
         ) : (
           <>
