@@ -474,6 +474,37 @@ describe('Ctrl+K over students and staff', () => {
     });
   });
 
+  // The permission review of the build: the identity search is decided by
+  // the Academic Vice Principal of the branch of the request (`viceOf`), so
+  // one of another branch who reads this one in another role never has it.
+  describe('the identity search across branches', () => {
+    it('is not given by an Academic Vice Principal of another branch', async () => {
+      const browser = await t.kit.completeSession('Ulugbek', 'Hamidov');
+      await t.kit.giveRole(browser.account.id, {
+        role: 'academic_vice_principal',
+        branchId: t.south,
+      });
+      await t.kit.giveRole(browser.account.id, { role: 'principal', branchId: t.north });
+      // The name finds the student: the account reads North.
+      expect(await studentIds('Rustamovna', browser.cookie)).toEqual([own]);
+      for (const q of ['AB1234567', '31234567890123', '901234567']) {
+        expect(await studentIds(q, browser.cookie), q).toEqual([]);
+      }
+      for (const q of ['41234567890123', '935554433']) {
+        expect(await staffIds(q, browser.cookie), q).toEqual([]);
+      }
+    });
+
+    it('lists for the Senior Head Teacher the students of the branch of the request only', async () => {
+      const browser = await t.kit.completeSession('Nodira', 'Usmonova');
+      await t.kit.giveRole(browser.account.id, { role: 'senior_head_teacher' });
+      expect(await studentIds('Gʻulnora', browser.cookie)).toEqual([own]);
+      expect(
+        (await students('Gʻulnora', browser.cookie, t.south)).items.map((item) => item.id),
+      ).toEqual([southern]);
+    });
+  });
+
   describe('every search route', () => {
     it('refuses an empty text, one of spaces, a missing one and one that is too long', async () => {
       for (const kind of ['students', 'staff']) {

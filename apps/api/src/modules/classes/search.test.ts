@@ -249,6 +249,23 @@ describe('Ctrl+K over classes and groups', () => {
       }
     });
 
+    it('the other branch-wide readers find every class and group of the branch', async () => {
+      const readers = [t.admin, t.principal, t.vicePrincipal];
+      for (const role of ['spiritual_vice_principal', 'head_tutor']) {
+        readers.push((await signedIn('Farida', 'Nurmatova', role)).cookie);
+      }
+      for (const cookie of readers) {
+        expect(await classIds('7', cookie)).toEqual([cambridge, oxford]);
+        expect(await groupIds('Oxford', cookie)).toEqual(sorted(oxfordGroup, chemistryGroup));
+      }
+      // The Senior Head Teacher reads every class of the branch, and in South
+      // the groups of own subjects there only.
+      expect(await classIds('7', seniorHeadTeacher)).toEqual([cambridge, oxford]);
+      expect(
+        (await groupsFound('Oxford', seniorHeadTeacher, t.south)).items.map((item) => item.id),
+      ).toEqual([southGroup]);
+    });
+
     it('a Head Teacher and the Senior Head Teacher find the groups of own subjects only', async () => {
       const physicsGroups = sorted(oxfordGroup, sharedGroup, cambridgeGroup);
       for (const cookie of [headTeacher, seniorHeadTeacher]) {

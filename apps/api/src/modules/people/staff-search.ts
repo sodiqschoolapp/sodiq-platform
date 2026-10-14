@@ -86,8 +86,9 @@ export class StaffSearch {
         return { items: [], more };
       }
       const ids = items.map((row) => row.id);
-      // The status as the staff list reads it: today in the main branch's time
-      // zone (the zone of a branch the reader sees when the main one is not).
+      // The status as the staff list reads it: today in the time zone of the
+      // main branch when the row filter lets it be seen, else of the branch of
+      // the request (the only link a reader other than the Super Admin sees).
       const links = await transaction
         .selectFrom('staff_branches')
         .innerJoin('branches', 'branches.id', 'staff_branches.branch_id')
