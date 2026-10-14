@@ -170,7 +170,12 @@ export async function cutGroupRows(
   for (const { row, until } of plan) {
     await transaction
       .updateTable('group_memberships')
-      .set({ valid_until: until, ended_by: 'leaving', leaving_id: leavingId, ended_by_move_id: null })
+      .set({
+        valid_until: until,
+        ended_by: 'leaving',
+        leaving_id: leavingId,
+        ended_by_move_id: null,
+      })
       .where('id', '=', row.id)
       .where('student_id', '=', studentId)
       .execute();

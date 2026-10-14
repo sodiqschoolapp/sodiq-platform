@@ -133,10 +133,7 @@ export class StudentHistories {
     });
   }
 
-  private async classNames(
-    transaction: Transaction,
-    ids: readonly string[],
-  ) {
+  private async classNames(transaction: Transaction, ids: readonly string[]) {
     const unique = [...new Set(ids)];
     const rows =
       unique.length === 0
@@ -149,10 +146,7 @@ export class StudentHistories {
     return new Map(rows.map((row) => [row.id, { id: row.id, grade: row.grade, name: row.name }]));
   }
 
-  private async groupNames(
-    transaction: Transaction,
-    ids: readonly string[],
-  ) {
+  private async groupNames(transaction: Transaction, ids: readonly string[]) {
     const unique = [...new Set(ids)];
     const rows =
       unique.length === 0

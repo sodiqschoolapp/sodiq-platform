@@ -231,9 +231,16 @@ describe('a frozen permission table', () => {
   // does everything a Head Teacher does in every branch. Their scope (own
   // subjects) is decided in the route.
   it('gives the group transfers to the editors of 02 and the Head Teachers, edit only', () => {
-    const movers = ['super_admin', 'academic_vice_principal', 'senior_head_teacher', 'head_teacher'];
+    const movers = [
+      'super_admin',
+      'academic_vice_principal',
+      'senior_head_teacher',
+      'head_teacher',
+    ];
     for (const role of ROLES) {
-      expect(PERMISSIONS.group_transfers[role], role).toEqual(movers.includes(role) ? ['edit'] : []);
+      expect(PERMISSIONS.group_transfers[role], role).toEqual(
+        movers.includes(role) ? ['edit'] : [],
+      );
     }
   });
 
@@ -250,7 +257,9 @@ describe('a frozen permission table', () => {
       'head_teacher',
     ];
     for (const role of ROLES) {
-      expect(PERMISSIONS.student_history[role], role).toEqual(readers.includes(role) ? ['view'] : []);
+      expect(PERMISSIONS.student_history[role], role).toEqual(
+        readers.includes(role) ? ['view'] : [],
+      );
     }
   });
 

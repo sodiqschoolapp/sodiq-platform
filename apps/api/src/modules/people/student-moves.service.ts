@@ -1115,7 +1115,6 @@ export class StudentMoves {
   }
 }
 
-
 /**
  * The end of a row written in place of another over the same days: ended as
  * that one was, by a scheduled leaving or a scheduled class move (correction

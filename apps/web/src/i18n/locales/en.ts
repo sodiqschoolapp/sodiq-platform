@@ -327,7 +327,7 @@ export const en = {
     move_not_scheduled:
       'This move has already begun, or was cancelled or undone, so it can no longer be changed or cancelled. Reload to see it as it is now.',
     move_not_undoable:
-      'This move can no longer be undone: something changed the student\'s classes or groups after it, or its year is closed. Make a transfer back instead.',
+      "This move can no longer be undone: something changed the student's classes or groups after it, or its year is closed. Make a transfer back instead.",
     move_scheduled:
       'Another move of this student is already scheduled. Change or cancel that move first.',
     move_no_membership:
@@ -336,8 +336,7 @@ export const en = {
       'The student is already in that class or group on that date. Choose another one.',
     class_language_differs:
       'The two classes teach in different languages. Confirm the move to go on.',
-    group_transfer_subject:
-      'That group is of another subject. Choose a group of the same subject.',
+    group_transfer_subject: 'That group is of another subject. Choose a group of the same subject.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:

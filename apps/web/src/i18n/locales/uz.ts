@@ -338,12 +338,10 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu oʻquvchining boshqa koʻchirishi allaqachon rejalashtirilgan. Avval uni oʻzgartiring yoki bekor qiling.',
     move_no_membership:
       'Bu sanada oʻquvchi hech bir sinfda yoki shu fanning hech bir guruhida emas. Boshqa sanani tanlang.',
-    move_same_target:
-      'Bu sanada oʻquvchi allaqachon shu sinf yoki guruhda. Boshqasini tanlang.',
+    move_same_target: 'Bu sanada oʻquvchi allaqachon shu sinf yoki guruhda. Boshqasini tanlang.',
     class_language_differs:
       'Bu ikki sinfda taʼlim tili har xil. Davom etish uchun koʻchirishni tasdiqlang.',
-    group_transfer_subject:
-      'Bu guruh boshqa fanga tegishli. Shu fanning guruhini tanlang.',
+    group_transfer_subject: 'Bu guruh boshqa fanga tegishli. Shu fanning guruhini tanlang.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',

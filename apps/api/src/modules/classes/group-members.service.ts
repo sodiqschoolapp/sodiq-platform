@@ -235,7 +235,14 @@ export class GroupMembers {
           await lockGroups(transaction, [groupId]);
           const row = await transaction
             .selectFrom('group_memberships')
-            .select(['valid_from', 'valid_until', 'ended_by', 'cause', 'written_by_move_id', 'ended_by_move_id'])
+            .select([
+              'valid_from',
+              'valid_until',
+              'ended_by',
+              'cause',
+              'written_by_move_id',
+              'ended_by_move_id',
+            ])
             .where('id', '=', memberId)
             .executeTakeFirstOrThrow();
           // A row with no day (withdrawn, or emptied by a leaving) is answered as it is:

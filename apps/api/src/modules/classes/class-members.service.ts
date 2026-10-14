@@ -158,7 +158,14 @@ export class ClassMembers {
           await lockPlacementStudents(transaction, [found.student_id]);
           const row = await transaction
             .selectFrom('class_memberships')
-            .select(['valid_from', 'valid_until', 'ended_by', 'written_by_move_id', 'ended_by_move_id', 'cause'])
+            .select([
+              'valid_from',
+              'valid_until',
+              'ended_by',
+              'written_by_move_id',
+              'ended_by_move_id',
+              'cause',
+            ])
             .where('id', '=', memberId)
             .executeTakeFirstOrThrow();
           if (row.ended_by === 'withdrawn') {
