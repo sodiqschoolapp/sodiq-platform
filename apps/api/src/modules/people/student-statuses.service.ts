@@ -22,6 +22,12 @@ import {
   membershipsOf,
   MEMBERSHIP_REFUSALS,
 } from '../classes/class-membership-rows.js';
+import {
+  CLASS_PATH_GROUP_REFUSALS,
+  cutGroupRows,
+  groupMembershipsOf,
+  type GroupRowEnded,
+} from '../classes/group-membership-rows.js';
 import { planMemberships, type StoredMembership } from '../classes/membership-plan.js';
 import {
   holdsData,
@@ -46,6 +52,8 @@ const GUARDS: Readonly<Record<string, ErrorCode>> = {
   students_delete_guard: 'student_has_data',
   // Task 3.1b: a class row cut or written back by the change, a return's grade.
   ...MEMBERSHIP_REFUSALS,
+  // Task 3.2b: the group rows follow the class rows; the containment answers a fault only.
+  ...CLASS_PATH_GROUP_REFUSALS,
 };
 
 /** Runs work; a guard of 0033 that refused becomes its 409. */
@@ -233,6 +241,8 @@ export class StudentStatuses {
         if (rows.length + memberships.length !== input.version) {
           throw new ApiException('student_changed', 409);
         }
+        // Task 3.2b: the group rows go with the student too (the cascade).
+        const groupMemberships = await groupMembershipsOf(transaction, id);
         const contracts = await transaction
           .selectFrom('student_contracts')
           .select(['id', 'number', 'signed_on'])
@@ -280,6 +290,7 @@ export class StudentStatuses {
             statuses: rows,
             // Task 3.1b, decision 12: the class rows go with the student (the cascade).
             memberships,
+            groupMemberships,
             uids: uids.map((uid) => uid.uid),
             relatives: links.map((link) => ({
               relativeId: link.relative_id,
@@ -349,7 +360,9 @@ export class StudentStatuses {
             ...change.newValue,
             cuts: outcome.cuts,
             writes: outcome.writes,
-            ...(classes === null ? {} : { memberships: classes.memberships }),
+            ...(classes === null
+              ? {}
+              : { memberships: classes.memberships, groupMemberships: classes.groupMemberships }),
           }),
           reason: change.reason ?? undefined,
           requestId,
@@ -381,6 +394,7 @@ export class StudentStatuses {
     cause: 'cancel' | 'undo',
   ): Promise<{
     memberships: Awaited<ReturnType<typeof applyMembershipPlan>> & { notRestored: string[] };
+    groupMemberships: { cut: GroupRowEnded[] };
     notRestored: ClassNotRestored[];
   } | null> {
     const takenBack = outcome.cuts
@@ -412,6 +426,13 @@ export class StudentStatuses {
       (classId) => inService.has(classId),
     );
     const moved = await applyMembershipPlan(transaction, id, memberships, plan, leavingId, cause);
+    // Task 3.2b (decision 8 of pull request #92): the group rows of the dates
+    // the class rows lose end with them; a cancel, an undo or a later date
+    // gives none back (decision 9: task 3.2c).
+    const groupsCut =
+      leaving === undefined || leavingId === null
+        ? []
+        : await cutGroupRows(transaction, id, leaving.validFrom, leavingId, takenBack?.id ?? null);
     const notRestoredIds = [...new Set(plan.notRestored.map((row) => row.classId))];
     const named =
       notRestoredIds.length === 0
@@ -425,6 +446,7 @@ export class StudentStatuses {
             .execute();
     return {
       memberships: { ...moved, notRestored: notRestoredIds },
+      groupMemberships: { cut: groupsCut },
       notRestored: named.map((one) => ({ classId: one.id, grade: one.grade, name: one.name })),
     };
   }

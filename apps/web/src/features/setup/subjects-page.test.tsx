@@ -625,6 +625,7 @@ describe('the subjects page', () => {
                   { id: uid(93), grade: 5, name: 'Oxford', language: 'uz', archived: false },
                 ],
                 kind: 'split',
+                students: 0,
                 archived: false,
                 version: 0,
               },

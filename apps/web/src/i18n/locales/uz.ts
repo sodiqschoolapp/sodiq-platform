@@ -303,6 +303,27 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu guruhning sinfi arxivda yoki boshqa oʻquv yiliga tegishli, shuning uchun guruhni qaytarib boʻlmaydi. Faol sinflardan yangi guruh tuzing.',
     group_restore_subject:
       'Bu guruhning fani arxivda yoki uning parallellarida endi oʻqitilmaydi. Avval fanni tiklang yoki parallelni qoʻshing.',
+    student_has_group:
+      'Oʻquvchi shu sanada yoki undan keyin bu fan guruhida bor. Guruhlar orasida koʻchirish — bu oʻtkazish.',
+    student_not_in_group_class:
+      'Bu sanada oʻquvchi guruh olinadigan sinflarning birortasida emas. Oʻquvchi ulardan birida boʻlgan sanani tanlang.',
+    group_full:
+      'Shu sanadan boshlab qaysidir kunda guruhda boʻsh oʻrin yetmaydi. Uning eng koʻp sonini oshiring yoki kamroq oʻquvchi tanlang.',
+    group_membership_outside_year:
+      'Sana guruhning oʻquv yilidan tashqarida. Yil ichidagi sanani tanlang.',
+    group_membership_in_force:
+      'Oʻquvchi allaqachon guruhda. Faqat hali boshlanmagan joylashtirishni bekor qilish mumkin.',
+    group_membership_not_planned: 'Guruhga bu joylashtirish tugagan. Bekor qiladigan narsa yoʻq.',
+    group_has_members:
+      'Guruhda hozir yoki keyingi sanadan oʻquvchilar bor. Avval ularni bekor qiling yoki koʻchiring, keyin guruhni arxivlang.',
+    group_size_below_members:
+      'Bugundan boshlab qaysidir kunda guruhda bundan koʻp oʻquvchi bor. Kattaroq eng koʻp sonni tanlang.',
+    group_class_has_members:
+      'Guruhda siz olib tashlagan sinf oʻquvchilari bor yoki boʻlgan, shuning uchun bu sinf guruhda qoladi. Oʻrniga yangi guruh tuzing.',
+    group_membership_in_class:
+      'Oʻzgarish oʻquvchini shu guruh sinfisiz guruhda qoldirardi. Hech narsa saqlanmadi. Qayta yuklang va yana urinib koʻring.',
+    placement_no_seat:
+      'Ayrim oʻquvchilar uchun ekrandagi guruhlarning birortasida boʻsh oʻrin yoʻq, shuning uchun hech kim joylashtirilmadi. Guruhning eng koʻp sonini oshiring yoki guruh qoʻshing.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
@@ -1349,6 +1370,7 @@ export const uz: Texts<'one' | 'other'> = {
       takenHere: 'Allaqachon {{student}} ga berilgan.',
       takenHereUnknown: 'Allaqachon shu filialning boshqa oʻquvchisiga berilgan.',
       classFrom: '{{class}}, {{date}} dan',
+      groupFrom: '{{group}}, {{date}} dan',
       academic: 'Oʻqish',
       mainRoom: 'Asosiy xona',
       actingTutor: 'Vaqtinchalik tyutor',
@@ -2140,6 +2162,9 @@ export const uz: Texts<'one' | 'other'> = {
         graduate_restored: 'Bitiruvchi tiklandi',
         class_joined: 'Sinfga joylashtirildi',
         class_withdrawn: 'Sinfga joylashtirish bekor qilindi',
+        group_joined: 'Guruhga joylashtirildi',
+        group_withdrawn: 'Guruhga joylashtirish bekor qilindi',
+        group_reviewed: 'Guruhga joylashtirish koʻrib chiqildi',
         delete: 'Ikki marta yaratilgan oʻquvchi oʻchirildi',
         export: 'Oʻquvchilar eksport qilindi',
         identity_shown: 'Oʻquvchi yozuvining yashirin maydonlari koʻrsatildi',
@@ -2296,6 +2321,7 @@ export const uz: Texts<'one' | 'other'> = {
       subject: 'Fan',
       classes: 'Sinflar',
       language: 'Taʼlim tili',
+      students: 'Oʻquvchilar',
       maxSize: 'Eng koʻp oʻquvchi',
       status: 'Holati',
     },
@@ -2341,6 +2367,64 @@ export const uz: Texts<'one' | 'other'> = {
     restoreTitle: 'Bu guruh tiklansinmi?',
     restoreText: 'Uning sinflari va fani qayta tekshiriladi.',
     takenOpen: 'Shu nomdagi guruhni ochish',
+    // Task 3.2b: group membership.
+    members: 'Oʻquvchilar',
+    noMembers: 'Hali oʻquvchilar yoʻq',
+    putIntoGroup: 'Guruhga joylashtirish',
+    putIntoNamed: '{{group}} guruhiga joylashtirish',
+    pickStudents: 'Oʻquvchilar',
+    noPlaceable: 'Bu sinflarning barcha oʻquvchilari shu fan guruhida.',
+    from: 'Boshlanishi',
+    joinsOn: '{{date}} dan',
+    freeToday: 'Bugun boʻsh oʻrinlar: {{n}}',
+    freeLeast: 'Bugundan boshlab eng kam boʻsh oʻrin: {{n}}',
+    withdraw: 'Bekor qilish',
+    withdrawTitle: 'Bu joylashtirish bekor qilinsinmi?',
+    withdrawText: 'Oʻquvchi shu kuni guruhga qoʻshilmaydi.',
+    review: 'Avtomatik joylashtirildi, koʻrib chiqing',
+    markReviewed: 'Koʻrib chiqildi',
+    others_one: 'va boshqa sinflardan {{n}} ta oʻquvchi',
+    others_other: 'va boshqa sinflardan {{n}} ta oʻquvchi',
+    chooseGroup: 'Guruhni tanlang',
+    noGroupOfClass: 'Bu oʻquvchilar sinfidan olinadigan faol guruh yoʻq.',
+    refusedNames: 'Hech kim joylashtirilmadi. Rad etildi: {{names}}.',
+    placed_one: '{{n}} ta oʻquvchi joylashtirildi.',
+    placed_other: '{{n}} ta oʻquvchi joylashtirildi.',
+    placeTitle_one: 'Guruhga joylashtirish: {{n}} ta oʻquvchi',
+    placeTitle_other: 'Guruhga joylashtirish: {{n}} ta oʻquvchi',
+    groupOfSubject: '{{group}} · {{subject}}',
+    placementLink: 'Oʻquvchilarni taqsimlash',
+    placement: {
+      title: 'Guruhlarga taqsimlash',
+      caption: 'Hali fan guruhiga kirmagan oʻquvchilar',
+      subject: 'Fan',
+      grades: 'Parallellar',
+      gradeOne: '{{grade}}-sinf',
+      gradePair: '{{a}}- va {{b}}-sinflar',
+      on: 'Sana',
+      groups: 'Guruhlar',
+      groupLine: '{{max}} tadan {{members}} ta · eng kam boʻsh oʻrin {{free}}',
+      noGroups:
+        'Bu fanning faol guruhlaridan birortasi faqat shu parallellar sinflaridan olinmaydi.',
+      emptyTitle: 'Hamma taqsimlangan',
+      empty: 'Bu sinflarning barcha oʻquvchilari shu sanada bu fan guruhida.',
+      automatic: 'Avtomatik taqsimlash',
+      automaticTitle: 'Avtomatik taqsimlansinmi?',
+      automaticText_one:
+        '{{n}} ta oʻquvchi boʻsh oʻrni bor eng kichik guruhga koʻrib chiqish belgisi bilan joylashtiriladi.',
+      automaticText_other:
+        '{{n}} ta oʻquvchi boʻsh oʻrni bor eng kichik guruhlarga koʻrib chiqish belgisi bilan joylashtiriladi.',
+      placedAutomatically_one:
+        '{{n}} ta oʻquvchi avtomatik joylashtirildi. Belgilangan qatorlarni koʻrib chiqing.',
+      placedAutomatically_other:
+        '{{n}} ta oʻquvchi avtomatik joylashtirildi. Belgilangan qatorlarni koʻrib chiqing.',
+      putInto: '{{group}} guruhiga joylashtirish',
+      putIntoTitle: 'Belgilangan oʻquvchilar {{group}} guruhiga joylashtirilsinmi?',
+      putIntoText:
+        'Ular {{date}} dan qoʻshiladi. Boshlangan joylashtirish oʻtkazish bilan oʻzgartiriladi.',
+      student: 'Oʻquvchi',
+      class: 'Sinf',
+    },
   },
   account: {
     title: 'Hisob',

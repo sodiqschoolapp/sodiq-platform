@@ -408,6 +408,13 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/groups/:id': { branch: 'request', roles: CLASS_EDITORS },
   'POST /api/groups/:id/archive': { branch: 'request', roles: CLASS_EDITORS },
   'POST /api/groups/:id/restore': { branch: 'request', roles: CLASS_EDITORS },
+  // Task 3.2b (pull request #92, decision 6): members read under `view`, placed under `edit`.
+  'GET /api/groups/:id/members': { branch: 'request', roles: CLASS_VIEWERS },
+  'POST /api/groups/:id/members': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/groups/:id/members/:memberId/withdraw': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/groups/:id/members/:memberId/reviewed': { branch: 'request', roles: CLASS_EDITORS },
+  'GET /api/groups/placement': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/groups/placement/automatic': { branch: 'request', roles: CLASS_EDITORS },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

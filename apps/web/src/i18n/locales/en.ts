@@ -296,6 +296,28 @@ export const en = {
       'A class of this group is archived or belongs to another academic year, so the group cannot come back. Make a new group of active classes.',
     group_restore_subject:
       'The subject of this group is archived or no longer taught in its grades. Restore the subject or add the grade first.',
+    student_has_group:
+      'The student is already in a group of this subject on or after that date. A move between groups is a transfer.',
+    student_not_in_group_class:
+      'On that date the student is in none of the classes this group draws from. Choose a date when the student is in one of them.',
+    group_full:
+      'The group does not have enough free seats on some day from that date. Raise its maximum size or choose fewer students.',
+    group_membership_outside_year:
+      'The date is outside the academic year of the group. Choose a date within the year.',
+    group_membership_in_force:
+      'The student is already in the group. Only a placement that has not begun can be withdrawn.',
+    group_membership_not_planned:
+      'This placement in the group has ended. There is nothing to withdraw.',
+    group_has_members:
+      'The group has students now or from a later date. Withdraw or move them first, then archive the group.',
+    group_size_below_members:
+      'The group holds more students than that on some day from today on. Choose a larger maximum size.',
+    group_class_has_members:
+      'The group holds or held students of a class you took out, so that class stays in the group. Make a new group instead.',
+    group_membership_in_class:
+      'The change would leave the student in a group without a class of that group. Nothing was saved. Reload and try again.',
+    placement_no_seat:
+      'No group of the screen has a free seat for some students, so nobody was placed. Raise the maximum size of a group or add a group.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -1334,6 +1356,7 @@ export const en = {
       takenHere: 'Already given to {{student}}.',
       takenHereUnknown: 'Already given to another student of this branch.',
       classFrom: '{{class}} from {{date}}',
+      groupFrom: '{{group}} from {{date}}',
       academic: 'Academic',
       mainRoom: 'Main classroom',
       actingTutor: 'Acting Tutor',
@@ -2120,6 +2143,9 @@ export const en = {
         graduate_restored: 'Graduate restored',
         class_joined: 'Placed in a class',
         class_withdrawn: 'Placement in a class withdrawn',
+        group_joined: 'Placed in a group',
+        group_withdrawn: 'Placement in a group withdrawn',
+        group_reviewed: 'Group placement marked reviewed',
         delete: 'Student created twice deleted',
         export: 'Students exported',
         identity_shown: 'Hidden fields of a student record shown',
@@ -2275,6 +2301,7 @@ export const en = {
       subject: 'Subject',
       classes: 'Classes',
       language: 'Language of instruction',
+      students: 'Students',
       maxSize: 'Maximum size',
       status: 'Status',
     },
@@ -2321,6 +2348,60 @@ export const en = {
     restoreTitle: 'Restore this group?',
     restoreText: 'It is checked again against its classes and subject.',
     takenOpen: 'Open the group with this name',
+    // Task 3.2b: group membership.
+    members: 'Students',
+    noMembers: 'No students yet',
+    putIntoGroup: 'Put into a group',
+    putIntoNamed: 'Put into {{group}}',
+    pickStudents: 'Students',
+    noPlaceable: 'Every student of these classes is in a group of this subject.',
+    from: 'From',
+    joinsOn: 'Joins on {{date}}',
+    freeToday: 'Free seats today: {{n}}',
+    freeLeast: 'Fewest free seats from today on: {{n}}',
+    withdraw: 'Withdraw',
+    withdrawTitle: 'Withdraw this placement?',
+    withdrawText: 'The student will not join the group on that day.',
+    review: 'Placed automatically, review',
+    markReviewed: 'Mark reviewed',
+    others_one: 'and {{n}} student of other classes',
+    others_other: 'and {{n}} students of other classes',
+    chooseGroup: 'Choose a group',
+    noGroupOfClass: 'No active group draws from the class of these students.',
+    refusedNames: 'Nobody was placed. Refused: {{names}}.',
+    placed_one: '{{n}} student placed.',
+    placed_other: '{{n}} students placed.',
+    placeTitle_one: 'Put {{n}} student into a group',
+    placeTitle_other: 'Put {{n}} students into a group',
+    groupOfSubject: '{{group}} · {{subject}}',
+    placementLink: 'Place students',
+    placement: {
+      title: 'Group placement',
+      caption: 'Students not yet in a group of the subject',
+      subject: 'Subject',
+      grades: 'Grades',
+      gradeOne: 'Grade {{grade}}',
+      gradePair: 'Grades {{a}} and {{b}}',
+      on: 'Date',
+      groups: 'Groups',
+      groupLine: '{{members}} of {{max}} · fewest free seats {{free}}',
+      noGroups: 'No active group of this subject draws only from classes of these grades.',
+      emptyTitle: 'Everyone is placed',
+      empty: 'Every student of these classes is in a group of this subject on that date.',
+      automatic: 'Place automatically',
+      automaticTitle: 'Place automatically?',
+      automaticText_one:
+        '{{n}} student goes into the smallest group with a free seat, tagged for review.',
+      automaticText_other:
+        '{{n}} students go into the smallest groups with a free seat, tagged for review.',
+      placedAutomatically_one: '{{n}} student placed automatically. Review the tagged rows.',
+      placedAutomatically_other: '{{n}} students placed automatically. Review the tagged rows.',
+      putInto: 'Put into {{group}}',
+      putIntoTitle: 'Put the ticked students into {{group}}?',
+      putIntoText: 'They join from {{date}}. A placement that has begun is changed by a transfer.',
+      student: 'Student',
+      class: 'Class',
+    },
   },
   account: {
     title: 'Account',

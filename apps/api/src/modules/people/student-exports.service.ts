@@ -240,6 +240,10 @@ const STUDENT_EXPORT_SPECS: Readonly<Record<StudentExportColumn, ExportColumn<Ex
   class: oneCell(heading('class'), (row) =>
     row.item.class === null ? null : classDisplayName(row.item.class.grade, row.item.class.name),
   ),
+  // Task 3.2b: the groups in force today, else the first planned, by name.
+  groups: oneCell(heading('groups'), (row) =>
+    row.item.groups.length === 0 ? null : row.item.groups.map((group) => group.name).join(', '),
+  ),
   // The Tutor of that class in force today, else the acting one.
   tutor: oneCell(heading('tutor'), (row) => {
     const tutor = row.item.tutor ?? row.item.actingTutor;

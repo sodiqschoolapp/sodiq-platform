@@ -10,6 +10,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { membersPeak, MEMBERSHIP_REFUSALS } from './class-membership-rows.js';
+import { CLASS_PATH_GROUP_REFUSALS, withdrawGroupRows } from './group-membership-rows.js';
 import {
   lockPlacementStudents,
   planPlacement,
@@ -135,6 +136,15 @@ export class ClassMembers {
             .set({ valid_until: row.valid_from, ended_by: 'withdrawn', leaving_id: null })
             .where('id', '=', memberId)
             .execute();
+          // Task 3.2b (decision 8 of pull request #92): the group rows inside
+          // the planned class row are withdrawn with it.
+          const groupsWithdrawn = await withdrawGroupRows(
+            transaction,
+            found.student_id,
+            classId,
+            row.valid_from,
+            row.valid_until,
+          );
           await this.audit.record(transaction, {
             branchId,
             actorId: access.accountId,
@@ -147,12 +157,16 @@ export class ClassMembers {
               from: row.valid_from,
               until: row.valid_until,
             },
-            newValue: { until: row.valid_from, endedBy: 'withdrawn' },
+            newValue: {
+              until: row.valid_from,
+              endedBy: 'withdrawn',
+              ...(groupsWithdrawn.length === 0 ? {} : { groupMemberships: groupsWithdrawn }),
+            },
             requestId,
           });
           return this.readMembers(transaction, branchId, placement);
         }),
-      MEMBERSHIP_REFUSALS,
+      { ...MEMBERSHIP_REFUSALS, ...CLASS_PATH_GROUP_REFUSALS },
     );
   }
 

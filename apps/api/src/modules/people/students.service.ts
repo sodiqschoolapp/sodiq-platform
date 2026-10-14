@@ -40,6 +40,7 @@ import {
   studentClassesOn,
   tutorsInForce,
 } from '../classes/class-membership-rows.js';
+import { studentGroupsOn } from '../classes/group-membership-rows.js';
 import {
   lockPlacementStudents,
   planPlacement,
@@ -342,6 +343,7 @@ export class Students {
     const counts = await membershipCounts(transaction, null);
     const classes = await studentClassesOn(transaction, today, null);
     const tutors = await tutorsInForce(transaction);
+    const groups = await studentGroupsOn(transaction, today, null);
     // One rule with the record (decision 8 of pull request #90): a row opens
     // when the record would be answered to this reader.
     const scope = await studentClasses(transaction, today, null);
@@ -350,6 +352,7 @@ export class Students {
       const held = classes.get(row.id);
       const current = held?.current ?? null;
       const tutor = current === null ? undefined : tutors.get(current.id);
+      const opens = readerOf(access, 'students', scope.get(row.id) ?? []) !== undefined;
       return {
         id: row.id,
         uid: row.uid,
@@ -367,8 +370,11 @@ export class Students {
         plannedClass: held?.planned ?? null,
         tutor: tutor?.tutor ?? null,
         actingTutor: tutor?.acting ?? null,
+        // A Tutor reads the groups of own classes' students only (decision 4
+        // of pull request #92): the rows the reader opens.
+        groups: opens ? (groups.get(row.id) ?? []) : [],
         version: own.length + (counts.get(row.id) ?? 0),
-        opens: readerOf(access, 'students', scope.get(row.id) ?? []) !== undefined,
+        opens,
       };
     });
   }
@@ -1056,6 +1062,8 @@ export class Students {
       tutor: tutor?.tutor ?? null,
       actingTutor: tutor?.acting ?? null,
       mainRoom: held?.mainRoom ?? null,
+      // The Academic block's groups (task 3.2b): the record is answered only to a reader who opens it.
+      groups: (await studentGroupsOn(transaction, today, id)).get(id) ?? [],
       version: rows.length + memberships,
       opens: readerOf(access, 'students', scope) !== undefined,
       canEdit:

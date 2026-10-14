@@ -619,8 +619,9 @@ test('an Academic Vice Principal exports students with their documents, adds a p
   );
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: /^Export 1 ticked$/ }).click();
+  // Task 3.2b, decision 2 of #92 (Look first): the groups are a column of the file.
   expect((await answer).headers()['x-export-columns']).toBe(
-    'uid,name,class,tutor,status,birthDate,documentType,documentNumber,jshshir,address,region',
+    'uid,name,class,groups,tutor,status,birthDate,documentType,documentNumber,jshshir,address,region',
   );
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/^Students-\d{4}-\d{2}-\d{2}\.xlsx$/);

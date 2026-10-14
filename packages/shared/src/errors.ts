@@ -399,6 +399,28 @@ export const ERROR_CODES = [
   'group_restore_class',
   /** The subject of the group is archived or no longer taught in a grade of its classes, so the group is not restored (task 3.2a, spec review of the build). */
   'group_restore_subject',
+  /** The student is in a group of the subject on or after that date: a move between groups is a transfer (task 3.2b, decision 10; task 3.3). */
+  'student_has_group',
+  /** No class row of the student in a class of the group holds the date (task 3.2b, decision 7). */
+  'student_not_in_group_class',
+  /** The group would hold more students than its maximum size on some date, scheduled joins and leaves counted (`edge/students-classes-groups`: "Groups work the same way"; task 3.2b). `details` names the fewest free seats. */
+  'group_full',
+  /** The date lies outside the academic year of the group (task 3.2b). */
+  'group_membership_outside_year',
+  /** A group placement in force is not withdrawn: a transfer moves the student (task 3.2b; task 3.3). */
+  'group_membership_in_force',
+  /** The group placement has ended: there is nothing to withdraw (task 3.2b). */
+  'group_membership_not_planned',
+  /** A group with members in force or planned is not archived (task 3.2b, decision 16). */
+  'group_has_members',
+  /** The maximum size of a group cannot drop below its members of a date from today on (task 3.2b, decision 16). */
+  'group_size_below_members',
+  /** A class whose students the group holds or held is not taken out of the group (task 3.2b, decision 16). */
+  'group_class_has_members',
+  /** A change would leave a group row outside the class rows of its group's classes (task 3.2b, decision 8): a fault of the path, never a choice of the person. */
+  'group_membership_in_class',
+  /** "Place automatically" found no group of the screen with a free seat on every day for some students; nothing was placed (task 3.2b, decision 13). `details` names them. */
+  'placement_no_seat',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
@@ -439,7 +461,7 @@ export const errorDetailSchema = z.object({
    * the grade on a `uid_set_mismatch` (task 2.7b-1, decision 7).
    */
   expected: z.string().optional(),
-  /** The fewest free seats of a class on any date of the placement, on a `class_full` (task 3.1b). */
+  /** The fewest free seats of a class or group on any date of the placement, on a `class_full` (task 3.1b) or a `group_full` (task 3.2b). */
   freeSeats: z.int().optional(),
 });
 

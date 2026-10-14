@@ -1,5 +1,19 @@
 import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
+  automaticPlacementResultSchema,
+  automaticPlacementSchema,
+  groupMemberParamsSchema,
+  groupMembersSchema,
+  groupPlacementBoardSchema,
+  groupPlacementQuerySchema,
+  groupPlacementSchema,
+  type AutomaticPlacement,
+  type AutomaticPlacementResult,
+  type GroupMemberParams,
+  type GroupMembers as GroupMembersAnswer,
+  type GroupPlacement,
+  type GroupPlacementBoard,
+  type GroupPlacementQuery,
   groupCreateSchema,
   groupDetailSchema,
   groupEditSchema,
@@ -24,6 +38,7 @@ import { Returns, ReturnsFile, ValidBody, ValidParams, ValidQuery } from '../../
 import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
+import { GroupMembers } from './group-members.service.js';
 import { Groups } from './groups.service.js';
 
 /**
@@ -35,7 +50,10 @@ import { Groups } from './groups.service.js';
  */
 @Controller('groups')
 export class GroupsController {
-  constructor(private readonly groups: Groups) {}
+  constructor(
+    private readonly groups: Groups,
+    private readonly members: GroupMembers,
+  ) {}
 
   @Get()
   @Requires('groups', 'view')
@@ -57,6 +75,34 @@ export class GroupsController {
     @ValidQuery(groupSlotQuerySchema) query: GroupSlotQuery,
   ): Promise<GroupSlotCheck> {
     return this.groups.slotCheck(access, query.classIds);
+  }
+
+  /**
+   * The bulk placement screen (task 3.2b, decision 14): the groups of one
+   * subject and one grade or pair of grades, and the students not yet placed.
+   * Under `edit`: a tool of the roles that place (decision 6). Declared
+   * before `:id`, which would take it otherwise.
+   */
+  @Get('placement')
+  @Requires('groups', 'edit')
+  @Returns(groupPlacementBoardSchema)
+  placementBoard(
+    @CurrentAccess() access: Access,
+    @ValidQuery(groupPlacementQuerySchema) query: GroupPlacementQuery,
+  ): Promise<GroupPlacementBoard> {
+    return this.members.board(access, query);
+  }
+
+  /** "Place automatically" (task 3.2b): the students not yet placed into the smallest suitable group. */
+  @Post('placement/automatic')
+  @Requires('groups', 'edit')
+  @Returns(automaticPlacementResultSchema, 201)
+  placeAutomatically(
+    @CurrentAccess() access: Access,
+    @ValidBody(automaticPlacementSchema) input: AutomaticPlacement,
+    @RequestId() requestId: string,
+  ): Promise<AutomaticPlacementResult> {
+    return this.members.automatic(access, input, requestId);
   }
 
   /** The Excel file of the list. */
@@ -127,5 +173,55 @@ export class GroupsController {
     @RequestId() requestId: string,
   ): Promise<GroupDetail> {
     return this.groups.restore(access, params.id, input, requestId);
+  }
+
+  /** The Students tab of a group (task 3.2b); a Tutor reads the members of own classes (decision 4). */
+  @Get(':id/members')
+  @Requires('groups', 'view')
+  @Returns(groupMembersSchema)
+  groupMembers(
+    @CurrentAccess() access: Access,
+    @ValidParams(groupParamsSchema) params: GroupParams,
+  ): Promise<GroupMembersAnswer> {
+    return this.members.members(access, params.id);
+  }
+
+  /** "Put into a group" from a date, all or none (task 3.2b). */
+  @Post(':id/members')
+  @Requires('groups', 'edit')
+  @Returns(groupMembersSchema, 201)
+  place(
+    @CurrentAccess() access: Access,
+    @ValidParams(groupParamsSchema) params: GroupParams,
+    @ValidBody(groupPlacementSchema) input: GroupPlacement,
+    @RequestId() requestId: string,
+  ): Promise<GroupMembersAnswer> {
+    return this.members.place(access, params.id, input, requestId);
+  }
+
+  /** The withdraw of a planned group placement (task 3.2b). */
+  @Post(':id/members/:memberId/withdraw')
+  @HttpCode(200)
+  @Requires('groups', 'edit')
+  @Returns(groupMembersSchema)
+  withdraw(
+    @CurrentAccess() access: Access,
+    @ValidParams(groupMemberParamsSchema) params: GroupMemberParams,
+    @RequestId() requestId: string,
+  ): Promise<GroupMembersAnswer> {
+    return this.members.withdraw(access, params.id, params.memberId, requestId);
+  }
+
+  /** "Mark reviewed": the tag of an automatic placement goes (task 3.2b, decision 3). */
+  @Post(':id/members/:memberId/reviewed')
+  @HttpCode(200)
+  @Requires('groups', 'edit')
+  @Returns(groupMembersSchema)
+  reviewed(
+    @CurrentAccess() access: Access,
+    @ValidParams(groupMemberParamsSchema) params: GroupMemberParams,
+    @RequestId() requestId: string,
+  ): Promise<GroupMembersAnswer> {
+    return this.members.reviewed(access, params.id, params.memberId, requestId);
   }
 }

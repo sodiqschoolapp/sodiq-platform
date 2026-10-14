@@ -19,6 +19,7 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { GroupForm, sharedLanguage } from './group-form';
+import { GroupMembers } from './group-members';
 import { SharedSlots } from './group-slots';
 import { archiveGroup, editGroup, groupQuery, invalidateGroups, restoreGroup } from './groups-api';
 
@@ -161,10 +162,9 @@ export function GroupPanel({
             {(
               [
                 // Decision 15 of 3.2a: the teacher comes with the teaching load
-                // (3.4), the students with membership (3.2b), the figures with
-                // the journal.
+                // (3.4), the figures with the journal; the students are a
+                // column (3.2b).
                 ['teacher', t('groups.teacher')],
-                ['students', t('groups.students')],
                 ['average', t('groups.average')],
                 ['attendance', t('groups.attendance')],
               ] as const
@@ -177,6 +177,10 @@ export function GroupPanel({
           </dl>
           <SharedSlots slots={group.slots} />
         </>
+      )}
+
+      {panel.editing !== 'record' && (
+        <GroupMembers group={group} years={years} canEdit={editable} panel={panel} />
       )}
 
       {(editable || (canArchive && group.yearStatus !== 'closed')) && panel.editing === null && (

@@ -292,6 +292,22 @@ export interface GroupClasses {
   group_id: string;
 }
 
+export interface GroupMemberships {
+  branch_id: string;
+  cause: string;
+  created_at: Generated<Timestamp>;
+  ended_by: string | null;
+  group_id: string;
+  id: Generated<string>;
+  leaving_id: string | null;
+  own_until: string;
+  review: Generated<boolean>;
+  student_id: string;
+  subject_id: string;
+  valid_from: string;
+  valid_until: string;
+}
+
 export interface Groups {
   academic_year_id: string;
   archived_at: Timestamp | null;
@@ -685,6 +701,7 @@ export interface DB {
   feedback_reports: FeedbackReports;
   floors: Floors;
   group_classes: GroupClasses;
+  group_memberships: GroupMemberships;
   groups: Groups;
   known_devices: KnownDevices;
   notifications: Notifications;

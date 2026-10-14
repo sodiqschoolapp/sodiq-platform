@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   GROUP_MAX_SIZE,
+  GROUP_PLACEMENT_MAX_STUDENTS,
+  automaticPlacementSchema,
   groupCreateSchema,
   groupKindOf,
   groupNameSchema,
+  groupPlacementQuerySchema,
+  groupPlacementSchema,
   groupSlotQuerySchema,
 } from './groups.js';
 
@@ -69,5 +73,64 @@ describe('groupKindOf (decision 3)', () => {
   it('names one class a split and several a group across classes', () => {
     expect(groupKindOf(1)).toBe('split');
     expect(groupKindOf(3)).toBe('across');
+  });
+});
+
+// Task 3.2b (pull request #92): "Put into a group" names each student once,
+// at most a group's maximum; the bulk screen is one grade or one pair of
+// grades (`05`: "for one subject and one grade, or one pair of grades, at a
+// time").
+describe('groupPlacementSchema', () => {
+  const student = (n: number) => ({ id: `01900000-0000-7000-8000-${String(n).padStart(12, '0')}` });
+
+  it('takes 1 to GROUP_PLACEMENT_MAX_STUDENTS students, each once', () => {
+    expect(GROUP_PLACEMENT_MAX_STUDENTS).toBe(GROUP_MAX_SIZE);
+    expect(
+      groupPlacementSchema.safeParse({ students: [student(1)], from: '2026-10-14' }).success,
+    ).toBe(true);
+    expect(groupPlacementSchema.safeParse({ students: [], from: '2026-10-14' }).success).toBe(
+      false,
+    );
+    expect(
+      groupPlacementSchema.safeParse({ students: [student(1), student(1)], from: '2026-10-14' })
+        .success,
+    ).toBe(false);
+    // The same id in two letter cases is the same student.
+    const upper = { id: student(1).id.toUpperCase() };
+    expect(
+      groupPlacementSchema.safeParse({ students: [student(1), upper], from: '2026-10-14' }).success,
+    ).toBe(false);
+    const many = Array.from({ length: GROUP_PLACEMENT_MAX_STUDENTS + 1 }, (_, n) => student(n + 1));
+    expect(groupPlacementSchema.safeParse({ students: many, from: '2026-10-14' }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe('the bulk placement screen', () => {
+  it('reads one grade or a pair of grades', () => {
+    expect(
+      groupPlacementQuerySchema.parse({ subjectId, grades: '9,10', on: '2026-10-14' }).grades,
+    ).toEqual([9, 10]);
+    expect(
+      groupPlacementQuerySchema.parse({ subjectId, grades: '7', on: '2026-10-14' }).grades,
+    ).toEqual([7]);
+  });
+
+  it('refuses three grades, a grade twice and a grade outside 1 to 11', () => {
+    for (const grades of ['7,8,9', '7,7', '12', 'x']) {
+      expect(
+        groupPlacementQuerySchema.safeParse({ subjectId, grades, on: '2026-10-14' }).success,
+        grades,
+      ).toBe(false);
+    }
+    expect(
+      automaticPlacementSchema.safeParse({ subjectId, grades: [7, 8, 9], from: '2026-10-14' })
+        .success,
+    ).toBe(false);
+    expect(
+      automaticPlacementSchema.safeParse({ subjectId, grades: [9, 10], from: '2026-10-14' })
+        .success,
+    ).toBe(true);
   });
 });

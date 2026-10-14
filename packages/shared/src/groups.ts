@@ -169,6 +169,8 @@ export const groupSchema = z.object({
   grades: z.array(classGradeSchema),
   classes: z.array(groupClassSchema),
   kind: groupKindSchema,
+  /** The members today (the card's count; task 3.2b). */
+  students: z.int().min(0),
   archived: z.boolean(),
   /** The state an edit is made on. */
   version: z.int().min(0),
@@ -189,3 +191,181 @@ export type GroupDetail = z.infer<typeof groupDetailSchema>;
 export const groupSlotCheckSchema = z.object({ slots: groupSlotsSchema });
 
 export type GroupSlotCheck = z.infer<typeof groupSlotCheckSchema>;
+
+/**
+ * Group membership (task 3.2b, pull request #92). "Put into a group" places
+ * 1 to GROUP_MAX_SIZE students at once, all or none (the 3.1b precedent): a
+ * group holds at most that many.
+ */
+export const GROUP_PLACEMENT_MAX_STUDENTS = GROUP_MAX_SIZE;
+
+export const groupMemberParamsSchema = z.object({ id: z.uuid(), memberId: z.uuid() });
+
+export type GroupMemberParams = z.infer<typeof groupMemberParamsSchema>;
+
+/**
+ * "Put into a group" from a date (decision 15 of the plan). A student is
+ * refused by state when another change came first (decision 11): the
+ * student's `version` does not count group rows.
+ */
+export const groupPlacementSchema = z.strictObject({
+  students: z
+    .array(z.strictObject({ id: z.uuid() }))
+    .min(1)
+    .max(GROUP_PLACEMENT_MAX_STUDENTS)
+    .refine(
+      (students) =>
+        new Set(students.map((student) => student.id.toLowerCase())).size === students.length,
+      { message: 'A student is named once.' },
+    ),
+  from: schoolDateSchema,
+});
+
+export type GroupPlacement = z.infer<typeof groupPlacementSchema>;
+
+/** `current`: in the group today; `planned`: joins after today. */
+export const groupMemberStateSchema = z.enum(['current', 'planned']);
+
+export type GroupMemberState = z.infer<typeof groupMemberStateSchema>;
+
+/** A member of a group as its Students tab shows them: the Basic group, the class and the dates. */
+export const groupMemberSchema = z.object({
+  /** The group row; a planned one is withdrawn by it. */
+  id: z.uuid(),
+  studentId: z.uuid(),
+  uid: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  /** The class of the student on the first day of the row. */
+  class: z.object({ id: z.uuid(), grade: classGradeSchema, name: z.string() }),
+  from: schoolDateSchema,
+  /** The first day without the group. */
+  until: schoolDateSchema,
+  state: groupMemberStateSchema,
+  /** "Placed automatically, review" (decision 3). */
+  review: z.boolean(),
+});
+
+export type GroupMember = z.infer<typeof groupMemberSchema>;
+
+/**
+ * The Students tab of a group: the members in force today and the planned
+ * ones, by surname; the free seats today and the fewest on any date from
+ * today on, scheduled joins and leaves counted. A Tutor reads the members of
+ * own classes only (decision 4): `othersCount` counts the rest, `0` for
+ * every other reader.
+ */
+export const groupMembersSchema = z.object({
+  members: z.array(groupMemberSchema),
+  othersCount: z.int().min(0),
+  freeToday: z.int(),
+  freeLeast: z.int(),
+  today: schoolDateSchema,
+});
+
+export type GroupMembers = z.infer<typeof groupMembersSchema>;
+
+/** One grade, or one pair of grades, comma-separated in the query. */
+const placementGradesSchema = z
+  .string()
+  .max(5)
+  .transform((text) => text.split(',').map(Number))
+  .pipe(
+    z
+      .array(classGradeSchema)
+      .min(1)
+      .max(2)
+      .refine((grades) => new Set(grades).size === grades.length, {
+        message: 'A grade is named once.',
+      }),
+  );
+
+/**
+ * The bulk placement screen (`05`: "into groups for one subject and one
+ * grade, or one pair of grades, at a time"), on a date.
+ */
+export const groupPlacementQuerySchema = z.strictObject({
+  subjectId: z.uuid(),
+  grades: placementGradesSchema,
+  on: schoolDateSchema,
+});
+
+export type GroupPlacementQuery = z.infer<typeof groupPlacementQuerySchema>;
+
+/** A group of the screen: its members on the date and its free seats from the date on. */
+export const placementGroupSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  language: instructionLanguageSchema,
+  classes: z.array(z.object({ id: z.uuid(), grade: classGradeSchema, name: z.string() })),
+  maxSize: z.int().min(1),
+  /** The members on the date. */
+  members: z.int().min(0),
+  /** The fewest free seats on any date from the date on. */
+  free: z.int(),
+});
+
+export type PlacementGroup = z.infer<typeof placementGroupSchema>;
+
+/**
+ * A student not yet placed (decision 14): a class row on the date in a class
+ * the screen's groups draw from, and no group of the subject on or after the
+ * date (the rule of `student_has_group`, decision 10).
+ */
+export const unplacedStudentSchema = z.object({
+  id: z.uuid(),
+  uid: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  class: z.object({ id: z.uuid(), grade: classGradeSchema, name: z.string() }),
+  /** The first day of the class row that holds the date. */
+  classFrom: schoolDateSchema,
+});
+
+export type UnplacedStudent = z.infer<typeof unplacedStudentSchema>;
+
+export const groupPlacementBoardSchema = z.object({
+  groups: z.array(placementGroupSchema),
+  unplaced: z.array(unplacedStudentSchema),
+  today: schoolDateSchema,
+});
+
+export type GroupPlacementBoard = z.infer<typeof groupPlacementBoardSchema>;
+
+/** "Place automatically": every student not yet placed on the screen, from a date. */
+export const automaticPlacementSchema = z.strictObject({
+  subjectId: z.uuid(),
+  grades: z
+    .array(classGradeSchema)
+    .min(1)
+    .max(2)
+    .refine((grades) => new Set(grades).size === grades.length, {
+      message: 'A grade is named once.',
+    }),
+  from: schoolDateSchema,
+});
+
+export type AutomaticPlacement = z.infer<typeof automaticPlacementSchema>;
+
+/** What "Place automatically" did: the students placed, each with its group. */
+export const automaticPlacementResultSchema = z.object({
+  placed: z.array(z.object({ studentId: z.uuid(), groupId: z.uuid() })),
+});
+
+export type AutomaticPlacementResult = z.infer<typeof automaticPlacementResultSchema>;
+
+/**
+ * A group as a student names it (the list's `groups` column, the Academic
+ * block): in force today, else the first planned, one per subject; `review`
+ * is the tag of an automatic placement.
+ */
+export const studentGroupSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  subjectId: z.uuid(),
+  from: schoolDateSchema,
+  state: groupMemberStateSchema,
+  review: z.boolean(),
+});
+
+export type StudentGroup = z.infer<typeof studentGroupSchema>;

@@ -51,6 +51,7 @@ const OTKIR: StudentListItem = {
   plannedClass: null,
   tutor: { firstName: 'Dilnoza', lastName: 'Tursunova' },
   actingTutor: null,
+  groups: [],
   version: 2,
   opens: true,
 };
@@ -80,6 +81,7 @@ const ZARINA: StudentListItem = {
   },
   tutor: null,
   actingTutor: null,
+  groups: [],
   version: 1,
   opens: true,
 };
@@ -102,6 +104,7 @@ const LOLA: StudentListItem = {
   plannedClass: null,
   tutor: null,
   actingTutor: null,
+  groups: [],
   version: 2,
   opens: true,
 };
@@ -1964,7 +1967,7 @@ describe('the export of the student list', () => {
     });
   };
 
-  it('sends the columns of the list, never the photo or groups; the headings are the file’s', async () => {
+  it('sends the columns of the list, never the photo; the headings are the file’s', async () => {
     const calls = openExport(['basic', 'contact', 'identity', 'financial']);
     renderApp(PATH);
     await waitFor(() => {
@@ -1975,8 +1978,8 @@ describe('the export of the student list', () => {
       .map((cell) => cell.textContent ?? '')
       .filter(
         (text) =>
-          // Task 3.1b: the Tutor joined the file; the groups come with 3.2.
-          ![en.people.staff.photo.column, en.people.students.groups].includes(text),
+          // Task 3.1b: the Tutor joined the file; task 3.2b the groups (decision 2 of #92).
+          text !== en.people.staff.photo.column,
       );
     expect(exportedHeadings).toEqual(
       STUDENT_LIST_EXPORT_COLUMNS.map((key) => EXPORT_TEXTS.en.students.columns[key]),
@@ -2329,6 +2332,8 @@ describe('the classes of the students', () => {
       ]);
       expect(terms).toEqual([
         [texts.people.students.class, '7 Oxford'],
+        // Task 3.2b: the groups of the student, none here.
+        [texts.people.students.groups, '—'],
         [texts.people.students.tutor, 'Tursunova Dilnoza'],
         [texts.people.students.mainRoom, '204'],
       ]);
