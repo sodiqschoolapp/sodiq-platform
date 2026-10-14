@@ -47,6 +47,7 @@ export type AccountKey =
   | 'peopleTabs'
   | 'pages'
   | 'classes'
+  | 'groups'
   | 'members'
   | 'topBar'
   | 'tutorScope';

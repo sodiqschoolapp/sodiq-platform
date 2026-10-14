@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 14 October 2026: task 3.2a Groups
+
+- Built: migrations 0046 (`groups`, `group_classes`, the deferred guard, the class's and the subject's side) and 0047 (`subject_groups_elsewhere`); the area `groups` with the Head Teachers' subject scope and the Tutor's class scope (`group-scope.ts`); routes `api/groups` (list, record, create, edit, archive, restore, export, slot check); `sharedLessonSlots` and `twoGradeSlots` in `packages/timetable-rules`.
+- The Groups page (from the Classes page), its form with the shared slots and the mixed-language confirmation, the panel, cards at phone width; the class edit's confirmation for groups it makes mixed; the checklist item; Ctrl+K lists Groups.
+- Left out: membership, placement, the unplaced list and the student list's groups (3.2b); the group rule on class membership paths and `group_placement_gaps` (3.2c); Ctrl+K over records (3.2d); the teacher of a group and the load step's refusals (3.4); group transfers (3.3).
+
+The next sessions must know:
+
+- A write of a group takes its classes FOR SHARE by id before the group row; a write that touches groups from a class takes the class FOR UPDATE first (`followClassLanguage`).
+- `ClassesKit.subject` and `ClassesKit.group` write subjects and groups; the browser seed has a `groups` account and a group in the pages branch.
+- The next task is 3.2b.
+
 ## 14 October 2026: task 3.1c Class scope for Tutors
 
 - Built: the class scope of Tutors (`apps/api/src/modules/access/class-scope.ts`): the permission guard puts on every Tutor assignment of the request's branch the classes of its Tutor and acting rows in force; the table gives the Tutor `classes` `view`, `student_contact` `view` and `students` `export`, each limited to own classes in the route.

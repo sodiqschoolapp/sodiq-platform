@@ -1401,6 +1401,40 @@ try {
         max_size: 24,
       })
       .execute();
+    // Task 3.2a: a group of a class of grade 7, so that the group list opens with a record.
+    const harvard = await transaction
+      .insertInto('classes')
+      .values({
+        branch_id: pagesBranch,
+        academic_year_id: year.id,
+        grade: 7,
+        name: 'Harvard',
+        language: 'uz',
+        max_size: 24,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const geometry = await transaction
+      .selectFrom('subjects')
+      .select('id')
+      .where('name_en', '=', 'Geometry')
+      .executeTakeFirstOrThrow();
+    const pagesGroup = await transaction
+      .insertInto('groups')
+      .values({
+        branch_id: pagesBranch,
+        academic_year_id: year.id,
+        subject_id: geometry.id,
+        name: '7-G-1',
+        language: 'uz',
+        max_size: 20,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('group_classes')
+      .values({ group_id: pagesGroup.id, class_id: harvard.id, branch_id: pagesBranch })
+      .execute();
     const lesson = await transaction
       .insertInto('slot_types')
       .values({ branch_id: pagesBranch, name: 'Lesson 45', kind: 'lesson' })
@@ -1711,6 +1745,59 @@ try {
       .execute();
   });
   seeded.classes = { login: classesVice.login, password: classesVice.firstPassword };
+
+  // The Academic Vice Principal of the groups test (task 3.2a), in a branch
+  // of its own with a planned year around today and three classes of grade 7:
+  // two Uzbek ones and a Russian one.
+  const groupsBranch = await insertBranch(migrator, 'Groups browser test branch');
+  const groupsVice = await create('Nilufar', 'Hasanova');
+  await transactions.run([groupsBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: groupsVice.id,
+      role: 'academic_vice_principal',
+      branchId: groupsBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: groupsBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: groupsBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    for (const [name, language] of [
+      ['Oxford', 'uz'],
+      ['Princeton', 'uz'],
+      ['Yale', 'ru'],
+    ] as const) {
+      await transaction
+        .insertInto('classes')
+        .values({
+          branch_id: groupsBranch,
+          academic_year_id: year.id,
+          grade: 7,
+          name,
+          language,
+          max_size: 25,
+        })
+        .execute();
+    }
+  });
+  seeded.groups = { login: groupsVice.login, password: groupsVice.firstPassword };
 
   // The Academic Vice Principal of the membership test (task 3.1b), in a
   // branch of its own with the year around today, the class 7 Oxford and two

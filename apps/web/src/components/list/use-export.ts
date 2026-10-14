@@ -1,6 +1,7 @@
 import {
   buildingExportSchema,
   classExportSchema,
+  groupExportSchema,
   divisionExportSchema,
   EXPORT_COLUMNS_HEADER,
   EXPORT_ROWS_LEFT_OUT_HEADER,
@@ -78,6 +79,12 @@ const EXPORTS = {
     api.POST('/api/classes/export', {
       params: header(),
       body: classExportSchema.parse(body),
+      parseAs: 'blob',
+    }),
+  groups: (body: Body) =>
+    api.POST('/api/groups/export', {
+      params: header(),
+      body: groupExportSchema.parse(body),
       parseAs: 'blob',
     }),
   subjects: (body: Body) =>

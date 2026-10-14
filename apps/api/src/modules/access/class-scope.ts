@@ -26,7 +26,13 @@ export const CLASS_WIDE_ROLES: readonly Role[] = [
  * adds class scope to an area adds the area here (`class-scope.test.ts` pins
  * the list).
  */
-export const CLASS_SCOPED_AREAS: readonly string[] = ['classes', 'students', 'student_contact'];
+// Task 3.2a, decision 11 of pull request #91 (Look first): the groups that draw from own classes.
+export const CLASS_SCOPED_AREAS: readonly string[] = [
+  'classes',
+  'students',
+  'student_contact',
+  'groups',
+];
 
 /**
  * Whether an assignment's scope fits one of the classes. A Tutor fits the

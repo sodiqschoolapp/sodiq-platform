@@ -21,6 +21,8 @@ const PAGES: Record<ChecklistItemKey, { to: LinkProps['to']; area: string }> = {
   subjects: { to: '/setup/subjects', area: 'subjects' },
   // Task 3.1a, decision 12.
   classes: { to: '/classes', area: 'classes' },
+  // Task 3.2a, decision 14.
+  groups: { to: '/groups', area: 'groups' },
 };
 
 /**

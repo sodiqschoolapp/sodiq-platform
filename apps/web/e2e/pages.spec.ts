@@ -48,6 +48,8 @@ const LISTS = [
   ['people-parents', '/people/parents', en.people.relatives.title],
   // Task 3.1a: the seeded class.
   ['classes', '/classes', en.classes.title],
+  // Task 3.2a: the seeded group.
+  ['groups', '/groups', en.groups.title],
 ] as const;
 
 /** The lists the Academic Vice Principal adds to, with the "New …" button and the panel's title. */
@@ -95,6 +97,7 @@ const NEW_RECORDS = [
     en.people.vacancies.newTitle,
   ],
   ['classes', '/classes', en.classes.title, en.classes.add, en.classes.newTitle],
+  ['groups', '/groups', en.groups.title, en.groups.add, en.groups.newTitle],
 ] as const;
 
 /**
@@ -172,6 +175,8 @@ const EDITS = [
   // Task 3.1a: the record and the forms of its Tutors.
   ['classes', '/classes', en.classes.title, null, en.form.edit],
   ['classes-tutor', '/classes', en.classes.title, null, en.classes.giveTutor],
+  // Task 3.2a: the record of a group.
+  ['groups', '/groups', en.groups.title, null, en.form.edit],
 ] as const;
 
 /** The other pages of Phases 0 to 2 the Academic Vice Principal opens. */

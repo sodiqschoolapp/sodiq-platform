@@ -213,6 +213,33 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 14 October 2026: groups and splits (task 3.2a)
+
+Plan approved on pull request #91 with corrections 1 to 4; decisions 1, 2, 11, 12, 15 and 16 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Task 3.2 split into 3.2a (groups), 3.2b (group membership), 3.2c (groups on every class membership path) and 3.2d (Ctrl+K over records), written into `docs/build-plan.md`; the inherited 3.1b line and the "done when" to 3.2c, the groups part of the 3.3 leaving line to 3.2b, two lines to 3.4 | Decision 1 and correction 2 (the search handed to 3.2 by 3.1a and 3.1c is a task of its own) |
+| **Look first.** Area `groups`: the Super Admin and the Academic Vice Principal view, create, edit, archive, export; the Principal views and exports; the Spiritual VP and the Head Tutor view; the Head Teacher views the groups of own subjects in own branch, the Senior Head Teacher of own subjects in every branch; the Tutor views the groups that draw from own classes (`group-scope.ts`) | Decision 2 with correction 4: the view rows of the Spiritual VP, the Head Tutor and the Tutor are a reading of `02` |
+| **Look first.** `CLASS_SCOPED_AREAS` gains `groups`; the Groups list is reached from the Classes item (a link on the Classes page, the Ctrl+K index `CLASS_PAGES`), so the menu table is unchanged: every role that views groups already has the item | Decision 11; built: the item is "Classes and subjects" |
+| **Look first.** `subject_group_grades` (0046) and `subject_groups_elsewhere` (0047) SECURITY DEFINER, grades and counts only: a subject cannot lose a grade nor be archived while an active group of any branch needs it, and the refusal names the groups of the branch (`group.<id>`) and counts the others (`elsewhere`) | Decisions 12 and 16 with the review's note; 0047 because `subject_group_grades` counts a group of two grades twice |
+| **Look first.** The group has no teacher field; the card and panel show "—" for the teacher until 3.4. Proposed `/spec-change` for `05`, Group, Fields: "Subject, grade or two grades, name (7-M-1), language, maximum size. The teacher (or a vacancy) of a group is the teacher of its teaching load row." | Decision 15 |
+| **Look first.** The database refuses a group whose subject does not list every grade of its classes (`group_subject_grade`), earlier than the spec's load step | Decision 16 |
+| A split is a group of one class; the kind is derived; `group_classes` link rows may be deleted by the application, the sets in the audit entry | Decisions 3 and 4 |
+| One planned or current year and one subject, fixed (`groups_fixed` for every user); a name of 1 to 40 letters, digits, spaces, hyphens and Uzbek apostrophes, a digit allowed first, unique per branch and year among archived groups too by `class_name_key`; size 1 to 60 | Decisions 5 to 7, correction 3 |
+| The language: the classes' when they share one (`group_language`), chosen when they differ, with `confirmMixedLanguage` for a subject under the language rule (in the audit entry); a class language change moves its one-language groups in the same transaction (`groupsMoved` in the class's entry) and needs `confirmMixedGroups` for a group it makes mixed (`class_language_mixes_groups`, the groups named) | Decision 8 |
+| The two-grade slot rule is shown, never refused, at the save: `sharedLessonSlots` and `twoGradeSlots` of `packages/timetable-rules` compare clock minutes, from the later of `branch_today` at `transactionMoment` and the year's first day; `GET api/groups/slot-check` under `groups` `create` | Decision 9 |
+| Archive is the only removal; an archived group is not checked again; a restore runs every rule | Decision 10 |
+| A class feeding an active group cannot change grade nor be archived (`class_grade_groups`, `class_in_groups`) | Decision 16 |
+| Checklist item `groups` after `classes` | Decision 14 |
+| Lock order: every group write takes its class rows (old and new set) FOR SHARE in the order of their id, then the group row FOR UPDATE, then writes; a class edit takes its class FOR UPDATE, then the group rows | Correction 1; tested both directions |
+| A subject edit waits for a group create that names it (the foreign key's key share lock against the edit's FOR UPDATE), then sees the group and refuses | Build: the same-moment test of a create and a grade removal |
+| A class language change locks the class and every class of its active groups FOR UPDATE in the order of their id before its own row or a group (`lockClassesOfGroups`); a `group_language` refusal of the class edit after it is a fault (`request_refused`) | Spec review of the build, must-fix 1 (two classes of one group deadlocked) and should-fix 3 |
+| A restore takes the classes' shared language (the change in its audit entry) and refuses with codes of its own, `group_restore_class` and `group_restore_subject`, whose texts say what can be done | Spec review of the build, must-fix 4: a group archived before its class changed language could never come back |
+| The subject panel names the groups of the branch and counts those of other branches (`GroupsOutside`, the `TeachersOutside` precedent); the error texts speak of "active groups" so they are true in either case | Spec review of the build, must-fix 5 |
+| A class language change writes a `group.edit` entry on each group it moves; the export keeps to the reader's scope (`inScope`) | Permission review of the build, S1 and S2 |
+| `ClassesKit.schoolClass` names its classes by a letter count (`Oxford a`, `Oxford ba`): the old digits-to-q names repeated after seven classes | Build |
+
 ## 14 October 2026: the class scope of Tutors (task 3.1c)
 
 Plan approved on pull request #90 with corrections 1 to 3; decisions 1 to 15 confirmed there, 1 to 5 marked Look first. Flagged on issue #42.

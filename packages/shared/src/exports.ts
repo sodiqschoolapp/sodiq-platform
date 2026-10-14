@@ -29,6 +29,7 @@ export const EXPORT_LISTS = [
   'subjects',
   'students',
   'classes',
+  'groups',
 ] as const;
 
 export type ExportList = (typeof EXPORT_LISTS)[number];
@@ -106,6 +107,16 @@ export const CLASS_EXPORT_COLUMNS = [
   'mainRoom',
   // Task 3.1b: the members today, the count of the card.
   'students',
+  'maxSize',
+  'status',
+] as const;
+
+/** The group list (task 3.2a): the group, its subject, its classes, language, maximum size and status. */
+export const GROUP_EXPORT_COLUMNS = [
+  'name',
+  'subject',
+  'classes',
+  'language',
   'maxSize',
   'status',
 ] as const;
@@ -197,6 +208,7 @@ export type RoomExportColumn = (typeof ROOM_EXPORT_COLUMNS)[number];
 export type DivisionExportColumn = (typeof DIVISION_EXPORT_COLUMNS)[number];
 export type SubjectExportColumn = (typeof SUBJECT_EXPORT_COLUMNS)[number];
 export type ClassExportColumn = (typeof CLASS_EXPORT_COLUMNS)[number];
+export type GroupExportColumn = (typeof GROUP_EXPORT_COLUMNS)[number];
 
 /**
  * The contact columns of the staff list, left out of the Principal's export
@@ -276,6 +288,7 @@ export const divisionExportSchema = exportRequestSchema(DIVISION_EXPORT_COLUMNS)
 export const subjectExportSchema = exportRequestSchema(SUBJECT_EXPORT_COLUMNS);
 export const studentExportSchema = exportRequestSchema(STUDENT_EXPORT_COLUMNS);
 export const classExportSchema = exportRequestSchema(CLASS_EXPORT_COLUMNS);
+export const groupExportSchema = exportRequestSchema(GROUP_EXPORT_COLUMNS);
 
 export type StaffExport = z.infer<typeof staffExportSchema>;
 export type VacancyExport = z.infer<typeof vacancyExportSchema>;
@@ -285,6 +298,7 @@ export type DivisionExport = z.infer<typeof divisionExportSchema>;
 export type SubjectExport = z.infer<typeof subjectExportSchema>;
 export type StudentExport = z.infer<typeof studentExportSchema>;
 export type ClassExport = z.infer<typeof classExportSchema>;
+export type GroupExport = z.infer<typeof groupExportSchema>;
 
 /** The texts of one list's file: its name (sheet and file) and the heading of each column. */
 export interface ExportListTexts<Column extends string> {
@@ -307,6 +321,7 @@ export interface ExportTexts {
   subjects: ExportListTexts<SubjectExportColumn>;
   students: ExportListTexts<StudentExportColumn>;
   classes: ExportListTexts<ClassExportColumn>;
+  groups: ExportListTexts<GroupExportColumn>;
   /** The texts of the cells of the student file, as the student list and profile write them. */
   student: {
     statuses: Record<StudentStatus, string>;
@@ -419,6 +434,17 @@ const en: ExportTexts = {
       tutor: 'Tutor',
       mainRoom: 'Main classroom',
       students: 'Students',
+      maxSize: 'Maximum size',
+      status: 'Status',
+    },
+  },
+  groups: {
+    name: 'Groups',
+    columns: {
+      name: 'Group',
+      subject: 'Subject',
+      classes: 'Classes',
+      language: 'Language of instruction',
       maxSize: 'Maximum size',
       status: 'Status',
     },
@@ -640,6 +666,17 @@ const ru: ExportTexts = {
       status: 'Состояние',
     },
   },
+  groups: {
+    name: 'Группы',
+    columns: {
+      name: 'Группа',
+      subject: 'Предмет',
+      classes: 'Классы',
+      language: 'Язык обучения',
+      maxSize: 'Наибольший размер',
+      status: 'Состояние',
+    },
+  },
   students: {
     name: 'Ученики',
     columns: {
@@ -852,6 +889,17 @@ const uz: ExportTexts = {
       tutor: 'Tyutor',
       mainRoom: 'Asosiy xona',
       students: 'Oʻquvchilar',
+      maxSize: 'Eng koʻp oʻquvchi',
+      status: 'Holati',
+    },
+  },
+  groups: {
+    name: 'Guruhlar',
+    columns: {
+      name: 'Guruh',
+      subject: 'Fan',
+      classes: 'Sinflar',
+      language: 'Taʼlim tili',
       maxSize: 'Eng koʻp oʻquvchi',
       status: 'Holati',
     },

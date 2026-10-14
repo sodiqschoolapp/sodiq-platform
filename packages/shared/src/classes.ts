@@ -115,7 +115,14 @@ export const classCreateSchema = classRecordSchema.extend({ academicYearId: z.uu
 export type ClassCreate = z.infer<typeof classCreateSchema>;
 
 /** The edit names the state it was made on ("class changed, reload"). */
-export const classEditSchema = classRecordSchema.extend({ version: z.int().min(0) });
+export const classEditSchema = classRecordSchema.extend({
+  version: z.int().min(0),
+  /**
+   * Confirms that a language change makes an active group of a subject under
+   * the language rule mix languages (task 3.2a, decision 8).
+   */
+  confirmMixedGroups: z.boolean().default(false),
+});
 
 export type ClassEdit = z.infer<typeof classEditSchema>;
 

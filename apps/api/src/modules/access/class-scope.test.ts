@@ -45,7 +45,7 @@ describe('class scope', () => {
   });
 
   it('pins the areas whose routes read the class scope', () => {
-    expect(CLASS_SCOPED_AREAS).toEqual(['classes', 'students', 'student_contact']);
+    expect(CLASS_SCOPED_AREAS).toEqual(['classes', 'students', 'student_contact', 'groups']);
   });
 
   it('fits a class for the class-wide roles and the Tutor of the class only', () => {

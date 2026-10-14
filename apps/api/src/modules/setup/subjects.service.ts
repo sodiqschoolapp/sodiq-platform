@@ -30,6 +30,7 @@ import {
   type ExportColumn,
   type SchoolNames,
 } from '../audit/export-list.js';
+import { refuseGroupsOfSubject } from '../classes/group-side.js';
 import { refuseTeachersOutside } from '../people/subject-teachers.js';
 import { changesOf, notFound, refusingConstraints, refusingDuplicates } from './setup-refusals.js';
 
@@ -47,6 +48,9 @@ const SUBJECT_NAME_INDEXES: Readonly<Record<string, string>> = {
 const SUBJECT_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   subjects_department_academic: 'department_not_academic',
   subjects_department_archived: 'department_archived',
+  // Task 3.2a, decision 16 (db/migrations/0046): an active group of any branch needs it.
+  subject_grade_groups: 'subject_grade_groups',
+  subject_has_groups: 'subject_has_groups',
 };
 
 const SUBJECT_COLUMNS = [
@@ -339,6 +343,11 @@ export class Subjects {
             this.clock.now(),
           );
         }
+        // Task 3.2a, decision 16: a removed grade is refused while an active
+        // group of that grade needs the subject, in any branch.
+        if (gradesRemoved) {
+          await refuseGroupsOfSubject(transaction, id, after.grades);
+        }
         // Decision 14: a subject that becomes graded again starts a new round;
         // the weights of every branch from before no longer count.
         const round =
@@ -409,28 +418,32 @@ export class Subjects {
   /** At the moment of the clock. An archived subject stays as it is. */
   archive(access: Access, id: string, requestId: string): Promise<Subject> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      const row = await this.lock(transaction, id);
-      if (row.archived_at === null) {
-        const now = this.clock.now();
-        await transaction
-          .updateTable('subjects')
-          .set({ archived_at: now })
-          .where('id', '=', id)
-          .execute();
-        await this.audit.record(transaction, {
-          branchId: null,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'subject.archive',
-          record: { type: 'subject', id },
-          oldValue: { archivedAt: null },
-          newValue: { archivedAt: now.toISOString() },
-          requestId,
-        });
-      }
-      return this.readSubject(transaction, branchId, id);
-    });
+    return this.refusing(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        const row = await this.lock(transaction, id);
+        if (row.archived_at === null) {
+          // Task 3.2a, decision 16: not while an active group of any branch has it.
+          await refuseGroupsOfSubject(transaction, id, null);
+          const now = this.clock.now();
+          await transaction
+            .updateTable('subjects')
+            .set({ archived_at: now })
+            .where('id', '=', id)
+            .execute();
+          await this.audit.record(transaction, {
+            branchId: null,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'subject.archive',
+            record: { type: 'subject', id },
+            oldValue: { archivedAt: null },
+            newValue: { archivedAt: now.toISOString() },
+            requestId,
+          });
+        }
+        return this.readSubject(transaction, branchId, id);
+      }),
+    );
   }
 
   /**

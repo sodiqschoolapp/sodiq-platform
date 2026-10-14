@@ -363,6 +363,42 @@ export const ERROR_CODES = [
   'class_size_below_members',
   /** The dates of an academic year cannot change while its classes hold members (task 3.1b, decision 3). */
   'academic_year_has_members',
+  /** The academic year of the group is closed: a group of a closed year stays as it was (task 3.2a). */
+  'group_year_closed',
+  /** The branch has no planned or current academic year to create a group in (task 3.2a, decision 5). */
+  'group_needs_year',
+  /** The group changed since it was read: read it again (task 3.2a). */
+  'group_changed',
+  /** The group is archived (task 3.2a, decision 10). */
+  'group_archived',
+  /** A class of the group is archived or of another academic year (task 3.2a). */
+  'group_class_year',
+  /** The classes of a group are of one grade or two (`05`, Group; task 3.2a). */
+  'group_grades',
+  /** The subject is not taught in a grade of the group (`edge/timetable`, Structure; task 3.2a, decision 16). */
+  'group_subject_grade',
+  /** The subject of the group is archived (`05`: "Inactive subjects do not appear in pickers"; task 3.2a). */
+  'group_subject_archived',
+  /** The classes of the group share a language, and the group takes it (`05`, Groups; task 3.2a, decision 8). */
+  'group_language',
+  /** The classes of the group differ in language: a language is chosen for it (`05`, Groups; task 3.2a, decision 8). */
+  'group_language_needed',
+  /** The group mixes Uzbek and Russian classes for a subject under the language rule: the warning is confirmed first (`05`, Groups; task 3.2a, decision 8). */
+  'group_mixed_language',
+  /** The grade of a class that feeds an active group is not changed (task 3.2a, decision 16). */
+  'class_grade_groups',
+  /** A class that feeds an active group is not archived (task 3.2a, decision 16). */
+  'class_in_groups',
+  /** A class language change makes a group of a subject under the language rule mix languages: confirmed first (task 3.2a, decision 8). `details` names the groups. */
+  'class_language_mixes_groups',
+  /** A grade leaves a subject while an active group of that grade needs it, in any branch (task 3.2a, decision 16). `details` names the groups of the branch and counts the others. */
+  'subject_grade_groups',
+  /** A subject with active groups, in any branch, is not archived (task 3.2a, decision 16). `details` names the groups of the branch and counts the others. */
+  'subject_has_groups',
+  /** A class of the group is archived or of another academic year, so the group is not restored (task 3.2a, spec review of the build). */
+  'group_restore_class',
+  /** The subject of the group is archived or no longer taught in a grade of its classes, so the group is not restored (task 3.2a, spec review of the build). */
+  'group_restore_subject',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

@@ -231,6 +231,18 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   Teacher none. A new
  *   area for new routes, decided without the owner on pull request #88
  *   (decision 5, Look first), confirmed at its review and flagged on issue #42.
+ * - `groups` (`05`, Group; task 3.2a): the Super Admin and the Academic Vice
+ *   Principal view, create, edit, archive and export (`02`: "Full edit of
+ *   students, classes, groups"); the Principal views and exports; the Vice
+ *   Principal for Spiritual and Moral Education and the Head Tutor view (`02`:
+ *   "Views attendance for all classes", "Views all classes"); the Head
+ *   Teacher views the groups of own subjects in own branch and the Senior
+ *   Head Teacher of own subjects in every branch (`02`, Scope: "For own
+ *   subjects in own branch: … groups"); the Tutor views the groups that draw
+ *   from own classes (`02`: "Own class or classes"); the Teacher none until
+ *   the journal. The scopes are decided in the route (`group-scope.ts`). A
+ *   new area for new routes, decided without the owner on pull request #91
+ *   (decision 2, Look first), confirmed at its review and flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -340,6 +352,16 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['edit'],
   }),
   classes: rows({
+    super_admin: ['view', 'create', 'edit', 'archive', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive', 'export'],
+    spiritual_vice_principal: ['view'],
+    head_tutor: ['view'],
+    tutor: ['view'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
+  }),
+  groups: rows({
     super_admin: ['view', 'create', 'edit', 'archive', 'export'],
     principal: ['view', 'export'],
     academic_vice_principal: ['view', 'create', 'edit', 'archive', 'export'],

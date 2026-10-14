@@ -35,3 +35,9 @@ export {
   type TemplateLevel,
   type TemplateSettings,
 } from './templates.js';
+export {
+  sharedLessonSlots,
+  twoGradeSlots,
+  type SharedSlot,
+  type TwoGradeDay,
+} from './two-grades.js';

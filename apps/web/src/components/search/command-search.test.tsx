@@ -96,6 +96,26 @@ describe('the search of pages', () => {
     expect(await offered('academic_vice_principal')).not.toContain(en.setup.branches.title);
   });
 
+  // Task 3.2a: the Groups list is under the Classes item, for those who view groups.
+  it('offers the Groups list to a role with the Classes item that views groups', async () => {
+    const offered = async (role: 'academic_vice_principal' | 'teacher') => {
+      fakeApi({
+        'GET /api/auth/session': () =>
+          json(sessionOf({ assignments: [{ role, branchId: NORTH.id }], branches: [NORTH] })),
+      });
+      renderApp('/account');
+      await screen.findByRole('heading', { name: en.account.title });
+      pressShortcut();
+      await dialog();
+      fireEvent.change(box(), { target: { value: en.groups.title } });
+      const names = screen.queryAllByRole('option').map((option) => option.textContent ?? '');
+      cleanup();
+      return names;
+    };
+    expect(await offered('academic_vice_principal')).toContain(en.groups.title);
+    expect(await offered('teacher')).not.toContain(en.groups.title);
+  });
+
   it('opens with Cmd+K too, and closes with Escape with the focus back where it was', async () => {
     await openHome();
     const button = screen.getByRole('button', { name: en.search.label });
