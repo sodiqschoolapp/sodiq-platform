@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 14 October 2026: task 3.2d Search over records
+
+- Built: four read routes `GET api/search/{students,staff,classes,groups}?q=`, each under its record route's `@Requires` and scope (a Tutor: own classes' students, own classes, the groups drawing from them; a Head Teacher: groups of own subjects), at most 8 a kind with `more`, the scope applied before the limit; no audit entry.
+- Names by `spellingKey` words, classes and groups also by `classNameKey`, the UID from 3 digits, the staff ID from its letter and 3 digits; the Super Admin and the Academic Vice Principal also by document number, JSHSHIR and phone. `searchWords` moved to `packages/shared`.
+- Ctrl+K lists the records of the kinds the active role views under a heading each, from the second character after a 100 ms pause; Enter opens the record in its list's side panel; "More on the list" opens the list searched; a failed kind has a retry.
+- Left out: relatives (the Relatives list searches them); other branches' records (the branch switcher); recent searches.
+
+The next sessions must know:
+
+- A new record kind for Ctrl+K is a route under its record route's rule plus an entry of `RECORD_KINDS` (`apps/web/src/components/search/search-api.ts`).
+- The browser seed has a `recordSearch` account (Academic Vice Principal of a branch with 7 Oxford and 7 Yale).
+- The next task is 3.3.
+
 ## 14 October 2026: task 3.2c Groups on every class membership path
 
 - Built: migration 0049 (`class_group_subjects`, `class_row_gaps`, `group_placement_gaps`, the commit check `class_memberships_need_groups` on every insert of a class row, the causes `cancel` and `undo` of group rows with their review tag); `class-groups.ts` (`coverClassRows`, `smallestGroup` shared with "Place automatically", `groupPlacementGaps` for 3.4).
