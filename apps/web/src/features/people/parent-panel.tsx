@@ -604,6 +604,8 @@ function SamePersonSection({ relative, panel }: { relative: RelativeDetail; pane
         }),
         invalidateStaff(queryClient),
       ]);
+      // Its button is gone: the focus goes to "Mark as staff member" (task 2.7c-2b-2b).
+      panel.point('same', { saved: true });
     },
   });
   const same = relative.samePerson;

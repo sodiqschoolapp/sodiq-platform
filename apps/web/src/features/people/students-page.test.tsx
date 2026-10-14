@@ -1069,6 +1069,49 @@ describe('leaving, return and delete', () => {
     expect(actions).not.toBeNull();
     expect(within(actions ?? panel).getByText(en.errors.student_changed)).toBeDefined();
     expect(panelActionNames(panel)).toContain(en.people.students.cancelLeaving);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('heading', { name: en.people.students.statusTitle }),
+      );
+    });
+  });
+
+  it('closes a delete refused because the student changed and now holds data, with the refusal at the bottom', async () => {
+    let reads = 0;
+    openList('academic_vice_principal', {
+      [`GET /api/people/students/${OTKIR.id}`]: () => {
+        reads += 1;
+        return json(
+          reads === 1
+            ? detailOf(OTKIR, { canArchive: true, deletable: true })
+            : LEFT_DETAIL({ deletable: false }),
+        );
+      },
+      [`POST /api/people/students/${OTKIR.id}/delete`]: () =>
+        Response.json(
+          { error: { code: 'student_changed', message: 'x', requestId: 'r' } },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(panel, en.people.students.deleteTitle, en.people.students.deleteAction);
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Created twice' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: en.people.students.deleteConfirmTitle }),
+      ).getByRole('button', { name: en.people.students.deleteAction }),
+    );
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form')).toBeNull();
+    });
+    expect(within(panelActions(panel) ?? panel).getByText(en.errors.student_changed)).toBeDefined();
+    expect(panelActionNames(panel)).not.toContain(en.people.students.deleteAction);
   });
 
   it('records a leaving for ticked rows and names the refused ones', async () => {
@@ -1551,6 +1594,43 @@ describe('the Status section', () => {
     );
   });
 
+  it("asks before a UID of another grade's set, and keeps the correction open with what was typed when the person declines", async () => {
+    const calls = openOne('academic_vice_principal', OTKIR, detailOf(OTKIR, { canEdit: true }), {
+      [`PUT /api/people/students/${OTKIR.id}/uid`]: () =>
+        Response.json(
+          { error: { code: 'uid_set_mismatch', message: 'x', requestId: 'r' } },
+          { status: 409 },
+        ),
+    });
+    renderApp(`${PATH}?open=${OTKIR.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(
+      panel,
+      en.people.students.uidLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
+      en.people.students.uidTitle,
+    );
+    fireEvent.change(within(form).getByLabelText(en.people.students.uid), {
+      target: { value: '2509077' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Typed wrong' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('alertdialog', { name: en.people.students.setTitle });
+    expect(within(dialog).getByText('2509077')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.confirm.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(form.isConnected).toBe(true);
+    expect(within(form).getByLabelText<HTMLInputElement>(en.people.students.uid).value).toBe(
+      '2509077',
+    );
+    expect(calls.filter((call) => call.route.endsWith('/uid'))).toHaveLength(1);
+    expect(panelActions(panel)).toBeNull();
+  });
+
   // Issue #39, hand test of 13 October 2026, findings 26 and 29 (task 2.7b-2).
   it('names the two buttons of the dialog apart, keeps the leaving, and draws no "Leave school" form while one is scheduled', async () => {
     const scheduled = detailOf(OTKIR, {
@@ -1582,6 +1662,9 @@ describe('the Status section', () => {
       expect(screen.queryByRole('alertdialog')).toBeNull();
     });
     expect(calls.some((call) => call.route.endsWith('/leaving/cancel'))).toBe(false);
+    // Nothing was saved, so nothing says so (spec review of the build).
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(panelActions(panel)?.textContent).not.toContain(en.form.saved);
   });
 
   it.each([

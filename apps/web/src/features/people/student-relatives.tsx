@@ -282,8 +282,9 @@ function LinkActions({
         }),
       ),
     () => {
+      // With the choice open it closes; done at once, "Saved." is said all the same.
       panel.stop({ saved: true, key: unlinkKey, focus: 'relative-new' });
-      panel.point('relative-new');
+      panel.point('relative-new', { saved: true });
     },
   );
   const askUnlink = async (newMainContactId: string | null) => {

@@ -9,7 +9,7 @@ import {
   type StudentUidCorrection,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
@@ -23,7 +23,7 @@ import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { useLeave } from '@/components/unsent/unsent-changes';
 import { PanelActions } from '@/components/list/panel-actions';
-import { usePanelEditing } from '@/components/list/use-panel-editing';
+import { usePanelEditing, type PanelEditing } from '@/components/list/use-panel-editing';
 import { Button } from '@/components/ui/button';
 import { Segmented } from '@/components/ui/segmented';
 import { HistoryLink } from '@/features/audit/history-link';
@@ -175,6 +175,11 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   // again) is not drawn: the panel reads as with no form open.
   const gone = isStatusForm(panel.editing) && allowed !== null && !allowed[panel.editing];
   const editing = gone ? null : panel.editing;
+  // The parts of the panel see the same: a form not drawn is no open form.
+  const shown = useMemo<PanelEditing>(
+    () => (gone ? { ...panel, editing: null } : panel),
+    [gone, panel],
+  );
 
   if (deleted) {
     return <Deleted />;
@@ -226,6 +231,19 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
       {text}
     </Button>
   );
+  /**
+   * "Student changed, reload" (edge/students-classes-groups): after the
+   * re-read a status form whose action is gone closes, its refusal stays in
+   * the bottom row, and the focus goes to the status heading above it.
+   */
+  const staleFor = (key: StatusForm) => async () => {
+    await reread();
+    const now = queryClient.getQueryData<StudentDetail>(studentDetailQuery(branchId, id).queryKey);
+    if (now !== undefined && !statusActions(now)[key]) {
+      setStaleClosed(true);
+      panel.stop({ key, focus: 'status' });
+    }
+  };
   /** The props every status form shares; a save closes it with "Saved.". */
   const change = (key: StatusForm) => ({
     student,
@@ -235,19 +253,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
       panel.stop({ saved: true, key, focus: 'status' });
       await statusChanged(answer);
     },
-    // "Student changed, reload" (edge/students-classes-groups): after the
-    // re-read a form whose action is gone closes, and its refusal stays in
-    // the bottom row.
-    onStale: async () => {
-      await reread();
-      const now = queryClient.getQueryData<StudentDetail>(
-        studentDetailQuery(branchId, id).queryKey,
-      );
-      if (now !== undefined && !statusActions(now)[key]) {
-        setStaleClosed(true);
-        panel.stop({ key });
-      }
-    },
+    onStale: staleFor(key),
     onCancel: () => {
       panel.stop();
     },
@@ -261,7 +267,14 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
         disabled={cancelLeaving.isPending}
         onClick={() => {
           setStaleClosed(false);
-          cancelLeaving.mutate();
+          cancelLeaving.mutate(undefined, {
+            onSuccess: (answer) => {
+              // The leaving kept: nothing was saved, so nothing says so.
+              if (answer === null) {
+                cancelLeaving.reset();
+              }
+            },
+          });
         }}
       >
         {t('people.students.cancelLeaving')}
@@ -315,7 +328,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
         // A status form below the status and its history, each only while
         // its action is allowed, keyed by the status state read (task 2.4b-1).
         <div className="grid gap-4">
-          <StatusSection student={student} panel={panel} />
+          <StatusSection student={student} panel={shown} />
           {editing === 'leave' && allowed.leave && (
             <LeavingForm key={`leave-${String(student.version)}`} {...change('leave')} />
           )}
@@ -337,7 +350,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
               key={`delete-${String(student.version)}`}
               student={student}
               label={name}
-              onStale={reread}
+              onStale={staleFor('delete')}
               onCancel={() => {
                 panel.stop();
               }}
@@ -385,10 +398,10 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
           {shownTab === 'overview' ? (
             <>
               <Overview student={student} />
-              <StatusSection student={student} panel={panel} />
+              <StatusSection student={student} panel={shown} />
             </>
           ) : shownTab === 'relatives' ? (
-            <StudentRelativesTab studentId={student.id} name={name} panel={panel} />
+            <StudentRelativesTab studentId={student.id} name={name} panel={shown} />
           ) : (
             <ContractTab student={student} />
           )}

@@ -1,6 +1,6 @@
 import { type RelativeDetail, type RelativeListItem, type Role } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
@@ -924,6 +924,58 @@ describe('the extra phones and the same person of a relative', () => {
     });
     expect(await within(section).findByText(en.people.relatives.sameNone)).toBeDefined();
     expect(within(section).queryByRole('link')).toBeNull();
+    // Its button is gone: "Saved." and the focus on "Mark as staff member" (task 2.7c-2b-2b).
+    await savedInPanel(panel);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(section).getByRole('button', { name: en.people.relatives.markStaff }),
+      );
+    });
+  });
+
+  it("keeps the search field of the picker while the staff list waits, and shows its failure with a retry in the choice's place", async () => {
+    openList('academic_vice_principal', {
+      'GET /api/people/staff': () => refusal('request_refused', 500),
+    });
+    // The staff list is held until the test lets it answer.
+    let answer: (() => void) | undefined;
+    const original = globalThis.fetch;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>((input) =>
+        input instanceof Request &&
+        input.method === 'GET' &&
+        new URL(input.url).pathname === '/api/people/staff'
+          ? new Promise<Response>((resolve) => {
+              answer = () => {
+                resolve(original(input));
+              };
+            })
+          : original(input),
+      ),
+    );
+    renderApp(PATH);
+    const panel = await openPanel();
+    const section = await within(panel).findByRole('region', {
+      name: en.people.relatives.sameTitle,
+    });
+    fireEvent.click(within(section).getByRole('button', { name: en.people.relatives.markStaff }));
+    const picker = await within(section).findByRole('form', {
+      name: en.people.relatives.markStaff,
+    });
+    // The list is still on its way: the field is there and has the focus.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(picker).getByLabelText(en.people.relatives.staffSearch),
+      );
+    });
+    expect(within(picker).queryByLabelText(en.people.relatives.staffChoice)).toBeNull();
+    await waitFor(() => {
+      expect(answer).toBeDefined();
+    });
+    answer?.();
+    expect(await within(picker).findByRole('button', { name: en.problems.retry })).toBeDefined();
+    expect(within(picker).getByLabelText(en.people.relatives.staffSearch)).toBeDefined();
   });
 
   it('lets the Super Admin remove a mark to a staff member of another branch, unnamed', async () => {

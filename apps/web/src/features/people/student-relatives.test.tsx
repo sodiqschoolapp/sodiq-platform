@@ -381,6 +381,7 @@ describe("the student's Relatives tab", () => {
     await waitFor(() => {
       expect(within(panel).queryByText('Anvar Rahimov')).toBeNull();
     });
+    await savedInPanel(panel);
     await waitFor(() => {
       expect(document.activeElement).toBe(
         within(panel).getByRole('button', { name: en.people.relatives.add }),

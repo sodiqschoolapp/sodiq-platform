@@ -26,9 +26,10 @@ export interface PanelEditing {
    * Gives the focus to the element marked `opener(key)` after the next
    * render, with no form open: an action done at once that takes its own
    * button away ("Cancel the leaving", an unlink) hands it to a part that
-   * stays. `editing` and `saved` are left as they are (task 2.7c-2b-2b).
+   * stays. `editing` is left as it is, and `saved` too unless `saved`
+   * says the action saved something (task 2.7c-2b-2b).
    */
-  point: (key: string) => void;
+  point: (key: string, how?: { saved?: boolean }) => void;
   /** Put on the button that opens a form: the focus comes back to it. */
   opener: (key: string) => { 'data-opens': string };
 }
@@ -111,8 +112,11 @@ export function usePanelEditing(): PanelEditing {
     setEditing(null);
   }, []);
 
-  const point = useCallback((key: string) => {
+  const point = useCallback((key: string, how?: { saved?: boolean }) => {
     focus.current = { to: 'opener', key };
+    if (how?.saved === true) {
+      setSaved(true);
+    }
     setPointed((count) => count + 1);
   }, []);
 

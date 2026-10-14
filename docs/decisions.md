@@ -231,6 +231,8 @@ Plan approved on pull request #85 with correction 1; decisions 1 to 15 confirmed
 | The staff picker's Cancel is quiet; it opens through the panel with the search field drawn at once, the matches waiting on the staff list inside the form; a form of the panel that is not a `RecordForm` carries `data-slot="panel-form"` and takes the focus as it opens | Decision 13; correction 1 |
 | A status form is drawn only while its action is allowed, keyed by `version`; after "student changed" the re-read closes a form whose action is gone (in the form's `onStale`, not an effect) and the refusal shows in the bottom row; a form whose action is gone by any other re-read is not drawn and the panel reads as with none open | Decision 14; build |
 | The test helper `edit` looks for its button in the bottom row first: "Edit" and the mark's "Change" are both "Изменить" in Russian | Build |
+| "Cancel the leaving" declined says nothing (the mutation is reset); "Saved." follows an at-once action that saved (an unlink without a choice, the mark removed: `point(key, { saved: true })`), as "Cancel the leaving" and the vacancy's close | Spec review of the build |
+| A delete refused with "student changed" closes like the other status forms when the re-read takes it away; the focus goes to the status heading; the mark's Remove gives the focus to "Mark as staff member"; the parts of the student panel see a form not drawn as no open form | Spec review of the build |
 
 ## 14 October 2026: record actions at the bottom of the staff and vacancy panels (task 2.7c-2b-2a)
 
