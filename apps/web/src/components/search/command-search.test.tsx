@@ -5,6 +5,7 @@ import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { isSearchShortcut } from './command-search';
+import { recordSearchQuery } from './search-api';
 
 type Language = 'en' | 'ru' | 'uz';
 const TEXTS = { en, ru, uz };
@@ -64,7 +65,9 @@ describe('the search of pages', () => {
       en.password.titleOwn,
       en.sample.title,
     ]);
-    expect(screen.getByRole('listbox', { name: en.search.pages })).toBeDefined();
+    // Task 3.2d: the pages are one group of the list, the records others.
+    expect(screen.getByRole('listbox', { name: en.search.label })).toBeDefined();
+    expect(screen.getByRole('group', { name: en.search.pages })).toBeDefined();
   });
 
   // Task 2.7c-3, decision 13: the Branches list is the Super Admin's
@@ -273,5 +276,217 @@ describe('the shortcut', () => {
     expect(isSearchShortcut(press({ key: 'k', ctrlKey: true, shiftKey: true }))).toBe(false);
     expect(isSearchShortcut(press({ key: 'k', ctrlKey: true, altKey: true }))).toBe(false);
     expect(isSearchShortcut(press({ key: 'j', ctrlKey: true }))).toBe(false);
+  });
+});
+
+// Task 3.2d (pull request #94): Ctrl+K over students, staff, classes and
+// groups, each kind asked of its own route only when the active role views
+// it (decision 4), from the second typed character (decision 7). All names
+// are invented.
+describe('the search of records', () => {
+  const OXFORD = {
+    id: '0198b000-0000-7000-8000-000000000001',
+    grade: 7,
+    name: 'Oxford',
+    yearName: '2026–2027',
+  };
+  const STUDENT = {
+    id: '0198b000-0000-7000-8000-000000000002',
+    uid: '2600123',
+    firstName: 'Gʻulnora',
+    lastName: 'Qodirova',
+    paternalName: 'Rustamovna',
+    class: { grade: 7, name: 'Oxford' },
+    status: 'active',
+  };
+  const PERSON = {
+    id: '0198b000-0000-7000-8000-000000000003',
+    staffId: 'S-260001',
+    firstName: 'Dilshod',
+    lastName: 'Karimov',
+    status: 'left',
+  };
+  const GROUP = {
+    id: '0198b000-0000-7000-8000-000000000004',
+    name: 'Oxford Physics',
+    subject: { uz: 'Fizika', ru: 'Физика', en: 'Physics' },
+    yearName: '2026–2027',
+  };
+  const none = () => json({ items: [], more: false });
+
+  /** A signed-in account of one role in North, at the account page, with the search open. */
+  async function searchAs(
+    role: 'teacher' | 'tutor' | 'academic_vice_principal',
+    answers: Record<string, () => Response>,
+    language: Language = 'en',
+  ) {
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role, branchId: NORTH.id }], branches: [NORTH] })),
+      'GET /api/access/branches-without-vice-principal': () => json({ branches: [] }),
+      ...answers,
+    });
+    const shell = renderApp('/account', language);
+    await screen.findByRole('heading', { name: TEXTS[language].account.title });
+    pressShortcut();
+    await dialog(language);
+    return { calls, ...shell };
+  }
+
+  const searchCalls = (calls: { route: string; query?: string }[]) =>
+    calls.filter((call) => call.route.startsWith('GET /api/search/'));
+
+  const type = (text: string, language: Language = 'en') => {
+    fireEvent.change(box(language), { target: { value: text } });
+  };
+
+  it('asks no record route for a Teacher, who views none of the kinds', async () => {
+    const { calls } = await searchAs('teacher', {});
+    type('Oxford');
+    // No page is called so either: the line says so, and no kind was asked.
+    expect((await within(await dialog()).findByRole('status')).textContent).toBe(en.search.noMatch);
+    expect(searchCalls(calls)).toEqual([]);
+    expect(box().getAttribute('placeholder')).toBe(en.search.placeholder);
+  });
+
+  it('asks a Tutor’s students, classes and groups, never staff, from the second character', async () => {
+    const { calls } = await searchAs('tutor', {
+      'GET /api/search/students': () => json({ items: [STUDENT], more: false }),
+      'GET /api/search/classes': () => json({ items: [OXFORD], more: false }),
+      'GET /api/search/groups': () => json({ items: [GROUP], more: false }),
+    });
+    expect(box().getAttribute('placeholder')).toBe(en.search.placeholderRecords);
+    type('Oxford');
+
+    expect(await screen.findByRole('option', { name: /^7 Oxford/ })).toBeDefined();
+    expect(
+      searchCalls(calls)
+        .map((call) => `${call.route}${call.query ?? ''}`)
+        .sort(),
+    ).toEqual([
+      'GET /api/search/classes?q=Oxford',
+      'GET /api/search/groups?q=Oxford',
+      'GET /api/search/students?q=Oxford',
+    ]);
+    const students = screen.getByRole('group', { name: en.search.students });
+    // The UID, the class and the status are always on a student's line.
+    expect(within(students).getByRole('option').textContent).toBe(
+      `Qodirova Gʻulnora · Rustamovna2600123 · 7 Oxford · ${en.people.students.statuses.active}`,
+    );
+    expect(
+      within(screen.getByRole('group', { name: en.search.groups })).getByRole('option').textContent,
+    ).toBe('Oxford Physics' + 'Physics · 2026–2027');
+    expect(screen.queryByRole('group', { name: en.search.staff })).toBeNull();
+  });
+
+  it('asks nothing for one character, nor without a branch (decision 7)', () => {
+    expect(recordSearchQuery('classes', NORTH.id, 'O', true).enabled).toBe(false);
+    expect(recordSearchQuery('classes', NORTH.id, 'Ox', true).enabled).toBe(true);
+    expect(recordSearchQuery('classes', null, 'Ox', true).enabled).toBe(false);
+    expect(recordSearchQuery('classes', NORTH.id, 'Ox', false).enabled).toBe(false);
+  });
+
+  it('moves with the arrows across the kinds and opens a class in the side panel of its list', async () => {
+    const { router } = await searchAs('tutor', {
+      'GET /api/search/students': () => json({ items: [STUDENT], more: false }),
+      'GET /api/search/classes': () => json({ items: [OXFORD], more: false }),
+      'GET /api/search/groups': none,
+    });
+    type('Oxford');
+    const student = await screen.findByRole('option', { name: /^Qodirova/ });
+    // No page is called Oxford: the student is first.
+    expect(student.getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(box(), { key: 'ArrowDown' });
+    const oxford = screen.getByRole('option', { name: /^7 Oxford/ });
+    expect(oxford.getAttribute('aria-selected')).toBe('true');
+    expect(box().getAttribute('aria-activedescendant')).toBe(oxford.id);
+    fireEvent.keyDown(box(), { key: 'Enter' });
+
+    await noDialog();
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/classes');
+    });
+    expect(router.state.location.search).toEqual({ open: OXFORD.id });
+  });
+
+  it('shows a person with the status and opens the list searched from "More on the list"', async () => {
+    const { router } = await searchAs('academic_vice_principal', {
+      'GET /api/search/students': none,
+      'GET /api/search/staff': () => json({ items: [PERSON], more: true }),
+      'GET /api/search/classes': none,
+      'GET /api/search/groups': none,
+    });
+    type('Karimov');
+    const staff = within(await screen.findByRole('group', { name: en.search.staff }));
+    expect(staff.getAllByRole('option').map((option) => option.textContent)).toEqual([
+      `Karimov DilshodS-260001 · ${en.people.staff.statuses.left}`,
+      en.search.more,
+    ]);
+
+    fireEvent.click(staff.getByRole('option', { name: en.search.more }));
+
+    await noDialog();
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/people/staff');
+    });
+    expect(router.state.location.search).toEqual({ q: 'Karimov' });
+  });
+
+  it('says when a kind could not be searched, keeps the pages, and asks again on Retry', async () => {
+    let failing = true;
+    const { calls } = await searchAs('academic_vice_principal', {
+      'GET /api/search/students': () =>
+        failing ? refusal('internal_error', 500) : json({ items: [STUDENT], more: false }),
+      'GET /api/search/staff': none,
+      'GET /api/search/classes': none,
+      'GET /api/search/groups': none,
+    });
+    type(en.account.title.slice(0, 6));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(en.search.failed);
+    expect(screen.getByRole('option', { name: en.account.title })).toBeDefined();
+    expect(within(screen.getByRole('dialog')).queryByText(en.search.noMatch)).toBeNull();
+    failing = false;
+    fireEvent.click(screen.getByRole('button', { name: en.problems.retry }));
+
+    expect(await screen.findByRole('option', { name: /^Qodirova/ })).toBeDefined();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(
+      searchCalls(calls).filter((call) => call.route === 'GET /api/search/students'),
+    ).toHaveLength(2);
+  });
+
+  it('says that nothing matches only when no page and no kind found anything', async () => {
+    await searchAs('academic_vice_principal', {
+      'GET /api/search/students': none,
+      'GET /api/search/staff': none,
+      'GET /api/search/classes': none,
+      'GET /api/search/groups': none,
+    });
+    type('Zzyzx');
+
+    await waitFor(() => {
+      expect(within(screen.getByRole('dialog')).getByRole('status').textContent).toBe(
+        en.search.noMatch,
+      );
+    });
+    expect(screen.queryAllByRole('option')).toEqual([]);
+  });
+
+  it('speaks Russian, with the subject of a group in Russian', async () => {
+    await searchAs(
+      'tutor',
+      {
+        'GET /api/search/students': none,
+        'GET /api/search/classes': none,
+        'GET /api/search/groups': () => json({ items: [GROUP], more: false }),
+      },
+      'ru',
+    );
+    type('Физика', 'ru');
+
+    const groups = within(await screen.findByRole('group', { name: ru.search.groups }));
+    expect(groups.getByRole('option').textContent).toBe('Oxford Physics' + 'Физика · 2026–2027');
   });
 });
