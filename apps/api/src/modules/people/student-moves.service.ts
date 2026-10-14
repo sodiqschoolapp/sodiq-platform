@@ -216,15 +216,17 @@ export class StudentMoves {
             throw notFound();
           }
           const today = await this.students.todayIn(transaction, branchId);
-          const moved = await this.moveGroup(transaction, access, student, today, {
-            row,
-            toGroupId: input.toGroupId,
-            from: input.from,
-            seen: true,
-          });
+          const { assignmentId, ...moved } = await this.moveGroup(
+            transaction,
+            access,
+            student,
+            today,
+            { row, toGroupId: input.toGroupId, from: input.from, seen: true },
+          );
           await this.record(transaction, access, student.id, 'student.group_transferred', {
             newValue: moved,
             requestId,
+            assignmentId,
           });
           return this.students.readDetail(transaction, access, student.id);
         }),
@@ -263,16 +265,18 @@ export class StudentMoves {
           if (row === undefined) {
             throw new ApiException('move_no_membership', 409);
           }
-          const moved = await this.moveGroup(transaction, access, student, today, {
-            row,
-            toGroupId: input.toGroupId,
-            from: input.from,
-            seen: false,
-          });
+          const { assignmentId, ...moved } = await this.moveGroup(
+            transaction,
+            access,
+            student,
+            today,
+            { row, toGroupId: input.toGroupId, from: input.from, seen: false },
+          );
           await this.record(transaction, access, studentId, 'student.group_transfer_changed', {
             oldValue: cancelled,
             newValue: moved,
             requestId,
+            assignmentId,
           });
           return this.students.readDetail(transaction, access, studentId);
         }),
@@ -321,12 +325,19 @@ export class StudentMoves {
     access: Access,
     studentId: string,
     action: AuditAction,
-    entry: { oldValue?: unknown; newValue: unknown; reason?: string; requestId: string },
+    entry: {
+      oldValue?: unknown;
+      newValue: unknown;
+      reason?: string;
+      requestId: string;
+      /** The assignment whose scope allowed the change (a group move), else the route's. */
+      assignmentId?: string;
+    },
   ): Promise<void> {
     await this.audit.record(transaction, {
       branchId: branchOf(access),
       actorId: access.accountId,
-      assignmentId: access.assignmentId,
+      assignmentId: entry.assignmentId ?? access.assignmentId,
       action,
       record: { type: 'student', id: studentId },
       ...(entry.oldValue === undefined ? {} : { oldValue: asJson(entry.oldValue) }),
@@ -763,18 +774,19 @@ export class StudentMoves {
     };
   }
 
-  /** The two groups of a group move, of the branch, and the scope of the reader on them (decision 2). */
+  /**
+   * The two groups of a group move, of the branch, and the scope of the
+   * reader on them (decision 2): the assignment whose scope fits both, which
+   * the audit entry names (`.claude/rules/api.md`; permission review of the
+   * build, should-fix 1); 403 when none fits.
+   */
   private async groupScope(
     transaction: Transaction,
     access: Access,
     move: StoredMove,
-  ): Promise<void> {
+  ): Promise<string> {
     const ids = [move.fromGroupId, move.toGroupId].filter((id): id is string => id !== null);
-    for (const group of await this.readGroups(transaction, branchOf(access), ids)) {
-      if (inGroupScope(access.permitting, group) === undefined) {
-        throw new ApiException('permission_denied', 403);
-      }
-    }
+    return scopeOf(access, await this.readGroups(transaction, branchOf(access), ids));
   }
 
   /** Groups of the branch of the request by id; an unknown id or another branch's is 404. */
@@ -818,7 +830,7 @@ export class StudentMoves {
     student: PlacementStudent,
     today: SchoolDate,
     input: { row: StoredGroupMembership; toGroupId: string; from: SchoolDate; seen: boolean },
-  ): Promise<Moved> {
+  ): Promise<Moved & { assignmentId: string }> {
     const branchId = branchOf(access);
     const { row, from } = input;
     const [source, target] = await this.readGroupPair(
@@ -827,11 +839,7 @@ export class StudentMoves {
       row.groupId,
       input.toGroupId,
     );
-    for (const group of [source, target]) {
-      if (inGroupScope(access.permitting, group) === undefined) {
-        throw new ApiException('permission_denied', 403);
-      }
-    }
+    const assignmentId = scopeOf(access, [source, target]);
     if (source.subjectId !== target.subjectId) {
       throw new ApiException('group_transfer_subject', 409);
     }
@@ -892,6 +900,7 @@ export class StudentMoves {
       .returning('id')
       .executeTakeFirstOrThrow();
     return {
+      assignmentId,
       moveId,
       subjectId: source.subjectId,
       fromGroupId: source.id,
@@ -943,7 +952,7 @@ export class StudentMoves {
           const studentId = await studentOfMove(transaction, branchId, moveId, 'group');
           const student = await this.lockStudent(transaction, studentId, null);
           const move = await lockMove(transaction, branchId, moveId, 'group');
-          await this.groupScope(transaction, access, move);
+          const assignmentId = await this.groupScope(transaction, access, move);
           const today = await this.students.todayIn(transaction, branchId);
           if (cause === 'cancel' && moveState(move, today) !== 'scheduled') {
             throw new ApiException('move_not_scheduled', 409);
@@ -959,7 +968,7 @@ export class StudentMoves {
             cause === 'cancel'
               ? 'student.group_transfer_cancelled'
               : 'student.group_transfer_undone',
-            { newValue: taken, ...(reason === null ? {} : { reason }), requestId },
+            { newValue: taken, ...(reason === null ? {} : { reason }), requestId, assignmentId },
           );
           return this.students.readDetail(transaction, access, studentId);
         }),
@@ -1113,6 +1122,17 @@ export class StudentMoves {
       .where('id', '=', row.id)
       .execute();
   }
+}
+
+/** The assignment whose scope fits every group of a move (decision 2); 403 when none does. */
+function scopeOf(access: Access, groups: readonly MoveGroupRow[]): string {
+  const fitting = access.permitting.find((assignment) =>
+    groups.every((group) => inGroupScope([assignment], group) !== undefined),
+  );
+  if (fitting === undefined) {
+    throw new ApiException('permission_denied', 403);
+  }
+  return fitting.id;
 }
 
 /**

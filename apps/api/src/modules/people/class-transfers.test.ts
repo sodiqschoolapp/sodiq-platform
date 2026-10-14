@@ -658,9 +658,18 @@ describe('class transfers', () => {
       const yale = await schoolClass();
       const one = await pupil(oxford);
       const southClass = await classes.schoolClass(t.south, southYear, { grade: 7 });
+      const southMembers = new MembersKit(t.database.migrator, await classes.account());
+      const southStudent = await southMembers.student(t.south, { startsOn: '2026-09-01' });
+      await southMembers.member({
+        branch: t.south,
+        classId: southClass,
+        studentId: southStudent,
+        from: '2026-09-01',
+      });
       const before = await rowsOf();
       for (const body of [
         { studentId: UNKNOWN, version: one.version, toClassId: yale, from: TOMORROW },
+        { studentId: southStudent, version: 2, toClassId: yale, from: TOMORROW },
         { studentId: one.id, version: one.version, toClassId: southClass, from: TOMORROW },
         { studentId: one.id, version: one.version, toClassId: UNKNOWN, from: TOMORROW },
       ]) {
@@ -681,16 +690,35 @@ describe('class transfers', () => {
       // A move of the North branch from the South branch, as the Super Admin.
       const move = moveOf(ok(await transfer(one.id, yale)));
       const after = await rowsOf();
-      refusedWith(
-        await t.post(
-          `/api/classes/transfers/${move}/cancel`,
-          t.south,
-          { version: (await fresh(one.id)).version },
-          t.admin,
-        ),
-        404,
-        'not_found',
-      );
+      const version = (await fresh(one.id)).version;
+      for (const path of ['cancel', 'undo', 'change']) {
+        refusedWith(
+          await t.post(
+            `/api/classes/transfers/${move}/${path}`,
+            t.south,
+            {
+              version,
+              ...(path === 'undo' ? { reason: 'Mistake.' } : {}),
+              ...(path === 'change' ? { toClassId: southClass, from: TOMORROW } : {}),
+            },
+            t.admin,
+          ),
+          404,
+          'not_found',
+        );
+      }
+      // The change of a North move to a class it cannot see.
+      for (const toClassId of [southClass, UNKNOWN]) {
+        refusedWith(
+          await post(`/api/classes/transfers/${move}/change`, {
+            version,
+            toClassId,
+            from: TOMORROW,
+          }),
+          404,
+          'not_found',
+        );
+      }
       expect(await rowsOf()).toEqual(after);
     });
   });

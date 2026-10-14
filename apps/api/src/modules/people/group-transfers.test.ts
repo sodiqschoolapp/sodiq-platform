@@ -2,6 +2,7 @@ import { studentDetailSchema, studentHistorySchema, type StudentDetail } from '@
 import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ClassesKit } from '../../testing/classes-kit.js';
+import { MembersKit } from '../../testing/members-kit.js';
 import {
   dayTemplatesKit,
   TODAY,
@@ -424,6 +425,221 @@ describe('group transfers and the History tab', () => {
         );
       }
       expect(await rowsOf()).toEqual(before);
+    });
+  });
+
+  // Permission review of the build, must-fixes 2 to 5 and should-fix 2.
+  describe('the ids and the scope of group moves', () => {
+    it('answers 404 for ids of another branch on every route, the rows of both branches unchanged', async () => {
+      const oxford = await schoolClass();
+      const one = await pupil(oxford);
+      const [a, b] = [await group(headSubject, [oxford]), await group(headSubject, [oxford])];
+      await placeInGroup(a, one.id);
+      const member = await memberOf(one.id, a);
+      const south = await classes.schoolClass(t.south, southYear, { grade: 7 });
+      const southMembers = new MembersKit(t.database.migrator, await classes.account());
+      const southStudent = await southMembers.student(t.south, { startsOn: '2026-09-01' });
+      await southMembers.member({
+        branch: t.south,
+        classId: south,
+        studentId: southStudent,
+        from: '2026-09-01',
+      });
+      const southGroup = await classes.group(t.south, southYear, headSubject, [south]);
+      const southRow = await southMembers.groupMember({
+        branch: t.south,
+        groupId: southGroup,
+        subjectId: headSubject,
+        studentId: southStudent,
+        from: '2026-09-01',
+      });
+      ok(await moveGroup(one.id, member, b, '2026-10-19'));
+      const move = await lastMoveId(one.id);
+      const before = await rowsOf();
+      for (const body of [
+        { studentId: southStudent, memberId: southRow, toGroupId: b, from: TOMORROW },
+        { studentId: one.id, memberId: southRow, toGroupId: b, from: TOMORROW },
+      ]) {
+        refusedWith(await post('/api/groups/transfers', body), 404, 'not_found');
+      }
+      for (const path of ['cancel', 'undo', 'change']) {
+        refusedWith(
+          await t.post(
+            `/api/groups/transfers/${move}/${path}`,
+            t.south,
+            {
+              ...(path === 'undo' ? { reason: 'Mistake.' } : {}),
+              ...(path === 'change' ? { toGroupId: southGroup, from: TOMORROW } : {}),
+            },
+            t.admin,
+          ),
+          404,
+          'not_found',
+        );
+      }
+      for (const toGroupId of [southGroup, UNKNOWN]) {
+        refusedWith(
+          await post(`/api/groups/transfers/${move}/change`, { toGroupId, from: '2026-10-26' }),
+          404,
+          'not_found',
+        );
+      }
+      refusedWith(
+        await t.get(`/api/people/students/${southStudent}/history`, t.north, t.vicePrincipal),
+        404,
+        'not_found',
+      );
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('lets a Head Teacher change, cancel and undo moves of own subjects only, naming the assignment', async () => {
+      const other = await classes.subject({ grades: [7] });
+      const oxford = await schoolClass();
+      const one = await pupil(oxford);
+      const two = await pupil(oxford);
+      const three = await pupil(oxford);
+      const [a, b, c] = [
+        await group(headSubject, [oxford]),
+        await group(headSubject, [oxford]),
+        await group(headSubject, [oxford]),
+      ];
+      const [x, y] = [await group(other, [oxford]), await group(other, [oxford])];
+      await placeInGroup(x, one.id);
+      ok(await moveGroup(one.id, await memberOf(one.id, x), y, '2026-10-19'));
+      const foreign = await lastMoveId(one.id);
+      const before = await rowsOf();
+      for (const path of ['cancel', 'undo', 'change']) {
+        refusedWith(
+          await post(
+            `/api/groups/transfers/${foreign}/${path}`,
+            {
+              ...(path === 'undo' ? { reason: 'Mistake.' } : {}),
+              ...(path === 'change' ? { toGroupId: x, from: TOMORROW } : {}),
+            },
+            headTeacher,
+          ),
+          403,
+          'permission_denied',
+        );
+      }
+      expect(await rowsOf()).toEqual(before);
+      // Own subject: a change to a group of another subject is refused, the cancel allowed.
+      await placeInGroup(a, two.id);
+      ok(await moveGroup(two.id, await memberOf(two.id, a), b, '2026-10-19', headTeacher));
+      const own = await lastMoveId(two.id);
+      refusedWith(
+        await post(
+          `/api/groups/transfers/${own}/change`,
+          { toGroupId: y, from: '2026-10-26' },
+          headTeacher,
+        ),
+        403,
+        'permission_denied',
+      );
+      ok(
+        await post(
+          `/api/groups/transfers/${own}/change`,
+          { toGroupId: c, from: '2026-10-26' },
+          headTeacher,
+        ),
+      );
+      const changed = await lastMoveId(two.id);
+      ok(await post(`/api/groups/transfers/${changed}/cancel`, {}, headTeacher));
+      const [entry] = await t.entries('student.group_transfer_cancelled', two.id);
+      expect(entry).toMatchObject({ assignment_id: headAssignment });
+      // Own subject, begun today: the Head Teacher undoes it.
+      await placeInGroup(a, three.id, TODAY);
+      ok(await moveGroup(three.id, await memberOf(three.id, a), b, TODAY));
+      ok(
+        await post(
+          `/api/groups/transfers/${await lastMoveId(three.id)}/undo`,
+          { reason: 'Wrong group.' },
+          headTeacher,
+        ),
+      );
+    });
+
+    it('lets a Senior Head Teacher move own subjects in a second branch and refuses another subject', async () => {
+      const browser = await t.kit.completeSession('Kamola', 'Rashidova');
+      const given = await t.kit.giveRole(browser.account.id, {
+        role: 'senior_head_teacher',
+        subjectIds: [headSubject],
+      });
+      const southClass = await classes.schoolClass(t.south, southYear, { grade: 7 });
+      const southMembers = new MembersKit(t.database.migrator, await classes.account());
+      const student = await southMembers.student(t.south, { startsOn: '2026-09-01' });
+      await southMembers.member({
+        branch: t.south,
+        classId: southClass,
+        studentId: student,
+        from: '2026-09-01',
+      });
+      const [a, b] = [
+        await classes.group(t.south, southYear, headSubject, [southClass]),
+        await classes.group(t.south, southYear, headSubject, [southClass]),
+      ];
+      const row = await southMembers.groupMember({
+        branch: t.south,
+        groupId: a,
+        subjectId: headSubject,
+        studentId: student,
+        from: '2026-09-01',
+      });
+      const response = await t.post(
+        '/api/groups/transfers',
+        t.south,
+        { studentId: student, memberId: row, toGroupId: b, from: TOMORROW },
+        browser.cookie,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const [entry] = await t.entries('student.group_transferred', student);
+      expect(entry).toMatchObject({ assignment_id: given.id });
+      const other = await classes.subject({ grades: [7] });
+      const [x, y] = [
+        await classes.group(t.south, southYear, other, [southClass]),
+        await classes.group(t.south, southYear, other, [southClass]),
+      ];
+      const otherRow = await southMembers.groupMember({
+        branch: t.south,
+        groupId: x,
+        subjectId: other,
+        studentId: student,
+        from: '2026-09-01',
+      });
+      refusedWith(
+        await t.post(
+          '/api/groups/transfers',
+          t.south,
+          { studentId: student, memberId: otherRow, toGroupId: y, from: TOMORROW },
+          browser.cookie,
+        ),
+        403,
+        'permission_denied',
+      );
+    });
+
+    // Should-fix 2: the past date is decided from every current assignment.
+    it('refuses a past date to a Head Teacher who is Academic Vice Principal of another branch only', async () => {
+      const browser = await t.kit.completeSession('Ulugbek', 'Hamidov');
+      const own = await classes.subject({ grades: [7] });
+      await t.kit.giveRole(browser.account.id, {
+        role: 'head_teacher',
+        branchId: t.north,
+        subjectIds: [own],
+      });
+      await t.kit.giveRole(browser.account.id, {
+        role: 'academic_vice_principal',
+        branchId: t.south,
+      });
+      const oxford = await schoolClass();
+      const one = await pupil(oxford);
+      const [a, b] = [await group(own, [oxford]), await group(own, [oxford])];
+      await placeInGroup(a, one.id, '2026-09-02');
+      refusedWith(
+        await moveGroup(one.id, await memberOf(one.id, a), b, '2026-10-05', browser.cookie),
+        403,
+        'move_in_past',
+      );
     });
   });
 

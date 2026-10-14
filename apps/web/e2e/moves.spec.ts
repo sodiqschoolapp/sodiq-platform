@@ -62,7 +62,10 @@ test('an Academic Vice Principal moves a student to another class, cancels, and 
   await late.getByRole('button', { name: en.form.save, exact: true }).click();
   await expect(panel.getByText(/From 7 Oxford,/)).toBeVisible();
 
-  await panel.getByRole('radio', { name: texts.tabs.history, exact: true }).click();
+  await panel
+    .getByRole('radiogroup', { name: texts.tabs.label })
+    .getByText(texts.tabs.history, { exact: true })
+    .click();
   const history = panel.getByRole('region', { name: moves.historyLabel });
   const moved = moves.classMove.replace('{{from}}', '7 Oxford').replace('{{to}}', '7 Yale');
   await expect(history.getByText(`${moved} · ${moves.states.done}`)).toBeVisible();
