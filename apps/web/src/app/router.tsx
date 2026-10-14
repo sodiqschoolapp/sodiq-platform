@@ -21,6 +21,7 @@ import { sessionQuery, STEP_PATH, stepOf, type Step } from '@/features/auth/sess
 import { SetUpPage } from '@/features/auth/set-up-page';
 import { SampleListPage, sampleSearch } from '@/features/sample/sample-list-page';
 import { BranchPage } from '@/features/setup/branch-page';
+import { BranchesPage } from '@/features/setup/branches-page';
 import { BuildingsPage } from '@/features/setup/buildings-page';
 import { DivisionsPage } from '@/features/setup/divisions-page';
 import { SubjectsPage } from '@/features/setup/subjects-page';
@@ -194,6 +195,17 @@ const setupRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup',
   component: SetupPage,
+});
+
+/**
+ * The Branches list (task 2.7c-3): the Super Admin's, on `branches` `create`,
+ * which a Super Admin passes before the first branch exists.
+ */
+const branchesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/branches',
+  validateSearch: listSearch,
+  component: guarded('branches', BranchesPage, 'create'),
 });
 
 const branchRoute = createRoute({
@@ -391,6 +403,7 @@ const routeTree = rootRoute.addChildren([
     accountRoute,
     ownPasswordRoute,
     setupRoute,
+    branchesRoute,
     branchRoute,
     buildingsRoute,
     roomsRoute,

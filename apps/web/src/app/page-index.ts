@@ -1,3 +1,4 @@
+import type { Action } from '@sodiq/shared';
 import type { LinkProps } from '@tanstack/react-router';
 import type { ParseKeys } from 'i18next';
 
@@ -22,8 +23,14 @@ export const COMMON_PAGES: readonly IndexedPage[] = [
   ...(import.meta.env.DEV ? [{ titleKey: 'sample.title', to: '/dev/patterns' } as const] : []),
 ];
 
-/** The pages under "School setup" (tasks 1.1 to 1.6, subjects from task 2.1), indexed when the menu of the role has the item. */
-export const SETUP_PAGES: readonly IndexedPage[] = [
+/**
+ * The pages under "School setup" (tasks 1.1 to 1.6, subjects from task 2.1),
+ * indexed when the menu of the role has the item. A page that only some roles
+ * of the menu may open names its area and action (the Branches list, task
+ * 2.7c-3, decision 13): the search never lists a page the role cannot open.
+ */
+export const SETUP_PAGES: readonly (IndexedPage & { area?: string; action?: Action })[] = [
+  { titleKey: 'setup.branches.title', to: '/setup/branches', area: 'branches', action: 'create' },
   { titleKey: 'setup.branch.title', to: '/setup/branch' },
   { titleKey: 'setup.buildings.title', to: '/setup/buildings' },
   { titleKey: 'setup.rooms.title', to: '/setup/rooms' },
@@ -51,9 +58,13 @@ export const PEOPLE_PAGES: readonly (IndexedPage & { area: string })[] = [
 /** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */
 export function indexedPages(
   menuPages: readonly IndexedPage[],
-  views: (area: string) => boolean = () => true,
+  views: (area: string, action?: Action) => boolean = () => true,
 ): IndexedPage[] {
-  const setup = menuPages.some((page) => page.to === '/setup') ? SETUP_PAGES : [];
+  const setup = menuPages.some((page) => page.to === '/setup')
+    ? SETUP_PAGES.filter((page) => page.area === undefined || views(page.area, page.action)).map(
+        ({ titleKey, to }) => ({ titleKey, to }),
+      )
+    : [];
   const people = menuPages.some((page) => page.to === '/people')
     ? PEOPLE_PAGES.filter((page) => views(page.area)).map(({ titleKey, to }) => ({ titleKey, to }))
     : [];

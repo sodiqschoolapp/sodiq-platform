@@ -12,7 +12,7 @@ import {
   type GoLiveRecord,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
@@ -21,13 +21,11 @@ import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
-import { SidePanel } from '@/components/side-panel';
-import { Button } from '@/components/ui/button';
-import { useLeave } from '@/components/unsent/unsent-changes';
+import { buttonVariants } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
 import { refreshSession } from '@/features/auth/session';
-import { branchQuery, invalidateYears, SETUP_KEY, yearsQuery } from './setup-api';
+import { branchQuery, invalidateYears, yearsQuery } from './setup-api';
 import { cn } from 'cn';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { schoolDateText, weekdayName } from '@/lib/dates';
@@ -217,18 +215,16 @@ function GoLiveSection({ branch, canEdit }: { branch: Branch; canEdit: boolean }
 /**
  * The branch page (task 1.1): the record of the branch in use, edited by the
  * Super Admin and read by the Principal and the Academic Vice Principal
- * (`02`). "New branch" (Super Admin only) opens the same form empty; once it
- * is saved the branch switcher shows the branch and this tab switches to it.
+ * (`02`). "New branch" is on the Branches list (`03`, Branch; task 2.7c-3,
+ * decision 7); with no branch chosen yet, the Super Admin is sent there.
  * Below the record, the go-live date (task 1.3).
  */
 export function BranchPage() {
   const { t } = useTranslation();
-  const { role, branchId, chooseBranch } = useView();
+  const { role, branchId } = useView();
   const queryClient = useQueryClient();
-  const leave = useLeave();
-  const [adding, setAdding] = useState(false);
   const canEdit = role !== null && permits(PERMISSIONS, role, 'branches', 'edit');
-  const canCreate = role !== null && permits(PERMISSIONS, role, 'branches', 'create');
+  const canList = role !== null && permits(PERMISSIONS, role, 'branches', 'create');
   const branch = useQuery(branchQuery(branchId));
 
   const save = useMutation({
@@ -242,32 +238,20 @@ export function BranchPage() {
     },
   });
 
-  const create = useMutation({
-    mutationFn: (record: BranchRecord) =>
-      answerOf(api.POST('/api/setup/branches', { body: record })),
-    onSuccess: async (created) => {
-      await refreshSession(queryClient);
-      await queryClient.invalidateQueries({ queryKey: SETUP_KEY });
-      // A new branch has no Academic Vice Principal yet.
-      await invalidateBranchesWithoutVice(queryClient);
-      chooseBranch(created.id);
-      setAdding(false);
-    },
-  });
-
-  // Closing the panel with typed text asks first (.claude/rules/web.md: whatever
-  // takes a form away without a change of page asks useLeave()).
-  const closeNew = (): void => {
-    void leave.leave().then((leaves) => {
-      if (leaves) {
-        setAdding(false);
-      }
-    });
-  };
-
   let body;
   if (branchId === null) {
-    body = <EmptyState text={t('setup.branch.none')} />;
+    body = (
+      <EmptyState
+        text={t('setup.branch.none')}
+        action={
+          canList ? (
+            <Link to="/setup/branches" className={buttonVariants({ variant: 'secondary' })}>
+              {t('setup.branch.goToList')}
+            </Link>
+          ) : undefined
+        }
+      />
+    );
   } else if (branch.data !== undefined) {
     body = (
       <>
@@ -306,51 +290,13 @@ export function BranchPage() {
         breadcrumbs={[
           { label: t('home.title'), to: '/' },
           { label: t('setup.title'), to: '/setup' },
+          // The Super Admin comes here from the Branches list (decision 7).
+          ...(canList
+            ? [{ label: t('setup.branches.title'), to: '/setup/branches' } as const]
+            : []),
         ]}
-        actions={
-          canCreate && !adding ? (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setAdding(true);
-              }}
-            >
-              {t('setup.branch.newBranch')}
-            </Button>
-          ) : undefined
-        }
       />
-      {/* "New branch" opens beside the branch in the side panel, as a new
-          record does beside a list (issue #39, item 2 and finding 12; pull
-          request #80, decision 14). On a narrow screen it takes the place of
-          the page, as the side panel of a list does. */}
-      <div className="flex items-start gap-6">
-        <div className={cn('min-w-0 max-w-3xl flex-1 gap-6', adding ? 'hidden lg:grid' : 'grid')}>
-          {body}
-        </div>
-        {adding && (
-          <SidePanel
-            title={t('setup.branch.newBranchTitle')}
-            recordKey="new-branch"
-            onClose={closeNew}
-          >
-            <div className="grid gap-4">
-              <BranchForm
-                branch={null}
-                label={t('setup.branch.newBranchTitle')}
-                onSave={async (record) => {
-                  await create.mutateAsync(record);
-                }}
-              />
-              <div>
-                <Button variant="ghost" onClick={closeNew}>
-                  {t('setup.branch.cancel')}
-                </Button>
-              </div>
-            </div>
-          </SidePanel>
-        )}
-      </div>
+      <div className="grid max-w-3xl min-w-0 gap-6">{body}</div>
     </>
   );
 }

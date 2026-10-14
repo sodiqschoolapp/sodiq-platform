@@ -66,6 +66,26 @@ describe('the School setup entry', () => {
   // .claude/rules/web.md, Text on screens: "A menu page is a title and its
   // links" (issue #39, item 4; pull request #80, decision 2): no intro under
   // the title and no line under a link.
+  // Task 2.7c-3, decision 2: the Branches list is the Super Admin's (`03`, Branch).
+  it.each([
+    ['super_admin', true],
+    ['principal', false],
+    ['academic_vice_principal', false],
+  ] as const)('shows the Branches link to the %s: %s', async (role, shown) => {
+    fakeApi({ 'GET /api/auth/session': () => json(sessionAs(role)) });
+    renderApp('/setup');
+    const links = await screen.findByRole('list', { name: en.setup.title });
+    const link = within(links).queryByRole('link', { name: en.setup.branchesLink });
+    if (shown) {
+      expect(link?.getAttribute('href')).toBe('/setup/branches');
+      // First, before the branch in use.
+      expect(within(links).getAllByRole('link')[0]).toBe(link);
+    } else {
+      expect(link).toBeNull();
+    }
+    expect(within(links).getByRole('link', { name: en.setup.branchLink })).toBeDefined();
+  });
+
   it('is a title and its links, with no intro and no line under a link', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionAs('principal')) });
     renderApp('/setup');

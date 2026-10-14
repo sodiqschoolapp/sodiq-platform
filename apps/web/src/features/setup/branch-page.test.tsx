@@ -19,8 +19,6 @@ const BRANCH: Branch = {
   goLiveDate: null,
 };
 
-const EAST = { id: '0198a000-0000-7000-8000-000000000003', name: 'East' };
-
 const superAdmin = (branches = [NORTH, SOUTH]) =>
   sessionOf({ assignments: [{ role: 'super_admin', branchId: null }], branches });
 
@@ -59,7 +57,8 @@ describe('the branch page', () => {
     expect(within(days).getByLabelText<HTMLInputElement>('Friday').checked).toBe(true);
     expect(within(days).getByLabelText<HTMLInputElement>('Saturday').checked).toBe(false);
     expect(within(days).getByLabelText<HTMLInputElement>('Sunday').checked).toBe(false);
-    expect(screen.getByRole('button', { name: en.setup.branch.newBranch })).toBeDefined();
+    // "New branch" is on the Branches list (task 2.7c-3, decision 7).
+    expect(screen.queryByRole('button', { name: en.setup.branch.newBranch })).toBeNull();
   });
 
   // Issue #39, hand test of 13 October 2026, finding 33: the weekdays were
@@ -268,92 +267,33 @@ describe('the branch page', () => {
     expect(await screen.findByText('Понедельник, Вторник, Среда, Четверг, Пятница')).toBeDefined();
   });
 
-  // Task 1.1, done when: "the Super Admin can create ... them".
-  it('creates a branch from an empty form, then shows it in the switcher and switches this tab to it', async () => {
-    let branches = [NORTH, SOUTH];
-    const calls = fakeApi({
-      'GET /api/auth/session': () => json(superAdmin(branches)),
-      'GET /api/setup/branch': () => json(BRANCH),
-      'POST /api/setup/branches': (body) => {
-        branches = [...branches, EAST];
-        return json({ id: EAST.id, ...(body as object), timeZone: 'Asia/Tashkent' }, 201);
-      },
-    });
+  // Task 2.7c-3, decision 7: "New branch" is on the Branches list (`03`,
+  // Branch: "A new branch is added from this list"); its tests moved to
+  // branches-page.test.tsx. With no branch yet the Super Admin is sent there.
+  it('sends the Super Admin with no branch yet to the Branches list', async () => {
+    fakeApi({ 'GET /api/auth/session': () => json(superAdmin([])) });
     renderApp(PATH);
-    await screen.findByRole('form', { name: 'North' });
-
-    fireEvent.click(screen.getByRole('button', { name: en.setup.branch.newBranch }));
-    // The new branch opens in the side panel beside the branch in use, whose
-    // form stays (issue #39, item 2 and finding 12; pull request #80).
-    const panel = screen.getByRole('complementary', { name: en.setup.branch.newBranchTitle });
-    const added = within(panel).getByRole('form', { name: en.setup.branch.newBranchTitle });
-    expect(screen.getByRole('form', { name: 'North' })).toBeDefined();
-    expect(panel.contains(screen.getByRole('form', { name: 'North' }))).toBe(false);
-    // Its Save is the only primary of the panel.
-    expect(
-      within(panel)
-        .getAllByRole('button')
-        .filter((button) => button.className.includes('bg-primary ')),
-    ).toHaveLength(1);
-    expect(field(added, en.setup.branch.name).value).toBe('');
-    expect(within(added).getByLabelText<HTMLInputElement>('Friday').checked).toBe(true);
-    expect(within(added).getByLabelText<HTMLInputElement>('Saturday').checked).toBe(false);
-
-    type(field(added, en.setup.branch.name), 'East');
-    fireEvent.click(within(added).getByRole('button', { name: en.form.save }));
-
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('complementary', { name: en.setup.branch.newBranchTitle }),
-      ).toBeNull();
-    });
-    const post = calls.find((call) => call.route === 'POST /api/setup/branches');
-    expect(post?.body).toEqual({
-      name: 'East',
-      address: null,
-      phone: null,
-      email: null,
-      workingWeekdays: [1, 2, 3, 4, 5],
-    });
-    const switcher = screen.getByRole<HTMLSelectElement>('combobox', { name: en.switcher.branch });
-    expect([...switcher.options].map((option) => option.textContent)).toEqual([
-      'North',
-      'South',
-      'East',
-    ]);
-    expect(switcher.value).toBe(EAST.id);
+    await screen.findByText(en.setup.branch.none);
+    // The empty state's link, beside the breadcrumb of the same words.
+    const crumbs = screen.getByRole('navigation', { name: en.layout.breadcrumbs });
+    const links = screen
+      .getAllByRole('link', { name: en.setup.branch.goToList })
+      .filter((one) => !crumbs.contains(one));
+    expect(links).toHaveLength(1);
+    const link = links[0] as HTMLElement;
+    expect(link.getAttribute('href')).toBe('/setup/branches');
+    expect(screen.queryByRole('button', { name: en.setup.branch.newBranch })).toBeNull();
   });
 
-  it('asks before the new-branch form is closed with something typed', async () => {
+  it('names the Branches list in the breadcrumbs of the Super Admin', async () => {
     fakeApi({
       'GET /api/auth/session': () => json(superAdmin()),
       'GET /api/setup/branch': () => json(BRANCH),
     });
     renderApp(PATH);
     await screen.findByRole('form', { name: 'North' });
-    fireEvent.click(screen.getByRole('button', { name: en.setup.branch.newBranch }));
-    const added = screen.getByRole('form', { name: en.setup.branch.newBranchTitle });
-    type(field(added, en.setup.branch.name), 'Ea');
-
-    fireEvent.click(screen.getByRole('button', { name: en.setup.branch.cancel }));
-
-    const dialog = await screen.findByRole('alertdialog', { name: en.unsent.leaveTitle });
-    fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.stay }));
-    await waitFor(() => {
-      expect(screen.queryByRole('alertdialog')).toBeNull();
-    });
-    expect(screen.getByRole('form', { name: en.setup.branch.newBranchTitle })).toBeDefined();
-
-    // The close button of the side panel asks the same, and closes it on "Leave".
-    fireEvent.click(screen.getByRole('button', { name: en.list.closePanel }));
-    const again = await screen.findByRole('alertdialog', { name: en.unsent.leaveTitle });
-    fireEvent.click(within(again).getByRole('button', { name: en.unsent.leave }));
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('complementary', { name: en.setup.branch.newBranchTitle }),
-      ).toBeNull();
-    });
-    expect(screen.getByRole('form', { name: 'North' })).toBeDefined();
+    const crumbs = screen.getByRole('navigation', { name: en.layout.breadcrumbs });
+    expect(within(crumbs).getByRole('link', { name: en.setup.branches.title })).toBeDefined();
   });
 
   it('shows the failure of the load with a way to try again', async () => {
