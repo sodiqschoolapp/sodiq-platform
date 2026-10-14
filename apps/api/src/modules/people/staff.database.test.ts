@@ -1136,4 +1136,60 @@ describe('staff records in the database', () => {
       expect(await count()).toBe((before ?? 0) + 1);
     });
   });
+
+  // Task 2.7d: the link of a record to the Super Admin's own account relies
+  // on these two guards of 0024, written as the application. Both exist
+  // already, so these tests pass at once; they pin the guard of the task.
+  describe('the link of a record to an account', () => {
+    const HASH = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHRzYWx0c2FsdA$aGFzaA';
+
+    async function account(login: string): Promise<string> {
+      const inserted = await database.migrator
+        .insertInto('accounts')
+        .values({
+          login,
+          password_hash: HASH,
+          must_change_password: false,
+          created_at: new Date('2026-09-01T09:00:00+05:00'),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      return inserted.id;
+    }
+
+    const linkAsApp = (id: string, accountId: string | null) =>
+      transactions.run([north], (transaction) =>
+        transaction
+          .updateTable('staff')
+          .set({ account_id: accountId })
+          .where('id', '=', id)
+          .execute(),
+      );
+
+    const failure = async (work: Promise<unknown>): Promise<string> => {
+      try {
+        await work;
+      } catch (error) {
+        const found = error as { constraint?: string; message?: string };
+        return found.constraint ?? found.message ?? '';
+      }
+      throw new Error('The change was not refused.');
+    };
+
+    it('refuses an account linked to a second record', async () => {
+      const first = await createPerson({ branch: north, first: 'Laylo', last: 'Ergasheva' });
+      const second = await createPerson({ branch: north, first: 'Kamola', last: 'Yusupova' });
+      const shared = await account('l.ergasheva');
+      await linkAsApp(first, shared);
+      expect(await failure(linkAsApp(second, shared))).toContain('staff_account_id_key');
+    });
+
+    it('refuses to move a written link to another account, and to clear it', async () => {
+      const record = await createPerson({ branch: north, first: 'Nodira', last: 'Hasanova' });
+      await linkAsApp(record, await account('n.hasanova'));
+      const other = await account('n.hasanova2');
+      expect(await failure(linkAsApp(record, other))).toContain('staff_account_link_fixed');
+      expect(await failure(linkAsApp(record, null))).toContain('staff_account_link_fixed');
+    });
+  });
 });

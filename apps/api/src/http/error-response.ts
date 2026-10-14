@@ -113,6 +113,9 @@ const MESSAGE: Record<ErrorCode, string> = {
   reset_link_invalid: 'The link does not work.',
   reset_link_expired: 'The link has expired.',
   account_exists: 'The staff record has an account already.',
+  own_record_exists: 'The account of the session has a staff record already.',
+  own_link_status:
+    'The record is inactive, has left, has such a status planned, or is not employed yet.',
   login_taken: 'The login is given to another account.',
   no_account: 'The staff record has no account.',
   staff_left: 'The staff member has left.',

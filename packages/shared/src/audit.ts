@@ -33,6 +33,7 @@ export const AUDIT_ACTION_GROUPS = {
   ],
   accounts: [
     'account.create',
+    'account.linked',
     'account.language_changed',
     'account.locked',
     'account.unlocked',

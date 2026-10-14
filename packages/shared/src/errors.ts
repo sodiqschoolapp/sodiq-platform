@@ -201,6 +201,10 @@ export const ERROR_CODES = [
   'reset_link_expired',
   /** The staff record has an account already; an account is linked once (task 2.3a). */
   'account_exists',
+  /** The account of the session has a staff record already: one record per account (task 2.7d). */
+  'own_record_exists',
+  /** A record linked to the own account has no inactive or left status in force or planned, and its employment has begun (task 2.7d, decisions 3 and 9). */
+  'own_link_status',
   /** The login is given to another account; logins are never reused (`edge/people-roles-accounts`, Accounts and sign-in; task 2.3a). `details` names `login`. */
   'login_taken',
   /** The staff record has no account yet: roles are given to an account (task 2.3a). */

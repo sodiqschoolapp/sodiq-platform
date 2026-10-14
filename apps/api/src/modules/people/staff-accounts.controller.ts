@@ -72,6 +72,22 @@ export class StaffAccountsController {
     return this.staffAccounts.create(access, params.id, body.login, requestId);
   }
 
+  /**
+   * Links the record to the account of the session, the Super Admin's own
+   * (task 2.7d). No account is named in the request (decision 1).
+   */
+  @Post('people/staff/:id/account/own')
+  @HttpCode(200)
+  @Requires('accounts', 'create')
+  @Returns(staffAccountSchema)
+  linkOwn(
+    @CurrentAccess() access: Access,
+    @ValidParams(staffParamsSchema) params: StaffParams,
+    @RequestId() requestId: string,
+  ): Promise<StaffAccount> {
+    return this.staffAccounts.linkOwn(access, params.id, requestId);
+  }
+
   @Post('people/staff/:id/roles')
   @Requires('accounts', 'edit')
   @Returns(staffAccountSchema, 201)
