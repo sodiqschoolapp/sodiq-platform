@@ -868,6 +868,8 @@ describe('student records', () => {
           plannedClass: null,
           tutor: null,
           actingTutor: null,
+          // Task 3.2b: the groups of the student, none here.
+          groups: [],
           version: 2,
           // Task 3.1c: the Tutor here holds no class, so the row does not open.
           opens: cookie !== tutor,

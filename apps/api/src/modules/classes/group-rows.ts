@@ -11,6 +11,7 @@ import {
   type SchoolGroup,
 } from '@sodiq/shared';
 import { twoGradeSlots } from '@sodiq/timetable-rules';
+import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { isWithdrawn } from '../setup/dated-rows.js';
@@ -32,6 +33,10 @@ export const GROUP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   group_subject_grade: 'group_subject_grade',
   group_subject_archived: 'group_subject_archived',
   group_language: 'group_language',
+  // Task 3.2b (decision 16): the group's side of its members.
+  group_has_members: 'group_has_members',
+  group_size_below_members: 'group_size_below_members',
+  group_class_has_members: 'group_class_has_members',
 };
 
 /** The refusals of a restore, whose texts say what can be done then (spec review of the build, must-fix 4). */
@@ -82,6 +87,8 @@ export interface GroupRow {
   max_size: number;
   archived_at: Date | null;
   version: number;
+  /** The members today in the branch's time zone (task 3.2b). */
+  students: number;
 }
 
 function groupsIn(transaction: Transaction) {
@@ -107,6 +114,15 @@ function groupsIn(transaction: Transaction) {
       'groups.max_size',
       'groups.archived_at',
       'groups.version',
+      // The members today (task 3.2b, the card's count): rows with days that
+      // hold today in the branch's time zone, as the Students tab counts them.
+      sql<number>`(
+        select count(*)::int from group_memberships m
+        where m.group_id = groups.id
+          and m.valid_from < m.valid_until
+          and m.valid_from <= branch_today(groups.branch_id)
+          and m.valid_until > branch_today(groups.branch_id)
+      )`.as('students'),
     ]);
 }
 
@@ -181,6 +197,7 @@ export function toGroup(row: GroupRow, classes: readonly GroupClassRow[]): Schoo
       archived: one.archived_at !== null,
     })),
     kind: groupKindOf(classes.length),
+    students: row.students,
     archived: row.archived_at !== null,
     version: row.version,
   };

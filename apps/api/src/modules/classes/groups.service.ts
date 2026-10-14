@@ -63,6 +63,10 @@ const GROUP_EXPORT: Record<GroupExportColumn, ExportColumn<SchoolGroup>> = {
     (texts) => texts.groups.columns.language,
     (row, texts) => texts.instructionLanguages[row.language],
   ),
+  students: oneCell(
+    (texts) => texts.groups.columns.students,
+    (row) => row.students,
+  ),
   maxSize: oneCell(
     (texts) => texts.groups.columns.maxSize,
     (row) => row.maxSize,

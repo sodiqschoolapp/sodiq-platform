@@ -117,6 +117,9 @@ export const ENTRY_ABOUT: Readonly<Record<PeopleAction, readonly About[]>> = {
   // Task 3.1b: on the student record, so the report and the history read them.
   'student.class_joined': ['record'],
   'student.class_withdrawn': ['record'],
+  'student.group_joined': ['record'],
+  'student.group_withdrawn': ['record'],
+  'student.group_reviewed': ['record'],
   'student.identity_shown': ['record'],
   'student.export': ['none'],
   'student.personal_data_report': ['record', 'person'],

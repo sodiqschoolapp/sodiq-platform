@@ -4,12 +4,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
-import {
-  MembersKit,
-  groupMemberValues,
-  type GroupMemberRow,
-  type MemberRow,
-} from '../../testing/members-kit.js';
+import { MembersKit, groupMemberValues, type GroupMemberRow } from '../../testing/members-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
@@ -53,10 +48,6 @@ describe('group membership in the database', () => {
 
   const inBranch = <T>(branch: string | string[], work: (transaction: Transaction) => Promise<T>) =>
     transactions.run(Array.isArray(branch) ? branch : [branch], work);
-
-  /** A class row as the application writes it. */
-  const placeInClass = (row: MemberRow) =>
-    inBranch(row.branch, (transaction) => members.member(row, transaction));
 
   /** A group row as the application writes it, in a transaction of its branch. */
   const placeInGroup = (row: GroupMemberRow) =>
@@ -945,7 +936,8 @@ describe('group membership in the database', () => {
             ),
           ),
         ),
-      ).toMatchObject({ code: expect.stringMatching(/^(42501|23514)$/) as unknown as string });
+        // The south sees no student of the north: the guard refuses before the row filter.
+      ).toMatchObject({ constraint: 'group_memberships_student_branch' });
       expect(await groupRowsOf(student)).toHaveLength(1);
       // A group of the south named with the north as its branch: the composite key refuses.
       const southClass = await classes.schoolClass(south, southYear);
