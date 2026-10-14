@@ -363,7 +363,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["BranchesController_list"];
         put?: never;
         post: operations["BranchesController_create"];
         delete?: never;
@@ -3335,6 +3335,72 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    BranchesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        branches: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            address: string | null;
+                            workingWeekdays: (1 | 2 | 3 | 4 | 5 | 6 | 7)[];
+                            buildingCount: number;
+                            roomCount: number;
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "uid_set_mismatch" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "same_person_taken" | "same_person_held_elsewhere" | "same_person_elsewhere" | "same_person_vacancy" | "merge_marks_differ" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                expected?: string;
+                            }[];
+                        };
+                    };
+                };
             };
             /** @description Any error */
             default: {

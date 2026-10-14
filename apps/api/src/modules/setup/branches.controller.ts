@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Put } from '@nestjs/common';
 import {
+  branchListSchema,
   branchRecordSchema,
   branchSchema,
   goLiveRecordSchema,
   type Branch,
+  type BranchList,
   type BranchRecord,
   type GoLiveRecord,
 } from '@sodiq/shared';
@@ -39,6 +41,20 @@ export class BranchesController {
     @RequestId() requestId: string,
   ): Promise<Branch> {
     return this.branches.create(access, record, requestId);
+  }
+
+  /**
+   * Every branch of the school (`03`, Branch: "The Super Admin sees every
+   * branch in one list under School setup … it uses the rights to view and
+   * create branches"; task 2.7c-3, decision 2): school-wide, and on `create`,
+   * which only the Super Admin holds, so a role that views its own branch
+   * does not read every other branch through it.
+   */
+  @Get('branches')
+  @Requires('branches', 'create', { branch: 'none' })
+  @Returns(branchListSchema)
+  list(): Promise<BranchList> {
+    return this.branches.list();
   }
 
   @Get('branch')
