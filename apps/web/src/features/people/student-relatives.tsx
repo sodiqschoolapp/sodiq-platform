@@ -312,6 +312,7 @@ function LinkActions({
     />
   ) : panel.editing === `unlink:${relative.relativeId}` ? (
     <UnlinkChoiceForm
+      relative={relative}
       others={others}
       pending={unlink.isPending}
       failure={unlink.error}
@@ -421,12 +422,14 @@ function LinkForm({
  * contact in the same action (`edge/close-relatives`, row 6).
  */
 function UnlinkChoiceForm({
+  relative,
   others,
   pending,
   failure,
   onUnlink,
   onCancel,
 }: {
+  relative: StudentRelative;
   others: StudentRelative[];
   pending: boolean;
   failure: unknown;
@@ -443,7 +446,7 @@ function UnlinkChoiceForm({
     <form
       data-slot="panel-form"
       className="grid gap-3"
-      aria-label={t('people.relatives.newMain')}
+      aria-label={t('people.relatives.unlinkLabel', { name: relative.fullName })}
       onSubmit={(event) => {
         event.preventDefault();
         if (choice === '') {

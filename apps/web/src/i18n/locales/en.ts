@@ -1420,6 +1420,7 @@ export const en = {
       linkLabel: 'Link of {{name}}',
       changeLink: 'Change the link',
       closeChoices: 'Close the choices',
+      unlinkLabel: 'Unlink {{name}}',
       extraPhones: 'Extra phones',
       extraPhone: 'Extra phone {{n}}',
       addExtraPhone: 'Add an extra phone',

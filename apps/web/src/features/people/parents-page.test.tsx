@@ -4,6 +4,13 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import {
+  actionsAreLast,
+  edit,
+  panelActionNames,
+  panelActions,
+  savedInPanel,
+} from '@/testing/panel';
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const PATH = '/people/parents';
@@ -208,9 +215,10 @@ describe('the page of a relative', () => {
     });
     renderApp(PATH);
     const panel = await openPanel();
-    const form = await within(panel).findByRole('form', {
-      name: en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
-    });
+    const form = await edit(
+      panel,
+      en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
+    );
     fireEvent.change(within(form).getByLabelText(en.people.relatives.phone), {
       target: { value: '+998 90 444 55 66' },
     });
@@ -238,11 +246,67 @@ describe('the page of a relative', () => {
     openList('academic_vice_principal');
     renderApp(PATH);
     const panel = await openPanel();
-    const form = await within(panel).findByRole('form');
+    const form = await edit(
+      panel,
+      en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
+    );
     fireEvent.change(within(form).getByLabelText(en.people.relatives.phone), {
       target: { value: '+79161234567' },
     });
     expect(await within(form).findByText(en.people.relatives.noSms)).toBeDefined();
+  });
+
+  // Task 2.7c-2b-2b: the panel reads first; Edit at the bottom opens the record's form.
+  it('reads first, with Edit last in the panel, and closes the form on Cancel without a call', async () => {
+    const calls = openList('academic_vice_principal');
+    renderApp(PATH);
+    const panel = await openPanel();
+    await within(panel).findByText(en.people.relatives.phone, { selector: 'dt' });
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    expect(actionsAreLast(panel)).toBe(true);
+    const form = await edit(
+      panel,
+      en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
+    );
+    expect(panelActions(panel)).toBeNull();
+    fireEvent.click(within(form).getByRole('button', { name: en.form.cancel }));
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form')).toBeNull();
+    });
+    expect(calls.some((call) => call.route.startsWith('PATCH'))).toBe(false);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.form.edit }),
+      );
+    });
+  });
+
+  it('closes the form after a save with "Saved." and the focus on Edit', async () => {
+    const calls = openList('academic_vice_principal', {
+      [`PATCH /api/people/relatives/${DILFUZA.id}`]: () =>
+        json(detailOf(DILFUZA, { fullName: 'Dilfuza Rahimova-Karimova' })),
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    const form = await edit(
+      panel,
+      en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
+    );
+    fireEvent.change(within(form).getByLabelText(en.people.relatives.fullName), {
+      target: { value: 'Dilfuza Rahimova-Karimova' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await savedInPanel(panel);
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(calls.find((call) => call.route.startsWith('PATCH'))?.body).toMatchObject({
+      fullName: 'Dilfuza Rahimova-Karimova',
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.form.edit }),
+      );
+    });
   });
 
   it('hides workplace and email from the Principal behind a show', async () => {
@@ -259,6 +323,8 @@ describe('the page of a relative', () => {
     const panel = await openPanel();
     expect(await within(panel).findAllByText(en.people.relatives.hidden)).toHaveLength(2);
     expect(within(panel).queryByRole('form')).toBeNull();
+    // No Edit and no opener for a reader who may not edit (task 2.7c-2b-2b).
+    expect(panelActions(panel)).toBeNull();
     fireEvent.click(within(panel).getByRole('button', { name: en.people.relatives.show }));
     expect(await within(panel).findByText('d.rahimova@example.uz')).toBeDefined();
     expect(calls.some((call) => call.route.endsWith('/show'))).toBe(true);
@@ -288,7 +354,10 @@ describe('the page of a relative', () => {
 
     const refuse = async () => {
       const panel = await openPanel();
-      const form = await within(panel).findByRole('form');
+      const form = await edit(
+        panel,
+        en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
+      );
       fireEvent.change(within(form).getByLabelText(en.people.relatives.phone), {
         target: { value: '+998 90 444 55 66' },
       });
@@ -327,6 +396,55 @@ describe('the page of a relative', () => {
         phoneOf: 'this',
         nameOf: 'other',
       });
+      // This record stays: the merge saved the phone, so its form closes (task 2.7c-2b-2b).
+      const panel = screen.getByRole('complementary', { name: 'Dilfuza Rahimova' });
+      await savedInPanel(panel);
+      expect(within(panel).queryByRole('form')).toBeNull();
+    });
+
+    it('keeps the record form\'s Save as the one primary, and closes the form with "Saved." after "Give the number"', async () => {
+      let patches = 0;
+      const calls = openList('academic_vice_principal', {
+        [`PATCH /api/people/relatives/${DILFUZA.id}`]: () => {
+          patches += 1;
+          return patches === 1 ? takenAnswer(true)() : json(detailOf(DILFUZA));
+        },
+        'POST /api/people/relatives/phone-match': () =>
+          json({ holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 } }),
+      });
+      renderApp(PATH);
+      const choices = await refuse();
+      const panel = screen.getByRole('complementary', { name: 'Dilfuza Rahimova' });
+      const primaries = () =>
+        [...panel.querySelectorAll('[data-slot="button"][data-variant="default"]')].map(
+          (button) => button.textContent,
+        );
+      fireEvent.click(
+        within(choices).getByRole('button', {
+          name: en.people.relatives.mergeWith.replace('{{name}}', 'Shoira Nazarova'),
+        }),
+      );
+      expect(
+        within(choices)
+          .getByRole('button', { name: en.people.relatives.merge })
+          .getAttribute('data-variant'),
+      ).toBe('destructive');
+      expect(primaries()).toEqual([en.form.save]);
+      fireEvent.click(within(choices).getByRole('button', { name: en.people.relatives.newOwner }));
+      fireEvent.click(
+        within(choices).getByLabelText(
+          en.people.relatives.previousUnknown.replace('{{name}}', 'Shoira Nazarova'),
+        ),
+      );
+      const give = within(choices).getByRole('button', { name: en.people.relatives.giveNumber });
+      expect(give.getAttribute('data-variant')).toBe('secondary');
+      expect(primaries()).toEqual([en.form.save]);
+      // One "Cancel" only: the choices close with words of their own.
+      expect(within(panel).getAllByRole('button', { name: en.form.cancel })).toHaveLength(1);
+      fireEvent.click(give);
+      await savedInPanel(panel);
+      expect(within(panel).queryByRole('form')).toBeNull();
+      expect(calls.filter((call) => call.route.startsWith('PATCH'))).toHaveLength(2);
     });
 
     it('opens the record that stays when it is the other one', async () => {
@@ -417,7 +535,9 @@ describe('the page of a relative', () => {
           json({ holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 } }),
       });
       const cancel = (choices: HTMLElement) => {
-        fireEvent.click(within(choices).getByRole('button', { name: en.confirm.cancel }));
+        fireEvent.click(
+          within(choices).getByRole('button', { name: en.people.relatives.closeChoices }),
+        );
       };
       const closed = async () => {
         await waitFor(() => {
@@ -569,9 +689,10 @@ describe('the extra phones and the same person of a relative', () => {
     });
     renderApp(PATH);
     const panel = await openPanel();
-    const form = await within(panel).findByRole('form', {
-      name: en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
-    });
+    const form = await edit(
+      panel,
+      en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
+    );
     const add = () => {
       fireEvent.click(
         within(form).getByRole('button', { name: en.people.relatives.addExtraPhone }),
@@ -635,7 +756,10 @@ describe('the extra phones and the same person of a relative', () => {
     );
     renderApp(PATH);
     const panel = await openPanel();
-    const form = await within(panel).findByRole('form');
+    const form = await edit(
+      panel,
+      en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
+    );
     expect(
       within(form).getByLabelText<HTMLInputElement>(
         en.people.relatives.extraPhone.replace('{{n}}', '1'),
@@ -706,6 +830,51 @@ describe('the extra phones and the same person of a relative', () => {
       `PUT /api/people/relatives/${DILFUZA.id}/same-person`,
     );
     expect(await within(section).findByRole('link', { name: 'Karimov Bahodir' })).toBeDefined();
+    // The picker closes with "Saved." in the bottom row (task 2.7c-2b-2b).
+    await savedInPanel(panel);
+    expect(within(section).queryByRole('form')).toBeNull();
+  });
+
+  it('opens the picker through the panel with the search field focused; Remove gives way and Cancel closes it', async () => {
+    openList(
+      'academic_vice_principal',
+      { 'GET /api/people/staff': () => json({ staff: [MALIKA, BAHODIR], today: '2026-10-10' }) },
+      'en',
+      { samePerson: SAME },
+    );
+    renderApp(PATH);
+    const panel = await openPanel();
+    const section = await within(panel).findByRole('region', {
+      name: en.people.relatives.sameTitle,
+    });
+    const change = within(section).getByRole('button', { name: en.people.relatives.changeStaff });
+    fireEvent.click(change);
+    const picker = await within(section).findByRole('form', {
+      name: en.people.relatives.markStaff,
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(picker).getByLabelText(en.people.relatives.staffSearch),
+      );
+    });
+    expect(
+      within(section).queryByRole('button', { name: en.people.relatives.removeMark }),
+    ).toBeNull();
+    expect(panelActions(panel)).toBeNull();
+    const cancel = within(picker).getByRole('button', { name: en.people.relatives.markCancel });
+    expect(cancel.getAttribute('data-variant')).toBe('ghost');
+    fireEvent.click(cancel);
+    await waitFor(() => {
+      expect(within(section).queryByRole('form')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(section).getByRole('button', { name: en.people.relatives.changeStaff }),
+      );
+    });
+    expect(
+      within(section).getByRole('button', { name: en.people.relatives.removeMark }),
+    ).toBeDefined();
   });
 
   it('says why a mark is refused', async () => {
@@ -827,9 +996,11 @@ describe('the extra phones and the same person of a relative', () => {
       within(section).getByRole('button', { name: ru.people.relatives.changeStaff }),
     ).toBeDefined();
     expect(await valueOf(panel, ru.people.relatives.extraPhones)).toBe('+998 93 555 66 77');
-    const form = await within(panel).findByRole('form', {
-      name: ru.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
-    });
+    const form = await edit(
+      panel,
+      ru.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
+      ru.form.edit,
+    );
     expect(
       within(form).getByLabelText(ru.people.relatives.extraPhone.replace('{{n}}', '1')),
     ).toBeDefined();

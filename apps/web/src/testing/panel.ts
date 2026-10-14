@@ -31,13 +31,19 @@ export const actionsAreLast = (panel: HTMLElement): boolean => {
   return node === panel;
 };
 
-/** Edit pressed in the panel's bottom row: its form, named `name`. */
+/**
+ * Edit, or the button `editText` of a part, pressed: its form, named
+ * `name`. The bottom row is searched first, since a part may have a button
+ * of the same words in a language ("Изменить", task 2.7c-2b-2b).
+ */
 export async function edit(
   panel: HTMLElement,
   name: string,
   editText: string = en.form.edit,
 ): Promise<HTMLElement> {
-  fireEvent.click(within(panel).getByRole('button', { name: editText }));
+  const row = panelActions(panel);
+  const inRow = row === null ? null : within(row).queryByRole('button', { name: editText });
+  fireEvent.click(inRow ?? within(panel).getByRole('button', { name: editText }));
   return within(panel).findByRole('form', { name });
 }
 

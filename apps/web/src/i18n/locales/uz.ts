@@ -1434,6 +1434,7 @@ export const uz: Texts<'one' | 'other'> = {
       linkLabel: 'Bogʻlanish: {{name}}',
       changeLink: 'Bogʻlanishni oʻzgartirish',
       closeChoices: 'Variantlarni yopish',
+      unlinkLabel: 'Bogʻlanishni olib tashlash: {{name}}',
       extraPhones: 'Qoʻshimcha telefonlar',
       extraPhone: '{{n}}-qoʻshimcha telefon',
       addExtraPhone: 'Qoʻshimcha telefon qoʻshish',
