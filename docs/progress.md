@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 14 October 2026: task 3.3a Class and group transfers, History tab
+
+- Built: migrations 0050 (`student_moves`, the move links of both membership tables, the replaced checks and triggers) and 0051 (the ends a move writes); class transfers (`classes` `edit`) and group transfers (`group_transfers`, the Head Teachers for own subjects) with an effective date, scheduled moves with change and cancel, the undo of a move begun; a leaving cancels the scheduled moves it comes before.
+- The student panel: "Move to another class", "Move to another group", the badge of a scheduled move with its change and cancel, the latest class move in the Academic block, the History tab (`student_history`) with "Undo the move".
+- Task 3.3 split: 3.3b (return and graduate restore into a class), 3.3c (move to another branch), 3.3d (merge of two student records).
+- Left out: the journal side of a move (8.6), the closed quarter (9.2b), a move from the group panel's member rows (the student's record holds the form).
+
+The next sessions must know:
+
+- Every row a move writes or cuts names it (`written_by_move_id`, `ended_by_move_id`); a path that ends a class row ends the group rows too, and a path that cancels a move takes its rows back (`takeBackClass`, `takeBackGroup`).
+- The browser seed has a `moves` account (Academic Vice Principal of a branch with 7 Oxford, 7 Yale and a student in 7 Oxford).
+- The next task is 3.3b.
+
 ## 14 October 2026: task 3.2d Search over records
 
 - Built: four read routes `GET api/search/{students,staff,classes,groups}?q=`, each under its record route's `@Requires` and scope (a Tutor: own classes' students, own classes, the groups drawing from them; a Head Teacher: groups of own subjects), at most 8 a kind with `more`, the scope applied before the limit; no audit entry.

@@ -47,6 +47,9 @@ import {
   tutorsInForce,
 } from '../classes/class-membership-rows.js';
 import { studentGroupsOn } from '../classes/group-membership-rows.js';
+import { moveSummaries, pastMoverOf } from '../classes/student-moves.js';
+import { inGroupScope } from '../access/group-scope.js';
+import { permitting } from '../access/permission-check.js';
 import {
   lockPlacementStudents,
   planPlacement,
@@ -1117,7 +1120,73 @@ export class Students {
           PERMISSIONS,
         ) !== undefined,
       deletable: canArchive && !holdsData(rows, row.scholarship_type, Number(contractCount.count)),
+      ...(await this.movesOfDetail(transaction, access, id, today, scope)),
       today,
+    };
+  }
+
+  /**
+   * The moves part of the record (task 3.3a): the scheduled moves (edge: "the
+   * student shows the current class with a badge"), the latest class move
+   * begun for the Academic block's "transfer history" (`04`, Student record),
+   * and what this reader may do with them, decided from every current
+   * assignment.
+   */
+  private async movesOfDetail(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+    today: SchoolDate,
+    scope: readonly string[],
+  ): Promise<
+    Pick<
+      StudentDetail,
+      | 'scheduledMoves'
+      | 'lastClassMove'
+      | 'canMoveClass'
+      | 'groupMoveSubjects'
+      | 'canMoveInPast'
+      | 'readsHistory'
+    >
+  > {
+    const moves = await moveSummaries(transaction, id, today);
+    const movers = permitting(
+      { area: 'group_transfers', action: 'edit', branch: 'request' },
+      access.assignments,
+      access.branchId,
+      PERMISSIONS,
+    );
+    const subjects = [
+      ...new Set(
+        (
+          await transaction
+            .selectFrom('group_memberships')
+            .select('subject_id')
+            .where('student_id', '=', id)
+            .whereRef('valid_from', '<', 'valid_until')
+            .where('valid_until', '>', today)
+            .execute()
+        ).map((one) => one.subject_id),
+      ),
+    ].sort();
+    return {
+      scheduledMoves: moves.filter((move) => move.state === 'scheduled'),
+      lastClassMove:
+        moves.filter((move) => move.kind === 'class' && move.state === 'done').at(-1) ?? null,
+      canMoveClass:
+        decide(
+          { area: 'classes', action: 'edit', branch: 'request' },
+          access.assignments,
+          access.branchId,
+          PERMISSIONS,
+        ) !== undefined,
+      // Decision 2: the subjects of the student's groups the reader moves in
+      // its scope (a Head Teacher: own subjects).
+      groupMoveSubjects: subjects.filter(
+        (subjectId) => inGroupScope(movers, { subjectId, classIds: [] }) !== undefined,
+      ),
+      canMoveInPast: pastMoverOf(access) !== undefined,
+      readsHistory: readerOf(access, 'student_history', scope) !== undefined,
     };
   }
 

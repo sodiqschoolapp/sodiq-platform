@@ -7,6 +7,7 @@ import {
   studentUidCorrectionSchema,
   type ClassNotRestored,
   type StudentDetail,
+  type StudentMove,
   type StudentIdentity,
   type StudentRecord,
   type StudentUidCorrection,
@@ -49,16 +50,27 @@ import {
   useCancelLeaving,
   type StatusForm,
 } from './student-status-section';
+import {
+  ClassMoveForm,
+  GroupMoveForm,
+  HistoryTab,
+  isMoveForm,
+  moveRows,
+  movesIt,
+  targetOf,
+  UndoMoveForm,
+  useCancelMove,
+} from './student-moves';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
 
-type Tab = 'overview' | 'relatives' | 'contract';
+type Tab = 'overview' | 'relatives' | 'contract' | 'history';
 
 /** The forms of the whole record: they take the place of the tabs and their content. */
 const RECORD_FORMS = ['record', 'uid'] as const;
 
 const isRecordForm = (key: string | null): boolean =>
-  isStatusForm(key) || RECORD_FORMS.some((one) => one === key);
+  isStatusForm(key) || isMoveForm(key) || RECORD_FORMS.some((one) => one === key);
 
 interface StudentPanelProps {
   id: string;
@@ -95,6 +107,8 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   // A status form closed because the student changed under it: its refusal stays in the bottom row.
   const [staleClosed, setStaleClosed] = useState(false);
   const [notRestored, setNotRestored] = useState<readonly ClassNotRestored[]>([]);
+  // The move a History line's "Undo the move" opened (task 3.3a).
+  const [undoing, setUndoing] = useState<StudentMove | null>(null);
   const relatives = useQuery({
     ...studentRelativesQuery(branchId, id),
     enabled:
@@ -178,6 +192,16 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     },
     reread,
   );
+  // Task 3.3a: the cancel of a scheduled move, as the cancel of a leaving.
+  const cancelMove = useCancelMove(
+    student,
+    name,
+    async (answer) => {
+      await statusChanged(answer);
+      panel.point('status');
+    },
+    reread,
+  );
   // A status form whose action is no longer allowed (the student was read
   // again) is not drawn: the panel reads as with no form open.
   const gone = isStatusForm(panel.editing) && allowed !== null && !allowed[panel.editing];
@@ -215,6 +239,10 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     ...(student.financial === null
       ? []
       : [{ key: 'contract' as const, title: t('people.students.tabs.contract') }]),
+    // The History tab (task 3.3a) for its readers.
+    ...(student.readsHistory
+      ? [{ key: 'history' as const, title: t('people.students.tabs.history') }]
+      : []),
   ];
   const chosen = tab ?? (relatives.data?.relatives.length === 0 ? 'relatives' : 'overview');
   const shownTab = tabs.some((one) => one.key === chosen) ? chosen : 'overview';
@@ -224,6 +252,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     panel.start(key, () => {
       setStaleClosed(false);
       cancelLeaving.reset();
+      cancelMove.reset();
     });
   };
   const opens = (key: string, text: string, variant: 'default' | 'secondary' | 'destructive') => (
@@ -291,6 +320,57 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     allowed.return && opens('return', t('people.students.returnTitle'), 'secondary'),
     allowed.restore && opens('restore', t('people.students.restoreTitle'), 'secondary'),
   ].filter((one) => one !== false);
+  // Task 3.3a: a move, and the change and cancel of each scheduled move this reader may make.
+  const scheduledClass = student.scheduledMoves.some((move) => move.kind === 'class');
+  const movable = student.groups.filter((one) => student.groupMoveSubjects.includes(one.subjectId));
+  const moves = [
+    student.canMoveClass &&
+      student.class !== null &&
+      !scheduledClass &&
+      opens('moveClass', t('people.students.moves.moveClass'), 'secondary'),
+    movable.length > 0 && opens('moveGroup', t('people.students.moves.moveGroup'), 'secondary'),
+    ...student.scheduledMoves
+      .filter((move) => movesIt(student, move))
+      .flatMap((move) => [
+        opens(
+          `change:${move.id}`,
+          t('people.students.moves.change', { target: targetOf(move) }),
+          'secondary',
+        ),
+        <Button
+          key={`cancel:${move.id}`}
+          variant="secondary"
+          disabled={cancelMove.isPending}
+          onClick={() => {
+            setStaleClosed(false);
+            cancelMove.mutate(move, {
+              onSuccess: (answer) => {
+                if (answer === null) {
+                  cancelMove.reset();
+                }
+              },
+            });
+          }}
+        >
+          {t('people.students.moves.cancel', { target: targetOf(move) })}
+        </Button>,
+      ]),
+  ].filter((one) => one !== false);
+  secondary.push(...moves);
+  const changing = student.scheduledMoves.find((move) => editing === `change:${move.id}`);
+  const moveProps = (key: string) => ({
+    student,
+    onChanged: async (answer: unknown) => {
+      panel.stop({ saved: true, key, focus: 'status' });
+      await statusChanged(answer);
+    },
+    onStale: async () => {
+      await reread();
+    },
+    onCancel: () => {
+      panel.stop();
+    },
+  });
   const danger = [
     allowed.leave && opens('leave', t('people.students.leaveTitle'), 'destructive'),
     allowed.delete && opens('delete', t('people.students.deleteAction'), 'destructive'),
@@ -336,6 +416,39 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
         // its action is allowed, keyed by the status state read (task 2.4b-1).
         <div className="grid gap-4">
           <StatusSection student={student} panel={shown} />
+          {editing === 'moveClass' && (
+            <ClassMoveForm
+              key={`move-class-${String(student.version)}`}
+              {...moveProps('moveClass')}
+              label={name}
+              move={null}
+            />
+          )}
+          {editing === 'moveGroup' && (
+            <GroupMoveForm key="move-group" {...moveProps('moveGroup')} move={null} />
+          )}
+          {changing?.kind === 'class' && editing === `change:${changing.id}` && (
+            <ClassMoveForm
+              key={`change-${changing.id}`}
+              {...moveProps(`change:${changing.id}`)}
+              label={name}
+              move={changing}
+            />
+          )}
+          {changing?.kind === 'group' && editing === `change:${changing.id}` && (
+            <GroupMoveForm
+              key={`change-${changing.id}`}
+              {...moveProps(`change:${changing.id}`)}
+              move={changing}
+            />
+          )}
+          {undoing !== null && editing === `undo:${undoing.id}` && (
+            <UndoMoveForm
+              key={`undo-${undoing.id}`}
+              {...moveProps(`undo:${undoing.id}`)}
+              move={undoing}
+            />
+          )}
           {editing === 'leave' && allowed.leave && (
             <LeavingForm key={`leave-${String(student.version)}`} {...change('leave')} />
           )}
@@ -419,6 +532,14 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
             </>
           ) : shownTab === 'relatives' ? (
             <StudentRelativesTab studentId={student.id} name={name} panel={shown} />
+          ) : shownTab === 'history' ? (
+            <HistoryTab
+              student={student}
+              onUndo={(move) => {
+                setUndoing(move);
+                start(`undo:${move.id}`);
+              }}
+            />
           ) : (
             <ContractTab student={student} />
           )}
@@ -429,9 +550,17 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
           primary={student.canEdit && opens('record', t('form.edit'), 'default')}
           secondary={secondary.length === 0 ? undefined : secondary}
           danger={danger.length === 0 ? undefined : danger}
-          error={cancelLeaving.error ?? (staleClosed ? new ApiFailure('student_changed') : null)}
+          error={
+            cancelLeaving.error ??
+            cancelMove.error ??
+            (staleClosed ? new ApiFailure('student_changed') : null)
+          }
           // After a save of a form, or "Cancel the leaving" until another action starts.
-          saved={(panel.saved && cancelLeaving.isIdle) || cancelLeaving.isSuccess}
+          saved={
+            (panel.saved && cancelLeaving.isIdle && cancelMove.isIdle) ||
+            cancelLeaving.isSuccess ||
+            cancelMove.isSuccess
+          }
         />
       )}
     </div>
@@ -497,6 +626,8 @@ function Academic({ student }: { student: StudentDetail }) {
     rows.push([t('people.students.actingTutor'), listName(student.actingTutor)]);
   }
   rows.push([t('people.students.mainRoom'), student.mainRoom ?? t('classes.noRoom')]);
+  // Task 3.3a: the scheduled moves with their dates, and the latest class move.
+  rows.push(...moveRows(t, i18n.language, student));
   return (
     <section className="grid gap-3">
       <h3 className={SECTION_TITLE}>{t('people.students.academic')}</h3>
@@ -509,8 +640,8 @@ function Academic({ student }: { student: StudentDetail }) {
 function Terms({ rows }: { rows: readonly (readonly [string, string])[] }) {
   return (
     <dl className="grid gap-2 text-sm">
-      {rows.map(([term, value]) => (
-        <div key={term} className="grid gap-0.5">
+      {rows.map(([term, value], index) => (
+        <div key={`${term}-${String(index)}`} className="grid gap-0.5">
           <dt className="text-muted-foreground">{term}</dt>
           <dd>{value}</dd>
         </div>

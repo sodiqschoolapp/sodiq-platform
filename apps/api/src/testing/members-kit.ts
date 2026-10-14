@@ -14,9 +14,12 @@ export interface MemberRow {
   from: string;
   until?: string;
   ownUntil?: string;
-  cause?: 'placement' | 'create' | 'cancel' | 'undo';
-  endedBy?: 'leaving' | null;
+  cause?: 'placement' | 'create' | 'cancel' | 'undo' | 'transfer';
+  endedBy?: 'leaving' | 'transfer' | 'undone' | null;
   leavingId?: string | null;
+  /** Task 3.3a: the move that wrote the row, and the one that ended it. */
+  writtenByMoveId?: string | null;
+  endedByMoveId?: string | null;
 }
 
 /** The values of a membership row: its own end is the day after the year's end by default. */
@@ -30,6 +33,8 @@ export const memberValues = (row: MemberRow) => ({
   cause: row.cause ?? 'placement',
   ended_by: row.endedBy ?? null,
   leaving_id: row.leavingId ?? null,
+  written_by_move_id: row.writtenByMoveId ?? null,
+  ended_by_move_id: row.endedByMoveId ?? null,
 });
 
 /** A group row as a test writes it (task 3.2b); the dates are school dates. */
@@ -41,10 +46,13 @@ export interface GroupMemberRow {
   from: string;
   until?: string;
   ownUntil?: string;
-  cause?: 'placement' | 'automatic';
+  cause?: 'placement' | 'automatic' | 'transfer';
   review?: boolean;
-  endedBy?: 'leaving' | null;
+  endedBy?: 'leaving' | 'transfer' | null;
   leavingId?: string | null;
+  /** Task 3.3a: the move that wrote the row, and the one that ended it. */
+  writtenByMoveId?: string | null;
+  endedByMoveId?: string | null;
 }
 
 /** The values of a group row: its own end is the day after the year's end by default. */
@@ -60,7 +68,21 @@ export const groupMemberValues = (row: GroupMemberRow) => ({
   review: row.review ?? false,
   ended_by: row.endedBy ?? null,
   leaving_id: row.leavingId ?? null,
+  written_by_move_id: row.writtenByMoveId ?? null,
+  ended_by_move_id: row.endedByMoveId ?? null,
 });
+
+/** A move as a test writes it (task 3.3a, 0050); the dates are school dates. */
+export interface MoveRow {
+  branch: string;
+  studentId: string;
+  from: string;
+  fromClassId?: string;
+  toClassId?: string;
+  fromGroupId?: string;
+  toGroupId?: string;
+  subjectId?: string;
+}
 
 /**
  * The students and memberships class membership stands on (task 3.1b),
@@ -165,6 +187,28 @@ export class MembersKit {
     const written = await db
       .insertInto('class_memberships')
       .values(memberValues(row))
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    return written.id;
+  }
+
+  /** A move (task 3.3a), by the migrator or in the transaction given; a class move unless groups are named. */
+  async move(row: MoveRow, db: Database | Transaction = this.migrator): Promise<string> {
+    const group = row.fromGroupId !== undefined;
+    const written = await db
+      .insertInto('student_moves')
+      .values({
+        branch_id: row.branch,
+        student_id: row.studentId,
+        kind: group ? 'group' : 'class',
+        subject_id: row.subjectId ?? null,
+        from_class_id: row.fromClassId ?? null,
+        to_class_id: row.toClassId ?? null,
+        from_group_id: row.fromGroupId ?? null,
+        to_group_id: row.toGroupId ?? null,
+        effective_on: row.from,
+        made_at: new Date('2026-10-14T10:00:00+05:00'),
+      })
       .returning('id')
       .executeTakeFirstOrThrow();
     return written.id;

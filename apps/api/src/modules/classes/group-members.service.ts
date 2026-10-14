@@ -1,3 +1,4 @@
+import { refuseScheduledMoveRow } from './student-moves.js';
 import { Injectable } from '@nestjs/common';
 import {
   nextDay,
@@ -54,6 +55,11 @@ interface PlannedGroupRow {
   until: SchoolDate;
   ownUntil: SchoolDate;
   leavingId: string | null;
+  /**
+   * The scheduled move that cut the class row holding the row (task 3.3a,
+   * correction 1): the row is written already cut by it, naming it.
+   */
+  endedByMoveId: string | null;
 }
 
 /** The refusal of one student, named in the details of the answer. */
@@ -170,6 +176,7 @@ export class GroupMembers {
               until: held.validUntil,
               ownUntil: held.ownUntil,
               leavingId: held.endedBy === 'leaving' ? held.leavingId : null,
+              endedByMoveId: held.endedBy === 'transfer' ? held.endedByMoveId : null,
             });
           });
           await this.refuseHeldGroups(transaction, input, details, group.subjectId);
@@ -228,7 +235,14 @@ export class GroupMembers {
           await lockGroups(transaction, [groupId]);
           const row = await transaction
             .selectFrom('group_memberships')
-            .select(['valid_from', 'valid_until', 'ended_by'])
+            .select([
+              'valid_from',
+              'valid_until',
+              'ended_by',
+              'cause',
+              'written_by_move_id',
+              'ended_by_move_id',
+            ])
             .where('id', '=', memberId)
             .executeTakeFirstOrThrow();
           // A row with no day (withdrawn, or emptied by a leaving) is answered as it is:
@@ -246,6 +260,8 @@ export class GroupMembers {
                 409,
               );
             }
+            // Task 3.3a: a row of a scheduled move goes with the move.
+            await refuseScheduledMoveRow(transaction, row);
             await transaction
               .updateTable('group_memberships')
               .set({ valid_until: row.valid_from, ended_by: 'withdrawn', leaving_id: null })
@@ -447,6 +463,7 @@ export class GroupMembers {
               until: held.validUntil,
               ownUntil: held.ownUntil,
               leavingId: held.endedBy === 'leaving' ? held.leavingId : null,
+              endedByMoveId: held.endedBy === 'transfer' ? held.endedByMoveId : null,
             });
           }
           const first = details[0];
@@ -621,8 +638,10 @@ export class GroupMembers {
           own_until: row.ownUntil,
           cause,
           review,
-          ended_by: row.leavingId === null ? null : 'leaving',
+          ended_by:
+            row.leavingId !== null ? 'leaving' : row.endedByMoveId !== null ? 'transfer' : null,
           leaving_id: row.leavingId,
+          ended_by_move_id: row.endedByMoveId,
         })
         .returning('id')
         .executeTakeFirstOrThrow();

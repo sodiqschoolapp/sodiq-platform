@@ -39,11 +39,18 @@ export const CLASS_PATH_GROUP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
 export interface StoredGroupMembership {
   id: string;
   groupId: string;
+  subjectId: string;
   validFrom: SchoolDate;
   validUntil: SchoolDate;
   ownUntil: SchoolDate;
   endedBy: string | null;
   leavingId: string | null;
+  /** What wrote the row (0048, 0049, 0050). */
+  cause: string;
+  /** The move whose action inserted the row (task 3.3a, 0050), if any. */
+  writtenByMoveId: string | null;
+  /** The move that cut or emptied the row (task 3.3a, 0050), if any. */
+  endedByMoveId: string | null;
 }
 
 /** The group rows of one student the transaction sees, by start. */
@@ -53,7 +60,19 @@ export async function groupMembershipsOf(
 ): Promise<StoredGroupMembership[]> {
   const rows = await transaction
     .selectFrom('group_memberships')
-    .select(['id', 'group_id', 'valid_from', 'valid_until', 'own_until', 'ended_by', 'leaving_id'])
+    .select([
+      'id',
+      'group_id',
+      'subject_id',
+      'valid_from',
+      'valid_until',
+      'own_until',
+      'ended_by',
+      'leaving_id',
+      'cause',
+      'written_by_move_id',
+      'ended_by_move_id',
+    ])
     .where('student_id', '=', studentId)
     .orderBy('valid_from')
     .orderBy('id')
@@ -61,11 +80,15 @@ export async function groupMembershipsOf(
   return rows.map((row) => ({
     id: row.id,
     groupId: row.group_id,
+    subjectId: row.subject_id,
     validFrom: row.valid_from,
     validUntil: row.valid_until,
     ownUntil: row.own_until,
     endedBy: row.ended_by,
     leavingId: row.leaving_id,
+    cause: row.cause,
+    writtenByMoveId: row.written_by_move_id,
+    endedByMoveId: row.ended_by_move_id,
   }));
 }
 
@@ -120,6 +143,8 @@ export async function cutGroupRows(
   firstInactiveDay: SchoolDate,
   leavingId: string,
   takenBack: string | null,
+  /** Moves this leaving cancels (task 3.3a): the rows they cut on its first inactive day are named by it. */
+  cancelledNow: ReadonlySet<string> = new Set(),
 ): Promise<GroupRowEnded[]> {
   const rows = await groupMembershipsOf(transaction, studentId);
   const plan: { row: StoredGroupMembership; until: SchoolDate }[] = [];
@@ -130,6 +155,14 @@ export async function cutGroupRows(
         row,
         until: row.validFrom > firstInactiveDay ? row.validFrom : firstInactiveDay,
       });
+    } else if (
+      holds &&
+      row.endedBy === 'transfer' &&
+      row.endedByMoveId !== null &&
+      cancelledNow.has(row.endedByMoveId) &&
+      row.validUntil >= firstInactiveDay
+    ) {
+      plan.push({ row, until: row.validUntil });
     } else if (
       !holds &&
       takenBack !== null &&
@@ -147,7 +180,12 @@ export async function cutGroupRows(
   for (const { row, until } of plan) {
     await transaction
       .updateTable('group_memberships')
-      .set({ valid_until: until, ended_by: 'leaving', leaving_id: leavingId })
+      .set({
+        valid_until: until,
+        ended_by: 'leaving',
+        leaving_id: leavingId,
+        ended_by_move_id: null,
+      })
       .where('id', '=', row.id)
       .where('student_id', '=', studentId)
       .execute();
@@ -194,7 +232,12 @@ export async function withdrawGroupRows(
   for (const row of withdrawn) {
     await transaction
       .updateTable('group_memberships')
-      .set({ valid_until: row.validFrom, ended_by: 'class_withdrawn', leaving_id: null })
+      .set({
+        valid_until: row.validFrom,
+        ended_by: 'class_withdrawn',
+        leaving_id: null,
+        ended_by_move_id: null,
+      })
       .where('id', '=', row.id)
       .execute();
   }
@@ -222,6 +265,7 @@ export async function studentGroupsOn(
     .selectFrom('group_memberships')
     .innerJoin('groups', 'groups.id', 'group_memberships.group_id')
     .select([
+      'group_memberships.id as membership_id',
       'group_memberships.student_id',
       'group_memberships.group_id',
       'group_memberships.subject_id',
@@ -248,6 +292,7 @@ export async function studentGroupsOn(
     if (!own.has(row.subject_id)) {
       own.set(row.subject_id, {
         id: row.group_id,
+        membershipId: row.membership_id,
         name: row.name,
         subjectId: row.subject_id,
         from: row.valid_from,
@@ -266,6 +311,7 @@ export async function studentGroupsOn(
         .sort((a, b) => a.key.localeCompare(b.key) || a.id.localeCompare(b.id))
         .map((group) => ({
           id: group.id,
+          membershipId: group.membershipId,
           name: group.name,
           subjectId: group.subjectId,
           from: group.from,

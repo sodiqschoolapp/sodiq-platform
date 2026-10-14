@@ -322,6 +322,23 @@ export const en = {
       'No group of a split or group subject of the class has a free seat on every day the student would be in the class, so nothing was saved. Raise the maximum size of a group or add a group, then try again.',
     class_group_missing:
       'The student would be in a class without a group of one of its group subjects. Nothing was saved. Reload and try again.',
+    move_in_past:
+      'Only the Academic Vice Principal or the Super Admin records a move with a date before today. Choose today or a later date.',
+    move_not_scheduled:
+      'This move has already begun, or was cancelled or undone, so it can no longer be changed or cancelled. Reload to see it as it is now.',
+    move_not_undoable:
+      "This move can no longer be undone: something changed the student's classes or groups after it, or its year is closed. Make a transfer back instead.",
+    move_before_later:
+      'A later move of this student has already begun. Choose a date after it, or undo that move first.',
+    move_scheduled:
+      'Another move of this student is already scheduled. Change or cancel that move first.',
+    move_no_membership:
+      'The student is in no class, or no group of this subject, on that date. Choose another date.',
+    move_same_target:
+      'The student is already in that class or group on that date. Choose another one.',
+    class_language_differs:
+      'The two classes teach in different languages. Confirm the move to go on.',
+    group_transfer_subject: 'That group is of another subject. Choose a group of the same subject.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -1438,11 +1455,48 @@ export const en = {
       uidTitle: 'Correct the UID',
       uidLabel: 'UID of {{name}}',
       reason: 'Reason',
+      moves: {
+        moveClass: 'Move to another class',
+        moveGroup: 'Move to another group',
+        change: 'Change the move to {{target}}',
+        cancel: 'Cancel the move to {{target}}',
+        changeTitle: 'Change the move',
+        cancelTitle: 'Cancel this move?',
+        cancelText: 'The student stays in the class and groups they are in now.',
+        keep: 'Keep the move',
+        undo: 'Undo the move',
+        undoTitle: 'Undo the move to {{target}}',
+        toClass: 'New class',
+        groupRow: 'Group',
+        toGroup: 'New group',
+        from: 'First day there',
+        languageTitle: 'The classes teach in different languages',
+        languageText: 'Move the student anyway?',
+        languageAction: 'Move',
+        scheduled: 'Moves to {{target}} on {{date}}',
+        transfers: 'Transfer history',
+        lastMove: 'From {{class}}, {{date}}',
+        seeHistory: 'History',
+        classMove: 'Moved from {{from}} to {{to}}',
+        groupMove: 'Moved from group {{from}} to group {{to}}',
+        classJoin: 'Joined {{class}}',
+        groupJoin: 'Joined group {{group}}',
+        states: {
+          scheduled: 'Scheduled',
+          done: 'Done',
+          cancelled: 'Cancelled',
+          undone: 'Undone',
+          cancelledByLeaving: 'Cancelled by the leaving',
+        },
+        historyLabel: 'History of the student',
+        noGroups: 'No group of the subject can take the student.',
+      },
       tabs: {
         label: 'Profile',
         overview: 'Overview',
         contract: 'Contract and scholarship',
         relatives: 'Relatives',
+        history: 'History',
       },
     },
     access: {
@@ -2158,6 +2212,14 @@ export const en = {
         group_joined: 'Placed in a group',
         group_withdrawn: 'Placement in a group withdrawn',
         group_reviewed: 'Group placement marked reviewed',
+        class_transferred: 'Moved to another class',
+        class_transfer_changed: 'Class move changed',
+        class_transfer_cancelled: 'Class move cancelled',
+        class_transfer_undone: 'Class move undone',
+        group_transferred: 'Moved to another group',
+        group_transfer_changed: 'Group move changed',
+        group_transfer_cancelled: 'Group move cancelled',
+        group_transfer_undone: 'Group move undone',
         delete: 'Student created twice deleted',
         export: 'Students exported',
         identity_shown: 'Hidden fields of a student record shown',

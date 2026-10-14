@@ -21,6 +21,7 @@ import {
   type PersonalDataKind,
   type PersonalDataReport,
   type RelativeHolder,
+  studentHistorySchema,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -355,6 +356,21 @@ export const removeStudentPhoto = (id: string) =>
       params: { header: branchHeader(), path: { id } },
     }),
   );
+
+/** The History tab of a student (task 3.3a): its moves, joins and statuses, newest first. */
+export const studentHistoryQuery = (branchId: string | null, id: string) =>
+  queryOptions({
+    queryKey: [...studentsKey(branchId), 'history', id],
+    queryFn: async () =>
+      studentHistorySchema.parse(
+        await answerOf(
+          api.GET('/api/people/students/{id}/history', {
+            params: { header: branchHeader(), path: { id } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
 
 /** One student with the groups of fields the account may read. */
 export const studentDetailQuery = (branchId: string | null, id: string) =>

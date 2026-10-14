@@ -434,6 +434,8 @@ describe('group membership', () => {
       expect(list.students.find((row) => row.id === one.id)?.groups).toEqual([
         {
           id: maths1,
+          // Task 3.3a: the row a group move names.
+          membershipId: expect.any(String) as string,
           name: 'M-Card',
           subjectId: maths,
           from: '2026-10-10',

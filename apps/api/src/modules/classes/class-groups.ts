@@ -13,6 +13,7 @@ import {
   type StoredGroupMembership,
 } from './group-membership-rows.js';
 import { classesOfGroups } from './group-rows.js';
+import { writtenByCancelledMove } from './membership-plan.js';
 
 /**
  * Groups on every class membership path (task 3.2c, pull request #93):
@@ -76,6 +77,8 @@ export interface CoverRow {
   leavingId: string | null;
   cause: 'automatic' | 'cancel' | 'undo';
   review: boolean;
+  /** The move whose action writes the row (task 3.3a, 0050), if any. */
+  writtenByMoveId: string | null;
 }
 
 /** A group row written, as the audit entry of the change names it (should-fix 9). */
@@ -268,10 +271,28 @@ export async function smallestGroup<G extends { id: string; maxSize: number; nam
 
 const later = (a: SchoolDate, b: SchoolDate): SchoolDate => (a > b ? a : b);
 
-/** A leaving taken back (a cancel, an undo, a replace): its row and first inactive day. */
+/**
+ * A change taken back: a leaving (a cancel, an undo, a replace), with its row
+ * and first inactive day, or a move (its cancel or undo, task 3.3a), with its
+ * date. The rows it cut come back from `from`.
+ */
 export interface TakenBackLeaving {
-  leavingId: string;
+  leavingId: string | null;
+  moveId?: string | null;
   from: SchoolDate;
+}
+
+/** Whether the change taken back cut the row. */
+function cutBy(row: StoredGroupMembership, takenBack: TakenBackLeaving): boolean {
+  return (
+    (takenBack.leavingId !== null &&
+      row.endedBy === 'leaving' &&
+      row.leavingId === takenBack.leavingId) ||
+    (takenBack.moveId !== undefined &&
+      takenBack.moveId !== null &&
+      row.endedBy === 'transfer' &&
+      row.endedByMoveId === takenBack.moveId)
+  );
 }
 
 /**
@@ -296,9 +317,11 @@ export async function planGiveBack(
   leave: { from: SchoolDate; leavingId: string } | null,
   cause: 'cancel' | 'undo',
   reviewOf: ReadonlyMap<string, boolean>,
+  cancelledMoves: ReadonlySet<string> = new Set(),
 ): Promise<CoverRow[]> {
   const cut = rows
-    .filter((row) => row.endedBy === 'leaving' && row.leavingId === takenBack.leavingId)
+    // Task 3.3a, decision 8: a row a cancelled move wrote never comes back.
+    .filter((row) => cutBy(row, takenBack) && !writtenByCancelledMove(row, cancelledMoves))
     .map((row) => ({ row, start: later(takenBack.from, row.validFrom) }))
     .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
   const given: CoverRow[] = [];
@@ -350,6 +373,7 @@ export async function planGiveBack(
       leavingId: until < end && leave !== null ? leave.leavingId : null,
       cause,
       review: reviewOf.get(row.id) ?? false,
+      writtenByMoveId: takenBack.moveId ?? null,
     });
   }
   return given;
@@ -388,6 +412,7 @@ export async function planClassGroups(
     studentId: string,
   ) => readonly { subjectId: string; from: SchoolDate; until: SchoolDate }[],
   pathOf: (index: number) => string = (index) => `students.${String(index)}`,
+  moveId: string | null = null,
 ): Promise<{ rows: CoverRow[]; refused: ErrorDetail[] }> {
   const rows: CoverRow[] = [];
   const refused: ErrorDetail[] = [];
@@ -441,6 +466,7 @@ export async function planClassGroups(
           leavingId: next === undefined && row.until < row.ownUntil ? row.leavingId : null,
           cause: 'automatic',
           review: true,
+          writtenByMoveId: moveId,
         });
         day = stop;
       }
@@ -485,6 +511,7 @@ export async function writeCoverRows(
         review: row.review,
         ended_by: row.leavingId === null ? null : 'leaving',
         leaving_id: row.leavingId,
+        written_by_move_id: row.writtenByMoveId,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -512,6 +539,7 @@ export async function writeCoverRows(
           until: row.until,
           cause: row.cause,
           review: row.review,
+          ...(row.writtenByMoveId === null ? {} : { moveId: row.writtenByMoveId }),
         },
         requestId,
       });
@@ -601,6 +629,10 @@ export async function coverClassRows(
     groups: ReadonlyMap<string, CoverGroup> | null;
     /** The path of a refusal in `details`: `students.<n>` unless named (the create: `classId`). */
     pathOf?: (index: number) => string;
+    /** The move whose action writes the automatic rows (task 3.3a), if any. */
+    moveId?: string | null;
+    /** The moves cancelled: their rows are never given back (task 3.3a, decision 8). */
+    cancelledMoves?: ReadonlySet<string>;
   },
   requestId: string,
 ): Promise<{ written: GroupRowWritten[]; automatic: GroupRowWritten[] }> {
@@ -631,6 +663,7 @@ export async function coverClassRows(
           input.giveBack.leave,
           input.giveBack.cause,
           reviewOf,
+          input.cancelledMoves,
         );
   const order = await inNameOrder(transaction, studentIds);
   const sorted = [...input.classRows].sort(
@@ -647,6 +680,7 @@ export async function coverClassRows(
         .map((row) => ({ subjectId: row.subjectId, from: row.from, until: row.until })),
     ],
     input.pathOf,
+    input.moveId ?? null,
   );
   refuseNoSeat(
     [...planned.refused].sort(

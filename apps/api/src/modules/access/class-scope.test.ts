@@ -45,7 +45,14 @@ describe('class scope', () => {
   });
 
   it('pins the areas whose routes read the class scope', () => {
-    expect(CLASS_SCOPED_AREAS).toEqual(['classes', 'students', 'student_contact', 'groups']);
+    // Task 3.3a widened the list: the History tab reads the class scope.
+    expect(CLASS_SCOPED_AREAS).toEqual([
+      'classes',
+      'students',
+      'student_contact',
+      'groups',
+      'student_history',
+    ]);
   });
 
   it('fits a class for the class-wide roles and the Tutor of the class only', () => {

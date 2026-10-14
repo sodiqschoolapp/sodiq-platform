@@ -213,6 +213,36 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 14 October 2026: class and group transfers, the History tab (task 3.3a)
+
+Plan approved on pull request #95 with corrections 1 to 4; decisions 1, 2, 9 and 12 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Task 3.3 split into 3.3a (class and group transfers, History tab), 3.3b (return and graduate restore into a class), 3.3c (move to another branch) and 3.3d (merge of two student records), written into `docs/build-plan.md` with each later part keeping the 3.3 lines that name it | Decision 1; the 3.2 split precedent |
+| **Look first.** A new area `group_transfers`, `edit` for the Super Admin, the Academic Vice Principal, the Head Teacher (own subjects in own branch) and the Senior Head Teacher (own subjects in every branch), the scope checked in the route on both groups (`inGroupScope`) | Decision 2; `02`, Head Teacher: "Moves students between groups of those subjects" |
+| **Look first.** A new area `student_history`, `view` for the Super Admin, the Principal, the Academic Vice Principal, the Tutor (own classes), the Head Teacher and the Senior Head Teacher; `CLASS_SCOPED_AREAS` gains it, a pinned list widened | Decision 9 as changed by correction 3; `02`: the tabs of the Spiritual VP and the Head Tutor have no History |
+| **Look first.** Replaced in 0050 because the requirement changed with the causes `transfer` and `undone`: `group_memberships_withdrawn_check`, both `only_shrink` triggers (paths added, none taken away), the `cause` and `ended_by` checks of both membership tables, the insert rule of both guards (a row inserted already cut by a scheduled move, correction 1); the 3.2c test that pinned `transfer` as an unknown cause now uses another; nothing named in `edge/developer-rules` changes | Decision 12, correction 4 |
+| **Look first.** The audit keys of the move entries join `NOT_IDENTITY_KEYS`, and the student's groups (`studentGroupSchema`) gain `membershipId`, the row a group move names | Build; the 3.2b precedent (decision 5 there) |
+| Class transfers are `classes` `edit` | Decision 3; `04`: "class transfers are done by the Academic Vice Principal" |
+| The date offers tomorrow; today is allowed; a date before today only for the Super Admin or the Academic Vice Principal of the branch, decided from every current assignment (`move_in_past`, the assignment named in the entry as `pastAssignmentId`), in an open year; the journal checks with 8.6, the closed quarter with 9.2b (lines added there) | Decision 4 |
+| A class transfer keeps a group row whose group also draws from the new class, cuts the others at the date and places the new class's uncovered subjects (`coverClassRows`), all or none | Decision 5 |
+| "Student changed, reload": the class routes take the student's `version`; the group transfer names the row it moves (`memberId`) | Decision 6 |
+| A move is a row of `student_moves`; the rows it cut and wrote name it in two columns; cancel and undo are moments written once | Decision 7 |
+| A leaving whose first inactive day is on or before the date of a scheduled move cancels it (`cancelled_by_leaving_id`); its cancel or undo gives the old rows back to their own end and never the move's rows | Decision 8, must-fix 1 of the plan review |
+| An undo only while every row the move wrote still ends at its own end, the class or group it left is in service and, for a class move, no group row over the days it gives back lies in a group that does not draw from the class it gives back; a reason is required | Decision 10 with correction 2 |
+| A class transfer stays inside one grade and one academic year (`membership_outside_year`) | Decision 11 |
+| A planned class or group row that a scheduled move wrote or cuts is not withdrawn on its own (`move_scheduled`): the move is changed or cancelled | Build: a withdraw of the target row would leave the student without a class |
+| A class row of the same class that starts where the one shown ends (given back by a cancel) continues it: the record and the list show no planned class for it | Build: a cancelled move showed "7 Oxford from tomorrow" |
+| The group move is made from the student's record (the Academic block's groups, "Move to another group"), not from the group panel's member rows | Build: one form for every reader who moves; the Head Teachers open the record from the student list |
+| A cancel or an undo of a class move refused by the old class (archived, full) answers the guard's code, nothing is given back | Build; the reviewer's remark on the give-back branches |
+| A leaving whose first inactive day is the date of a scheduled move names the rows that move cut on that day, so its cancel gives them back | Spec review of the build, must-fix 1; a line added to `.claude/rules/api.md` |
+| Migration 0051 adds a trigger beside the shrink triggers: a row ends by a move only on the move's date while the move is live, or empty on or after it, and is undone only by a move undone first; the reason of a move only with its undo | Spec review of the build, should-fix 1; a new guard, nothing weakened |
+| A move dated before a later move of its kind (and subject) that has begun is refused (`move_before_later`, a code of its own); the cancel of a class move is refused while a group move inside it is scheduled (`move_scheduled`) | Spec review of the build, should-fixes 2 and 3 |
+| The Head Teacher undoes a group move of own subjects that has begun, with no limit of age beyond the rule of decision 10; the open quarter comes with 9.2b | Permission review of the build, should-fix 3: the spec says nothing on who undoes |
+| A group move's audit entry names the assignment whose scope fits both groups | Permission review of the build, should-fix 1 |
+| The History tab orders lines of one date by the id of the row or move that wrote them (uuidv7, in the order written), not by a moment: status, class and group rows carry no moment a rule reads | Spec review of the build, should-fix 4 |
+
 ## 14 October 2026: search over records (task 3.2d)
 
 Plan approved on pull request #94 with corrections 1 to 3; decisions 1 and 2 marked Look first and confirmed there. Flagged on issue #42.

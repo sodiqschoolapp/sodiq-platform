@@ -226,6 +226,43 @@ describe('a frozen permission table', () => {
     }
   });
 
+  // Task 3.3a, decision 2 of pull request #95 (Look first): 02, Head Teacher:
+  // "Moves students between groups of those subjects"; the Senior Head Teacher
+  // does everything a Head Teacher does in every branch. Their scope (own
+  // subjects) is decided in the route.
+  it('gives the group transfers to the editors of 02 and the Head Teachers, edit only', () => {
+    const movers = [
+      'super_admin',
+      'academic_vice_principal',
+      'senior_head_teacher',
+      'head_teacher',
+    ];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.group_transfers[role], role).toEqual(
+        movers.includes(role) ? ['edit'] : [],
+      );
+    }
+  });
+
+  // Task 3.3a, decision 9 as changed by correction 3 of pull request #95
+  // (Look first): 02 lists the tabs of the Spiritual Vice Principal and the
+  // Head Tutor without History; the Tutor reads own classes (the route).
+  it('gives the History tab to the readers of the student record but the Spiritual VP and the Head Tutor', () => {
+    const readers = [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'tutor',
+      'senior_head_teacher',
+      'head_teacher',
+    ];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.student_history[role], role).toEqual(
+        readers.includes(role) ? ['view'] : [],
+      );
+    }
+  });
+
   // Task 2.6a, decision 2 of pull request #75: edge/people-roles-accounts,
   // "The Super Admin reads all; the Principal and Academic Vice Principal
   // read their branch".
@@ -256,6 +293,7 @@ describe('a frozen permission table', () => {
       'current_period',
       'day_templates',
       'divisions',
+      'group_transfers',
       'groups',
       'head_teachers',
       'personal_data_report',
@@ -268,6 +306,7 @@ describe('a frozen permission table', () => {
       'student_contact',
       'student_financial',
       'student_graduates',
+      'student_history',
       'student_identity',
       'students',
       'subjects',

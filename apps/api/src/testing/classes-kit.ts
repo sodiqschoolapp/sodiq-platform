@@ -96,7 +96,13 @@ export class ClassesKit {
   async schoolClass(
     branch: string,
     year: string,
-    input: { grade?: number; name?: string; language?: 'uz' | 'ru'; room?: string | null } = {},
+    input: {
+      grade?: number;
+      name?: string;
+      language?: 'uz' | 'ru';
+      room?: string | null;
+      maxSize?: number;
+    } = {},
   ): Promise<string> {
     count += 1;
     const row = await this.migrator
@@ -108,7 +114,7 @@ export class ClassesKit {
         name: input.name ?? `Oxford ${lettersOf(count)}`,
         language: input.language ?? 'uz',
         main_room_id: input.room ?? null,
-        max_size: 25,
+        max_size: input.maxSize ?? 25,
       })
       .returning('id')
       .executeTakeFirstOrThrow();

@@ -204,6 +204,7 @@ describe('the Students tab of a group', () => {
       groups: [
         {
           id: uid(399),
+          membershipId: uid(395),
           name: '7-M-9',
           subjectId: MATHS.id,
           from: '2026-09-02',
@@ -469,6 +470,7 @@ describe('the groups of the student list', () => {
     groups: [
       {
         id: M1.id,
+        membershipId: uid(397),
         name: '7-M-1',
         subjectId: MATHS.id,
         from: '2026-09-02',
@@ -477,6 +479,7 @@ describe('the groups of the student list', () => {
       },
       {
         id: uid(398),
+        membershipId: uid(396),
         name: '7-E-2',
         subjectId: uid(202),
         from: '2026-11-02',

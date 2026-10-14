@@ -11,7 +11,7 @@ import type {
   StudentReturn,
   StudentUndoLeaving,
 } from '@sodiq/shared';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
@@ -46,6 +46,7 @@ import {
   type StudentStatusOutcome,
   type StudentStatusPlan,
 } from './student-status.js';
+import { cancelledOf, MOVE_REFUSALS, movesOf } from '../classes/student-moves.js';
 import { linkValueOf, RelativeWrites } from './relative-writes.js';
 import { Students } from './students.service.js';
 
@@ -62,6 +63,8 @@ const GUARDS: Readonly<Record<string, ErrorCode>> = {
   ...CLASS_PATH_GROUP_REFUSALS,
   // Task 3.2c: a class row written back needs its groups; a fault only.
   ...CLASS_GROUP_REFUSALS,
+  // Task 3.3a: a leaving cancels the scheduled moves it comes before.
+  ...MOVE_REFUSALS,
 };
 
 /** Runs work; a guard of 0033 that refused becomes its 409. */
@@ -251,6 +254,8 @@ export class StudentStatuses {
         }
         // Task 3.2b: the group rows go with the student too (the cascade).
         const groupMemberships = await groupMembershipsOf(transaction, id);
+        // Task 3.3a: so do the moves (should-fix 4 of the plan review).
+        const moves = await movesOf(transaction, id);
         const contracts = await transaction
           .selectFrom('student_contracts')
           .select(['id', 'number', 'signed_on'])
@@ -299,6 +304,7 @@ export class StudentStatuses {
             // Task 3.1b, decision 12: the class rows go with the student (the cascade).
             memberships,
             groupMemberships,
+            moves,
             uids: uids.map((uid) => uid.uid),
             relatives: links.map((link) => ({
               relativeId: link.relative_id,
@@ -372,7 +378,13 @@ export class StudentStatuses {
             writes: outcome.writes,
             ...(classes === null
               ? {}
-              : { memberships: classes.memberships, groupMemberships: classes.groupMemberships }),
+              : {
+                  memberships: classes.memberships,
+                  groupMemberships: classes.groupMemberships,
+                  ...(classes.movesCancelled.length === 0
+                    ? {}
+                    : { movesCancelled: classes.movesCancelled }),
+                }),
           }),
           reason: change.reason ?? undefined,
           requestId,
@@ -412,6 +424,7 @@ export class StudentStatuses {
       written: Omit<GroupRowWritten, 'studentId' | 'subjectId'>[];
     };
     notRestored: ClassNotRestored[];
+    movesCancelled: string[];
   } | null> {
     const takenBack = outcome.cuts
       .map((cut) => ({ cut, row: rows.find((row) => row.id === cut.id) }))
@@ -432,6 +445,34 @@ export class StudentStatuses {
       transaction,
       memberships.map((row) => row.classId),
     );
+    // Task 3.3a, decision 8: a leaving whose first inactive day is on or
+    // before the date of a scheduled move cancels it (edge: "scheduled moves
+    // are cancelled"), and a row a cancelled move wrote is never given back.
+    const today = await this.students.todayIn(transaction, branchOf(access));
+    const moves = await movesOf(transaction, id);
+    const movesCancelled =
+      leaving === undefined || leavingId === null
+        ? []
+        : moves
+            .filter(
+              (move) =>
+                move.cancelledAt === null &&
+                move.undoneAt === null &&
+                move.effectiveOn > today &&
+                move.effectiveOn >= leaving.validFrom,
+            )
+            .map((move) => move.id);
+    if (movesCancelled.length > 0 && leavingId !== null) {
+      await transaction
+        .updateTable('student_moves')
+        .set({
+          cancelled_at: await transactionMoment(transaction),
+          cancelled_by_leaving_id: leavingId,
+        })
+        .where('id', 'in', movesCancelled)
+        .execute();
+    }
+    const cancelledMoves = new Set([...cancelledOf(moves), ...movesCancelled]);
     const plan = planMemberships(
       memberships,
       {
@@ -440,6 +481,8 @@ export class StudentStatuses {
         leave: leaving === undefined ? null : { from: leaving.validFrom },
       },
       (classId) => inService.has(classId),
+      cancelledMoves,
+      new Set(movesCancelled),
     );
     // Task 3.2c, decision 9: every group the change may touch, locked FOR
     // UPDATE in the order of their id in one call, after the classes and
@@ -458,7 +501,14 @@ export class StudentStatuses {
     const groupsCut =
       leaving === undefined || leavingId === null
         ? []
-        : await cutGroupRows(transaction, id, leaving.validFrom, leavingId, takenBack?.id ?? null);
+        : await cutGroupRows(
+            transaction,
+            id,
+            leaving.validFrom,
+            leavingId,
+            takenBack?.id ?? null,
+            new Set(movesCancelled),
+          );
     // Task 3.2c: the class rows written back need their groups, every day:
     // the rows the leaving taken back cut come back first (decision 6), then
     // every day still without a group of a split or group subject gets the
@@ -493,6 +543,7 @@ export class StudentStatuses {
               },
         groups,
         pathOf: () => '',
+        cancelledMoves,
       },
       requestId,
     );
@@ -521,6 +572,7 @@ export class StudentStatuses {
         })),
       },
       notRestored: named.map((one) => ({ classId: one.id, grade: one.grade, name: one.name })),
+      movesCancelled,
     };
   }
 

@@ -2350,6 +2350,67 @@ try {
   });
   seeded.recordSearch = { login: searchVice.login, password: searchVice.firstPassword };
 
+  // The Academic Vice Principal of the class transfer test (task 3.3a), in a
+  // branch of its own with the year around today, the classes 7 Oxford and
+  // 7 Yale, and a student in 7 Oxford.
+  const movesBranch = await insertBranch(migrator, 'Moves browser test branch');
+  const movesVice = await create('Lobar', 'Nazarova');
+  await transactions.run([movesBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: movesVice.id,
+      role: 'academic_vice_principal',
+      branchId: movesBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: movesBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: movesBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const classIds: string[] = [];
+    for (const name of ['Oxford', 'Yale']) {
+      const row = await transaction
+        .insertInto('classes')
+        .values({
+          branch_id: movesBranch,
+          academic_year_id: year.id,
+          grade: 7,
+          name,
+          language: 'uz',
+          max_size: 25,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      classIds.push(row.id);
+    }
+    await studentInClass(transaction, {
+      branch: movesBranch,
+      classId: classIds[0] ?? null,
+      uid: '9999931',
+      first: 'Sabina',
+      last: 'Qosimova',
+      createdBy: movesVice.id,
+      phone: '+998905550391',
+    });
+  });
+  seeded.moves = { login: movesVice.login, password: movesVice.firstPassword };
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')

@@ -31,6 +31,7 @@ export const MEMBERSHIP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   class_memberships_leaving: 'request_refused',
   class_memberships_insert_ended: 'request_refused',
   class_memberships_withdraw_planned: 'membership_in_force',
+  class_memberships_move: 'request_refused',
 };
 
 /** The class rows of one student the transaction sees, by start. */
@@ -40,7 +41,18 @@ export async function membershipsOf(
 ): Promise<StoredMembership[]> {
   const rows = await transaction
     .selectFrom('class_memberships')
-    .select(['id', 'class_id', 'valid_from', 'valid_until', 'own_until', 'ended_by', 'leaving_id'])
+    .select([
+      'id',
+      'class_id',
+      'valid_from',
+      'valid_until',
+      'own_until',
+      'ended_by',
+      'leaving_id',
+      'cause',
+      'written_by_move_id',
+      'ended_by_move_id',
+    ])
     .where('student_id', '=', studentId)
     .orderBy('valid_from')
     .orderBy('id')
@@ -54,6 +66,9 @@ export async function membershipsOf(
     // The checks of the table keep the list equal to the type.
     endedBy: row.ended_by as StoredMembership['endedBy'],
     leavingId: row.leaving_id,
+    cause: row.cause as StoredMembership['cause'],
+    writtenByMoveId: row.written_by_move_id,
+    endedByMoveId: row.ended_by_move_id,
   }));
 }
 
@@ -142,7 +157,14 @@ export async function applyMembershipPlan(
     }
     await transaction
       .updateTable('class_memberships')
-      .set({ valid_until: one.validUntil, ended_by: 'leaving', leaving_id: leavingId })
+      // A row a move cut is cut again by the leaving, which names itself
+      // instead (task 3.3a, 0050).
+      .set({
+        valid_until: one.validUntil,
+        ended_by: 'leaving',
+        leaving_id: leavingId,
+        ended_by_move_id: null,
+      })
       .where('id', '=', one.id)
       .where('student_id', '=', studentId)
       .execute();
@@ -227,9 +249,19 @@ export async function studentClassesOn(
       from: row.valid_from,
       until: row.valid_until,
     };
+    const continued = own.planned ?? own.current;
     if (row.valid_from <= today) {
       own.current = named;
       own.mainRoom = row.room_name;
+    } else if (
+      continued !== null &&
+      continued.id === row.id &&
+      continued.until === row.valid_from
+    ) {
+      // A row of the same class that starts where the one shown ends (a
+      // cancel of a leaving or of a move gave it back) continues it: no
+      // planned class (task 3.3a).
+      continued.until = row.valid_until;
     } else if (own.planned === null) {
       own.planned = named;
       if (own.current === null) {

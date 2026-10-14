@@ -94,6 +94,22 @@ const CLASS_VIEWERS: readonly Role[] = [
 ];
 const CLASS_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
+// Task 3.3a (pull request #95): the areas `group_transfers` and `student_history`.
+const GROUP_MOVERS: readonly Role[] = [
+  'super_admin',
+  'academic_vice_principal',
+  'senior_head_teacher',
+  'head_teacher',
+];
+const HISTORY_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'tutor',
+  'senior_head_teacher',
+  'head_teacher',
+];
+
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
@@ -422,6 +438,19 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/groups/:id/members/:memberId/reviewed': { branch: 'request', roles: CLASS_EDITORS },
   'GET /api/groups/placement': { branch: 'request', roles: CLASS_EDITORS },
   'POST /api/groups/placement/automatic': { branch: 'request', roles: CLASS_EDITORS },
+  // Task 3.3a (pull request #95): class transfers under `classes` `edit` (decision 3);
+  // group transfers under the new area `group_transfers` (decision 2, Look first), the
+  // Head Teachers' scope decided in the route (people/group-transfers.test.ts); the
+  // History tab under the new area `student_history` (decision 9, Look first).
+  'POST /api/classes/transfers': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/classes/transfers/:id/change': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/classes/transfers/:id/cancel': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/classes/transfers/:id/undo': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/groups/transfers': { branch: 'request', roles: GROUP_MOVERS },
+  'POST /api/groups/transfers/:id/change': { branch: 'request', roles: GROUP_MOVERS },
+  'POST /api/groups/transfers/:id/cancel': { branch: 'request', roles: GROUP_MOVERS },
+  'POST /api/groups/transfers/:id/undo': { branch: 'request', roles: GROUP_MOVERS },
+  'GET /api/people/students/:id/history': { branch: 'request', roles: HISTORY_READERS },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

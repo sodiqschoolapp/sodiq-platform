@@ -361,6 +361,8 @@ export type AutomaticPlacementResult = z.infer<typeof automaticPlacementResultSc
  */
 export const studentGroupSchema = z.object({
   id: z.uuid(),
+  /** The group row shown, which a group transfer names (task 3.3a, decision 6). */
+  membershipId: z.uuid(),
   name: z.string(),
   subjectId: z.uuid(),
   from: schoolDateSchema,
