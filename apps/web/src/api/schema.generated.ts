@@ -20673,7 +20673,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default false */
+                    confirmMixedLanguage?: boolean;
+                };
+            };
+        };
         responses: {
             200: {
                 headers: {

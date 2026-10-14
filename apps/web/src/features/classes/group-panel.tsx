@@ -1,10 +1,11 @@
-import type {
-  AcademicYear,
-  GroupCreate,
-  GroupEdit,
-  SchoolClass,
-  SchoolGroup,
-  Subject,
+import {
+  classDisplayName,
+  type AcademicYear,
+  type GroupCreate,
+  type GroupEdit,
+  type SchoolClass,
+  type SchoolGroup,
+  type Subject,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -17,9 +18,9 @@ import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
-import { GroupForm } from './group-form';
+import { GroupForm, sharedLanguage } from './group-form';
 import { SharedSlots } from './group-slots';
-import { archiveGroup, editGroup, groupQuery, invalidateGroups } from './groups-api';
+import { archiveGroup, editGroup, groupQuery, invalidateGroups, restoreGroup } from './groups-api';
 
 interface GroupPanelProps {
   row: SchoolGroup;
@@ -72,7 +73,8 @@ export function GroupPanel({
     },
   });
   const archive = useMutation({
-    mutationFn: (restore: boolean) => archiveGroup(row.id, restore),
+    mutationFn: (change: { restore: boolean; confirmMixedLanguage: boolean }) =>
+      change.restore ? restoreGroup(row.id, change.confirmMixedLanguage) : archiveGroup(row.id),
     onSuccess: refresh,
   });
 
@@ -95,6 +97,22 @@ export function GroupPanel({
 
   const askArchive = async () => {
     const active = !group.archived;
+    // Code round 1 of the review, finding 1: classes that changed language
+    // while the group was archived bring it back mixed; a subject under the
+    // language rule asks the warning of the form, naming the classes.
+    if (!active && group.subject.languageRule && sharedLanguage(group.classes) === null) {
+      if (
+        await confirm({
+          title: t('groups.mixedTitle'),
+          text: t('groups.mixedText'),
+          names: group.classes.map((one) => classDisplayName(one.grade, one.name)),
+          action: t('groups.restoreGroup'),
+        })
+      ) {
+        archive.mutate({ restore: true, confirmMixedLanguage: true });
+      }
+      return;
+    }
     if (
       await confirm({
         title: active ? t('groups.archiveTitle') : t('groups.restoreTitle'),
@@ -104,7 +122,7 @@ export function GroupPanel({
         destructive: active,
       })
     ) {
-      archive.mutate(!active);
+      archive.mutate({ restore: !active, confirmMixedLanguage: false });
     }
   };
 

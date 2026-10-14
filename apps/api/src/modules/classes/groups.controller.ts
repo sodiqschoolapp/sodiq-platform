@@ -6,6 +6,7 @@ import {
   groupExportSchema,
   groupListSchema,
   groupParamsSchema,
+  groupRestoreSchema,
   groupSlotCheckSchema,
   groupSlotQuerySchema,
   type GroupCreate,
@@ -14,6 +15,7 @@ import {
   type GroupExport,
   type GroupList,
   type GroupParams,
+  type GroupRestore,
   type GroupSlotCheck,
   type GroupSlotQuery,
 } from '@sodiq/shared';
@@ -121,8 +123,9 @@ export class GroupsController {
   restore(
     @CurrentAccess() access: Access,
     @ValidParams(groupParamsSchema) params: GroupParams,
+    @ValidBody(groupRestoreSchema) input: GroupRestore,
     @RequestId() requestId: string,
   ): Promise<GroupDetail> {
-    return this.groups.restore(access, params.id, requestId);
+    return this.groups.restore(access, params.id, input, requestId);
   }
 }

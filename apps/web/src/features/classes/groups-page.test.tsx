@@ -1,4 +1,5 @@
 import {
+  classDisplayName,
   EXPORT_TEXTS,
   GROUP_EXPORT_COLUMNS,
   type AcademicYear,
@@ -404,6 +405,61 @@ describe('a group in the side panel', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: en.groups.archiveGroup }));
     await waitFor(() => {
       expect(calls.some((call) => call.route === `POST /api/groups/${M1.id}/archive`)).toBe(true);
+    });
+  });
+
+  // Code round 1 of the review, finding 1: a restore that brings the group back
+  // mixing languages asks the warning of the form, naming the classes.
+  it('asks the mixed-language warning before restoring a group whose classes now differ', async () => {
+    const mixed = group(3, {
+      name: '7-M-3',
+      archived: true,
+      classes: [
+        { id: OXFORD.id, grade: 7, name: 'Oxford', language: 'uz', archived: false },
+        { id: YALE.id, grade: 7, name: 'Yale', language: 'ru', archived: false },
+      ],
+    });
+    const calls = await openList({
+      groups: [mixed],
+      extra: {
+        [`POST /api/groups/${mixed.id}/restore`]: () =>
+          json(detailOf({ ...mixed, archived: false })),
+      },
+    });
+    fireEvent.click(screen.getByText('7-M-3', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: '7-M-3' });
+    fireEvent.click(await within(panel).findByRole('button', { name: en.groups.restoreGroup }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText(en.groups.mixedTitle)).not.toBeNull();
+    expect(within(dialog).getByText(classDisplayName(7, 'Yale'))).not.toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.groups.restoreGroup }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === `POST /api/groups/${mixed.id}/restore`)).toEqual({
+        route: `POST /api/groups/${mixed.id}/restore`,
+        body: { confirmMixedLanguage: true },
+      });
+    });
+  });
+
+  it('restores a one-language group without the warning', async () => {
+    const archived = { ...SPLIT, archived: true };
+    const calls = await openList({
+      groups: [archived],
+      extra: {
+        [`POST /api/groups/${SPLIT.id}/restore`]: () => json(detailOf(SPLIT)),
+      },
+    });
+    fireEvent.click(screen.getByText('7-E-1', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: '7-E-1' });
+    fireEvent.click(await within(panel).findByRole('button', { name: en.groups.restoreGroup }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText(en.groups.restoreTitle)).not.toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.groups.restoreGroup }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === `POST /api/groups/${SPLIT.id}/restore`)).toEqual({
+        route: `POST /api/groups/${SPLIT.id}/restore`,
+        body: { confirmMixedLanguage: false },
+      });
     });
   });
 });

@@ -72,6 +72,17 @@ export const groupEditSchema = groupRecordSchema.extend({ version: z.int().min(0
 
 export type GroupEdit = z.infer<typeof groupEditSchema>;
 
+/**
+ * The restore (code round 1 of pull request #91, finding 1): classes that
+ * differ in language while the group was archived bring it back mixed, so the
+ * warning of a subject under the language rule is confirmed, as at the save.
+ */
+export const groupRestoreSchema = z.object({
+  confirmMixedLanguage: z.boolean().default(false),
+});
+
+export type GroupRestore = z.infer<typeof groupRestoreSchema>;
+
 export const groupParamsSchema = z.object({ id: z.uuid() });
 
 export type GroupParams = z.infer<typeof groupParamsSchema>;

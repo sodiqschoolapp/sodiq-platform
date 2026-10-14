@@ -13,6 +13,7 @@ import { ClassesKit } from '../../testing/classes-kit.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { binary, fileOf } from '../../testing/xlsx-kit.js';
+import { lockClassesOfGroups } from './group-side.js';
 
 const detailOf = (response: Response): GroupDetail => {
   expect(response.status, JSON.stringify(response.body)).toBeLessThan(300);
@@ -713,6 +714,49 @@ describe('groups', () => {
     refusedWith(await post(`/api/groups/${other.id}/restore`), 409, 'group_restore_subject');
   });
 
+  // Code round 1 of the review, finding 1: a restore that brings the group back
+  // mixed confirms the warning of a subject under the language rule.
+  it('asks the confirmation of a restore that brings back a group mixing languages', async () => {
+    const oxford = await schoolClass({ language: 'uz' });
+    const yale = await schoolClass({ language: 'uz' });
+    const ruled = await create([oxford, yale]);
+    const outside = await create([oxford, yale], { subjectId: subjectOutsideRule });
+    detailOf(await post(`/api/groups/${ruled.id}/archive`));
+    detailOf(await post(`/api/groups/${outside.id}/archive`));
+    await t.database.migrator
+      .updateTable('classes')
+      .set({ language: 'ru' })
+      .where('id', '=', yale)
+      .execute();
+    const before = await rowsOf();
+    refusedWith(await post(`/api/groups/${ruled.id}/restore`), 409, 'group_mixed_language');
+    refusedWith(
+      await post(`/api/groups/${ruled.id}/restore`, { confirmMixedLanguage: false }),
+      409,
+      'group_mixed_language',
+    );
+    expect(await rowsOf()).toEqual(before);
+    const restored = detailOf(
+      await post(`/api/groups/${ruled.id}/restore`, { confirmMixedLanguage: true }),
+    );
+    expect(restored).toMatchObject({ archived: false, language: 'uz' });
+    expect(await t.entries('group.restore', ruled.id)).toEqual([
+      expect.objectContaining({
+        old_value: { archived: true },
+        new_value: { archived: false, confirmMixedLanguage: true },
+      }),
+    ]);
+    // For a subject outside the rule nothing is asked (`05`, Groups).
+    const back = detailOf(await post(`/api/groups/${outside.id}/restore`));
+    expect(back).toMatchObject({ archived: false, language: 'uz' });
+    expect(await t.entries('group.restore', outside.id)).toEqual([
+      expect.objectContaining({
+        old_value: { archived: true },
+        new_value: { archived: false, confirmMixedLanguage: false },
+      }),
+    ]);
+  });
+
   describe("the class's and the subject's side (decisions 8 and 16)", () => {
     const classBody = async (classId: string, fields: object) => {
       const read = (await get(`/api/classes/${classId}`).expect(200)).body as {
@@ -1012,6 +1056,35 @@ describe('groups', () => {
       expect(await open.done).toBeUndefined();
       expect((await response).status, JSON.stringify((await response).body)).toBe(200);
       expect(detailOf(await get(`/api/groups/${groupId}`)).language).toBe('ru');
+    });
+
+    // Code round 1 of the review, finding 2: a group created while the class
+    // language change waited brings a class the first read did not see; it is
+    // locked too before the change goes on.
+    it('locks the classes of a group created while a class language change waited', async () => {
+      const own = await schoolClass({ language: 'uz' });
+      const other = await schoolClass({ language: 'uz' });
+      const creating = await holdOpen(async (transaction) => {
+        await writeGroup(transaction, [own, other]);
+      });
+      const locking = holdOpen((transaction) => lockClassesOfGroups(transaction, own));
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      creating.release();
+      expect(await creating.done).toBeUndefined();
+      const held = await locking;
+      const probe = (classId: string) =>
+        t.database.migrator
+          .transaction()
+          .execute((transaction) =>
+            sql`select id from classes where id = ${classId} for update nowait`.execute(
+              transaction,
+            ),
+          );
+      await expect(probe(other)).rejects.toMatchObject({ code: '55P03' });
+      await expect(probe(own)).rejects.toMatchObject({ code: '55P03' });
+      held.release();
+      expect(await held.done).toBeUndefined();
+      await expect(probe(other)).resolves.toBeDefined();
     });
 
     it('refuses a group edit that waited for a class language change moving the group', async () => {

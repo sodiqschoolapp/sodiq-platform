@@ -72,9 +72,18 @@ export const editGroup = (id: string, record: GroupEdit) =>
     }),
   ).then((answer) => groupDetailSchema.parse(answer));
 
-export const archiveGroup = (id: string, restore: boolean) =>
+export const archiveGroup = (id: string) =>
   answerOf(
-    api.POST(restore ? '/api/groups/{id}/restore' : '/api/groups/{id}/archive', {
+    api.POST('/api/groups/{id}/archive', {
       params: { header: branchHeader(), path: { id } },
+    }),
+  ).then((answer) => groupDetailSchema.parse(answer));
+
+/** A restore that brings the group back mixing languages confirms the warning (code round 1 of #91). */
+export const restoreGroup = (id: string, confirmMixedLanguage: boolean) =>
+  answerOf(
+    api.POST('/api/groups/{id}/restore', {
+      params: { header: branchHeader(), path: { id } },
+      body: { confirmMixedLanguage },
     }),
   ).then((answer) => groupDetailSchema.parse(answer));

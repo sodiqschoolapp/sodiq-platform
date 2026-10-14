@@ -11,6 +11,7 @@ import {
   type GroupExportColumn,
   type GroupList,
   type GroupRecord,
+  type GroupRestore,
   type GroupSlotCheck,
   type InstructionLanguage,
   type SchoolGroup,
@@ -289,18 +290,28 @@ export class Groups {
 
   /** Archives the group (decision 10); an archived group is answered as it is. */
   archive(access: Access, id: string, requestId: string): Promise<GroupDetail> {
-    return this.setArchived(access, id, true, requestId);
+    return this.setArchived(access, id, true, false, requestId);
   }
 
-  /** Restores the group; every rule is checked again (decision 10). */
-  restore(access: Access, id: string, requestId: string): Promise<GroupDetail> {
-    return this.setArchived(access, id, false, requestId);
+  /**
+   * Restores the group; every rule is checked again (decision 10), the mixed
+   * languages of a subject under the language rule included (code round 1 of
+   * pull request #91, finding 1).
+   */
+  restore(
+    access: Access,
+    id: string,
+    input: GroupRestore,
+    requestId: string,
+  ): Promise<GroupDetail> {
+    return this.setArchived(access, id, false, input.confirmMixedLanguage, requestId);
   }
 
   private setArchived(
     access: Access,
     id: string,
     archived: boolean,
+    confirmMixedLanguage: boolean,
     requestId: string,
   ): Promise<GroupDetail> {
     const branchId = branchOf(access);
@@ -318,6 +329,7 @@ export class Groups {
           // may have changed language while the group was archived), and its
           // refusals name what the person can do on a restore (spec review of
           // the build, must-fix 4).
+          const mixed = sharedLanguageOf(classes) === null;
           const language = archived
             ? before.language
             : (sharedLanguageOf(classes) ?? before.language);
@@ -335,6 +347,14 @@ export class Groups {
               gradesOf(classes).some((grade) => !before.subject_grades.includes(grade))
             ) {
               throw new ApiException('group_restore_subject', 409);
+            }
+            // A class may have changed language while the group was archived
+            // (the class edit moves active groups only): classes that now
+            // differ bring it back mixed, which a subject under the language
+            // rule confirms, as the create and the edit do (`05`, Language of
+            // instruction, Groups). The kept language is the one confirmed.
+            if (mixed && before.language_rule && !confirmMixedLanguage) {
+              throw new ApiException('group_mixed_language', 409);
             }
           }
           await transaction
@@ -355,7 +375,11 @@ export class Groups {
               archived: !archived,
               ...(language === before.language ? {} : { language: before.language }),
             },
-            newValue: { archived, ...(language === before.language ? {} : { language }) },
+            newValue: {
+              archived,
+              ...(language === before.language ? {} : { language }),
+              ...(!archived && mixed ? { confirmMixedLanguage } : {}),
+            },
             requestId,
           });
           return readGroupDetail(transaction, branchId, id);

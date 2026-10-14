@@ -18,11 +18,41 @@ import { classesOfGroups, sharedLanguageOf } from './group-rows.js';
  * language changes of two classes of one group then wait for each other in
  * one order, and a group write, which takes its classes FOR SHARE first,
  * waits for them both.
+ *
+ * The classes are read again after the lock, in a statement of their own: a
+ * group created while this change waited brings classes the first read did
+ * not see (code round 1 of pull request #91, finding 2). Then the locks of
+ * the savepoint are given back and the whole set is locked again in the order
+ * of the id, so that what is locked is the set the decision names and the
+ * order holds for it; a lock taken out of that order would deadlock with a
+ * language change of the new class.
  */
 export async function lockClassesOfGroups(
   transaction: Transaction,
   classId: string,
 ): Promise<void> {
+  await sql`savepoint class_language_locks`.execute(transaction);
+  let ids = await classesOfActiveGroups(transaction, classId);
+  for (;;) {
+    await transaction
+      .selectFrom('classes')
+      .select('id')
+      .where('id', 'in', ids)
+      .orderBy('id')
+      .forUpdate()
+      .execute();
+    const again = await classesOfActiveGroups(transaction, classId);
+    if (again.every((id) => ids.includes(id))) {
+      break;
+    }
+    await sql`rollback to savepoint class_language_locks`.execute(transaction);
+    ids = [...new Set([...ids, ...again])].sort();
+  }
+  await sql`release savepoint class_language_locks`.execute(transaction);
+}
+
+/** The class and the classes of its active groups, sorted, each once; read without a lock. */
+async function classesOfActiveGroups(transaction: Transaction, classId: string): Promise<string[]> {
   const related = await transaction
     .selectFrom('group_classes as mine')
     .innerJoin('groups', 'groups.id', 'mine.group_id')
@@ -31,14 +61,7 @@ export async function lockClassesOfGroups(
     .where('mine.class_id', '=', classId)
     .where('groups.archived_at', 'is', null)
     .execute();
-  const ids = [...new Set([classId, ...related.map((row) => row.class_id)])].sort();
-  await transaction
-    .selectFrom('classes')
-    .select('id')
-    .where('id', 'in', ids)
-    .orderBy('id')
-    .forUpdate()
-    .execute();
+  return [...new Set([classId, ...related.map((row) => row.class_id)])].sort();
 }
 
 /** A group a class language change moved, or made mix languages. */
