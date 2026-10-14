@@ -150,6 +150,10 @@ export const AUDIT_ACTION_GROUPS = {
     'class.restore',
     'class.tutor_given',
     'class.tutor_ended',
+    'group.create',
+    'group.edit',
+    'group.archive',
+    'group.restore',
   ],
   exports: [
     'building.export',
@@ -160,6 +164,7 @@ export const AUDIT_ACTION_GROUPS = {
     'vacancy.export',
     'student.export',
     'class.export',
+    'group.export',
     'student.personal_data_report',
     'staff.personal_data_report',
     'relative.personal_data_report',

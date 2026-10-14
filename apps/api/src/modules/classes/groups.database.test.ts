@@ -180,15 +180,12 @@ describe('groups in the database', () => {
 
     // Correction 3 of the review of pull request #91: the schema is no wider
     // than the check; values between them are refused by both.
-    it.each(['7-M-1²', '-7', '7/M'])(
-      'refuses the name %s, as the schema does',
-      async (name) => {
-        const classId = await kit.schoolClass(north, northYear);
-        expect(groupNameSchema.safeParse(name).success).toBe(false);
-        const error = await refusal(insertGroup(north, { classIds: [classId], name }));
-        expect(error.constraint).toBe('groups_name_check');
-      },
-    );
+    it.each(['7-M-1²', '-7', '7/M'])('refuses the name %s, as the schema does', async (name) => {
+      const classId = await kit.schoolClass(north, northYear);
+      expect(groupNameSchema.safeParse(name).success).toBe(false);
+      const error = await refusal(insertGroup(north, { classIds: [classId], name }));
+      expect(error.constraint).toBe('groups_name_check');
+    });
 
     it.each(['7-M-1', 'Gʻalaba-1', 'Группа 2'])(
       'takes the name %s, as the schema does',

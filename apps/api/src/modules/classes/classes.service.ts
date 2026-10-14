@@ -30,6 +30,8 @@ import { Audit } from '../audit/audit.service.js';
 import { exportList, oneCell, type ExportColumn } from '../audit/export-list.js';
 import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { memberCountsOn, MEMBERSHIP_REFUSALS } from './class-membership-rows.js';
+import { GROUP_SIDE_REFUSALS } from './group-rows.js';
+import { followClassLanguage } from './group-side.js';
 import {
   CLASS_EDIT_REFUSALS,
   CLASS_REFUSALS,
@@ -349,7 +351,7 @@ export class Classes {
       access,
       null,
       { ...input, id },
-      { ...MEMBERSHIP_REFUSALS, ...CLASS_EDIT_REFUSALS },
+      { ...MEMBERSHIP_REFUSALS, ...CLASS_EDIT_REFUSALS, ...GROUP_SIDE_REFUSALS },
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
           const before = await this.lockClass(transaction, id);
@@ -374,6 +376,17 @@ export class Classes {
           if (record.mainRoomId !== before.main_room_id) {
             await this.requireRoom(transaction, record.mainRoomId);
           }
+          // Task 3.2a, decision 8: the one-language groups of the class follow
+          // its language; a group it makes mix languages needs the confirmation.
+          const groups =
+            record.language === before.language
+              ? { moved: [], mixed: [] }
+              : await followClassLanguage(
+                  transaction,
+                  id,
+                  record.language,
+                  input.confirmMixedGroups,
+                );
           await transaction
             .updateTable('classes')
             .set({
@@ -393,6 +406,9 @@ export class Classes {
             record: { type: 'class', id },
             oldValue: changes.oldValue,
             newValue: changes.newValue,
+            ...(groups.moved.length === 0 && groups.mixed.length === 0
+              ? {}
+              : { details: { groupsMoved: groups.moved, groupsMixed: groups.mixed } }),
             requestId,
           });
           return readClassDetail(transaction, branchId, id);
@@ -460,7 +476,7 @@ export class Classes {
           });
           return readClassDetail(transaction, branchId, id);
         }),
-      { ...CLASS_REFUSALS, ...MEMBERSHIP_REFUSALS },
+      { ...CLASS_REFUSALS, ...MEMBERSHIP_REFUSALS, ...GROUP_SIDE_REFUSALS },
     );
   }
 

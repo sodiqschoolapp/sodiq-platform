@@ -382,6 +382,17 @@ export class Settings {
               .where('academic_year_id', 'in', yearIds)
               .executeTakeFirstOrThrow();
 
+      // Task 3.2a, decision 14: an active group in a planned or current year.
+      const groups =
+        yearIds.length === 0
+          ? { count: 0 }
+          : await transaction
+              .selectFrom('groups')
+              .select(sql<number>`count(*)::int`.as('count'))
+              .where('archived_at', 'is', null)
+              .where('academic_year_id', 'in', yearIds)
+              .executeTakeFirstOrThrow();
+
       const undated = years
         .filter(
           (year) =>
@@ -411,6 +422,7 @@ export class Settings {
             count: subjects.missing,
           }),
           item('classes', classes.count > 0),
+          item('groups', groups.count > 0),
         ],
       };
     });

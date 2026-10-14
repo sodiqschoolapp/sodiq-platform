@@ -398,6 +398,16 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/classes/:id/members': { branch: 'request', roles: CLASS_VIEWERS },
   'POST /api/classes/:id/members': { branch: 'request', roles: CLASS_EDITORS },
   'POST /api/classes/:id/members/:memberId/withdraw': { branch: 'request', roles: CLASS_EDITORS },
+  // Task 3.2a, decision 2 of pull request #91: the readers of classes read groups, each in
+  // the scope the route decides; the editors of classes change them.
+  'GET /api/groups': { branch: 'request', roles: CLASS_VIEWERS },
+  'GET /api/groups/slot-check': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/groups/export': { branch: 'request', roles: SETUP_VIEWERS },
+  'POST /api/groups': { branch: 'request', roles: CLASS_EDITORS },
+  'GET /api/groups/:id': { branch: 'request', roles: CLASS_VIEWERS },
+  'PUT /api/groups/:id': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/groups/:id/archive': { branch: 'request', roles: CLASS_EDITORS },
+  'POST /api/groups/:id/restore': { branch: 'request', roles: CLASS_EDITORS },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

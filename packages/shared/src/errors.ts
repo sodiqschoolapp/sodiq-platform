@@ -437,11 +437,6 @@ export const errorDetailSchema = z.object({
   expected: z.string().optional(),
   /** The fewest free seats of a class on any date of the placement, on a `class_full` (task 3.1b). */
   freeSeats: z.int().optional(),
-  /**
-   * The groups of other branches a refusal counts but does not name, on a
-   * `subject_grade_groups` or `subject_has_groups` (task 3.2a, decision 16).
-   */
-  elsewhere: z.int().min(0).optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

@@ -518,6 +518,8 @@ describe('the settings of a branch', () => {
         'subjects',
         // Task 3.1a, decision 12.
         'classes',
+        // Task 3.2a, decision 14.
+        'groups',
       ]);
       expect(items.map((item) => item.done)).toEqual([
         true,
@@ -531,6 +533,8 @@ describe('the settings of a branch', () => {
         // No subject yet (task 2.1, decision 7).
         false,
         // No class yet (task 3.1a, decision 12).
+        false,
+        // No group yet (task 3.2a, decision 14).
         false,
       ]);
       expect(items.find((item) => item.key === 'calendar')?.count).toBe(0);
@@ -659,6 +663,57 @@ describe('the settings of a branch', () => {
         .where('id', '=', schoolClass.id)
         .execute();
       expect(await classesItem()).toBe(true);
+
+      // Task 3.2a, decision 14: an active group in a planned or current year;
+      // an archived one does not count.
+      const groupsItem = async () =>
+        (await stateOf(branch)).find((item) => item.key === 'groups')?.done;
+      expect(await groupsItem()).toBe(false);
+      const steam = await migrator
+        .selectFrom('departments')
+        .select('id')
+        .where('name_en', '=', 'STEAM')
+        .executeTakeFirstOrThrow();
+      const subject = await migrator
+        .insertInto('subjects')
+        .values({
+          name_uz: 'Guruh fani',
+          name_ru: 'Предмет групп',
+          name_en: 'Group subject',
+          department_id: steam.id,
+          grades: [7],
+          colour: 'blue',
+          journal_type: 'graded',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const group = await migrator.transaction().execute(async (transaction) => {
+        const row = await transaction
+          .insertInto('groups')
+          .values({
+            branch_id: branch,
+            academic_year_id: year.id,
+            subject_id: subject.id,
+            name: '7-E-1',
+            language: 'uz',
+            max_size: 15,
+            archived_at: new Date(START),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('group_classes')
+          .values({ group_id: row.id, class_id: schoolClass.id, branch_id: branch })
+          .execute();
+        return row;
+      });
+      expect(await groupsItem()).toBe(false);
+      await migrator
+        .updateTable('groups')
+        .set({ archived_at: null })
+        .where('id', '=', group.id)
+        .execute();
+      expect(await groupsItem()).toBe(true);
     });
 
     // Decision 6: a default setting in force today or starting later; a row
