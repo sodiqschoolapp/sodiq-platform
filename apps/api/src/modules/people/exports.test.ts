@@ -457,6 +457,26 @@ describe('the export of the staff and vacancy lists', () => {
       );
       expect(file.sheet.rows).toEqual([['North, South']]);
     });
+    // 04, Personal (spec change of 13 October 2026, item A2): the category
+    // column holds every role held in the branch of the request, in order.
+    it('writes every role of the category held in the branch', async () => {
+      await speak('en');
+      const someone = await person();
+      const browser = await t.kit.fullSession('Ulugbek', `Hamidov${lettersOf((count += 1))}`);
+      await t.database.migrator
+        .updateTable('staff')
+        .set({ account_id: browser.account.id })
+        .where('id', '=', someone.id)
+        .execute();
+      await t.kit.giveRole(browser.account.id, { role: 'senior_head_teacher' });
+      await t.kit.giveRole(browser.account.id, { role: 'principal', branchId: t.north });
+      await t.kit.giveRole(browser.account.id, { role: 'super_admin' });
+      await t.kit.giveRole(browser.account.id, { role: 'teacher', branchId: t.south });
+      const file = await fileOf(
+        await exportOf('/api/people/staff/export', send([someone.id], ['category'])),
+      );
+      expect(file.sheet.rows).toEqual([['Super Admin, Principal, Senior Head Teacher']]);
+    });
   });
 
   describe('of the vacancy list', () => {

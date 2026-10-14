@@ -53,14 +53,21 @@ export const staffStatusSchema = z.enum(STAFF_STATUSES);
 export type StaffStatus = z.infer<typeof staffStatusSchema>;
 
 /**
- * The categories shown on a profile, taken from the assignments of the
- * person's account, never typed (`edge/people-roles-accounts`, Who can act).
+ * The categories shown on a profile: the person's current roles in the
+ * branch, taken from the assignments of the person's account, never typed,
+ * of every role of `04` (Teacher and staff record, Personal; spec change of
+ * 13 October 2026, item A2), in this order.
  */
 export const STAFF_CATEGORY_ROLES = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'spiritual_vice_principal',
+  'head_tutor',
   'tutor',
-  'teacher',
-  'head_teacher',
   'senior_head_teacher',
+  'head_teacher',
+  'teacher',
 ] as const satisfies readonly Role[];
 
 /** S-YYNNNN (`04`; spec change of 12 October 2026). */

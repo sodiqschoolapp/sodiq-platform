@@ -6,6 +6,7 @@ import {
   staffDetailSchema,
   staffIdentitySchema,
   staffListSchema,
+  type Role,
   type StaffDetail,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -1429,5 +1430,100 @@ describe('staff records', () => {
     expect(
       staffCheckResultSchema.parse(answer.body).sameNameAndBirth.map((match) => match.id),
     ).toEqual([stored.id]);
+  });
+  // 04, Teacher and staff record, Personal (spec change of 13 October 2026,
+  // item A2; task 2.7c-3, decision 5): the category is the person's current
+  // roles in the branch of the request, of every role, for every reader; a
+  // role whose assignment has no branch counts in each branch.
+  describe('the category', () => {
+    async function person() {
+      count += 1;
+      const browser = await t.kit.fullSession('Rustam', `Nazarov${lettersOf(count)}`);
+      const created = await create();
+      await t.database.migrator
+        .updateTable('staff')
+        .set({ account_id: browser.account.id })
+        .where('id', '=', created.id)
+        .execute();
+      expect(
+        (
+          await put(`/api/people/staff/${created.id}/branches`, t.north, {
+            mainBranchId: t.north,
+            furtherBranchIds: [t.south],
+          })
+        ).status,
+      ).toBe(200);
+      return { accountId: browser.account.id, id: created.id };
+    }
+
+    const give = (
+      accountId: string,
+      role: Role,
+      branchId: string | null,
+      from = '2026-09-01T00:00:00+05:00',
+      until: string | null = null,
+    ) =>
+      t.database.migrator
+        .insertInto('assignments')
+        .values({
+          account_id: accountId,
+          role,
+          branch_id: branchId,
+          valid_from: new Date(from),
+          valid_until: until === null ? null : new Date(until),
+          created_at: new Date('2026-09-01T00:00:00+05:00'),
+        })
+        .execute();
+
+    const listed = async (id: string, branch: string, cookie = t.admin) => {
+      const response = await t.get('/api/people/staff', branch, cookie);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      return staffListSchema.parse(response.body).staff.find((row) => row.id === id)?.categories;
+    };
+
+    it('shows every role held in the branch, in the order of 04, whoever reads', async () => {
+      const { accountId, id } = await person();
+      // Given in the opposite order of 04, so the order of the ids is not the answer.
+      const hold = (role: Role, branchId?: string) =>
+        t.kit.giveRole(accountId, { role, ...(branchId === undefined ? {} : { branchId }) });
+      await hold('teacher', t.north);
+      await hold('head_tutor', t.south);
+      await hold('senior_head_teacher');
+      await hold('principal', t.north);
+      await hold('super_admin');
+      // Not current: one that ended, and one that begins later.
+      await give(
+        accountId,
+        'tutor',
+        t.north,
+        '2026-09-01T00:00:00+05:00',
+        '2026-10-01T00:00:00+05:00',
+      );
+      await t.kit.giveRole(accountId, {
+        role: 'head_teacher',
+        branchId: t.north,
+        validFrom: new Date('2026-10-20T00:00:00+05:00'),
+      });
+      const north = ['super_admin', 'principal', 'senior_head_teacher', 'teacher'];
+      const south = ['super_admin', 'head_tutor', 'senior_head_teacher'];
+      expect(await listed(id, t.north)).toEqual(north);
+      expect(await listed(id, t.south)).toEqual(south);
+      expect(await listed(id, t.north, t.principal)).toEqual(north);
+      expect(await listed(id, t.north, t.vicePrincipal)).toEqual(north);
+      expect((await detail(id, t.north)).categories).toEqual(north);
+      expect((await detail(id, t.south)).categories).toEqual(south);
+    });
+
+    it('counts a Principal of one branch in that branch only', async () => {
+      const { accountId, id } = await person();
+      await t.kit.giveRole(accountId, { role: 'principal', branchId: t.south });
+      expect(await listed(id, t.north)).toEqual([]);
+      expect(await listed(id, t.south)).toEqual(['principal']);
+    });
+
+    it('is empty for a record with no account', async () => {
+      const created = await create();
+      expect(await listed(created.id, t.north)).toEqual([]);
+    });
   });
 });
