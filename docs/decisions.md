@@ -213,6 +213,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 14 October 2026: Rooms "By floor", the Branches list and the category of every role (task 2.7c-3)
+
+Plan approved on pull request #86 with corrections 1 to 3; decisions 1 to 16 confirmed or changed there; 1 to 4 marked Look first. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a pinned list widened). `STAFF_CATEGORY_ROLES` is the nine roles of `04` in the order of `ROLES`, pinned by a test of `packages/shared` | Spec change of 13 October 2026, item A2; correction 1 |
+| **Look first** (tests changed by a requirement). The "New branch" tests and browser step moved from the Branch page to the Branches list with the same body, switch and close assertions; the Branch page asserts the button is gone | `03`, Branch: "A new branch is added from this list" |
+| **Look first** (the design system). Room types take `subject-blue`, `subject-cyan`, `subject-indigo`, `subject-violet`, `subject-pink`; the status dot `success`, `warning`, `destructive`; the type and the status are always written | Decision 9 as changed by correction 2 |
+| **Look first** (the design system). Building rows as menu items (`--accent` fill and weight 600 when chosen), floor tabs with the classes of `PeopleTabs`, a room card a bordered tile (1 px border, corner 8, padding 12, no shadow) | Decision 12; correction 3 |
+| `GET /api/setup/branches` needs `branches` `create` with `branch: 'none'`: the Super Admin only; every branch id is read first for the row filters; no audit entry | Decisions 2 and 16 |
+| Buildings not archived; every room of the branch whatever its status, as the Buildings list sums them; in By floor the number beside a building counts its cards | Decision 3 |
+| Opening a branch switches to it and opens its Branch page; "New branch" is on the list only; the Branch page's empty state and breadcrumbs lead to the list for the Super Admin | Decisions 4 and 7 |
+| The category is the roles held in the branch of the request for every reader, school-wide roles without a branch counting in each, in `STAFF_CATEGORY_ROLES` order | Decision 5 |
+| `ListPage` gains `onOpenRow` (rows that open elsewhere, `creating` without `panel`) and `view` (every matching row, the list's order, no checkboxes, ticked rows cleared) | Decision 8; plan review findings 1 and 7 |
+| By floor keeps `view`, `building`, `floor` in the address; the building and floor filters are not offered there and a chosen one becomes the view's; it shows its own loading and failure of the buildings, never the table | Decisions 8 and 15; spec review of the build |
+| The search (Ctrl+K) offers a setup page only to a role that may open it (`area`, `action` in `SETUP_PAGES`) | Decision 13 |
+| The Branches list writes the working weekdays in full, as the Branch page does | Build (the plan said "short … as the Branch page writes them"; the Branch page writes them in full) |
+| A room card is named by all it shows (no `aria-label`), so a screen reader hears the type, seats, status and "shared" | Spec review of the build |
+
 ## 14 October 2026: record actions at the bottom of the student and parent panels (task 2.7c-2b-2b)
 
 Plan approved on pull request #85 with correction 1; decisions 1 to 15 confirmed there; 1, 2 and 3 marked Look first. The decisions after 15 came from the build. Flagged on issue #42.
