@@ -7,6 +7,7 @@ import {
   classListSchema,
   classMemberParamsSchema,
   classMembersSchema,
+  classPlacementResultSchema,
   classParamsSchema,
   classPlacementSchema,
   classTutorEndSchema,
@@ -20,6 +21,7 @@ import {
   type ClassList,
   type ClassMemberParams,
   type ClassMembers as ClassMembersAnswer,
+  type ClassPlacementResult,
   type ClassParams,
   type ClassPlacement,
   type ClassTutorEnd,
@@ -175,16 +177,20 @@ export class ClassesController {
     return this.members.members(access, params.id);
   }
 
-  /** "Put into a class" from a date, all or none (task 3.1b, decisions 5 and 6). */
+  /**
+   * "Put into a class" from a date, all or none (task 3.1b, decisions 5 and
+   * 6), each student placed into a group of every split or group subject of
+   * the class (task 3.2c).
+   */
   @Post(':id/members')
   @Requires('classes', 'edit')
-  @Returns(classMembersSchema, 201)
+  @Returns(classPlacementResultSchema, 201)
   place(
     @CurrentAccess() access: Access,
     @ValidParams(classParamsSchema) params: ClassParams,
     @ValidBody(classPlacementSchema) placement: ClassPlacement,
     @RequestId() requestId: string,
-  ): Promise<ClassMembersAnswer> {
+  ): Promise<ClassPlacementResult> {
     return this.members.place(access, params.id, placement, requestId);
   }
 

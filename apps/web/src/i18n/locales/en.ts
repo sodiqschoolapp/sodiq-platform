@@ -318,6 +318,10 @@ export const en = {
       'The change would leave the student in a group without a class of that group. Nothing was saved. Reload and try again.',
     placement_no_seat:
       'No group of the screen has a free seat for some students, so nobody was placed. Raise the maximum size of a group or add a group.',
+    class_group_no_seat:
+      'No group of a split or group subject of the class has a free seat on every day the student would be in the class, so nothing was saved. Raise the maximum size of a group or add a group, then try again.',
+    class_group_missing:
+      'The student would be in a class without a group of one of its group subjects. Nothing was saved. Reload and try again.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -2270,6 +2274,11 @@ export const en = {
     refusedNames: 'Nobody was placed. Refused: {{names}}.',
     placed_one: '{{n}} student placed.',
     placed_other: '{{n}} students placed.',
+    groupsPlaced_one: '{{n}} student was placed into groups automatically.',
+    groupsPlaced_other: '{{n}} students were placed into groups automatically.',
+    reviewGroups: 'Review them on the group placement screen',
+    groupNoSeat: 'No group with a free seat: {{subjects}}.',
+    groupNoSeatUnnamed: 'No group with a free seat in one of the group subjects of the class.',
     placeTitle_one: 'Put {{n}} student into a class',
     placeTitle_other: 'Put {{n}} students into a class',
     classYear: '{{class}} · {{year}}',

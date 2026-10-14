@@ -3,13 +3,15 @@ import {
   schoolDateOf,
   type ClassMembers as ClassMembersAnswer,
   type ClassPlacement,
+  type ClassPlacementResult,
 } from '@sodiq/shared';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
-import { membersPeak, MEMBERSHIP_REFUSALS } from './class-membership-rows.js';
+import { classesInService, membersPeak, MEMBERSHIP_REFUSALS } from './class-membership-rows.js';
+import { CLASS_GROUP_REFUSALS, coverClassRows, lockPlacementGroups } from './class-groups.js';
 import { CLASS_PATH_GROUP_REFUSALS, withdrawGroupRows } from './group-membership-rows.js';
 import {
   lockPlacementStudents,
@@ -49,7 +51,7 @@ export class ClassMembers {
     classId: string,
     input: ClassPlacement,
     requestId: string,
-  ): Promise<ClassMembersAnswer> {
+  ): Promise<ClassPlacementResult> {
     const branchId = branchOf(access);
     return refusingConstraints(
       () =>
@@ -59,6 +61,10 @@ export class ClassMembers {
             transaction,
             input.students.map((student) => student.id),
           );
+          // Task 3.2c, decision 9: the class FOR UPDATE before its groups are
+          // read, so a group create or edit, which takes its classes FOR
+          // SHARE first, is read here or waits for this change.
+          await classesInService(transaction, [placement.id]);
           const rows = await planPlacement(
             transaction,
             placement,
@@ -71,6 +77,12 @@ export class ClassMembers {
             }),
             input.from,
           );
+          // Decision 9: every group the placement may touch, before its first write.
+          const groups = await lockPlacementGroups(
+            transaction,
+            [placement.id],
+            rows.map((row) => row.studentId),
+          );
           await writePlacement(
             transaction,
             this.audit,
@@ -80,9 +92,39 @@ export class ClassMembers {
             'placement',
             requestId,
           );
-          return this.readMembers(transaction, branchId, placement);
+          // Task 3.2c: a group of every split or group subject of the class
+          // from the same date, all or none.
+          const covered = await coverClassRows(
+            transaction,
+            this.audit,
+            access,
+            {
+              classRows: rows.map((row) => ({
+                index: input.students.findIndex((student) => student.id === row.studentId),
+                row: {
+                  studentId: row.studentId,
+                  classId: placement.id,
+                  from: row.from,
+                  until: row.until,
+                  ownUntil: placement.ownUntil,
+                  leavingId: row.leavingId,
+                },
+              })),
+              giveBack: null,
+              groups,
+            },
+            requestId,
+          );
+          return {
+            ...(await this.readMembers(transaction, branchId, placement)),
+            groupsPlaced: covered.automatic.map((row) => ({
+              studentId: row.studentId,
+              groupId: row.groupId,
+              subjectId: row.subjectId,
+            })),
+          };
         }),
-      MEMBERSHIP_REFUSALS,
+      { ...MEMBERSHIP_REFUSALS, ...CLASS_GROUP_REFUSALS },
     );
   }
 

@@ -10,7 +10,8 @@ import {
   type StudentListItem,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { Link } from '@tanstack/react-router';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -25,7 +26,8 @@ import { SECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
 import { asFormSchema } from '@/features/people/form-schema';
 import { invalidateStudents, studentsQuery } from '@/features/people/people-api';
-import { yearsQuery } from '@/features/setup/setup-api';
+import { nameOf, yearsQuery } from '@/features/setup/setup-api';
+import { subjectsQuery } from '@/features/setup/subjects-api';
 import { schoolDateText } from '@/lib/dates';
 import {
   classMembersQuery,
@@ -88,6 +90,78 @@ export function refusedNames(error: unknown, nameOf: (id: string) => string | un
   });
 }
 
+/** The subjects a `class_group_no_seat` names (task 3.2c), each once, in the order of the answer. */
+export function noSeatSubjects(error: unknown): string[] {
+  if (!(error instanceof ApiFailure) || error.code !== 'class_group_no_seat') {
+    return [];
+  }
+  return [
+    ...new Set(
+      (error.details ?? []).flatMap((detail) =>
+        detail.subjectId === undefined ? [] : [detail.subjectId],
+      ),
+    ),
+  ];
+}
+
+/**
+ * The subjects without a group with a free seat (task 3.2c, decision 3), by
+ * the names of the subjects list; while that list is not read, or holds no
+ * subject named, a sentence without names (.claude/rules/web.md).
+ */
+export function GroupSeatRefusal({ error }: { error: unknown }) {
+  const { t, i18n } = useTranslation();
+  const { branchId } = useView();
+  const ids = noSeatSubjects(error);
+  const subjects = useQuery({
+    ...subjectsQuery(branchId),
+    enabled: branchId !== null && ids.length > 0,
+  });
+  const missing =
+    subjects.data !== undefined &&
+    ids.some((id) => !subjects.data.subjects.some((one) => one.id === id));
+  // A subject the list read does not hold: the list is read again, once per
+  // refusal (.claude/rules/web.md, a refusal that names a record by id).
+  const reread = useRef<unknown>(null);
+  const { refetch } = subjects;
+  useEffect(() => {
+    if (missing && reread.current !== error) {
+      reread.current = error;
+      void refetch();
+    }
+  }, [missing, error, refetch]);
+  if (ids.length === 0) {
+    return null;
+  }
+  const names = ids.map((id) => {
+    const found = subjects.data?.subjects.find((one) => one.id === id);
+    return found === undefined ? undefined : nameOf(found.names, i18n.language);
+  });
+  return (
+    <p className="text-sm">
+      {names.every((name) => name !== undefined)
+        ? t('classes.groupNoSeat', { subjects: names.join(', ') })
+        : t('classes.groupNoSeatUnnamed')}
+    </p>
+  );
+}
+
+/** After "Put into a class": how many students were placed into groups automatically, and where to review them. */
+export function GroupsPlacedNotice({ count }: { count: number }) {
+  const { t, i18n } = useTranslation();
+  if (count === 0) {
+    return null;
+  }
+  return (
+    <p role="status" className="text-sm">
+      {t('classes.groupsPlaced', { count, n: new Intl.NumberFormat(i18n.language).format(count) })}{' '}
+      <Link to="/groups/placement" className="text-link">
+        {t('classes.reviewGroups')}
+      </Link>
+    </p>
+  );
+}
+
 /** After a placement or a withdraw: the classes (their counts and tabs) and the students (their classes and the counter). */
 const refreshAll = (queryClient: ReturnType<typeof useQueryClient>) =>
   Promise.all([invalidateClasses(queryClient), invalidateStudents(queryClient)]);
@@ -128,6 +202,8 @@ export function ClassMembers({ schoolClass, years, canEdit, panel }: ClassMember
   const confirm = useConfirm();
   const members = useQuery(classMembersQuery(branchId, schoolClass.id));
   const name = classDisplayName(schoolClass.grade, schoolClass.name);
+  // Task 3.2c: the students the last placement put into groups automatically.
+  const [groupsPlaced, setGroupsPlaced] = useState(0);
   const withdraw = useMutation({
     mutationFn: async (member: ClassMember) => {
       const go = await confirm({
@@ -201,12 +277,14 @@ export function ClassMembers({ schoolClass, years, canEdit, panel }: ClassMember
         </ul>
       )}
       {withdraw.error !== null && <FailureAlert error={withdraw.error} />}
+      {panel.editing === null && <GroupsPlacedNotice count={groupsPlaced} />}
       {canEdit && panel.editing === 'place' && (
         <PickForm
           schoolClass={schoolClass}
           label={t('classes.putIntoNamed', { class: name })}
           yearStart={yearStart}
-          onPlaced={() => {
+          onPlaced={(placedInGroups) => {
+            setGroupsPlaced(placedInGroups);
             panel.stop({ saved: true, key: 'place' });
           }}
           onCancel={() => {
@@ -220,6 +298,7 @@ export function ClassMembers({ schoolClass, years, canEdit, panel }: ClassMember
             variant="secondary"
             {...panel.opener('place')}
             onClick={() => {
+              setGroupsPlaced(0);
               panel.start('place');
             }}
           >
@@ -246,7 +325,8 @@ function PickForm({
   schoolClass: ClassDetail;
   label: string;
   yearStart: string | undefined;
-  onPlaced: () => void;
+  /** With the number of students placed into groups automatically. */
+  onPlaced: (groupsPlaced: number) => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
@@ -276,8 +356,8 @@ function PickForm({
     // A ticked student is asked for on Save, not as they are ticked (.claude/rules/web.md).
     checkedOnSave: ['students'],
     save: async (placement) => {
-      await place.mutateAsync(placement);
-      onPlaced();
+      const answer = await place.mutateAsync(placement);
+      onPlaced(new Set(answer.groupsPlaced.map((one) => one.studentId)).size);
     },
   });
   useFollowingDefault(
@@ -326,6 +406,7 @@ function PickForm({
       {names.length > 0 && (
         <p className="text-sm">{t('classes.refusedNames', { names: names.join(', ') })}</p>
       )}
+      <GroupSeatRefusal error={form.failure} />
     </RecordForm>
   );
 }
@@ -342,7 +423,8 @@ export function PlaceTickedForm({
 }: {
   rows: readonly StudentListItem[];
   title: string;
-  onPlaced: (placed: number) => void;
+  /** With the number of students placed, and of those placed into groups automatically (task 3.2c). */
+  onPlaced: (placed: number, groupsPlaced: number) => void;
 }) {
   const { t } = useTranslation();
   const { branchId } = useView();
@@ -375,8 +457,8 @@ export function PlaceTickedForm({
       from: typed.from,
     }),
     save: async ({ classId, ...placement }) => {
-      await place.mutateAsync({ classId, placement });
-      onPlaced(rows.length);
+      const answer = await place.mutateAsync({ classId, placement });
+      onPlaced(rows.length, new Set(answer.groupsPlaced.map((one) => one.studentId)).size);
     },
   });
   const chosen = offered.find((one) => one.id === form.bind('classId').value);
@@ -436,6 +518,7 @@ export function PlaceTickedForm({
       {names.length > 0 && (
         <p className="text-sm">{t('classes.refusedNames', { names: names.join(', ') })}</p>
       )}
+      <GroupSeatRefusal error={form.failure} />
     </RecordForm>
   );
 }

@@ -330,6 +330,17 @@ export const classMembersSchema = z.object({
 
 export type ClassMembers = z.infer<typeof classMembersSchema>;
 
+/**
+ * The answer of "Put into a class" (task 3.2c, decision 10): the Students
+ * tab, and the groups each student was placed into automatically, tagged
+ * "placed automatically, review" (`edge/students-classes-groups`, first row).
+ */
+export const classPlacementResultSchema = classMembersSchema.extend({
+  groupsPlaced: z.array(z.object({ studentId: z.uuid(), groupId: z.uuid(), subjectId: z.uuid() })),
+});
+
+export type ClassPlacementResult = z.infer<typeof classPlacementResultSchema>;
+
 /** A class as a student names it, with the dates of that membership. */
 export const studentClassSchema = z.object({
   id: z.uuid(),

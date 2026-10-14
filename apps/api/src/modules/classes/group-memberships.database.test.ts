@@ -53,13 +53,16 @@ describe('group membership in the database', () => {
   const placeInGroup = (row: GroupMemberRow) =>
     inBranch(row.branch, (transaction) => members.groupMember(row, transaction));
 
-  /** Two classes of grade 7 in the north, a maths group of both, a student of the first in force. */
-  async function setting(input: { size?: number; startsOn?: string } = {}) {
+  /**
+   * Two classes of grade 7 in the north, a maths group of both, a student of
+   * the first in force, and `others` more students of the first in force from
+   * the start of the year. The class rows come before the group, in
+   * transactions of their own, so the students are not yet placed (0049: only
+   * the insert of a class row needs its group rows).
+   */
+  async function setting(input: { size?: number; startsOn?: string; others?: number } = {}) {
     const oxford = await classes.schoolClass(north, northYear);
     const yale = await classes.schoolClass(north, northYear);
-    const group = await classes.group(north, northYear, maths, [oxford, yale], {
-      size: input.size ?? 20,
-    });
     const student = await members.student(north, { startsOn: input.startsOn ?? '2026-09-01' });
     const classRow = await members.member({
       branch: north,
@@ -67,7 +70,14 @@ describe('group membership in the database', () => {
       studentId: student,
       from: input.startsOn ?? '2026-09-01',
     });
-    return { oxford, yale, group, student, classRow };
+    const others: string[] = [];
+    for (let index = 0; index < (input.others ?? 0); index += 1) {
+      others.push(await pupilOf(oxford));
+    }
+    const group = await classes.group(north, northYear, maths, [oxford, yale], {
+      size: input.size ?? 20,
+    });
+    return { oxford, yale, group, student, classRow, others };
   }
 
   /** A student of the class in force from the start of the year. */
@@ -217,9 +227,11 @@ describe('group membership in the database', () => {
 
   describe('the maximum size, scheduled joins and leaves counted', () => {
     it('refuses a third member of a group of two on a date both hold', async () => {
-      const { oxford, group, student } = await setting({ size: 2 });
-      const second = await pupilOf(oxford);
-      const third = await pupilOf(oxford);
+      const {
+        group,
+        student,
+        others: [second = '', third = ''],
+      } = await setting({ size: 2, others: 2 });
       await placeInGroup({
         branch: north,
         groupId: group,
@@ -249,8 +261,11 @@ describe('group membership in the database', () => {
     });
 
     it('lets a member in up to a scheduled leaving of another', async () => {
-      const { oxford, group, student } = await setting({ size: 1 });
-      const second = await pupilOf(oxford);
+      const {
+        group,
+        student,
+        others: [second = ''],
+      } = await setting({ size: 1, others: 1 });
       const leaving = await leaveClasses(north, student, '2026-12-01');
       await placeInGroup({
         branch: north,
@@ -366,7 +381,6 @@ describe('group membership in the database', () => {
 
     it('refuses the withdraw of a planned class row that keeps its group row', async () => {
       const oxford = await classes.schoolClass(north, northYear);
-      const group = await classes.group(north, northYear, maths, [oxford]);
       const student = await members.student(north, { startsOn: '2026-09-01' });
       const classRow = await members.member({
         branch: north,
@@ -374,6 +388,7 @@ describe('group membership in the database', () => {
         studentId: student,
         from: '2026-11-02',
       });
+      const group = await classes.group(north, northYear, maths, [oxford]);
       const row = await placeInGroup({
         branch: north,
         groupId: group,
@@ -433,7 +448,6 @@ describe('group membership in the database', () => {
       // A group that held the class's students only in the past.
       const cambridge = await classes.schoolClass(north, northYear);
       const harvard = await classes.schoolClass(north, northYear);
-      const past = await classes.group(north, northYear, maths, [cambridge, harvard]);
       const former = await members.student(north);
       const leaving = await members.leaving(database.migrator, north, former, '2026-10-01');
       await database.migrator
@@ -450,6 +464,7 @@ describe('group membership in the database', () => {
           leaving_id: leaving,
         })
         .execute();
+      const past = await classes.group(north, northYear, maths, [cambridge, harvard]);
       await database.migrator
         .insertInto('group_memberships')
         .values(
@@ -496,7 +511,6 @@ describe('group membership in the database', () => {
       const { branch: west, year } = await closedYearBranch('West', '2025-09-01', '2026-05-31');
       const south = west;
       const oldClass = await classes.schoolClass(south, year);
-      const group = await classes.group(south, year, maths, [oldClass]);
       const student = await members.student(south, { startsOn: '2025-09-01' });
       await members.member({
         branch: south,
@@ -505,6 +519,7 @@ describe('group membership in the database', () => {
         from: '2025-09-01',
         ownUntil: '2026-06-01',
       });
+      const group = await classes.group(south, year, maths, [oldClass]);
       await classes.setYear(year, 'current');
       await classes.setYear(year, 'closed');
       expect(
@@ -693,7 +708,11 @@ describe('group membership in the database', () => {
     });
 
     it('withdraws a planned row only before its day, and for good', async () => {
-      const { oxford, group, student } = await setting();
+      const {
+        group,
+        student,
+        others: [other = ''],
+      } = await setting({ others: 1 });
       const planned = await placeInGroup({
         branch: north,
         groupId: group,
@@ -720,7 +739,6 @@ describe('group membership in the database', () => {
         ),
       ).toMatchObject({ constraint: 'group_memberships_only_shrink' });
 
-      const other = await pupilOf(oxford);
       const inForce = await placeInGroup({
         branch: north,
         groupId: group,
@@ -742,7 +760,11 @@ describe('group membership in the database', () => {
     });
 
     it('withdraws with a class row only before its day, and names only a leaving of the student', async () => {
-      const { oxford, group, student } = await setting();
+      const {
+        group,
+        student,
+        others: [other = ''],
+      } = await setting({ others: 1 });
       const inForce = await placeInGroup({
         branch: north,
         groupId: group,
@@ -762,7 +784,6 @@ describe('group membership in the database', () => {
         await refusal(change({ valid_until: '2026-10-14', ended_by: 'class_withdrawn' })),
       ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'group_memberships_withdraw_planned' });
       // The update branch of the leaving check: a leaving of another student.
-      const other = await pupilOf(oxford);
       const foreign = await leaveClasses(north, other, '2027-03-01');
       expect(
         await refusal(
@@ -775,7 +796,6 @@ describe('group membership in the database', () => {
       const { branch: east, year } = await closedYearBranch('East', '2024-09-01', '2025-05-31');
       const south = east;
       const oldClass = await classes.schoolClass(south, year);
-      const group = await classes.group(south, year, maths, [oldClass]);
       const student = await members.student(south, { startsOn: '2024-09-01' });
       await members.member({
         branch: south,
@@ -784,6 +804,7 @@ describe('group membership in the database', () => {
         from: '2024-09-01',
         ownUntil: '2025-06-01',
       });
+      const group = await classes.group(south, year, maths, [oldClass]);
       const row = await members.groupMember({
         branch: south,
         groupId: group,
@@ -840,7 +861,6 @@ describe('group membership in the database', () => {
       expect(await refusal(archive(group))).toMatchObject({ constraint: 'group_has_members' });
 
       const cambridge = await classes.schoolClass(north, northYear);
-      const past = await classes.group(north, northYear, maths, [cambridge]);
       const former = await members.student(north);
       const leaving = await members.leaving(database.migrator, north, former, '2026-10-01');
       await members.member({
@@ -852,6 +872,7 @@ describe('group membership in the database', () => {
         endedBy: 'leaving',
         leavingId: leaving,
       });
+      const past = await classes.group(north, northYear, maths, [cambridge]);
       await members.groupMember({
         branch: north,
         groupId: past,
@@ -866,8 +887,11 @@ describe('group membership in the database', () => {
     });
 
     it('refuses a maximum below the members of a date from today on', async () => {
-      const { oxford, group, student } = await setting({ size: 3 });
-      const second = await pupilOf(oxford);
+      const {
+        group,
+        student,
+        others: [second = ''],
+      } = await setting({ size: 3, others: 1 });
       await placeInGroup({
         branch: north,
         groupId: group,
@@ -1007,8 +1031,11 @@ describe('group membership in the database', () => {
   });
 
   it('counts the members of a date as the guard does', async () => {
-    const { oxford, group, student } = await setting();
-    const second = await pupilOf(oxford);
+    const {
+      group,
+      student,
+      others: [second = ''],
+    } = await setting({ others: 1 });
     await placeInGroup({
       branch: north,
       groupId: group,

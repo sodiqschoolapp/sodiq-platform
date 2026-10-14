@@ -35,6 +35,12 @@ import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import {
+  CLASS_GROUP_REFUSALS,
+  coverClassRows,
+  lockPlacementGroups,
+} from '../classes/class-groups.js';
+import {
+  classesInService,
   membershipCounts,
   MEMBERSHIP_REFUSALS,
   studentClassesOn,
@@ -565,12 +571,17 @@ export class Students {
                   if (student === undefined) {
                     throw new Error('The new student is not found.');
                   }
+                  // Task 3.2c, decision 9: the class FOR UPDATE before its
+                  // groups are read.
+                  await classesInService(transaction, [placement.id]);
                   const rows = await planPlacement(
                     transaction,
                     placement,
                     [{ student, version: null }],
                     input.startsOn,
                   );
+                  // Decision 9: every group the placement may touch, before its first write.
+                  const groups = await lockPlacementGroups(transaction, [placement.id], [id]);
                   await writePlacement(
                     transaction,
                     this.audit,
@@ -578,6 +589,30 @@ export class Students {
                     placement,
                     rows,
                     'create',
+                    requestId,
+                  );
+                  // Task 3.2c: a group of every split or group subject of the
+                  // class from the start date; the refusal names the class field.
+                  await coverClassRows(
+                    transaction,
+                    this.audit,
+                    access,
+                    {
+                      classRows: rows.map((row) => ({
+                        index: 0,
+                        row: {
+                          studentId: row.studentId,
+                          classId: placement.id,
+                          from: row.from,
+                          until: row.until,
+                          ownUntil: placement.ownUntil,
+                          leavingId: row.leavingId,
+                        },
+                      })),
+                      giveBack: null,
+                      groups,
+                      pathOf: () => 'classId',
+                    },
                     requestId,
                   );
                 }
@@ -613,7 +648,7 @@ export class Students {
                 }
                 return this.readDetail(transaction, access, id);
               }),
-            MEMBERSHIP_REFUSALS,
+            { ...MEMBERSHIP_REFUSALS, ...CLASS_GROUP_REFUSALS },
           ),
         ),
       ),

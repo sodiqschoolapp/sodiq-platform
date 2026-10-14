@@ -30,6 +30,12 @@ import {
 } from '../classes/group-membership-rows.js';
 import { planMemberships, type StoredMembership } from '../classes/membership-plan.js';
 import {
+  CLASS_GROUP_REFUSALS,
+  coverClassRows,
+  lockClassGroups,
+  type GroupRowWritten,
+} from '../classes/class-groups.js';
+import {
   holdsData,
   planCancelLeaving,
   planLeaving,
@@ -54,6 +60,8 @@ const GUARDS: Readonly<Record<string, ErrorCode>> = {
   ...MEMBERSHIP_REFUSALS,
   // Task 3.2b: the group rows follow the class rows; the containment answers a fault only.
   ...CLASS_PATH_GROUP_REFUSALS,
+  // Task 3.2c: a class row written back needs its groups; a fault only.
+  ...CLASS_GROUP_REFUSALS,
 };
 
 /** Runs work; a guard of 0033 that refused becomes its 409. */
@@ -340,6 +348,8 @@ export class StudentStatuses {
         const written = await this.apply(transaction, branchId, id, outcome);
         const classes = await this.followLeaving(
           transaction,
+          access,
+          requestId,
           id,
           rows,
           memberships,
@@ -381,11 +391,14 @@ export class StudentStatuses {
    * an undo or the replace of a scheduled leaving gives back the rows the
    * leaving taken back had cut, through every check of the guard; a row of a
    * class out of service is named and not given back. The classes are locked
-   * FOR SHARE after the student (the lock order of every placement). `null`
+   * FOR UPDATE after the student (the lock order of every placement), then
+   * the groups (task 3.2c, decision 9). `null`
    * when the change touches no leaving (a return, a restore).
    */
   private async followLeaving(
     transaction: Transaction,
+    access: Access,
+    requestId: string,
     id: string,
     rows: readonly StoredStudentStatus[],
     memberships: readonly StoredMembership[],
@@ -394,7 +407,10 @@ export class StudentStatuses {
     cause: 'cancel' | 'undo',
   ): Promise<{
     memberships: Awaited<ReturnType<typeof applyMembershipPlan>> & { notRestored: string[] };
-    groupMemberships: { cut: GroupRowEnded[] };
+    groupMemberships: {
+      cut: GroupRowEnded[];
+      written: Omit<GroupRowWritten, 'studentId' | 'subjectId'>[];
+    };
     notRestored: ClassNotRestored[];
   } | null> {
     const takenBack = outcome.cuts
@@ -425,6 +441,16 @@ export class StudentStatuses {
       },
       (classId) => inService.has(classId),
     );
+    // Task 3.2c, decision 9: every group the change may touch, locked FOR
+    // UPDATE in the order of their id in one call, after the classes and
+    // before the first write: the groups of the student's own rows (the
+    // rows a leaving cuts or a taken-back one gives back) and the active
+    // groups of the classes written back.
+    const groups = await lockClassGroups(
+      transaction,
+      plan.inserts.map((row) => row.classId),
+      (await groupMembershipsOf(transaction, id)).map((row) => row.groupId),
+    );
     const moved = await applyMembershipPlan(transaction, id, memberships, plan, leavingId, cause);
     // Task 3.2b (decision 8 of pull request #92): the group rows of the dates
     // the class rows lose end with them; a cancel, an undo or a later date
@@ -433,6 +459,43 @@ export class StudentStatuses {
       leaving === undefined || leavingId === null
         ? []
         : await cutGroupRows(transaction, id, leaving.validFrom, leavingId, takenBack?.id ?? null);
+    // Task 3.2c: the class rows written back need their groups, every day:
+    // the rows the leaving taken back cut come back first (decision 6), then
+    // every day still without a group of a split or group subject gets the
+    // smallest suitable group (decision 7), all or none (decision 3).
+    const covered = await coverClassRows(
+      transaction,
+      this.audit,
+      access,
+      {
+        classRows: plan.inserts.map((row) => ({
+          index: 0,
+          row: {
+            studentId: id,
+            classId: row.classId,
+            from: row.validFrom,
+            until: row.validUntil,
+            ownUntil: row.ownUntil,
+            leavingId: row.cut ? leavingId : null,
+          },
+        })),
+        giveBack:
+          takenBack === undefined
+            ? null
+            : {
+                studentId: id,
+                takenBack: { leavingId: takenBack.id, from: takenBack.validFrom },
+                leave:
+                  leaving === undefined || leavingId === null
+                    ? null
+                    : { from: leaving.validFrom, leavingId },
+                cause,
+              },
+        groups,
+        pathOf: () => '',
+      },
+      requestId,
+    );
     const notRestoredIds = [...new Set(plan.notRestored.map((row) => row.classId))];
     const named =
       notRestoredIds.length === 0
@@ -446,7 +509,17 @@ export class StudentStatuses {
             .execute();
     return {
       memberships: { ...moved, notRestored: notRestoredIds },
-      groupMemberships: { cut: groupsCut },
+      groupMemberships: {
+        cut: groupsCut,
+        written: covered.written.map((row) => ({
+          id: row.id,
+          groupId: row.groupId,
+          from: row.from,
+          until: row.until,
+          cause: row.cause,
+          review: row.review,
+        })),
+      },
       notRestored: named.map((one) => ({ classId: one.id, grade: one.grade, name: one.name })),
     };
   }

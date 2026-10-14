@@ -28,7 +28,7 @@ import {
   lockGroups,
 } from './group-membership-rows.js';
 import { classesOfGroups, readGroupRow, type GroupRow } from './group-rows.js';
-import type { HeldRange } from './group-membership-rows.js';
+import { SeatBook, smallestGroup } from './class-groups.js';
 
 /** A group as a placement reads it, after its lock. */
 interface PlacementGroupRow {
@@ -408,68 +408,46 @@ export class GroupMembers {
             ),
           );
           const order = candidates.filter((one) => still.has(one.id));
-          const added = new Map<string, HeldRange[]>();
           const rows: PlannedGroupRow[] = [];
           const details: ErrorDetail[] = [];
-          const sized: { group: PlacementGroupRow; members: number; existing: HeldRange[] }[] = [];
           for (const group of groups) {
             this.checkGroup(group, input.from);
-            sized.push({
-              group,
-              members: await this.membersOn(transaction, group.id, input.from),
-              existing: await groupRangesFrom(transaction, group.id, input.from),
-            });
           }
+          // One rule for the screen and the class paths (task 3.2c, decision 7).
+          const book = new SeatBook(transaction);
           for (const [index, candidate] of order.entries()) {
             const student = students.get(candidate.id);
             if (student === undefined) {
               throw notFound();
             }
-            const options: { group: PlacementGroupRow; members: number; row: PlannedGroupRow }[] =
-              [];
-            for (const { group, members, existing } of sized) {
-              const held = classRowOn(student, new Set(group.classIds), input.from);
-              if (held === undefined) {
-                continue;
-              }
-              const taken = added.get(group.id) ?? [];
-              const range = { from: input.from, until: held.validUntil };
-              // Date by date, the rows this run gave the group included.
-              if (peakWith(existing, [...taken, range]) > group.maxSize) {
-                continue;
-              }
-              options.push({
-                group,
-                members: members + taken.length,
-                row: {
-                  studentId: student.id,
-                  groupId: group.id,
-                  from: input.from,
-                  until: held.validUntil,
-                  ownUntil: held.ownUntil,
-                  leavingId: held.endedBy === 'leaving' ? held.leavingId : null,
-                },
-              });
-            }
-            options.sort(
-              (a, b) =>
-                a.members - b.members ||
-                a.group.nameKey.localeCompare(b.group.nameKey) ||
-                a.group.id.localeCompare(b.group.id),
+            const offered = groups.filter(
+              (group) => classRowOn(student, new Set(group.classIds), input.from) !== undefined,
             );
-            const [best] = options;
-            if (best === undefined) {
+            const held = classRowOn(
+              student,
+              new Set(offered.flatMap((group) => group.classIds)),
+              input.from,
+            );
+            const best =
+              held === undefined
+                ? undefined
+                : await smallestGroup(book, offered, { from: input.from, until: held.validUntil });
+            if (best === undefined || held === undefined) {
               details.push({
                 ...studentDetail(index, student.id, 'placement_no_seat'),
                 path: 'students',
               });
               continue;
             }
-            added.set(best.group.id, [
-              ...(added.get(best.group.id) ?? []),
-              { from: best.row.from, until: best.row.until },
-            ]);
-            rows.push(best.row);
+            book.add(best.id, { from: input.from, until: held.validUntil });
+            rows.push({
+              studentId: student.id,
+              groupId: best.id,
+              from: input.from,
+              until: held.validUntil,
+              ownUntil: held.ownUntil,
+              leavingId: held.endedBy === 'leaving' ? held.leavingId : null,
+            });
           }
           const first = details[0];
           if (first !== undefined) {
