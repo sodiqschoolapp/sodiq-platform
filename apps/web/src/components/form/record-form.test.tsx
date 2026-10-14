@@ -457,7 +457,10 @@ describe('the Cancel of a record form', () => {
     await waitFor(() => {
       expect(cancelled).toHaveBeenCalledTimes(1);
     });
-    expect(unsent()).toBe('');
+    // What was typed is dropped: the form is no longer named as unsent, a moment later.
+    await waitFor(() => {
+      expect(unsent()).toBe('');
+    });
   });
 
   it('is off while the save is on its way', () => {
