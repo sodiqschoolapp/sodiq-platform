@@ -177,7 +177,7 @@ export function ClassMoveForm({
                   api.POST('/api/classes/transfers/{id}/change', {
                     params: { header: branchHeader(), path: { id: move.id } },
                     body: {
-                      ...(input),
+                      ...input,
                       ...(confirmLanguage ? { confirmLanguage } : {}),
                     },
                   }),
