@@ -86,8 +86,11 @@ export interface NewRecord {
   onClose: () => void;
   /** An opened record took its place (a row, Back, a link): the focus stays with that record. */
   onReplaced: () => void;
-  /** The panel closed with a save. */
-  onSaved: () => void;
+  /**
+   * The panel closed with a save; `id` is the record saved, when there is one.
+   * A list whose rows open elsewhere (`onOpenRow`) shows it there itself.
+   */
+  onSaved: (id?: string) => void;
 }
 
 /** Where an export started by the list stands: on the way, refused, or done with columns left out. */
@@ -172,8 +175,31 @@ interface ListPageProps<Row> {
   exportExtras?: readonly ExportExtra[] | undefined;
   /** The record of a row, shown in the side panel. Needs a column with `opens`. */
   panel?: ((row: Row) => ReactNode) | undefined;
-  /** A new record in the side panel, in the place of an opened record. Needs `panel`. */
+  /**
+   * Instead of `panel`: opening a row (its `opens` cell) hands it to the page,
+   * which shows it elsewhere, such as the Branches list that switches to the
+   * branch (task 2.7c-3, decision 4). Typed changes of a new record are asked
+   * about first.
+   */
+  onOpenRow?: ((row: Row) => void) | undefined;
+  /**
+   * A new record in the side panel, in the place of an opened record. Needs
+   * `panel` or `onOpenRow`; with `onOpenRow` its save writes no record into
+   * the address and hands the id to `onSaved`.
+   */
   creating?: NewRecord | undefined;
+  /**
+   * Another view of the same rows in the place of the table (the Rooms "By
+   * floor" view, task 2.7c-3, decision 8): it gets every row the search and
+   * filters leave (no "Show more"), in the order the list chose (`sorted`
+   * false: the order of `rows`, which the view may order its own way), and
+   * `open`, which opens a row in the side panel as its `opens` cell does.
+   * The toolbar and the side panel stay; the rows have no checkboxes and
+   * rows ticked in the table are cleared when the view is shown.
+   */
+  view?:
+    | ((shown: { rows: readonly Row[]; sorted: boolean; open: (id: string) => void }) => ReactNode)
+    | undefined;
   /**
    * Server paging (task 2.6a): `rows` are the pages loaded so far, and this
    * asks the server for the next one; left out once there is none. The search
@@ -227,7 +253,9 @@ export function ListPage<Row>({
   exportState,
   exportExtras = NO_EXTRAS,
   panel,
+  onOpenRow,
   creating,
+  view,
   more,
 }: ListPageProps<Row>) {
   const { t, i18n } = useTranslation();
@@ -358,8 +386,18 @@ export function ListPage<Row>({
           ...tickedRows.filter((row) => !shownIds.has(rowId(row))),
         ];
 
+  // Rows ticked in the table are not carried into another view (decision 8).
+  const viewShown = view !== undefined;
+  const [viewBefore, setViewBefore] = useState(viewShown);
+  if (viewBefore !== viewShown) {
+    setViewBefore(viewShown);
+    if (viewShown) {
+      setTickedIds(new Set());
+    }
+  }
+
   const selection =
-    bulkActions.length === 0
+    bulkActions.length === 0 || viewShown
       ? undefined
       : {
           ticked,
@@ -416,6 +454,21 @@ export function ListPage<Row>({
   };
 
   const openId = panel === undefined ? undefined : state.open;
+  /** A row opened elsewhere by the page; a new record with typed changes is asked about first. */
+  const openElsewhere = (id: string): void => {
+    const row = rows?.find((one) => rowId(one) === id);
+    if (row === undefined || onOpenRow === undefined) {
+      return;
+    }
+    void leave().then((leaves) => {
+      if (leaves) {
+        onOpenRow(row);
+      }
+    });
+  };
+  const onOpen =
+    panel !== undefined ? openRecord : onOpenRow !== undefined ? openElsewhere : undefined;
+  const creatingShown = creating !== undefined && (panel !== undefined || onOpenRow !== undefined);
   const creatingKey = creating?.key;
 
   // The newest functions of the page's new record.
@@ -470,7 +523,11 @@ export function ListPage<Row>({
   };
   const newRecordActions: NewRecordActions = {
     saved: (id, also = {}) => {
-      creating?.onSaved();
+      creating?.onSaved(id);
+      if (panel === undefined) {
+        // The page shows the record elsewhere (`onOpenRow`).
+        return;
+      }
       // The newest address of the list, not the one of the moment Save was
       // pressed: a filter or an order changed during the save stays.
       if (id !== undefined || Object.keys(also).length > 0) {
@@ -532,7 +589,7 @@ export function ListPage<Row>({
       <div
         className={cn(
           'min-w-0 flex-1 grid-cols-1 gap-3',
-          openId === undefined && creating === undefined ? 'grid' : 'hidden lg:grid',
+          openId === undefined && !creatingShown ? 'grid' : 'hidden lg:grid',
         )}
       >
         <div className="flex flex-wrap items-end gap-2">
@@ -790,6 +847,17 @@ export function ListPage<Row>({
             {failed && <FailureAlert error={error} />}
             <EmptyState title={empty.title} text={empty.text} action={empty.action} />
           </>
+        ) : view !== undefined ? (
+          <>
+            {failed && <FailureAlert error={error} />}
+            {view({
+              rows: matching,
+              sorted: current.sort !== undefined,
+              open: (id) => {
+                openRecord(id);
+              },
+            })}
+          </>
         ) : (
           <>
             {failed && <FailureAlert error={error} />}
@@ -805,7 +873,7 @@ export function ListPage<Row>({
               }}
               selection={selection}
               openId={openId}
-              onOpen={panel === undefined ? undefined : openRecord}
+              onOpen={onOpen}
             />
             {/* Read out as the search narrows the list. */}
             <div aria-live="polite" className="grid justify-items-start gap-2">
@@ -841,7 +909,7 @@ export function ListPage<Row>({
         )}
       </div>
 
-      {creating !== undefined && panel !== undefined && (
+      {creating !== undefined && creatingShown && (
         <SidePanel title={creating.title} recordKey={`new:${creating.key}`} onClose={closeCreating}>
           <NewRecordContent content={creating.content} actions={newRecordActions} />
         </SidePanel>
