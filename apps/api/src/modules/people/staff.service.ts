@@ -173,7 +173,7 @@ const sortDivisions = (divisions: StaffDivisions): StaffDivisions =>
  * The current Super Admin assignment of the account, decided from every
  * current assignment (`.claude/rules/api.md`; edge cases, "Who can act").
  */
-const superAdminOf = (access: Access): string | undefined =>
+export const superAdminOf = (access: Access): string | undefined =>
   access.assignments.find((assignment) => assignment.role === 'super_admin')?.id;
 
 /** A current Principal assignment of the account in the branch of the request. */
@@ -183,7 +183,7 @@ const principalOf = (access: Access): string | undefined =>
   )?.id;
 
 /** A current Academic Vice Principal assignment of the account in the branch of the request. */
-const viceOf = (access: Access): string | undefined =>
+export const viceOf = (access: Access): string | undefined =>
   access.assignments.find(
     (assignment) =>
       assignment.role === 'academic_vice_principal' && assignment.branchId === access.branchId,

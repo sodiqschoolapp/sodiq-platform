@@ -400,6 +400,13 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/classes/:id/members/:memberId/withdraw': { branch: 'request', roles: CLASS_EDITORS },
   // Task 3.2a, decision 2 of pull request #91: the readers of classes read groups, each in
   // the scope the route decides; the editors of classes change them.
+  // Task 3.2d (pull request #94, decision 3): Ctrl+K over records, each kind under the area
+  // of its record route; the scope is decided in the route (people/search.test.ts,
+  // classes/search.test.ts).
+  'GET /api/search/students': { branch: 'request', roles: STUDENT_VIEWERS },
+  'GET /api/search/staff': { branch: 'request', roles: STAFF_VIEWERS },
+  'GET /api/search/classes': { branch: 'request', roles: CLASS_VIEWERS },
+  'GET /api/search/groups': { branch: 'request', roles: CLASS_VIEWERS },
   'GET /api/groups': { branch: 'request', roles: CLASS_VIEWERS },
   'GET /api/groups/slot-check': { branch: 'request', roles: CLASS_EDITORS },
   'POST /api/groups/export': { branch: 'request', roles: SETUP_VIEWERS },

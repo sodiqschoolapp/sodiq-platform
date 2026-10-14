@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
 import { changeFirstPassword, chooseTheme, heading, languageChooser, signIn } from './steps';
+import { codeNow } from './totp';
 
 // docs/build-plan.md, task 0.8b-3: the shell tools. docs/spec/12-ux-standards.md:
 // "Light and dark themes" on every page; "Ctrl+K opens a search across ... pages";
@@ -69,4 +70,39 @@ test('the theme is kept, Ctrl+K and the search button open the pages, and a repo
   await expect(message).toHaveValue('');
   await feedback.getByRole('button', { name: en.confirm.cancel, exact: true }).click();
   await expect(feedback).toBeHidden();
+});
+
+// Task 3.2d (pull request #94): Ctrl+K over records. The seeded Academic Vice
+// Principal types part of a class name in another script (a Cyrillic О, which
+// the class names fold as the Latin O), the class shows under Classes, and
+// Enter opens it in the side panel of the Classes list.
+test('Ctrl+K finds a class by part of its name and opens it in its list', async ({ page }) => {
+  const account = accountOf('recordSearch');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.keyboard.press('ControlOrMeta+K');
+  const search = page.getByRole('dialog', { name: en.search.label });
+  await expect(search).toBeVisible();
+  // "Оxf" with a Cyrillic О.
+  await page.keyboard.type('\u041exf');
+  const classes = search.getByRole('group', { name: en.search.classes });
+  await expect(classes.getByRole('option')).toHaveCount(1);
+  await expect(classes.getByRole('option')).toContainText('7 Oxford');
+  await expect(search.getByRole('option').first()).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Enter');
+
+  await expect(search).toBeHidden();
+  await expect(page).toHaveURL(/\/classes\?open=/);
+  await expect(page.getByRole('complementary', { name: '7 Oxford' })).toBeVisible();
 });

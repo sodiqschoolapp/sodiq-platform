@@ -213,6 +213,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 14 October 2026: search over records (task 3.2d)
+
+Plan approved on pull request #94 with corrections 1 to 3; decisions 1 and 2 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Ctrl+K lists for the Tutor only the students of own classes (in force or planned), although the student list shows the branch: the rule of `GET people/students/:id` | Decision 1; `edge/people-roles-accounts`, the Ctrl+K row: "only records the person may open" |
+| **Look first.** The query is compared with a student's document number, JSHSHIR and own phone and a person's phone and JSHSHIR only for the Super Admin and the Academic Vice Principal of the branch of the request (`superAdminOf ?? viceOf`), never by an action of the table; a document number and a JSHSHIR match only as a whole, a phone from 4 digits; the answers carry none of them | Decision 2; the Ctrl+K row; permission review of the build (a test pins the branch of `viceOf`) |
+| **Look first.** The staff status of an answer is today in the main branch's time zone only when the row filter shows that link, else in the zone of the branch of the request, as the staff list on main reads it; a person-wide zone through a SECURITY DEFINER function, for both, is a decision of its own (the allow-list of `catalog.test.ts`) | Spec review of the build, must-fix 3; every branch is on Asia/Tashkent today |
+| Four read routes `GET api/search/{students,staff,classes,groups}?q=`, each under the record route's `@Requires` and scope; no new area, no role widened; in `people` and `classes` | Decisions 3 and 12 |
+| The web asks only the kinds the active role views; the server answers from every current assignment | Decision 4 |
+| Classes and groups not archived, of a year that is not closed; students and staff of every status, with the status shown (a student before the start date "active", as the list) | Decision 5 with correction 1 |
+| At most 8 a kind, `more` when a ninth matched, the scope before the limit; "More on the list" opens the list with the typed text, which after a phone or document search finds nothing there (the list searches name and UID) | Decision 6; spec review of the build, should-fix 3 |
+| From the second character after a 100 ms pause; "Nothing matches" only once every kind answered for the text typed now | Decision 7 as changed; spec review of the build, must-fix 1 |
+| No audit entry, no index, no migration | Decisions 8 and 9 |
+| Names by every `spellingKey` word (paternal name too); classes and groups also by `classNameKey`; a group by its subject in any of three languages; the UID from 3 digits as a prefix; the staff ID from its letter and 3 digits, with or without the dash | Decisions 10 and 11; built |
+| Classes ordered by grade, then the class-name fold, then id (the fold of the display name would put 10 before 7); students by `name_key`, staff by folded surname and first name, groups by the fold of the name, each then id | Built; the Classes list's own order |
+
 ## 14 October 2026: groups on every class membership path (task 3.2c)
 
 Plan approved on pull request #93 with corrections 1 and 2; decisions 1 to 4 marked Look first and confirmed there. Flagged on issue #42.

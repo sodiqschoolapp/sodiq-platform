@@ -359,7 +359,7 @@ How to read the task lines:
   - Done when: every student of the classes involved must be in exactly one group before a load row is valid (the check, tested; 3.4 calls it).
   - From 3.1b (pull request #89, decision 15): `edge/students-classes-groups`, first row, "A class membership cannot be saved without a group for every split or group subject of that class, from the same date", on every path that writes a class membership: "Put into a class" (`POST api/classes/:id/members`), the create of a student with a class, the cancel and the undo of a leaving and the replace of a scheduled leaving, which write rows back (`class_memberships`, causes `cancel` and `undo`); each places the student into the smallest suitable group with the tag "placed automatically, review"; a cancel or an undo gives back the group rows the leaving cut.
 
-- [ ] **3.2d Search over records** (pull request #91, correction 2)
+- [x] **3.2d Search over records** (pull request #91, correction 2)
   - Read: `12` (One pattern everywhere, Search), `02`, the plan of pull request #91.
   - Build: Ctrl+K over records: students, staff, classes and groups, each with the rights and the scope of the role (the record routes' own rules), beside the pages it already lists; look-alike Cyrillic letters in class and group names found by their fold.
   - Done when: a Tutor finds own class and its groups and no other, with allow and refuse tests.
