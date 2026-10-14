@@ -313,6 +313,8 @@ describe('Ctrl+K over classes and groups', () => {
       ]) {
         await classes.schoolClass(t.north, year, { name, grade: 9 });
       }
+      // Grade 10 after grade 9: the fold of the display name would put it first.
+      await classes.schoolClass(t.north, year, { name: 'Alpha', grade: 10 });
       const named = (found: { items: { grade: number; name: string }[] }) =>
         found.items.map((item) => `${String(item.grade)} ${item.name}`);
       // "a" is in Cambridge, Gʻalaba, Delta, India and Lima.
@@ -322,6 +324,7 @@ describe('Ctrl+K over classes and groups', () => {
         '9 Delta',
         '9 India',
         '9 Lima',
+        '10 Alpha',
       ]);
       const eight = await classesFound('9');
       expect(eight.items).toHaveLength(8);

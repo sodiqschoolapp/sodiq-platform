@@ -286,9 +286,17 @@ export function CommandSearch() {
   const activeOption = options[activeIndex];
   const optionId = (index: number): string => `${listId}-${String(index)}`;
 
-  const waiting = shown && answers.some((answer) => answer.isFetching && answer.data === undefined);
   const failed = shown ? answers.filter((answer) => answer.isError) : [];
-  const answered = !shown || answers.every((answer) => answer.data !== undefined);
+  // Every kind answered for the text typed now: not during the pause, not
+  // while an answer of an earlier text stands in (the spec review of the
+  // build: "No match" never shows before the records were asked for).
+  const current = typed.trim();
+  const settled =
+    kinds.length === 0 ||
+    current.length < SEARCH_FROM_LENGTH ||
+    (rested === current &&
+      answers.every((answer) => answer.data !== undefined && !answer.isPlaceholderData));
+  const waiting = !settled && failed.length === 0;
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>): void => {
     if (event.key === 'ArrowDown') {
@@ -441,7 +449,7 @@ export function CommandSearch() {
             </Button>
           </div>
         )}
-        {options.length === 0 && answered && failed.length === 0 && (
+        {options.length === 0 && settled && failed.length === 0 && (
           <p role="status" className="px-2 text-sm text-muted-foreground">
             {t('search.noMatch')}
           </p>

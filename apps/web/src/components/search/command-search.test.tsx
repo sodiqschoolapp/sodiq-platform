@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
@@ -319,10 +319,16 @@ describe('the search of records', () => {
     role: 'teacher' | 'tutor' | 'academic_vice_principal',
     answers: Record<string, () => Response>,
     language: Language = 'en',
+    roles: readonly ('teacher' | 'tutor' | 'academic_vice_principal')[] = [role],
   ) {
     const calls = fakeApi({
       'GET /api/auth/session': () =>
-        json(sessionOf({ assignments: [{ role, branchId: NORTH.id }], branches: [NORTH] })),
+        json(
+          sessionOf({
+            assignments: roles.map((one) => ({ role: one, branchId: NORTH.id })),
+            branches: [NORTH],
+          }),
+        ),
       'GET /api/access/branches-without-vice-principal': () => json({ branches: [] }),
       ...answers,
     });
@@ -340,13 +346,48 @@ describe('the search of records', () => {
     fireEvent.change(box(language), { target: { value: text } });
   };
 
-  it('asks no record route for a Teacher, who views none of the kinds', async () => {
-    const { calls } = await searchAs('teacher', {});
-    type('Oxford');
-    // No page is called so either: the line says so, and no kind was asked.
-    expect((await within(await dialog()).findByRole('status')).textContent).toBe(en.search.noMatch);
-    expect(searchCalls(calls)).toEqual([]);
-    expect(box().getAttribute('placeholder')).toBe(en.search.placeholder);
+  /** Lets the pause before the records are asked for pass, on the fake clock. */
+  async function pastThePause(): Promise<void> {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
+    });
+  }
+
+  it('asks no record route for a Teacher, who views none of the kinds, past the pause', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const { calls } = await searchAs('teacher', {});
+      expect(box().getAttribute('placeholder')).toBe(en.search.placeholder);
+      type('Oxford');
+      await pastThePause();
+      expect(within(screen.getByRole('dialog')).getByRole('status').textContent).toBe(
+        en.search.noMatch,
+      );
+      expect(searchCalls(calls)).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('asks nothing for one character past the pause, and asks at the second', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const { calls } = await searchAs('tutor', {
+        'GET /api/search/students': none,
+        'GET /api/search/classes': none,
+        'GET /api/search/groups': none,
+      });
+      type('O');
+      await pastThePause();
+      expect(searchCalls(calls)).toEqual([]);
+      type('Ox');
+      await pastThePause();
+      await waitFor(() => {
+        expect(searchCalls(calls)).toHaveLength(3);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('asks a Tutor’s students, classes and groups, never staff, from the second character', async () => {
@@ -457,21 +498,60 @@ describe('the search of records', () => {
     ).toHaveLength(2);
   });
 
-  it('says that nothing matches only when no page and no kind found anything', async () => {
-    await searchAs('academic_vice_principal', {
+  it('says that nothing matches only when no page and every kind answered with nothing', async () => {
+    const { calls } = await searchAs('academic_vice_principal', {
       'GET /api/search/students': none,
       'GET /api/search/staff': none,
       'GET /api/search/classes': none,
       'GET /api/search/groups': none,
     });
     type('Zzyzx');
+    // During the pause the records are not asked for yet: never "Nothing matches" then.
+    expect(within(screen.getByRole('dialog')).getByRole('status').textContent).toBe(
+      en.search.searching,
+    );
 
     await waitFor(() => {
       expect(within(screen.getByRole('dialog')).getByRole('status').textContent).toBe(
         en.search.noMatch,
       );
     });
+    expect(searchCalls(calls)).toHaveLength(4);
     expect(screen.queryAllByRole('option')).toEqual([]);
+  });
+
+  it('never says that nothing matches when no page matches but a kind found a record', async () => {
+    await searchAs('academic_vice_principal', {
+      'GET /api/search/students': () => json({ items: [STUDENT], more: false }),
+      'GET /api/search/staff': none,
+      'GET /api/search/classes': none,
+      'GET /api/search/groups': none,
+    });
+    type('Qodirova');
+    expect(within(screen.getByRole('dialog')).queryByText(en.search.noMatch)).toBeNull();
+
+    expect(await screen.findByRole('option', { name: /^Qodirova/ })).toBeDefined();
+    expect(within(screen.getByRole('dialog')).queryByText(en.search.noMatch)).toBeNull();
+    expect(within(screen.getByRole('dialog')).queryByRole('status')).toBeNull();
+  });
+
+  it('shows the status of a person and of a student with none in force', async () => {
+    await searchAs('academic_vice_principal', {
+      'GET /api/search/students': () =>
+        json({ items: [{ ...STUDENT, class: null, status: null }], more: false }),
+      'GET /api/search/staff': () => json({ items: [{ ...PERSON, status: null }], more: false }),
+      'GET /api/search/classes': none,
+      'GET /api/search/groups': none,
+    });
+    type('Qodirova');
+    const students = within(await screen.findByRole('group', { name: en.search.students }));
+    expect(students.getByRole('option').textContent).toBe(
+      `Qodirova Gʻulnora · Rustamovna2600123 · ${en.people.students.notStarted}`,
+    );
+    const staff = within(screen.getByRole('group', { name: en.search.staff }));
+    expect(staff.getByRole('option').textContent).toBe(
+      `Karimov DilshodS-260001 · ${en.people.staff.notStarted}`,
+    );
   });
 
   it('speaks Russian, with the subject of a group in Russian', async () => {

@@ -41,6 +41,8 @@ describe('Ctrl+K over students and staff', () => {
   /** Staff of North: one with a paternal name, a phone and a JSHSHIR, one who left, one of both branches. */
   let karimov: { id: string; staffId: string };
   let leftPerson: string;
+  let laterPerson: string;
+  let inactivePerson: string;
   let bothBranches: string;
   let southPerson: string;
   let vacancy: string;
@@ -217,6 +219,28 @@ describe('Ctrl+K over students and staff', () => {
       .values({ staff_id: leftPerson, status: 'left', valid_from: '2026-10-01' })
       .execute();
     bothBranches = (await person(t.south, 'Anvar', 'Karimov', { further: [t.north] })).id;
+    // One who begins in November (no status in force: "not started") and one inactive.
+    laterPerson = (await person(t.north, 'Elyor', 'Karimov')).id;
+    // Its first row withdrawn (an empty range) and a new one from November.
+    await t.database.migrator
+      .updateTable('staff_statuses')
+      .set({ valid_until: '2026-09-01' })
+      .where('staff_id', '=', laterPerson)
+      .execute();
+    await t.database.migrator
+      .insertInto('staff_statuses')
+      .values({ staff_id: laterPerson, status: 'active', valid_from: '2026-11-01' })
+      .execute();
+    inactivePerson = (await person(t.north, 'Fozil', 'Karimov')).id;
+    await t.database.migrator
+      .updateTable('staff_statuses')
+      .set({ valid_until: '2026-10-01' })
+      .where('staff_id', '=', inactivePerson)
+      .execute();
+    await t.database.migrator
+      .insertInto('staff_statuses')
+      .values({ staff_id: inactivePerson, status: 'inactive', valid_from: '2026-10-01' })
+      .execute();
     southPerson = (await person(t.south, 'Jamshid', 'Karimov')).id;
     vacancy = await t.database.migrator.transaction().execute(async (transaction) => {
       const row = await transaction
@@ -437,12 +461,15 @@ describe('Ctrl+K over students and staff', () => {
     it('lists the people linked to the branch, of every status with the status, and never a vacancy', async () => {
       const found = await staff('Karimov');
       expect(found.items.map((item) => item.id).sort()).toEqual(
-        sorted(karimov.id, leftPerson, bothBranches),
+        sorted(karimov.id, leftPerson, bothBranches, laterPerson, inactivePerson),
       );
       expect(found.items.map((item) => item.id)).not.toContain(vacancy);
       expect(found.items.map((item) => item.id)).not.toContain(southPerson);
       const byId = new Map(found.items.map((item) => [item.id, item]));
       expect(byId.get(leftPerson)?.status).toBe('left');
+      expect(byId.get(inactivePerson)?.status).toBe('inactive');
+      // No status in force yet: "not started", as the staff list shows it.
+      expect(byId.get(laterPerson)?.status).toBeNull();
       expect(byId.get(karimov.id)).toEqual({
         id: karimov.id,
         staffId: karimov.staffId,
@@ -450,8 +477,14 @@ describe('Ctrl+K over students and staff', () => {
         lastName: 'Karimov',
         status: 'active',
       });
-      // Ordered by surname, then first name: Anvar, Botir, Dilshod.
-      expect(found.items.map((item) => item.firstName)).toEqual(['Anvar', 'Botir', 'Dilshod']);
+      // Ordered by surname, then first name.
+      expect(found.items.map((item) => item.firstName)).toEqual([
+        'Anvar',
+        'Botir',
+        'Dilshod',
+        'Elyor',
+        'Fozil',
+      ]);
       expect(
         (await staff('Karimov', t.admin, t.south)).items.map((item) => item.id).sort(),
       ).toEqual(sorted(bothBranches, southPerson));
