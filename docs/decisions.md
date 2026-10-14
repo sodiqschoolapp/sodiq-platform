@@ -213,6 +213,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 13 October 2026: record actions at the bottom of the side panel (task 2.7c-2b-1)
+
+Plan approved on pull request #83 with corrections 1 and 2; decisions 1 to 12 confirmed there; 1, 2 and 3 marked Look first. The decisions after 12 came from the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 2.7c-2b is 2.7c-2b-1 (the parts, the browser check, the School setup panels and the sample) and 2.7c-2b-2 (the People panels: staff with its Save buttons and account parts, students, parents, vacancies) | Decision 1 |
+| **Look first** (tests changed by a requirement). Page and browser tests that type into a panel form press Edit or the section's button first; a form's "Saved." is read in the bottom row after the form closes, and the focus after a save is on the opener (the sample's "focus stays in the field" test now reads that) | Decision 2; build |
+| **Look first** (a pinned list). `PANEL_ACTIONS_LATER` exempts the four People lists from the panel check of `checkPage` until 2.7c-2b-2 | Decision 3 |
+| A panel reads first; one form open at a time (`usePanelEditing`); record actions in the bottom row, a part's actions in its section; the sections give way while the record's own form is open | Decisions 4 to 6 |
+| Archive is danger at the bottom, Restore secondary; Cancel is in `RecordForm` and asks about that form only; after a save the read view with "Saved." and the focus on the opener | Decisions 7 to 9; build |
+| `data-variant` on the Button part; the Room panel has no danger action; the template setting's one action keeps "End from a date" | Decisions 10 to 12 |
+| A form of the record (a new length, new slots) takes the read view's place like Edit, so its Save and Cancel are the panel's last part | Build |
+| `usePanelEditing` finds the opener and the first field in the open side panel (`[data-slot="side-panel"]` of `SidePanel`), not through a ref: a ref in its state made every read of it during drawing a lint error | Build; spec review |
+| A late save closes only its own form (`stop({ saved: true, key })`); a form whose state the panel keeps is reset as it opens again, so it never shows the "Saved." of its last save | Spec review |
+| **Look first** (a test changed by a requirement). `feedback.test.tsx` finds the side panel behind the open feedback dialog by its element: the panel reads first and no longer holds the live region of a form, so the modal dialog hides it from the accessibility tree, as it should | Build |
+| The openers "Add floor" and "Add department" reuse `setup.buildings.addFloor` and `setup.divisions.addDepartment` (also the title of their form) instead of the new keys the plan named | Build |
+| The e2e seed adds to the pages branch a weekday template setting, a day off a month ahead and the division "Pages division", so each panel's form is opened in the browser check | Build |
+
 ## 13 October 2026: new records in the side panel (task 2.7c-2a)
 
 Plan approved on pull request #81 with correction 1; decisions 1 to 11 confirmed there, 10 changed by the correction; 1 and 2 marked Look first. The decisions after 11 came from the build. Flagged on issue #42.

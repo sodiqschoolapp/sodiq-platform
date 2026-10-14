@@ -9,6 +9,13 @@ import { EXPORT_TEXTS, SUBJECT_EXPORT_COLUMNS } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import {
+  actionsAreLast,
+  edit,
+  panelActionNames,
+  panelActions,
+  savedInPanel,
+} from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 
@@ -208,6 +215,16 @@ async function goOn(action: string): Promise<void> {
 const subjectsText = en.setup.subjects;
 
 // docs/spec/05-classes-groups-subjects.md, Subject and "Grading weights on a
+/** A distribution's "Change distribution" pressed in its section: its form. */
+async function changeWeights(panel: HTMLElement, name: string): Promise<HTMLElement> {
+  fireEvent.click(
+    await within(panel).findByRole('button', {
+      name: en.setup.subjects.changeWeightsOf.replace('{{name}}', name),
+    }),
+  );
+  return within(panel).findByRole('form', { name });
+}
+
 // subject"; the owner's answers 3 to 8; the plan approved on pull request #52.
 describe('the subjects page', () => {
   it('lists the subjects with their department, grades, journal type and this branch daily distribution', async () => {
@@ -351,7 +368,7 @@ describe('the subjects page', () => {
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
 
-    const daily = within(panel).getByRole('form', { name: subjectsText.daily });
+    const daily = await changeWeights(panel, subjectsText.daily);
     type(within(daily).getByLabelText(subjectsText.parts.attendance), '20');
     type(within(daily).getByLabelText(subjectsText.parts.classwork), '40');
     fireEvent.click(within(daily).getByRole('button', { name: en.form.save }));
@@ -370,7 +387,7 @@ describe('the subjects page', () => {
     fireEvent.click(rowButton('Physics'));
     const panel = await screen.findByRole('complementary', { name: 'Physics' });
 
-    const form = within(panel).getByRole('form', { name: 'Physics' });
+    const form = await edit(panel, 'Physics');
     type(within(form).getByLabelText(subjectsText.parts.attendance), '20');
     type(within(form).getByLabelText(subjectsText.parts.classwork), '40');
     type(within(form).getByLabelText(subjectsText.parts.homework), '40');
@@ -402,29 +419,27 @@ describe('the subjects page', () => {
     });
     fireEvent.click(rowButton('Physics'));
     let panel = await screen.findByRole('complementary', { name: 'Physics' });
-    const form = within(panel).getByRole('form', { name: 'Physics' });
+    const form = await edit(panel, 'Physics');
     type(within(form).getByLabelText(subjectsText.parts.attendance), '20');
     type(within(form).getByLabelText(subjectsText.parts.classwork), '40');
     type(within(form).getByLabelText(subjectsText.parts.homework), '40');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
-    await waitFor(() => {
-      expect(within(form).getByRole('status').textContent).toBe(en.form.saved);
-    });
+    // Task 2.7c-2b-1: the form closes and the bottom row keeps "Saved." while
+    // the record is read again with what the save changed.
+    await savedInPanel(panel);
     await waitFor(() => {
       expect(subjects.find((one) => one.id === PHYSICS.id)?.daily).not.toBeNull();
     });
-    expect(form.isConnected).toBe(true);
-    expect(within(form).getByRole('status').textContent).toBe(en.form.saved);
+    expect(await within(panel).findByText('20 · 40 · 40')).toBeDefined();
+    expect(panelActions(panel)?.textContent).toContain(en.form.saved);
 
     fireEvent.click(rowButton('Mathematics'));
     panel = await screen.findByRole('complementary', { name: 'Mathematics' });
-    const daily = within(panel).getByRole('form', { name: subjectsText.daily });
+    const daily = await changeWeights(panel, subjectsText.daily);
     type(within(daily).getByLabelText(subjectsText.parts.attendance), '20');
     type(within(daily).getByLabelText(subjectsText.parts.classwork), '40');
     fireEvent.click(within(daily).getByRole('button', { name: en.form.save }));
-    await waitFor(() => {
-      expect(within(daily).getByRole('status').textContent).toBe(en.form.saved);
-    });
+    await savedInPanel(panel);
   });
 
   // Decision 14: an attendance-only subject made graded again needs this
@@ -433,7 +448,7 @@ describe('the subjects page', () => {
     const { calls } = await openList();
     fireEvent.click(rowButton('Spiritual hour'));
     const panel = await screen.findByRole('complementary', { name: 'Spiritual hour' });
-    const form = within(panel).getByRole('form', { name: 'Spiritual hour' });
+    const form = await edit(panel, 'Spiritual hour');
     expect(within(form).queryByLabelText(subjectsText.parts.attendance)).toBeNull();
 
     fireEvent.change(within(form).getByLabelText(subjectsText.journalType), {
@@ -461,9 +476,7 @@ describe('the subjects page', () => {
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
 
-    const first = await within(panel).findByRole('form', {
-      name: subjectsText.quarter.replace('{{n}}', '1'),
-    });
+    const first = await changeWeights(panel, subjectsText.quarter.replace('{{n}}', '1'));
     expect(within(first).getByLabelText(subjectsText.parts.ratingExam)).toHaveProperty(
       'value',
       '40',
@@ -478,6 +491,7 @@ describe('the subjects page', () => {
         )?.body,
       ).toEqual({ attendance: 10, classwork: 40, homework: 20, ratingExam: 30 });
     });
+    await savedInPanel(panel);
 
     fireEvent.click(within(panel).getByRole('button', { name: subjectsText.copy }));
     await goOn(subjectsText.copy);
@@ -558,7 +572,7 @@ describe('the subjects page', () => {
     });
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
-    const form = within(panel).getByRole('form', { name: 'Mathematics' });
+    const form = await edit(panel, 'Mathematics');
     fireEvent.click(
       within(form).getByLabelText(subjectsText.grade.replace('{{grade}}', String(MATHS.grades[0]))),
     );
@@ -585,7 +599,7 @@ describe('the subjects page', () => {
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
 
-    const form = within(panel).getByRole('form', { name: 'Mathematics' });
+    const form = await edit(panel, 'Mathematics');
     expect(within(form).getByLabelText(subjectsText.department)).toHaveProperty('disabled', true);
     expect(within(form).getByText(subjectsText.departmentLocked)).toBeDefined();
   });
@@ -606,7 +620,7 @@ describe('the subjects page', () => {
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
 
-    const form = within(panel).getByRole('form', { name: 'Mathematics' });
+    const form = await edit(panel, 'Mathematics');
     expect(within(form).getByLabelText(subjectsText.department)).toHaveProperty('disabled', false);
     expect(within(form).queryByText(subjectsText.departmentLocked)).toBeNull();
   });
@@ -620,6 +634,48 @@ describe('the subjects page', () => {
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(within(panel).getByText('10 · 50 · 40')).toBeDefined();
     expect(within(panel).queryByRole('button', { name: subjectsText.archiveSubject })).toBeNull();
+    expect(panelActions(panel)).toBeNull();
+    expect(
+      within(panel).queryByRole('button', {
+        name: subjectsText.changeWeightsOf.replace('{{name}}', subjectsText.daily),
+      }),
+    ).toBeNull();
+  });
+
+  it('shows an archived subject with Restore and no Edit', async () => {
+    await openList();
+    fireEvent.click(rowButton('Drawing'));
+    const panel = await screen.findByRole('complementary', { name: 'Drawing' });
+    expect(panelActionNames(panel)).toEqual([subjectsText.restoreSubject]);
+  });
+
+  it('shows a subject to read with Edit and Archive at the bottom, and one of its forms at a time', async () => {
+    await openList();
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(panelActionNames(panel)).toEqual([en.form.edit, subjectsText.archiveSubject]);
+    expect(actionsAreLast(panel)).toBe(true);
+
+    const daily = await changeWeights(panel, subjectsText.daily);
+    expect(panelActions(panel)).toBeNull();
+    type(within(daily).getByLabelText(subjectsText.parts.attendance), '20');
+    fireEvent.click(
+      within(panel).getByRole('button', {
+        name: subjectsText.changeWeightsOf.replace(
+          '{{name}}',
+          subjectsText.quarter.replace('{{n}}', '1'),
+        ),
+      }),
+    );
+    await goOn(en.unsent.stay);
+    expect(within(panel).getByRole('form', { name: subjectsText.daily })).toBe(daily);
+    fireEvent.click(within(daily).getByRole('button', { name: en.form.cancel }));
+    await goOn(en.unsent.leave);
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form')).toBeNull();
+    });
+    expect(panelActionNames(panel)).toEqual([en.form.edit, subjectsText.archiveSubject]);
   });
 
   it('names a subject that is not restored because its department is archived', async () => {

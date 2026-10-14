@@ -431,6 +431,9 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu yozuv endi roʻyxatda yoʻq. Kiritganingiz shu yerda qoldi: saqlang yoki panelni yoping.',
   },
   form: {
+    // The side panel's record forms (task 2.7c-2b-1): Edit opens a form, Cancel closes it.
+    edit: 'Tahrirlash',
+    cancel: 'Bekor qilish',
     // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
     phoneFormat: 'Telefonni +998 71 123 45 67 koʻrinishida kiriting.',
     add: 'Qoʻshish',
@@ -787,6 +790,8 @@ export const uz: Texts<'one' | 'other'> = {
       switches: 'Xususiyatlar',
       daily: 'Kunlik taqsimot',
       quarterly: 'Choraklik taqsimot',
+      changeWeights: 'Taqsimotni oʻzgartirish',
+      changeWeightsOf: 'Taqsimotni oʻzgartirish: {{name}}',
       quarterlyMissing: 'Vaznsiz choraklar',
       // The cell of the column (finding 20; task 2.7b-1, decision 8).
       quartersNotSet: '{{total}} tadan {{missing}} tasi vaznsiz',
@@ -987,6 +992,7 @@ export const uz: Texts<'one' | 'other'> = {
       startBlockedCurrent: 'Filialning boshqa yili joriy.',
       startBlockedEarlier: 'Filialning oldingi yili hali yopilmagan.',
       quartersTitle: 'Choraklar',
+      changeQuarters: 'Choraklarni oʻzgartirish',
       quarter: '{{number}}-chorak',
       quarterStart: '{{number}}-chorak: boshlanishi',
       quarterEnd: '{{number}}-chorak: tugashi',

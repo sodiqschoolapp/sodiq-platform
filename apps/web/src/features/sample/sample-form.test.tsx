@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { NAMES_SHOWN } from '@/components/confirm-dialog';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { edit, panelActions, savedInPanel } from '@/testing/panel';
 import { fakeApi, json, nothing, renderApp, sessionOf } from '@/testing/render-app';
 
 const PATH = '/dev/patterns';
@@ -19,6 +20,8 @@ async function openForm(query = '', language: 'en' | 'ru' = 'en') {
   });
   const shell = renderApp(`${PATH}?q=abdullayev&open=sample-0002${query}`, language);
   const panel = await screen.findByRole('complementary', { name: BEKZOD });
+  // Task 2.7c-2b-1: the record is read first; its form is behind Edit.
+  await edit(panel, BEKZOD, language === 'ru' ? ru.form.edit : en.form.edit);
   return { ...shell, calls, panel };
 }
 
@@ -160,22 +163,25 @@ describe('the Save button of a record form', () => {
 
     save(panel);
 
-    await waitFor(() => {
-      expect(within(panel).getByRole('status').textContent).toBe(en.form.saved);
-    });
+    // Task 2.7c-2b-1: the form closes and the bottom row says "Saved.".
+    await savedInPanel(panel);
     const row = document.querySelectorAll('tbody tr')[1];
     expect(row?.querySelector('td:nth-child(3)')?.textContent).toBe('7 Cambridge');
     expect(row?.querySelector('td:nth-child(6)')?.textContent).toBe('90');
     expect(banner().textContent).toBe('');
 
     // "Saved" is said of what was saved, not of what is typed afterwards.
-    type(field(panel, en.sample.score), '91');
-    expect(within(panel).getByRole('status').textContent).toBe('');
+    const again = await edit(panel, BEKZOD);
+    expect(panelActions(panel)).toBeNull();
+    type(field(again, en.sample.score), '91');
+    expect(within(again).getByRole('status').textContent).toBe('');
     expect(banner().textContent).toBe(en.unsent.typed);
   });
 
-  // docs/spec/12-ux-standards.md, Look and feel: full keyboard use.
-  it('leaves the focus in the field when the saved name changes the title of the panel', async () => {
+  // docs/spec/12-ux-standards.md, Look and feel: full keyboard use. After the
+  // save the form closes and the focus goes back to Edit (task 2.7c-2b-1,
+  // decision 9), not to the heading of the renamed panel.
+  it('gives the focus back to Edit when the saved name changes the title of the panel', async () => {
     const { panel } = await openForm();
     const name = field(panel, en.sample.name);
     name.focus();
@@ -184,10 +190,12 @@ describe('the Save button of a record form', () => {
     save(panel);
 
     const renamed = await screen.findByRole('complementary', { name: 'Bekzod Aliyev' });
+    await savedInPanel(renamed);
     await waitFor(() => {
-      expect(within(renamed).getByRole('status').textContent).toBe(en.form.saved);
+      expect(document.activeElement).toBe(
+        within(renamed).getByRole('button', { name: en.form.edit }),
+      );
     });
-    expect(document.activeElement).toBe(field(renamed, en.sample.name));
   });
 
   it('keeps what was typed when the save is refused, and says what happened', async () => {
@@ -259,6 +267,7 @@ describe('leaving a record form with typed changes', () => {
     // Back at the first record: it has what was saved, not what was typed.
     fireEvent.click(rowButton(BEKZOD));
     const again = await screen.findByRole('complementary', { name: BEKZOD });
+    await edit(again, BEKZOD);
     expect(field(again, en.sample.score).value).toBe('77');
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });

@@ -7,11 +7,9 @@ import {
   type FloorRecord,
 } from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
-import { failureText } from '@/api/failure-text';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { Field } from '@/components/field';
@@ -26,7 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useLeave } from '@/components/unsent/unsent-changes';
+import { PanelActions } from '@/components/list/panel-actions';
+import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { SETUP_KEY } from './setup-api';
 import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 
@@ -35,10 +34,12 @@ interface BuildingFormProps {
   building: Building | null;
   label: string;
   onSave: (record: BuildingRecord) => Promise<void>;
+  /** Closes the form (opened by Edit in the side panel). */
+  onCancel?: () => void;
 }
 
 /** The record of a building: its name (`03`, Building, floor, room). */
-export function BuildingForm({ building, label, onSave }: BuildingFormProps) {
+export function BuildingForm({ building, label, onSave, onCancel }: BuildingFormProps) {
   const { t } = useTranslation();
   const form = useRecordForm({
     schema: buildingRecordSchema,
@@ -46,7 +47,7 @@ export function BuildingForm({ building, label, onSave }: BuildingFormProps) {
     save: onSave,
   });
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       <Field label={t('setup.buildings.name')} autoComplete="off" {...form.bind('name')} />
     </RecordForm>
   );
@@ -56,10 +57,11 @@ interface FloorFormProps {
   floor: Floor | null;
   label: string;
   onSave: (record: FloorRecord) => Promise<void>;
+  onCancel: () => void;
 }
 
 /** The record of a floor: "a name or number". */
-function FloorForm({ floor, label, onSave }: FloorFormProps) {
+function FloorForm({ floor, label, onSave, onCancel }: FloorFormProps) {
   const { t } = useTranslation();
   const form = useRecordForm({
     schema: floorRecordSchema,
@@ -67,7 +69,7 @@ function FloorForm({ floor, label, onSave }: FloorFormProps) {
     save: onSave,
   });
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       <Field label={t('setup.buildings.floorName')} autoComplete="off" {...form.bind('name')} />
     </RecordForm>
   );
@@ -91,10 +93,8 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const leave = useLeave();
-  const [renaming, setRenaming] = useState<string | null>(null);
-  // A new key after every floor added: the form starts empty again.
-  const [added, setAdded] = useState(0);
+  // One form open at a time: the name, a floor's name or a new floor (task 2.7c-2b-1).
+  const panel = usePanelEditing();
   const number = new Intl.NumberFormat(i18n.language);
 
   const refresh = () =>
@@ -132,10 +132,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
           body: record,
         }),
       ),
-    onSuccess: async () => {
-      setAdded((before) => before + 1);
-      await refresh();
-    },
+    onSuccess: refresh,
   });
 
   const renameFloor = useMutation({
@@ -146,10 +143,7 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
           body: record,
         }),
       ),
-    onSuccess: async () => {
-      setRenaming(null);
-      await refresh();
-    },
+    onSuccess: refresh,
   });
 
   const archiveFloor = useMutation({
@@ -199,155 +193,191 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
 
   const status = (archivedAt: string | null) =>
     archivedAt === null ? t('setup.buildings.active') : t('setup.buildings.archived');
+  const archived = building.archivedAt !== null;
 
   return (
     <div className="grid gap-6">
-      {canEdit && building.archivedAt === null ? (
+      {panel.editing === 'record' ? (
+        // The form takes the read view's place and its Save and Cancel are last.
         <BuildingForm
-          key={building.id}
           building={building}
           label={building.name}
           onSave={async (record) => {
             await rename.mutateAsync(record);
+            panel.stop({ saved: true, key: 'record' });
+          }}
+          onCancel={() => {
+            panel.stop();
           }}
         />
       ) : (
-        <p className="text-sm text-muted-foreground">
-          {t('setup.buildings.status')}: {status(building.archivedAt)}
-        </p>
-      )}
-      {canEdit && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant={building.archivedAt === null ? 'destructive' : 'secondary'}
-            disabled={archiveBuilding.isPending}
-            onClick={() => {
-              void askBuilding();
-            }}
-          >
-            {building.archivedAt === null
-              ? t('setup.buildings.archiveBuilding')
-              : t('setup.buildings.restoreBuilding')}
-          </Button>
-          <span className="text-sm text-muted-foreground">{status(building.archivedAt)}</span>
-          {archiveBuilding.error !== null && (
-            <span role="alert" className="text-sm text-destructive">
-              {failureText(t, archiveBuilding.error)}
-            </span>
-          )}
-        </div>
+        <>
+          <p className="text-sm text-muted-foreground">
+            {t('setup.buildings.status')}: {status(building.archivedAt)}
+          </p>
+
+          <section className="grid gap-3">
+            <h3 className={SECTION_TITLE}>{t('setup.buildings.floorsTitle')}</h3>
+            {building.floors.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('setup.buildings.noFloors')}</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('setup.buildings.floor')}</TableHead>
+                    <TableHead className="text-right">{t('setup.buildings.rooms')}</TableHead>
+                    <TableHead>{t('setup.buildings.status')}</TableHead>
+                    {canEdit && (
+                      <TableHead>
+                        <span className="sr-only">{t('setup.buildings.floorActions')}</span>
+                      </TableHead>
+                    )}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {building.floors.map((floor) => (
+                    <TableRow key={floor.id}>
+                      <TableCell>
+                        {canEdit && panel.editing === `floor:${floor.id}` ? (
+                          <FloorForm
+                            floor={floor}
+                            label={floor.name}
+                            onSave={async (record) => {
+                              await renameFloor.mutateAsync({ id: floor.id, record });
+                              panel.stop({ saved: true, key: `floor:${floor.id}` });
+                            }}
+                            onCancel={() => {
+                              panel.stop();
+                            }}
+                          />
+                        ) : (
+                          floor.name
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {number.format(floor.roomCount)}
+                      </TableCell>
+                      <TableCell>{status(floor.archivedAt)}</TableCell>
+                      {canEdit && (
+                        <TableCell className="space-x-2 whitespace-nowrap">
+                          {panel.editing !== `floor:${floor.id}` && floor.archivedAt === null && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              aria-label={t('setup.buildings.renameNamed', { name: floor.name })}
+                              {...panel.opener(`floor:${floor.id}`)}
+                              onClick={() => {
+                                panel.start(`floor:${floor.id}`);
+                              }}
+                            >
+                              {t('setup.buildings.rename')}
+                            </Button>
+                          )}
+                          {!archived && (
+                            <Button
+                              variant={floor.archivedAt === null ? 'destructive' : 'secondary'}
+                              size="sm"
+                              disabled={archiveFloor.isPending}
+                              aria-label={
+                                floor.archivedAt === null
+                                  ? t('setup.buildings.archiveNamed', { name: floor.name })
+                                  : t('setup.buildings.restoreNamed', { name: floor.name })
+                              }
+                              onClick={() => {
+                                void askFloor(floor);
+                              }}
+                            >
+                              {floor.archivedAt === null
+                                ? t('setup.buildings.archive')
+                                : t('setup.buildings.restore')}
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            <FailureAlert error={archiveFloor.error} />
+            {canEdit &&
+              !archived &&
+              (panel.editing === 'floor-new' ? (
+                <div className="grid gap-2 rounded-lg border p-3">
+                  <h4 className={SUBSECTION_TITLE}>{t('setup.buildings.addFloor')}</h4>
+                  <FloorForm
+                    floor={null}
+                    label={t('setup.buildings.newFloor')}
+                    onSave={async (record) => {
+                      await addFloor.mutateAsync(record);
+                      panel.stop({ saved: true, key: 'floor-new' });
+                    }}
+                    onCancel={() => {
+                      panel.stop();
+                    }}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <Button
+                    variant="secondary"
+                    {...panel.opener('floor-new')}
+                    onClick={() => {
+                      panel.start('floor-new');
+                    }}
+                  >
+                    {t('setup.buildings.addFloor')}
+                  </Button>
+                </div>
+              ))}
+          </section>
+        </>
       )}
 
-      <section className="grid gap-3">
-        <h3 className={SECTION_TITLE}>{t('setup.buildings.floorsTitle')}</h3>
-        {building.floors.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('setup.buildings.noFloors')}</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('setup.buildings.floor')}</TableHead>
-                <TableHead className="text-right">{t('setup.buildings.rooms')}</TableHead>
-                <TableHead>{t('setup.buildings.status')}</TableHead>
-                {canEdit && (
-                  <TableHead>
-                    <span className="sr-only">{t('setup.buildings.floorActions')}</span>
-                  </TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {building.floors.map((floor) => (
-                <TableRow key={floor.id}>
-                  <TableCell>
-                    {canEdit && renaming === floor.id ? (
-                      <div className="grid gap-2">
-                        <FloorForm
-                          floor={floor}
-                          label={floor.name}
-                          onSave={async (record) => {
-                            await renameFloor.mutateAsync({ id: floor.id, record });
-                          }}
-                        />
-                        <div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              void leave.leave().then((leaves) => {
-                                if (leaves) {
-                                  setRenaming(null);
-                                }
-                              });
-                            }}
-                          >
-                            {t('setup.buildings.cancel')}
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      floor.name
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {number.format(floor.roomCount)}
-                  </TableCell>
-                  <TableCell>{status(floor.archivedAt)}</TableCell>
-                  {canEdit && (
-                    <TableCell className="space-x-2 whitespace-nowrap">
-                      {renaming !== floor.id && floor.archivedAt === null && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          aria-label={t('setup.buildings.renameNamed', { name: floor.name })}
-                          onClick={() => {
-                            setRenaming(floor.id);
-                          }}
-                        >
-                          {t('setup.buildings.rename')}
-                        </Button>
-                      )}
-                      {building.archivedAt === null && (
-                        <Button
-                          variant={floor.archivedAt === null ? 'destructive' : 'secondary'}
-                          size="sm"
-                          disabled={archiveFloor.isPending}
-                          aria-label={
-                            floor.archivedAt === null
-                              ? t('setup.buildings.archiveNamed', { name: floor.name })
-                              : t('setup.buildings.restoreNamed', { name: floor.name })
-                          }
-                          onClick={() => {
-                            void askFloor(floor);
-                          }}
-                        >
-                          {floor.archivedAt === null
-                            ? t('setup.buildings.archive')
-                            : t('setup.buildings.restore')}
-                        </Button>
-                      )}
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-        <FailureAlert error={archiveFloor.error} />
-        {canEdit && building.archivedAt === null && (
-          <div className="grid gap-2 rounded-lg border p-3">
-            <h4 className={SUBSECTION_TITLE}>{t('setup.buildings.addFloor')}</h4>
-            <FloorForm
-              key={added}
-              floor={null}
-              label={t('setup.buildings.newFloor')}
-              onSave={async (record) => {
-                await addFloor.mutateAsync(record);
-              }}
-            />
-          </div>
-        )}
-      </section>
+      {canEdit && panel.editing === null && (
+        <PanelActions
+          primary={
+            !archived && (
+              <Button
+                {...panel.opener('record')}
+                onClick={() => {
+                  panel.start('record');
+                }}
+              >
+                {t('form.edit')}
+              </Button>
+            )
+          }
+          secondary={
+            archived && (
+              <Button
+                variant="secondary"
+                disabled={archiveBuilding.isPending}
+                onClick={() => {
+                  void askBuilding();
+                }}
+              >
+                {t('setup.buildings.restoreBuilding')}
+              </Button>
+            )
+          }
+          danger={
+            !archived && (
+              <Button
+                variant="destructive"
+                disabled={archiveBuilding.isPending}
+                onClick={() => {
+                  void askBuilding();
+                }}
+              >
+                {t('setup.buildings.archiveBuilding')}
+              </Button>
+            )
+          }
+          error={archiveBuilding.error}
+          saved={panel.saved}
+        />
+      )}
     </div>
   );
 }

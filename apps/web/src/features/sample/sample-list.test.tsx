@@ -510,11 +510,9 @@ describe('the side panel of a list', () => {
     fireEvent.click(rowButton('Bekzod Abdullayev'));
 
     const opened = await panel('Bekzod Abdullayev');
-    // The record is a form (task 0.8b-2): its fields hold the values of the row.
-    expect(within(opened).getByLabelText<HTMLInputElement>(en.sample.grade).value).toBe('6');
-    expect(within(opened).getByLabelText<HTMLInputElement>(en.sample.className).value).toBe(
-      'Cambridge',
-    );
+    // The record is read first (task 2.7c-2b-1): the values of the row, Edit at the bottom.
+    expect(within(opened).getByText('6 Cambridge')).toBeDefined();
+    expect(within(opened).getByRole('button', { name: en.form.edit })).toBeDefined();
     await waitFor(() => {
       expect(router.state.location.search).toEqual({ open: 'sample-0002' });
     });

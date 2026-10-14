@@ -3,6 +3,13 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import {
+  actionsAreLast,
+  edit,
+  panelActionNames,
+  panelActions,
+  savedInPanel,
+} from '@/testing/panel';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 
@@ -300,6 +307,8 @@ describe('the calendar page', () => {
   it('offers a started entry its name and last date only, and no archive', async () => {
     await openList();
     const panel = await openEntry('Seniors exams');
+    expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    await edit(panel, 'Seniors exams');
 
     expect(within(panel).getByLabelText(en.setup.calendar.name)).not.toBeNull();
     expect(within(panel).getByLabelText(en.setup.calendar.lastDate)).not.toBeNull();
@@ -314,6 +323,9 @@ describe('the calendar page', () => {
 
     expect(within(panel).getByText(en.setup.calendar.pastNote)).not.toBeNull();
     expect(within(panel).queryByRole('form')).toBeNull();
+    // Task 2.7c-2b-1: the note is the bottom row's, without a button.
+    expect(panelActions(panel)?.textContent).toContain(en.setup.calendar.pastNote);
+    expect(panelActionNames(panel)).toEqual([]);
     expect(within(panel).queryByRole('button', { name: en.setup.calendar.archive })).toBeNull();
   });
 
@@ -323,13 +335,57 @@ describe('the calendar page', () => {
         json({ ...HOLIDAY, ...(body as object) }),
     });
     const panel = await openEntry('Teachers day');
-    type(within(panel).getByLabelText(en.setup.calendar.name), 'Teachers and mentors day');
-    fireEvent.click(within(panel).getByRole('button', { name: en.form.save }));
+    expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.calendar.archive]);
+    expect(actionsAreLast(panel)).toBe(true);
+    const form = await edit(panel, 'Teachers day');
+    type(within(form).getByLabelText(en.setup.calendar.name), 'Teachers and mentors day');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
 
     await waitFor(() => {
       expect(calls.some((call) => call.route.startsWith('PATCH '))).toBe(true);
     });
     expect(calls.some((call) => call.route.endsWith('/preview'))).toBe(false);
+    await savedInPanel(panel);
+  });
+
+  it('keeps the form open with its dates when the preview of a change is cancelled', async () => {
+    const { calls } = await openList('academic_vice_principal', {
+      'POST /api/setup/calendar-entries/preview': () => json(PREVIEW),
+    });
+    const panel = await openEntry('Teachers day');
+    const form = await edit(panel, 'Teachers day');
+    type(within(form).getByLabelText(en.setup.calendar.lastDate), '2026-10-15');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.setup.calendar.cancel }));
+
+    expect(await within(form).findByText(en.form.notSaved)).not.toBeNull();
+    expect(within(form).getByLabelText<HTMLInputElement>(en.setup.calendar.lastDate).value).toBe(
+      '2026-10-15',
+    );
+    expect(calls.some((call) => call.route.startsWith('PATCH '))).toBe(false);
+  });
+
+  it('archives an entry after the preview of the dates it changes', async () => {
+    const { calls } = await openList('academic_vice_principal', {
+      'POST /api/setup/calendar-entries/preview': () => json(PREVIEW),
+      [`POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`]: () =>
+        json({ ...HOLIDAY, archivedAt: '2026-10-10T10:00:00.000Z' }),
+    });
+    const panel = await openEntry('Teachers day');
+    fireEvent.click(within(panel).getByRole('button', { name: en.setup.calendar.archive }));
+    const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
+    expect(
+      calls.some((call) => call.route === `POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`),
+    ).toBe(false);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.setup.calendar.save }));
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (call) => call.route === `POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`,
+        ),
+      ).toBe(true);
+    });
   });
 
   it('lets the Principal read without adding or changing', async () => {
@@ -339,6 +395,7 @@ describe('the calendar page', () => {
     const panel = await openEntry('Teachers day');
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.setup.calendar.archive })).toBeNull();
+    expect(panelActions(panel)).toBeNull();
   });
 
   it('tells what every grade has on a date', async () => {

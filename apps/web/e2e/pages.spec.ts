@@ -40,6 +40,7 @@ const LISTS = [
   ['setup-slot-types', '/setup/slot-types', en.setup.slotTypes.title],
   ['setup-day-templates', '/setup/day-templates', en.setup.dayTemplates.title],
   ['setup-template-settings', '/setup/day-template-settings', en.setup.templateSettings.title],
+  ['setup-calendar', '/setup/calendar', en.setup.calendar.title],
   ['people-staff', '/people/staff', en.people.staff.title],
   ['people-students', '/people/students', en.people.students.title],
   ['people-vacancies', '/people/vacancies', en.people.vacancies.title],
@@ -93,13 +94,45 @@ const NEW_RECORDS = [
   ],
 ] as const;
 
+/**
+ * The People lists whose side panels get their actions at the bottom in task
+ * 2.7c-2b-2: until then `checkPage` does not hold their open record to one
+ * primary and the actions last. Pinned: it only shrinks, and 2.7c-2b-2 is
+ * done when it is empty (pull request #83, decision 3).
+ */
+const PANEL_ACTIONS_LATER: readonly string[] = [
+  'people-staff',
+  'people-students',
+  'people-vacancies',
+  'people-parents',
+];
+
+/**
+ * The School setup panels the Academic Vice Principal changes (task
+ * 2.7c-2b-1): the list, the record opened by the button of its row (or the
+ * first), and the button of the panel that opens its form.
+ */
+const EDITS = [
+  ['setup-slot-types', '/setup/slot-types', en.setup.slotTypes.title, null, en.form.edit],
+  ['setup-day-templates', '/setup/day-templates', en.setup.dayTemplates.title, null, en.form.edit],
+  ['setup-calendar', '/setup/calendar', en.setup.calendar.title, 'Pages day off', en.form.edit],
+  ['setup-subjects', '/setup/subjects', en.setup.subjects.title, null, en.form.edit],
+  ['setup-years', '/setup/years', en.setup.years.title, null, en.setup.years.changeQuarters],
+  [
+    'setup-template-settings',
+    '/setup/day-template-settings',
+    en.setup.templateSettings.title,
+    en.setup.templateSettings.levels.weekday,
+    en.setup.templateSettings.endTitle,
+  ],
+] as const;
+
 /** The other pages of Phases 0 to 2 the Academic Vice Principal opens. */
 const PAGES = [
   ['account', '/account', en.account.title],
   ['account-password', '/account/password', en.password.titleOwn],
   ['setup', '/setup', en.setup.title],
   ['setup-branch', '/setup/branch', en.setup.branch.title],
-  ['setup-calendar', '/setup/calendar', en.setup.calendar.title],
   ['setup-settings', '/setup/settings', en.setup.settings.title],
   ['setup-travel-times', '/setup/travel-times', en.setup.travelTimes.title],
   ['people', '/people', en.people.title],
@@ -169,8 +202,26 @@ test('every page of Phases 0 to 2 is drawn with the design system in light, dark
   for (const [name, address, title] of LISTS) {
     await open(page, address, title);
     await checkPage(page, name);
-    await openFirstRecord(page);
-    await checkPage(page, `${name}-record`);
+    // The calendar's last table is the check of a date: its record is opened by name.
+    await (name === 'setup-calendar'
+      ? page.getByRole('button', { name: 'Pages day off', exact: true }).click()
+      : openFirstRecord(page));
+    await expect(page.getByRole('complementary')).toBeVisible();
+    await checkPage(page, `${name}-record`, {
+      panelActionsLater: PANEL_ACTIONS_LATER.includes(name),
+    });
+  }
+  // Task 2.7c-2b-1: each School setup panel this role changes, with its form
+  // open; its Save and Cancel are then the panel's last part. Nothing is saved.
+  for (const [name, address, title, row, opener] of EDITS) {
+    await open(page, address, title);
+    await (row === null
+      ? openFirstRecord(page)
+      : page.getByRole('button', { name: row, exact: true }).first().click());
+    const panel = page.getByRole('complementary');
+    await panel.getByRole('button', { name: opener, exact: true }).click();
+    await expect(panel.getByRole('form').first()).toBeVisible();
+    await checkPage(page, `${name}-edit`);
   }
   // Task 2.7c-2a: every list the Academic Vice Principal may add to, with its
   // new record in the side panel; the others are the Super Admin's

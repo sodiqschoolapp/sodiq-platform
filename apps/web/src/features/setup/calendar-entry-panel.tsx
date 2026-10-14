@@ -3,7 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
-import { FailureAlert } from '@/components/failure-alert';
+import { PanelActions } from '@/components/list/panel-actions';
+import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { Button } from '@/components/ui/button';
 import { hasStarted, invalidateCalendar, isPast } from './calendar-api';
 import { CalendarEntryForm } from './calendar-entry-form';
@@ -41,6 +42,8 @@ export function CalendarEntryPanel({
   const started = hasStarted(entry, today);
   const path = { params: { path: { id: entry.id }, header: branchHeader() } };
   const refresh = () => invalidateCalendar(queryClient);
+  // The form is behind Edit (task 2.7c-2b-1).
+  const panel = usePanelEditing();
 
   const edit = useMutation({
     mutationFn: (record: CalendarEntryRecord) =>
@@ -73,6 +76,7 @@ export function CalendarEntryPanel({
       await preview.confirm({ action: 'edit', id: entry.id, record });
     }
     await edit.mutateAsync(record);
+    panel.stop({ saved: true, key: 'record' });
   };
 
   const details: [string, string][] = [
@@ -98,17 +102,14 @@ export function CalendarEntryPanel({
       : []),
   ];
 
+  const editable = canEdit && !archived && !past;
+  // A started entry is shortened, not archived; a past one is left as it is.
+  const archivable = canArchive && (!started || archived) && !past;
+
   return (
     <div className="grid gap-6">
-      <dl className="grid gap-2 text-sm">
-        {details.map(([term, value]) => (
-          <div key={term} className="grid gap-0.5">
-            <dt className="text-muted-foreground">{term}</dt>
-            <dd>{value}</dd>
-          </div>
-        ))}
-      </dl>
-      {canEdit && !archived && !past && (
+      {editable && panel.editing === 'record' ? (
+        // The form takes the read view's place: its Save and Cancel are last.
         <CalendarEntryForm
           entry={entry}
           firstDate={nextDay(today)}
@@ -116,26 +117,68 @@ export function CalendarEntryPanel({
           limited={started}
           label={entry.name}
           onSave={save}
+          onCancel={() => {
+            panel.stop();
+          }}
+        />
+      ) : (
+        <dl className="grid gap-2 text-sm">
+          {details.map(([term, value]) => (
+            <div key={term} className="grid gap-0.5">
+              <dt className="text-muted-foreground">{term}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {preview.dialog}
+      {(canEdit || canArchive) && panel.editing === null && (
+        <PanelActions
+          primary={
+            editable && (
+              <Button
+                {...panel.opener('record')}
+                onClick={() => {
+                  panel.start('record');
+                }}
+              >
+                {t('form.edit')}
+              </Button>
+            )
+          }
+          secondary={
+            archivable &&
+            archived && (
+              <Button
+                variant="secondary"
+                disabled={archive.isPending}
+                onClick={() => {
+                  archive.mutate(true);
+                }}
+              >
+                {t('setup.calendar.restore')}
+              </Button>
+            )
+          }
+          danger={
+            archivable &&
+            !archived && (
+              <Button
+                variant="destructive"
+                disabled={archive.isPending}
+                onClick={() => {
+                  archive.mutate(false);
+                }}
+              >
+                {t('setup.calendar.archive')}
+              </Button>
+            )
+          }
+          note={canEdit && !archived && past ? t('setup.calendar.pastNote') : null}
+          error={archive.error}
+          saved={panel.saved}
         />
       )}
-      {canEdit && !archived && past && (
-        <p className="text-sm text-muted-foreground">{t('setup.calendar.pastNote')}</p>
-      )}
-      {canArchive && (!started || archived) && !past && (
-        <div>
-          <Button
-            variant={archived ? 'secondary' : 'destructive'}
-            disabled={archive.isPending}
-            onClick={() => {
-              archive.mutate(archived);
-            }}
-          >
-            {archived ? t('setup.calendar.restore') : t('setup.calendar.archive')}
-          </Button>
-        </div>
-      )}
-      <FailureAlert error={archive.error} />
-      {preview.dialog}
     </div>
   );
 }

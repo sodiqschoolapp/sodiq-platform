@@ -294,10 +294,15 @@ How to read the task lines:
   - Build: the "New …" forms that open inline above the list on Buildings, Rooms, Divisions, Years, Slot types, Day templates, Calendar, Subjects, Staff, Students (with its bulk "Leave school" form) and Vacancies move into the side panel; the saved record then opens there; checkboxes with 44 px targets at phone width.
   - Done when: every list page opens a new record in the side panel, every checkbox has a 44 px target at phone width, and `e2e/pages.spec.ts` passes again with its screenshots in the report.
 
-- [ ] **2.7c-2b Record actions at the bottom of the side panel** (split from 2.7c-2 on pull request #81, decision 1)
-  - Read: `docs/design-system.md` (Layout shell, Lists; Buttons), `.claude/rules/web.md`, the plans of pull requests #80 (decision 14) and #81.
-  - Build: the side panels get their actions at the bottom (primary "Edit", secondary actions, danger quiet "Archive") with one primary per area, the staff panel's five Save buttons included.
-  - Done when: every side panel has its actions at the bottom, one primary per area, and `e2e/pages.spec.ts` passes again with its screenshots in the report.
+- [x] **2.7c-2b-1 Record actions at the bottom of the School setup panels** (2.7c-2b split in two, pull request #83, decision 1)
+  - Read: `docs/design-system.md` (Layout shell, Lists; Buttons), `.claude/rules/web.md`, the plans of pull requests #80 (decision 14), #81 and #83.
+  - Build: `PanelActions`, `usePanelEditing`, Cancel in `RecordForm`, the browser check of one primary and the actions last; the panels of buildings, rooms, divisions, years, slot types, day templates, calendar, subjects, template settings and the sample read first, with their actions at the bottom and their forms behind a button.
+  - Done when: every School setup side panel has its actions at the bottom, one primary in view, and `e2e/pages.spec.ts` passes again with its screenshots in the report.
+
+- [ ] **2.7c-2b-2 Record actions at the bottom of the People panels** (2.7c-2b split in two, pull request #83, decision 1)
+  - Read: `docs/design-system.md` (Layout shell, Lists; Buttons), `.claude/rules/web.md`, the plans of pull requests #81 and #83, `docs/decisions.md` (task 2.7c-2b-1).
+  - Build: the same pattern on the panels of staff (the five Save buttons and the account parts), students (the status forms and the relatives), parents (the same-person mark) and vacancies.
+  - Done when: every People side panel has its actions at the bottom, one primary in view, `PANEL_ACTIONS_LATER` of `e2e/pages.spec.ts` is empty, and `e2e/pages.spec.ts` passes again with its screenshots in the report.
 
 - [ ] **2.7c-3 Rooms "By floor" and the Branches list** (split from 2.7c on pull request #80, decision 1)
   - Read: `docs/design-system.md`, issue #39 (items 1 and 5), `03` (Branch: the Branches list), `04` (Teacher and staff record: Category; the teacher list), spec change of 13 October 2026, `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7", item 11), the plan of pull request #77.

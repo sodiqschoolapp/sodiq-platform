@@ -4,6 +4,13 @@ import { QueryClient } from '@tanstack/react-query';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import {
+  actionsAreLast,
+  edit,
+  panelActionNames,
+  panelActions,
+  savedInPanel,
+} from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 import { divisionsKey, invalidateDivisions } from './setup-api';
@@ -191,8 +198,11 @@ describe('the divisions page', () => {
       }),
     ).toBeDefined();
     expect(
-      within(panel).getByRole('form', { name: en.setup.divisions.newDepartment }),
+      within(panel).getByRole('button', { name: en.setup.divisions.addDepartment }),
     ).toBeDefined();
+    // Task 2.7c-2b-1: no Edit and no Archive for a built-in division.
+    expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
+    expect(panelActions(panel)).toBeNull();
   });
 
   it('opens a division in the side panel with its three names and departments, and renames it', async () => {
@@ -207,7 +217,11 @@ describe('the divisions page', () => {
       expect.stringContaining('Transport'),
     ]);
     expect(departments[1]?.textContent).toContain(en.setup.divisions.archived);
-    const form = within(panel).getByRole('form', { name: 'Operations' });
+    // Task 2.7c-2b-1: read first, the actions at the bottom.
+    expect(within(panel).getByText('Хозяйственный отдел')).toBeDefined();
+    expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.divisions.archiveDivision]);
+    expect(actionsAreLast(panel)).toBe(true);
+    const form = await edit(panel, 'Operations');
     expect(within(form).getByLabelText(en.setup.divisions.nameRu)).toHaveProperty(
       'value',
       'Хозяйственный отдел',
@@ -215,7 +229,7 @@ describe('the divisions page', () => {
     type(within(form).getByLabelText(en.setup.divisions.nameEn), 'Operations and support');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
 
-    await within(form).findByText(en.form.saved);
+    await savedInPanel(panel);
     expect(
       calls.find((call) => call.route === `PUT /api/setup/divisions/${OPERATIONS.id}`)?.body,
     ).toEqual({
@@ -230,7 +244,7 @@ describe('the divisions page', () => {
     });
     fireEvent.click(rowButton('Operations'));
     const panel = await screen.findByRole('complementary', { name: 'Operations' });
-    const form = within(panel).getByRole('form', { name: 'Operations' });
+    const form = await edit(panel, 'Operations');
 
     type(within(form).getByLabelText(en.setup.divisions.nameRu), 'Учебный отдел');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
@@ -249,7 +263,10 @@ describe('the divisions page', () => {
     fireEvent.click(rowButton('Operations'));
     const panel = await screen.findByRole('complementary', { name: 'Operations' });
 
-    const added = within(panel).getByRole('form', { name: en.setup.divisions.newDepartment });
+    fireEvent.click(within(panel).getByRole('button', { name: en.setup.divisions.addDepartment }));
+    const added = await within(panel).findByRole('form', {
+      name: en.setup.divisions.newDepartment,
+    });
     typeNames(added, names('Cleaning'));
     fireEvent.click(within(added).getByRole('button', { name: en.form.save }));
 
@@ -266,7 +283,7 @@ describe('the divisions page', () => {
         name: en.setup.divisions.renameNamed.replace('{{name}}', 'Catering'),
       }),
     );
-    const rename = within(panel).getByRole('form', { name: 'Catering' });
+    const rename = await within(panel).findByRole('form', { name: 'Catering' });
     type(within(rename).getByLabelText(en.setup.divisions.nameEn), 'Kitchen');
     fireEvent.click(within(rename).getByRole('button', { name: en.form.save }));
 
@@ -343,10 +360,11 @@ describe('the divisions page', () => {
 
     const panel = await screen.findByRole('complementary', { name: 'Events' });
     expect(within(panel).queryByRole('form')).toBeNull();
-    expect(
-      within(panel).getByRole('button', { name: en.setup.divisions.restoreDivision }),
-    ).toBeDefined();
+    expect(panelActionNames(panel)).toEqual([en.setup.divisions.restoreDivision]);
     expect(within(panel).getByText(en.setup.divisions.noDepartments)).toBeDefined();
+    expect(
+      within(panel).queryByRole('button', { name: en.setup.divisions.addDepartment }),
+    ).toBeNull();
   });
 
   it('adds a division from the header, lists it last, and refreshes the list', async () => {

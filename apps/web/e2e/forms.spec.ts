@@ -22,10 +22,14 @@ test('the sample form is filled from the keyboard, saved, and not left by accide
   const topBar = page.locator('header').first();
   const sign = topBar.getByRole('status');
 
-  // The record opens beside the list, as a form.
+  // The record opens beside the list to read; Edit opens its form, with the
+  // focus in its first field (task 2.7c-2b-1).
   await page.getByRole('button', { name: 'Bekzod Abdullayev' }).click();
   const panel = page.getByRole('complementary', { name: 'Bekzod Abdullayev' });
+  const edit = panel.getByRole('button', { name: en.form.edit, exact: true });
+  await edit.click();
   const form = panel.getByRole('form', { name: 'Bekzod Abdullayev' });
+  await expect(form.getByLabel(en.sample.name, { exact: true })).toBeFocused();
   const grade = form.getByLabel(en.sample.grade);
   const score = form.getByLabel(en.sample.score);
   await expect(grade).toHaveValue('6');
@@ -42,16 +46,21 @@ test('the sample form is filled from the keyboard, saved, and not left by accide
   await expect(grade).toBeFocused();
   await expect(form.getByRole('status')).toBeEmpty();
 
-  // Fixed and saved with Enter: the form says so and the list shows it.
+  // Fixed and saved with Enter: the form closes, the panel says so with the
+  // focus back on Edit, and the list shows it.
   await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.type('7');
   await expect(grade).not.toHaveAttribute('aria-invalid', 'true');
   await page.keyboard.press('Enter');
-  await expect(form.getByRole('status')).toHaveText(en.form.saved);
+  await expect(panel.locator('[data-slot="panel-actions"]').getByRole('status')).toHaveText(
+    en.form.saved,
+  );
+  await expect(edit).toBeFocused();
   await expect(page.locator('tbody tr').nth(1)).toContainText('7 Cambridge');
   await expect(sign).toBeEmpty();
 
   // Typed and not saved: the Back button of the browser asks first.
+  await edit.click();
   await score.fill('90');
   await expect(sign).toHaveText(en.unsent.typed);
   await page.goBack();

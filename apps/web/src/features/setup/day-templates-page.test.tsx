@@ -3,6 +3,13 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import {
+  actionsAreLast,
+  edit,
+  panelActionNames,
+  panelActions,
+  savedInPanel,
+} from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 
@@ -107,6 +114,14 @@ const rowsDrawn = (): string[][] =>
 const type = (input: HTMLElement, value: string): void => {
   fireEvent.change(input, { target: { value } });
 };
+
+/** The slots form, opened from the bottom row. */
+async function changeSlots(panel: HTMLElement): Promise<HTMLElement> {
+  fireEvent.click(
+    await within(panel).findByRole('button', { name: en.setup.dayTemplates.changeSlots }),
+  );
+  return within(panel).findByRole('form', { name: en.setup.dayTemplates.changeSlots });
+}
 
 async function openList(
   role: 'super_admin' | 'principal' | 'academic_vice_principal' = 'academic_vice_principal',
@@ -267,9 +282,7 @@ describe('the day templates page', () => {
 
     fireEvent.click(screen.getByText('Main', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Main' });
-    const form = await within(panel).findByRole('form', {
-      name: en.setup.dayTemplates.changeSlots,
-    });
+    const form = await changeSlots(panel);
     expect(slotsOf(form)[0]).toContain('Lesson 40 · Lesson');
     const choice = within(form).getByLabelText(
       en.form.addChoice.replace('{{label}}', en.setup.dayTemplates.slots),
@@ -315,9 +328,7 @@ describe('the day templates page', () => {
 
     fireEvent.click(screen.getByRole('button', { name: en.problems.retry }));
     const panel = await screen.findByRole('complementary', { name: 'Main' });
-    const form = await within(panel).findByRole('form', {
-      name: en.setup.dayTemplates.changeSlots,
-    });
+    const form = await changeSlots(panel);
     expect(slotsOf(form)).toHaveLength(3);
     // The choice is one of the slot types that arrived, and Add adds it.
     const choice = within(form).getByRole<HTMLSelectElement>('combobox', {
@@ -337,9 +348,18 @@ describe('the day templates page', () => {
 
     fireEvent.click(screen.getByText('Main', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Main' });
-    // The day of tomorrow, and the same times in the form that starts from it.
-    expect(await within(panel).findAllByText('08:00–08:45')).toHaveLength(2);
-    const form = within(panel).getByRole('form', { name: en.setup.dayTemplates.changeSlots });
+    // The day of tomorrow to read, then the same times in the form that starts from it.
+    expect(await within(panel).findAllByText('08:00–08:45')).toHaveLength(1);
+    // Task 2.7c-2b-1: the actions at the bottom; the forms behind them.
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(panelActionNames(panel)).toEqual([
+      en.form.edit,
+      en.setup.dayTemplates.changeSlots,
+      en.setup.dayTemplates.archive,
+    ]);
+    expect(actionsAreLast(panel)).toBe(true);
+    const form = await changeSlots(panel);
+    expect(within(form).getAllByText('08:00–08:45')).toHaveLength(1);
     expect(within(form).getByLabelText<HTMLInputElement>(en.setup.dayTemplates.from).value).toBe(
       TOMORROW,
     );
@@ -363,6 +383,49 @@ describe('the day templates page', () => {
         slotTypeIds: [LESSON.id, LESSON.id],
       });
     });
+    await savedInPanel(panel);
+  });
+
+  it('renames a template through Edit, and keeps the slots form open when the preview is answered "Do not save"', async () => {
+    const calls = await openList('academic_vice_principal', {
+      'POST /api/setup/day-template-table/preview': () => json(EMPTY_PREVIEW),
+      [`PATCH /api/setup/day-templates/${MAIN.id}`]: (body) =>
+        json({ ...MAIN, ...(body as object) }),
+    });
+    fireEvent.click(screen.getByText('Main', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Main' });
+    await within(panel).findByText('08:00–08:45');
+
+    const rename = await edit(panel, 'Main');
+    fireEvent.change(within(rename).getByLabelText(en.setup.dayTemplates.name), {
+      target: { value: 'Main day' },
+    });
+    fireEvent.click(within(rename).getByRole('button', { name: en.form.save }));
+    await savedInPanel(panel);
+    expect(
+      calls.find((call) => call.route === `PATCH /api/setup/day-templates/${MAIN.id}`)?.body,
+    ).toEqual({ name: 'Main day' });
+
+    const form = await changeSlots(panel);
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('dialog', { name: en.setup.templateTable.previewTitle });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.setup.templateTable.cancel }));
+    expect(await within(form).findByText(en.form.notSaved)).toBeDefined();
+    expect(within(panel).getByRole('form', { name: en.setup.dayTemplates.changeSlots })).toBe(form);
+  });
+
+  it('shows an archived template with Restore and no Edit', async () => {
+    const archivedAt = '2026-10-01T10:00:00.000Z';
+    await openList('academic_vice_principal', {
+      'GET /api/setup/day-templates': () =>
+        json({ today: TODAY, dayTemplates: [{ ...MAIN, archivedAt }] }),
+      [`GET /api/setup/day-templates/${MAIN.id}`]: () => json({ ...MAIN_DETAIL, archivedAt }),
+    });
+    fireEvent.click(screen.getByText('Main', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Main' });
+    await within(panel).findByText('08:00–08:45');
+    expect(panelActionNames(panel)).toEqual([en.setup.dayTemplates.restore]);
+    expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
   });
 
   it('shows the Principal the day and the versions without a form', async () => {
@@ -374,5 +437,6 @@ describe('the day templates page', () => {
     expect(await within(panel).findByText('08:00–08:45')).toBeDefined();
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.setup.dayTemplates.archive })).toBeNull();
+    expect(panelActions(panel)).toBeNull();
   });
 });

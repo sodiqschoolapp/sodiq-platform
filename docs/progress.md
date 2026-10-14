@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 October 2026: task 2.7c-2b-1 Record actions at the bottom of the School setup panels
+
+- Built: `PanelActions` (primary, secondary, danger; a note, a failure and "Saved." inside it), `usePanelEditing` (one form open per panel, focus to the first field and back to the opener), Cancel in `RecordForm` (`onCancel`), `data-variant` on the Button part.
+- The panels of buildings, rooms, divisions, years, slot types, day templates, calendar, subjects, template settings and the sample read first, with their actions at the bottom and their forms behind Edit or a section's button; `checkPage` holds every side panel to one primary and its actions last; screenshots in `docs/screens/2.7c-2b-1/`.
+- Left out: the People panels (2.7c-2b-2); Rooms "By floor" and the Branches list (2.7c-3); the Super Admin's own record (2.7d).
+
+The next sessions must know:
+
+- A side panel reads first: its record actions go in `PanelActions` last, every form opens behind a button through `usePanelEditing` (`editing === '…'`), and its save calls `panel.stop({ saved: true })`; `tooling/design-parts.test.ts` reads the panel files.
+- `PANEL_ACTIONS_LATER` of `e2e/pages.spec.ts` pins the People lists; 2.7c-2b-2 empties it.
+- The next task is 2.7c-2b-2.
+
 ## 13 October 2026: spec change, the Branches list, Category shows every role, #42 texts
 
 - The owner's decisions on #39 and the texts proposed on #42 for tasks 2.2d to 2.7a are in the spec and the design system (`docs/spec-changes.md`, 13 October 2026). 2.7c-3 now builds the Branches list and the category of every role; 5.8 the forced delete of an unused building, floor or room. The procurement copy of `docs/design-system.md` needs the same lines. The next task is still 2.7c-2b.

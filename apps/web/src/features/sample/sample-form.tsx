@@ -10,6 +10,8 @@ interface SampleFormProps {
   row: SampleRow;
   /** Keeps the record; a refusal is thrown. */
   onSave: (record: SampleRecord) => Promise<void>;
+  /** Closes the form (opened by Edit in the side panel). */
+  onCancel?: () => void;
 }
 
 /**
@@ -17,7 +19,7 @@ interface SampleFormProps {
  * record of a sample row, edited in the side panel of the sample list. The
  * page gives it `key={row.id}`: another record is another form.
  */
-export function SampleForm({ row, onSave }: SampleFormProps) {
+export function SampleForm({ row, onSave, onCancel }: SampleFormProps) {
   const { t } = useTranslation();
   const form = useRecordForm({
     schema: sampleRecordSchema,
@@ -38,7 +40,7 @@ export function SampleForm({ row, onSave }: SampleFormProps) {
   });
 
   return (
-    <RecordForm form={form} label={row.name}>
+    <RecordForm form={form} label={row.name} onCancel={onCancel}>
       <Field label={t('sample.name')} autoComplete="off" {...form.bind('name')} />
       <NumberField label={t('sample.grade')} {...form.bind('grade')} />
       <Field label={t('sample.className')} autoComplete="off" {...form.bind('className')} />

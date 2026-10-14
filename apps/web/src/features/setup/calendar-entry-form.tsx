@@ -28,6 +28,8 @@ interface CalendarEntryFormProps {
   limited?: boolean;
   label: string;
   onSave: (record: CalendarEntryRecord) => Promise<void>;
+  /** Closes the form (opened by Edit in the side panel). */
+  onCancel?: () => void;
 }
 
 const text = (value: number | null): string => (value === null ? '' : String(value));
@@ -45,6 +47,7 @@ export function CalendarEntryForm({
   limited = false,
   label,
   onSave,
+  onCancel,
 }: CalendarEntryFormProps) {
   const { t, i18n } = useTranslation();
   const form = useRecordForm({
@@ -93,7 +96,7 @@ export function CalendarEntryForm({
       : templates;
 
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       {entry === undefined && (
         <SelectField
           label={t('setup.calendar.kind')}

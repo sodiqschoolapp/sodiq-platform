@@ -13,10 +13,11 @@ import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
-import { FailureAlert } from '@/components/failure-alert';
 import { Field } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
+import { PanelActions } from '@/components/list/panel-actions';
+import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,6 +66,8 @@ export function DayTemplatePanel({
   const archived = summary.archivedAt !== null;
   const refresh = () => invalidateTemplates(queryClient);
   const path = { params: { path: { id: summary.id }, header: branchHeader() } };
+  // One form open at a time: the name or new slots (task 2.7c-2b-1).
+  const panel = usePanelEditing();
 
   const rename = useMutation({
     mutationFn: (record: DayTemplateRename) =>
@@ -91,6 +94,7 @@ export function DayTemplatePanel({
     initial: { name: summary.name },
     save: async (record) => {
       await rename.mutateAsync(record);
+      panel.stop({ saved: true, key: 'record' });
     },
   });
 
@@ -127,100 +131,155 @@ export function DayTemplatePanel({
   // The version the form starts from: the one in force tomorrow, by the rule engine's reading.
   const inForce = inForceOn(record.versions, tomorrow)[0];
 
+  const close = () => {
+    panel.stop();
+  };
+  const editing = canEdit && !archived ? panel.editing : null;
+
   return (
     <div className="grid gap-6">
-      <section className="grid gap-2">
-        <h3 className={SECTION_TITLE}>
-          {t('setup.dayTemplates.dayOn', { date: schoolDateText(tomorrow, i18n.language) })}
-        </h3>
-        <ol className="grid gap-1 text-sm">
-          {record.slots.map((slot) => (
-            <li key={slot.position} className="flex gap-3">
-              <span className="w-24 tabular-nums">{rangeText(t, slot.start, slot.end)}</span>
-              <span>{slot.name}</span>
-              {slot.lessonNumber !== null && (
-                <span className="text-muted-foreground">
-                  {t('setup.dayTemplates.lessonNumber', { n: slot.lessonNumber })}
-                </span>
-              )}
-            </li>
-          ))}
-        </ol>
-      </section>
-      {canEdit && !archived && (
+      {editing === 'record' ? (
+        // A form of the record takes the read view's place: its Save and Cancel are last.
+        <RecordForm form={renameForm} label={summary.name} onCancel={close}>
+          <Field
+            label={t('setup.dayTemplates.name')}
+            autoComplete="off"
+            {...renameForm.bind('name')}
+          />
+        </RecordForm>
+      ) : editing === 'slots' ? (
+        <section className="grid gap-3">
+          <h3 className={SECTION_TITLE}>{t('setup.dayTemplates.changeSlots')}</h3>
+          <VersionForm
+            key={inForce?.id ?? 'none'}
+            slotTypes={slotTypes}
+            label={t('setup.dayTemplates.changeSlots')}
+            initial={{
+              from: tomorrow,
+              startTime: inForce === undefined ? '08:00' : timeText(inForce.startMinutes),
+              slotTypeIds: inForce?.slotTypeIds ?? [],
+            }}
+            onSave={async (change) => {
+              await preview.confirm({
+                kind: 'template_version',
+                dayTemplateId: summary.id,
+                change,
+              });
+              await addVersion.mutateAsync(change);
+              panel.stop({ saved: true, key: 'slots' });
+            }}
+            onCancel={close}
+          />
+        </section>
+      ) : (
         <>
-          <RecordForm form={renameForm} label={summary.name}>
-            <Field
-              label={t('setup.dayTemplates.name')}
-              autoComplete="off"
-              {...renameForm.bind('name')}
-            />
-          </RecordForm>
+          <section className="grid gap-2">
+            <h3 className={SECTION_TITLE}>
+              {t('setup.dayTemplates.dayOn', { date: schoolDateText(tomorrow, i18n.language) })}
+            </h3>
+            <ol className="grid gap-1 text-sm">
+              {record.slots.map((slot) => (
+                <li key={slot.position} className="flex gap-3">
+                  <span className="w-24 tabular-nums">{rangeText(t, slot.start, slot.end)}</span>
+                  <span>{slot.name}</span>
+                  {slot.lessonNumber !== null && (
+                    <span className="text-muted-foreground">
+                      {t('setup.dayTemplates.lessonNumber', { n: slot.lessonNumber })}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </section>
           <section className="grid gap-3">
-            <h3 className={SECTION_TITLE}>{t('setup.dayTemplates.changeSlots')}</h3>
-            <VersionForm
-              key={inForce?.id ?? 'none'}
-              slotTypes={slotTypes}
-              label={t('setup.dayTemplates.changeSlots')}
-              initial={{
-                from: tomorrow,
-                startTime: inForce === undefined ? '08:00' : timeText(inForce.startMinutes),
-                slotTypeIds: inForce?.slotTypeIds ?? [],
-              }}
-              onSave={async (change) => {
-                await preview.confirm({
-                  kind: 'template_version',
-                  dayTemplateId: summary.id,
-                  change,
-                });
-                await addVersion.mutateAsync(change);
-              }}
-            />
+            <h3 className={SECTION_TITLE}>{t('setup.dayTemplates.versions')}</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('setup.dayTemplates.from')}</TableHead>
+                  <TableHead>{t('setup.dayTemplates.until')}</TableHead>
+                  <TableHead>{t('setup.dayTemplates.startTime')}</TableHead>
+                  <TableHead>{t('setup.dayTemplates.slotCount')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {record.versions.map((version) => (
+                  <TableRow key={version.id}>
+                    <TableCell>{schoolDateText(version.validFrom, i18n.language)}</TableCell>
+                    <TableCell>
+                      {version.validUntil === null
+                        ? ''
+                        : schoolDateText(version.validUntil, i18n.language)}
+                    </TableCell>
+                    <TableCell>{timeText(version.startMinutes)}</TableCell>
+                    <TableCell>{version.slotTypeIds.length}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </section>
         </>
       )}
-      <section className="grid gap-3">
-        <h3 className={SECTION_TITLE}>{t('setup.dayTemplates.versions')}</h3>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('setup.dayTemplates.from')}</TableHead>
-              <TableHead>{t('setup.dayTemplates.until')}</TableHead>
-              <TableHead>{t('setup.dayTemplates.startTime')}</TableHead>
-              <TableHead>{t('setup.dayTemplates.slotCount')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {record.versions.map((version) => (
-              <TableRow key={version.id}>
-                <TableCell>{schoolDateText(version.validFrom, i18n.language)}</TableCell>
-                <TableCell>
-                  {version.validUntil === null
-                    ? ''
-                    : schoolDateText(version.validUntil, i18n.language)}
-                </TableCell>
-                <TableCell>{timeText(version.startMinutes)}</TableCell>
-                <TableCell>{version.slotTypeIds.length}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </section>
-      {canArchive && (
-        <div>
-          <Button
-            variant={archived ? 'secondary' : 'destructive'}
-            disabled={archive.isPending}
-            onClick={() => {
-              void askArchive();
-            }}
-          >
-            {archived ? t('setup.dayTemplates.restore') : t('setup.dayTemplates.archive')}
-          </Button>
-        </div>
-      )}
-      <FailureAlert error={archive.error} />
       {preview.dialog}
+      {(canEdit || canArchive) && panel.editing === null && (
+        <PanelActions
+          primary={
+            canEdit &&
+            !archived && (
+              <Button
+                {...panel.opener('record')}
+                onClick={() => {
+                  panel.start('record', renameForm.reset);
+                }}
+              >
+                {t('form.edit')}
+              </Button>
+            )
+          }
+          secondary={
+            canEdit && !archived ? (
+              <Button
+                variant="secondary"
+                {...panel.opener('slots')}
+                onClick={() => {
+                  panel.start('slots');
+                }}
+              >
+                {t('setup.dayTemplates.changeSlots')}
+              </Button>
+            ) : (
+              canArchive &&
+              archived && (
+                <Button
+                  variant="secondary"
+                  disabled={archive.isPending}
+                  onClick={() => {
+                    void askArchive();
+                  }}
+                >
+                  {t('setup.dayTemplates.restore')}
+                </Button>
+              )
+            )
+          }
+          danger={
+            canArchive &&
+            !archived && (
+              <Button
+                variant="destructive"
+                disabled={archive.isPending}
+                onClick={() => {
+                  void askArchive();
+                }}
+              >
+                {t('setup.dayTemplates.archive')}
+              </Button>
+            )
+          }
+          error={archive.error}
+          saved={panel.saved}
+        />
+      )}
     </div>
   );
 }

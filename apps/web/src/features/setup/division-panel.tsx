@@ -7,11 +7,9 @@ import {
   type Names,
 } from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
-import { failureText } from '@/api/failure-text';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { Field } from '@/components/field';
@@ -26,7 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useLeave } from '@/components/unsent/unsent-changes';
+import { PanelActions } from '@/components/list/panel-actions';
+import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { invalidateDivisions, nameOf } from './setup-api';
 import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 
@@ -51,6 +50,8 @@ interface NamesFormProps {
   /** What the field says when the server answers that this name is taken. */
   takenText: string;
   onSave: (record: DivisionRecord | DepartmentRecord) => Promise<void>;
+  /** Closes the form (opened in the side panel). */
+  onCancel?: () => void;
 }
 
 /**
@@ -58,7 +59,7 @@ interface NamesFormProps {
  * languages (`03`, Divisions, Names). A taken name is shown beside its field
  * (`12`, Look and feel: "Error messages say what happened and what to do next").
  */
-export function NamesForm({ names, label, takenText, onSave }: NamesFormProps) {
+export function NamesForm({ names, label, takenText, onSave, onCancel }: NamesFormProps) {
   const { t } = useTranslation();
   const form = useRecordForm<NameField, Names>({
     schema: namesSchema,
@@ -72,7 +73,7 @@ export function NamesForm({ names, label, takenText, onSave }: NamesFormProps) {
     en: t('setup.divisions.nameEn'),
   };
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       {NAME_FIELDS.map((field) => {
         const bound = form.bind(field);
         return (
@@ -106,10 +107,8 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const leave = useLeave();
-  const [renaming, setRenaming] = useState<string | null>(null);
-  // A new key after every department added: the form starts empty again.
-  const [added, setAdded] = useState(0);
+  // One form open at a time: the names, a department's names or a new department (task 2.7c-2b-1).
+  const panel = usePanelEditing();
   const name = (names: Names) => nameOf(names, i18n.language);
   const refresh = () => invalidateDivisions(queryClient);
 
@@ -143,19 +142,13 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
           body: record,
         }),
       ),
-    onSuccess: async () => {
-      setAdded((before) => before + 1);
-      await refresh();
-    },
+    onSuccess: refresh,
   });
 
   const renameDepartment = useMutation({
     mutationFn: ({ id, record }: { id: string; record: DepartmentRecord }) =>
       answerOf(api.PUT('/api/setup/departments/{id}', { params: { path: { id } }, body: record })),
-    onSuccess: async () => {
-      setRenaming(null);
-      await refresh();
-    },
+    onSuccess: refresh,
   });
 
   const archiveDepartment = useMutation({
@@ -208,184 +201,230 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
   const status = (archivedAt: string | null) =>
     archivedAt === null ? t('setup.divisions.active') : t('setup.divisions.archived');
 
-  const editable = canEdit && !division.builtIn && division.archivedAt === null;
+  const archived = division.archivedAt !== null;
+  const editable = canEdit && !division.builtIn && !archived;
 
   return (
     <div className="grid gap-6">
-      {editable ? (
+      {editable && panel.editing === 'record' ? (
+        // The form takes the read view's place and its Save and Cancel are last.
         <NamesForm
-          key={division.id}
           names={division.names}
           label={name(division.names)}
           takenText={t('setup.divisions.nameTaken')}
           onSave={async (record) => {
             await rename.mutateAsync(record);
+            panel.stop({ saved: true, key: 'record' });
+          }}
+          onCancel={() => {
+            panel.stop();
           }}
         />
       ) : (
-        <div className="grid gap-2 text-sm">
-          <dl className="grid gap-2">
-            {NAME_FIELDS.map((field) => (
-              <div key={field} className="grid gap-0.5">
-                <dt className="text-muted-foreground">
-                  {t(
-                    field === 'uz'
-                      ? 'setup.divisions.nameUz'
-                      : field === 'ru'
-                        ? 'setup.divisions.nameRu'
-                        : 'setup.divisions.nameEn',
-                  )}
-                </dt>
-                <dd>{division.names[field]}</dd>
-              </div>
-            ))}
-          </dl>
-          {division.builtIn ? (
-            <p className="text-muted-foreground">{t('setup.divisions.builtIn')}</p>
-          ) : (
-            <p className="text-muted-foreground">
-              {t('setup.divisions.status')}: {status(division.archivedAt)}
-            </p>
-          )}
-        </div>
-      )}
-      {canEdit && !division.builtIn && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant={division.archivedAt === null ? 'destructive' : 'secondary'}
-            disabled={archiveDivision.isPending}
-            onClick={() => {
-              void askDivision();
-            }}
-          >
-            {division.archivedAt === null
-              ? t('setup.divisions.archiveDivision')
-              : t('setup.divisions.restoreDivision')}
-          </Button>
-          <span className="text-sm text-muted-foreground">{status(division.archivedAt)}</span>
-          {archiveDivision.error !== null && (
-            <span role="alert" className="text-sm text-destructive">
-              {archiveDivision.error instanceof ApiFailure &&
-              archiveDivision.error.code === 'archive_refused'
-                ? t('setup.divisions.hasStaff')
-                : failureText(t, archiveDivision.error)}
-            </span>
-          )}
-        </div>
+        <>
+          <div className="grid gap-2 text-sm">
+            <dl className="grid gap-2">
+              {NAME_FIELDS.map((field) => (
+                <div key={field} className="grid gap-0.5">
+                  <dt className="text-muted-foreground">
+                    {t(
+                      field === 'uz'
+                        ? 'setup.divisions.nameUz'
+                        : field === 'ru'
+                          ? 'setup.divisions.nameRu'
+                          : 'setup.divisions.nameEn',
+                    )}
+                  </dt>
+                  <dd>{division.names[field]}</dd>
+                </div>
+              ))}
+            </dl>
+            {division.builtIn ? (
+              <p className="text-muted-foreground">{t('setup.divisions.builtIn')}</p>
+            ) : (
+              <p className="text-muted-foreground">
+                {t('setup.divisions.status')}: {status(division.archivedAt)}
+              </p>
+            )}
+          </div>
+
+          <section className="grid gap-3">
+            <h3 className={SECTION_TITLE}>{t('setup.divisions.departmentsTitle')}</h3>
+            {division.departments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('setup.divisions.noDepartments')}</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('setup.divisions.department')}</TableHead>
+                    <TableHead>{t('setup.divisions.status')}</TableHead>
+                    {canEdit && (
+                      <TableHead>
+                        <span className="sr-only">{t('setup.divisions.departmentActions')}</span>
+                      </TableHead>
+                    )}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {division.departments.map((department) => (
+                    <TableRow key={department.id}>
+                      <TableCell>
+                        {canEdit && panel.editing === `department:${department.id}` ? (
+                          <NamesForm
+                            names={department.names}
+                            label={name(department.names)}
+                            takenText={t('setup.divisions.departmentNameTaken')}
+                            onSave={async (record) => {
+                              await renameDepartment.mutateAsync({ id: department.id, record });
+                              panel.stop({ saved: true, key: `department:${department.id}` });
+                            }}
+                            onCancel={() => {
+                              panel.stop();
+                            }}
+                          />
+                        ) : (
+                          name(department.names)
+                        )}
+                      </TableCell>
+                      <TableCell>{status(department.archivedAt)}</TableCell>
+                      {canEdit && (
+                        <TableCell className="space-x-2 whitespace-nowrap">
+                          {panel.editing !== `department:${department.id}` &&
+                            department.archivedAt === null &&
+                            !archived && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                aria-label={t('setup.divisions.renameNamed', {
+                                  name: name(department.names),
+                                })}
+                                {...panel.opener(`department:${department.id}`)}
+                                onClick={() => {
+                                  panel.start(`department:${department.id}`);
+                                }}
+                              >
+                                {t('setup.divisions.rename')}
+                              </Button>
+                            )}
+                          {!archived && (
+                            <Button
+                              variant={department.archivedAt === null ? 'destructive' : 'secondary'}
+                              size="sm"
+                              disabled={archiveDepartment.isPending}
+                              aria-label={
+                                department.archivedAt === null
+                                  ? t('setup.divisions.archiveNamed', {
+                                      name: name(department.names),
+                                    })
+                                  : t('setup.divisions.restoreNamed', {
+                                      name: name(department.names),
+                                    })
+                              }
+                              onClick={() => {
+                                void askDepartment(department);
+                              }}
+                            >
+                              {department.archivedAt === null
+                                ? t('setup.divisions.archive')
+                                : t('setup.divisions.restore')}
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            <FailureAlert error={archiveDepartment.error} />
+            {canEdit &&
+              !archived &&
+              (panel.editing === 'department-new' ? (
+                <div className="grid gap-2 rounded-lg border p-3">
+                  <h4 className={SUBSECTION_TITLE}>{t('setup.divisions.addDepartment')}</h4>
+                  <NamesForm
+                    names={null}
+                    label={t('setup.divisions.newDepartment')}
+                    takenText={t('setup.divisions.departmentNameTaken')}
+                    onSave={async (record) => {
+                      await addDepartment.mutateAsync(record);
+                      panel.stop({ saved: true, key: 'department-new' });
+                    }}
+                    onCancel={() => {
+                      panel.stop();
+                    }}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <Button
+                    variant="secondary"
+                    {...panel.opener('department-new')}
+                    onClick={() => {
+                      panel.start('department-new');
+                    }}
+                  >
+                    {t('setup.divisions.addDepartment')}
+                  </Button>
+                </div>
+              ))}
+          </section>
+        </>
       )}
 
-      <section className="grid gap-3">
-        <h3 className={SECTION_TITLE}>{t('setup.divisions.departmentsTitle')}</h3>
-        {division.departments.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('setup.divisions.noDepartments')}</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('setup.divisions.department')}</TableHead>
-                <TableHead>{t('setup.divisions.status')}</TableHead>
-                {canEdit && (
-                  <TableHead>
-                    <span className="sr-only">{t('setup.divisions.departmentActions')}</span>
-                  </TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {division.departments.map((department) => (
-                <TableRow key={department.id}>
-                  <TableCell>
-                    {canEdit && renaming === department.id ? (
-                      <div className="grid gap-2">
-                        <NamesForm
-                          names={department.names}
-                          label={name(department.names)}
-                          takenText={t('setup.divisions.departmentNameTaken')}
-                          onSave={async (record) => {
-                            await renameDepartment.mutateAsync({ id: department.id, record });
-                          }}
-                        />
-                        <div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              void leave.leave().then((leaves) => {
-                                if (leaves) {
-                                  setRenaming(null);
-                                }
-                              });
-                            }}
-                          >
-                            {t('setup.divisions.cancel')}
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      name(department.names)
-                    )}
-                  </TableCell>
-                  <TableCell>{status(department.archivedAt)}</TableCell>
-                  {canEdit && (
-                    <TableCell className="space-x-2 whitespace-nowrap">
-                      {renaming !== department.id &&
-                        department.archivedAt === null &&
-                        division.archivedAt === null && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            aria-label={t('setup.divisions.renameNamed', {
-                              name: name(department.names),
-                            })}
-                            onClick={() => {
-                              setRenaming(department.id);
-                            }}
-                          >
-                            {t('setup.divisions.rename')}
-                          </Button>
-                        )}
-                      {division.archivedAt === null && (
-                        <Button
-                          variant={department.archivedAt === null ? 'destructive' : 'secondary'}
-                          size="sm"
-                          disabled={archiveDepartment.isPending}
-                          aria-label={
-                            department.archivedAt === null
-                              ? t('setup.divisions.archiveNamed', { name: name(department.names) })
-                              : t('setup.divisions.restoreNamed', { name: name(department.names) })
-                          }
-                          onClick={() => {
-                            void askDepartment(department);
-                          }}
-                        >
-                          {department.archivedAt === null
-                            ? t('setup.divisions.archive')
-                            : t('setup.divisions.restore')}
-                        </Button>
-                      )}
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-        <FailureAlert error={archiveDepartment.error} />
-        {canEdit && division.archivedAt === null && (
-          <div className="grid gap-2 rounded-lg border p-3">
-            <h4 className={SUBSECTION_TITLE}>{t('setup.divisions.addDepartment')}</h4>
-            <NamesForm
-              key={added}
-              names={null}
-              label={t('setup.divisions.newDepartment')}
-              takenText={t('setup.divisions.departmentNameTaken')}
-              onSave={async (record) => {
-                await addDepartment.mutateAsync(record);
-              }}
-            />
-          </div>
-        )}
-      </section>
+      {canEdit && !division.builtIn && panel.editing === null && (
+        <PanelActions
+          primary={
+            editable && (
+              <Button
+                {...panel.opener('record')}
+                onClick={() => {
+                  panel.start('record');
+                }}
+              >
+                {t('form.edit')}
+              </Button>
+            )
+          }
+          secondary={
+            archived && (
+              <Button
+                variant="secondary"
+                disabled={archiveDivision.isPending}
+                onClick={() => {
+                  void askDivision();
+                }}
+              >
+                {t('setup.divisions.restoreDivision')}
+              </Button>
+            )
+          }
+          danger={
+            !archived && (
+              <Button
+                variant="destructive"
+                disabled={archiveDivision.isPending}
+                onClick={() => {
+                  void askDivision();
+                }}
+              >
+                {t('setup.divisions.archiveDivision')}
+              </Button>
+            )
+          }
+          error={archiveDivision.error}
+          errorText={
+            archiveDivision.error instanceof ApiFailure &&
+            archiveDivision.error.code === 'archive_refused'
+              ? t('setup.divisions.hasStaff')
+              : undefined
+          }
+          saved={panel.saved}
+        />
+      )}
+      {canEdit && division.builtIn && panel.editing === null && (
+        <PanelActions saved={panel.saved} />
+      )}
     </div>
   );
 }

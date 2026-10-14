@@ -1428,6 +1428,43 @@ try {
         valid_from: startDate,
       })
       .execute();
+    // Task 2.7c-2b-1: a setting that can be ended, an entry of the calendar a
+    // month ahead and a division that is not built in, so the browser check
+    // opens the form of each of these panels too.
+    await transaction
+      .insertInto('day_template_assignments')
+      .values({
+        branch_id: pagesBranch,
+        level: 'weekday',
+        weekday: 5,
+        day_template_id: template.id,
+        valid_from: startDate,
+      })
+      .execute();
+    const monthAhead = isoDate(new Date(tashkentToday.getTime() + 30 * dayMs));
+    await transaction
+      .insertInto('calendar_entries')
+      .values({
+        branch_id: pagesBranch,
+        kind: 'day_off',
+        name: 'Pages day off',
+        first_date: monthAhead,
+        last_date: monthAhead,
+      })
+      .execute();
+    const lastDivision = await transaction
+      .selectFrom('divisions')
+      .select((eb) => eb.fn.max('position').as('position'))
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('divisions')
+      .values({
+        name_uz: 'Sahifalar boʻlimi',
+        name_ru: 'Отдел страниц',
+        name_en: 'Pages division',
+        position: Number(lastDivision.position ?? 0) + 1,
+      })
+      .execute();
     const person = await transaction
       .insertInto('staff')
       .values({

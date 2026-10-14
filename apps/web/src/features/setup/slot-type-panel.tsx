@@ -13,11 +13,12 @@ import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
-import { FailureAlert } from '@/components/failure-alert';
 import { DateField, Field, NumberField } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
+import { PanelActions } from '@/components/list/panel-actions';
+import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -55,6 +56,8 @@ export function SlotTypePanel({ slotType, today, canEdit, canArchive }: SlotType
   const archived = slotType.archivedAt !== null;
   const refresh = () => invalidateTemplates(queryClient);
   const path = { params: { path: { id: slotType.id }, header: branchHeader() } };
+  // One form open at a time: the name or a new length (task 2.7c-2b-1).
+  const panel = usePanelEditing();
 
   const rename = useMutation({
     mutationFn: (record: SlotTypeRename) =>
@@ -81,6 +84,7 @@ export function SlotTypePanel({ slotType, today, canEdit, canArchive }: SlotType
     initial: { name: slotType.name },
     save: async (record) => {
       await rename.mutateAsync(record);
+      panel.stop({ saved: true, key: 'record' });
     },
   });
   const lengthForm = useRecordForm({
@@ -90,6 +94,7 @@ export function SlotTypePanel({ slotType, today, canEdit, canArchive }: SlotType
     save: async (change) => {
       await preview.confirm({ kind: 'slot_length', slotTypeId: slotType.id, change });
       await changeLength.mutateAsync(change);
+      panel.stop({ saved: true, key: 'length' });
     },
   });
 
@@ -109,81 +114,134 @@ export function SlotTypePanel({ slotType, today, canEdit, canArchive }: SlotType
     }
   };
 
+  const close = () => {
+    panel.stop();
+  };
+  const editing = canEdit && !archived ? panel.editing : null;
+
   return (
     <div className="grid gap-6">
-      <dl className="grid gap-2 text-sm">
-        <div className="grid gap-0.5">
-          <dt className="text-muted-foreground">{t('setup.slotTypes.kind')}</dt>
-          <dd>{t(`setup.slotTypes.kinds.${slotType.kind}`)}</dd>
-        </div>
-      </dl>
-      {canEdit && !archived && (
-        <>
-          <RecordForm form={renameForm} label={slotType.name}>
-            <Field
-              label={t('setup.slotTypes.name')}
-              autoComplete="off"
-              {...renameForm.bind('name')}
+      {editing === 'record' ? (
+        // A form of the record takes the read view's place: its Save and Cancel are last.
+        <RecordForm form={renameForm} label={slotType.name} onCancel={close}>
+          <Field
+            label={t('setup.slotTypes.name')}
+            autoComplete="off"
+            {...renameForm.bind('name')}
+          />
+        </RecordForm>
+      ) : editing === 'length' ? (
+        <section className="grid gap-3">
+          <h3 className={SECTION_TITLE}>{t('setup.slotTypes.changeLength')}</h3>
+          <RecordForm form={lengthForm} label={t('setup.slotTypes.changeLength')} onCancel={close}>
+            <NumberField
+              label={t('setup.slotTypes.length')}
+              note={t('setup.slotTypes.lengthNote', {
+                min: number.format(SLOT_LENGTH_MIN_MINUTES),
+                max: number.format(SLOT_LENGTH_MAX_MINUTES),
+              })}
+              {...lengthForm.bind('lengthMinutes')}
             />
+            <DateField label={t('setup.slotTypes.from')} {...lengthForm.bind('from')} />
           </RecordForm>
+        </section>
+      ) : (
+        <>
+          <dl className="grid gap-2 text-sm">
+            <div className="grid gap-0.5">
+              <dt className="text-muted-foreground">{t('setup.slotTypes.kind')}</dt>
+              <dd>{t(`setup.slotTypes.kinds.${slotType.kind}`)}</dd>
+            </div>
+          </dl>
           <section className="grid gap-3">
-            <h3 className={SECTION_TITLE}>{t('setup.slotTypes.changeLength')}</h3>
-            <RecordForm form={lengthForm} label={t('setup.slotTypes.changeLength')}>
-              <NumberField
-                label={t('setup.slotTypes.length')}
-                note={t('setup.slotTypes.lengthNote', {
-                  min: number.format(SLOT_LENGTH_MIN_MINUTES),
-                  max: number.format(SLOT_LENGTH_MAX_MINUTES),
-                })}
-                {...lengthForm.bind('lengthMinutes')}
-              />
-              <DateField label={t('setup.slotTypes.from')} {...lengthForm.bind('from')} />
-            </RecordForm>
+            <h3 className={SECTION_TITLE}>{t('setup.slotTypes.lengths')}</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('setup.slotTypes.length')}</TableHead>
+                  <TableHead>{t('setup.slotTypes.from')}</TableHead>
+                  <TableHead>{t('setup.slotTypes.until')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {slotType.lengths.map((length) => (
+                  <TableRow key={length.validFrom}>
+                    <TableCell>
+                      {t('setup.slotTypes.minutes', { n: number.format(length.lengthMinutes) })}
+                    </TableCell>
+                    <TableCell>{schoolDateText(length.validFrom, i18n.language)}</TableCell>
+                    <TableCell>
+                      {length.validUntil === null
+                        ? ''
+                        : schoolDateText(length.validUntil, i18n.language)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </section>
         </>
       )}
-      <section className="grid gap-3">
-        <h3 className={SECTION_TITLE}>{t('setup.slotTypes.lengths')}</h3>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('setup.slotTypes.length')}</TableHead>
-              <TableHead>{t('setup.slotTypes.from')}</TableHead>
-              <TableHead>{t('setup.slotTypes.until')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {slotType.lengths.map((length) => (
-              <TableRow key={length.validFrom}>
-                <TableCell>
-                  {t('setup.slotTypes.minutes', { n: number.format(length.lengthMinutes) })}
-                </TableCell>
-                <TableCell>{schoolDateText(length.validFrom, i18n.language)}</TableCell>
-                <TableCell>
-                  {length.validUntil === null
-                    ? ''
-                    : schoolDateText(length.validUntil, i18n.language)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </section>
-      {canArchive && (
-        <div>
-          <Button
-            variant={archived ? 'secondary' : 'destructive'}
-            disabled={archive.isPending}
-            onClick={() => {
-              void askArchive();
-            }}
-          >
-            {archived ? t('setup.slotTypes.restore') : t('setup.slotTypes.archive')}
-          </Button>
-        </div>
-      )}
-      <FailureAlert error={archive.error} />
       {preview.dialog}
+      {(canEdit || canArchive) && panel.editing === null && (
+        <PanelActions
+          primary={
+            canEdit &&
+            !archived && (
+              <Button
+                {...panel.opener('record')}
+                onClick={() => {
+                  panel.start('record', renameForm.reset);
+                }}
+              >
+                {t('form.edit')}
+              </Button>
+            )
+          }
+          secondary={
+            canEdit && !archived ? (
+              <Button
+                variant="secondary"
+                {...panel.opener('length')}
+                onClick={() => {
+                  panel.start('length', lengthForm.reset);
+                }}
+              >
+                {t('setup.slotTypes.changeLength')}
+              </Button>
+            ) : (
+              canArchive &&
+              archived && (
+                <Button
+                  variant="secondary"
+                  disabled={archive.isPending}
+                  onClick={() => {
+                    void askArchive();
+                  }}
+                >
+                  {t('setup.slotTypes.restore')}
+                </Button>
+              )
+            )
+          }
+          danger={
+            canArchive &&
+            !archived && (
+              <Button
+                variant="destructive"
+                disabled={archive.isPending}
+                onClick={() => {
+                  void askArchive();
+                }}
+              >
+                {t('setup.slotTypes.archive')}
+              </Button>
+            )
+          }
+          error={archive.error}
+          saved={panel.saved}
+        />
+      )}
     </div>
   );
 }
