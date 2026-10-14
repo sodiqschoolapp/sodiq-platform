@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 14 October 2026: task 3.2c Groups on every class membership path
+
+- Built: migration 0049 (`class_group_subjects`, `class_row_gaps`, `group_placement_gaps`, the commit check `class_memberships_need_groups` on every insert of a class row, the causes `cancel` and `undo` of group rows with their review tag); `class-groups.ts` (`coverClassRows`, `smallestGroup` shared with "Place automatically", `groupPlacementGaps` for 3.4).
+- "Put into a class", the create with a class, the cancel, the undo and the replace of a scheduled leaving place the student into a group of every split or group subject of the class over every day of the row, giving back first the rows a leaving cut; no seat refuses the whole change (`class_group_no_seat`, the subject named). The class panel and the student list say how many were placed and link the placement screen.
+- Left out: transfers, a return and a graduate restore into a class (3.3, a line added; the database refuses them until they place groups); a screen of the gaps (3.4 shows them at the load step); Ctrl+K over records (3.2d).
+
+The next sessions must know:
+
+- A test that needs an unplaced student writes the class row before the group is linked, in another transaction; a class row written after its group needs the group rows in the same transaction.
+- Lock order of a class path: students, classes, then every group it may touch in one `lockClassGroups` call, then the writes.
+- The next task is 3.2d.
+
 ## 14 October 2026: task 3.2b Group membership
 
 - Built: migration 0048 (`group_memberships`: one group per student per subject per date by exclusion, the size on every date, rows inside a class row of the group's classes checked at the commit from both sides, the group's archive, maximum and classes against its members); routes `api/groups/:id/members` (tab, place, withdraw, reviewed), `api/groups/placement` and `placement/automatic`; a leaving and a class withdraw end the group rows (`cutGroupRows`, `withdrawGroupRows`).

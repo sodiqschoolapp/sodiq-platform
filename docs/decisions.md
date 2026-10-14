@@ -213,6 +213,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 14 October 2026: groups on every class membership path (task 3.2c)
+
+Plan approved on pull request #93 with corrections 1 and 2; decisions 1 to 4 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** "Cannot be saved without a group ... from the same date" is checked by the database at the commit of every insert of a class row, over every day it holds (`class_memberships_need_groups`, 0049); a group created in a later transaction, a class added to a group, an archive and the withdraw of a planned group row refuse nothing: those students are "not yet placed" | Decision 1; `edge/students-classes-groups`, first row; `edge/developer-rules`; `05`: "the screen lists students not yet placed" |
+| **Look first.** Fixtures of 3.1b and 3.2b that wrote class rows into a class already feeding a group are reordered (the group in a later transaction), and the browser seed's groups of 7 Oxford and 7 Harvard move to a later transaction; the 3.2b test "a cancel gives no group row back" now expects the rows given back | Decision 2 with correction 1; the requirement changed with the 3.2c line |
+| **Look first.** No suitable group with a seat on every day refuses the whole change (`class_group_no_seat`, each student and subject named): "Put into a class", the create with a class, a cancel, an undo, the replace of a scheduled leaving; a cancel of a student who had no group of a subject before the leaving places them or is refused | Decision 3 |
+| **Look first.** `group_memberships_cause_check` gains `cancel` and `undo`; the guard lets a row given back keep its review tag | Decision 4; the 0048 comment on `cause` |
+| Until 3.4 the split or group subjects of a class are those of the active groups that draw from it (`class_group_subjects`) | Decision 5; pull request #91, decision 18 |
+| A cancel or an undo gives back the rows the leaving cut, inside the class row given back, never past the next row of the subject given back, cut by a new leaving, with its own tag; a group out of service or without a seat gives nothing back and the days go to the smallest suitable group | Decision 6 |
+| One "smallest suitable group" (`smallestGroup`, `SeatBook`) for the placement screen and the class paths; an automatic row stops where the next group row of the subject begins, its own end that day | Decision 7; spec review of the plan, must-fix 1 |
+| `group_placement_gaps` and the commit check share `class_row_gaps`; the TypeScript reader refuses a class it cannot see | Decision 8; should-fixes 1 and 7 of the plan review |
+| Lock order of a class path: students, the classes of the rows FOR UPDATE, then every group it may touch in one `lockClassGroups` call, then the writes | Decision 9 |
+| "Put into a class" answers `groupsPlaced`; the create answers the record; `student.group_joined` for each automatic row, `groupMemberships.written` (with `cause` and `review`) in the leaving entries | Decision 10 as changed (correction 2) |
+| No permission changes; a test pins that every writer of class rows edits groups | Decision 11 |
+| A line on 3.3: the transfer, a return and a graduate restore place groups | Decision 12 |
+| Same-moment tests of two real routes in a fixed order hold the group row in a third transaction and start the routes one after the other, so the lock queue decides (`inOrder` of `class-groups.test.ts`): a cancel and an undo write status, class and group rows that a held transaction would only imitate | Build; `.claude/rules/api.md`, the held side writes what its route writes |
+
 ## 14 October 2026: group membership (task 3.2b)
 
 Plan approved on pull request #92 with corrections 1 and 2; decisions 1 to 5 marked Look first and confirmed there. Flagged on issue #42.
