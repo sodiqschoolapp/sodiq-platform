@@ -1812,6 +1812,181 @@ try {
   });
   seeded.members = { login: membersVice.login, password: membersVice.firstPassword };
 
+  // The Tutor of the class scope test (task 3.1c), in a branch of its own with
+  // the year around today: the Tutor of 7 Oxford, who teaches in Uzbek, and a
+  // student in 7 Oxford and one in 7 Yale, each with a mother and her phone.
+  const scopeBranch = await insertBranch(migrator, 'Tutor scope browser test branch');
+  const scopeTutor = await create('Shoira', 'Ahmedova');
+  const scopeAssignment = await transactions.run([scopeBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: scopeTutor.id,
+      role: 'tutor',
+      branchId: scopeBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const academic = await transaction
+      .selectFrom('divisions')
+      .select('id')
+      .where('name_en', '=', 'Academic')
+      .executeTakeFirstOrThrow();
+    const steam = await transaction
+      .selectFrom('departments')
+      .select('id')
+      .where('name_en', '=', 'STEAM')
+      .executeTakeFirstOrThrow();
+    const person = await transaction
+      .insertInto('staff')
+      .values({
+        kind: 'person',
+        staff_id: 'S-269901',
+        account_id: scopeTutor.id,
+        first_name: 'Shoira',
+        last_name: 'Ahmedova',
+        sex: 'female',
+        birth_date: '1990-04-05',
+        phone: '+998901110401',
+        admission_date: '2026-09-01',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: person.id, branch_id: scopeBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: person.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_languages')
+      .values({ staff_id: person.id, language: 'uz' })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+      .execute();
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: scopeBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: scopeBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const classIds: string[] = [];
+    for (const name of ['Oxford', 'Yale']) {
+      const row = await transaction
+        .insertInto('classes')
+        .values({
+          branch_id: scopeBranch,
+          academic_year_id: year.id,
+          grade: 7,
+          name,
+          language: 'uz',
+          max_size: 25,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      classIds.push(row.id);
+    }
+    await transaction
+      .insertInto('class_tutors')
+      .values({
+        branch_id: scopeBranch,
+        class_id: classIds[0] ?? '',
+        assignment_id: scopeAssignment.id,
+        kind: 'tutor',
+        valid_from: new Date(),
+        own_until: null,
+        given_by: scopeTutor.id,
+      })
+      .execute();
+    for (const [index, [first, last]] of [
+      ['Nilufar', 'Tojiyeva'],
+      ['Sherzod', 'Aliyev'],
+    ].entries()) {
+      const uid = String(9999801 + index);
+      const student = await transaction
+        .insertInto('students')
+        .values({
+          branch_id: scopeBranch,
+          uid,
+          first_name: first ?? '',
+          last_name: last ?? '',
+          name_key: studentNameKey(last ?? '', first ?? ''),
+          sex: index === 0 ? 'female' : 'male',
+          birth_date: '2013-10-0' + String(index + 1),
+          grade: 7,
+          starts_on: startDate,
+          created_by: scopeTutor.id,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('student_uids')
+        .values({ uid, student_id: student.id, branch_id: scopeBranch, held_from: new Date() })
+        .execute();
+      await transaction
+        .insertInto('student_contracts')
+        .values({
+          student_id: student.id,
+          branch_id: scopeBranch,
+          number: `E2E-SCOPE-${String(index + 1)}`,
+          signed_on: startDate,
+        })
+        .execute();
+      await transaction
+        .insertInto('student_statuses')
+        .values({
+          student_id: student.id,
+          branch_id: scopeBranch,
+          status: 'active',
+          valid_from: startDate,
+          cause: 'start',
+        })
+        .execute();
+      await transaction
+        .insertInto('student_accounts')
+        .values({ student_id: student.id, branch_id: scopeBranch, created_at: new Date() })
+        .execute();
+      await transaction
+        .insertInto('class_memberships')
+        .values({
+          branch_id: scopeBranch,
+          student_id: student.id,
+          class_id: classIds[index] ?? '',
+          valid_from: startDate,
+          valid_until: isoDate(new Date(yearStart.getTime() + 365 * dayMs)),
+          own_until: isoDate(new Date(yearStart.getTime() + 365 * dayMs)),
+          cause: 'placement',
+        })
+        .execute();
+      await linkRelative(transaction, student.id, scopeBranch, new Date(), {
+        fullName: `Dilnoza ${last ?? ''}`,
+        phone: `+99890555026${String(index + 1)}`,
+      });
+    }
+  });
+  seeded.tutorScope = { login: scopeTutor.login, password: scopeTutor.firstPassword };
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')
