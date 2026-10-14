@@ -421,6 +421,10 @@ export const ERROR_CODES = [
   'group_membership_in_class',
   /** "Place automatically" found no group of the screen with a free seat on every day for some students; nothing was placed (task 3.2b, decision 13). `details` names them. */
   'placement_no_seat',
+  /** A class row needs a group of every split or group subject of its class, and no group of a subject that draws from it has a free seat on every day of the row; nothing was saved (task 3.2c, decision 3). `details` names each student, with `subjectId`. */
+  'class_group_no_seat',
+  /** A class row would be saved without a group of a split or group subject of its class (task 3.2c, decision 1): a fault of the path, never a choice of the person. */
+  'class_group_missing',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
@@ -463,6 +467,8 @@ export const errorDetailSchema = z.object({
   expected: z.string().optional(),
   /** The fewest free seats of a class or group on any date of the placement, on a `class_full` (task 3.1b) or a `group_full` (task 3.2b). */
   freeSeats: z.int().optional(),
+  /** The subject without a group with a free seat, on a `class_group_no_seat` (task 3.2c). */
+  subjectId: z.uuid().optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

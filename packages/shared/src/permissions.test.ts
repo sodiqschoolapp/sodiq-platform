@@ -210,6 +210,22 @@ describe('a frozen permission table', () => {
     }
   });
 
+  // Task 3.2c, decision 11 of pull request #93: every path that writes a
+  // class row places the student into groups automatically, so a role that
+  // may write a class row (put into a class, create a student, take a
+  // leaving back) must also edit groups; no role does more than before.
+  it('gives every writer of class rows the edit of groups', () => {
+    for (const role of ROLES) {
+      const writesClassRows =
+        permits(PERMISSIONS, role, 'classes', 'edit') ||
+        permits(PERMISSIONS, role, 'students', 'create') ||
+        permits(PERMISSIONS, role, 'students', 'archive');
+      if (writesClassRows) {
+        expect(permits(PERMISSIONS, role, 'groups', 'edit'), role).toBe(true);
+      }
+    }
+  });
+
   // Task 2.6a, decision 2 of pull request #75: edge/people-roles-accounts,
   // "The Super Admin reads all; the Principal and Academic Vice Principal
   // read their branch".

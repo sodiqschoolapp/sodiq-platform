@@ -46,6 +46,12 @@ describe('group membership', () => {
   let otherHeadTeacher: string;
   let tutor: string;
   let tutorClass: string;
+  /**
+   * The students of the Tutor's class, one for each Tutor test. Their class
+   * rows come before any group of the class (0049: only the insert of a class
+   * row needs its group rows), so they are not yet placed.
+   */
+  let tutorPupils: [StudentDetail, StudentDetail];
   let count = 0;
 
   const FROM = new Date('2026-09-01T00:00:00+05:00');
@@ -365,6 +371,7 @@ describe('group membership', () => {
     await classes.person(t.north, ['uz'], { accountId: tutoring.accountId });
     tutorClass = await schoolClass();
     await classes.tutorRow(t.north, tutorClass, tutoring.assignment, { from: FROM });
+    tutorPupils = [await pupil(tutorClass), await pupil(tutorClass)];
   });
 
   afterAll(async () => {
@@ -374,9 +381,9 @@ describe('group membership', () => {
   describe('"Put into a group"', () => {
     it('places students from a date and logs each on the student record', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const one = await pupil(oxford);
       const two = await pupil(oxford);
+      const maths1 = await group([oxford]);
       const response = await place(maths1, [one, two], '2026-10-12');
       const tab = placed(response);
       expect(tab.members.map((member) => member.studentId).sort()).toEqual([one.id, two.id].sort());
@@ -415,8 +422,8 @@ describe('group membership', () => {
 
     it('lets the Super Admin place, and shows the groups in the list, the record and the card', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford], { name: 'M-Card' });
       const one = await pupil(oxford);
+      const maths1 = await group([oxford], { name: 'M-Card' });
       const response = await place(maths1, [one], '2026-10-10', t.admin);
       placed(response);
       expect((await t.entries('student.group_joined', one.id))[0]).toMatchObject({
@@ -443,12 +450,12 @@ describe('group membership', () => {
     it('refuses each student by its own rule, all or none, named in details', async () => {
       const oxford = await schoolClass();
       const elsewhere = await schoolClass();
-      const maths1 = await group([oxford]);
-      const maths2 = await group([oxford]);
       const held = await pupil(oxford);
-      placed(await place(maths2, [held], '2026-11-02'));
       const outside = await pupil(elsewhere);
       const fine = await pupil(oxford);
+      const maths1 = await group([oxford]);
+      const maths2 = await group([oxford]);
+      placed(await place(maths2, [held], '2026-11-02'));
       const before = await rowsOf();
       const response = await place(maths1, [fine, held, outside], '2026-10-12');
       refusedWith(response, 409, 'student_has_group');
@@ -469,8 +476,8 @@ describe('group membership', () => {
 
     it('refuses more students than free seats, with the free seats named', async () => {
       const oxford = await schoolClass();
-      const small = await group([oxford], { size: 2 });
       const [one, two, three] = [await pupil(oxford), await pupil(oxford), await pupil(oxford)];
+      const small = await group([oxford], { size: 2 });
       placed(await place(small, [one], '2026-11-02'));
       const response = await place(small, [two, three], '2026-10-12');
       refusedWith(response, 409, 'group_full');
@@ -479,8 +486,8 @@ describe('group membership', () => {
 
     it('refuses an archived group and a date outside its year', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const one = await pupil(oxford);
+      const maths1 = await group([oxford]);
       refusedWith(await place(maths1, [one], '2027-06-01'), 409, 'group_membership_outside_year');
       await t.database.migrator
         .updateTable('groups')
@@ -492,14 +499,14 @@ describe('group membership', () => {
 
     it('answers 404 for a group or a student of another branch or unknown, changing nothing', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const one = await pupil(oxford);
+      const maths1 = await group([oxford]);
       const southClass = await schoolClass(7, t.south, southYear);
-      const southGroup = await group([southClass], { branch: t.south, year: southYear });
       const southPupil = studentDetailSchema.parse(
         (await t.post('/api/people/students', t.south, body({ classId: southClass }), t.admin))
           .body,
       );
+      const southGroup = await group([southClass], { branch: t.south, year: southYear });
       const before = await rowsOf();
       for (const [groupId, students] of [
         [southGroup, [one]],
@@ -514,8 +521,8 @@ describe('group membership', () => {
 
     it('refuses every role that does not edit groups, with nothing logged', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const one = await pupil(oxford);
+      const maths1 = await group([oxford]);
       const before = await rowsOf();
       for (const cookie of [t.principal, headTeacher, tutor, t.teacher]) {
         refusedWith(await place(maths1, [one], '2026-10-12', cookie), 403, 'permission_denied');
@@ -527,9 +534,10 @@ describe('group membership', () => {
   describe('the Students tab and its readers (decisions 4 and 6)', () => {
     it('lets a Head Teacher read a group of own subjects, not another', async () => {
       const oxford = await schoolClass();
+      const one = await pupil(oxford);
       const maths1 = await group([oxford]);
       const englishGroup = await group([oxford], { subject: english });
-      placed(await place(maths1, [await pupil(oxford)]));
+      placed(await place(maths1, [one]));
       expect((await membersOf(maths1, headTeacher)).members).toHaveLength(1);
       refusedWith(
         await get(`/api/groups/${englishGroup}/members`, headTeacher),
@@ -563,9 +571,9 @@ describe('group membership', () => {
 
     it('lets a Tutor read the members of own class only, with a count of the others', async () => {
       const other = await schoolClass();
-      const across = await group([tutorClass, other]);
-      const own = await pupil(tutorClass);
+      const own = tutorPupils[0];
       const foreign = await pupil(other);
+      const across = await group([tutorClass, other]);
       placed(await place(across, [own, foreign], '2026-10-10'));
       const tab = await membersOf(across, tutor);
       expect(tab.members.map((member) => member.studentId)).toEqual([own.id]);
@@ -584,9 +592,9 @@ describe('group membership', () => {
 
     it('shows a Tutor the groups of own class rows only in the student list', async () => {
       const other = await schoolClass();
-      const across = await group([tutorClass, other]);
-      const own = await pupil(tutorClass);
+      const own = tutorPupils[1];
       const foreign = await pupil(other);
+      const across = await group([tutorClass, other]);
       placed(await place(across, [own, foreign], '2026-10-10'));
       const list = studentListSchema.parse((await get('/api/people/students', tutor)).body);
       expect(list.students.find((row) => row.id === own.id)?.groups.map((one) => one.id)).toEqual([
@@ -599,9 +607,9 @@ describe('group membership', () => {
   describe('the withdraw of a planned placement and "Mark reviewed"', () => {
     it('withdraws a planned placement for good and refuses one in force', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const later = await pupil(oxford);
       const now = await pupil(oxford);
+      const maths1 = await group([oxford]);
       const tab = placed(await place(maths1, [later], '2026-10-12'));
       placed(await place(maths1, [now], '2026-10-10'));
       const planned = tab.members[0];
@@ -629,9 +637,10 @@ describe('group membership', () => {
 
     it('answers 404 for a member of another group, of another branch or unknown', async () => {
       const oxford = await schoolClass();
+      const one = await pupil(oxford);
       const maths1 = await group([oxford]);
       const maths2 = await group([oxford], { subject: english });
-      const tab = placed(await place(maths1, [await pupil(oxford)], '2026-10-12'));
+      const tab = placed(await place(maths1, [one], '2026-10-12'));
       const member = tab.members[0]?.id ?? '';
       const southClass = await schoolClass(7, t.south, southYear);
       const southGroup = await group([southClass], { branch: t.south, year: southYear });
@@ -670,8 +679,8 @@ describe('group membership', () => {
   describe('more refusals of the members routes', () => {
     it('answers an ended placement not planned, and a repeated "Mark reviewed" as it is', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const one = await pupil(oxford);
+      const maths1 = await group([oxford]);
       // A row that ended before today, written as a leaving of 1 October would leave it.
       const leaving = await t.database.migrator.transaction().execute(async (transaction) => {
         await transaction
@@ -730,8 +739,8 @@ describe('group membership', () => {
 
     it('answers a planned row a leaving emptied as it is, keeping its cause', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const one = await pupil(oxford);
+      const maths1 = await group([oxford]);
       placed(await place(maths1, [one], '2026-11-16'));
       const fresh = studentDetailSchema.parse((await get(`/api/people/students/${one.id}`)).body);
       const left = await post(`/api/people/students/${one.id}/leaving`, {
@@ -788,10 +797,10 @@ describe('group membership', () => {
       const subject = await classes.subject({ grades: [9, 10] });
       const nine = await schoolClass(9);
       const ten = await schoolClass(10);
-      const pair = await group([nine, ten], { subject, name: 'P-910' });
-      const ninth = await group([nine], { subject, name: 'P-9' });
       const placedLater = await pupil(nine, { grade: 9 });
       const waiting = await pupil(nine, { grade: 9 });
+      const pair = await group([nine, ten], { subject, name: 'P-910' });
+      const ninth = await group([nine], { subject, name: 'P-9' });
       placed(await place(ninth, [placedLater], '2026-11-02'));
       const onNine = groupPlacementBoardSchema.parse((await board(subject, '9')).body);
       expect(onNine.groups.map((one) => one.id)).toEqual([ninth]);
@@ -809,13 +818,13 @@ describe('group membership', () => {
       const subject = await classes.subject({ grades: [8] });
       const oxford = await schoolClass(8);
       const yale = await schoolClass(8);
-      const alpha = await group([oxford, yale], { subject, name: 'A-8' });
-      const beta = await group([oxford], { subject, name: 'B-8' });
       const students = [
         await pupil(oxford, { grade: 8 }),
         await pupil(oxford, { grade: 8 }),
         await pupil(yale, { grade: 8 }),
       ];
+      const alpha = await group([oxford, yale], { subject, name: 'A-8' });
+      const beta = await group([oxford], { subject, name: 'B-8' });
       const response = await automatic(subject, [8]);
       expect(response.status, JSON.stringify(response.body)).toBe(201);
       const result = automaticPlacementResultSchema.parse(response.body);
@@ -856,11 +865,11 @@ describe('group membership', () => {
     it('breaks a tie of sizes by the name of the group, the students in the order of their names', async () => {
       const subject = await classes.subject({ grades: [8] });
       const oxford = await schoolClass(8);
+      const first = await pupil(oxford, { grade: 8, lastName: 'Aminova' });
+      const second = await pupil(oxford, { grade: 8, lastName: 'Botirova' });
       // Created B first, so that the id would put it first: the name decides.
       const later = await group([oxford], { subject, name: 'Z-8' });
       const earlier = await group([oxford], { subject, name: 'Y-8' });
-      const first = await pupil(oxford, { grade: 8, lastName: 'Aminova' });
-      const second = await pupil(oxford, { grade: 8, lastName: 'Botirova' });
       const response = await automatic(subject, [8]);
       expect(automaticPlacementResultSchema.parse(response.body).placed).toEqual([
         { studentId: first.id, groupId: earlier },
@@ -877,8 +886,8 @@ describe('group membership', () => {
     it('places none when a student finds no seat, and names them', async () => {
       const subject = await classes.subject({ grades: [8] });
       const oxford = await schoolClass(8);
-      await group([oxford], { subject, size: 1 });
       const students = [await pupil(oxford, { grade: 8 }), await pupil(oxford, { grade: 8 })];
+      await group([oxford], { subject, size: 1 });
       const before = await rowsOf();
       const response = await automatic(subject, [8]);
       refusedWith(response, 409, 'placement_no_seat');
@@ -891,8 +900,8 @@ describe('group membership', () => {
       const subject = await classes.subject({ grades: [9, 10] });
       const nine = await schoolClass(9);
       const ten = await schoolClass(10);
-      const pair = await group([nine, ten], { subject });
       const one = await pupil(nine, { grade: 9 });
+      const pair = await group([nine, ten], { subject });
       const refused = await automatic(subject, [9]);
       // The grade 9 screen shows no group: the student is not on it.
       expect(automaticPlacementResultSchema.parse(refused.body).placed).toEqual([]);
@@ -906,9 +915,9 @@ describe('group membership', () => {
   describe('the group rows follow the class rows (decisions 8 and 9)', () => {
     it('cuts the group rows at a leaving and withdraws a planned one, named in the entry', async () => {
       const oxford = await schoolClass();
+      const one = await pupil(oxford);
       const maths1 = await group([oxford]);
       const englishGroup = await group([oxford], { subject: english });
-      const one = await pupil(oxford);
       placed(await place(maths1, [one], '2026-10-10'));
       placed(await place(englishGroup, [one], '2026-11-16'));
       const fresh = studentDetailSchema.parse((await get(`/api/people/students/${one.id}`)).body);
@@ -940,22 +949,34 @@ describe('group membership', () => {
           ],
         },
       });
-      // A cancel gives no group row back in 3.2b (decision 9).
+      // Task 3.2c (decision 6 of pull request #93; the requirement changed from
+      // decision 9 of 3.2b): a cancel gives back the group rows the leaving cut,
+      // and the days before the planned English row get the smallest group.
       const after = studentDetailSchema.parse(left.body);
       const cancelled = await post(`/api/people/students/${one.id}/leaving/cancel`, {
         version: after.version,
       });
       expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
-      expect((await rowsOfStudent(one.id)).map((row) => row.valid_until)).toEqual([
-        '2026-11-01',
-        '2026-11-16',
+      expect(
+        (await rowsOfStudent(one.id)).map((row) => [
+          row.group_id,
+          row.valid_from,
+          row.valid_until,
+          row.cause,
+        ]),
+      ).toEqual([
+        [maths1, '2026-10-10', '2026-11-01', 'placement'],
+        [maths1, '2026-11-01', '2027-06-01', 'cancel'],
+        [englishGroup, '2026-11-01', '2026-11-16', 'automatic'],
+        [englishGroup, '2026-11-16', '2026-11-16', 'placement'],
+        [englishGroup, '2026-11-16', '2027-06-01', 'cancel'],
       ]);
     });
 
     it('names the new leaving on the group rows of a scheduled leaving replaced by an earlier date', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const one = await pupil(oxford);
+      const maths1 = await group([oxford]);
       placed(await place(maths1, [one], '2026-12-20'));
       const leave = async (lastDay: string) => {
         const fresh = studentDetailSchema.parse((await get(`/api/people/students/${one.id}`)).body);
@@ -999,8 +1020,8 @@ describe('group membership', () => {
 
     it('withdraws the group rows of a planned class placement withdrawn', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const later = await pupil(oxford, { startsOn: '2026-10-12' });
+      const maths1 = await group([oxford]);
       placed(await place(maths1, [later], '2026-10-12'));
       const classTab = (await get(`/api/classes/${oxford}/members`)).body as {
         members: { id: string; studentId: string }[];
@@ -1019,8 +1040,8 @@ describe('group membership', () => {
 
     it('keeps the group rows of a student deleted as created twice in the delete entry', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const twice = await pupil(oxford, { startsOn: '2026-10-12' });
+      const maths1 = await group([oxford]);
       placed(await place(maths1, [twice], '2026-10-12'));
       const fresh = studentDetailSchema.parse((await get(`/api/people/students/${twice.id}`)).body);
       const removed = await post(`/api/people/students/${twice.id}/delete`, {
@@ -1040,8 +1061,9 @@ describe('group membership', () => {
     it('refuses an archive with members, a maximum below them and a class whose students it holds', async () => {
       const oxford = await schoolClass();
       const yale = await schoolClass();
+      const [one, two] = [await pupil(oxford), await pupil(oxford)];
       const maths1 = await group([oxford, yale], { size: 5 });
-      placed(await place(maths1, [await pupil(oxford), await pupil(oxford)], '2026-10-12'));
+      placed(await place(maths1, [one, two], '2026-10-12'));
       const detail = (await get(`/api/groups/${maths1}`)).body as { version: number; name: string };
       const edit = (fields: object) =>
         t.put(
@@ -1069,8 +1091,8 @@ describe('group membership', () => {
   describe('at the same moment', () => {
     it('refuses the second of two placements into the last seat', async () => {
       const oxford = await schoolClass();
-      const small = await group([oxford], { size: 1 });
       const [one, two] = [await pupil(oxford), await pupil(oxford)];
+      const small = await group([oxford], { size: 1 });
       const held = await holdOpen((transaction) =>
         writePlacement(transaction, [{ studentId: one.id, groupId: small }]),
       );
@@ -1083,8 +1105,9 @@ describe('group membership', () => {
 
     it('meets a lower maximum of a group edit on the group row, both directions', async () => {
       const oxford = await schoolClass();
-      const small = await group([oxford], { size: 2 });
       const [one, two] = [await pupil(oxford), await pupil(oxford)];
+      const [three, four] = [await pupil(oxford), await pupil(oxford)];
+      const small = await group([oxford], { size: 2 });
       placed(await place(small, [one]));
       // The edit first: the placement waits, then finds the group full.
       const edit = await holdOpen((transaction) =>
@@ -1097,7 +1120,6 @@ describe('group membership', () => {
       refusedWith(await placing, 409, 'group_full');
       // The placement first: the edit route waits, then refuses the lower maximum.
       const roomy = await group([oxford], { size: 3 });
-      const [three, four] = [await pupil(oxford), await pupil(oxford)];
       placed(await place(roomy, [three]));
       const held = await holdOpen((transaction) =>
         writePlacement(transaction, [{ studentId: four.id, groupId: roomy }]),
@@ -1126,8 +1148,9 @@ describe('group membership', () => {
     it('meets the removal of a class from the group, both directions', async () => {
       const oxford = await schoolClass();
       const yale = await schoolClass();
-      const maths1 = await group([oxford, yale]);
       const one = await pupil(yale);
+      const two = await pupil(yale);
+      const maths1 = await group([oxford, yale]);
       // The removal first: the placement waits, then finds no class of the group.
       const removal = await holdOpen((transaction) =>
         writeGroupEdit(transaction, maths1, { removeClass: yale }),
@@ -1139,7 +1162,6 @@ describe('group membership', () => {
       refusedWith(await placing, 409, 'student_not_in_group_class');
       // The placement first: the edit route waits, then refuses the removal.
       const across = await group([oxford, yale]);
-      const two = await pupil(yale);
       const held = await holdOpen((transaction) =>
         writePlacement(transaction, [{ studentId: two.id, groupId: across }]),
       );
@@ -1166,8 +1188,9 @@ describe('group membership', () => {
 
     it('meets the group archive, both directions', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const one = await pupil(oxford);
+      const two = await pupil(oxford);
+      const maths1 = await group([oxford]);
       const archive = await holdOpen((transaction) =>
         writeGroupEdit(transaction, maths1, { archive: true }),
       );
@@ -1177,7 +1200,6 @@ describe('group membership', () => {
       expect(await archive.done).toBeUndefined();
       refusedWith(await placing, 409, 'group_archived');
       const other = await group([oxford]);
-      const two = await pupil(oxford);
       const held = await holdOpen((transaction) =>
         writePlacement(transaction, [{ studentId: two.id, groupId: other }]),
       );
@@ -1190,8 +1212,9 @@ describe('group membership', () => {
 
     it('meets a leaving of the student, both directions', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const one = await pupil(oxford);
+      const two = await pupil(oxford);
+      const maths1 = await group([oxford]);
       // The placement first: the leaving route waits on the student, then cuts the new row too.
       const held = await holdOpen((transaction) =>
         writePlacement(transaction, [{ studentId: one.id, groupId: maths1 }]),
@@ -1210,7 +1233,6 @@ describe('group membership', () => {
       ]);
       // The leaving first: the placement route waits on the student, then
       // places up to the leaving's first inactive day, cut by it.
-      const two = await pupil(oxford);
       const left = await holdOpen((transaction) => writeLeaving(transaction, two.id, '2026-11-01'));
       const placing = place(maths1, [two]).then((response) => response);
       await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBeGreaterThan(0);
@@ -1228,8 +1250,9 @@ describe('group membership', () => {
 
     it('meets the withdraw of the student’s planned class row', async () => {
       const oxford = await schoolClass();
-      const maths1 = await group([oxford]);
       const later = await pupil(oxford, { startsOn: '2026-10-12' });
+      const second = await pupil(oxford, { startsOn: '2026-10-12' });
+      const maths1 = await group([oxford]);
       const classRow = await t.database.migrator
         .selectFrom('class_memberships')
         .select(['id', 'valid_from'])
@@ -1255,7 +1278,6 @@ describe('group membership', () => {
       expect(await withdraw.done).toBeUndefined();
       refusedWith(await placing, 409, 'student_not_in_group_class');
       // The placement first: the withdraw route waits, then withdraws both rows.
-      const second = await pupil(oxford, { startsOn: '2026-10-12' });
       const secondRow = await t.database.migrator
         .selectFrom('class_memberships')
         .select('id')
@@ -1281,10 +1303,10 @@ describe('group membership', () => {
       const subject = await classes.subject({ grades: [9, 10] });
       const nine = await schoolClass(9);
       const ten = await schoolClass(10);
-      const first = await group([nine, ten], { subject, size });
-      const second = await group([nine, ten], { subject, size });
       const ninth = await pupil(nine, { grade: 9 });
       const tenth = await pupil(ten, { grade: 10 });
+      const first = await group([nine, ten], { subject, size });
+      const second = await group([nine, ten], { subject, size });
       return { subject, first, second, ninth, tenth };
     }
 
@@ -1375,14 +1397,14 @@ describe('group membership', () => {
     it('lets an automatic run see a leaving that came first', async () => {
       const subject = await classes.subject({ grades: [9] });
       const nine = await schoolClass(9);
-      const g1 = await group([nine], { subject, name: 'L-1' });
-      const g2 = await group([nine], { subject, name: 'L-2' });
       const leaver = await pupil(nine, { grade: 9 });
       const stays = await pupil(nine, { grade: 9 });
       const other = await pupil(nine, { grade: 9 });
+      const waiting = await pupil(nine, { grade: 9 });
+      const g1 = await group([nine], { subject, name: 'L-1' });
+      const g2 = await group([nine], { subject, name: 'L-2' });
       placed(await place(g1, [leaver, stays], '2026-10-10'));
       placed(await place(g2, [other], '2026-10-10'));
-      const waiting = await pupil(nine, { grade: 9 });
       // Without the leaving L-1 holds two and L-2 one; from 12 October L-1 holds one.
       const left = await holdOpen((transaction) =>
         writeLeaving(transaction, leaver.id, '2026-10-12'),

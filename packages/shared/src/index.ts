@@ -820,6 +820,8 @@ export {
   classMemberParamsSchema,
   classMemberSchema,
   classMembersSchema,
+  classPlacementResultSchema,
+  type ClassPlacementResult,
   classMemberStateSchema,
   classNotRestoredSchema,
   classPlacementSchema,

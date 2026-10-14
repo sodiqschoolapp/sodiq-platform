@@ -1401,8 +1401,9 @@ try {
         max_size: 24,
       })
       .execute();
-    // Task 3.2a: a group of a class of grade 7, so that the group list opens with a record.
-    const harvard = await transaction
+    // Task 3.2a: a class of grade 7 with a group, so that the group list opens
+    // with a record. The group comes after the class rows of the class, below.
+    await transaction
       .insertInto('classes')
       .values({
         branch_id: pagesBranch,
@@ -1412,28 +1413,6 @@ try {
         language: 'uz',
         max_size: 24,
       })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-    const geometry = await transaction
-      .selectFrom('subjects')
-      .select('id')
-      .where('name_en', '=', 'Geometry')
-      .executeTakeFirstOrThrow();
-    const pagesGroup = await transaction
-      .insertInto('groups')
-      .values({
-        branch_id: pagesBranch,
-        academic_year_id: year.id,
-        subject_id: geometry.id,
-        name: '7-G-1',
-        language: 'uz',
-        max_size: 20,
-      })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-    await transaction
-      .insertInto('group_classes')
-      .values({ group_id: pagesGroup.id, class_id: harvard.id, branch_id: pagesBranch })
       .execute();
     const lesson = await transaction
       .insertInto('slot_types')
@@ -1745,6 +1724,38 @@ try {
       phone: '+998935550162',
     });
   });
+  // Task 3.2a: the group of 7 Harvard, in a later transaction than the class
+  // row of its student (task 3.2c): only the insert of a class row needs its
+  // group rows (0049), so the student stays not yet placed.
+  await migrator.transaction().execute(async (transaction) => {
+    const harvard = await transaction
+      .selectFrom('classes')
+      .select(['id', 'academic_year_id'])
+      .where('branch_id', '=', pagesBranch)
+      .where('name', '=', 'Harvard')
+      .executeTakeFirstOrThrow();
+    const geometry = await transaction
+      .selectFrom('subjects')
+      .select('id')
+      .where('name_en', '=', 'Geometry')
+      .executeTakeFirstOrThrow();
+    const pagesGroup = await transaction
+      .insertInto('groups')
+      .values({
+        branch_id: pagesBranch,
+        academic_year_id: harvard.academic_year_id,
+        subject_id: geometry.id,
+        name: '7-G-1',
+        language: 'uz',
+        max_size: 20,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('group_classes')
+      .values({ group_id: pagesGroup.id, class_id: harvard.id, branch_id: pagesBranch })
+      .execute();
+  });
   seeded.pages = { login: pages.login, password: pages.firstPassword };
 
   // The Academic Vice Principal of the classes test (task 3.1a), in a branch
@@ -2014,7 +2025,7 @@ try {
       givenBy: null,
     }),
   );
-  await migrator.transaction().execute(async (transaction) => {
+  const groupMembersSetting = await migrator.transaction().execute(async (transaction) => {
     const year = await transaction
       .insertInto('academic_years')
       .values({
@@ -2046,29 +2057,6 @@ try {
       })
       .returning('id')
       .executeTakeFirstOrThrow();
-    const geometry = await transaction
-      .selectFrom('subjects')
-      .select('id')
-      .where('name_en', '=', 'Geometry')
-      .executeTakeFirstOrThrow();
-    for (const name of ['7-G-1', '7-G-2']) {
-      const group = await transaction
-        .insertInto('groups')
-        .values({
-          branch_id: groupMembersBranch,
-          academic_year_id: year.id,
-          subject_id: geometry.id,
-          name,
-          language: 'uz',
-          max_size: 20,
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      await transaction
-        .insertInto('group_classes')
-        .values({ group_id: group.id, class_id: oxford.id, branch_id: groupMembersBranch })
-        .execute();
-    }
     for (const [index, [first, last]] of [
       ['Nodira', 'Aliyeva'],
       ['Feruza', 'Bakirova'],
@@ -2084,6 +2072,39 @@ try {
         createdBy: groupMembersVice.id,
         phone: `+99890555036${String(index + 1)}`,
       });
+    }
+    return { year: year.id, oxford: oxford.id };
+  });
+  // The groups of 7 Oxford come in a later transaction than the class rows
+  // (task 3.2c): only the insert of a class row needs its group rows (0049),
+  // so the four students stay not yet placed.
+  await migrator.transaction().execute(async (transaction) => {
+    const geometry = await transaction
+      .selectFrom('subjects')
+      .select('id')
+      .where('name_en', '=', 'Geometry')
+      .executeTakeFirstOrThrow();
+    for (const name of ['7-G-1', '7-G-2']) {
+      const group = await transaction
+        .insertInto('groups')
+        .values({
+          branch_id: groupMembersBranch,
+          academic_year_id: groupMembersSetting.year,
+          subject_id: geometry.id,
+          name,
+          language: 'uz',
+          max_size: 20,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('group_classes')
+        .values({
+          group_id: group.id,
+          class_id: groupMembersSetting.oxford,
+          branch_id: groupMembersBranch,
+        })
+        .execute();
     }
   });
   seeded.groupMembers = {
