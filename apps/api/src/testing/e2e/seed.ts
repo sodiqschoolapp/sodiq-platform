@@ -1631,7 +1631,8 @@ try {
     transaction: Parameters<Parameters<ReturnType<typeof migrator.transaction>['execute']>[0]>[0],
     input: {
       branch: string;
-      classId: string;
+      /** None: a student with no class yet (task 3.2c, put into a class in the browser test). */
+      classId: string | null;
       uid: string;
       first: string;
       last: string;
@@ -1687,18 +1688,20 @@ try {
       .insertInto('student_accounts')
       .values({ student_id: student.id, branch_id: input.branch, created_at: new Date() })
       .execute();
-    await transaction
-      .insertInto('class_memberships')
-      .values({
-        branch_id: input.branch,
-        student_id: student.id,
-        class_id: input.classId,
-        valid_from: startDate,
-        valid_until: isoDate(new Date(yearStart.getTime() + 365 * dayMs)),
-        own_until: isoDate(new Date(yearStart.getTime() + 365 * dayMs)),
-        cause: 'placement',
-      })
-      .execute();
+    if (input.classId !== null) {
+      await transaction
+        .insertInto('class_memberships')
+        .values({
+          branch_id: input.branch,
+          student_id: student.id,
+          class_id: input.classId,
+          valid_from: startDate,
+          valid_until: isoDate(new Date(yearStart.getTime() + 365 * dayMs)),
+          own_until: isoDate(new Date(yearStart.getTime() + 365 * dayMs)),
+          cause: 'placement',
+        })
+        .execute();
+    }
     await linkRelative(transaction, student.id, input.branch, new Date(), {
       fullName: `Mother of ${input.first}`,
       phone: input.phone,
@@ -2073,6 +2076,17 @@ try {
         phone: `+99890555036${String(index + 1)}`,
       });
     }
+    // Task 3.2c: a student with no class yet, put into 7 Oxford in the browser
+    // test, and placed into a group of it automatically.
+    await studentInClass(transaction, {
+      branch: groupMembersBranch,
+      classId: null,
+      uid: '9999905',
+      first: 'Komila',
+      last: 'Fozilova',
+      createdBy: groupMembersVice.id,
+      phone: '+998905550365',
+    });
     return { year: year.id, oxford: oxford.id };
   });
   // The groups of 7 Oxford come in a later transaction than the class rows

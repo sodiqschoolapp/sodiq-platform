@@ -17,16 +17,17 @@ import { codeNow } from './totp';
 // places the other two with "Place automatically" on the placement screen,
 // where both go into the smaller 7-G-2, tagged for review, and marks one
 // reviewed. With SCREENSHOTS=1 the screens are saved for the report under
-// docs/screens/3.2b/. All names are invented.
+// docs/screens/3.2b/ (and the class path of task 3.2c, pull request #93,
+// under docs/screens/3.2c/). All names are invented.
 const SCREENS = path.join(import.meta.dirname, '../../../docs/screens/3.2b');
 
-async function screenshot(page: Page, name: string): Promise<void> {
+async function screenshot(page: Page, name: string, folder = SCREENS): Promise<void> {
   if (process.env.SCREENSHOTS !== '1') {
     return;
   }
   await page.waitForTimeout(400);
-  mkdirSync(SCREENS, { recursive: true });
-  await page.screenshot({ path: path.join(SCREENS, `${name}.png`) });
+  mkdirSync(folder, { recursive: true });
+  await page.screenshot({ path: path.join(folder, `${name}.png`) });
 }
 
 test('an Academic Vice Principal places students into groups by hand and automatically', async ({
@@ -90,4 +91,32 @@ test('an Academic Vice Principal places students into groups by hand and automat
   await page.goto('/people/students');
   await expect(page.getByRole('row').filter({ hasText: 'Aliyeva Nodira' })).toContainText('7-G-1');
   await expect(page.getByRole('row').filter({ hasText: 'Ergasheva Iroda' })).toContainText('7-G-2');
+
+  // Task 3.2c: a student put into 7 Oxford, which feeds the Geometry groups,
+  // goes into the smallest of them at once (both hold two: 7-G-1 by name),
+  // tagged for review, and the panel says so with a link to the screen.
+  await page.goto('/classes');
+  await page
+    .getByRole('row')
+    .filter({ hasText: '7 Oxford' })
+    .getByRole('button', { name: '7 Oxford' })
+    .click();
+  const classPanel = page.getByRole('complementary', { name: '7 Oxford' });
+  await classPanel.getByRole('button', { name: en.classes.putIntoClass, exact: true }).click();
+  const placing = classPanel.getByRole('form', {
+    name: en.classes.putIntoNamed.replace('{{class}}', '7 Oxford'),
+  });
+  await placing.getByRole('checkbox', { name: 'Fozilova Komila (9999905)' }).check();
+  await placing.getByRole('button', { name: en.form.save, exact: true }).click();
+  const notice = classPanel.getByRole('status').filter({
+    hasText: en.classes.groupsPlaced_one.replace('{{n}}', '1'),
+  });
+  await expect(notice).toBeVisible();
+  await expect(notice.getByRole('link', { name: en.classes.reviewGroups })).toBeVisible();
+  await screenshot(page, 'class-path-groups', path.join(SCREENS, '../3.2c'));
+  await page.goto('/groups');
+  await page.getByRole('button', { name: '7-G-1', exact: true }).click();
+  const first = page.getByRole('complementary', { name: '7-G-1' });
+  await expect(first.getByText('Fozilova Komila', { exact: true })).toBeVisible();
+  await expect(first.getByText(texts.review)).toHaveCount(1);
 });
