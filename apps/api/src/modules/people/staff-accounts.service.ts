@@ -242,8 +242,8 @@ export class StaffAccounts {
   /**
    * Why the record may not be linked to the account of the session, or
    * `null`: the one rule of the route and of `canLinkOwn` (correction 3 of
-   * the review of #87). Not for a reader without a current Super Admin
-   * assignment, a record with an account, an account with a record (read
+   * the review of #87), for a reader with a current Super Admin assignment
+   * (the route refuses any other with 403 first). Not for a record with an account, an account with a record (read
    * through `own_staff_record`, which no branch hides), an inactive or left
    * status in force or planned (decision 3, correction 2), or an employment
    * that begins after today (decision 9).
@@ -252,12 +252,7 @@ export class StaffAccounts {
     transaction: Transaction,
     access: Access,
     person: Person,
-  ): Promise<
-    'permission_denied' | 'account_exists' | 'own_record_exists' | 'own_link_status' | null
-  > {
-    if (superAdminOf(access) === undefined) {
-      return 'permission_denied';
-    }
+  ): Promise<'account_exists' | 'own_record_exists' | 'own_link_status' | null> {
     if (person.accountId !== null) {
       return 'account_exists';
     }
@@ -797,7 +792,8 @@ export class StaffAccounts {
     const left = await leftForGood(transaction, person.id);
     const canEdit = superAdminOf(access) !== undefined;
     if (person.accountId === null) {
-      const canLinkOwn = (await this.ownLinkRefusal(transaction, access, person)) === null;
+      const canLinkOwn =
+        canEdit && (await this.ownLinkRefusal(transaction, access, person)) === null;
       return { account: null, canEdit, canLinkOwn, left, today };
     }
     const account = await transaction
