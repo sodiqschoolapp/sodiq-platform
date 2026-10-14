@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { personNameSchema } from './accounts.js';
 import { classNotRestoredSchema, studentClassSchema } from './classes.js';
+import { studentGroupSchema } from './groups.js';
 import { spellingKey, storedStudentName, validName } from './names.js';
 import { studentRelativesInputSchema } from './relatives.js';
 import { jshshirSchema, sexSchema, staffPhoneSchema } from './staff.js';
@@ -404,6 +405,13 @@ export const studentListItemSchema = z.object({
   /** The Tutor of the class in force today, and the acting Tutor beside them. */
   tutor: personNameSchema.nullable(),
   actingTutor: personNameSchema.nullable(),
+  /**
+   * The groups of the student (`04`, Student list: "class …, groups, tutor";
+   * task 3.2b): in force today, else the first planned, one per subject, by
+   * name. A Tutor reads them on the rows of own classes only (decision 4 of
+   * pull request #92): empty on the others.
+   */
+  groups: z.array(studentGroupSchema),
   /**
    * The number of status rows and class rows: every status change and every
    * placement writes one or more, so a change sent with an older number is

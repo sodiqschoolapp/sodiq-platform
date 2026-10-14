@@ -104,10 +104,12 @@ describe('the student export', () => {
     const of = (group: string) =>
       STUDENT_EXPORT_COLUMNS.filter((column) => STUDENT_EXPORT_GROUPS[column] === group);
     // Task 3.1b: the Tutor of the class joins once classes have Tutors and members.
+    // Task 3.2b, decision 2 (Look first): the groups join once groups have members.
     expect(of('basic')).toEqual([
       'uid',
       'name',
       'class',
+      'groups',
       'tutor',
       'status',
       'paternalName',
@@ -154,7 +156,8 @@ describe('the student export', () => {
       filters: {},
     };
     expect(studentExportSchema.parse(request)).toEqual(request);
-    expect(studentExportSchema.safeParse({ ...request, columns: ['groups'] }).success).toBe(false);
+    // Task 3.2b, decision 2 (Look first): the groups are a column of the file.
+    expect(studentExportSchema.safeParse({ ...request, columns: ['groups'] }).success).toBe(true);
     expect(studentExportSchema.safeParse({ ...request, columns: ['photo'] }).success).toBe(false);
   });
 });

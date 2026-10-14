@@ -91,9 +91,9 @@ export const SUBJECT_EXPORT_COLUMNS = [
 /**
  * The column keys of the student list's file (task 2.4b-2, pull request #70):
  * the one exception to "equal to the `key`s of the columns of its page". The
- * first part is the page's exported columns, in its order (its photo and
- * groups columns are not exported: `groups` has no data before task 3.2;
- * `tutor` joined with task 3.1b); the rest are export-only columns, chosen by
+ * first part is the page's exported columns, in its order (its photo column
+ * is not exported; `tutor` joined with task 3.1b, `groups` with task 3.2b);
+ * the rest are export-only columns, chosen by
  * group under the Export button, because the list shows no phone or document
  * (`04`: "Phone numbers are not shown in the list"; decision 2). A web test
  * pins both parts.
@@ -117,6 +117,8 @@ export const GROUP_EXPORT_COLUMNS = [
   'subject',
   'classes',
   'language',
+  // Task 3.2b, decision 2 of pull request #92: the members today, the count of the card.
+  'students',
   'maxSize',
   'status',
 ] as const;
@@ -125,6 +127,8 @@ export const STUDENT_EXPORT_COLUMNS = [
   'uid',
   'name',
   'class',
+  // Task 3.2b, decision 2 of pull request #92: the groups in force today, else the first planned.
+  'groups',
   // Task 3.1b: the Tutor of the class in force today.
   'tutor',
   'status',
@@ -163,6 +167,7 @@ export const STUDENT_LIST_EXPORT_COLUMNS = [
   'uid',
   'name',
   'class',
+  'groups',
   'tutor',
   'status',
 ] as const satisfies readonly StudentExportColumn[];
@@ -172,6 +177,7 @@ export const STUDENT_EXPORT_GROUPS: Readonly<Record<StudentExportColumn, Student
   uid: 'basic',
   name: 'basic',
   class: 'basic',
+  groups: 'basic',
   tutor: 'basic',
   status: 'basic',
   paternalName: 'basic',
@@ -445,6 +451,7 @@ const en: ExportTexts = {
       subject: 'Subject',
       classes: 'Classes',
       language: 'Language of instruction',
+      students: 'Students',
       maxSize: 'Maximum size',
       status: 'Status',
     },
@@ -455,6 +462,7 @@ const en: ExportTexts = {
       uid: 'UID',
       name: 'Name and surname',
       class: 'Class',
+      groups: 'Groups',
       tutor: 'Tutor',
       status: 'Status',
       paternalName: 'Paternal name',
@@ -673,6 +681,7 @@ const ru: ExportTexts = {
       subject: 'Предмет',
       classes: 'Классы',
       language: 'Язык обучения',
+      students: 'Ученики',
       maxSize: 'Наибольший размер',
       status: 'Состояние',
     },
@@ -683,6 +692,7 @@ const ru: ExportTexts = {
       uid: 'UID',
       name: 'Имя и фамилия',
       class: 'Класс',
+      groups: 'Группы',
       tutor: 'Тьютор',
       status: 'Статус',
       paternalName: 'Отчество',
@@ -900,6 +910,7 @@ const uz: ExportTexts = {
       subject: 'Fan',
       classes: 'Sinflar',
       language: 'Taʼlim tili',
+      students: 'Oʻquvchilar',
       maxSize: 'Eng koʻp oʻquvchi',
       status: 'Holati',
     },
@@ -910,6 +921,7 @@ const uz: ExportTexts = {
       uid: 'UID',
       name: 'Ism va familiya',
       class: 'Sinf',
+      groups: 'Guruhlar',
       tutor: 'Tyutor',
       status: 'Holat',
       paternalName: 'Otasining ismi',
