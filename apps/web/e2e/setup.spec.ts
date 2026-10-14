@@ -63,18 +63,28 @@ const confirmWith = async (page: Page, action: string): Promise<void> => {
 /**
  * Task 2.7c-1 (pull request #80, decision 8): the pages that only the Super
  * Admin reaches, against the design system in light, dark and at phone width:
- * the Branch page with the "New branch" side panel open, the travel time as a
+ * the Branches list with the "New branch" side panel open (task 2.7c-3), the travel time as a
  * form, and the audit log of the whole school. The seed holds no fourth Super
  * Admin, so this runs at the end of the first test's session.
  */
 async function checkSuperAdminPages(page: Page): Promise<void> {
-  await page.goto('/setup/branch');
+  // Task 2.7c-3: the Branches list, "New branch" in its side panel (moved
+  // there from the Branch page), and a branch opened from the list, which
+  // switches the tab to it. Nothing is saved.
+  await page.goto('/setup/branches');
+  await expect(heading(page, en.setup.branches.title)).toBeVisible();
+  await checkPage(page, 'setup-branches');
+  await page.getByRole('button', { name: en.setup.branch.newBranch, exact: true }).first().click();
+  const newBranch = page.getByRole('complementary', { name: en.setup.branch.newBranchTitle });
+  await expect(newBranch).toBeVisible();
+  await checkPage(page, 'setup-branches-new');
+  await newBranch.getByRole('button', { name: en.setup.branch.cancel, exact: true }).click();
+  await expect(newBranch).toBeHidden();
+  await page.getByRole('button', { name: 'Pages browser test branch', exact: true }).click();
   await expect(heading(page, en.setup.branch.title)).toBeVisible();
-  await page.getByRole('button', { name: en.setup.branch.newBranch, exact: true }).click();
   await expect(
-    page.getByRole('complementary', { name: en.setup.branch.newBranchTitle }),
-  ).toBeVisible();
-  await checkPage(page, 'setup-branch-new');
+    page.getByRole('combobox', { name: en.switcher.branch, exact: true }).locator('option:checked'),
+  ).toHaveText('Pages browser test branch');
   await page.goto('/setup/travel-times');
   await expect(heading(page, en.setup.travelTimes.title)).toBeVisible();
   await expect(page.getByRole('form').first()).toBeVisible();
