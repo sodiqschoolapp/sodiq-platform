@@ -196,17 +196,20 @@ describe('classes', () => {
     it("answers 404 for another branch's class and an unknown one, with nothing changed", async () => {
       const southern = await classes.schoolClass(south, southYear, { name: 'Unseen' });
       const before = await rowsOf();
-      for (const id of [southern, UNKNOWN]) {
-        expect(errorCode(await get(`/api/classes/${id}`).expect(404))).toBe('not_found');
-        expect(
-          errorCode(await put(`/api/classes/${id}`, { ...body(), version: 0 }, admin).expect(404)),
-        ).toBe('not_found');
-        expect(errorCode(await post(`/api/classes/${id}/archive`, {}, admin).expect(404))).toBe(
-          'not_found',
-        );
-        expect(errorCode(await post(`/api/classes/${id}/restore`, {}, admin).expect(404))).toBe(
-          'not_found',
-        );
+      for (const cookie of [vice, admin]) {
+        for (const id of [southern, UNKNOWN]) {
+          expect(errorCode(await get(`/api/classes/${id}`, cookie).expect(404))).toBe('not_found');
+          expect(
+            errorCode(
+              await put(`/api/classes/${id}`, { ...body(), version: 0 }, cookie).expect(404),
+            ),
+          ).toBe('not_found');
+          for (const action of ['archive', 'restore']) {
+            expect(
+              errorCode(await post(`/api/classes/${id}/${action}`, {}, cookie).expect(404)),
+            ).toBe('not_found');
+          }
+        }
       }
       expect(await rowsOf()).toEqual(before);
     });
@@ -407,6 +410,17 @@ describe('classes', () => {
         expect((await post(`/api/classes/${created.id}/archive`, {}, reader.cookie)).status).toBe(
           403,
         );
+        expect((await post(`/api/classes/${created.id}/restore`, {}, reader.cookie)).status).toBe(
+          403,
+        );
+        if (reader.role !== 'principal') {
+          const exported = await post(
+            '/api/classes/export',
+            { ids: [created.id], columns: ['name'], selection: 'ticked', search: '', filters: {} },
+            reader.cookie,
+          );
+          expect(exported.status, reader.role).toBe(403);
+        }
       }
       expect(await rowsOf()).toEqual(before);
     });
@@ -447,6 +461,28 @@ describe('classes', () => {
   });
 
   describe('the export', () => {
+    it('answers 404 for a class of another branch or an unknown one, with nothing written', async () => {
+      const created = await create({ name: 'Kept', grade: 3 });
+      const southern = await classes.schoolClass(south, southYear, { name: 'Elsewhere' });
+      const before = await rowsOf();
+      for (const id of [southern, UNKNOWN]) {
+        const response = await post(
+          '/api/classes/export',
+          {
+            ids: [created.id, id],
+            columns: ['name'],
+            selection: 'ticked',
+            search: '',
+            filters: {},
+          },
+          principal,
+        );
+        expect(response.status).toBe(404);
+        expect(errorCode(response)).toBe('not_found');
+      }
+      expect(await rowsOf()).toEqual(before);
+    });
+
     it('writes the classes as the list shows them, with an entry, for the Principal too', async () => {
       const created = await create({ name: 'Exported', grade: 4 });
       const response = await post(

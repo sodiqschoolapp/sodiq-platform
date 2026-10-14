@@ -343,9 +343,11 @@ describe('the Tutors of a class', () => {
         [held, southRole],
         [held, UNKNOWN],
       ] as const) {
-        expect(errorCode(await give(classId, { assignmentId }, admin).expect(404))).toBe(
-          'not_found',
-        );
+        for (const cookie of [vice, admin]) {
+          expect(errorCode(await give(classId, { assignmentId }, cookie).expect(404))).toBe(
+            'not_found',
+          );
+        }
       }
       expect(await rowsOf()).toEqual(before);
     });
@@ -447,6 +449,15 @@ describe('the Tutors of a class', () => {
             ).expect(404),
           ),
         ).toBe('not_found');
+        expect(
+          errorCode(
+            await post(
+              `/api/classes/${classId}/tutors/${tutorId}/end`,
+              { from: TODAY },
+              vice,
+            ).expect(404),
+          ),
+        ).toBe('not_found');
       }
       expect(
         (await post(`/api/classes/${held}/tutors/${row}/end`, { from: TODAY }, principal)).status,
@@ -496,6 +507,20 @@ describe('the Tutors of a class', () => {
       subjects: [],
       languages: ['ru'],
     }).expect(200);
+  });
+
+  // Correction 4: a class of another branch is never named, only refused.
+  it('refuses to drop a language a class of another branch needs, without naming it', async () => {
+    const southern = await newClass('ru', south, southYear);
+    const person = await classes.person(north, ['uz', 'ru'], { further: [south] });
+    const southRole = await classes.role(person.accountId, south);
+    await classes.tutorRow(south, southern, southRole);
+    const response = await put(`/api/people/staff/${person.staffId}/teaching`, {
+      subjects: [],
+      languages: ['uz'],
+    }).expect(409);
+    expect(errorCode(response)).toBe('tutor_language_held');
+    expect(apiErrorSchema.parse(response.body).error.details?.[0]?.recordId).toBeUndefined();
   });
 
   // Decision 20: a role end and a `left` name the Tutor rows they end.

@@ -95,12 +95,18 @@ export function toClassTutor(row: TutorRow, now: Date, zone: string): ClassTutor
 /**
  * The Tutor rows of the classes the transaction sees, with the name of the
  * staff record of each assignment's account (the membership filter shows a
- * person linked to the branch). Newest start first.
+ * person linked to the branch). Newest start first. `assignments` has no
+ * policy: the join keeps to the row's own branch in code
+ * (.claude/rules/database.md), as the fill trigger does.
  */
 export function tutorRowsIn(transaction: Transaction) {
   return transaction
     .selectFrom('class_tutors')
-    .innerJoin('assignments', 'assignments.id', 'class_tutors.assignment_id')
+    .innerJoin('assignments', (join) =>
+      join
+        .onRef('assignments.id', '=', 'class_tutors.assignment_id')
+        .onRef('assignments.branch_id', '=', 'class_tutors.branch_id'),
+    )
     .leftJoin('staff', (join) =>
       join.onRef('staff.account_id', '=', 'assignments.account_id').on('staff.kind', '=', 'person'),
     )
