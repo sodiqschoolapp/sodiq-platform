@@ -2078,7 +2078,7 @@ try {
       await studentInClass(transaction, {
         branch: groupMembersBranch,
         classId: oxford.id,
-        uid: String(9999801 + index),
+        uid: String(9999901 + index),
         first: first ?? '',
         last: last ?? '',
         createdBy: groupMembersVice.id,

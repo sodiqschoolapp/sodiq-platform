@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 14 October 2026: task 3.2b Group membership
+
+- Built: migration 0048 (`group_memberships`: one group per student per subject per date by exclusion, the size on every date, rows inside a class row of the group's classes checked at the commit from both sides, the group's archive, maximum and classes against its members); routes `api/groups/:id/members` (tab, place, withdraw, reviewed), `api/groups/placement` and `placement/automatic`; a leaving and a class withdraw end the group rows (`cutGroupRows`, `withdrawGroupRows`).
+- The group panel's Students tab, the placement screen `/groups/placement` (a ListPage of the students not yet placed, the groups beside it, "Place automatically"), the student list's groups column, filter, export column and bulk action, the Academic block's groups, the group count on the list and card.
+- Left out: giving back group rows on a cancel, an undo or a later scheduled leaving, the group rule on class membership paths and `group_placement_gaps` (3.2c); group transfers and the end of group rows on a branch move (3.3); the graduation's end of group rows (9.5a); Ctrl+K over records (3.2d).
+
+The next sessions must know:
+
+- Lock order: students FOR UPDATE by id, then groups FOR UPDATE by id (`lockGroups`), then writes; a leaving and a class withdraw take the student, its classes, then its groups.
+- Every path that ends a class row ends the group rows of those dates (`group-membership-rows.ts`), or the commit fails on `group_memberships_in_class`.
+- `MembersKit.groupMember` writes group rows in tests; the browser seed has a `groupMembers` account and an unplaced student of 7 Harvard in the pages branch.
+- The next task is 3.2c.
+
 ## 14 October 2026: task 3.2a Groups
 
 - Built: migrations 0046 (`groups`, `group_classes`, the deferred guard, the class's and the subject's side) and 0047 (`subject_groups_elsewhere`); the area `groups` with the Head Teachers' subject scope and the Tutor's class scope (`group-scope.ts`); routes `api/groups` (list, record, create, edit, archive, restore, export, slot check); `sharedLessonSlots` and `twoGradeSlots` in `packages/timetable-rules`.

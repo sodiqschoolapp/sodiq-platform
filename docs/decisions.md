@@ -213,6 +213,30 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 14 October 2026: group membership (task 3.2b)
+
+Plan approved on pull request #92 with corrections 1 and 2; decisions 1 to 5 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The student list's `groups` column, the record's Academic block and the group card's count show the groups to every reader of the list, as part of the class | Decision 1; `04`, Student list: "class …, groups, tutor"; Academic: "Class, groups, tutor"; the 3.1b Tutor precedent |
+| **Look first.** Pinned lists widened because the requirement changed: `STUDENT_EXPORT_COLUMNS` gains `groups` (the 2.4b-2 line), `GROUP_EXPORT_COLUMNS` gains `students`; the web tests that pinned `groups` as not exported, the list row, the export columns, the Academic block and the student list row of `students.test.ts` change with them | Decision 2 |
+| **Look first.** The tag "placed automatically, review" is the column `review`, cleared by "Mark reviewed" (a route and `student.group_reviewed`), true to false only | Decision 3; `edge/students-classes-groups`, first row |
+| **Look first.** The Tutor reads the members of own classes in a group and a count of the others; in the branch-wide student list the `groups` cell and the group filter hold groups only on the rows the Tutor opens | Decision 4; the 3.2b line; `02`, Tutor |
+| **Look first.** The audit actions `student.group_joined`, `student.group_withdrawn`, `student.group_reviewed` and the keys of their entries in `NOT_IDENTITY_KEYS` | Decision 5; `CLAUDE.md`, every change is audited |
+| Placing, withdrawing, "Mark reviewed" and the placement screen are `groups` `edit`; the Students tab `groups` `view` in the 3.2a scope | Decision 6 |
+| A group row runs from its date to the end of the class row that holds it, cut at the same scheduled leaving; `own_until` is the class row's own end | Decision 7 |
+| A group row lies inside a class row of its group's classes: a deferred constraint trigger fired from `group_memberships`, `class_memberships` and `group_classes`, reading without a lock; the cut of the group rows is the application's (`cutGroupRows`, `withdrawGroupRows`), in the same transaction and named in the audit entry (`groupMemberships`) | Decision 8 |
+| A cancel, an undo and the replace of a scheduled leaving by a later date give no group row back in 3.2b (3.2c does); the replace by an earlier date re-names the group rows the old leaving withdrew | Decision 9; spec review of the plan, should-fix 3 |
+| One rule for the screen's list and the placement: no group of the subject on or after the date (`student_has_group`) | Decision 10; spec review of the plan, must-fix 2 |
+| The student's `version` does not count group rows | Decision 11 |
+| "Smallest suitable group": among the screen's groups (correction 1), one that draws from the student's class with a seat on every date of the row, the fewest members on the date first, ties by name then id; students by surname, first name and UID; all or none | Decisions 12 and 13 |
+| The screen shows, for one subject, one grade or a pair and a date, the groups drawing only from classes of those grades and their students not yet placed; the list is a `ListPage` (correction 2); the first subject and its first grades are chosen until the person chooses (build) | Decision 14 |
+| The date of a placement defaults to the latest of today, the year's start and each ticked student's class row start | Decision 15 |
+| A class leaves a group only while the group holds no row with days of its students, past rows included; the archive is refused with members in force or planned, a lower maximum below the members of a date from today on | Decision 16; spec review of the plan, must-fix 3 |
+| Lock order: students FOR UPDATE by id, then every group the change touches FOR UPDATE by id (`lockGroups`), then the writes; a leaving and a class withdraw take the student, its classes, then its groups | Spec review of the plan, must-fix 1; same-moment tests of both directions |
+| Lines added to 3.3 (a release and a class transfer end group rows) and 9.5a (the graduation ends group rows) | Spec review of the plan, should-fix 1 |
+
 ## 14 October 2026: groups and splits (task 3.2a)
 
 Plan approved on pull request #91 with corrections 1 to 4; decisions 1, 2, 11, 12, 15 and 16 marked Look first and confirmed there. Flagged on issue #42.
