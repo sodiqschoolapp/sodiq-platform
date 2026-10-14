@@ -406,7 +406,10 @@ export class StudentStatuses {
     cause: 'cancel' | 'undo',
   ): Promise<{
     memberships: Awaited<ReturnType<typeof applyMembershipPlan>> & { notRestored: string[] };
-    groupMemberships: { cut: GroupRowEnded[]; written: Omit<GroupRowWritten, 'studentId' | 'subjectId'>[] };
+    groupMemberships: {
+      cut: GroupRowEnded[];
+      written: Omit<GroupRowWritten, 'studentId' | 'subjectId'>[];
+    };
     notRestored: ClassNotRestored[];
   } | null> {
     const takenBack = outcome.cuts

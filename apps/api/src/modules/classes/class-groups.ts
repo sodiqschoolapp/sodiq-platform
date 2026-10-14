@@ -619,12 +619,18 @@ export async function coverClassRows(
   const sorted = [...input.classRows].sort(
     (a, b) => order.indexOf(a.row.studentId) - order.indexOf(b.row.studentId) || a.index - b.index,
   );
-  const planned = await planClassGroups(book, groups, sorted, (studentId) => [
-    ...heldRows(own.get(studentId) ?? [], groups, subjectOf),
-    ...given
-      .filter((row) => row.studentId === studentId)
-      .map((row) => ({ subjectId: row.subjectId, from: row.from, until: row.until })),
-  ], input.pathOf);
+  const planned = await planClassGroups(
+    book,
+    groups,
+    sorted,
+    (studentId) => [
+      ...heldRows(own.get(studentId) ?? [], groups, subjectOf),
+      ...given
+        .filter((row) => row.studentId === studentId)
+        .map((row) => ({ subjectId: row.subjectId, from: row.from, until: row.until })),
+    ],
+    input.pathOf,
+  );
   refuseNoSeat(
     [...planned.refused].sort(
       (a, b) =>

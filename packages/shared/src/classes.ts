@@ -336,9 +336,7 @@ export type ClassMembers = z.infer<typeof classMembersSchema>;
  * "placed automatically, review" (`edge/students-classes-groups`, first row).
  */
 export const classPlacementResultSchema = classMembersSchema.extend({
-  groupsPlaced: z.array(
-    z.object({ studentId: z.uuid(), groupId: z.uuid(), subjectId: z.uuid() }),
-  ),
+  groupsPlaced: z.array(z.object({ studentId: z.uuid(), groupId: z.uuid(), subjectId: z.uuid() })),
 });
 
 export type ClassPlacementResult = z.infer<typeof classPlacementResultSchema>;
