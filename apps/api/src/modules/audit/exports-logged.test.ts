@@ -121,6 +121,50 @@ describe('every export is logged', () => {
         return row.id;
       },
     },
+    // Task 3.2a.
+    'POST /api/groups/export': {
+      action: 'group.export',
+      list: 'groups',
+      column: 'name',
+      row: async () => {
+        const year = await t.database.migrator
+          .selectFrom('academic_years')
+          .select('id')
+          .where('branch_id', '=', t.north)
+          .executeTakeFirstOrThrow();
+        return t.database.migrator.transaction().execute(async (transaction) => {
+          const schoolClass = await transaction
+            .insertInto('classes')
+            .values({
+              branch_id: t.north,
+              academic_year_id: year.id,
+              grade: 7,
+              name: 'Logged group class',
+              language: 'uz',
+              max_size: 25,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          const group = await transaction
+            .insertInto('groups')
+            .values({
+              branch_id: t.north,
+              academic_year_id: year.id,
+              subject_id: mathematics,
+              name: 'Logged-1',
+              language: 'uz',
+              max_size: 20,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await transaction
+            .insertInto('group_classes')
+            .values({ group_id: group.id, class_id: schoolClass.id, branch_id: t.north })
+            .execute();
+          return group.id;
+        });
+      },
+    },
     'POST /api/setup/subjects/export': {
       action: 'subject.export',
       list: 'subjects',

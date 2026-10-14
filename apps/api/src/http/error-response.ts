@@ -210,7 +210,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   group_mixed_language: 'The group mixes languages; the warning was not confirmed.',
   class_grade_groups: 'The class feeds a group; its grade cannot change.',
   class_in_groups: 'The class feeds an active group.',
-  class_language_mixes_groups: 'The change makes a group mix languages; the warning was not confirmed.',
+  class_language_mixes_groups:
+    'The change makes a group mix languages; the warning was not confirmed.',
   subject_grade_groups: 'An active group of that grade needs the subject.',
   subject_has_groups: 'The subject has active groups.',
   request_refused: 'The request was refused.',

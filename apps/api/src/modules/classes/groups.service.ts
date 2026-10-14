@@ -421,6 +421,9 @@ export class Groups {
     classIds: readonly string[],
   ): Promise<GroupClassRow[]> {
     const named = [...new Set(classIds.map((one) => one.toLowerCase()))];
+    if (named.length === 0) {
+      return [];
+    }
     const rows = await transaction
       .selectFrom('classes')
       .select(['id', 'grade', 'name', 'language', 'archived_at', 'academic_year_id'])

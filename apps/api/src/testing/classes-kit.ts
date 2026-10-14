@@ -120,7 +120,12 @@ export class ClassesKit {
    * `grades`, under the language rule unless said otherwise.
    */
   async subject(
-    input: { grades?: readonly number[]; languageRule?: boolean; name?: string } = {},
+    input: {
+      grades?: readonly number[];
+      languageRule?: boolean;
+      name?: string;
+      journalType?: 'graded' | 'attendance_only';
+    } = {},
   ): Promise<string> {
     count += 1;
     const name = input.name ?? `Subject ${String.fromCharCode(97 + (count % 26))}${String(count)}`;
@@ -138,7 +143,7 @@ export class ClassesKit {
         department_id: steam.id,
         grades: [...(input.grades ?? [7, 8, 9, 10])],
         colour: 'blue',
-        journal_type: 'graded',
+        journal_type: input.journalType ?? 'graded',
         language_rule: input.languageRule ?? true,
       })
       .returning('id')
