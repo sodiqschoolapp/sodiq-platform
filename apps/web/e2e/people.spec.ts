@@ -45,6 +45,8 @@ test('an Academic Vice Principal gives a teacher of the branch a subject', async
 
   await row.getByRole('button', { name: 'Qoʻchqorov Oybek' }).click();
   const panel = page.getByRole('complementary', { name: 'Oybek Qoʻchqorov' });
+  // Task 2.7c-2b-2a: the panel reads first; each form opens behind its button.
+  await panel.getByRole('button', { name: en.form.edit, exact: true }).click();
   const record = panel.getByRole('form', { name: 'Oybek Qoʻchqorov', exact: true });
   await expect(record.getByLabel(texts.sex, { exact: true })).toBeDisabled();
   await record.getByLabel(texts.phone, { exact: true }).fill('+998 93 555 44 34');
@@ -52,6 +54,7 @@ test('an Academic Vice Principal gives a teacher of the branch a subject', async
   // The phone grouped (finding 24).
   await expect(row).toContainText('+998 93 555 44 34');
 
+  await panel.getByRole('button', { name: texts.changeTeaching, exact: true }).click();
   const teaching = panel.getByRole('form', {
     name: texts.teachingOf.replace('{{name}}', 'Oybek Qoʻchqorov'),
   });

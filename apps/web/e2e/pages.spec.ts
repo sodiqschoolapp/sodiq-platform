@@ -96,23 +96,42 @@ const NEW_RECORDS = [
 
 /**
  * The People lists whose side panels get their actions at the bottom in task
- * 2.7c-2b-2: until then `checkPage` does not hold their open record to one
- * primary and the actions last. Pinned: it only shrinks, and 2.7c-2b-2 is
- * done when it is empty (pull request #83, decision 3).
+ * 2.7c-2b-2b: until then `checkPage` does not hold their open record to one
+ * primary and the actions last. Pinned: it only shrinks (staff and vacancies
+ * left it in 2.7c-2b-2a), and 2.7c-2b-2b is done when it is empty (pull
+ * request #83, decision 3; pull request #84, decision 3).
  */
-const PANEL_ACTIONS_LATER: readonly string[] = [
-  'people-staff',
-  'people-students',
-  'people-vacancies',
-  'people-parents',
-];
+const PANEL_ACTIONS_LATER: readonly string[] = ['people-students', 'people-parents'];
 
 /**
- * The School setup panels the Academic Vice Principal changes (task
- * 2.7c-2b-1): the list, the record opened by the button of its row (or the
- * first), and the button of the panel that opens its form.
+ * The School setup and People panels the Academic Vice Principal changes
+ * (tasks 2.7c-2b-1 and 2.7c-2b-2a): the list, the record opened by the button
+ * of its row (or the first), and the button of the panel that opens its form.
  */
 const EDITS = [
+  ['people-staff', '/people/staff', en.people.staff.title, null, en.form.edit],
+  [
+    'people-staff-teaching',
+    '/people/staff',
+    en.people.staff.title,
+    null,
+    en.people.staff.changeTeaching,
+  ],
+  [
+    'people-staff-availability',
+    '/people/staff',
+    en.people.staff.title,
+    null,
+    en.people.availability.change,
+  ],
+  ['people-vacancies', '/people/vacancies', en.people.vacancies.title, null, en.form.edit],
+  [
+    'people-vacancies-availability',
+    '/people/vacancies',
+    en.people.vacancies.title,
+    null,
+    en.people.availability.change,
+  ],
   ['setup-slot-types', '/setup/slot-types', en.setup.slotTypes.title, null, en.form.edit],
   ['setup-day-templates', '/setup/day-templates', en.setup.dayTemplates.title, null, en.form.edit],
   ['setup-calendar', '/setup/calendar', en.setup.calendar.title, 'Pages day off', en.form.edit],
@@ -211,8 +230,9 @@ test('every page of Phases 0 to 2 is drawn with the design system in light, dark
       panelActionsLater: PANEL_ACTIONS_LATER.includes(name),
     });
   }
-  // Task 2.7c-2b-1: each School setup panel this role changes, with its form
-  // open; its Save and Cancel are then the panel's last part. Nothing is saved.
+  // Tasks 2.7c-2b-1 and 2.7c-2b-2a: each School setup and People panel this
+  // role changes, with each of its forms open; while the record's form is
+  // open its Save and Cancel are the panel's last part. Nothing is saved.
   for (const [name, address, title, row, opener] of EDITS) {
     await open(page, address, title);
     await (row === null
