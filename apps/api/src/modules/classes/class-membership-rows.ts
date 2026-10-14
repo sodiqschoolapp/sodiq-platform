@@ -249,9 +249,19 @@ export async function studentClassesOn(
       from: row.valid_from,
       until: row.valid_until,
     };
+    const continued = own.planned ?? own.current;
     if (row.valid_from <= today) {
       own.current = named;
       own.mainRoom = row.room_name;
+    } else if (
+      continued !== null &&
+      continued.id === row.id &&
+      continued.until === row.valid_from
+    ) {
+      // A row of the same class that starts where the one shown ends (a
+      // cancel of a leaving or of a move gave it back) continues it: no
+      // planned class (task 3.3a).
+      continued.until = row.valid_until;
     } else if (own.planned === null) {
       own.planned = named;
       if (own.current === null) {
