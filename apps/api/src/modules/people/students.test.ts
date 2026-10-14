@@ -866,6 +866,8 @@ describe('student records', () => {
           tutor: null,
           actingTutor: null,
           version: 2,
+          // Task 3.1c: the Tutor here holds no class, so the row does not open.
+          opens: cookie !== tutor,
         });
         expect(JSON.stringify(response.body)).not.toContain('+99890');
       }

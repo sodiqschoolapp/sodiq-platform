@@ -137,7 +137,7 @@ describe('assignments', () => {
       );
 
       expect(await current(teacher)).toEqual([
-        { id: given.id, role: 'teacher', branchId: north, subjectIds: [] },
+        { id: given.id, role: 'teacher', branchId: north, subjectIds: [], classIds: [] },
       ]);
       expect(await rowsOf(teacher)).toEqual([
         {
@@ -180,7 +180,13 @@ describe('assignments', () => {
       });
 
       expect(await current(senior)).toEqual([
-        { id: given.id, role: 'senior_head_teacher', branchId: null, subjectIds: [mathematics] },
+        {
+          id: given.id,
+          role: 'senior_head_teacher',
+          branchId: null,
+          subjectIds: [mathematics],
+          classIds: [],
+        },
       ]);
       expect(await auditOf(given.id, 'audit_log_school')).toMatchObject([
         {
@@ -469,7 +475,7 @@ describe('assignments', () => {
 
       expect(second.id).not.toBe(first.id);
       expect(await current(person)).toEqual([
-        { id: second.id, role: 'tutor', branchId: north, subjectIds: [] },
+        { id: second.id, role: 'tutor', branchId: north, subjectIds: [], classIds: [] },
       ]);
       expect(await rowsOf(person)).toHaveLength(2);
       clock.set(START);

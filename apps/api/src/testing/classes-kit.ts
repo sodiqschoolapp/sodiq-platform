@@ -122,14 +122,15 @@ export class ClassesKit {
 
   /**
    * A person of the branch (the main link) with the languages they teach in,
-   * linked to a new account; `further` adds links to other branches.
+   * linked to a new account, or to `accountId` (a signed-in account of a
+   * test); `further` adds links to other branches.
    */
   async person(
     branch: string,
     languages: readonly ('uz' | 'ru')[],
-    input: { further?: readonly string[]; first?: string; last?: string } = {},
+    input: { further?: readonly string[]; first?: string; last?: string; accountId?: string } = {},
   ): Promise<{ staffId: string; accountId: string }> {
-    const accountId = await this.account();
+    const accountId = input.accountId ?? (await this.account());
     count += 1;
     const staffId = await this.migrator.transaction().execute(async (transaction) => {
       const academic = await transaction
