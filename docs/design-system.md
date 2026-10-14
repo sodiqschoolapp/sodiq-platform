@@ -24,7 +24,7 @@ These patterns make a screen look generated. The review refuses them.
 6. Outlined buttons. A button is a fill; only a field has a border.
 7. Buttons of different heights side by side, or one-off sizes.
 8. Shadows and gradients on panels and cards. Elevation is for things that float: menus, dialogs, popovers.
-9. Orange text, thin orange icons, or white text on orange. Orange on white is 2.35 : 1.
+9. Orange text on white or on the canvas, thin orange icons, or white text on orange. Orange on white is 2.35 : 1; the sign-in slogan on the navy panel is the one orange text.
 10. Emoji, decorative illustrations on working screens, or icons from more than one set.
 11. An intro sentence under a page title on a screen used every day. A page explains itself through its title and its content.
 12. A notification dot that only says "something".
@@ -129,7 +129,7 @@ Three sizes, four kinds, one shape. Every button is a fill with no border.
 | --- | --- | --- | --- | --- |
 | Large | 48 | 0 20 | 16 / 600 | Sign-in, the main action of a phone screen |
 | Medium | 40 (44 at phone width) | 0 16 | 14 / 600 | Everywhere else (default) |
-| Small | 32 | 0 12 | 13 / 600 | Inside dense tables and selection bars on a desktop |
+| Small | 32 (44 at phone width) | 0 12 | 13 / 600 | Inside dense tables and selection bars on a desktop |
 
 | Kind | Fill | Text | Hover |
 | --- | --- | --- | --- |
@@ -138,7 +138,7 @@ Three sizes, four kinds, one shape. Every button is a fill with no border.
 | Quiet | none | foreground | `--accent` |
 | Danger | none | `--destructive` | `--destructive-bg` |
 
-- At phone width every control a finger uses is at least 44 high; small buttons are not used there.
+- At phone width every control a finger uses is at least 44 high; a small button takes the height of a medium one (44).
 - An icon-only button is square (40 × 40 at medium, 44 × 44 at phone width) and has an `aria-label`.
 - Buttons in one row have one size. Action buttons in a list of items share one minimum width (112 at medium) so they line up.
 - A link styled as a button uses the same classes. Plain links are navy, weight 600, underlined on hover.
@@ -149,7 +149,7 @@ Three sizes, four kinds, one shape. Every button is a fill with no border.
 - Fields and selects: 40 high (44 at phone width, 48 on sign-in), white fill, 1 px `--input` border, corner 8; focus is the 2 px ring. An error is a 2 px `--destructive` border and one line under the field in `--destructive`.
 - A select draws a filled "expand more" icon on the right, never a text caret.
 - A segmented control (two to four choices) is a `--accent` track with 4 px padding; the chosen item is white with navy text, the others muted text, 32 high (44 at phone width, so the track is 52).
-- Checkboxes use the navy accent colour.
+- Checkboxes use navy in the light theme and the foreground colour in the dark theme.
 
 ## Icons
 
@@ -160,7 +160,7 @@ Three sizes, four kinds, one shape. Every button is a fill with no border.
 
 ## Layout shell
 
-- **Menu:** left, navy in both themes, 240 wide: the one-line logo (on-dark version) at the top, the items (icon and word, 40 high, corner 8, the active one solid orange with navy text), a count as a plain number at the right of an item, and at the bottom the person (round avatar with initials on #1B2A63, name, role) with a sign-out icon button. It can collapse to a 72-wide rail of icons with the shield logo; the choice is kept in the browser.
+- **Menu:** left, navy in both themes, 240 wide: the one-line logo (on-dark version) at the top, the items (icon and word, 40 high, corner 8, the active one solid orange with navy text), a count as a plain number at the right of an item, and at the bottom the person (round avatar with initials on #1B2A63, name, role) with a sign-out icon button. It can collapse to a 72-wide rail of icons with the shield logo; the choice is kept in the browser. In the collapsed rail the current item is its icon on the solid orange fill of an item (corner 8); this is not an icon in a coloured square.
 - **Top bar:** white (dark: #08102F), 64 high, a bottom border: the app's context selects on the left (which ones: "This app"), the search field with "Ctrl K" as plain text at its right, and at the right the notifications button and any app-specific switch.
 - **Page:** a header with breadcrumbs (inner pages), the title and its actions at the right; then the content. A short fact may follow the title on the same line in muted text ("74 active, 6 archived"; "Monday, 12 October").
 - **Lists:** a toolbar (search field, filter selects, a quiet "Reset", the column chooser as an icon button), a selection bar in `--today` above the table when rows are chosen (count, small secondary actions, quiet "Clear"), the table in a white panel, and the side panel (white, left border) for an opened record with its actions at the bottom: primary "Edit", secondary actions, danger quiet "Archive".
@@ -169,7 +169,7 @@ Three sizes, four kinds, one shape. Every button is a fill with no border.
 ## Brand moments
 
 - **Sign-in:** the form on the left (horizontal colour logo, the language select and the theme button at the top; a Bitter title, two fields 48 high, a large primary button the full width of the form); on the right a navy panel with the slogan in Bitter, uppercase, orange, with the brand's line ornament, and a white column of orange hexagons (the brand book's cover). The slogan is a text of the three languages: uz "Taʼlim tarbiyadan boshlanadi", ru "Образование начинается с воспитания", en "Education begins with upbringing". At phone width the navy panel is hidden.
-- **Empty page:** in the page's white panel: a Bitter title that says what is missing, one short line (what the page is for), the first action as a primary button and at most one quiet second action; at the right, a small drawing of navy hexagon outlines with one or two orange filled hexagons. At phone width the drawing is hidden.
+- **Empty page:** in the page's white panel: a Bitter title that says what is missing, one short line (what the page is for), the first action as a primary button and at most one quiet second action; at the right, a small drawing of navy hexagon outlines (the foreground colour in the dark theme) with one or two orange filled hexagons. At phone width the drawing is hidden.
 - **Full-page error** (not found, no access, failed to load the app): like the empty page.
 - **Printouts and PDFs:** A4, white; at the top of each page or slip the letterhead strip: a navy tab with the on-dark one-line logo and a rounded top-right corner, followed by an orange band; Golos Text; navy text; no other colour except where the app's spec asks for one (a status, a grey "Draft" word). Which documents: "This app".
 
@@ -205,4 +205,4 @@ This section belongs to `sodiqschoolapp/sodiq-platform` only.
 - **Phone tab bar.** The role's first four menu items and "More". This is the owner's decision of 12 October 2026 (`docs/decisions.md`, "one design for both apps"); `12`, Devices lists which functions work on a phone, not the tab bar.
 - **Subject colours.** The 12 subject colours of task 2.1 stay as they are (keys and values in `index.css`): a timetable tile or a chip is the colour's 15% tint with the subject in the normal text and a 10 px square of the full colour. A subject colour never carries meaning alone: the subject's name is always written.
 - **Status labels: grades and attendance marks.** Always the digit; colour only helps. Grade 2 danger tint, 3 warning tint, 4 info tint, 5 success tint, each with its text colour. Attendance marks in the journal: 1 plain; 0 and 3 danger tint; 2 warning tint; 4 and 5 (exempt) muted fill with muted text.
-- **Printouts.** The first-password slips (task 2.3: four per A4 page with cut lines; name, role, the three steps to sign in at the site's address, and a box with login, password and date of issue), the personal data report (2.6), and later the PDF exports.
+- **Printouts.** The first-password slips (task 2.3: name, the roles held when it is printed (none at a first issue), the three steps to sign in at the site's address, and a box with login, password and date of issue; one slip per page for one account; four per A4 page with cut lines when several accounts are printed at once (a staff import)), the personal data report (2.6), and later the PDF exports.

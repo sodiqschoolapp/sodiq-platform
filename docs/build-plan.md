@@ -305,9 +305,10 @@ How to read the task lines:
   - Done when: every People side panel has its actions at the bottom, one primary in view, `PANEL_ACTIONS_LATER` of `e2e/pages.spec.ts` is empty, and `e2e/pages.spec.ts` passes again with its screenshots in the report.
 
 - [ ] **2.7c-3 Rooms "By floor" and the Branches list** (split from 2.7c on pull request #80, decision 1)
-  - Read: `docs/design-system.md`, issue #39 (items 1 and 5), `03` (the Branches list, spec change of 12 October 2026), `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7", item 11), the plan of pull request #77.
+  - Read: `docs/design-system.md`, issue #39 (items 1 and 5), `03` (Branch: the Branches list), `04` (Teacher and staff record: Category; the teacher list), spec change of 13 October 2026, `docs/decisions.md` ("Decided ahead for tasks 2.2d and 2.7", item 11), the plan of pull request #77.
   - Build: the Rooms "By floor" view (#39 item 5); the school-wide Branches list for the Super Admin (#39 item 1) once its spec change is merged.
-  - Done when: "By floor" is built; the Branches list is built, or reported as waiting for its `/spec-change` ("Decided ahead for tasks 2.2d and 2.7", item 11), which closes the item for this task.
+  - From the spec change of 13 October 2026: the Branches list under School setup (name, address, working weekdays, number of buildings and of rooms; opening a branch switches the current branch; "New branch" from the list in the side panel; no new permission, branches `view` and `create`); the category of a staff record and the teacher list's category column and filter show every role the person holds in the branch (`STAFF_CATEGORY_ROLES` widened to all nine roles), a vacancy still has none.
+  - Done when: "By floor" is built; the Branches list is built, or reported as waiting for its `/spec-change` ("Decided ahead for tasks 2.2d and 2.7", item 11), which closes the item for this task; the category column and filter offer every role, with a test for a Super Admin, a Principal and a Senior Head Teacher in the list.
 
 - [ ] **2.7d The Super Admin's own staff record** (split from 2.7 on pull request #77, decision 1)
   - Read: issue #39 (the owner's answer to question 37), `04` (Teacher and staff record), `edge/people-roles-accounts`, the plan of pull request #77.
@@ -447,7 +448,7 @@ How to read the task lines:
   - Read: `06` (Protection), `03` (Quarters), `edge/timetable` (Versions and drafts).
   - Build: a dated lesson with data cannot be deleted or change its class, group or subject; forced delete by the Super Admin with a reason and 30-day restore; version history, comparison of two versions, reopening an old version as a new draft; the version in force on the first day of each quarter.
   - Done when: each of the four Protection rules has a test.
-  - From 2.7 (pull request #77, decision 2; issue #39, item 6): the same forced delete for a building, floor or room that nothing references, once the owner's spec change of `03` is merged.
+  - From 2.7 (pull request #77, decision 2; issue #39, item 6): the same forced delete for a building, floor or room that nothing references (`03`, Building, floor, room; spec change of 13 October 2026), with a reason, an audit entry and 30 days to restore; a referenced one stays archive-only.
 
 - [ ] **5.9 Timetable views, print and export**
   - Read: `06` (Views and outputs), `edge/system-behaviour`.
