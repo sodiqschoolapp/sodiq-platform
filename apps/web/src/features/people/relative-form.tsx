@@ -288,10 +288,13 @@ export function RelativeForm({
   label,
   onSave,
   onTaken,
+  onCancel,
 }: {
   relative: RelativeDetail;
   label: string;
   onSave: (record: RelativeRecord) => Promise<void>;
+  /** Closes the form in the side panel without a change (task 2.7c-2b-2b). */
+  onCancel?: () => void;
   /** A phone refused as taken, with its holder and the record typed (task 2.5b-1). */
   onTaken?: (taken: TakenPhone) => void;
 }) {
@@ -330,7 +333,7 @@ export function RelativeForm({
   const phone = form.bind('phone');
   const holder = phoneHolderOf(form.failure);
   return (
-    <RecordForm form={form} label={label}>
+    <RecordForm form={form} label={label} onCancel={onCancel}>
       <Field label={t('people.relatives.fullName')} autoComplete="off" {...form.bind('fullName')} />
       <CheckboxField label={t('people.relatives.noPhone')} {...form.bind('noPhone')} />
       {!noPhone && (

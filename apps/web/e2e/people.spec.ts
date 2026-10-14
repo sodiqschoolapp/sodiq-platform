@@ -428,7 +428,9 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   await page.getByRole('button', { name: 'Yoqubova Madina', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Madina Yoqubova' });
 
+  // Each status form opens behind its button at the bottom of the panel (task 2.7c-2b-2b).
   async function leave(lastDay: string) {
+    await panel.getByRole('button', { name: texts.leaveTitle, exact: true }).click();
     const form = panel.getByRole('form', { name: texts.leaveTitle });
     await form.getByLabel(texts.lastDay, { exact: true }).fill(lastDay);
     await form.getByLabel(texts.reason, { exact: true }).fill('The family moved to Samarkand.');
@@ -449,12 +451,13 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
     .getByRole('alertdialog', { name: texts.cancelConfirmTitle })
     .getByRole('button', { name: texts.cancelLeaving, exact: true })
     .click();
-  await expect(panel.getByRole('form', { name: texts.leaveTitle })).toBeVisible();
+  await expect(panel.getByRole('button', { name: texts.leaveTitle, exact: true })).toBeVisible();
   await expect(row).not.toContainText(texts.inactiveFrom.replace('{{date}}', '').trim());
 
   // In the past: inactive now; undone with a reason.
   await leave(daysAgo(10));
   await expect(row).toContainText(texts.statuses.inactive);
+  await panel.getByRole('button', { name: texts.undoTitle, exact: true }).click();
   const undo = panel.getByRole('form', { name: texts.undoTitle });
   await undo.getByLabel(texts.reason, { exact: true }).fill('Entered for the wrong student.');
   await undo.getByRole('button', { name: en.form.save, exact: true }).click();
@@ -463,6 +466,7 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   // Again, then back with a new contract: the same UID, every row kept.
   await leave(daysAgo(10));
   await expect(row).toContainText(texts.statuses.inactive);
+  await panel.getByRole('button', { name: texts.returnTitle, exact: true }).click();
   const back = panel.getByRole('form', { name: texts.returnTitle });
   await back.getByLabel(texts.returnFrom, { exact: true }).fill(daysAgo(3));
   await back.getByLabel(texts.contractNumber, { exact: true }).fill('E2E-LEAVE-1R');
@@ -491,6 +495,7 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   await add('9998002', 'Yoqubovaa', 'E2E-LEAVE-2');
   await page.getByRole('button', { name: 'Yoqubovaa Madina', exact: true }).click();
   const twice = page.getByRole('complementary', { name: 'Madina Yoqubovaa' });
+  await twice.getByRole('button', { name: texts.deleteAction, exact: true }).click();
   const remove = twice.getByRole('form', { name: texts.deleteTitle });
   await remove.getByLabel(texts.reason, { exact: true }).fill('Created twice by mistake.');
   await remove.getByRole('button', { name: en.form.save, exact: true }).click();
@@ -823,7 +828,8 @@ test('an Academic Vice Principal gives a parent an extra phone and marks them as
   await page.getByRole('button', { name: 'Kamola Yusupova', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Kamola Yusupova' });
 
-  // An extra phone, saved with the record.
+  // An extra phone, saved with the record, behind Edit (task 2.7c-2b-2b).
+  await panel.getByRole('button', { name: en.form.edit, exact: true }).click();
   const form = panel.getByRole('form', {
     name: relatives.formLabel.replace('{{name}}', 'Kamola Yusupova'),
   });

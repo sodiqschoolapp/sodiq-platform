@@ -8,6 +8,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import { panelActions, savedInPanel } from '@/testing/panel';
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const PATH = '/people/students';
@@ -256,7 +257,17 @@ describe("the student's Relatives tab", () => {
     if (main === undefined) {
       throw new Error('The main contact is listed.');
     }
-    const unlink = within(main).getByRole('button', { name: en.people.relatives.unlink });
+    // The main contact's Unlink first asks for the new main contact, in the row (task 2.7c-2b-2b).
+    fireEvent.click(within(main).getByRole('button', { name: en.people.relatives.unlink }));
+    const choice = await within(main).findByRole('form', {
+      name: en.people.relatives.unlinkLabel.replace('{{name}}', 'Dilfuza Rahimova'),
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(choice).getByLabelText(en.people.relatives.newMain),
+      );
+    });
+    const unlink = within(choice).getByRole('button', { name: en.people.relatives.unlink });
     // Finding 6 of the hand test of 13 October 2026: pressed with no new main
     // contact chosen, it says what to do first and sends nothing.
     fireEvent.click(unlink);
@@ -282,6 +293,153 @@ describe("the student's Relatives tab", () => {
         newMainContactId: uid(41),
       });
     });
+    // The row is gone: "Saved." at the bottom, the focus on "Add relative".
+    await savedInPanel(panel);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.people.relatives.add }),
+      );
+    });
+  });
+
+  // Task 2.7c-2b-2b: each row reads first, its actions open their form one at a time.
+  const rowOf = async (panel: HTMLElement, fullName: string) => {
+    const items = await within(panel).findAllByRole('listitem');
+    const item = items.find((one) => within(one).queryByText(fullName) !== null);
+    if (item === undefined) {
+      throw new Error(`${fullName} is listed.`);
+    }
+    return item;
+  };
+
+  it('changes a link behind its button, one form at a time, and closes it with "Saved."', async () => {
+    const calls = openList(TWO, {
+      [`PATCH /api/people/students/${OTKIR.id}/relatives/${uid(41)}`]: () =>
+        json({
+          relatives: [
+            relative(40, 'Dilfuza Rahimova', true),
+            { ...relative(41, 'Anvar Rahimov', false), portalAccess: false },
+          ],
+          canEdit: true,
+        }),
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
+    const anvar = await rowOf(panel, 'Anvar Rahimov');
+    expect(within(panel).queryByRole('form')).toBeNull();
+    fireEvent.click(within(anvar).getByRole('button', { name: en.people.relatives.changeLink }));
+    const form = await within(anvar).findByRole('form', {
+      name: en.people.relatives.linkLabel.replace('{{name}}', 'Anvar Rahimov'),
+    });
+    // The other row's actions and the bottom row give way while it is open.
+    const dilfuza = await rowOf(panel, 'Dilfuza Rahimova');
+    expect(within(dilfuza).queryByRole('button')).toBeNull();
+    expect(panelActions(panel)).toBeNull();
+    fireEvent.click(within(form).getByRole('checkbox', { name: en.people.relatives.portalAccess }));
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await savedInPanel(panel);
+    expect(calls.find((call) => call.route.startsWith('PATCH'))?.body).toEqual({
+      relationship: 'father',
+      mainContact: false,
+      portalAccess: false,
+      receivesNotices: true,
+    });
+    expect(within(panel).queryByRole('form')).toBeNull();
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(anvar).getByRole('button', { name: en.people.relatives.changeLink }),
+      );
+    });
+  });
+
+  it('unlinks a relative who is not the main contact behind its confirmation, and gives the focus to "Add relative"', async () => {
+    const ONE = { relatives: [relative(40, 'Dilfuza Rahimova', true)], canEdit: true };
+    let unlinked = false;
+    const calls = openList(TWO, {
+      [`POST /api/people/students/${OTKIR.id}/relatives/${uid(41)}/unlink`]: () => {
+        unlinked = true;
+        return json(ONE);
+      },
+      // Read again after the unlink: the list without the relative.
+      [`GET /api/people/students/${OTKIR.id}/relatives`]: () => json(unlinked ? ONE : TWO),
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
+    const anvar = await rowOf(panel, 'Anvar Rahimov');
+    fireEvent.click(within(anvar).getByRole('button', { name: en.people.relatives.unlink }));
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.relatives.unlinkTitle,
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.unlink }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/unlink'))?.body).toEqual({
+        newMainContactId: null,
+      });
+    });
+    await waitFor(() => {
+      expect(within(panel).queryByText('Anvar Rahimov')).toBeNull();
+    });
+    await savedInPanel(panel);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.people.relatives.add }),
+      );
+    });
+  });
+
+  it('offers no Unlink for the last relative (04: the last relative stays)', async () => {
+    openList({ relatives: [relative(40, 'Dilfuza Rahimova', true)], canEdit: true });
+    renderApp(PATH);
+    const panel = await openPanel();
+    fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
+    const dilfuza = await rowOf(panel, 'Dilfuza Rahimova');
+    expect(
+      within(dilfuza).getByRole('button', { name: en.people.relatives.changeLink }),
+    ).toBeDefined();
+    expect(within(dilfuza).queryByRole('button', { name: en.people.relatives.unlink })).toBeNull();
+  });
+
+  it('opens "Add relative" through the panel and closes it on Cancel without a call', async () => {
+    const calls = openList(TWO);
+    renderApp(PATH);
+    const panel = await openPanel();
+    fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
+    fireEvent.click(await within(panel).findByRole('button', { name: en.people.relatives.add }));
+    const form = await within(panel).findByRole('form', {
+      name: en.people.relatives.formLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
+    });
+    expect(within(panel).queryByRole('button', { name: en.people.relatives.add })).toBeNull();
+    expect(
+      within(panel).queryByRole('button', { name: en.people.relatives.changeLink }),
+    ).toBeNull();
+    expect(panelActions(panel)).toBeNull();
+    fireEvent.click(within(form).getByRole('button', { name: en.form.cancel }));
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form')).toBeNull();
+    });
+    expect(calls.some((call) => call.route.startsWith('POST'))).toBe(false);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.people.relatives.add }),
+      );
+    });
+  });
+
+  it('draws no action of a link for a reader who may not change them', async () => {
+    openList({ ...TWO, canEdit: false });
+    renderApp(PATH);
+    const panel = await openPanel();
+    fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
+    await rowOf(panel, 'Anvar Rahimov');
+    for (const name of [
+      en.people.relatives.changeLink,
+      en.people.relatives.unlink,
+      en.people.relatives.add,
+    ]) {
+      expect(within(panel).queryByRole('button', { name })).toBeNull();
+    }
   });
 
   // Decision 8: a relative with no phone of their own gets no notices.

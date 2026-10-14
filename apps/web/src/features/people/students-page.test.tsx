@@ -12,6 +12,13 @@ import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { savedRecordPanel } from '@/testing/new-record';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import {
+  actionsAreLast,
+  edit,
+  panelActionNames,
+  panelActions,
+  savedInPanel,
+} from '@/testing/panel';
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const PATH = '/people/students';
@@ -269,7 +276,8 @@ describe('the profile of a student', () => {
   });
 
   // Issue #39, hand test of 13 October 2026, finding 5: each tab holds only
-  // its own content; the status, the record and the UID belong to Overview.
+  // its own content; the status belongs to Overview. The record's actions are
+  // the panel's, at the bottom under every tab (task 2.7c-2b-2b, decision 7).
   it('switches the whole panel with its tabs', async () => {
     openList('academic_vice_principal', {}, 'en', { canEdit: true });
     renderApp(PATH);
@@ -280,48 +288,132 @@ describe('the profile of a student', () => {
 
     fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.overview }));
     await waitFor(() => {
-      expect(titles()).toEqual(
-        expect.arrayContaining([
-          en.people.students.statusTitle,
-          en.people.students.recordTitle,
-          en.people.students.uidTitle,
-        ]),
-      );
+      expect(titles()).toContain(en.people.students.statusTitle);
     });
+    // The panel reads first: no form until its button is pressed.
+    expect(titles()).not.toContain(en.people.students.recordTitle);
+    expect(titles()).not.toContain(en.people.students.uidTitle);
+    expect(within(panel).queryByRole('form')).toBeNull();
+    const actions = [en.form.edit, en.people.students.uidTitle];
+    expect(panelActionNames(panel)).toEqual(actions);
+    expect(actionsAreLast(panel)).toBe(true);
 
     fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.contract }));
     expect(await within(panel).findByText(/SQ-2026\/017/)).toBeDefined();
     expect(titles()).not.toContain(en.people.students.statusTitle);
-    expect(titles()).not.toContain(en.people.students.recordTitle);
-    expect(titles()).not.toContain(en.people.students.uidTitle);
     expect(within(panel).queryByRole('form')).toBeNull();
+    expect(panelActionNames(panel)).toEqual(actions);
 
     fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.relatives }));
     expect(await within(panel).findByText('Dilfuza Rahimova')).toBeDefined();
     expect(titles()).not.toContain(en.people.students.statusTitle);
-    expect(titles()).not.toContain(en.people.students.recordTitle);
+    expect(panelActionNames(panel)).toEqual(actions);
+    expect(actionsAreLast(panel)).toBe(true);
   });
 
-  it('asks before a tab takes typed changes of the record away', async () => {
-    openList('academic_vice_principal', {}, 'en', { canEdit: true });
+  it('opens the record form behind Edit in the place of the tabs, and closes it with "Saved."', async () => {
+    const calls = openList(
+      'academic_vice_principal',
+      {
+        [`PUT /api/people/students/${OTKIR.id}`]: () => json(detailOf(OTKIR, { canEdit: true })),
+      },
+      'en',
+      { canEdit: true },
+    );
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('radiogroup');
+    const form = await edit(panel, 'Oʻtkir Rahimov');
+    expect(within(panel).queryByRole('radiogroup')).toBeNull();
+    expect(panelActions(panel)).toBeNull();
+    await waitFor(() => {
+      expect(document.activeElement?.closest('form')).toBe(form);
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.cancel }));
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form')).toBeNull();
+    });
+    expect(calls.some((call) => call.route.startsWith('PUT'))).toBe(false);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.form.edit }),
+      );
+    });
+
+    const again = await edit(panel, 'Oʻtkir Rahimov');
+    fireEvent.click(within(again).getByRole('button', { name: en.form.save }));
+    await savedInPanel(panel);
+    expect(calls.filter((call) => call.route.startsWith('PUT'))).toHaveLength(1);
+    expect(within(panel).getByRole('radiogroup')).toBeDefined();
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.form.edit }),
+      );
+    });
+  });
+
+  it("shows the father's name in the read view with the label of its form", async () => {
+    openList('principal', {}, 'en', { paternalName: 'Sherzod oʻgʻli', canEdit: false });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const term = await within(panel).findByText(en.people.students.paternalName, {
+      selector: 'dt',
+    });
+    expect(term.nextElementSibling?.textContent).toBe('Sherzod oʻgʻli');
+    // The Principal edits nothing: no Edit and no opener.
+    expect(panelActions(panel)).toBeNull();
+  });
+
+  it('asks before a tab takes typed changes of a relative away, and closes the form when the person leaves', async () => {
+    openList(
+      'academic_vice_principal',
+      {
+        [`GET /api/people/students/${OTKIR.id}/relatives`]: () =>
+          json({ ...MOTHER, canEdit: true }),
+      },
+      'en',
+      { canEdit: true },
+    );
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     const tabs = await within(panel).findByRole('radiogroup');
-    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.overview }));
-    const record = await within(panel).findByRole('form', { name: 'Oʻtkir Rahimov' });
-    const field = within(record).getByLabelText(en.people.students.firstName);
-    fireEvent.change(field, { target: { value: 'Oʻtkirbek' } });
+    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.relatives }));
+    fireEvent.click(await within(panel).findByRole('button', { name: en.people.relatives.add }));
+    const form = await within(panel).findByRole('form', {
+      name: en.people.relatives.formLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.relatives.fullName), {
+      target: { value: 'Nodir Rahimov' },
+    });
 
-    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.contract }));
-    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.overview }));
+    let dialog = await screen.findByRole('alertdialog');
     fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.stay }));
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).toBeNull();
     });
-    expect(within(panel).getByLabelText<HTMLInputElement>(en.people.students.firstName).value).toBe(
-      'Oʻtkirbek',
+    expect(within(panel).getByLabelText<HTMLInputElement>(en.people.relatives.fullName).value).toBe(
+      'Nodir Rahimov',
     );
+
+    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.overview }));
+    dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.unsent.leave }));
+    expect(
+      await within(panel).findByRole('heading', { name: en.people.students.statusTitle }),
+    ).toBeDefined();
+    expect(within(panel).queryByRole('form')).toBeNull();
+    expect(panelActionNames(panel)).toContain(en.form.edit);
+
+    // Back on the Relatives tab the add form is closed, not kept open.
+    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.relatives }));
+    expect(
+      await within(panel).findByRole('button', { name: en.people.relatives.add }),
+    ).toBeDefined();
+    expect(within(panel).queryByRole('form')).toBeNull();
   });
 
   it('draws only the groups a Head Tutor reads: no contract tab, no documents', async () => {
@@ -614,7 +706,7 @@ describe('editing a student', () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    const form = await within(panel).findByRole('form', { name: 'Oʻtkir Rahimov' });
+    const form = await edit(panel, 'Oʻtkir Rahimov');
     const lists = () => calls.filter((call) => call.route === 'GET /api/people/students').length;
     const before = lists();
     fireEvent.change(within(form).getByLabelText(en.people.students.jshshir), {
@@ -663,7 +755,24 @@ describe('leaving, return and delete', () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    const form = await within(panel).findByRole('form', { name: en.people.students.leaveTitle });
+    // Leave school and Delete are the danger actions at the bottom (decision 5).
+    await waitFor(() => {
+      expect(panelActionNames(panel)).toEqual([
+        en.form.edit,
+        en.people.students.uidTitle,
+        en.people.students.leaveTitle,
+        en.people.students.deleteAction,
+      ]);
+    });
+    const leave = within(panelActions(panel) ?? panel).getByRole('button', {
+      name: en.people.students.leaveTitle,
+    });
+    expect(leave.getAttribute('data-variant')).toBe('destructive');
+    const form = await edit(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
+    // The status and its history above the form.
+    expect(
+      within(panel).getByRole('heading', { name: en.people.students.statusTitle }),
+    ).toBeDefined();
     fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
       target: { value: '2026-10-20' },
     });
@@ -688,6 +797,83 @@ describe('leaving, return and delete', () => {
       await within(panel).findByRole('button', { name: en.people.students.cancelLeaving }),
     ).toBeDefined();
     expect(within(panel).getByText(/Moved to another city/)).toBeDefined();
+    // "Leave school" is gone: "Saved." and the focus on the status heading.
+    await savedInPanel(panel);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('heading', { name: en.people.students.statusTitle }),
+      );
+    });
+  });
+
+  it('keeps a typed leaving when its confirmation is cancelled', async () => {
+    const calls = openList('academic_vice_principal', {}, 'en', { canArchive: true });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
+    fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
+      target: { value: '2026-10-20' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Moved' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.students.leaveConfirmTitle,
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.confirm.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(form.isConnected).toBe(true);
+    expect(within(form).getByLabelText<HTMLInputElement>(en.people.students.reason).value).toBe(
+      'Moved',
+    );
+    expect(calls.some((call) => call.route.endsWith('/leaving'))).toBe(false);
+  });
+
+  it('records a leaving from the Relatives tab and comes back to Overview with the focus on the status', async () => {
+    let left = false;
+    openList('academic_vice_principal', {
+      [`GET /api/people/students/${OTKIR.id}`]: () =>
+        json(left ? LEFT_DETAIL() : detailOf(OTKIR, { canArchive: true })),
+      [`POST /api/people/students/${OTKIR.id}/leaving`]: () => {
+        left = true;
+        return json(LEFT_DETAIL());
+      },
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const tabs = await within(panel).findByRole('radiogroup');
+    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.relatives }));
+    await within(panel).findByText('Dilfuza Rahimova');
+    const form = await edit(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
+    fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
+      target: { value: '2026-10-20' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Moved' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: en.people.students.leaveAction,
+      }),
+    );
+    await savedInPanel(panel);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('heading', { name: en.people.students.statusTitle }),
+      );
+    });
+    expect(
+      within(within(panel).getByRole('radiogroup')).getByRole<HTMLInputElement>('radio', {
+        name: en.people.students.tabs.overview,
+      }).checked,
+    ).toBe(true);
   });
 
   it('shows no change to a reader without the archive right, and the cause without a reason', async () => {
@@ -770,10 +956,16 @@ describe('leaving, return and delete', () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimova Lola', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
-    expect(
-      await within(panel).findByRole('form', { name: en.people.students.undoTitle }),
-    ).toBeDefined();
-    const form = within(panel).getByRole('form', { name: en.people.students.returnTitle });
+    // Inactive after a leaving: Undo and Return at the bottom, no Leave.
+    await waitFor(() => {
+      expect(panelActionNames(panel)).toEqual([
+        en.form.edit,
+        en.people.students.uidTitle,
+        en.people.students.undoTitle,
+        en.people.students.returnTitle,
+      ]);
+    });
+    const form = await edit(panel, en.people.students.returnTitle, en.people.students.returnTitle);
     const type = (label: string, value: string) => {
       fireEvent.change(within(form).getByLabelText(label), { target: { value } });
     };
@@ -799,6 +991,7 @@ describe('leaving, return and delete', () => {
       reason: null,
       version: 2,
     });
+    await savedInPanel(panel);
   });
 
   it('reads the student again when someone else changed it (edge: "student changed, reload")', async () => {
@@ -817,7 +1010,8 @@ describe('leaving, return and delete', () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    const form = await within(panel).findByRole('form', { name: en.people.students.leaveTitle });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
     fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
       target: { value: '2026-10-20' },
     });
@@ -833,7 +1027,91 @@ describe('leaving, return and delete', () => {
     await waitFor(() => {
       expect(reads).toBeGreaterThan(1);
     });
-    expect(await screen.findByText(en.errors.student_changed)).toBeDefined();
+    // Still active: the form stays open with the refusal under it.
+    expect(await within(form).findByText(en.errors.student_changed)).toBeDefined();
+  });
+
+  it('closes a leaving form whose action is gone after the re-read, and keeps the refusal at the bottom', async () => {
+    let reads = 0;
+    openList('academic_vice_principal', {
+      // Someone else recorded a leaving in between.
+      [`GET /api/people/students/${OTKIR.id}`]: () => {
+        reads += 1;
+        return json(reads === 1 ? detailOf(OTKIR, { canArchive: true }) : LEFT_DETAIL());
+      },
+      [`POST /api/people/students/${OTKIR.id}/leaving`]: () =>
+        Response.json(
+          { error: { code: 'student_changed', message: 'x', requestId: 'r' } },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
+    fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
+      target: { value: '2026-10-20' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Moved' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: en.people.students.leaveAction,
+      }),
+    );
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form')).toBeNull();
+    });
+    const actions = panelActions(panel);
+    expect(actions).not.toBeNull();
+    expect(within(actions ?? panel).getByText(en.errors.student_changed)).toBeDefined();
+    expect(panelActionNames(panel)).toContain(en.people.students.cancelLeaving);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('heading', { name: en.people.students.statusTitle }),
+      );
+    });
+  });
+
+  it('closes a delete refused because the student changed and now holds data, with the refusal at the bottom', async () => {
+    let reads = 0;
+    openList('academic_vice_principal', {
+      [`GET /api/people/students/${OTKIR.id}`]: () => {
+        reads += 1;
+        return json(
+          reads === 1
+            ? detailOf(OTKIR, { canArchive: true, deletable: true })
+            : LEFT_DETAIL({ deletable: false }),
+        );
+      },
+      [`POST /api/people/students/${OTKIR.id}/delete`]: () =>
+        Response.json(
+          { error: { code: 'student_changed', message: 'x', requestId: 'r' } },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(panel, en.people.students.deleteTitle, en.people.students.deleteAction);
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Created twice' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: en.people.students.deleteConfirmTitle }),
+      ).getByRole('button', { name: en.people.students.deleteAction }),
+    );
+    await waitFor(() => {
+      expect(within(panel).queryByRole('form')).toBeNull();
+    });
+    expect(within(panelActions(panel) ?? panel).getByText(en.errors.student_changed)).toBeDefined();
+    expect(panelActionNames(panel)).not.toContain(en.people.students.deleteAction);
   });
 
   it('records a leaving for ticked rows and names the refused ones', async () => {
@@ -891,7 +1169,9 @@ describe('leaving, return and delete', () => {
     });
     fireEvent.click(screen.getByText('Rahimov Oʻtkir', { selector: 'button' }));
     const record = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    fireEvent.change(await within(record).findByLabelText(en.people.students.lastName), {
+    await within(record).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(record, 'Oʻtkir Rahimov');
+    fireEvent.change(within(form).getByLabelText(en.people.students.lastName), {
       target: { value: 'Rahimova' },
     });
     for (const box of screen.getAllByRole('checkbox').slice(1, 3)) {
@@ -1082,7 +1362,8 @@ describe('leaving, return and delete', () => {
     );
     renderApp(`${PATH}?open=${OTKIR.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    const form = await within(panel).findByRole('form', { name: en.people.students.deleteTitle });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(panel, en.people.students.deleteTitle, en.people.students.deleteAction);
     fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
       target: { value: 'Created twice' },
     });
@@ -1091,7 +1372,11 @@ describe('leaving, return and delete', () => {
       name: en.people.students.deleteConfirmTitle,
     });
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.deleteAction }));
-    expect(await within(panel).findByText(en.people.students.deleted)).toBeDefined();
+    const line = await within(panel).findByText(en.people.students.deleted);
+    // The panel's buttons are gone: the line has the focus.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(line);
+    });
     expect(calls.find((call) => call.route.endsWith('/delete'))?.body).toEqual({
       reason: 'Created twice',
       version: 1,
@@ -1153,7 +1438,12 @@ describe('the Status section', () => {
     );
     renderApp(`${PATH}?open=${GRADUATED.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Nodira Ergasheva' });
-    const form = await within(panel).findByRole('form', { name: en.people.students.restoreTitle });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(
+      panel,
+      en.people.students.restoreTitle,
+      en.people.students.restoreTitle,
+    );
     expect(
       within(form).getByLabelText<HTMLInputElement>(en.people.students.restoreFrom).value,
     ).toBe('2026-06-01');
@@ -1201,7 +1491,8 @@ describe('the Status section', () => {
     });
     renderApp(`${PATH}?open=${LOLA.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
-    const form = await within(panel).findByRole('form', { name: en.people.students.undoTitle });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(panel, en.people.students.undoTitle, en.people.students.undoTitle);
     fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
       target: { value: 'Entered for the wrong student' },
     });
@@ -1245,13 +1536,21 @@ describe('the Status section', () => {
     expect(calls.find((call) => call.route.endsWith('/leaving/cancel'))?.body).toEqual({
       version: 2,
     });
+    // Done with no form open: "Saved." at the bottom, the focus on the status heading.
+    await savedInPanel(panel);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('heading', { name: en.people.students.statusTitle }),
+      );
+    });
   });
 
   // Issue #39, hand test of 13 October 2026, finding 18 (task 2.7b-2, decision
-  // 7): the form is not drawn again by its own save, so "Saved." stays.
-  it('keeps "Saved." after a UID correction, with the new UID and an empty reason', async () => {
+  // 7): "Saved." stays after a UID correction; since task 2.7c-2b-2b the form
+  // closes and says so in the bottom row, and opens again with an empty reason.
+  it('says "Saved." after a UID correction, shows the new UID, and opens again with an empty reason', async () => {
     let detail = detailOf(OTKIR, { canEdit: true });
-    openOne('academic_vice_principal', OTKIR, detail, {
+    const calls = openOne('academic_vice_principal', OTKIR, detail, {
       [`GET /api/people/students/${OTKIR.id}`]: () => json(detail),
       [`PUT /api/people/students/${OTKIR.id}/uid`]: (body) => {
         detail = { ...detail, uid: (body as { uid: string }).uid, version: detail.version + 1 };
@@ -1259,9 +1558,10 @@ describe('the Status section', () => {
       },
     });
     renderApp(`${PATH}?open=${OTKIR.id}`);
-    const form = await screen.findByRole('form', {
-      name: en.people.students.uidLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
-    });
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const label = en.people.students.uidLabel.replace('{{name}}', 'Oʻtkir Rahimov');
+    const form = await edit(panel, label, en.people.students.uidTitle);
     fireEvent.change(within(form).getByLabelText(en.people.students.uid), {
       target: { value: '2606077' },
     });
@@ -1270,14 +1570,65 @@ describe('the Status section', () => {
     });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
 
+    await savedInPanel(panel);
+    expect(calls.find((call) => call.route.endsWith('/uid'))?.body).toEqual({
+      uid: '2606077',
+      reason: 'Typed wrong',
+      confirmUidSet: false,
+    });
+    const term = await within(panel).findByText(en.people.students.uid, { selector: 'dt' });
     await waitFor(() => {
-      expect(within(form).getByRole('status').textContent).toBe(en.form.saved);
+      expect(term.nextElementSibling?.textContent).toBe('2606077');
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(panel).getByRole('button', { name: en.people.students.uidTitle }),
+      );
+    });
+    const again = await edit(panel, label, en.people.students.uidTitle);
+    expect(within(again).getByLabelText<HTMLInputElement>(en.people.students.uid).value).toBe(
+      '2606077',
+    );
+    expect(within(again).getByLabelText<HTMLInputElement>(en.people.students.reason).value).toBe(
+      '',
+    );
+  });
+
+  it("asks before a UID of another grade's set, and keeps the correction open with what was typed when the person declines", async () => {
+    const calls = openOne('academic_vice_principal', OTKIR, detailOf(OTKIR, { canEdit: true }), {
+      [`PUT /api/people/students/${OTKIR.id}/uid`]: () =>
+        Response.json(
+          { error: { code: 'uid_set_mismatch', message: 'x', requestId: 'r' } },
+          { status: 409 },
+        ),
+    });
+    renderApp(`${PATH}?open=${OTKIR.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(
+      panel,
+      en.people.students.uidLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
+      en.people.students.uidTitle,
+    );
+    fireEvent.change(within(form).getByLabelText(en.people.students.uid), {
+      target: { value: '2509077' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
+      target: { value: 'Typed wrong' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('alertdialog', { name: en.people.students.setTitle });
+    expect(within(dialog).getByText('2509077')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.confirm.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
     });
     expect(form.isConnected).toBe(true);
     expect(within(form).getByLabelText<HTMLInputElement>(en.people.students.uid).value).toBe(
-      '2606077',
+      '2509077',
     );
-    expect(within(form).getByLabelText<HTMLInputElement>(en.people.students.reason).value).toBe('');
+    expect(calls.filter((call) => call.route.endsWith('/uid'))).toHaveLength(1);
+    expect(panelActions(panel)).toBeNull();
   });
 
   // Issue #39, hand test of 13 October 2026, findings 26 and 29 (task 2.7b-2).
@@ -1311,6 +1662,9 @@ describe('the Status section', () => {
       expect(screen.queryByRole('alertdialog')).toBeNull();
     });
     expect(calls.some((call) => call.route.endsWith('/leaving/cancel'))).toBe(false);
+    // Nothing was saved, so nothing says so (spec review of the build).
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(panelActions(panel)?.textContent).not.toContain(en.form.saved);
   });
 
   it.each([
@@ -1423,7 +1777,14 @@ describe('the Status section', () => {
           .replace('{{reason}}', 'Переезд'),
       ),
     ).toBeDefined();
-    expect(within(panel).getByRole('form', { name: ru.people.students.returnTitle })).toBeDefined();
+    expect(
+      within(panelActions(panel) ?? panel).getByRole('button', {
+        name: ru.people.students.returnTitle,
+      }),
+    ).toBeDefined();
+    expect(
+      await edit(panel, ru.people.students.returnTitle, ru.people.students.returnTitle),
+    ).toBeDefined();
   });
 });
 

@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { describe, expect, it } from 'vitest';
 import { ConfirmProvider } from '@/components/confirm-dialog';
@@ -205,6 +206,76 @@ describe('the focus after a save whose button is gone', () => {
     expect(screen.queryByRole('button', { name: 'open c' })).toBeNull();
     await waitFor(() => {
       expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'heading' }));
+    });
+  });
+});
+
+/** An action done at once that takes its own button away, and a form of the panel that is not a record form. */
+function AtOnce() {
+  const panel = usePanelEditing();
+  const [done, setDone] = useState(false);
+  return (
+    <aside data-slot="side-panel" aria-label="panel">
+      <h3 tabIndex={-1} {...panel.opener('heading')}>
+        heading
+      </h3>
+      {done || (
+        <button
+          type="button"
+          onClick={() => {
+            setDone(true);
+            panel.point('heading');
+          }}
+        >
+          act at once
+        </button>
+      )}
+      {panel.editing === 'pick' ? (
+        <form data-slot="panel-form" aria-label="picker">
+          <label>
+            search
+            <input name="search" />
+          </label>
+        </form>
+      ) : (
+        <button type="button" {...panel.opener('pick')} onClick={() => panel.start('pick')}>
+          open picker
+        </button>
+      )}
+      <output data-testid="state">{`${String(panel.editing)} ${String(panel.saved)}`}</output>
+    </aside>
+  );
+}
+
+function drawAtOnce() {
+  render(
+    <I18nextProvider i18n={createI18n('en')}>
+      <ConfirmProvider>
+        <UnsentProvider>
+          <AtOnce />
+        </UnsentProvider>
+      </ConfirmProvider>
+    </I18nextProvider>,
+  );
+}
+
+// Task 2.7c-2b-2b: the focus with no form open, and a form of the panel that is not a record form.
+describe('the focus moved by the panel without a record form', () => {
+  it('goes to the element named by point, with no form opened and nothing said saved', async () => {
+    drawAtOnce();
+    fireEvent.click(screen.getByRole('button', { name: 'act at once' }));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'heading' }));
+    });
+    expect(screen.getByTestId('state').textContent).toBe('null false');
+  });
+
+  it('puts the focus in the first field of a panel form that is not a record form', async () => {
+    drawAtOnce();
+    fireEvent.click(screen.getByRole('button', { name: 'open picker' }));
+    const form = await screen.findByRole('form', { name: 'picker' });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(within(form).getByLabelText('search'));
     });
   });
 });

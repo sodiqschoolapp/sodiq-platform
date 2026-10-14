@@ -351,6 +351,9 @@ const PANEL_FILES = [
   // The People panels (task 2.7c-2b-2a).
   'src/features/people/staff-panel.tsx',
   'src/features/people/vacancy-panel.tsx',
+  // The student and parent panels (task 2.7c-2b-2b).
+  'src/features/people/student-panel.tsx',
+  'src/features/people/parent-panel.tsx',
 ];
 
 /**
@@ -361,6 +364,9 @@ const PANEL_FILES = [
 const SECTION_FILES = [
   'src/features/people/availability-section.tsx',
   'src/features/people/account-section.tsx',
+  // Task 2.7c-2b-2b.
+  'src/features/people/student-relatives.tsx',
+  'src/features/people/student-status-section.tsx',
 ];
 
 /**

@@ -21,7 +21,9 @@ import { FailureAlert } from '@/components/failure-alert';
 import { CHECKED, CheckboxField, Field, SelectField } from '@/components/field';
 import { searchKey, searchWords } from '@/components/list/list-state';
 import { ErrorState, LoadingOutline } from '@/components/states';
-import { useRecordForm } from '@/components/form/use-record-form';
+import { useRecordForm, type RecordFormState } from '@/components/form/use-record-form';
+import { PanelActions } from '@/components/list/panel-actions';
+import { usePanelEditing, type PanelEditing } from '@/components/list/use-panel-editing';
 import { Button } from '@/components/ui/button';
 import { HistoryLink } from '@/features/audit/history-link';
 import { ReportLink } from './report-link';
@@ -46,7 +48,9 @@ const studentName = (student: { firstName: string; lastName: string }) => listNa
  * "Shows the relative's data and all linked students. Editing the phone or
  * name here changes it for every linked student"; task 2.5a). The students of
  * other branches are a count (`edge`); workplace and email are read as
- * Identity, the Principal's behind a logged show (decision 5).
+ * Identity, the Principal's behind a logged show (decision 5). The panel
+ * reads first (task 2.7c-2b-2b): Edit at the bottom opens the record's form,
+ * the same-person mark opens its picker in its section, one form at a time.
  */
 export function ParentPanel({ id, name }: { id: string; name: string }) {
   const { t } = useTranslation();
@@ -55,6 +59,7 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
   const detail = useQuery(relativeDetailQuery(branchId, id));
   const [taken, setTaken] = useState<TakenPhone | null>(null);
   const navigate = useNavigate();
+  const panel = usePanelEditing();
   const edit = useMutation({
     mutationFn: (record: RelativeEdit) =>
       answerOf(
@@ -85,6 +90,9 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
     setTaken(null);
     if (kept.id !== id) {
       setKeptId(kept.id);
+    } else {
+      // This record stays: the merge saved the phone typed into its form.
+      panel.stop({ saved: true, key: 'record' });
     }
     await invalidateRelatives(queryClient);
   };
@@ -118,40 +126,9 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
   const relative = detail.data;
   return (
     <div className="grid gap-6">
-      <RelativeTerms relative={relative} />
-      <HistoryLink kind="relative" id={relative.id} />
-      <ReportLink kind="relative" id={relative.id} />
-      <section className="grid gap-2">
-        <h3 className={SECTION_TITLE}>{t('people.relatives.students')}</h3>
-        <ul className="grid gap-1 text-sm">
-          {relative.students.map((student) => (
-            <li key={student.id} className="flex flex-wrap gap-x-2">
-              <Link
-                to="/people/students"
-                search={{ open: student.id }}
-                className="font-semibold text-link underline-offset-4 hover:underline"
-              >
-                {studentName(student)}
-              </Link>
-              <span className="text-muted-foreground">
-                {t(`people.relatives.relationships.${student.relationship}`)}
-              </span>
-              {student.mainContact && (
-                <span className="text-muted-foreground">{t('people.relatives.mainContact')}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-        {relative.elsewhere > 0 && (
-          <p className="text-sm text-muted-foreground">
-            {t('people.relatives.elsewhereCount', { count: relative.elsewhere })}
-          </p>
-        )}
-      </section>
-      {(relative.samePerson !== null || relative.samePersonElsewhere || relative.canEdit) && (
-        <SamePersonSection key={`${relative.id}-same`} relative={relative} />
-      )}
-      {relative.canEdit && (
+      {panel.editing === 'record' ? (
+        // The record's form takes the read view's place; the choices for a
+        // taken phone follow it, so its Save and Cancel stay with it.
         <section className="grid gap-3">
           <h3 className={SECTION_TITLE}>{t('people.relatives.recordTitle')}</h3>
           <RelativeForm
@@ -161,8 +138,13 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
             onSave={async (record: RelativeRecord) => {
               await edit.mutateAsync(record);
               setTaken(null);
+              panel.stop({ saved: true, key: 'record' });
             }}
             onTaken={setTaken}
+            onCancel={() => {
+              setTaken(null);
+              panel.stop();
+            }}
           />
           {taken !== null && (
             <TakenChoices
@@ -172,6 +154,7 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
               onEdit={async (body) => {
                 await edit.mutateAsync(body);
                 setTaken(null);
+                panel.stop({ saved: true, key: 'record' });
               }}
               onMerged={merged}
               onCancel={() => {
@@ -180,6 +163,63 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
             />
           )}
         </section>
+      ) : (
+        <>
+          <RelativeTerms relative={relative} />
+          <HistoryLink kind="relative" id={relative.id} />
+          <ReportLink kind="relative" id={relative.id} />
+          <section className="grid gap-2">
+            <h3 className={SECTION_TITLE}>{t('people.relatives.students')}</h3>
+            <ul className="grid gap-1 text-sm">
+              {relative.students.map((student) => (
+                <li key={student.id} className="flex flex-wrap gap-x-2">
+                  <Link
+                    to="/people/students"
+                    search={{ open: student.id }}
+                    className="font-semibold text-link underline-offset-4 hover:underline"
+                  >
+                    {studentName(student)}
+                  </Link>
+                  <span className="text-muted-foreground">
+                    {t(`people.relatives.relationships.${student.relationship}`)}
+                  </span>
+                  {student.mainContact && (
+                    <span className="text-muted-foreground">
+                      {t('people.relatives.mainContact')}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {relative.elsewhere > 0 && (
+              <p className="text-sm text-muted-foreground">
+                {t('people.relatives.elsewhereCount', { count: relative.elsewhere })}
+              </p>
+            )}
+          </section>
+          {(relative.samePerson !== null || relative.samePersonElsewhere || relative.canEdit) && (
+            <SamePersonSection key={`${relative.id}-same`} relative={relative} panel={panel} />
+          )}
+        </>
+      )}
+      {panel.editing === null && (
+        <PanelActions
+          primary={
+            relative.canEdit && (
+              <Button
+                {...panel.opener('record')}
+                onClick={() => {
+                  panel.start('record', () => {
+                    setTaken(null);
+                  });
+                }}
+              >
+                {t('form.edit')}
+              </Button>
+            )
+          }
+          saved={panel.saved}
+        />
       )}
     </div>
   );
@@ -244,6 +284,7 @@ function TakenChoices({
     },
     onSuccess: onMerged,
   });
+  // The new owner's form: its state stays here while the person looks at the merge.
   const owner = useRecordForm<
     'previousUnknown' | 'previousPhone',
     { previousPhone: string | null }
@@ -305,13 +346,14 @@ function TakenChoices({
         {taken.holder.mergeable &&
           choose('merge', t('people.relatives.mergeWith', { name: holderName }))}
         {choose('owner', t('people.relatives.newOwner'))}
-        {/* Off while a merge or a new owner is on its way: it would land after Cancel. */}
+        {/* Off while a merge or a new owner is on its way: it would land after the
+            close. Not "Cancel": the record's form has its own (finding 26). */}
         <Button
           variant="secondary"
           disabled={merge.isPending || owner.status === 'saving'}
           onClick={cancel}
         >
-          {t('confirm.cancel')}
+          {t('people.relatives.closeChoices')}
         </Button>
       </div>
       {choice === 'merge' && (
@@ -369,7 +411,9 @@ function TakenChoices({
             })}
           />
           <div className="flex flex-wrap items-center gap-3">
+            {/* Danger: a merge is not undone; the record form's Save is the one primary. */}
             <Button
+              variant="destructive"
               disabled={merge.isPending}
               onClick={() => {
                 void confirm({
@@ -395,36 +439,52 @@ function TakenChoices({
           </div>
         </div>
       )}
-      {choice === 'owner' && (
-        <form
-          className="grid gap-3"
-          aria-label={t('people.relatives.newOwner')}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void owner.submit();
-          }}
-        >
-          <CheckboxField
-            label={t('people.relatives.previousUnknown', { name: holderName })}
-            {...owner.bind('previousUnknown')}
-          />
-          {owner.bind('previousUnknown').value !== CHECKED && (
-            <Field
-              label={t('people.relatives.previousPhone', { name: holderName })}
-              type="tel"
-              autoComplete="off"
-              {...owner.bind('previousPhone')}
-            />
-          )}
-          <FailureAlert error={owner.failure} />
-          <div>
-            <Button type="submit" disabled={owner.status === 'saving'}>
-              {t('people.relatives.giveNumber')}
-            </Button>
-          </div>
-        </form>
-      )}
+      {choice === 'owner' && <NewOwnerForm owner={owner} holderName={holderName} />}
     </section>
+  );
+}
+
+/**
+ * "The number has a new owner": the earlier holder's new phone, or
+ * "unknown". Its Save is secondary: the record's form above it holds the
+ * panel's one primary (task 2.7c-2b-2b, decision 9).
+ */
+function NewOwnerForm({
+  owner,
+  holderName,
+}: {
+  owner: RecordFormState<'previousUnknown' | 'previousPhone'>;
+  holderName: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <form
+      className="grid gap-3"
+      aria-label={t('people.relatives.newOwner')}
+      onSubmit={(event) => {
+        event.preventDefault();
+        void owner.submit();
+      }}
+    >
+      <CheckboxField
+        label={t('people.relatives.previousUnknown', { name: holderName })}
+        {...owner.bind('previousUnknown')}
+      />
+      {owner.bind('previousUnknown').value !== CHECKED && (
+        <Field
+          label={t('people.relatives.previousPhone', { name: holderName })}
+          type="tel"
+          autoComplete="off"
+          {...owner.bind('previousPhone')}
+        />
+      )}
+      <FailureAlert error={owner.failure} />
+      <div>
+        <Button type="submit" variant="secondary" disabled={owner.status === 'saving'}>
+          {t('people.relatives.giveNumber')}
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -506,12 +566,11 @@ function RelativeTerms({ relative }: { relative: RelativeDetail }) {
  * panel, and for the `relatives` edit holders the mark, its change and its
  * removal. The server decides who may change a mark of another branch.
  */
-function SamePersonSection({ relative }: { relative: RelativeDetail }) {
+function SamePersonSection({ relative, panel }: { relative: RelativeDetail; panel: PanelEditing }) {
   const { t } = useTranslation();
   const { branchId } = useView();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const [picking, setPicking] = useState(false);
   const where = { header: branchHeader(), path: { id: relative.id } };
   const mark = useMutation({
     mutationFn: (staffId: string) =>
@@ -523,7 +582,7 @@ function SamePersonSection({ relative }: { relative: RelativeDetail }) {
         relativeDetailQuery(branchId, relative.id).queryKey,
         relativeDetailSchema.parse(answer),
       );
-      setPicking(false);
+      panel.stop({ saved: true, key: 'same' });
       // The staff panel shows "Also a parent".
       await invalidateStaff(queryClient);
     },
@@ -545,6 +604,8 @@ function SamePersonSection({ relative }: { relative: RelativeDetail }) {
         }),
         invalidateStaff(queryClient),
       ]);
+      // Its button is gone: the focus goes to "Mark as staff member" (task 2.7c-2b-2b).
+      panel.point('same', { saved: true });
     },
   });
   const same = relative.samePerson;
@@ -576,13 +637,17 @@ function SamePersonSection({ relative }: { relative: RelativeDetail }) {
           </span>
         </p>
       )}
-      {relative.canEdit && !picking && (
+      {/* The mark's actions give way while a form of the panel is open (task 2.7c-2b-2b). */}
+      {relative.canEdit && panel.editing === null && (
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="secondary"
+            {...panel.opener('same')}
             onClick={() => {
-              mark.reset();
-              setPicking(true);
+              panel.start('same', () => {
+                mark.reset();
+                remove.reset();
+              });
             }}
           >
             {t(marked ? 'people.relatives.changeStaff' : 'people.relatives.markStaff')}
@@ -611,8 +676,8 @@ function SamePersonSection({ relative }: { relative: RelativeDetail }) {
           <FailureAlert error={remove.error} />
         </div>
       )}
-      {relative.canEdit && picking && (
-        <StaffPicker
+      {relative.canEdit && panel.editing === 'same' && (
+        <StaffPickerForm
           current={same?.staffId ?? null}
           pending={mark.isPending}
           failure={mark.error}
@@ -621,7 +686,7 @@ function SamePersonSection({ relative }: { relative: RelativeDetail }) {
           }}
           onCancel={() => {
             mark.reset();
-            setPicking(false);
+            panel.stop();
           }}
         />
       )}
@@ -632,9 +697,11 @@ function SamePersonSection({ relative }: { relative: RelativeDetail }) {
 /**
  * A staff member of the branch, found by name (the persons of the staff list;
  * vacancies are a list of their own). The choice follows the matches: one no
- * longer among them is no choice.
+ * longer among them is no choice. The search field is drawn at once, so it
+ * takes the focus as the form opens; the matches wait on the staff list
+ * (task 2.7c-2b-2b, correction 1).
  */
-function StaffPicker({
+function StaffPickerForm({
   current,
   pending,
   failure,
@@ -652,22 +719,9 @@ function StaffPicker({
   const staff = useQuery(staffQuery(branchId));
   const [typed, setTyped] = useState('');
   const [chosen, setChosen] = useState('');
-  if (staff.isError) {
-    return (
-      <ErrorState
-        error={staff.error}
-        onRetry={() => {
-          void staff.refetch();
-        }}
-      />
-    );
-  }
-  if (staff.data === undefined) {
-    return <LoadingOutline />;
-  }
   const words = searchWords(typed);
   const nameOf = (person: { firstName: string; lastName: string }) => listName(person);
-  const matches = staff.data.staff
+  const matches = (staff.data?.staff ?? [])
     .filter((person) => person.id !== current)
     .filter((person) => {
       if (words === null) {
@@ -680,6 +734,7 @@ function StaffPicker({
   const choice = matches.some((person) => person.id === chosen) ? chosen : '';
   return (
     <form
+      data-slot="panel-form"
       className="grid gap-3"
       aria-label={t('people.relatives.markStaff')}
       onSubmit={(event) => {
@@ -699,7 +754,16 @@ function StaffPicker({
           setTyped(event.target.value);
         }}
       />
-      {matches.length === 0 ? (
+      {staff.isError ? (
+        <ErrorState
+          error={staff.error}
+          onRetry={() => {
+            void staff.refetch();
+          }}
+        />
+      ) : staff.data === undefined ? (
+        <LoadingOutline />
+      ) : matches.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('people.relatives.staffNone')}</p>
       ) : (
         <SelectField
@@ -726,7 +790,7 @@ function StaffPicker({
         <Button type="submit" disabled={pending || choice === ''}>
           {t('people.relatives.markSave')}
         </Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>
+        <Button type="button" variant="ghost" onClick={onCancel}>
           {t('people.relatives.markCancel')}
         </Button>
       </div>

@@ -304,7 +304,7 @@ How to read the task lines:
   - Build: the pattern of 2.7c-2b-1 on the staff panel (the record, the subjects, the availability, the branches, the status, the account's create, give, end and change of subjects) and the vacancy panel (the record, the availability, close, reopen and delete); the staff read view shows every field of the record.
   - Done when: the staff and vacancy side panels have their actions at the bottom, one primary in view, `people-staff` and `people-vacancies` are out of `PANEL_ACTIONS_LATER`, and `e2e/pages.spec.ts` passes again with its screenshots in the report.
 
-- [ ] **2.7c-2b-2b Record actions at the bottom of the student and parent panels** (2.7c-2b-2 split in two, pull request #84, decision 1)
+- [x] **2.7c-2b-2b Record actions at the bottom of the student and parent panels** (2.7c-2b-2 split in two, pull request #84, decision 1)
   - Read: `docs/design-system.md` (Layout shell, Lists; Buttons), `.claude/rules/web.md`, the plans of pull requests #81, #83 and #84, `docs/decisions.md` (tasks 2.7c-2b-1 and 2.7c-2b-2a).
   - Build: the same pattern on the panels of students (the record, the UID correction, the five status forms, the photo, the relatives tab with the link editor and "Add relative") and parents (the record, the phone owner choices, the same-person mark).
   - Done when: every People side panel has its actions at the bottom, one primary in view, `PANEL_ACTIONS_LATER` of `e2e/pages.spec.ts` is empty, and `e2e/pages.spec.ts` passes again with its screenshots in the report.

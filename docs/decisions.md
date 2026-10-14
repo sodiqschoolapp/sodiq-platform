@@ -213,6 +213,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 14 October 2026: record actions at the bottom of the student and parent panels (task 2.7c-2b-2b)
+
+Plan approved on pull request #85 with correction 1; decisions 1 to 15 confirmed there; 1, 2 and 3 marked Look first. The decisions after 15 came from the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (tests changed by a requirement). Page and browser tests that type into a student, relative or parent form press its opener first; a form saved twice is opened again; "Saved." is read in the bottom row; bodies, prompts and refusals stay asserted. The UID test now reads "Saved." in the bottom row and an empty reason when the form opens again | Decision 1; build |
+| **Look first** (a pinned list). `PANEL_ACTIONS_LATER` is empty | Decision 2 |
+| **Look first** (a pinned list removed). The list and `checkPage`'s `panelActionsLater` are removed: no side panel can skip the check | Decision 3 |
+| The student's read view gains the father's name; Edit is the one primary; Leave school and Delete are danger, the other status actions and "Correct the UID" secondary; the openers reuse their forms' titles | Decisions 4 to 6 |
+| The record's actions sit under every tab; a record form takes the place of the tabs; a tab change asks and closes an open form | Decision 7 |
+| The parent panel has Edit alone; with its form open "Give the number" is secondary, Merge danger, the choices' Cancel is "Close the choices" | Decisions 8, 9 |
+| A relative row keeps "Change the link" and "Unlink" (only with another relative linked); the main contact's Unlink opens the choice first (`UnlinkChoiceForm`, named "Unlink <name>", `people.relatives.unlinkLabel`) | Decision 10; build |
+| The photo, the mark's Remove and the identity Show stay in their parts; the photo, Remove and the row actions give way while a form is open | Decision 11 |
+| `usePanelEditing().point(key)` moves the focus with no form open; the status heading after a status change (the panel returns to Overview), "Add relative" after an unlink, the "deleted" line after a delete | Decision 12 |
+| The staff picker's Cancel is quiet; it opens through the panel with the search field drawn at once, the matches waiting on the staff list inside the form; a form of the panel that is not a `RecordForm` carries `data-slot="panel-form"` and takes the focus as it opens | Decision 13; correction 1 |
+| A status form is drawn only while its action is allowed, keyed by `version`; after "student changed" the re-read closes a form whose action is gone (in the form's `onStale`, not an effect) and the refusal shows in the bottom row; a form whose action is gone by any other re-read is not drawn and the panel reads as with none open | Decision 14; build |
+| The test helper `edit` looks for its button in the bottom row first: "Edit" and the mark's "Change" are both "Изменить" in Russian | Build |
+| "Cancel the leaving" declined says nothing (the mutation is reset); "Saved." follows an at-once action that saved (an unlink without a choice, the mark removed: `point(key, { saved: true })`), as "Cancel the leaving" and the vacancy's close | Spec review of the build |
+| A delete refused with "student changed" closes like the other status forms when the re-read takes it away; the focus goes to the status heading; the mark's Remove gives the focus to "Mark as staff member"; the parts of the student panel see a form not drawn as no open form | Spec review of the build |
+
 ## 14 October 2026: record actions at the bottom of the staff and vacancy panels (task 2.7c-2b-2a)
 
 Plan approved on pull request #84 with no correction; decisions 1 to 13 confirmed there; 1, 2 and 3 marked Look first. The decisions after 13 came from the build and its spec review. Flagged on issue #42.

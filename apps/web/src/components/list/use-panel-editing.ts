@@ -22,9 +22,30 @@ export interface PanelEditing {
    * that stays (task 2.7c-2b-2a).
    */
   stop: (how?: { saved?: boolean; key?: string; focus?: string }) => void;
+  /**
+   * Gives the focus to the element marked `opener(key)` after the next
+   * render, with no form open: an action done at once that takes its own
+   * button away ("Cancel the leaving", an unlink) hands it to a part that
+   * stays. `editing` is left as it is, and `saved` too unless `saved`
+   * says the action saved something (task 2.7c-2b-2b).
+   */
+  point: (key: string, how?: { saved?: boolean }) => void;
   /** Put on the button that opens a form: the focus comes back to it. */
   opener: (key: string) => { 'data-opens': string };
 }
+
+/**
+ * The fields a form of the panel opens with: a record form, or a form of the
+ * panel that is not one (the staff picker, the choice of a new main contact),
+ * marked `data-slot="panel-form"` (task 2.7c-2b-2b, correction 1).
+ */
+const FIRST_FIELD = ['record-form', 'panel-form']
+  .flatMap((slot) =>
+    ['input:not([type="hidden"])', 'select', 'textarea'].map(
+      (field) => `form[data-slot="${slot}"] ${field}`,
+    ),
+  )
+  .join(', ');
 
 /**
  * One form open at a time in a side panel (design system: one primary per
@@ -37,6 +58,8 @@ export function usePanelEditing(): PanelEditing {
   const leave = useLeave();
   const [editing, setEditing] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // Counts the calls of `point`: the focus moves with no change of `editing`.
+  const [pointed, setPointed] = useState(0);
   // Where the focus goes once the next render is drawn.
   const focus = useRef<{ to: 'field' } | { to: 'opener'; key: string } | null>(null);
   const open = useRef<string | null>(null);
@@ -50,15 +73,11 @@ export function usePanelEditing(): PanelEditing {
       return;
     }
     if (next.to === 'field') {
-      panel
-        .querySelector<HTMLElement>(
-          'form[data-slot="record-form"] input:not([type="hidden"]), form[data-slot="record-form"] select, form[data-slot="record-form"] textarea',
-        )
-        ?.focus();
+      panel.querySelector<HTMLElement>(FIRST_FIELD)?.focus();
     } else {
       panel.querySelector<HTMLElement>(`[data-opens="${CSS.escape(next.key)}"]`)?.focus();
     }
-  }, [editing]);
+  }, [editing, pointed]);
 
   const start = useCallback(
     (key: string, fresh?: () => void) => {
@@ -93,10 +112,18 @@ export function usePanelEditing(): PanelEditing {
     setEditing(null);
   }, []);
 
+  const point = useCallback((key: string, how?: { saved?: boolean }) => {
+    focus.current = { to: 'opener', key };
+    if (how?.saved === true) {
+      setSaved(true);
+    }
+    setPointed((count) => count + 1);
+  }, []);
+
   const opener = useCallback((key: string) => ({ 'data-opens': key }), []);
 
   return useMemo(
-    () => ({ editing, saved, start, stop, opener }),
-    [editing, saved, start, stop, opener],
+    () => ({ editing, saved, start, stop, point, opener }),
+    [editing, saved, start, stop, point, opener],
   );
 }
