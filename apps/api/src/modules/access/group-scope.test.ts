@@ -10,15 +10,14 @@ const YALE = '0199a000-0000-7000-8000-0000000000c2';
 const held = (
   role: CurrentAssignment['role'],
   fields: Partial<CurrentAssignment> = {},
-): CurrentAssignment =>
-  ({
-    id: `assignment-${role}`,
-    role,
-    branchId: 'north',
-    subjectIds: [],
-    classIds: [],
-    ...fields,
-  });
+): CurrentAssignment => ({
+  id: `assignment-${role}`,
+  role,
+  branchId: 'north',
+  subjectIds: [],
+  classIds: [],
+  ...fields,
+});
 
 const group = { subjectId: MATHS.toUpperCase(), classIds: [OXFORD.toUpperCase()] };
 
