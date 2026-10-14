@@ -141,6 +141,14 @@ export const AUDIT_ACTION_GROUPS = {
     'relative.same_person',
     'relative.same_person_removed',
   ],
+  classes: [
+    'class.create',
+    'class.edit',
+    'class.archive',
+    'class.restore',
+    'class.tutor_given',
+    'class.tutor_ended',
+  ],
   exports: [
     'building.export',
     'room.export',
@@ -149,6 +157,7 @@ export const AUDIT_ACTION_GROUPS = {
     'staff.export',
     'vacancy.export',
     'student.export',
+    'class.export',
     'student.personal_data_report',
     'staff.personal_data_report',
     'relative.personal_data_report',

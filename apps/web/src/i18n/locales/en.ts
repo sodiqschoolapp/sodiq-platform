@@ -214,6 +214,25 @@ export const en = {
     same_person_vacancy: 'A vacancy is not a person. Choose a staff member.',
     merge_marks_differ:
       'These relatives are marked as two different staff members. Remove one of the marks, then merge.',
+    class_year_closed:
+      'The academic year of this class is closed. Its classes and Tutors stay as they were.',
+    class_needs_year:
+      'This branch has no planned or current academic year. Ask the Super Admin to add one.',
+    class_changed: 'Someone changed this class a moment ago. Reload it, then make the change again.',
+    class_archived: 'This class is archived. Restore it first.',
+    room_closed: 'This room is closed. Choose another room.',
+    tutor_language:
+      'This person does not teach in the language of the class. Choose another person, or add the language to their staff record.',
+    tutor_language_held:
+      'This person tutors a class in that language. Give that class another Tutor first, then remove the language.',
+    class_tutor_taken:
+      'The class already has a Tutor of this kind at that time. End that one first, or choose a later date.',
+    tutor_not_tutor: 'This person does not hold the Tutor role in this branch. Choose a Tutor.',
+    tutor_outside_role:
+      'The Tutor role of this person does not cover these dates. Choose dates within the role.',
+    tutor_date_past: 'The date is in the past. Choose today or a later date.',
+    tutor_ended: 'This Tutor has already ended. Reload the class.',
+    tutor_ends_by_then: 'This Tutor already ends on or before that date. Nothing changed.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -1820,6 +1839,7 @@ export const en = {
       people: 'People',
       exports: 'Exports',
       shows: 'Hidden fields shown',
+      classes: 'Classes',
     },
     scopes: {
       branch: 'This branch',
@@ -1851,6 +1871,7 @@ export const en = {
       day_template: 'Day template',
       vacancy: 'Vacancy',
       audit_entry: 'Log entry',
+      class: 'Class',
     },
     actions: {
       auth: {
@@ -2038,6 +2059,15 @@ export const en = {
         same_person_removed: 'Mark "same person" removed',
         show: 'Hidden fields of a relative shown',
         personal_data_report: 'Personal data report of a relative produced',
+      },
+      class: {
+        create: 'Class created',
+        edit: 'Class changed',
+        archive: 'Class archived',
+        restore: 'Class restored',
+        tutor_given: 'Tutor of a class given',
+        tutor_ended: 'Tutor of a class ended',
+        export: 'Classes exported',
       },
       audit: {
         entry_shown: 'Hidden values of a log entry shown',

@@ -28,6 +28,7 @@ export const EXPORT_LISTS = [
   'divisions',
   'subjects',
   'students',
+  'classes',
 ] as const;
 
 export type ExportList = (typeof EXPORT_LISTS)[number];
@@ -96,6 +97,17 @@ export const SUBJECT_EXPORT_COLUMNS = [
  * (`04`: "Phone numbers are not shown in the list"; decision 2). A web test
  * pins both parts.
  */
+/** The class list (task 3.1a): the class shown as "7 Oxford", its year, language, Tutor, main classroom, maximum size and status. */
+export const CLASS_EXPORT_COLUMNS = [
+  'name',
+  'year',
+  'language',
+  'tutor',
+  'mainRoom',
+  'maxSize',
+  'status',
+] as const;
+
 export const STUDENT_EXPORT_COLUMNS = [
   'uid',
   'name',
@@ -178,6 +190,7 @@ export type BuildingExportColumn = (typeof BUILDING_EXPORT_COLUMNS)[number];
 export type RoomExportColumn = (typeof ROOM_EXPORT_COLUMNS)[number];
 export type DivisionExportColumn = (typeof DIVISION_EXPORT_COLUMNS)[number];
 export type SubjectExportColumn = (typeof SUBJECT_EXPORT_COLUMNS)[number];
+export type ClassExportColumn = (typeof CLASS_EXPORT_COLUMNS)[number];
 
 /**
  * The contact columns of the staff list, left out of the Principal's export
@@ -248,6 +261,7 @@ export const roomExportSchema = exportRequestSchema(ROOM_EXPORT_COLUMNS);
 export const divisionExportSchema = exportRequestSchema(DIVISION_EXPORT_COLUMNS);
 export const subjectExportSchema = exportRequestSchema(SUBJECT_EXPORT_COLUMNS);
 export const studentExportSchema = exportRequestSchema(STUDENT_EXPORT_COLUMNS);
+export const classExportSchema = exportRequestSchema(CLASS_EXPORT_COLUMNS);
 
 export type StaffExport = z.infer<typeof staffExportSchema>;
 export type VacancyExport = z.infer<typeof vacancyExportSchema>;
@@ -256,6 +270,7 @@ export type RoomExport = z.infer<typeof roomExportSchema>;
 export type DivisionExport = z.infer<typeof divisionExportSchema>;
 export type SubjectExport = z.infer<typeof subjectExportSchema>;
 export type StudentExport = z.infer<typeof studentExportSchema>;
+export type ClassExport = z.infer<typeof classExportSchema>;
 
 /** The texts of one list's file: its name (sheet and file) and the heading of each column. */
 export interface ExportListTexts<Column extends string> {
@@ -277,6 +292,7 @@ export interface ExportTexts {
   divisions: ExportListTexts<DivisionExportColumn>;
   subjects: ExportListTexts<SubjectExportColumn>;
   students: ExportListTexts<StudentExportColumn>;
+  classes: ExportListTexts<ClassExportColumn>;
   /** The texts of the cells of the student file, as the student list and profile write them. */
   student: {
     statuses: Record<StudentStatus, string>;
@@ -378,6 +394,18 @@ const en: ExportTexts = {
       daily: 'Daily distribution',
       quarterly: 'Quarters not set',
       switches: 'Switches',
+      status: 'Status',
+    },
+  },
+  classes: {
+    name: 'Classes',
+    columns: {
+      name: 'Class',
+      year: 'Academic year',
+      language: 'Language of instruction',
+      tutor: 'Tutor',
+      mainRoom: 'Main classroom',
+      maxSize: 'Maximum size',
       status: 'Status',
     },
   },
@@ -585,6 +613,18 @@ const ru: ExportTexts = {
       status: 'Статус',
     },
   },
+  classes: {
+    name: 'Классы',
+    columns: {
+      name: 'Класс',
+      year: 'Учебный год',
+      language: 'Язык обучения',
+      tutor: 'Тьютор',
+      mainRoom: 'Основной кабинет',
+      maxSize: 'Наибольший размер',
+      status: 'Состояние',
+    },
+  },
   students: {
     name: 'Ученики',
     columns: {
@@ -785,6 +825,18 @@ const uz: ExportTexts = {
       daily: 'Kunlik taqsimot',
       quarterly: 'Vaznsiz choraklar',
       switches: 'Xususiyatlar',
+      status: 'Holati',
+    },
+  },
+  classes: {
+    name: 'Sinflar',
+    columns: {
+      name: 'Sinf',
+      year: 'Oʻquv yili',
+      language: 'Taʼlim tili',
+      tutor: 'Tyutor',
+      mainRoom: 'Asosiy xona',
+      maxSize: 'Eng koʻp oʻquvchi',
       status: 'Holati',
     },
   },

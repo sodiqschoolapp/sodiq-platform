@@ -215,6 +215,16 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   scopes of the Super Admin, are decided in the route from every current
  *   assignment. A new area for new routes, decided without the owner on pull
  *   request #75 (decision 2), confirmed at its review and flagged on issue #42.
+ * - `classes` (`05`, Class; `edge/students-classes-groups`; task 3.1a): the
+ *   Super Admin and the Academic Vice Principal view, create, edit, archive
+ *   and export (`02`: "Full edit of students, classes, groups"), the Tutors
+ *   of a class included (decision 8); the Principal views and exports (`02`:
+ *   "Views everything in the branch"; edge: "Exports are allowed"); the
+ *   Vice Principal for Spiritual and Moral Education, the Head Tutor, the
+ *   Head Teacher and the Senior Head Teacher view (`02`). The Tutor gets the
+ *   classes of their own class scope in task 3.1c; the Teacher none. A new
+ *   area for new routes, decided without the owner on pull request #88
+ *   (decision 5, Look first), confirmed at its review and flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -321,6 +331,15 @@ export const PERMISSIONS = freezeTable({
   }),
   student_graduates: rows({
     super_admin: ['edit'],
+  }),
+  classes: rows({
+    super_admin: ['view', 'create', 'edit', 'archive', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive', 'export'],
+    spiritual_vice_principal: ['view'],
+    head_tutor: ['view'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
   }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],

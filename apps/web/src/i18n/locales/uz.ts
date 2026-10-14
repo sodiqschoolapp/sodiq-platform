@@ -221,6 +221,25 @@ export const uz: Texts<'one' | 'other'> = {
     same_person_vacancy: 'Boʻsh oʻrin shaxs emas. Xodimni tanlang.',
     merge_marks_differ:
       'Bu qarindoshlar ikki xil xodim deb belgilangan. Belgilardan birini olib tashlang, soʻng birlashtiring.',
+    class_year_closed:
+      'Bu sinfning oʻquv yili yopilgan. Uning sinflari va tyutorlari avvalgidek qoladi.',
+    class_needs_year:
+      'Bu filialda rejalashtirilgan yoki joriy oʻquv yili yoʻq. Uni qoʻshishni Super administratordan soʻrang.',
+    class_changed: 'Kimdir bu sinfni hozirgina oʻzgartirdi. Uni qayta yuklang va oʻzgarishni yana kiriting.',
+    class_archived: 'Bu sinf arxivda. Avval uni tiklang.',
+    room_closed: 'Bu xona yopilgan. Boshqa xonani tanlang.',
+    tutor_language:
+      'Bu shaxs sinf tilida dars bermaydi. Boshqa shaxsni tanlang yoki tilni uning xodim kartasiga qoʻshing.',
+    tutor_language_held:
+      'Bu shaxs shu tildagi sinfning tyutori. Avval oʻsha sinfga boshqa tyutor tayinlang, soʻng tilni olib tashlang.',
+    class_tutor_taken:
+      'Sinfda shu vaqtda bu turdagi tyutor allaqachon bor. Avval uni yakunlang yoki keyingi sanani tanlang.',
+    tutor_not_tutor: 'Bu shaxsda bu filialda tyutor roli yoʻq. Tyutorni tanlang.',
+    tutor_outside_role:
+      'Bu shaxsning tyutor roli bu sanalarni qamramaydi. Rol doirasidagi sanalarni tanlang.',
+    tutor_date_past: 'Sana oʻtib ketgan. Bugungi yoki keyingi sanani tanlang.',
+    tutor_ended: 'Bu tyutor allaqachon yakunlangan. Sinfni qayta yuklang.',
+    tutor_ends_by_then: 'Bu tyutor shu sanada yoki undan oldin yakunlanadi. Hech narsa oʻzgarmadi.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
@@ -1839,6 +1858,7 @@ export const uz: Texts<'one' | 'other'> = {
       people: 'Odamlar',
       exports: 'Eksportlar',
       shows: 'Koʻrsatilgan yashirin maydonlar',
+      classes: 'Sinflar',
     },
     scopes: {
       branch: 'Shu filial',
@@ -1870,6 +1890,7 @@ export const uz: Texts<'one' | 'other'> = {
       day_template: 'Kun shabloni',
       vacancy: 'Boʻsh oʻrin',
       audit_entry: 'Jurnal yozuvi',
+      class: 'Sinf',
     },
     actions: {
       auth: {
@@ -2057,6 +2078,15 @@ export const uz: Texts<'one' | 'other'> = {
         same_person_removed: '"Bir shaxs" belgisi olib tashlandi',
         show: 'Qarindoshning yashirin maydonlari koʻrsatildi',
         personal_data_report: 'Qarindoshning shaxsiy maʼlumotlar hisoboti tuzildi',
+      },
+      class: {
+        create: 'Sinf yaratildi',
+        edit: 'Sinf oʻzgartirildi',
+        archive: 'Sinf arxivlandi',
+        restore: 'Sinf tiklandi',
+        tutor_given: 'Sinfga tyutor tayinlandi',
+        tutor_ended: 'Sinf tyutori yakunlandi',
+        export: 'Sinflar eksport qilindi',
       },
       audit: {
         entry_shown: 'Jurnal yozuvining yashirin qiymatlari koʻrsatildi',

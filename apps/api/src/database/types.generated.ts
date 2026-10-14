@@ -161,6 +161,37 @@ export interface CalendarEntries {
   name: string;
 }
 
+export interface Classes {
+  academic_year_id: string;
+  archived_at: Timestamp | null;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  grade: number;
+  id: Generated<string>;
+  language: string;
+  main_room_id: string | null;
+  max_size: number;
+  name: string;
+  name_key: Generated<string | null>;
+  version: Generated<number>;
+}
+
+export interface ClassTutors {
+  assignment_id: string;
+  branch_id: string;
+  class_id: string;
+  created_at: Generated<Timestamp>;
+  end_cause: string | null;
+  ended_by: string | null;
+  given_by: string;
+  id: Generated<string>;
+  kind: string;
+  own_until: Timestamp | null;
+  valid_from: Timestamp;
+  valid_until: Timestamp | null;
+  written_xact: Generated<string>;
+}
+
 export interface DayTemplateAssignments {
   branch_id: string;
   created_at: Generated<Timestamp>;
@@ -608,6 +639,8 @@ export interface DB {
   branches: Branches;
   buildings: Buildings;
   calendar_entries: CalendarEntries;
+  class_tutors: ClassTutors;
+  classes: Classes;
   day_template_assignments: DayTemplateAssignments;
   day_template_slots: DayTemplateSlots;
   day_template_versions: DayTemplateVersions;

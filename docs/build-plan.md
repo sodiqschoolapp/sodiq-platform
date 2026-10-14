@@ -322,12 +322,24 @@ How to read the task lines:
 
 ## Phase 3. Classes, groups and teaching load
 
-- [ ] **3.1 Classes**
-  - Read: `05`, `edge/students-classes-groups`, `edge/developer-rules`.
-  - Build: class as grade plus name (shown as "7 Oxford"), language of instruction, Tutor, main classroom, maximum size; class membership as date ranges that cannot overlap (database constraint); class scope for Tutors in the permission guard; class cards and list.
-  - Done when: the database refuses a student in two classes on one date and the Tutor language rule is enforced.
-  - From 2.4a (pull request #67): the class, groups and tutor columns and the class, group and language filters of the student list (`04`); a Tutor opens the profiles of their own class and reads its Contact group (`02`; until then `GET people/students/:id` refuses a Tutor-only reader, decision 6); an active student with no class is allowed only before their start date (`edge/students-classes-groups`, "A student is enrolled in August before classes are formed").
-  - From 2.4b-2 (pull request #70): Tutors export the students of their own class (`students` `export` with the class scope; `edge/people-roles-accounts`: "Tutors export their own class"), with a test that a Tutor's export with the consent filter is refused (`StudentExports`, unreachable while every exporter reads the Financial group); the `groups` and `tutor` columns join `STUDENT_EXPORT_COLUMNS` and lose `exported: false` once they hold data (3.1, 3.2); the "No class" counter (`GET people/students/no-class`) and the "No class" filter read the class memberships instead of counting every active student.
+- [ ] **3.1a Classes and their Tutors** (3.1 split in three, pull request #88, decision 1)
+  - Read: `05`, `edge/students-classes-groups`, `edge/developer-rules`, `edge/academic-year`, `edge/people-roles-accounts`, the plan of pull request #88.
+  - Build: class as grade plus name (shown as "7 Oxford"), language of instruction, main classroom, maximum size, academic year; the list, the cards and the side panel; Tutors of a class with dates and acting Tutors (`class_tutors`), named by the Academic Vice Principal; the Tutor language rule in the database from the class, the Tutor and the staff record; the "classes" item of the setup checklist.
+  - Done when: the Tutor language rule is enforced by the database from all three sides, and a Tutor row follows the end of its role.
+
+- [ ] **3.1b Class membership** (3.1 split in three, pull request #88, decision 1)
+  - Read: `05`, `edge/students-classes-groups`, `edge/developer-rules`, the plan of pull request #88.
+  - Build: class membership as date ranges that cannot overlap (database constraint); the maximum size as a hard limit counting scheduled joins and leaves, on every path; "Put into a class" (the bulk action of the student list and the class's Students tab); the student count of the class card; the student record's Academic block (class, Tutor, main classroom); the refusal to archive a class with members in force or planned.
+  - Done when: the database refuses a student in two classes on one date.
+  - From 2.4a (pull request #67): the class, groups and tutor columns and the class, group and language filters of the student list (`04`); an active student with no class is allowed only before their start date (`edge/students-classes-groups`, "A student is enrolled in August before classes are formed").
+  - From 2.4b-2 (pull request #70): the `groups` and `tutor` columns join `STUDENT_EXPORT_COLUMNS` and lose `exported: false` once they hold data (3.1, 3.2); the "No class" counter (`GET people/students/no-class`) and the "No class" filter read the class memberships instead of counting every active student.
+
+- [ ] **3.1c Class scope for Tutors** (3.1 split in three, pull request #88, decision 1)
+  - Read: `02`, `edge/people-roles-accounts`, `edge/students-classes-groups`, the plan of pull request #88.
+  - Build: class scope for Tutors in the permission guard (`classIds` on the current assignment, from `class_tutors`; `class-scope.ts` beside `subject-scope.ts`); the Tutor's "Classes" menu item and their own classes (a decision of its own: the Tutor menu was decided at 0.8c, pull request #27).
+  - Done when: a Tutor reads their own class and nothing of another class, with allow and refuse tests on every route that takes the scope.
+  - From 2.4a (pull request #67): a Tutor opens the profiles of their own class and reads its Contact group (`02`; until then `GET people/students/:id` refuses a Tutor-only reader, decision 6).
+  - From 2.4b-2 (pull request #70): Tutors export the students of their own class (`students` `export` with the class scope; `edge/people-roles-accounts`: "Tutors export their own class"), with a test that a Tutor's export with the consent filter is refused (`StudentExports`, unreachable while every exporter reads the Financial group).
 
 - [ ] **3.2 Groups and splits**
   - Read: `05`, `06` (Model, Rules), `03` (Slot types and day templates), `edge/timetable` (Structure), `edge/time-dates-calendar`, `edge/students-classes-groups`.

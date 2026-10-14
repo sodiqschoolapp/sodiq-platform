@@ -303,6 +303,32 @@ export const ERROR_CODES = [
   'same_person_vacancy',
   /** Two relatives marked as the same person as two different staff members are not merged (task 2.5b-2, decision 5). */
   'merge_marks_differ',
+  /** The academic year of the class is closed: a class of a closed year and its Tutors stay as they were (`edge/academic-year`; task 3.1a, decision 18). */
+  'class_year_closed',
+  /** The branch has no planned or current academic year to create a class in (task 3.1a, decision 6). */
+  'class_needs_year',
+  /** The class changed since it was read: read it again (task 3.1a). */
+  'class_changed',
+  /** The class is archived: restore it first (task 3.1a, decision 10). */
+  'class_archived',
+  /** The room chosen as the main classroom is closed (task 3.1a, decision 7). */
+  'room_closed',
+  /** The person does not teach in the class's language (`05`, Language of instruction: "The same holds when a Tutor is given a class"; task 3.1a). */
+  'tutor_language',
+  /** A language is removed from a person who tutors a class of that language, now or planned (task 3.1a, decision 16). `details` names the class when it is of the branch. */
+  'tutor_language_held',
+  /** The class has another Tutor, or another acting Tutor, at some moment of that time (task 3.1a, decision 15). */
+  'class_tutor_taken',
+  /** The assignment chosen is not a Tutor role of the branch (task 3.1a, decision 8). */
+  'tutor_not_tutor',
+  /** The Tutor role of the person does not cover those dates: a class is held within the role (task 3.1a, decision 9). */
+  'tutor_outside_role',
+  /** A Tutor row begins and ends today or later (task 3.1a, decision 9). */
+  'tutor_date_past',
+  /** The Tutor row has already ended, or was withdrawn (task 3.1a). */
+  'tutor_ended',
+  /** The Tutor row already ends on or before that date (task 3.1a). */
+  'tutor_ends_by_then',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

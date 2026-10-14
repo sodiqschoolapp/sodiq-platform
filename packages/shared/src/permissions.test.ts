@@ -158,6 +158,28 @@ describe('a frozen permission table', () => {
     }
   });
 
+  // Task 3.1a, decision 5 of pull request #88 (Look first).
+  it('gives the classes to the editors of 02, their exports to the Principal, and the list to its readers', () => {
+    const editors = ['super_admin', 'academic_vice_principal'];
+    const viewers = [
+      'spiritual_vice_principal',
+      'head_tutor',
+      'senior_head_teacher',
+      'head_teacher',
+    ];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.classes[role], role).toEqual(
+        editors.includes(role)
+          ? ['view', 'create', 'edit', 'archive', 'export']
+          : role === 'principal'
+            ? ['view', 'export']
+            : viewers.includes(role)
+              ? ['view']
+              : [],
+      );
+    }
+  });
+
   // Task 2.6a, decision 2 of pull request #75: edge/people-roles-accounts,
   // "The Super Admin reads all; the Principal and Academic Vice Principal
   // read their branch".
@@ -184,6 +206,7 @@ describe('a frozen permission table', () => {
       'audit_log',
       'branches',
       'calendar',
+      'classes',
       'current_period',
       'day_templates',
       'divisions',

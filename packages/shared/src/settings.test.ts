@@ -85,7 +85,7 @@ describe('the settings of a branch', () => {
     expect(INSTRUCTION_LANGUAGES).toEqual(['uz', 'ru']);
   });
 
-  // `edge/academic-year`: the fixed order of the checklist; "subjects and weights" from task 2.1.
+  // `edge/academic-year`: the fixed order of the checklist; "subjects and weights" from task 2.1, "classes" from task 3.1a.
   it('keeps the checklist in the order of the spec', () => {
     expect(CHECKLIST_ITEMS).toEqual([
       'branch',
@@ -97,6 +97,8 @@ describe('the settings of a branch', () => {
       'defaultTemplate',
       'calendar',
       'subjects',
+      // Task 3.1a, decision 12.
+      'classes',
     ]);
   });
 });
