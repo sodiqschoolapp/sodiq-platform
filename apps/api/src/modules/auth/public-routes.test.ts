@@ -90,6 +90,7 @@ describe('the routes that work without sign-in', () => {
       'GET /api/setup/academic-years',
       'GET /api/setup/attendance-values',
       'GET /api/setup/branch',
+      'GET /api/setup/branches',
       'GET /api/setup/buildings',
       'GET /api/setup/calendar-day',
       'GET /api/setup/calendar-entries',
