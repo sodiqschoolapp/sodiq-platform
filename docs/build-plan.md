@@ -430,7 +430,7 @@ How to read the task lines:
   - Done when: the boundary examples in the spec pass (for example 49.5, and the year case of 49.475) and the reference-journal test runs on at least one sample.
   - From 1.6 (pull request #49, decision 5): the Settings page shows the grade bands as text of the three locale files (`setup.settings.gradeBands`); once the bands are in `packages/calc`, the page reads them from there and a test compares.
 
-- [ ] **4.3 Exemptions, flags and special outcomes**
+- [x] **4.3 Exemptions, flags and special outcomes** (pull request #104)
   - Read: `07` (Exemptions), `edge/exemptions`, `edge/calculation`.
   - Build: exempt lessons left out; the "Exempt" and "Not assessed" outcomes; the few-lessons flag; the attendance-only flag; start-quarter counting from the go-live date; the stored inputs and module version that go with each final result.
   - Done when: every row of the two edge-case tables has a test.
@@ -566,6 +566,7 @@ How to read the task lines:
   - Read: `07` (Opening a journal, Layout, Who can do what), `12`.
   - Build: the AG Grid Community grid with pinned student columns, lesson columns grouped by date, scroll to the nearest date, summary columns from `packages/calc`, the bottom row, student search, and lesson mode for today's lesson.
   - Done when: the grid meets the speed targets in `12` with a full quarter of data.
+  - From 4.3 (pull request #104, row table): `edge/calculation`, "The month switch in the journal": "It shows the averages over that month's lessons. The month result uses the quarter's weights without the rating exam and is labelled so", from `packages/calc`.
 
 - [ ] **6.3 Attendance**
   - Read: `07` (Entering data), `edge/journal` (Entering, Attendance figures).
@@ -612,6 +613,7 @@ How to read the task lines:
   - Done when: a non-rating subject has no exam column.
   - From 2.1 (pull request #52, decision 4): `edge/calculation`: "In a started quarter the change is refused while scores exist." `PUT /api/setup/subjects/:id` refuses a change of the rating exam switch or the journal type while a started quarter holds scores of the subject, with its test.
   - From 2.4b-1 (pull request #68): the tables of numbers and comments reference `students` with no action, as the line of 6.1 says, so a student with them is never deleted.
+  - From 4.3 (pull request #104, row table): reads `edge/calculation`, "The rating exam" (one column per rating journal and quarter, an exam date set by the teacher or the Academic Vice Principal, whole numbers 0 to 100 from that date with the edit period and unlock of a lesson; a score, "did not sit" set by the teacher, or "exempt" set only by the Academic Vice Principal; a late sitting or a retake replaces the score with a required reason, history kept), "A student is exempt on the exam day" (the cell shows "exempt on exam day, pending"; the teacher may later enter a score, otherwise the Academic Vice Principal sets "exempt"; pending is passed to `packages/calc` as no entry) and "The exam is not held for one group this quarter" ("not held" per journal and quarter, set by the Academic Vice Principal).
 
 - [ ] **8.3a Saving and stale saves**
   - Read: `07`, `12` (No lost work), `edge/journal` (Saving and working together), `edge/system-behaviour`.
@@ -642,6 +644,7 @@ How to read the task lines:
   - From 2.4b-1 (pull request #68): a leaving ends the student's open exemptions on the date (`edge/students-classes-groups`: "Open exemptions end"); the exemption table references `students` with no action, as the line of 6.1 says.
   - From 3.3d (pull request #98, correction 5): a merge of two student records carries every row of the merged record or refuses the merge (`student_merges`, 0054): the exemption table, which references `students` with no action (the shape of 0033 and of the line of 2.4b-1 above), is carried by the merge (its `student_id`, and its branch with the kept record's, under a guard with the merge path of `student_merge_here`) or, where an exemption cannot be carried (two exemptions of the two records on common days), refuses it by its key; it is named in `MERGE_DOES` of `student-merges.database.test.ts` and in a list of `student-branch-moves.database.test.ts`, the two places a later table names itself.
   - From 3.3c (pull request #97, decision 19): `edge/exemptions`, "On a branch move it goes to the new branch's Academic Vice Principal to confirm or drop": an exemption in force on the date of an accepted move to another branch (`student_branch_moves`) is offered to the receiving branch's Academic Vice Principal, who confirms or drops it; the exemption rows are a branch table and go with the student (a key with the branch `on update cascade`, as 0032), or are named in `KEPT` of `student-branch-moves.database.test.ts`.
+  - From 4.3 (pull request #104, decision 9): every row of `edge/exemptions` without a test in `packages/calc` (`spec-rows.test.ts` names them 8.5) gets a test here; the journal passes an exempt lesson as mark 4 or 5 with no number (`number_on_exempt_lesson` otherwise).
 
 - [ ] **8.6 Transfers and leaving inside the journal**
   - Read: `07` (Transfers), `edge/students-classes-groups`, `edge/calculation`.
@@ -651,6 +654,7 @@ How to read the task lines:
   - From 3.3c (pull request #97, decisions 6 and 19): a move to another branch is accepted from its date on, and a late accept cuts the old branch's class and group rows back to the date: the entries of the old journals on or after the date are listed as for a late transfer (moved past or voided with a reason); the old branch's journals keep naming a former member who moved away (the student's row is of the new branch: read past the row filter, names only).
   - From 3.3d (pull request #98, decision 4 and correction 5): the journal side of a merge of two student records (`student_merges`, 0054): the entries of the merged record are carried to the kept record with its class and group rows; two records holding entries on common days (the days a merge cuts or leaves behind) are refused or resolved, the merge listing them, as the late transfer lists its entries. The journal's tables of student data reference `students` with no action and are carried by the merge or refuse it by their key; each is named in `MERGE_DOES` of `student-merges.database.test.ts` and in a list of `student-branch-moves.database.test.ts`.
   - From 3.3b (pull request #96, decision 2): the journal side of a return (`edge`, "A student returns"): "In the same quarter and class: one row, with the gap closed. Into another class: handled like a transfer. In a later year: nothing is carried into the journals". The return writes no `student_moves` row; its class row has the cause `return`, and a return into the class left gives back the group the leaving cut.
+  - From 4.3 (pull request #104, decisions 6, 10 and 12): the result at leaving is `finalQuarterRecord(…, 'at_leaving')`, stored when the student leaves the school or the branch; N of the few-lessons flag (`heldInJournals`) counts, for each school day of the quarter, the held lessons of the journal the student belonged to that day, before the first membership and in a gap the journal of the next membership, after leaving the subject or the branch nothing; class and group averages count only number outcomes of members on the reference date.
 
 - [ ] **8.7 Lesson status, reminders and the discipline report**
   - Read: `07` (Lesson status, Reminders).
@@ -677,11 +681,13 @@ How to read the task lines:
   - From 2.1 (pull request #52, decision 14 and migration 0021): every reader of the weights (results, the lesson score, the journal legend) takes a distribution only in the subject's current `weights_round` and, for a quarter, only when its rating exam part fits the switch; a row of an earlier round is not a distribution.
   - From 2.1 (pull request #52, decision 4): a change of a quarterly distribution (`PUT /api/setup/subjects/:id/quarter-weights/:quarterId` and the copy) in an open quarter: `edge/calculation`, "Before saving, the system shows how many grades will change in each journal, asks for a reason and tells the subject's teachers. The journal legend shows 'changed on [date]'."; `05`: "Each change is logged and results are recalculated at once."
   - From 2.4b-1 (pull request #68): the tables of results reference `students` with no action, as the line of 6.1 says.
+  - From 4.3 (pull request #104): the figures shown come from `studentQuarterOutcome` (the four result states, the flags, "based on n of N lessons", "from <date>", "left the subject on <date>"), not `quarterResult` alone; the year result takes `outcomeForYear`.
 
 - [ ] **9.2a Closing checklist**
   - Read: `07` (Closing a quarter), `edge/journal` (Closing and reopening), `edge/calculation`.
   - Build: the checklist with blocking items and warnings; decisions on flagged results, one by one or for a whole journal.
   - Done when: each row of the checklist table has a test.
+  - From 4.3 (pull request #104, decisions 3, 5 and 8, correction 1): the decisions are the `decision` of `studentQuarterOutcome`, one per student, subject and quarter, set one by one or for a whole journal; `exempt` is refused where the module would not apply it (only when the few-lessons flag is the one flag raised and (n + e) × 3 ≥ N; the attendance-only and "left the subject" rows offer keep or Not assessed); the three flags (`few_lessons`, `attendance_only`, `left_subject`) block closing while undecided, and a stored decision the module no longer applies (`staleDecision`) is a blocking item of its own, "decision outdated: clear it or decide again", one by one or for a whole journal.
 
 - [ ] **9.2b Closing a quarter**
   - Read: `07` (Closing a quarter), `edge/journal` (Closing and reopening), `edge/academic-year`, `edge/system-behaviour`.
@@ -692,16 +698,19 @@ How to read the task lines:
   - From 3.3a (pull request #95, decision 4): a class or group move dated in a closed quarter is refused (`edge`: "Backdating is for the Academic Vice Principal, in an open quarter").
   - From 3.3c (pull request #97, decision 9): a release to another branch dated in a closed quarter is refused, and so is its accept.
   - From 2.4b-1 (pull request #68): a leaving, an undo, a return or a graduated restore dated in a closed quarter is refused (`edge/students-classes-groups`: "A date in a closed quarter is refused"), in the database as `student_statuses_closed_year_guard` (0033) does for a closed year.
+  - From 4.3 (pull request #104, decisions 8 and 13): the stored final result is `finalQuarterRecord(…, 'closing')` (format 1, inputs, outcome, `CALC_VERSION`) in a `jsonb` column; it refuses an open quarter, an undecided or stale flag, a missing rating exam entry and a student with a result at leaving (`final_record_at_leaving`: not on the checklist).
 
 - [ ] **9.2c Reopening and the nightly check**
   - Read: `edge/journal` (Closing and reopening), `edge/system-behaviour`.
   - Build: reopen rules; the nightly job that recalculates open journals and stored results, alerts on a difference and blocks closing that journal.
   - Done when: a deliberately corrupted stored result is caught by the check in a test.
+  - From 4.3 (pull request #104, `edge/calculation`, "A bug is found after results were closed and exported"): the "recalculate and compare" tool over `recalculateAndCompare` (lists the differences, changes nothing; a record the current module refuses is listed with its code, `refused`, not thrown) and "apply with a reason", which keeps the old results and tells the teachers concerned; the nightly check uses the same function.
 
 - [ ] **9.3a Rating**
   - Read: `08` (Rating).
   - Build: the rating lists with their filters, including language and branch, and Excel export.
   - Done when: students without a result are handled as the spec says.
+  - From 4.3 (pull request #104, row table): reads `edge/calculation` ("Two students both show 84", "One student has 9 subjects, another 11", the result at leaving left out of the rating) and `07` Effect on totals (Rating: a student with "Exempt" is not ranked; across subjects the student is marked as having fewer subjects); only a number outcome is ranked.
 
 - [ ] **9.3b Analytics**
   - Read: `08` (Analytics in Release 1).
@@ -713,6 +722,7 @@ How to read the task lines:
   - Build: the list with its thresholds and who sees it.
   - Done when: a subject with fewer than five graded works lists nobody.
   - From 1.6 (pull request #49, decision 2): the thresholds are `branch_settings.low_result`, `result_drop`, `attendance_percent` and `absences_in_row`; "five graded works" stays fixed in code here (answer 19).
+  - From 4.3 (pull request #104, row table): reads `edge/calculation`, "The early-warning list compares a mid-quarter figure without the exam against last quarter's final with the exam".
 
 - [ ] **9.4b Home pages**
   - Read: `08` (Home pages by role).
@@ -732,6 +742,7 @@ How to read the task lines:
   - Build: the rollover plan per branch (classes keep their name and move up a grade; promote, repeat, leave, graduate); what is copied and what is not; undo until a lesson of the new year holds data.
   - Done when: a second run of rollover only shows the plan.
   - From 2.1 (pull request #52): `edge/academic-year`, "What does rollover copy?": "Copied as drafts to confirm: ... subject weights for the new quarters"; the quarterly distributions of the branch, in the subject's current round.
+  - From 4.3 (pull request #104, row table): reads `edge/exemptions`, "A surgery exemption runs from May to September": the rollover lists exemptions still in force as "to renew".
 
 - [ ] **9.5c Starting a year and the full-year simulation**
   - Read: `edge/academic-year`, `14` (Whole system), `edge/system-behaviour`.

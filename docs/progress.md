@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 4.3 Exemptions, flags and special outcomes
+
+- Built in `packages/calc`: `studentQuarterOutcome` (a number, "Exempt", "Not assessed", "No result"; the few-lessons, attendance-only and "left the subject" flags with one decision per student; stale decisions reported, never thrown; "from <date>", "left the subject on", the result at leaving), `outcomeForYear`, `CALC_VERSION` with a pinned source hash per version.
+- `finalQuarterRecord` (format 1, kinds `closing` and `at_leaving`, the six stored items of `edge/developer-rules`) and `recalculateAndCompare` (shape check, differences, a refused record listed); `spec-rows.test.ts` pins every row of `edge/exemptions` and `edge/calculation` with its test or owning task.
+- Left out: every caller and stored table (8.6, 9.1, 9.2a to 9.2c), the exemption records (8.5), the month figures (6.2), ranking and the all-subject figure (9.3a): each has a "From 4.3" line.
+
+The next sessions must know:
+
+- Any change under `packages/calc/src` outside tests raises `CALC_VERSION` and appends its hash in `version.test.ts`.
+- A spec change to a row of `edge/exemptions` or `edge/calculation` fails `spec-rows.test.ts` until the row is placed again (a Look first change).
+- The next task is 5.1.
+
 ## 15 October 2026: task 4.2 Quarter and year results
 
 - Built in `packages/calc`: `quarterResult` (attendance, classwork and homework averages with each work once, the rating exam, the result over the parts with data, `leftOut`, `provisional`), `quarterAttendanceAverage` for attendance-only subjects, `GRADE_BANDS` and `gradeOf`, `yearResult` (mean of four exact quarter results, "based on n of 4").

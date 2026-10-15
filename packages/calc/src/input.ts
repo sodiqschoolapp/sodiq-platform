@@ -20,7 +20,15 @@ export type CalcInputErrorCode =
   | 'unknown_mark'
   | 'weights_not_100'
   | 'number_on_exempt_lesson'
-  | 'rating_exam_without_weight';
+  | 'rating_exam_without_weight'
+  | 'lessons_above_held'
+  | 'not_a_date'
+  | 'final_record_open_quarter'
+  | 'final_record_undecided'
+  | 'final_record_rating_missing'
+  | 'final_record_not_leaving'
+  | 'final_record_at_leaving'
+  | 'record_shape';
 
 export class CalcInputError extends Error {
   readonly code: CalcInputErrorCode;

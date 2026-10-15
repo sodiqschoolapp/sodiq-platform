@@ -213,6 +213,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: exemptions, flags and special outcomes (task 4.3)
+
+Plan approved on pull request #104 with corrections 1 to 4; decisions 1 to 12 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** "Exempt" when the student has lessons and every one is exempt, whatever the rating entry | Decision 1; `07`, Effect on totals: "If none remain, the result is 'Exempt'" |
+| **Look first.** Few lessons when n × 3 < N; unmarked and off-attendance extra lessons are expected | Decision 2; `edge/calculation`, "A student joined late…" |
+| **Look first.** One decision covers every flag; `exempt` only when the few-lessons flag is the one flag raised and (n + e) × 3 ≥ N; a not-allowed decision is stale, never thrown | Decision 3; the "one flag" part from the spec review of the code (the attendance-only and "left the subject" rows offer keep or Not assessed only) |
+| **Look first.** Attendance alone: no classwork number, no homework number, no rating score; "did not sit" does not clear it | Decision 4; `edge/calculation`, the row's own "absent all quarter" example |
+| **Look first.** "Left the subject" is a flag with keep or Not assessed and blocks closing | Decision 5; an inference from "decides at closing" |
+| **Look first.** A result at leaving raises no flag and is stored as `at_leaving` in an open quarter; a closing record with a leaving date is refused | Decision 6; the refusal from the spec review of the code |
+| **Look first.** No date filter for the start quarter; "from <date>" on every outcome | Decision 7; `edge/academic-year`: no dated lessons before the start date |
+| **Look first.** A closing record is refused for an open quarter, an undecided or stale flag, a missing rating entry | Decision 8, correction 1 |
+| **Look first.** Every row of the two tables is a test here or names its owning task; `spec-rows.test.ts` pins case and rule | Decision 9 |
+| **Look first.** N counts, per school day, the journal the student belonged to; before and in a gap the next one | Decision 10 |
+| **Look first.** `CALC_VERSION` is raised with every change of the module's source, a refactor included | Decision 11, correction 4 |
+| **Look first.** With both a leaving date and a "left the subject" date, the result at leaving applies | Decision 12, correction 4 |
+| Records are JSON format 1 with fractions as decimal strings; a refused recalculation is listed with its code, not thrown | Decision 13; spec review of the code |
+| `Date` is refused in the module's source; dates are `YYYY-MM-DD` strings checked with whole numbers | Decision 14, correction 2 |
+
 ## 15 October 2026: quarter and year results (task 4.2)
 
 Plan approved on pull request #103 with corrections 1 to 3; decisions 1 to 7 marked Look first and confirmed there. Flagged on issue #42.

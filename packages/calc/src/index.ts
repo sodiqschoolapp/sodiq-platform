@@ -23,5 +23,23 @@ export {
   type QuarterWeights,
   type RatingExamEntry,
 } from './quarter.js';
+export {
+  outcomeForYear,
+  studentQuarterOutcome,
+  type FlagDecision,
+  type QuarterNumber,
+  type ResultFlag,
+  type StudentQuarterInput,
+  type StudentQuarterOutcome,
+} from './outcome.js';
+export {
+  finalQuarterRecord,
+  recalculateAndCompare,
+  type Comparison,
+  type FinalQuarterRecord,
+  type RecordKind,
+  type StoredValue,
+} from './record.js';
+export { CALC_VERSION } from './version.js';
 export { shownPercent, workPercent } from './work.js';
 export { yearResult, type QuarterOutcome, type YearResult } from './year.js';

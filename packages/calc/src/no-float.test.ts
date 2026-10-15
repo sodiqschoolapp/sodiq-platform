@@ -24,6 +24,9 @@ const FORBIDDEN: readonly [string, RegExp][] = [
   ['a decimal literal', /\b\d+\.\d/],
   ['a decimal literal with a leading dot', /(^|[^\w.)\]])\.\d/m],
   ['an exponent literal', /\b\d+e[+-]?\d/i],
+  // CLAUDE.md, "Time is injected"; .claude/rules/calc.md: no access to the clock. Dates come in
+  // as YYYY-MM-DD strings (task 4.3, decision 14; review of the plan, correction 2).
+  ['Date', /\bDate\b/],
 ];
 
 describe('packages/calc source', () => {
@@ -38,6 +41,9 @@ describe('packages/calc source', () => {
         'grade.ts',
         'quarter.ts',
         'year.ts',
+        'outcome.ts',
+        'record.ts',
+        'version.ts',
       ]),
     );
   });
