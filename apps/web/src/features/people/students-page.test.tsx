@@ -693,7 +693,7 @@ describe('adding a student', () => {
   it('sends a new relative once when the lookup fails', async () => {
     const calls = openList('academic_vice_principal', {
       'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
-      'POST /api/people/relatives/phone-match': () => refusal('internal', 500),
+      'POST /api/people/relatives/phone-match': () => refusal('internal_error', 500),
       'POST /api/people/students': () => json(detailOf({ ...OTKIR, id: uid(9) }), 201),
       [`GET /api/people/students/${uid(9)}`]: () => json(detailOf({ ...OTKIR, id: uid(9) })),
     });

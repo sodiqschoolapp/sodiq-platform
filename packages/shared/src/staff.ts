@@ -118,7 +118,10 @@ const optionalNameSchema = z
  * Uzbek number is "+998" and nine digits, another country's "+" and 7 to 15
  * digits (pull request #53, decision 11, narrowed for Uzbek numbers).
  */
-export const staffPhoneSchema = z.string().transform(storedPhone).pipe(z.string().regex(PHONE_FORMAT));
+export const staffPhoneSchema = z
+  .string()
+  .transform(storedPhone)
+  .pipe(z.string().regex(PHONE_FORMAT));
 
 const optionalEmailSchema = z
   .string()

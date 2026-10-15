@@ -7,7 +7,15 @@ import {
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
-import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import {
+  fakeApi,
+  json,
+  NORTH,
+  renderApp,
+  sessionOf,
+  SOUTH,
+  type Handler,
+} from '@/testing/render-app';
 import { panelActions, savedInPanel } from '@/testing/panel';
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -100,10 +108,7 @@ const sessionAs = (role: Role) =>
     branches: [NORTH, SOUTH],
   });
 
-function openList(
-  relatives: StudentRelatives,
-  extra: Record<string, (body: unknown) => Response> = {},
-) {
+function openList(relatives: StudentRelatives, extra: Record<string, Handler> = {}) {
   return fakeApi({
     'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
     'GET /api/people/students': () =>

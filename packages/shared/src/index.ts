@@ -343,7 +343,14 @@ export {
   type Weekday,
 } from './setup.js';
 export { gradeRanges } from './grades.js';
-export { PHONE_FORMAT, phoneDigits, phoneLeftEmpty, phoneText, storedPhone, typedPhoneText } from './phones.js';
+export {
+  PHONE_FORMAT,
+  phoneDigits,
+  phoneLeftEmpty,
+  phoneText,
+  storedPhone,
+  typedPhoneText,
+} from './phones.js';
 export { listName, searchWords } from './names.js';
 export {
   CALENDAR_ENTRY_KINDS,

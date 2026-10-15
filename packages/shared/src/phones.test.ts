@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { PHONE_FORMAT, phoneDigits, phoneLeftEmpty, phoneText, storedPhone, typedPhoneText } from './phones.js';
+import {
+  PHONE_FORMAT,
+  phoneDigits,
+  phoneLeftEmpty,
+  phoneText,
+  storedPhone,
+  typedPhoneText,
+} from './phones.js';
 
 describe('phoneText (finding 24)', () => {
   it('groups an Uzbek number', () => {

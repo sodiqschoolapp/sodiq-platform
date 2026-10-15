@@ -74,7 +74,12 @@ describe('relative records', () => {
     ).toBe(false);
     // Nine digits alone are an Uzbek number since task 3.5b (H25, decision 7).
     expect(
-      relativeRecordSchema.parse({ fullName: 'Aziz Karimov', phone: '901234567', workplace: '', email: '' }).phone,
+      relativeRecordSchema.parse({
+        fullName: 'Aziz Karimov',
+        phone: '901234567',
+        workplace: '',
+        email: '',
+      }).phone,
     ).toBe('+998901234567');
   });
 
