@@ -2029,6 +2029,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       name: 'Название',
       department: 'Кафедра',
       subjects: 'Предметы',
+      noDepartmentSubjects:
+        'На этой кафедре ещё нет предметов. Добавьте их: Настройки школы → Предметы.',
+      chooseDepartmentFirst: 'Сначала выберите кафедру.',
+      openSubjects: 'Открыть предметы',
       recordTitle: 'Вакансия',
       statusTitle: 'Статус',
       statuses: { open: 'Открыта', closed: 'Закрыта' },

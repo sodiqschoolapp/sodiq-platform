@@ -1922,6 +1922,10 @@ export const en = {
       name: 'Name',
       department: 'Department',
       subjects: 'Subjects',
+      noDepartmentSubjects:
+        'This department has no subjects yet. Add them in School setup → Subjects.',
+      chooseDepartmentFirst: 'Choose a department first.',
+      openSubjects: 'Open Subjects',
       recordTitle: 'Vacancy',
       statusTitle: 'Status',
       statuses: { open: 'Open', closed: 'Closed' },

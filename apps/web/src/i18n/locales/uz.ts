@@ -1936,6 +1936,10 @@ export const uz: Texts<'one' | 'other'> = {
       name: 'Nomi',
       department: 'Kafedra',
       subjects: 'Fanlar',
+      noDepartmentSubjects:
+        'Bu kafedrada hali fan yoʻq. Fanlarni Maktab sozlamalari → Fanlar da qoʻshing.',
+      chooseDepartmentFirst: 'Avval kafedrani tanlang.',
+      openSubjects: 'Fanlarni ochish',
       recordTitle: 'Vakansiya',
       statusTitle: 'Holat',
       statuses: { open: 'Ochiq', closed: 'Yopilgan' },
