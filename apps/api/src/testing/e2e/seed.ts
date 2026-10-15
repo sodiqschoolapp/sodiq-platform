@@ -2770,6 +2770,121 @@ try {
   });
   seeded.teachingLoad = { login: loadVice.login, password: loadVice.firstPassword };
 
+  // The Academic Vice Principal of the blocks test (task 3.4b), in a branch of
+  // its own with a planned year around today, 7 Oxford (Uzbek) split for
+  // Geometry into 7-G-1 and 7-G-2, and two teachers of Geometry in grade 7.
+  const blocksBranch = await insertBranch(migrator, 'Load blocks browser test branch');
+  const blocksVice = await create('Feruza', 'Tursunova');
+  await transactions.run([blocksBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: blocksVice.id,
+      role: 'academic_vice_principal',
+      branchId: blocksBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: blocksBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: blocksBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const oxford = await transaction
+      .insertInto('classes')
+      .values({
+        branch_id: blocksBranch,
+        academic_year_id: year.id,
+        grade: 7,
+        name: 'Oxford',
+        language: 'uz',
+        max_size: 25,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const geometry = await transaction
+      .selectFrom('subjects')
+      .select('id')
+      .where('name_en', '=', 'Geometry')
+      .executeTakeFirstOrThrow();
+    for (const name of ['7-G-1', '7-G-2']) {
+      const group = await transaction
+        .insertInto('groups')
+        .values({
+          branch_id: blocksBranch,
+          academic_year_id: year.id,
+          subject_id: geometry.id,
+          name,
+          language: 'uz',
+          max_size: 15,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('group_classes')
+        .values({ group_id: group.id, class_id: oxford.id, branch_id: blocksBranch })
+        .execute();
+    }
+    for (const [staffId, first, last, phone] of [
+      ['S-269311', 'Madina', 'Saidova', '+998935557311'],
+      ['S-269312', 'Zarina', 'Olimova', '+998935557312'],
+    ] as const) {
+      const person = await transaction
+        .insertInto('staff')
+        .values({
+          kind: 'person',
+          staff_id: staffId,
+          first_name: first,
+          last_name: last,
+          sex: 'female',
+          birth_date: '1989-03-22',
+          phone,
+          admission_date: '2026-09-01',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('staff_branches')
+        .values({ staff_id: person.id, branch_id: blocksBranch, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_divisions')
+        .values({
+          staff_id: person.id,
+          division_id: academic.id,
+          department_id: steam.id,
+          is_main: true,
+        })
+        .execute();
+      await transaction
+        .insertInto('staff_languages')
+        .values({ staff_id: person.id, language: 'uz' })
+        .execute();
+      await transaction
+        .insertInto('staff_subjects')
+        .values({ staff_id: person.id, subject_id: geometry.id, grades: [7] })
+        .execute();
+      await transaction
+        .insertInto('staff_statuses')
+        .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+        .execute();
+    }
+  });
+  seeded.teachingBlocks = { login: blocksVice.login, password: blocksVice.firstPassword };
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')

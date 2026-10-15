@@ -27,6 +27,7 @@ import { SM, useMinWidth } from '@/lib/use-min-width';
 import { classesQuery } from './classes-api';
 import { GroupForm } from './group-form';
 import { GroupPanel } from './group-panel';
+import { groupTeacherText } from './group-teacher';
 import { createGroup, groupsQuery, invalidateGroups } from './groups-api';
 
 /** The classes of a group as a cell: "Split of 7 Oxford", or "7 Oxford, 7 Princeton". */
@@ -314,7 +315,7 @@ export function GroupsPage() {
                               t('groups.columns.language'),
                               t(`people.staff.languages.${row.language}`),
                             ],
-                            [t('groups.teacher'), t('groups.notYet')],
+                            [t('groups.teacher'), groupTeacherText(t, row)],
                             [t('groups.average'), t('groups.notYet')],
                             [t('groups.attendance'), t('groups.notYet')],
                           ] as const

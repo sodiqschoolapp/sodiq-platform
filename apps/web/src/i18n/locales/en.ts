@@ -389,6 +389,18 @@ export const en = {
       'This version already has a row for that class and subject, or that group. Open that row to change it.',
     load_group_no_shared_slot:
       'The two grades of this group share no lesson slot with the same start and end on any school weekday. Align the day templates of the grades first.',
+    load_split_and_whole:
+      'This version already has a whole-class row and a group row for that class and subject. A class is either whole or split for a subject: delete one of the rows first.',
+    load_mixed_not_split:
+      'Only the halves of a split of one class can be part of a mixed block. Clear the mark for this group.',
+    load_block_mixed:
+      'The halves of one split must agree on the mixed block. Change the mark on one half: it is written to every half.',
+    load_block_lessons:
+      'Every part of a split or of parallel groups has the same lessons per week. Type the lessons of the other parts, or change the lessons of one part first: they are written to every part.',
+    load_block_teacher:
+      'Another part of this split or of these parallel groups has that teacher, and the parts meet at the same time. Choose another teacher.',
+    load_group_gaps:
+      'Students of the classes are not placed in a group of this block. Place them on the group placement screen.',
     vacancy_has_load:
       'A teaching load row names this vacancy, so it cannot be closed or deleted. Give that row another teacher first.',
     student_merge_year_closed:
@@ -2607,6 +2619,8 @@ export const en = {
     average: 'Average',
     attendance: 'Attendance',
     notYet: '—',
+    teacherVacancy: 'Vacancy: {{name}}',
+    teacherDraft: '{{name}} (draft)',
     sharedSlots: 'Lesson slots of both grades',
     noSharedSlot:
       'No weekday has a lesson slot at the same time in both grades. The teaching load will refuse this group.',
@@ -2846,6 +2860,46 @@ export const en = {
         load_teacher_grade: 'Grade not in the profile',
         load_teacher_language: 'Language of instruction',
         load_room_closed: 'Room closed',
+        load_split_and_whole: 'Class both whole and split',
+        load_mixed_not_split: 'Mixed block on a group across classes',
+        load_block_mixed: 'Halves disagree on the mixed block',
+        load_block_lessons: 'Parts with other lessons per week',
+        load_block_teacher: 'One teacher on two parts',
+        load_group_gaps: 'Students not placed',
+      },
+      blockColumn: 'Block',
+      blockNone: '—',
+      unplaced_one: 'Not placed: {{n}}',
+      unplaced_other: 'Not placed: {{n}}',
+      mixedBlock: 'Mixed block (the halves meet in different slots)',
+      mixedNote: 'One teacher may take both halves. The mark is written to every half.',
+      blockLessonsNote:
+        'From {{min}} to {{max}}. The lessons are written to every part of the block.',
+      groupDefault: 'This subject is taught in groups by default.',
+      groupDefaultNone: 'No group of this class has it yet; a whole-class row is saved.',
+      useGroup: 'Use group {{name}}',
+      totals: {
+        title: 'Weekly totals',
+        note: 'Shown to compare; they refuse nothing.',
+        classes: 'Classes',
+        teachers: 'Teachers',
+        class: 'Class',
+        lessons: 'Lessons in the load',
+        lessonSlots: 'Lesson slots of the week',
+        over_one: 'Over by {{n}}',
+        over_other: 'Over by {{n}}',
+        teacher: 'Teacher',
+        here: 'Lessons here',
+        free: 'Free slots here',
+        noHours: 'No hours set',
+        elsewhere: 'Other branches',
+        elsewhereItem_one: '{{branch}}: {{n}}',
+        elsewhereItem_other: '{{branch}}: {{n}}',
+        elsewhereDraft_one: '{{branch}}: {{n}} (draft)',
+        elsewhereDraft_other: '{{branch}}: {{n}} (draft)',
+        total: 'Total',
+        contract: 'Contract load',
+        empty: 'No rows yet: nothing to count.',
       },
       leftTitle: 'Rows not copied',
       dismiss: 'Dismiss',

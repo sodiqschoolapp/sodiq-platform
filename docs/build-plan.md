@@ -403,7 +403,7 @@ How to read the task lines:
   - From 3.2a (pull request #91, decisions 9 and 15): the load step refuses a group of two grades when no school weekday has a lesson slot with the same start and end in both grades' templates (`edge/timetable`, Structure; `sharedLessonSlots` and `twoGradeSlots` of `packages/timetable-rules`, which the group's save only shows), or when the subject is not taught in both grades; the teacher (or the vacancy) of a group is the teacher of its load row, and the group card and panel show it in place of "—".
   - From 2.2b (pull request #57, decision 7): `04` Vacancy, "A vacancy cannot be closed while a load row names it or a future lesson is under it. One that never held a load can be deleted; one that did is closed and kept." `POST /api/people/vacancies/:id/close` refuses while a load row names the vacancy (the future lessons come with 5.5b), and `vacancy_delete` of db/migrations/0025 refuses a vacancy that ever held a load, each with its test; the vacancy panel names the refusal.
 
-- [ ] **3.4b Splits, groups and weekly totals** (3.4 split in three, pull request #99, decision 1)
+- [x] **3.4b Splits, groups and weekly totals** (3.4 split in three, pull request #99, decision 1)
   - Read: `05` (Group, Teaching load), `06` (Building a timetable, step 2; Teachers who work in several branches; Weekly load), `edge/timetable` (Structure), the plan of pull request #99.
   - Build: the parts of one split have equal lessons per week and different teachers (`edge/timetable`, Structure); one version never holds both a whole-class row and a group or split row for the same class and subject (`05`, Group: "Whether a class is split for a subject is set in the teaching load"); the load as the source of the split and group subjects of a class; a group or split row whose `group_placement_gaps` is not empty has that problem, which blocks readiness (5.3) and publish (5.5a); the group card and panel show the teacher of the group's load row; the weekly totals of a class against the week's lesson slots and of a teacher against free slots and the contract load across branches.
   - Done when: each rule above has a test at the route and in the database where it is a constraint.
@@ -455,6 +455,7 @@ How to read the task lines:
   - Build: draft versions; the steps for templates, load, teachers, rooms and rules with their "ready when" checks; pinned lessons; availability as dated entries; a draft checks the entries in force on its intended start date.
   - Done when: a draft cannot move to generation while a readiness check fails.
   - From 3.4a (pull request #99, decision 15 and correction 6): draft versions exist with their start date ("next Monday by default") and the load; this task adds the rest of step 1, the first day of a coming quarter as a shortcut, the readiness of the load step (the problems of each row, `loadRowProblems`), and the load step's list of a Tutor of two classes whose pinned lessons fall at the same time.
+  - From 3.4b (pull request #100, decisions 4, 5 and 7): the readiness of steps 2 and 3 reads the weekly totals (`totals.ts` of `packages/timetable-rules`: each class's lessons against the lesson slots of its week, each teacher's lessons against the free slots in the branch) and blocks on `load_group_gaps` (students not placed) and the block problems (`load_block_lessons`, `load_block_teacher`, `load_block_mixed`, `load_mixed_not_split`, `load_split_and_whole`), which the load page only shows.
 
 - [ ] **5.4a Grid: board and drag**
   - Read: `06` (Editing in the grid), `12`.
@@ -470,12 +471,14 @@ How to read the task lines:
   - Read: `06` (Editing in the grid, Auto-generation), `edge/timetable` (Generator and editing).
   - Build: locks on a lesson, class, teacher or day; undo; the edit lock on a draft that is released after 5 minutes without activity.
   - Done when: a second Academic Vice Principal can take over a draft and the first is told.
+  - From 3.4b (pull request #100, decision 12, Look first): the halves of a split marked `mixed_block` meet in different slots; the pairing of two subjects' halves slot by slot (boys have physical education while girls have technology, and the reverse in another slot; `edge/timetable`, Structure) is placed and kept here.
 
 - [ ] **5.5a Publish: preview and checks**
   - Read: `06` (Editing in the grid, Rules, Changes after publishing, How surprises are prevented), `edge/timetable` (Versions and drafts, After publishing).
   - Build: the impact preview; start date rules; the out-of-date draft check; one publish per branch at a time; a publish that fails changes nothing; quarter shortcuts for the start date; dates under a later availability entry are warnings by date; carry a teacher or room change into later versions.
   - Done when: two publishes at the same moment are tested.
   - From 2.1 (pull request #52, decisions 2, 3 and 14): the publish check of `edge/academic-year`, "Publishing is blocked unless the year has four dated quarters and every subject in the load has its journal type and, if it is graded, its daily distribution and its quarterly distribution for each quarter the version touches. Attendance-only subjects need no weights." The distributions are the branch's (`subject_daily_weights`, `subject_quarter_weights`); a row counts only in the subject's current `weights_round` and, for a quarter, when its rating exam part fits the subject's switch (as `quarterWeightsMissing` in `apps/api/src/modules/setup/subjects.service.ts` counts).
+  - From 3.4b (pull request #100, decisions 1 and 4, Look first): publish blocks on every problem of a load row (`loadRowProblems`), the six of 3.4b included (`load_group_gaps` among them), and from the published version in force on a date `class_group_subjects` (0049) reads the subjects of its group rows whose groups draw from the class, in place of the active groups, so that the load is the source of the split and group subjects of a class (`05`, Group).
 
 - [ ] **5.5b Publish: dated lessons**
   - Read: `06` (What a change does to existing data, How surprises are prevented), `edge/timetable` (Versions and drafts), `edge/time-dates-calendar`.

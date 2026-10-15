@@ -3,8 +3,10 @@ import type {
   Load,
   LoadRow,
   LoadTeachers,
+  LoadTotals,
   Room,
   SchoolClass,
+  SchoolGroup,
   Subject,
   TimetableVersion,
 } from '@sodiq/shared';
@@ -117,6 +119,9 @@ const row = (n: number, fields: Partial<LoadRow> = {}): LoadRow => ({
   room: null,
   roomType: null,
   doubleLessons: false,
+  mixedBlock: false,
+  block: [],
+  unplaced: 0,
   problems: [],
   ...fields,
 });
@@ -147,6 +152,7 @@ async function openPage(
     teachers?: (query: string) => LoadTeachers;
     extra?: Record<string, (body: unknown) => Response>;
     language?: 'en' | 'ru';
+    totals?: LoadTotals;
   } = {},
 ) {
   const session = { ...(options.session ?? vice()), language: options.language ?? 'en' };
@@ -158,6 +164,12 @@ async function openPage(
       versions.map((one) => [
         `GET /api/timetable/versions/${one.id}/load`,
         () => json({ version: one, rows: [], leftRows: [], ...options.load }),
+      ]),
+    ),
+    ...Object.fromEntries(
+      versions.map((one) => [
+        `GET /api/timetable/versions/${one.id}/totals`,
+        () => json(options.totals ?? { classes: [], teachers: [] }),
       ]),
     ),
     'GET /api/classes': () => json({ classes: [OXFORD] }),
@@ -217,9 +229,10 @@ describe('the teaching load page', () => {
       expect(rowsDrawn()).toHaveLength(2);
     });
     expect(rowsDrawn()).toEqual([
-      ['7 Oxford', 'Mathematics', 'Karimova Aziza', '4', 'No special room', 'No', 'None'],
+      ['7 Oxford', '—', 'Mathematics', 'Karimova Aziza', '4', 'No special room', 'No', 'None'],
       [
         '7 Oxford',
+        '—',
         'Spiritual hour',
         'Teacher wanted (vacancy)',
         '4',
@@ -242,7 +255,7 @@ describe('the teaching load page', () => {
     expect(headers).toEqual(
       expect.arrayContaining([ru.timetable.load.columns.unit, ru.timetable.load.columns.problems]),
     );
-    expect(rowsDrawn()[0]?.[1]).toBe('Математика');
+    expect(rowsDrawn()[0]?.[2]).toBe('Математика');
   });
 
   it('starts the first draft on next Monday by default (decision 5)', async () => {
@@ -362,6 +375,7 @@ describe('the teaching load page', () => {
         roomId: LAB.id,
         roomType: null,
         doubleLessons: false,
+        mixedBlock: false,
       });
     });
   });
@@ -484,5 +498,171 @@ describe('the timetable page', () => {
     });
     renderApp('/timetable');
     expect(await screen.findByRole('heading', { name: en.problems.noAccessTitle })).not.toBeNull();
+  });
+});
+
+// Task 3.4b, pull request #100: the block of a group row, students not placed
+// (decision 4), the mixed mark and the block's lessons (decisions 3 and 12),
+// the group switch as the default (decision 13) and the weekly totals
+// (decisions 5 to 8).
+describe('the teaching load page: splits, groups and weekly totals', () => {
+  const splitGroup = (n: number, name: string, subjectId = MATHS.id): SchoolGroup => ({
+    id: uid(800 + n),
+    academicYearId: YEAR.id,
+    yearName: YEAR.name,
+    yearStatus: 'current',
+    subject: { id: subjectId, names: MATHS.names, languageRule: true },
+    name,
+    language: 'uz',
+    maxSize: 15,
+    grades: [7],
+    classes: [{ id: OXFORD.id, grade: 7, name: 'Oxford', language: 'uz', archived: false }],
+    kind: 'split',
+    students: 0,
+    teacher: null,
+    archived: false,
+    version: 0,
+  });
+  const HALF = splitGroup(1, '7-M-1');
+  const OTHER_HALF = splitGroup(2, '7-M-2');
+
+  const groupRow = (n: number, group: SchoolGroup, fields: Partial<LoadRow> = {}): LoadRow =>
+    row(n, {
+      unit: {
+        kind: 'group',
+        id: group.id,
+        name: group.name,
+        grades: [7],
+        language: 'uz',
+        archived: false,
+      },
+      block: [
+        { id: uid(701), name: '7-M-1' },
+        { id: uid(702), name: '7-M-2' },
+      ],
+      ...fields,
+    });
+
+  it('shows the block of a group row and the students not placed with their count', async () => {
+    setWindowWidth(1440);
+    await openPage({
+      load: {
+        rows: [groupRow(1, HALF, { unplaced: 3, problems: ['load_group_gaps'] })],
+      },
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+    const [cells] = rowsDrawn();
+    expect(cells?.[1]).toBe('7-M-1, 7-M-2');
+    expect(cells?.at(-1)).toBe('Students not placed (Not placed: 3)');
+  });
+
+  it('marks a split as a mixed block, with the lessons written to every part', async () => {
+    const calls = await openPage({
+      teachers: () => ({ teachers: [{ ...TEACHER, tutor: false }], defaultTeacherId: null }),
+      extra: {
+        'GET /api/groups': () => json({ groups: [HALF] }),
+        [`POST /api/timetable/versions/${version(1).id}/load`]: () => json(groupRow(1, HALF), 201),
+      },
+    });
+    const form = await openNewRow();
+    expect(within(form).queryByLabelText(en.timetable.load.mixedBlock)).toBeNull();
+    type(within(form).getByLabelText(en.timetable.load.unit), `group:${HALF.id}`);
+    const mixed = await within(form).findByLabelText(en.timetable.load.mixedBlock);
+    type(within(form).getByLabelText(en.timetable.load.subject), MATHS.id);
+    expect(screen.getByText(en.timetable.load.mixedNote)).not.toBeNull();
+    expect(
+      screen.getByText(
+        en.timetable.load.blockLessonsNote.replace('{{min}}', '1').replace('{{max}}', '40'),
+      ),
+    ).not.toBeNull();
+    const teacher = await within(form).findByLabelText<HTMLSelectElement>(
+      en.timetable.load.teacher,
+    );
+    await waitFor(() => {
+      expect(teacher.options).toHaveLength(2);
+    });
+    type(teacher, TEACHER.id);
+    type(within(form).getByLabelText(en.timetable.load.lessons), '2');
+    fireEvent.click(mixed);
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `POST /api/timetable/versions/${version(1).id}/load`)
+          ?.body,
+      ).toMatchObject({ classId: null, groupId: HALF.id, lessonsPerWeek: 2, mixedBlock: true });
+    });
+  });
+
+  it("offers the class's groups for a subject taught in groups by default", async () => {
+    const grouped = subject(3, { groupSubject: true });
+    const groupOfIt = splitGroup(3, '7-E-1', grouped.id);
+    await openPage({
+      extra: {
+        'GET /api/groups': () => json({ groups: [groupOfIt, OTHER_HALF] }),
+        'GET /api/setup/subjects': () =>
+          json({ subjects: [MATHS, grouped], mayMoveDepartment: false }),
+      },
+    });
+    const form = await openNewRow();
+    const unit = within(form).getByLabelText<HTMLSelectElement>(en.timetable.load.unit);
+    type(unit, `class:${OXFORD.id}`);
+    type(within(form).getByLabelText(en.timetable.load.subject), MATHS.id);
+    expect(within(form).queryByText(en.timetable.load.groupDefault)).toBeNull();
+    type(within(form).getByLabelText(en.timetable.load.subject), grouped.id);
+    expect(await within(form).findByText(en.timetable.load.groupDefault)).not.toBeNull();
+    fireEvent.click(within(form).getByRole('button', { name: 'Use group 7-E-1' }));
+    await waitFor(() => {
+      expect(unit.value).toBe(`group:${groupOfIt.id}`);
+    });
+  });
+
+  const TOTALS: LoadTotals = {
+    classes: [{ id: OXFORD.id, name: 'Oxford', grade: 7, lessons: 32, lessonSlots: 30 }],
+    teachers: [
+      {
+        ...TEACHER,
+        lessons: 20,
+        freeSlots: null,
+        elsewhere: [{ branchId: uid(900), branchName: 'South', lessons: 4, draft: true }],
+        contract: 20,
+      },
+    ],
+  };
+
+  const totalsCells = (which: 'classes' | 'teachers') =>
+    [...document.querySelectorAll(`[data-totals="${which}"] tbody tr`)].map((one) =>
+      [...one.querySelectorAll('td')].map((cell) => cell.textContent ?? ''),
+    );
+
+  it('shows the weekly totals of classes and teachers and marks what is over', async () => {
+    await openPage({ totals: TOTALS });
+    expect(
+      await screen.findByRole('heading', { name: en.timetable.load.totals.title }),
+    ).not.toBeNull();
+    await waitFor(() => {
+      expect(totalsCells('classes')).toEqual([['7 Oxford', '32Over by 2', '30']]);
+    });
+    expect(totalsCells('teachers')).toEqual([
+      ['Karimova Aziza', '20', 'No hours set', 'South: 4 (draft)', '24Over by 4', '20'],
+    ]);
+  });
+
+  it('shows the weekly totals in Russian', async () => {
+    await openPage({ totals: TOTALS, language: 'ru' });
+    expect(
+      await screen.findByRole('heading', { name: ru.timetable.load.totals.title }),
+    ).not.toBeNull();
+    await waitFor(() => {
+      expect(totalsCells('teachers')[0]?.[2]).toBe(ru.timetable.load.totals.noHours);
+    });
+    expect(totalsCells('teachers')[0]?.[3]).toBe('South: 4 (черновик)');
+    expect(totalsCells('classes')[0]?.[1]).toBe('32Больше на 2');
+  });
+
+  it('says when there is nothing to count', async () => {
+    await openPage();
+    expect(await screen.findByText(en.timetable.load.totals.empty)).not.toBeNull();
   });
 });

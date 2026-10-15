@@ -22,6 +22,7 @@ import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState } from '@/components/states';
+import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { loadTeachersQuery } from './timetable-api';
@@ -66,7 +67,11 @@ const roomOf = (value: string) => {
  * 3.4a). The class or group and the subject are chosen at the create and fixed
  * (decision 7). The teachers offered are those the server finds may take the
  * row (the rules of the create; decision 2), the class's Tutor first; for a
- * Tutor subject the Tutor is chosen already (correction 1).
+ * Tutor subject the Tutor is chosen already (correction 1). Task 3.4b: the
+ * lessons of a group row are written to every part of its block (decision 3);
+ * a half of a split may be marked as part of a mixed block (decision 12); a
+ * class and a subject whose group switch is on offer the class's groups of
+ * the subject (decision 13: "the subject's group switch is only the default").
  */
 export function LoadRowForm({
   version,
@@ -84,6 +89,9 @@ export function LoadRowForm({
   const number = new Intl.NumberFormat(i18n.language);
   const schema: FormSchema<LoadRowRecord | LoadRowEdit> =
     row === null ? loadRowRecordSchema : loadRowEditSchema;
+  /** Whether the group is a split: it draws from one class only. */
+  const isSplit = (groupId: string | null) =>
+    groups.find((one) => one.id === groupId)?.classes.length === 1;
 
   const form = useRecordForm({
     schema,
@@ -99,6 +107,7 @@ export function LoadRowForm({
             ? `type:${row.roomType}`
             : '',
       doubleLessons: row?.doubleLessons === true ? CHECKED : '',
+      mixedBlock: row?.mixedBlock === true ? CHECKED : '',
     },
     read: (typed) => {
       const fields = {
@@ -108,14 +117,18 @@ export function LoadRowForm({
         doubleLessons: typed.doubleLessons === CHECKED,
       };
       if (row !== null) {
-        return fields;
+        return row.unit.kind === 'group' && isSplit(row.unit.id)
+          ? { ...fields, mixedBlock: typed.mixedBlock === CHECKED }
+          : fields;
       }
       const unit = unitOf(typed.unit);
+      const groupId = unit !== null && 'groupId' in unit ? unit.groupId : null;
       return {
         classId: unit !== null && 'classId' in unit ? unit.classId : null,
-        groupId: unit !== null && 'groupId' in unit ? unit.groupId : null,
+        groupId,
         subjectId: typed.subjectId,
         ...fields,
+        mixedBlock: isSplit(groupId) && typed.mixedBlock === CHECKED,
       };
     },
     save: onSave,
@@ -182,6 +195,18 @@ export function LoadRowForm({
   const openYearGroups = groups.filter(
     (one) => one.academicYearId === version.academicYearId && !one.archived,
   );
+  // Decision 13: a subject whose group switch is on, chosen for a class.
+  const chosenSubject = subjects.find((one) => one.id === subjectId);
+  const defaultGroups =
+    row === null && schoolClass !== undefined && chosenSubject?.groupSubject === true
+      ? openYearGroups.filter(
+          (one) =>
+            one.subject.id === chosenSubject.id &&
+            one.classes.some((member) => member.id === schoolClass.id),
+        )
+      : null;
+  const unitField = form.bind('unit');
+  const split = group !== undefined && group.classes.length === 1;
   const teacherName = (one: { kind: string; name: string | null; tutor: boolean }) => {
     const name = one.name ?? t('timetable.load.gone');
     return one.tutor
@@ -204,7 +229,7 @@ export function LoadRowForm({
             })),
             ...openYearGroups.map((one) => ({ value: `group:${one.id}`, label: one.name })),
           ]}
-          {...form.bind('unit')}
+          {...unitField}
         />
       )}
       {row === null && (
@@ -219,6 +244,30 @@ export function LoadRowForm({
           ]}
           {...subjectField}
         />
+      )}
+      {defaultGroups !== null && (
+        <div className="grid gap-2 text-sm" data-group-default="">
+          <p>
+            {t('timetable.load.groupDefault')}{' '}
+            {defaultGroups.length === 0 && t('timetable.load.groupDefaultNone')}
+          </p>
+          {defaultGroups.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {defaultGroups.map((one) => (
+                <Button
+                  key={one.id}
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    unitField.onChange({ target: { value: `group:${one.id}` } });
+                  }}
+                >
+                  {t('timetable.load.useGroup', { name: one.name })}
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
       {unit === null || subjectId === '' ? (
         <p className="text-sm text-muted-foreground">{t('timetable.load.chooseFirst')}</p>
@@ -244,10 +293,13 @@ export function LoadRowForm({
       )}
       <NumberField
         label={t('timetable.load.lessons')}
-        note={t('timetable.load.lessonsNote', {
-          min: number.format(1),
-          max: number.format(LOAD_LESSONS_MAX),
-        })}
+        note={t(
+          group === undefined ? 'timetable.load.lessonsNote' : 'timetable.load.blockLessonsNote',
+          {
+            min: number.format(1),
+            max: number.format(LOAD_LESSONS_MAX),
+          },
+        )}
         {...form.bind('lessonsPerWeek')}
       />
       <SelectField
@@ -265,6 +317,13 @@ export function LoadRowForm({
         {...form.bind('room')}
       />
       <CheckboxField label={t('timetable.load.doubleLessons')} {...form.bind('doubleLessons')} />
+      {split && (
+        <CheckboxField
+          label={t('timetable.load.mixedBlock')}
+          note={t('timetable.load.mixedNote')}
+          {...form.bind('mixedBlock')}
+        />
+      )}
     </RecordForm>
   );
 }

@@ -213,6 +213,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: splits, groups and weekly totals (task 3.4b)
+
+Plan approved on pull request #100 with corrections 1 and 2; decisions 1, 2, 8 and 12 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Within a version the load is the source of the split and group subjects of a class (the split-or-whole rule, the blocks, the students not placed, the totals); `class_group_subjects` keeps reading the active groups until 5.5a makes it read the published version in force on the date | Decision 1; `edge/timetable`, Versions and drafts: a draft binds nobody, and the membership check must not be dropped |
+| **Look first.** A block is every group row of one subject in a version linked by a shared class, or by being groups across classes of the same grade or pair of grades; its parts have equal lessons per week and different teachers | Decision 2; `06`, Model, Parallel group lessons; `edge/timetable`, Structure |
+| **Look first.** `teacher_load_elsewhere` SECURITY DEFINER: counts and branch ids only, for records linked to the branch of the request, which must be a branch of the transaction; another branch's version running on the day is its published one in force, else its draft with the latest start on or before the day, else its earliest later draft, marked draft | Decision 8 with correction 1; `06`, Weekly load |
+| **Look first.** `mixed_block` on the rows of a split: one teacher may take both halves, equal lessons still bind; the pairing of two subjects' halves is 5.4c's. Proposed `/spec-change` for `05`, Teaching load, Fields: add "for a split, whether it is part of a mixed block" | Decision 12; `edge/timetable`, Structure: "A mixed block is allowed" |
+| **Look first.** The commit check takes a transaction-level advisory lock of the version (`pg_advisory_xact_lock`), not a lock of the version row in a before trigger as the plan said: PostgreSQL locks the row being updated before its triggers run, so two writers of two rows deadlocked (the build's same-moment test). The API takes the version FOR UPDATE first (`lockDraft`), as in 3.4a | Build; `.claude/rules/database.md`, the lock-upgrade rule |
+| **Look first** (tests changed by a requirement). The 3.4a database test "is one per class and subject, and one per group" puts its group on another class; the load page tests read the new block column and the `mixedBlock` of the create; the 3.4a browser test finds its row by "Geometry" (the totals have a row of 7 Oxford too); `pages.spec.ts` opens the first record of a table not marked `data-totals` | Build: the split-or-whole rule, the block column, the field and the totals section are new requirements of 3.4b |
+| A lessons or mixed-mark edit is written to every part of the block (the halves of the split for the mark) in one `teaching_load.edit` entry with `parts`; each block rule is checked only when its own field changed, in the API and at the commit | Decision 3; 3.4a decisions 3 and 7 |
+| "Students not placed" (`load_group_gaps`, with the count): a gap of `group_placement_gaps` from the start date or today, or a student of the block's classes in a group of the subject with no row in the version; listed, never refusing | Decision 4; spec review of the plan, must-fix 3 |
+| The totals are shown and marked with the danger token, never refusing; a weekday is read on its first date on or after the start date (templates and hours); free slots are the most non-overlapping lesson slots by clock time of the templates of the teacher's grades inside the hours, per branch, not capped by most lessons per day; no hours entry gives "No hours set" | Decisions 5 to 7 with correction 2 |
+| The group card and panel show the published row's teacher to every reader, a draft's (marked) only to readers of the area `timetable` | Decision 9 |
+| A copy leaves every part of a block that breaks a block rule, and the group rows beside a copied class row with `load_split_and_whole` | Decision 10 |
+| The teachers offered for a group row leave out the other parts' teachers, except for the halves of a mixed split | Decision 11 |
+| A class and a subject whose group switch is on: the row form says so and offers the class's groups of the subject; a class row is still allowed | Decision 13 |
+
 ## 15 October 2026: draft versions and load rows (task 3.4a)
 
 Plan approved on pull request #99 with corrections 1 to 6; decisions 1, 2, 3 and 15 marked Look first and confirmed there. Flagged on issue #42.

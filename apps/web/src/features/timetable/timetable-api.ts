@@ -2,6 +2,7 @@ import {
   loadRowSchema,
   loadSchema,
   loadTeachersSchema,
+  loadTotalsSchema,
   timetableVersionListSchema,
   timetableVersionSchema,
   type LoadRowEdit,
@@ -36,6 +37,21 @@ export const loadQuery = (branchId: string | null, versionId: string | null) =>
       loadSchema.parse(
         await answerOf(
           api.GET('/api/timetable/versions/{id}/load', {
+            params: { header: branchHeader(), path: { id: versionId ?? '' } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && versionId !== null,
+  });
+
+/** The weekly totals of a version (task 3.4b): shown, never refusing. */
+export const totalsQuery = (branchId: string | null, versionId: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'load', versionId, 'totals'],
+    queryFn: async () =>
+      loadTotalsSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/versions/{id}/totals', {
             params: { header: branchHeader(), path: { id: versionId ?? '' } },
           }),
         ),

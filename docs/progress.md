@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 3.4b Splits, groups and weekly totals
+
+- Built: migration 0056 (`teaching_load_rows.mixed_block`, the commit check of the block rules and the split-or-whole rule under an advisory lock of the version, `load_block_rows`, `teacher_load_elsewhere`); `blocks.ts` and `totals.ts` of `packages/timetable-rules` and six new load problems; a lessons or mixed-mark edit written to every part; the copy leaves broken blocks; `GET api/timetable/versions/:id/totals`; the teacher of a group's load row on `GET api/groups`.
+- The web app: the block column, students not placed with their count, the mixed switch, the group switch as the default of the row form, "Weekly totals" below the rows, the teacher on the group card and panel.
+- Left out: the readiness of steps 2 and 3 (5.3), publish blocking on the problems and `class_group_subjects` from the published load (5.5a), the pairing of a mixed block (5.4c): lines added; the department move (3.4c).
+
+The next sessions must know:
+
+- A block is every group row of one subject in a version linked by a shared class or by groups across classes of one grade set (`groupsLinked`); the database (`load_block_rows`) and the engine read it the same way.
+- Writes that bypass the API are checked at the commit one after the other (an advisory lock of the version); a lock taken in a before-row trigger deadlocks two updaters, because PostgreSQL locks the row first.
+- `openFirstRecord` of `e2e/pages.spec.ts` skips the tables marked `data-totals`.
+- The next task is 3.4c.
+
 ## 15 October 2026: task 3.4a Draft versions and load rows
 
 - Built: migration 0055 (`departments.tutors`, `timetable_versions`, `teaching_load_rows` with the trigger of the blocked rules of one row, `vacancy_load_rows`, the vacancy close and delete refused while a row names it); `loadRowProblems` of `packages/timetable-rules`; the area `timetable` and eight routes (versions, the copy, the load, the teachers a row may take, the rows).
