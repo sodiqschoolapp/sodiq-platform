@@ -33,6 +33,7 @@ import { classesQuery } from '@/features/classes/classes-api';
 import { groupsQuery } from '@/features/classes/groups-api';
 import { schoolDateText } from '@/lib/dates';
 import { asFormSchema } from './form-schema';
+import { branchMoveLineText } from './branch-move';
 import { studentHistoryQuery } from './people-api';
 
 /**
@@ -491,6 +492,8 @@ function lineText(t: TFunction, line: StudentHistoryLine): string {
       });
     case 'group':
       return t('people.students.moves.groupJoin', { group: line.group.name });
+    case 'branch_move':
+      return branchMoveLineText(t, line);
     case 'status':
       return `${t(`people.students.statuses.${line.status}`)} · ${t(`people.students.causes.${line.cause}`)}`;
   }
@@ -528,7 +531,8 @@ export function HistoryTab({
     <section className="grid gap-3" aria-label={t('people.students.moves.historyLabel')}>
       <ol className="grid gap-3 text-sm">
         {history.data.lines.map((line, index) => {
-          const from = line.kind === 'move' ? line.move.from : line.from;
+          const from =
+            line.kind === 'move' || line.kind === 'branch_move' ? line.move.from : line.from;
           const move = line.kind === 'move' ? line.move : null;
           return (
             <li key={`${line.kind}-${from}-${String(index)}`} className="grid gap-1">

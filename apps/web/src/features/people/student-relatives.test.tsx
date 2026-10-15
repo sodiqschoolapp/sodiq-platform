@@ -69,6 +69,9 @@ const DETAIL: StudentDetail = {
   groupMoveSubjects: [],
   canMoveInPast: false,
   readsHistory: false,
+  branchMove: null,
+  lastBranchMove: null,
+  canMoveBranch: false,
   today: '2026-10-10',
 };
 

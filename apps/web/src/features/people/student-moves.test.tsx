@@ -82,6 +82,9 @@ const detailOf = (fields: Partial<StudentDetail> = {}): StudentDetail => ({
   groupMoveSubjects: [],
   canMoveInPast: true,
   readsHistory: true,
+  branchMove: null,
+  lastBranchMove: null,
+  canMoveBranch: false,
   today: '2026-10-10',
   ...fields,
 });

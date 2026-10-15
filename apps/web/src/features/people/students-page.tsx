@@ -56,6 +56,7 @@ import { GroupsPlacedNotice, PlaceTickedForm } from '@/features/classes/class-me
 import { PlaceTickedInGroupForm } from '@/features/classes/group-members';
 import { StudentForm } from './student-form';
 import { StudentPanel } from './student-panel';
+import { IncomingMoves } from './branch-move';
 import { schoolDateText } from '@/lib/dates';
 
 /**
@@ -683,6 +684,7 @@ export function StudentsPage() {
         actions={addButton === false ? undefined : addButton}
       />
       <PeopleTabs current="students" />
+      <IncomingMoves />
       {outcome !== null && (
         <p role="status" className="mb-3 text-sm">
           {t('people.students.bulkLeft', { count: outcome.done, n: number.format(outcome.done) })}

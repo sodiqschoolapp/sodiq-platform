@@ -336,6 +336,21 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu koʻchirishni endi qaytarib boʻlmaydi: undan keyin oʻquvchining sinflari yoki guruhlari oʻzgargan yoki oʻquv yili yopilgan. Oʻrniga orqaga koʻchirishni rasmiylashtiring.',
     move_before_later:
       'Oʻquvchining keyingi koʻchirishi allaqachon boshlangan. Undan keyingi sanani tanlang yoki avval oʻsha koʻchirishni qaytaring.',
+    branch_move_same_branch: 'Oʻquvchi allaqachon shu filialda. Boshqa filialni tanlang.',
+    branch_move_open:
+      'Bu oʻquvchi boshqa filialga allaqachon yuborilgan. Yuborishni bekor qiling yoki u filial qabul qilishi yoki rad etishini kuting.',
+    branch_move_closed:
+      'Bu yuborish shu orada bekor qilingan, rad etilgan yoki qabul qilingan. Roʻyxatni qayta oching.',
+    branch_move_not_yet:
+      'Bu yuborishni uning birinchi kunidan boshlab qabul qilish mumkin. Oʻsha kuni qabul qiling.',
+    branch_move_language_differs:
+      'Oʻquvchi chiqib ketgan sinf boshqa tilda oʻqitadi. Baribir qabul qilish uchun tasdiqlang.',
+    branch_move_group:
+      'Bu guruh sinfga shu fan boʻyicha taklif qilinmaydi. Boshqa guruhni tanlang.',
+    status_scheduled:
+      'Bu oʻquvchining ketishi shu sanadan keyin rejalashtirilgan. Avval ketishni oʻzgartiring yoki bekor qiling.',
+    before_branch_move:
+      'Bu sana oʻquvchi shu filialga oʻtishidan oldin. Oʻtish kuni yoki undan keyingi sanani tanlang.',
     move_scheduled:
       'Bu oʻquvchining boshqa koʻchirishi allaqachon rejalashtirilgan. Avval uni oʻzgartiring yoki bekor qiling.',
     move_no_membership:
@@ -1515,6 +1530,47 @@ export const uz: Texts<'one' | 'other'> = {
         historyLabel: 'Oʻquvchi tarixi',
         noGroups: 'Bu fanning hech bir guruhi oʻquvchini qabul qila olmaydi.',
       },
+      branchMoves: {
+        move: 'Boshqa filialga oʻtkazish',
+        toBranch: 'Filial',
+        from: 'U yerdagi birinchi kun',
+        cancel: 'Yuborishni bekor qilish',
+        cancelTitle: 'Bu yuborish bekor qilinsinmi?',
+        cancelText: 'Oʻquvchi shu filialda qoladi.',
+        keep: 'Yuborishni qoldirish',
+        branch: 'Filial',
+        released: '{{date}} dan {{branch}} filialiga yuborilgan',
+        arrived: '{{date}} da {{branch}} filialidan kelgan',
+        line: '{{from}} filialidan {{to}} filialiga yuborildi',
+        lineClass: '{{from}} filialidan {{to}} filialiga, {{class}} sinfiga oʻtdi',
+        states: {
+          open: 'Boshqa filial javobi kutilmoqda',
+          cancelled: 'Bekor qilingan',
+          declined: 'Rad etilgan',
+          accepted: 'Qabul qilingan',
+          cancelledByLeaving: 'Ketish bilan bekor qilingan',
+        },
+        incomingTitle_one: 'Shu filialga yuborilganlar: {{count}} ta oʻquvchi',
+        incomingTitle_other: 'Shu filialga yuborilganlar: {{count}} ta oʻquvchi',
+        incomingLine:
+          '{{name}} · UID {{uid}} · {{grade}}-sinf · {{branch}} filialidan, birinchi kun {{date}}',
+        accept: 'Qabul qilish',
+        decline: 'Rad etish',
+        acceptTitle: '{{name}}: qabul qilish',
+        declineTitle: '{{name}}: rad etish',
+        notYet: '{{date}} dan qabul qilish mumkin',
+        class: 'Sinf',
+        noClass: 'Ochiq oʻquv yilida bu sinf darajasidagi sinf yoʻq.',
+        placeAutomatically: 'Avtomatik joylashtirish',
+        groupOption_one: '{{name}} · {{count}} ta boʻsh oʻrin',
+        groupOption_other: '{{name}} · {{count}} ta boʻsh oʻrin',
+        freeSeats_one: 'Sinfda {{count}} ta boʻsh oʻrin',
+        freeSeats_other: 'Sinfda {{count}} ta boʻsh oʻrin',
+        languageTitle: 'Sinflarda taʼlim tili har xil',
+        languageText: 'Baribir oʻquvchi qabul qilinsinmi?',
+        accepted: '{{name}} endi {{class}} sinfida.',
+        declined: '{{name}} yuborilishi rad etildi.',
+      },
       tabs: {
         label: 'Profil',
         overview: 'Umumiy',
@@ -2248,6 +2304,11 @@ export const uz: Texts<'one' | 'other'> = {
         group_transfer_changed: 'Guruhga koʻchirish oʻzgartirildi',
         group_transfer_cancelled: 'Guruhga koʻchirish bekor qilindi',
         group_transfer_undone: 'Guruhga koʻchirish qaytarildi',
+        branch_released: 'Boshqa filialga yuborildi',
+        branch_release_cancelled: 'Boshqa filialga yuborish bekor qilindi',
+        branch_release_declined: 'Boshqa filialga yuborish rad etildi',
+        branch_left: 'Boshqa filialga ketdi',
+        branch_moved: 'Boshqa filialdan keldi',
         delete: 'Ikki marta yaratilgan oʻquvchi oʻchirildi',
         export: 'Oʻquvchilar eksport qilindi',
         identity_shown: 'Oʻquvchi yozuvining yashirin maydonlari koʻrsatildi',

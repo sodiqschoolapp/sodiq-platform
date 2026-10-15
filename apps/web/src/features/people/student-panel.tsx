@@ -62,6 +62,7 @@ import {
   UndoMoveForm,
   useCancelMove,
 } from './student-moves';
+import { branchMoveRows, isBranchMoveForm, ReleaseForm, useCancelRelease } from './branch-move';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
 
@@ -71,7 +72,10 @@ type Tab = 'overview' | 'relatives' | 'contract' | 'history';
 const RECORD_FORMS = ['record', 'uid'] as const;
 
 const isRecordForm = (key: string | null): boolean =>
-  isStatusForm(key) || isMoveForm(key) || RECORD_FORMS.some((one) => one === key);
+  isStatusForm(key) ||
+  isMoveForm(key) ||
+  isBranchMoveForm(key) ||
+  RECORD_FORMS.some((one) => one === key);
 
 interface StudentPanelProps {
   id: string;
@@ -208,6 +212,11 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     },
     reread,
   );
+  // Task 3.3c: the cancel of the open release to another branch.
+  const cancelRelease = useCancelRelease(student, name, async (answer) => {
+    await statusChanged(answer);
+    panel.point('status');
+  });
   // A status form whose action is no longer allowed (the student was read
   // again) is not drawn: the panel reads as with no form open.
   const gone = isStatusForm(panel.editing) && allowed !== null && !allowed[panel.editing];
@@ -259,6 +268,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
       setStaleClosed(false);
       cancelLeaving.reset();
       cancelMove.reset();
+      cancelRelease.reset();
     });
   };
   const opens = (key: string, text: string, variant: 'default' | 'secondary' | 'destructive') => (
@@ -363,6 +373,37 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
       ]),
   ].filter((one) => one !== false);
   secondary.push(...moves);
+  // Task 3.3c: the release of an active student with no move waiting, and its cancel.
+  const release = student.branchMove;
+  if (
+    student.canMoveBranch &&
+    release === null &&
+    student.status === 'active' &&
+    student.scheduledMoves.length === 0
+  ) {
+    secondary.push(opens('moveBranch', t('people.students.branchMoves.move'), 'secondary'));
+  }
+  if (student.canMoveBranch && release !== null) {
+    secondary.push(
+      <Button
+        key="cancel-release"
+        variant="secondary"
+        disabled={cancelRelease.isPending}
+        onClick={() => {
+          setStaleClosed(false);
+          cancelRelease.mutate(release, {
+            onSuccess: (answer) => {
+              if (answer === null) {
+                cancelRelease.reset();
+              }
+            },
+          });
+        }}
+      >
+        {t('people.students.branchMoves.cancel')}
+      </Button>,
+    );
+  }
   const changing = student.scheduledMoves.find((move) => editing === `change:${move.id}`);
   const moveProps = (key: string) => ({
     student,
@@ -428,6 +469,12 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
               {...moveProps('moveClass')}
               label={name}
               move={null}
+            />
+          )}
+          {editing === 'moveBranch' && (
+            <ReleaseForm
+              key={`move-branch-${String(student.version)}`}
+              {...moveProps('moveBranch')}
             />
           )}
           {editing === 'moveGroup' && (
@@ -560,13 +607,15 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
           error={
             cancelLeaving.error ??
             cancelMove.error ??
+            cancelRelease.error ??
             (staleClosed ? new ApiFailure('student_changed') : null)
           }
           // After a save of a form, or "Cancel the leaving" until another action starts.
           saved={
-            (panel.saved && cancelLeaving.isIdle && cancelMove.isIdle) ||
+            (panel.saved && cancelLeaving.isIdle && cancelMove.isIdle && cancelRelease.isIdle) ||
             cancelLeaving.isSuccess ||
-            cancelMove.isSuccess
+            cancelMove.isSuccess ||
+            cancelRelease.isSuccess
           }
         />
       )}
@@ -635,6 +684,7 @@ function Academic({ student }: { student: StudentDetail }) {
   rows.push([t('people.students.mainRoom'), student.mainRoom ?? t('classes.noRoom')]);
   // Task 3.3a: the scheduled moves with their dates, and the latest class move.
   rows.push(...moveRows(t, i18n.language, student));
+  rows.push(...branchMoveRows(t, i18n.language, student));
   return (
     <section className="grid gap-3">
       <h3 className={SECTION_TITLE}>{t('people.students.academic')}</h3>

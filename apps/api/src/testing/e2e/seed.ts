@@ -2475,6 +2475,74 @@ try {
   });
   seeded.returns = { login: returnsVice.login, password: returnsVice.firstPassword };
 
+  // The Academic Vice Principal of two branches for the move to another
+  // branch (task 3.3c): the sending branch with 7 Oxford and a student in it,
+  // the receiving branch with 7 Cambridge, each with the year around today;
+  // one account releases in one branch and accepts in the other.
+  const sendingBranch = await insertBranch(migrator, 'Sending browser test branch');
+  const receivingBranch = await insertBranch(migrator, 'Receiving browser test branch');
+  const branchMovesVice = await create('Sevara', 'Ismoilova');
+  for (const branch of [sendingBranch, receivingBranch]) {
+    await transactions.run([branch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: branchMovesVice.id,
+        role: 'academic_vice_principal',
+        branchId: branch,
+        givenBy: null,
+      }),
+    );
+  }
+  await migrator.transaction().execute(async (transaction) => {
+    const classOf: Record<string, string> = {};
+    for (const [branch, name] of [
+      [sendingBranch, 'Oxford'],
+      [receivingBranch, 'Cambridge'],
+    ] as const) {
+      const year = await transaction
+        .insertInto('academic_years')
+        .values({
+          branch_id: branch,
+          start_date: startDate,
+          end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('quarters')
+        .values(
+          [1, 2, 3, 4].map((number) => ({
+            branch_id: branch,
+            academic_year_id: year.id,
+            number,
+          })),
+        )
+        .execute();
+      const row = await transaction
+        .insertInto('classes')
+        .values({
+          branch_id: branch,
+          academic_year_id: year.id,
+          grade: 7,
+          name,
+          language: 'uz',
+          max_size: 25,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      classOf[branch] = row.id;
+    }
+    await studentInClass(transaction, {
+      branch: sendingBranch,
+      classId: classOf[sendingBranch] ?? null,
+      uid: '9999951',
+      first: 'Gulshan',
+      last: 'Qosimova',
+      createdBy: branchMovesVice.id,
+      phone: '+998905550501',
+    });
+  });
+  seeded.branchMoves = { login: branchMovesVice.login, password: branchMovesVice.firstPassword };
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')

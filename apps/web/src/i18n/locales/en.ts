@@ -330,6 +330,21 @@ export const en = {
       "This move can no longer be undone: something changed the student's classes or groups after it, or its year is closed. Make a transfer back instead.",
     move_before_later:
       'A later move of this student has already begun. Choose a date after it, or undo that move first.',
+    branch_move_same_branch: 'The student is already in that branch. Choose another branch.',
+    branch_move_open:
+      'This student already has a release to another branch. Cancel it, or wait until that branch accepts or declines it.',
+    branch_move_closed:
+      'This release was cancelled, declined or accepted meanwhile. Read the list again.',
+    branch_move_not_yet:
+      'This release can be accepted from its first day on. Accept it on that day.',
+    branch_move_language_differs:
+      'The class the student left teaches in another language. Confirm to accept the student anyway.',
+    branch_move_group:
+      'This group is not offered to the class for that subject. Choose another group.',
+    status_scheduled:
+      'A leaving of this student is scheduled after that date. Change or cancel the leaving first.',
+    before_branch_move:
+      'That date is before the student moved to this branch. Choose a date on or after the move.',
     move_scheduled:
       'Another move of this student is already scheduled. Change or cancel that move first.',
     move_no_membership:
@@ -1501,6 +1516,47 @@ export const en = {
         historyLabel: 'History of the student',
         noGroups: 'No group of the subject can take the student.',
       },
+      branchMoves: {
+        move: 'Move to another branch',
+        toBranch: 'Branch',
+        from: 'First day there',
+        cancel: 'Cancel the release',
+        cancelTitle: 'Cancel this release?',
+        cancelText: 'The student stays in this branch.',
+        keep: 'Keep the release',
+        branch: 'Branch',
+        released: 'Released to {{branch}} from {{date}}',
+        arrived: 'Came from {{branch}} on {{date}}',
+        line: 'Released from {{from}} to {{to}}',
+        lineClass: 'Moved from {{from}} to {{to}}, into {{class}}',
+        states: {
+          open: 'Waiting for the other branch',
+          cancelled: 'Cancelled',
+          declined: 'Declined',
+          accepted: 'Accepted',
+          cancelledByLeaving: 'Cancelled by the leaving',
+        },
+        incomingTitle_one: 'Released to this branch: {{count}} student',
+        incomingTitle_other: 'Released to this branch: {{count}} students',
+        incomingLine:
+          '{{name}} · UID {{uid}} · grade {{grade}} · from {{branch}}, first day {{date}}',
+        accept: 'Accept',
+        decline: 'Decline',
+        acceptTitle: 'Accept {{name}}',
+        declineTitle: 'Decline {{name}}',
+        notYet: 'Can be accepted from {{date}}',
+        class: 'Class',
+        noClass: 'No class of this grade in an open year.',
+        placeAutomatically: 'Place automatically',
+        groupOption_one: '{{name}} · {{count}} free seat',
+        groupOption_other: '{{name}} · {{count}} free seats',
+        freeSeats_one: '{{count}} free seat in the class',
+        freeSeats_other: '{{count}} free seats in the class',
+        languageTitle: 'The classes teach in different languages',
+        languageText: 'Accept the student anyway?',
+        accepted: '{{name}} is in {{class}} now.',
+        declined: 'The release of {{name}} was declined.',
+      },
       tabs: {
         label: 'Profile',
         overview: 'Overview',
@@ -2230,6 +2286,11 @@ export const en = {
         group_transfer_changed: 'Group move changed',
         group_transfer_cancelled: 'Group move cancelled',
         group_transfer_undone: 'Group move undone',
+        branch_released: 'Released to another branch',
+        branch_release_cancelled: 'Release to another branch cancelled',
+        branch_release_declined: 'Release to another branch declined',
+        branch_left: 'Left for another branch',
+        branch_moved: 'Moved in from another branch',
         delete: 'Student created twice deleted',
         export: 'Students exported',
         identity_shown: 'Hidden fields of a student record shown',
