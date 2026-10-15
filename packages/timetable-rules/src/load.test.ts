@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   LOAD_PROBLEM_ORDER,
   loadRowProblems,
+  refusingProblems,
   takesAsTutor,
   teacherProblems,
   type LoadRowFacts,
@@ -45,6 +46,9 @@ const facts = (changes: Partial<LoadRowFacts> = {}): LoadRowFacts => ({
   teacher: fit,
   room: null,
   sharedSlot: null,
+  splitAndWhole: false,
+  blockProblems: [],
+  unplaced: 0,
   ...changes,
 });
 
@@ -189,6 +193,45 @@ describe('loadRowProblems', () => {
     ]);
     const order = problems.map((one) => LOAD_PROBLEM_ORDER.indexOf(one));
     expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+});
+
+// Task 3.4b (pull request #100): the block rules, the split-or-whole rule
+// and the students not placed, which are listed but never refuse (decision 4).
+describe('the problems of a block', () => {
+  const group: LoadUnit = { ...seventh, kind: 'group', subjectId: 'algebra', tutorStaffIds: [] };
+
+  it('reports a class both whole and split for the subject (05, Group)', () => {
+    expect(loadRowProblems(facts({ splitAndWhole: true }))).toEqual(['load_split_and_whole']);
+  });
+
+  it('reports each block problem in its place in the order', () => {
+    const problems = loadRowProblems(
+      facts({
+        unit: group,
+        blockProblems: [
+          'load_block_teacher',
+          'load_block_lessons',
+          'load_block_mixed',
+          'load_mixed_not_split',
+        ],
+        teacher: { ...fit, out: true },
+      }),
+    );
+    expect(problems).toEqual([
+      'load_mixed_not_split',
+      'load_teacher_status',
+      'load_block_mixed',
+      'load_block_lessons',
+      'load_block_teacher',
+    ]);
+  });
+
+  it('lists students not placed last, and never as a refusal', () => {
+    const problems = loadRowProblems(facts({ unit: group, unplaced: 3, room: { closed: true } }));
+    expect(problems).toEqual(['load_room_closed', 'load_group_gaps']);
+    expect(refusingProblems(problems)).toEqual(['load_room_closed']);
+    expect(refusingProblems(loadRowProblems(facts({ unit: group, unplaced: 1 })))).toEqual([]);
   });
 });
 

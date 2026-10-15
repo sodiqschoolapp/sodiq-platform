@@ -252,6 +252,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'The kind of one record by id, or null when it does not exist, so that a check never depends on what the membership filter shows; no row data.',
   'staff_subject_in_use(uuid,smallint[],uuid,timestamp with time zone)':
     "How many people of other branches a change of a subject's department or grades would leave outside it.",
+  'teacher_load_elsewhere(uuid,uuid[],date)':
+    'The lessons per week each teacher or vacancy linked to a branch of the transaction has in the version running in every other branch, counts and branch ids only, so that "the teacher\'s total across branches is shown to both" (06, Weekly load; task 3.4b, decision 8 of pull request #100, Look first).',
   'vacancy_load_rows(uuid)':
     'The number of teaching load rows of any version and branch that name a record, a count only, for the deferred refusal of a closed vacancy row (04, Vacancy: "cannot be closed while a load row names it"; task 3.4a, pull request #99); the backstop must not depend on what the closing transaction sees.',
   'vacancy_delete(uuid)':

@@ -14,6 +14,7 @@ import {
   type GroupRestore,
   type GroupSlotCheck,
   type InstructionLanguage,
+  PERMISSIONS,
   type SchoolGroup,
 } from '@sodiq/shared';
 import { CLOCK } from '../../clock/clock.module.js';
@@ -37,8 +38,10 @@ import {
   sharedLanguageOf,
   slotsOf,
   type GroupClassRow,
+  type GroupReader,
   type GroupRow,
 } from './group-rows.js';
+import { decide } from '../access/permission-check.js';
 
 const UNIQUE_VIOLATION = '23505';
 
@@ -85,6 +88,22 @@ const fieldsOf = (row: GroupRow, classes: readonly GroupClassRow[]) => ({
   maxSize: row.max_size,
 });
 
+/**
+ * The reader of a group: a reader of the area `timetable` also sees the
+ * teacher of a draft's row (task 3.4b, decision 9), decided from every
+ * current assignment (`.claude/rules/api.md`).
+ */
+const readerOf = (access: Access): GroupReader => ({
+  branchId: branchOf(access),
+  drafts:
+    decide(
+      { area: 'timetable', action: 'view', branch: 'request' },
+      access.assignments,
+      access.branchId,
+      PERMISSIONS,
+    ) !== undefined,
+});
+
 /** A group outside the scope of every assignment that permits the route is 403 (decisions 2 and 11). */
 function refuseOutsideGroupScope(access: Access, group: SchoolGroup): void {
   const key = { subjectId: group.subject.id, classIds: group.classes.map((one) => one.id) };
@@ -120,7 +139,7 @@ export class Groups {
   /** The groups of the branch in the reader's scope. */
   list(access: Access): Promise<GroupList> {
     return this.transactions.run(access.branchIds, async (transaction) => ({
-      groups: (await readGroups(transaction)).filter(
+      groups: (await readGroups(transaction, readerOf(access))).filter(
         (group) =>
           inGroupScope(access.permitting, {
             subjectId: group.subject.id,
@@ -133,7 +152,7 @@ export class Groups {
   /** One group: an unknown id or another branch's is 404, a group outside the scope 403. */
   detail(access: Access, id: string): Promise<GroupDetail> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const found = await readGroupDetail(transaction, branchOf(access), id);
+      const found = await readGroupDetail(transaction, readerOf(access), id);
       refuseOutsideGroupScope(access, found);
       return found;
     });
@@ -161,7 +180,7 @@ export class Groups {
   /** The Excel file of the list, from the rows the list reads, in one transaction. */
   export(access: Access, request: GroupExport, requestId: string): Promise<XlsxFile> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const groups = await readGroups(transaction);
+      const groups = await readGroups(transaction, readerOf(access));
       const rows = new Map(groups.map((one) => [one.id, one]));
       return exportList(transaction, this.audit, this.clock, access, requestId, {
         list: 'groups',
@@ -223,7 +242,7 @@ export class Groups {
           },
           requestId,
         });
-        return readGroupDetail(transaction, branchId, row.id);
+        return readGroupDetail(transaction, readerOf(access), row.id);
       }),
     );
   }
@@ -257,7 +276,7 @@ export class Groups {
         };
         const changes = changesOf(fieldsOf(before, oldClasses), record);
         if (changes === null) {
-          return readGroupDetail(transaction, branchId, id);
+          return readGroupDetail(transaction, readerOf(access), id);
         }
         // Every edit updates the row, so the version moves also when only the classes change.
         await transaction
@@ -287,7 +306,7 @@ export class Groups {
           },
           requestId,
         });
-        return readGroupDetail(transaction, branchId, id);
+        return readGroupDetail(transaction, readerOf(access), id);
       }),
     );
   }
@@ -326,7 +345,7 @@ export class Groups {
           const classes = await this.lockClasses(transaction, seen);
           const before = await this.lockGroup(transaction, id);
           if ((before.archived_at !== null) === archived) {
-            return readGroupDetail(transaction, branchId, id);
+            return readGroupDetail(transaction, readerOf(access), id);
           }
           await this.requireOpenYear(transaction, before.academic_year_id);
           // A restore takes the classes' language when they share one (a class
@@ -386,7 +405,7 @@ export class Groups {
             },
             requestId,
           });
-          return readGroupDetail(transaction, branchId, id);
+          return readGroupDetail(transaction, readerOf(access), id);
         }),
       archived ? GROUP_REFUSALS : GROUP_RESTORE_REFUSALS,
     );

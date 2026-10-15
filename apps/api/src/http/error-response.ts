@@ -279,6 +279,13 @@ const MESSAGE: Record<ErrorCode, string> = {
   load_room_choice: 'A row names a room or a room type, not both.',
   load_row_exists: 'The version already has a row for this unit and subject.',
   load_group_no_shared_slot: 'The two grades share no lesson slot on any school weekday.',
+  load_split_and_whole:
+    'The version holds a whole-class row and a group row for one class and subject.',
+  load_mixed_not_split: 'Only the halves of a split are part of a mixed block.',
+  load_block_mixed: 'The halves of one split disagree on the mixed block.',
+  load_block_lessons: 'Every part of a block has the same lessons per week.',
+  load_block_teacher: 'Two parts of one block have the same teacher.',
+  load_group_gaps: 'Students of the classes are not placed in a group of the block.',
   vacancy_has_load: 'A load row names the vacancy.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',

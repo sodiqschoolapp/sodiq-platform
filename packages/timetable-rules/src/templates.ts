@@ -61,6 +61,14 @@ export function weekdayOf(date: string): number {
   return day === 0 ? 7 : day;
 }
 
+/** The first date on or after `from` that falls on the ISO weekday. */
+export function firstOn(from: string, weekday: number): string {
+  const ahead = (weekday - weekdayOf(from) + 7) % 7;
+  const date = new Date(`${from}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + ahead);
+  return date.toISOString().slice(0, 10);
+}
+
 const holds = (range: { gradeFrom: number | null; gradeTo: number | null }, grade: number) =>
   range.gradeFrom !== null &&
   range.gradeTo !== null &&

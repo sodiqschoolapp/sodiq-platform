@@ -10,7 +10,7 @@
  * group's own save only shows them.
  */
 import type { Day } from './day.js';
-import { templateFor, weekdayOf, type TemplateSettings } from './templates.js';
+import { firstOn, templateFor, type TemplateSettings } from './templates.js';
 
 /** A lesson slot both days have at the same times, with its lesson number in each. */
 export interface SharedSlot {
@@ -46,14 +46,6 @@ export interface TwoGradeDay {
   readonly weekday: number;
   readonly date: string;
   readonly slots: readonly SharedSlot[];
-}
-
-/** The first date on or after `from` that falls on the ISO weekday. */
-function firstOn(from: string, weekday: number): string {
-  const ahead = (weekday - weekdayOf(from) + 7) % 7;
-  const date = new Date(`${from}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + ahead);
-  return date.toISOString().slice(0, 10);
 }
 
 /**

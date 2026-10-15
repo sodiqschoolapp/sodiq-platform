@@ -14,7 +14,9 @@
  * which needs the templates (decision 8).
  */
 
-/** The problems of a row, in the order they are reported; the first is the refusal. */
+import type { BlockProblem } from './blocks.js';
+
+/** The problems of a row, in the order they are reported; the first of `refusingProblems` is the refusal. */
 export const LOAD_PROBLEM_ORDER = [
   'load_unit_year',
   'load_unit_archived',
@@ -22,12 +24,18 @@ export const LOAD_PROBLEM_ORDER = [
   'load_subject_archived',
   'load_subject_grade',
   'load_group_no_shared_slot',
+  'load_split_and_whole',
+  'load_mixed_not_split',
   'load_teacher_branch',
   'load_teacher_status',
   'load_teacher_subject',
   'load_teacher_grade',
   'load_teacher_language',
+  'load_block_mixed',
+  'load_block_lessons',
+  'load_block_teacher',
   'load_room_closed',
+  'load_group_gaps',
 ] as const;
 
 export type LoadProblem = (typeof LOAD_PROBLEM_ORDER)[number];
@@ -40,6 +48,16 @@ export const TEACHER_PROBLEMS: readonly LoadProblem[] = [
   'load_teacher_grade',
   'load_teacher_language',
 ];
+
+/**
+ * The problems a write is never refused for (task 3.4b, decision 4): students
+ * not placed are listed; readiness (5.3) and publish (5.5a) block on them.
+ */
+export const LISTED_PROBLEMS: readonly LoadProblem[] = ['load_group_gaps'];
+
+/** The problems of `problems` that refuse a write, in their order. */
+export const refusingProblems = (problems: readonly LoadProblem[]): LoadProblem[] =>
+  problems.filter((problem) => !LISTED_PROBLEMS.includes(problem));
 
 /** The problems that the choice of the room decides (decision 7). */
 export const ROOM_PROBLEMS: readonly LoadProblem[] = ['load_room_closed'];
@@ -98,6 +116,18 @@ export interface LoadRowFacts {
    * otherwise.
    */
   readonly sharedSlot: boolean | null;
+  /**
+   * Task 3.4b: whether the version also holds a whole-class row and a group
+   * row for one class and the subject of the row (`splitAndWhole`).
+   */
+  readonly splitAndWhole: boolean;
+  /** Task 3.4b: the problems the row's block gives it (`blockProblems`); empty for a class row. */
+  readonly blockProblems: readonly BlockProblem[];
+  /**
+   * Task 3.4b, decision 4: the students of a group row's classes not placed
+   * in one of the block's groups from the start date; 0 for a class row.
+   */
+  readonly unplaced: number;
 }
 
 const coversAll = (held: readonly number[], needed: readonly number[]) =>
@@ -161,9 +191,23 @@ export function loadRowProblems(facts: LoadRowFacts): LoadProblem[] {
   if (facts.sharedSlot === false) {
     problems.push('load_group_no_shared_slot');
   }
+  if (facts.splitAndWhole) {
+    problems.push('load_split_and_whole');
+  }
+  if (facts.blockProblems.includes('load_mixed_not_split')) {
+    problems.push('load_mixed_not_split');
+  }
   problems.push(...teacherProblems(unit, subject, facts.teacher));
+  for (const problem of ['load_block_mixed', 'load_block_lessons', 'load_block_teacher'] as const) {
+    if (facts.blockProblems.includes(problem)) {
+      problems.push(problem);
+    }
+  }
   if (facts.room?.closed === true) {
     problems.push('load_room_closed');
+  }
+  if (facts.unplaced > 0) {
+    problems.push('load_group_gaps');
   }
   return problems;
 }

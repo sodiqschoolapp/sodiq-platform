@@ -519,6 +519,18 @@ export const ERROR_CODES = [
   'load_row_exists',
   /** A group of two grades has no school weekday with a lesson slot of the same start and end in both grades (edge/timetable, Structure; task 3.4a, decision 8). */
   'load_group_no_shared_slot',
+  /** The version already holds a whole-class row and a group row for one class and the subject (05, Group; task 3.4b). */
+  'load_split_and_whole',
+  /** A group across classes is marked as part of a mixed block: only the halves of a split are (task 3.4b, decision 12). */
+  'load_mixed_not_split',
+  /** The halves of one split disagree on the mixed-block mark (task 3.4b, decision 12). */
+  'load_block_mixed',
+  /** A part of a split or of parallel groups has other lessons per week than the rest of its block (edge/timetable, Structure; task 3.4b). */
+  'load_block_lessons',
+  /** Two parts of one block name the same teacher or vacancy (edge/timetable, Structure; task 3.4b). */
+  'load_block_teacher',
+  /** Students of the classes of a group row are not placed in one of the block's groups; listed, never a refusal (task 3.4b, decision 4). */
+  'load_group_gaps',
   /** A load row names the vacancy: it cannot be closed or deleted (04, Vacancy; task 3.4a). */
   'vacancy_has_load',
   /** Any other refusal that has no code of its own yet. */

@@ -33,12 +33,18 @@ export const LOAD_PROBLEMS = [
   'load_subject_archived',
   'load_subject_grade',
   'load_group_no_shared_slot',
+  'load_split_and_whole',
+  'load_mixed_not_split',
   'load_teacher_branch',
   'load_teacher_status',
   'load_teacher_subject',
   'load_teacher_grade',
   'load_teacher_language',
+  'load_block_mixed',
+  'load_block_lessons',
+  'load_block_teacher',
   'load_room_closed',
+  'load_group_gaps',
 ] as const;
 
 export const loadProblemSchema = z.enum(LOAD_PROBLEMS);
@@ -124,6 +130,8 @@ export const loadRowRecordSchema = loadRowFieldsSchema
     classId: z.uuid().nullable(),
     groupId: z.uuid().nullable(),
     subjectId: z.uuid(),
+    /** Task 3.4b, decision 12: a half of a split that is part of a mixed block. */
+    mixedBlock: z.boolean().default(false),
   })
   .refine((row) => (row.classId === null) !== (row.groupId === null), {
     message: 'A class or a group.',
@@ -133,8 +141,14 @@ export const loadRowRecordSchema = loadRowFieldsSchema
 
 export type LoadRowRecord = z.infer<typeof loadRowRecordSchema>;
 
-/** The edit of a row: the unit and the subject are fixed. */
-export const loadRowEditSchema = loadRowFieldsSchema.refine(oneRoomChoice, ROOM_CHOICE);
+/**
+ * The edit of a row: the unit and the subject are fixed. A change of lessons
+ * per week (or of `mixedBlock`, kept when absent) is written to every part of
+ * the block (of the split for the mark; task 3.4b, decision 3).
+ */
+export const loadRowEditSchema = loadRowFieldsSchema
+  .extend({ mixedBlock: z.boolean().optional() })
+  .refine(oneRoomChoice, ROOM_CHOICE);
 
 export type LoadRowEdit = z.infer<typeof loadRowEditSchema>;
 
@@ -173,6 +187,11 @@ export const loadRowSchema = z.object({
   room: z.object({ id: z.uuid(), name: z.string() }).nullable(),
   roomType: roomTypeSchema.nullable(),
   doubleLessons: z.boolean(),
+  mixedBlock: z.boolean(),
+  /** Task 3.4b: the rows of the block of a group row, this one included, by group name; empty for a class row. */
+  block: z.array(z.object({ id: z.uuid(), name: z.string() })),
+  /** Task 3.4b, decision 4: the students not placed in one of the block's groups; 0 for a class row. */
+  unplaced: z.int().min(0),
   problems: z.array(loadProblemSchema),
 });
 
@@ -217,3 +236,41 @@ export const loadTeachersSchema = z.object({
 });
 
 export type LoadTeachers = z.infer<typeof loadTeachersSchema>;
+
+/**
+ * The weekly totals of a version (06, Building a timetable, steps 2 and 3;
+ * Teachers who work in several branches, Weekly load; task 3.4b, decisions 5
+ * to 8): each class's lessons against the lesson slots of its week, each
+ * teacher's lessons here against the free slots here (`null`: no hours
+ * entry in force), the lessons of the version running in each other branch
+ * (marked `draft` when it is a draft) and the contract load (`null`: not
+ * set). Shown, never refusing.
+ */
+export const loadTotalsSchema = z.object({
+  classes: z.array(
+    z.object({
+      id: z.uuid(),
+      name: z.string(),
+      grade: z.int(),
+      lessons: z.int().min(0),
+      lessonSlots: z.int().min(0),
+    }),
+  ),
+  teachers: z.array(
+    loadTeacherSchema.extend({
+      lessons: z.int().min(0),
+      freeSlots: z.int().min(0).nullable(),
+      elsewhere: z.array(
+        z.object({
+          branchId: z.uuid(),
+          branchName: z.string(),
+          lessons: z.int().min(0),
+          draft: z.boolean(),
+        }),
+      ),
+      contract: z.int().min(1).nullable(),
+    }),
+  ),
+});
+
+export type LoadTotals = z.infer<typeof loadTotalsSchema>;

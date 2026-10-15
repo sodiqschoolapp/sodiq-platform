@@ -129,6 +129,7 @@ describe('the routes that work without sign-in', () => {
       'GET /api/timetable/versions',
       'GET /api/timetable/versions/:id/load',
       'GET /api/timetable/versions/:id/load/teachers',
+      'GET /api/timetable/versions/:id/totals',
       'PATCH /api/people/relatives/:id',
       'PATCH /api/people/students/:id/relatives/:relativeId',
       'PATCH /api/setup/calendar-entries/:id',

@@ -171,6 +171,20 @@ export const groupSchema = z.object({
   kind: groupKindSchema,
   /** The members today (the card's count; task 3.2b). */
   students: z.int().min(0),
+  /**
+   * The teacher or vacancy of the group's load row (05, Group; task 3.4b,
+   * decision 9): of the published version in force today; while none is
+   * published, of the draft running today for a reader of the timetable,
+   * marked `draft`; `null` otherwise.
+   */
+  teacher: z
+    .object({
+      id: z.uuid(),
+      kind: z.enum(['person', 'vacancy']),
+      name: z.string().nullable(),
+      draft: z.boolean(),
+    })
+    .nullable(),
   archived: z.boolean(),
   /** The state an edit is made on. */
   version: z.int().min(0),
