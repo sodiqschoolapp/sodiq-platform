@@ -418,7 +418,7 @@ How to read the task lines:
 
 ## Phase 4. Calculation module
 
-- [ ] **4.1 Exact fractions and daily results**
+- [x] **4.1 Exact fractions and daily results** (pull request #102)
   - Read: `07` (The total, Calculation rules), `edge/calculation`, `edge/developer-rules`.
   - Build in `packages/calc`: a fraction type on BigInt; percentage of a work from number and total; attendance values; daily result from the daily distribution, with the classwork part as the mean of the lesson's classworks and the homework part as the mean of the homeworks checked at it; the rules for empty scores.
   - Done when: the worked examples in the spec pass as tests and property tests show no floating point is used.
