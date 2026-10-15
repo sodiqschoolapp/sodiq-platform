@@ -213,6 +213,28 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: exact fractions and the lesson score (task 4.1)
+
+Plan approved on pull request #102 with corrections 1 and 2; decisions 1 to 7 marked Look first and confirmed there, decision 14 changed by correction 2. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** `fast-check` 4.10.2 is a dev dependency of `packages/calc` (MIT, maintained, no audit finding, the version of `apps/api`); `manifest.test.ts` still refuses any runtime dependency | Decision 1; `13`, Tests: "property tests for the calculation module" |
+| **Look first.** An attendance mark not yet typed leaves the attendance part out of the lesson score; it is never read as absent | Decision 2; `edge/calculation`, "A part with no number is left out"; `edge/journal`, Entering |
+| **Look first.** Marks 4 and 5 give `exempt` and no score; a number with them throws `number_on_exempt_lesson` | Decision 3; `07` rule 1 and Exemptions, Problem cases |
+| **Look first.** "Halves up" is floor(x + ½), refused below 0; the whole percent shown next to a number uses it too, for display only | Decision 4; `07` rule 10 and The total |
+| **Look first.** The classwork and homework parts are means of the exact percents; `null` (empty or "not graded") is left out, a 0 counts | Decision 5; `07` The total and rule 4 |
+| **Look first.** The score is Σ weight × part over the parts present ÷ Σ their weights; the daily distribution is refused unless three whole parts of 1 to 100 total 100 | Decision 6; `07` rule 3; the 2.1 rule |
+| **Look first.** An extra lesson with "counts for attendance" off leaves the attendance part out of the lesson score; its works count | Decision 7; `edge/calculation`, "An extra Saturday lesson" |
+| Inputs are safe whole JS numbers turned into `bigint` at the boundary (`input.ts`); every input is checked on every call, a wrong one throws `CalcInputError` with a code, no text | Decision 8; the API validates with `packages/shared` first |
+| `lessonScore` is the "daily result" of the build plan, the AVG of `07` | Decision 9 |
+| A work is passed only with its total; `workPercent` takes any whole total of 1 or more, and the 1000 limit of `edge/journal` is the journal's schema rule (8.x); a "not held" work is not passed | Decision 10, correction 1 |
+| The homeworks checked at a lesson are the journal's to choose (8.x) | Decision 11 |
+| `Fraction` is an immutable, frozen class, always reduced, with no float or string conversion | Decision 12 |
+| Attendance-only subjects have no daily distribution and are never passed to `lessonScore` | Decision 13 |
+| The lesson score is for display only and never enters a quarter figure; its `parts` are kept for the tests and the support view of `edge/journal` ("how the result was calculated"), not for a journal cell | Decision 14 as changed by correction 2 |
+| `no-float.test.ts` refuses `Math.`, `parseFloat`, `toFixed`, `toPrecision`, `Number(` and decimal and exponent literals in the module's source, comments stripped; a division of two numbers is left to the review and the property tests | Build, spec review suggestion 1 |
+
 ## 15 October 2026: the department move against the load (task 3.4c)
 
 Plan approved on pull request #101 with corrections 1 to 5; decisions 1, 2 and 3 marked Look first and confirmed there. Flagged on issue #42.

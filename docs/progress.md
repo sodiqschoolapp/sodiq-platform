@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 4.1 Exact fractions and daily results
+
+- Built in `packages/calc`: `Fraction` (BigInt, reduced, immutable, `roundHalfUp` once at the end), `workPercent` and `shownPercent`, `attendanceValue` with the quarter's late and skipped values, `lessonScore` (the AVG of `07` rule 3) with empty parts left out and the weights scaled; `CalcInputError` with a code for every refused input.
+- Tests: the worked examples (49.5 with 10 · 50 · 40; totals of 3, 7 and 30 on 49.5, 66.5, 83.5; 13 of 30 shows 43; the 100/50/60 lesson gives 70), fast-check properties against a BigInt reference, and `no-float.test.ts` over the source.
+- Left out: quarter averages and results, grade bands, provisional and year results, the reference journals (4.2); the Exempt and Not assessed outcomes, the flags and the module version (4.3); every caller (8.x).
+
+The next sessions must know:
+
+- The lesson score is for display only: 4.2 averages each work once (`07` rule 6), never the lesson's `parts`.
+- Every input is a safe whole `number` turned into `bigint` in `input.ts`; nothing in the module computes on `number`.
+- The next task is 4.2.
+
 ## 15 October 2026: task 3.4c The department move against the load
 
 - Built: migration 0057 (`subjects.department_since`, `staff_divisions.department_since`, `department_move_loads`, SECURITY DEFINER); the move check in `PUT /api/people/staff/:id` and `PUT /api/setup/subjects/:id` (`apps/api/src/modules/people/department-moves.ts`): the start date (`departmentStartsOn`), the lock of department moves, `department_move_loads` with the rows of the branch and the count of the others, `staff_changed` and `subject_changed`; the load create, the teacher edit of a row and the copy lock the row's subject FOR KEY SHARE.
