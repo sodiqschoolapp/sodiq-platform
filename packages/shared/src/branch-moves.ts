@@ -82,6 +82,11 @@ export const moveBranchSchema = z.object({ id: z.uuid(), name: z.string() });
 
 export type MoveBranch = z.infer<typeof moveBranchSchema>;
 
+/** The branches a student of the branch of the request may be released to: every other branch, by name. */
+export const branchMoveTargetsSchema = z.object({ branches: z.array(moveBranchSchema) });
+
+export type BranchMoveTargets = z.infer<typeof branchMoveTargetsSchema>;
+
 /**
  * One release to the branch of the request, as its incoming list shows it
  * (decision 2): the UID, the name and the grade of the student, nothing else

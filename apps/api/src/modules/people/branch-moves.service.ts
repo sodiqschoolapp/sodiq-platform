@@ -6,6 +6,7 @@ import {
   type BranchMoveDecline,
   type BranchMoveGroups,
   type BranchMoveRelease,
+  type BranchMoveTargets,
   type ErrorCode,
   type IncomingBranchMoves,
   type SchoolDate,
@@ -253,6 +254,25 @@ export class BranchMoves {
         }),
       BRANCH_MOVE_REFUSALS,
     );
+  }
+
+  /**
+   * The branches a student may be released to: every other branch, by name
+   * (the branches are school-wide; the release form's choice). A route of
+   * its own: the list of branches is the Super Admin's.
+   */
+  targets(access: Access): Promise<BranchMoveTargets> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const rows = await transaction
+        .selectFrom('branches')
+        .select(['id', 'name'])
+        .where('id', '<>', branchId)
+        .orderBy('name')
+        .orderBy('id')
+        .execute();
+      return { branches: rows };
+    });
   }
 
   /** The releases to the branch of the request (decision 2). */

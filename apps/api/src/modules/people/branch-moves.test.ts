@@ -1,5 +1,6 @@
 import {
   branchMoveGroupsSchema,
+  branchMoveTargetsSchema,
   incomingBranchMovesSchema,
   studentDetailSchema,
   studentHistorySchema,
@@ -386,6 +387,17 @@ describe('the move of a student to another branch', () => {
       const { student } = await pupil();
       const detail = accepted(await release(student.id, { from: '2026-10-05' }));
       expect(detail.branchMove).toMatchObject({ from: '2026-10-05' });
+    });
+  });
+
+  describe('the branches offered to the release', () => {
+    it('lists every other branch by name, never the branch of the request', async () => {
+      const response = await t.get('/api/people/branch-moves/targets', t.north, t.vicePrincipal);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const ids = branchMoveTargetsSchema.parse(response.body).branches.map((one) => one.id);
+      expect(ids).toContain(t.south);
+      expect(ids).toContain(east);
+      expect(ids).not.toContain(t.north);
     });
   });
 

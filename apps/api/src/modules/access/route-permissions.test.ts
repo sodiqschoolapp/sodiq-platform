@@ -463,6 +463,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // checked in the route (people/branch-moves.test.ts).
   'POST /api/people/students/:id/branch-move': { branch: 'request', roles: BRANCH_MOVERS },
   'POST /api/people/branch-moves/:id/cancel': { branch: 'request', roles: BRANCH_MOVERS },
+  'GET /api/people/branch-moves/targets': { branch: 'request', roles: BRANCH_MOVERS },
   'GET /api/people/branch-moves/incoming': { branch: 'request', roles: BRANCH_MOVE_READERS },
   'GET /api/people/branch-moves/:id/groups': { branch: 'request', roles: BRANCH_MOVE_READERS },
   'POST /api/people/branch-moves/:id/accept': { branch: 'request', roles: BRANCH_MOVERS },

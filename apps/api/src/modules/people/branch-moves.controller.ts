@@ -7,6 +7,7 @@ import {
   branchMoveGroupsSchema,
   branchMoveParamsSchema,
   branchMoveReleaseSchema,
+  branchMoveTargetsSchema,
   incomingBranchMovesSchema,
   studentDetailSchema,
   studentParamsSchema,
@@ -17,6 +18,7 @@ import {
   type BranchMoveGroupsQuery,
   type BranchMoveParams,
   type BranchMoveRelease,
+  type BranchMoveTargets,
   type IncomingBranchMoves,
   type StudentDetail,
   type StudentParams,
@@ -65,6 +67,13 @@ export class BranchMovesController {
     @RequestId() requestId: string,
   ): Promise<StudentDetail> {
     return this.moves.cancel(access, params.id, requestId);
+  }
+
+  @Get('branch-moves/targets')
+  @Requires('branch_moves', 'edit')
+  @Returns(branchMoveTargetsSchema)
+  targets(@CurrentAccess() access: Access): Promise<BranchMoveTargets> {
+    return this.moves.targets(access);
   }
 
   @Get('branch-moves/incoming')
