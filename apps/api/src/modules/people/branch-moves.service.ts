@@ -342,7 +342,9 @@ export class BranchMoves {
               throw notFound();
             }
           }
-          await this.lockStudentOf(transaction, sending.studentId, sending.fromBranchId);
+          // The student FOR UPDATE first, then the release: a change that came
+          // first (an accept, a cancel, a leaving) leaves the release closed.
+          await this.lockStudent(transaction, sending.studentId);
           const move = await lockBranchMove(transaction, moveId);
           if (
             move === undefined ||
@@ -566,7 +568,9 @@ export class BranchMoves {
           if (sending === undefined) {
             throw notFound();
           }
-          await this.lockStudentOf(transaction, sending.studentId, sending.fromBranchId);
+          // The student FOR UPDATE first, then the release: a change that came
+          // first (an accept, a cancel, a leaving) leaves the release closed.
+          await this.lockStudent(transaction, sending.studentId);
           const move = await lockBranchMove(transaction, moveId);
           if (
             move === undefined ||
@@ -653,6 +657,19 @@ export class BranchMoves {
         ) !== undefined,
       today,
     };
+  }
+
+  /** The student FOR UPDATE, wherever the joined filter shows it; 404 when it is gone. */
+  private async lockStudent(transaction: Transaction, studentId: string): Promise<void> {
+    const row = await transaction
+      .selectFrom('students')
+      .select('id')
+      .where('id', '=', studentId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (row === undefined) {
+      throw notFound();
+    }
   }
 
   /** The student FOR UPDATE, of `branchId` (404 otherwise, also for the Super Admin). */
