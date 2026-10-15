@@ -29,6 +29,7 @@ import {
 import { isLanguage, LANGUAGE_NAMES } from '@/i18n/languages';
 import { nameOf } from '@/features/setup/setup-api';
 import { producePersonalDataReport, staffPhotoQuery, studentPhotoQuery } from './people-api';
+import { mergeValueText } from './student-merge';
 import { formatMomentIn, schoolDateText, weekdayName } from '@/lib/dates';
 
 /** The body attribute that prints the report alone (index.css). */
@@ -226,6 +227,22 @@ function StudentParts({ report, words }: { report: StudentReport; words: Words }
               }),
         ])}
       />
+      {/* Task 3.3d: the records merged into this one, their values archived on the merge. */}
+      {s.merged.length > 0 && (
+        <Part
+          title={t('people.report.mergedTitle')}
+          rows={s.merged.flatMap((one): Row[] => [
+            [
+              t('people.report.mergedRecord', { uids: one.uids.join(', ') }),
+              [words.moment(one.mergedAt), one.reason].join('; '),
+            ],
+            ...one.values.map((value): Row => [
+              t(`people.students.merge.fields.${value.field}`),
+              mergeValueText(t, words.language, value.field, value.value),
+            ]),
+          ])}
+        />
+      )}
       <Part title={t('people.report.portalTitle')} rows={portalRows(words, s.account)} />
       <Records
         title={t('people.report.relativesTitle')}

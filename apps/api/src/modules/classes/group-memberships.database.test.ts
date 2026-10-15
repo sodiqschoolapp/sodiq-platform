@@ -929,8 +929,22 @@ describe('group membership in the database', () => {
         studentId: student,
         from: '2026-10-14',
       });
+      // Task 3.3d (decision 2 of pull request #98, Look first): the student
+      // has an update grant, guarded: never without a merge of the pair
+      // written in the transaction (`memberships_merge`, 0054).
+      const other = await members.student(north);
+      expect(
+        await refusal(
+          inBranch(north, (transaction) =>
+            transaction
+              .updateTable('group_memberships')
+              .set({ student_id: other })
+              .where('id', '=', row)
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ constraint: 'memberships_merge' });
       for (const values of [
-        { student_id: student },
         { group_id: group },
         { subject_id: maths },
         { valid_from: '2026-10-15' },

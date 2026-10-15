@@ -12,6 +12,7 @@ import {
   signIn,
 } from './steps';
 import { codeNow } from './totp';
+import { mergeRecords } from './merges';
 
 /**
  * The first sign-in of a seeded Super Admin or Academic Vice Principal: the
@@ -391,6 +392,10 @@ test('the Super Admin sees Academic as built in, adds a division with a departme
 
   await test.step('sees the alert of a branch without an Academic Vice Principal and the Head Teachers list', () =>
     headTeachersAndAlert(page));
+
+  // Task 3.3d: the seed holds no fourth Super Admin (correction 1 of #87).
+  await test.step('merges a record created again into the old one; the older UID stays', () =>
+    mergeRecords(page));
 });
 
 // Task 2.3a, pull request #62: the account section of a staff record. With

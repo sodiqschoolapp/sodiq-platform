@@ -66,6 +66,7 @@ const REPORT: StudentReport = {
     consentSignedOn: null,
     scholarship: { type: 'none', coverage: null, amount: null },
     contracts: [{ number: 'PD-2026/1', signedOn: '2026-08-20' }],
+    merged: [],
     statuses: [{ status: 'active', from: '2026-09-02', until: null, cause: 'start', reason: null }],
     account: { createdAt: '2026-09-01T05:00:00.000Z', switchedOn: false },
   },

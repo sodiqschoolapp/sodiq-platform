@@ -1638,8 +1638,11 @@ try {
       last: string;
       createdBy: string;
       phone: string;
+      /** The first day, the year's start unless given (task 3.3d). */
+      from?: string;
     },
-  ): Promise<void> => {
+  ): Promise<string> => {
+    const from = input.from ?? startDate;
     const student = await transaction
       .insertInto('students')
       .values({
@@ -1651,7 +1654,7 @@ try {
         sex: 'female',
         birth_date: '2013-05-11',
         grade: 7,
-        starts_on: startDate,
+        starts_on: from,
         created_by: input.createdBy,
       })
       .returning('id')
@@ -1680,7 +1683,7 @@ try {
         student_id: student.id,
         branch_id: input.branch,
         status: 'active',
-        valid_from: startDate,
+        valid_from: from,
         cause: 'start',
       })
       .execute();
@@ -1695,7 +1698,7 @@ try {
           branch_id: input.branch,
           student_id: student.id,
           class_id: input.classId,
-          valid_from: startDate,
+          valid_from: from,
           valid_until: isoDate(new Date(yearStart.getTime() + 365 * dayMs)),
           own_until: isoDate(new Date(yearStart.getTime() + 365 * dayMs)),
           cause: 'placement',
@@ -1706,6 +1709,7 @@ try {
       fullName: `Mother of ${input.first}`,
       phone: input.phone,
     });
+    return student.id;
   };
 
   // Task 3.2b: a student of 7 Harvard in no group, so the group placement
@@ -2542,6 +2546,88 @@ try {
     });
   });
   seeded.branchMoves = { login: branchMovesVice.login, password: branchMovesVice.firstPassword };
+
+  // The merge of two student records (task 3.3d): a branch of its own with
+  // 7 Oxford, a student who left 20 days after the year's start, and the
+  // same student created again 40 days after it, in 7 Oxford. The seed holds
+  // no fourth Super Admin (at most three, correction 1 of the review of
+  // #87): the divisions test's Super Admin merges them at the end of its session.
+  const mergesBranch = await insertBranch(migrator, 'Merges browser test branch');
+  const merges = divisions;
+  const mergesClass = await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: mergesBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: mergesBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const row = await transaction
+      .insertInto('classes')
+      .values({
+        branch_id: mergesBranch,
+        academic_year_id: year.id,
+        grade: 7,
+        name: 'Oxford',
+        language: 'uz',
+        max_size: 25,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    return row.id;
+  });
+  await migrator.transaction().execute(async (transaction) => {
+    const left = await studentInClass(transaction, {
+      branch: mergesBranch,
+      classId: null,
+      uid: '9999961',
+      first: 'Dilnoza',
+      last: 'Karimova',
+      createdBy: merges.id,
+      phone: '+998905550601',
+    });
+    const leftOn = isoDate(new Date(yearStart.getTime() + 20 * dayMs));
+    await transaction
+      .updateTable('student_statuses')
+      .set({ valid_until: leftOn })
+      .where('student_id', '=', left)
+      .execute();
+    await transaction
+      .insertInto('student_statuses')
+      .values({
+        student_id: left,
+        branch_id: mergesBranch,
+        status: 'inactive',
+        valid_from: leftOn,
+        cause: 'leaving',
+        reason: 'Moved to another city',
+      })
+      .execute();
+  });
+  await migrator.transaction().execute((transaction) =>
+    studentInClass(transaction, {
+      branch: mergesBranch,
+      classId: mergesClass,
+      uid: '9999962',
+      first: 'Dilnoza',
+      last: 'Karimova',
+      createdBy: merges.id,
+      phone: '+998905550602',
+      from: isoDate(new Date(yearStart.getTime() + 40 * dayMs)),
+    }),
+  );
 
   for (const branch of classBranches) {
     const years = await migrator

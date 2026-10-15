@@ -1032,3 +1032,23 @@ export {
   type MoveBranch,
   type StudentBranchMove,
 } from './branch-moves.js';
+export {
+  mergeBranchSchema,
+  STUDENT_MERGE_FIELDS,
+  STUDENT_MERGE_REASON_MAX_LENGTH,
+  studentMergeFieldSchema,
+  studentMergeLifeSchema,
+  studentMergePreviewSchema,
+  studentMergeQuerySchema,
+  studentMergeResultSchema,
+  studentMergeRowSchema,
+  studentMergeSchema,
+  studentMergeSideSchema,
+  type StudentMerge,
+  type StudentMergeField,
+  type StudentMergePreview,
+  type StudentMergeQuery,
+  type StudentMergeResult,
+  type StudentMergeRow,
+  type StudentMergeSide,
+} from './student-merges.js';

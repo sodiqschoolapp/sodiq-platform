@@ -269,6 +269,11 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   release on the record) for them and the Principal ("Views everything in
  *   the branch", `02`). A new area for new routes, decided on pull request
  *   #97 (decision 8 as changed by correction 3) and flagged on issue #42.
+ * - `student_merges` (`edge/students-classes-groups`, "A student who left
+ *   in 2025 is created again as new": "The Super Admin can merge two
+ *   records; the older UID survives"; task 3.3d): `edit` (the preview and
+ *   the merge) for the Super Admin alone. A new area for new routes, decided
+ *   on pull request #98 (decision 10); no role is widened.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -415,6 +420,9 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view', 'edit'],
     principal: ['view'],
     academic_vice_principal: ['view', 'edit'],
+  }),
+  student_merges: rows({
+    super_admin: ['edit'],
   }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],

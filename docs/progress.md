@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 3.3d Merge of two student records
+
+- Built: migration 0054 (`student_merges` with the merged record and the rows not carried archived on it, `student_merge_here`, the merge paths of the status, membership, move, branch-move, contract, branch, start and delete guards, the end `merge`, `student_merged_uid_holder`); the preview and the merge (`student_merges` `edit`, the Super Admin), all or none, with the joined life, the cuts, the carries, the relatives, the fields, the chain and an entry in every branch whose rows change.
+- A merged UID leads to the kept record: "Also UID" on the record and the list (`mergedUids`), the History line, Ctrl+K and the list's UID search, the UID check of the create and the correction (`uid_merged`), the personal data report (the archived values).
+- The web app: "Merge with another record" in the student panel, the preview, the confirmation, the panel moving to the kept record or saying it left the branch.
+- Left out: the journal and exemptions of a merged record (8.5, 8.6: lines added); an undo of a merge (the spec names none, decision 13).
+
+The next sessions must know:
+
+- A table that references `students` is named in `MERGE_DOES` of `student-merges.database.test.ts` and carried by the merge (`student-merges.service.ts`, `WHOLE_TABLES` and the carries), besides the lists of `student-branch-moves.database.test.ts`.
+- A class or group row can end with `merge` (final, like `branch_move`); a change of `student_id` passes only with a merge of that pair in the transaction.
+- The browser seed has a "Merges browser test branch"; the divisions test's Super Admin merges its two records at the end of its session (no fourth Super Admin).
+- The next task is 3.4.
+
 ## 15 October 2026: task 3.3c Move to another branch
 
 - Built: migration 0053 (`student_branch_moves`, the guarded `students.branch_id`, the end `branch_move` of class and group rows, the status guard, three readers past the filter); the release and its cancel in the sending branch, the incoming list, the groups offered, the accept and the decline in the receiving one (`branch_moves`), each checked against the branch of the request.

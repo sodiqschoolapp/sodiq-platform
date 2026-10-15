@@ -9,10 +9,12 @@ import {
   type StudentDetail,
   type StudentMove,
   type StudentIdentity,
+  type StudentMergeResult,
   type StudentRecord,
   type StudentUidCorrection,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
@@ -63,6 +65,7 @@ import {
   useCancelMove,
 } from './student-moves';
 import { branchMoveRows, isBranchMoveForm, ReleaseForm, useCancelRelease } from './branch-move';
+import { alsoUidRow, isMergeForm, MergeForm } from './student-merge';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
 
@@ -75,6 +78,7 @@ const isRecordForm = (key: string | null): boolean =>
   isStatusForm(key) ||
   isMoveForm(key) ||
   isBranchMoveForm(key) ||
+  isMergeForm(key) ||
   RECORD_FORMS.some((one) => one === key);
 
 interface StudentPanelProps {
@@ -101,11 +105,14 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const confirm = useConfirm();
   const leave = useLeave();
   const panel = usePanelEditing();
+  const navigate = useNavigate();
   // After the delete of a student created twice the panel says so and reads nothing more (task 2.4b-1).
   const [deleted, setDeleted] = useState(false);
+  // After a merge whose kept record left this branch (task 3.3d, correction 1): nothing more is read.
+  const [movedTo, setMovedTo] = useState<{ name: string; branch: string } | null>(null);
   const detail = useQuery({
     ...studentDetailQuery(branchId, id),
-    enabled: branchId !== null && !deleted,
+    enabled: branchId !== null && !deleted && movedTo === null,
   });
   // Unchosen, a student with no relative opens on the Relatives tab (task 2.5a, decision 11).
   const [tab, setTab] = useState<Tab | null>(null);
@@ -222,6 +229,39 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     },
     reread,
   );
+  /**
+   * After a merge (task 3.3d, correction 1): the form goes first, then the
+   * panel shows the kept record; when that is another record, it moves to
+   * it (`.claude/rules/web.md`, the 2.5b-1 rule); when the kept record is no
+   * longer of this branch, the panel says so, names the branch and reads
+   * nothing more.
+   */
+  const [keptId, setKeptId] = useState<string | null>(null);
+  const merged = async (result: StudentMergeResult) => {
+    panel.stop({ saved: true, key: 'merge' });
+    if (result.branch.id !== branchId) {
+      setMovedTo({ name, branch: result.branch.name });
+      queryClient.removeQueries({ queryKey: studentDetailQuery(branchId, id).queryKey });
+    } else if (result.student.id !== id) {
+      queryClient.setQueryData(
+        studentDetailQuery(branchId, result.student.id).queryKey,
+        result.student,
+      );
+      setKeptId(result.student.id);
+    } else {
+      await statusChanged(result.student);
+    }
+    await invalidateStudents(queryClient);
+  };
+  useEffect(() => {
+    if (keptId !== null) {
+      void navigate({
+        to: '/people/students',
+        search: (previous) => ({ ...previous, open: keptId }),
+        replace: true,
+      });
+    }
+  }, [keptId, navigate]);
   // A status form whose action is no longer allowed (the student was read
   // again) is not drawn: the panel reads as with no form open.
   const gone = isStatusForm(panel.editing) && allowed !== null && !allowed[panel.editing];
@@ -234,6 +274,12 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
 
   if (deleted) {
     return <Deleted />;
+  }
+  if (movedTo !== null) {
+    return <MovedAway name={movedTo.name} branch={movedTo.branch} />;
+  }
+  if (keptId !== null) {
+    return <LoadingOutline />;
   }
   if (detail.isError) {
     return (
@@ -423,6 +469,10 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
       panel.stop();
     },
   });
+  // Task 3.3d: the merge with another record, for the reader the server lets merge.
+  if (student.canMerge) {
+    secondary.push(opens('merge', t('people.students.merge.action'), 'secondary'));
+  }
   const danger = [
     allowed.leave && opens('leave', t('people.students.leaveTitle'), 'destructive'),
     allowed.delete && opens('delete', t('people.students.deleteAction'), 'destructive'),
@@ -480,6 +530,17 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
             <ReleaseForm
               key={`move-branch-${String(student.version)}`}
               {...moveProps('moveBranch')}
+            />
+          )}
+          {editing === 'merge' && (
+            <MergeForm
+              key={`merge-${student.id}`}
+              student={student}
+              onMerged={merged}
+              onStale={reread}
+              onCancel={() => {
+                panel.stop();
+              }}
             />
           )}
           {editing === 'moveGroup' && (
@@ -628,6 +689,20 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   );
 }
 
+/** The line after a merge whose kept record left this branch (correction 1); it takes the focus. */
+function MovedAway({ name, branch }: { name: string; branch: string }) {
+  const { t } = useTranslation();
+  const line = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    line.current?.focus();
+  }, []);
+  return (
+    <p ref={line} role="status" tabIndex={-1}>
+      {t('people.students.merge.leftBranch', { name, branch })}
+    </p>
+  );
+}
+
 /** The line after a delete; it takes the focus, since the panel's buttons are gone. */
 function Deleted() {
   const { t } = useTranslation();
@@ -732,6 +807,8 @@ function Overview({ student }: { student: StudentDetail }) {
   const identity = student.identity ?? shown;
   const rows: [string, string][] = [
     [t('people.students.uid'), student.uid],
+    // Task 3.3d: the UIDs of the records merged into this one.
+    ...alsoUidRow(t, student),
     // The one field of the record's form the overview lacked (task 2.7c-2b-2b, decision 4).
     [t('people.students.paternalName'), student.paternalName ?? notSet],
     [t('people.students.grade'), t('setup.subjects.grade', { grade: student.grade })],

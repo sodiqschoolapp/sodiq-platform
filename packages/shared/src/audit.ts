@@ -145,6 +145,7 @@ export const AUDIT_ACTION_GROUPS = {
     'student.branch_release_declined',
     'student.branch_left',
     'student.branch_moved',
+    'student.merged',
     'relative.create',
     'relative.edit',
     'relative.archive',

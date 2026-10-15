@@ -845,6 +845,7 @@ describe('student records', () => {
         expect(row).toEqual({
           id: student.id,
           uid: student.uid,
+          mergedUids: [],
           firstName: student.firstName,
           lastName: 'Listov',
           paternalName: 'Anvarovich',

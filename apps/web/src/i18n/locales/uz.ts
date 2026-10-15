@@ -352,6 +352,19 @@ export const uz: Texts<'one' | 'other'> = {
     branch_move_year_closed: 'Bu sana yopilgan oʻquv yilida. Ochiq yildagi sanani tanlang.',
     status_scheduled:
       'Bu oʻquvchining ketishi yoki bitirishi shu sanadan keyin rejalashtirilgan. Avval uni oʻquvchi oʻqiyotgan filial oʻzgartiradi yoki bekor qiladi.',
+    student_merge_same: 'Bu UID shu oʻquvchining oʻziniki. Boshqa yozuvning UID raqamini kiriting.',
+    student_merge_not_found:
+      'Bu UID hech bir oʻquvchida yoʻq: raqamni tekshiring. Yozuv allaqachon birlashtirilgan boʻlishi mumkin.',
+    student_merge_overlap:
+      'Ikki yozuv bir xil kunlarni birlashtirib boʻlmaydigan tarzda egallagan. Avval yozuvlarni tuzating (ketish yoki sana), soʻng birlashtiring.',
+    student_merge_release_open:
+      'Ikki yozuvdan birida boshqa filialga ochiq chiqarish bor. Avval uni bekor qiling yoki rad eting, soʻng birlashtiring.',
+    student_merge_move_scheduled:
+      'Ikki yozuvdan birida bugundan keyingi sinf yoki guruh koʻchirilishi bor. Avval uni bekor qiling, soʻng birlashtiring.',
+    student_merge_year_closed:
+      'Birlashtirish yopilgan oʻquv yilining qatorini oʻzgartiradi, u esa oʻzgarmaydi. Bu yozuvlarni birlashtirib boʻlmaydi.',
+    student_merge_grade:
+      'Birlashtirishdan soʻng oʻquvchi bugundan boshlab boshqa sinf darajasidagi sinfda boʻlib qoladi. Avval oʻquvchini toʻgʻri darajadagi sinfga koʻchiring, soʻng birlashtiring.',
     before_branch_move:
       'Bu sana oʻquvchi shu filialga oʻtishidan oldin. Oʻtish kuni yoki undan keyingi sanani tanlang.',
     move_scheduled:
@@ -1274,6 +1287,8 @@ export const uz: Texts<'one' | 'other'> = {
       contractTitle: 'Shartnoma, stipendiya va rozilik',
       statusTitle: 'Holatlar tarixi',
       uidTitle: 'UID tarixi',
+      mergedTitle: 'Shu yozuvga birlashtirilgan yozuvlar',
+      mergedRecord: 'UID {{uids}}',
       portalTitle: 'Portal hisobi',
       relativesTitle: 'Yaqin qarindoshlar',
       teachingTitle: 'Filiallar va oʻqitish',
@@ -1429,6 +1444,8 @@ export const uz: Texts<'one' | 'other'> = {
       language: 'Taʼlim tili',
       takenElsewhere: 'Allaqachon boshqa filial oʻquvchisiga berilgan.',
       uidReleased: 'Oʻchirilgan oʻquvchiga berilgan; UID hech qachon ikki marta berilmaydi.',
+      uidMerged: '{{student}} bilan birlashtirilgan yozuvga tegishli.',
+      uidMergedUnknown: 'Shu filialning boshqa oʻquvchisi bilan birlashtirilgan yozuvga tegishli.',
       restoreThis: 'Bu oʻquvchini tiklash',
       statusTitle: 'Holat',
       statusRow: '{{from}} dan {{status}}',
@@ -1579,6 +1596,56 @@ export const uz: Texts<'one' | 'other'> = {
         languageText: 'Baribir oʻquvchi qabul qilinsinmi?',
         accepted: '{{name}} endi {{class}} sinfida.',
         declined: '{{name}} yuborilishi rad etildi.',
+      },
+      merge: {
+        action: 'Boshqa yozuv bilan birlashtirish',
+        uid: 'Boshqa yozuvning UID raqami',
+        show: 'Birlashtirishni koʻrsatish',
+        kept: 'Qoladi',
+        merged: 'Unga qoʻshiladi va oʻchiriladi',
+        side: '{{name}} · UID {{uid}} · {{branch}}',
+        sideClass: 'Sinf: {{class}}',
+        branchAfter: 'Birlashtirishdan soʻng oʻquvchi {{branch}} filialida boʻladi.',
+        life: 'Birlashtirishdan keyingi holat',
+        stretch: '{{status}}: {{from}} – {{until}}',
+        stretchOpen: '{{status}}, {{from}} dan',
+        rows: 'Oʻzgaradigan qatorlar',
+        rowCut: '{{name}} ({{from}}): {{cutAt}} da tugaydi',
+        rowLeft: '{{name}} ({{from}}): qoldiriladi',
+        carried_one:
+          'Qoʻshiladigan yozuvning {{count}} ta qatori qoladigan yozuvga toʻliq oʻtkaziladi.',
+        carried_other:
+          'Qoʻshiladigan yozuvning {{count}} ta qatori qoladigan yozuvga toʻliq oʻtkaziladi.',
+        filled: 'Qoʻshiladigan yozuvdan toʻldiriladi',
+        differing: 'Qoʻshiladigan yozuvda farq qiladi (qoladigan yozuvdagi qiymat saqlanadi)',
+        differs: '{{field}}: {{merged}}',
+        refused: 'Bu yozuvlarni birlashtirib boʻlmaydi.',
+        refusedDay: 'Tegishli birinchi kun: {{date}}',
+        reason: 'Sabab',
+        submit: 'Birlashtirish',
+        confirmTitle: 'Bu ikki yozuv birlashtirilsinmi?',
+        confirmText:
+          'UID {{merged}} yozuvi UID {{kept}} yozuviga qoʻshiladi va oʻchiriladi. Birlashtirishni bekor qilib boʻlmaydi.',
+        leftBranch:
+          '{{name}} endi {{branch}} filialining oʻquvchisi. Yozuvni ochish uchun shu filialga oʻting.',
+        alsoUid: 'Yana UID',
+        historyLine: 'UID {{uid}} yozuvi bilan birlashtirildi · {{reason}}',
+        fields: {
+          firstName: 'Ism',
+          lastName: 'Familiya',
+          paternalName: 'Otasining ismi',
+          sex: 'Jinsi',
+          birthDate: 'Tugʻilgan sana',
+          document: 'Hujjat',
+          jshshir: 'JSHSHIR',
+          phone: 'Telefon',
+          email: 'Email',
+          address: 'Manzil',
+          region: 'Viloyat',
+          previousSchool: 'Oldingi maktab',
+          diagnosticScore: 'Diagnostika bali',
+          consentSignedOn: 'Rozilik imzolangan sana',
+        },
       },
       tabs: {
         label: 'Profil',
@@ -2318,6 +2385,7 @@ export const uz: Texts<'one' | 'other'> = {
         branch_release_declined: 'Boshqa filialga yuborish rad etildi',
         branch_left: 'Boshqa filialga ketdi',
         branch_moved: 'Boshqa filialdan keldi',
+        merged: 'Boshqa yozuv bilan birlashtirildi',
         delete: 'Ikki marta yaratilgan oʻquvchi oʻchirildi',
         export: 'Oʻquvchilar eksport qilindi',
         identity_shown: 'Oʻquvchi yozuvining yashirin maydonlari koʻrsatildi',

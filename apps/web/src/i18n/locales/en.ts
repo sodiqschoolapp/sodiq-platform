@@ -347,6 +347,19 @@ export const en = {
       'That date is in a closed academic year. Choose a date in the open year.',
     status_scheduled:
       'A leaving or graduation of this student is scheduled after that date. The branch the student studies in changes or cancels it first.',
+    student_merge_same: 'That UID is this student’s own. Type the UID of the other record.',
+    student_merge_not_found:
+      'No student holds that UID: check the number. The record may have been merged already.',
+    student_merge_overlap:
+      'The two records hold the same days in a way a merge cannot join. Correct the records first (a leaving or a date), then merge.',
+    student_merge_release_open:
+      'One of the two records has an open release to another branch. Cancel or decline it first, then merge.',
+    student_merge_move_scheduled:
+      'One of the two records has a class or group move after today. Cancel that move first, then merge.',
+    student_merge_year_closed:
+      'The merge would change a row of a closed academic year, which nothing changes. These records cannot be merged.',
+    student_merge_grade:
+      'After the merge the student would be in a class of another grade from today on. Move the student to a class of the right grade first, then merge.',
     before_branch_move:
       'That date is before the student moved to this branch. Choose a date on or after the move.',
     move_scheduled:
@@ -1262,6 +1275,8 @@ export const en = {
       contractTitle: 'Contract, scholarship and consent',
       statusTitle: 'Status history',
       uidTitle: 'UID history',
+      mergedTitle: 'Records merged into this one',
+      mergedRecord: 'UID {{uids}}',
       portalTitle: 'Portal account',
       relativesTitle: 'Close relatives',
       teachingTitle: 'Branches and teaching',
@@ -1417,6 +1432,8 @@ export const en = {
       language: 'Language of instruction',
       takenElsewhere: 'Already given to a student of another branch.',
       uidReleased: 'Given to a student who was deleted; a UID is never given twice.',
+      uidMerged: 'Held by a record merged into {{student}}.',
+      uidMergedUnknown: 'Held by a record merged into another student of this branch.',
       restoreThis: 'Restore this student',
       statusTitle: 'Status',
       statusRow: '{{status}} from {{from}}',
@@ -1566,6 +1583,56 @@ export const en = {
         languageText: 'Accept the student anyway?',
         accepted: '{{name}} is in {{class}} now.',
         declined: 'The release of {{name}} was declined.',
+      },
+      merge: {
+        action: 'Merge with another record',
+        uid: 'UID of the other record',
+        show: 'Show the merge',
+        kept: 'Stays',
+        merged: 'Merged into it and removed',
+        side: '{{name}} · UID {{uid}} · {{branch}}',
+        sideClass: 'Class: {{class}}',
+        branchAfter: 'After the merge the student is of {{branch}}.',
+        life: 'Status after the merge',
+        stretch: '{{status}}: {{from}} – {{until}}',
+        stretchOpen: '{{status}} from {{from}}',
+        rows: 'Rows that change',
+        rowCut: '{{name}} ({{from}}): ends on {{cutAt}}',
+        rowLeft: '{{name}} ({{from}}): left behind',
+        carried_one:
+          '{{count}} row of the merged record is carried whole to the record that stays.',
+        carried_other:
+          '{{count}} rows of the merged record are carried whole to the record that stays.',
+        filled: 'Filled from the merged record',
+        differing: 'Different on the merged record (the value of the record that stays is kept)',
+        differs: '{{field}}: {{merged}}',
+        refused: 'These records cannot be merged.',
+        refusedDay: 'First day concerned: {{date}}',
+        reason: 'Reason',
+        submit: 'Merge',
+        confirmTitle: 'Merge these two records?',
+        confirmText:
+          'The record of UID {{merged}} is merged into UID {{kept}} and removed. A merge cannot be undone.',
+        leftBranch:
+          '{{name}} is now a student of {{branch}}. Switch to that branch to open the record.',
+        alsoUid: 'Also UID',
+        historyLine: 'Merged with the record of UID {{uid}} · {{reason}}',
+        fields: {
+          firstName: 'First name',
+          lastName: 'Surname',
+          paternalName: 'Paternal name',
+          sex: 'Sex',
+          birthDate: 'Date of birth',
+          document: 'Document',
+          jshshir: 'JSHSHIR',
+          phone: 'Phone',
+          email: 'Email',
+          address: 'Address',
+          region: 'Region',
+          previousSchool: 'Previous school',
+          diagnosticScore: 'Diagnostic score',
+          consentSignedOn: 'Consent signed on',
+        },
       },
       tabs: {
         label: 'Profile',
@@ -2301,6 +2368,7 @@ export const en = {
         branch_release_declined: 'Release to another branch declined',
         branch_left: 'Left for another branch',
         branch_moved: 'Moved in from another branch',
+        merged: 'Merged with another record',
         delete: 'Student created twice deleted',
         export: 'Students exported',
         identity_shown: 'Hidden fields of a student record shown',
