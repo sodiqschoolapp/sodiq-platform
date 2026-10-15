@@ -2295,6 +2295,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       exports: 'Выгрузки',
       shows: 'Показ скрытых полей',
       classes: 'Классы',
+      timetable: 'Расписание',
     },
     scopes: {
       branch: 'Этот филиал',
@@ -2328,6 +2329,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       audit_entry: 'Запись журнала',
       class: 'Класс',
       group: 'Группа',
+      timetable_version: 'Версия расписания',
+      teaching_load_row: 'Строка учебной нагрузки',
     },
     actions: {
       auth: {
@@ -2550,6 +2553,15 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         archive: 'Группа отправлена в архив',
         restore: 'Группа восстановлена',
         export: 'Группы выгружены',
+      },
+      timetable_version: {
+        create: 'Создан черновик расписания',
+        edit: 'Изменён черновик расписания',
+      },
+      teaching_load: {
+        create: 'Добавлена строка учебной нагрузки',
+        edit: 'Изменена строка учебной нагрузки',
+        delete: 'Удалена строка учебной нагрузки',
       },
       audit: {
         entry_shown: 'Показаны скрытые значения записи журнала',

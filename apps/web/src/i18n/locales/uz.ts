@@ -2202,6 +2202,7 @@ export const uz: Texts<'one' | 'other'> = {
       exports: 'Eksportlar',
       shows: 'Koʻrsatilgan yashirin maydonlar',
       classes: 'Sinflar',
+      timetable: 'Dars jadvali',
     },
     scopes: {
       branch: 'Shu filial',
@@ -2235,6 +2236,8 @@ export const uz: Texts<'one' | 'other'> = {
       audit_entry: 'Jurnal yozuvi',
       class: 'Sinf',
       group: 'Guruh',
+      timetable_version: 'Dars jadvali versiyasi',
+      teaching_load_row: 'Oʻquv yuklamasi qatori',
     },
     actions: {
       auth: {
@@ -2457,6 +2460,15 @@ export const uz: Texts<'one' | 'other'> = {
         archive: 'Guruh arxivlandi',
         restore: 'Guruh tiklandi',
         export: 'Guruhlar eksport qilindi',
+      },
+      timetable_version: {
+        create: 'Dars jadvali qoralamasi yaratildi',
+        edit: 'Dars jadvali qoralamasi oʻzgartirildi',
+      },
+      teaching_load: {
+        create: 'Oʻquv yuklamasi qatori qoʻshildi',
+        edit: 'Oʻquv yuklamasi qatori oʻzgartirildi',
+        delete: 'Oʻquv yuklamasi qatori oʻchirildi',
       },
       audit: {
         entry_shown: 'Jurnal yozuvining yashirin qiymatlari koʻrsatildi',

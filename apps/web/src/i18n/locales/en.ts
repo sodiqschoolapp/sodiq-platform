@@ -2186,6 +2186,7 @@ export const en = {
       exports: 'Exports',
       shows: 'Hidden fields shown',
       classes: 'Classes',
+      timetable: 'Timetable',
     },
     scopes: {
       branch: 'This branch',
@@ -2219,6 +2220,8 @@ export const en = {
       audit_entry: 'Log entry',
       class: 'Class',
       group: 'Group',
+      timetable_version: 'Timetable version',
+      teaching_load_row: 'Teaching load row',
     },
     actions: {
       auth: {
@@ -2441,6 +2444,15 @@ export const en = {
         archive: 'Group archived',
         restore: 'Group restored',
         export: 'Groups exported',
+      },
+      timetable_version: {
+        create: 'Draft timetable version created',
+        edit: 'Draft timetable version changed',
+      },
+      teaching_load: {
+        create: 'Teaching load row added',
+        edit: 'Teaching load row changed',
+        delete: 'Teaching load row deleted',
       },
       audit: {
         entry_shown: 'Hidden values of a log entry shown',

@@ -172,6 +172,14 @@ export const AUDIT_ACTION_GROUPS = {
     'group.archive',
     'group.restore',
   ],
+  // Task 3.4a: draft timetable versions and their teaching load.
+  timetable: [
+    'timetable_version.create',
+    'timetable_version.edit',
+    'teaching_load.create',
+    'teaching_load.edit',
+    'teaching_load.delete',
+  ],
   exports: [
     'building.export',
     'room.export',

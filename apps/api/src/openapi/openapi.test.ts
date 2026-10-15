@@ -226,6 +226,11 @@ describe('OpenAPI document', () => {
         '/api/setup/subjects/{id}/quarter-weights/{quarterId}',
         '/api/setup/subjects/{id}/restore',
         '/api/setup/travel-times',
+        '/api/timetable/versions',
+        '/api/timetable/versions/{id}',
+        '/api/timetable/versions/{id}/load',
+        '/api/timetable/versions/{id}/load/teachers',
+        '/api/timetable/versions/{id}/load/{rowId}',
       ]);
       expect(document.paths['/api/health']?.get?.responses).toEqual({
         '200': {
