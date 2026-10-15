@@ -42,6 +42,7 @@ db/migrations            SQL migrations, numbered, never edited after merge
 docs/spec                the spec (read only)
 docs/recipes             how to build a recurring shape of task, from the code so far
 docs/design-system.md    the look of every screen: tokens, sizes, parts, brand moments
+docs/handbook            what the platform does, feature by feature, in plain words, for the school
 docs/build-plan.md       ordered tasks with checkboxes
 docs/progress.md         short log of what was done and what is next
 docs/decisions.md        technical decisions and their reasons
@@ -103,6 +104,7 @@ The whole loop, the review routine and the cloud environment are described in `d
 - The audit log records the new kinds of change.
 - `docs/build-plan.md` is ticked in the same pull request, `docs/progress.md` has a dated entry, and anything left undone is written there.
 - Every decision made without the owner is in the report and on issue #42.
+- What a person can see or do that the task added or changed is described in `docs/handbook/`, as its README says, in the same pull request (owner, 15 October 2026).
 
 Before task 0.8c some of these do not exist yet (permission guard, languages); skip only those.
 

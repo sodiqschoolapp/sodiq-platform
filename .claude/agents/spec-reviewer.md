@@ -37,6 +37,7 @@ If the request gives you a plan instead of a branch, skip step 1 and step 4 and 
    - a rule read "on a date" that a write may meet after the date has passed (a draft whose start date is behind it): the rule reads the later of that date and today, the same in the database and in the code (found by the spec review of task 3.4a);
    - one decision or outcome that covers several flags or conditions raised together, allowed by a check of one of them only: it is allowed only where the spec row of every raised one offers it, and a test raises them together (found by the spec review of task 4.3);
    - a table that hands spec rows to later tasks: every named task's Read line names the row's file, or the pull request adds a "From <id>" line to that task quoting the row (found by the spec review of task 4.3);
+   - the handbook (`docs/handbook/`, its README): a behaviour a person can see or do, added or changed by the diff, with no matching rule or case on its page; a page that says something the code does not do; technical words on a page (owner, 15 October 2026);
 4. Run `pnpm test:changed` if it has not been run and report failures; the full suite runs in CI on the pull request (`docs/decisions.md`, 11 October 2026, decision 5).
 
 Report in this form:

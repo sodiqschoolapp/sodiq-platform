@@ -431,6 +431,26 @@ How to read the task lines:
   - Build: a continuous stay of a student in one class, and in one group, is one stay for every reader (class and group panels, the student record, the History tab, free seats, exports, search, and every later reader); a cancel or an undo of a scheduled leaving, of a class move or of a group move, and a merge, give the stay back as it was before; the stays already split on the test site are joined; the History tab shows one line per stay from its first to its last day, and a changed scheduled move as one move with its changes (H34).
   - Done when: for each path of H36 (cancel of a scheduled leaving, cancel and change of a scheduled class move and of a group move, undo of a move, undo of a leaving, a merge) a route test ends with exactly one stay row in the class and in the group and one History line, and a database test shows that two adjoining stays of the same student in the same class cannot be stored, or are joined, as the plan decides; the browser test repeats the steps of H36 and reads the class panel and the History tab.
 
+- [ ] **3.6a The owner's answers of 15 October: who sees what** (issue #42, the owner's answers of 15 October 2026, items L32, L48, L50, L59, L136, L147, L157)
+  - Read: the owner's answers comment on issue #42 (15 October 2026), the comments of the tasks it names, `02`, `04` (Student record), `edge/people-roles-accounts` (Who can act, Personal data and the audit log), `packages/shared/src/permissions.ts`, `.claude/rules/api.md`.
+  - Build: a Senior Head Teacher shown by full name in every branch (L32); a Teacher reads the students they teach, Basic fields only, and no other student (L48); the diagnostic score read also by the Head Teachers and the student's class Tutor (L50); the Head Tutor reads every field group of the branch's students, the financial group included, and exports them, and the Head Teachers export the Basic fields (L59); the Tutor exports every field the Tutor reads about own class (L136); groups on every row of the student list for every reader (L147); relatives' phones searched by Ctrl+K for the Super Admin, the Principal and the Academic Vice Principal, with the relative's children listed (L157; with 3.5b H33 if that is merged first, otherwise built here).
+  - Done when: each item has allow and refuse tests for every role in the permission harness and at its route, the export tests cover each new exporter's columns, and the report lists each item done.
+
+- [ ] **3.6b The owner's answers of 15 October: people and dates** (issue #42, the owner's answers of 15 October 2026, items L81, L128, L170, L195)
+  - Read: the owner's answers comment on issue #42, the comments of the tasks it names, `04` (Close relatives, Teacher and staff record, Movements), `edge/close-relatives`, `edge/time-dates-calendar` ("The academic year is extended or shortened"), `edge/people-roles-accounts` (row 15), `edge/developer-rules`.
+  - Build: the staff and relative "same person" mark set automatically by an equal main phone in both directions, the person's details taken from the existing record, no hand control to set or remove it, a corrected phone updating the mark with an audit entry, and one phone number for one adult (L81); the year made longer at any time and shorter only when no lesson with data, mark, attendance or stay falls in the days cut off, refused with the list otherwise (L128); a return or restore dated the first day of the next planned year (L170); a department move that takes effect on its start date, with open requests moving then (L195).
+  - Done when: each rule has a database or route test that fails without it, L81 has tests for a new relative, a new staff member and each changed phone, and L195 has a test on the day before and on the start date with the injected clock.
+
+- [ ] **3.6c The owner's answers of 15 October: the year result, no extra lessons, Tutor lessons** (issue #42, the owner's answers of 15 October 2026, item L210 and answers 1 and 2)
+  - Read: the owner's answers comment on issue #42, `07` (Calculation rules), `edge/calculation`, `06` (Changes after publishing), `edge/timetable`, `edge/time-dates-calendar`, `edge/lesson-plans`, `09`, the plans of pull requests #102 and #103.
+  - Build: the year result as the mean of the quarter results as published (each rounded as shown), rounded once more for the year, in `packages/calc` with its reference journal (L210; a reading of a calculation rule decided by the owner); the extra lesson, its "counts for attendance" switch and the "replaces the lesson of [date]" make-up removed from `packages/calc` and from every later task line of this file that names them (a lesson moved across quarters is only cancelled); the Maʼnaviyat soati and Homework slot rows of a class always held by the class's Tutor in force on the lesson's date (the acting Tutor while set), with no teacher chosen by hand and the future lessons following a new Tutor from the date of the change.
+  - Done when: the calc tests include the 50, 50, 49, 50 example giving 50, grade 3; no code or later task line names an extra lesson; a test gives a class a new Tutor and finds the future Tutor lessons with the new Tutor and the held ones with the old.
+
+- [ ] **3.7 The handbook for what is built so far** (owner, 15 October 2026)
+  - Read: `docs/handbook/README.md`, every spec file, `docs/decisions.md`, issue #42 (the task comments and the owner's answers of 15 October 2026), issues #39 and #105, `docs/progress.md`, and the code and screens of every ticked task.
+  - Build: the handbook pages of `docs/handbook/README.md` for everything built by the ticked tasks of Phases 0 to 5 (sign-in and roles, school setup, people, classes and groups, the teaching load, the calculations, and what of the timetable exists), feature by feature as the README says, describing what the platform does today; where the code and the spec differ, the page says what the code does and the report lists each difference as a finding.
+  - Done when: every page the ticked tasks touch exists, every role row of `02` appears in a "Who can use it" table, the spec reviewer finds no rule of the ticked tasks missing from a page, and the report lists the code-and-spec differences. The builder may split this task by page.
+
 ## Phase 4. Calculation module
 
 - [x] **4.1 Exact fractions and daily results** (pull request #102)
@@ -781,6 +801,11 @@ How to read the task lines:
   - Read: `edge/academic-year`, `14` (Whole system), `edge/system-behaviour`.
   - Build: "Start year" (1.3 built its core: `POST /api/setup/academic-years/:id/start`, planned → current for a branch's first year or once every earlier year is closed; this task adds what the checklist and "Close the year" need around it); the nightly test that runs set-up, publish, entry, calendar change, four closings, year close and rollover with the clock moved through a year.
   - Done when: the simulation passes in CI.
+
+- [ ] **9.6 The handbook in Uzbek and Russian** (owner, 15 October 2026)
+  - Read: `docs/handbook/README.md` and every page, `12` (Language), the Uzbek and Russian texts of the screens.
+  - Build: `docs/handbook/uz/` and `docs/handbook/ru/` with every page in natural Uzbek and Russian, using the words the screens use; the English pages stay the source.
+  - Done when: every English page has both versions with the same headings, rules and cases; the owner corrects the wording afterwards.
 
 > **Owner gate.** The start routine stops here until the owner, after the go-live review of every Look first decision and the decided-ahead round for Phase 10, deletes this line.
 

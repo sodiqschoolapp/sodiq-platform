@@ -24,6 +24,17 @@ Decided once, valid for every task. A session reads this section at its start (`
 | The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3. |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
+## 15 October 2026: the handbook
+
+Decided by the owner on 15 October 2026: "When we finish building Release 1, we must know every single behaviour of the website, from the smallest to the biggest: what features exist, how they work, what happens in X case, Y case. Not the tech stack." Built as it goes, so it is complete and true at release and stays true after.
+
+| Decision | Reason |
+| --- | --- |
+| **`docs/handbook/`** holds one plain-language page per area, written as its README says: what, who, how, rules, "What happens if…", messages | The spec says what was wanted before building, the decisions are spread over issue #42 and this file, and the code is the only full truth; the school needs one readable account |
+| **Every task updates the pages of what it adds or changes, in its own pull request** (`CLAUDE.md`, Definition of done; `finish-task` step 6) and **the spec reviewer checks them** (`.claude/agents/spec-reviewer.md`) | Written at the end, a hundred tasks lose detail; a page that has to pass review with its code cannot drift |
+| **Task 3.7 writes the pages for the tasks already done**, after 3.6c | The loop is at 5.2; the pages of Phases 0 to 5 are written once from the spec, the decisions, the answers on #42 and the code |
+| **Task 9.6 makes the Uzbek and Russian versions**, before the owner gate of Phase 10 | The administration reads Uzbek and Russian; English stays the source so the reviewer checks one text |
+
 ## 13 October 2026: the repository is public
 
 Decided by the owner on 13 October 2026: the loop trusts only the owner's account and this repository's own branches. The reason for every row: the Actions minutes of the private repository ran out on 13 October and the owner made the repository public (Actions minutes are free for public repositories). Every session, routine and the bridge act on GitHub as the owner's account `abbosc`. Until now nothing checked who wrote a comment or where a pull request came from, because nobody else could reach the repository. Now anyone can read it and, once the owner's interaction limit ends, comment and open pull requests from forks. A stranger's comment "[review] approved at <sha>" would wake the builder through `.github/workflows/routines.yml`, a stranger's "[review] ready to merge at <sha>" could be taken by `review-pr` as a verdict to merge, and a fork's branch can be named `task/...`.

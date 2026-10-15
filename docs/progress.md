@@ -12,7 +12,15 @@ The next sessions must know:
 
 - A caller builds `Facts` as `placement.ts` documents (which date each fact is read on); the engine throws on a placement whose teacher, unit, subject or room is missing from the facts, and leaves out what the caller does not pass (cancelled lessons, exempt students).
 - `noSubjectTeacherFree` relaxes only a substitute's own lesson in a dated call.
-- The next task is 5.3.
+- The next task is 3.5a (the hand-test fixes of issue #105 come first), then 3.5b to 3.6c, then 5.3.
+
+## 15 October 2026: the owner's answers on issue #42
+
+- The owner answered every Look first decision of tasks 2.2b to 4.2 (211 items): 198 confirmed, 12 changed, and two more answers (no extra lessons; Tutor lessons follow the Tutor). The comment of 15 October 2026 on issue #42 lists them.
+- Tasks 3.6a, 3.6b and 3.6c build the changes, after 3.5a to 3.5c.
+
+The next sessions must know:
+- Until 3.6c is merged and `/spec-change` updates the spec, the owner's answers on #42 rule where the spec or an earlier decision says otherwise: no extra lessons or make-up lessons for one class; Maʼnaviyat soati and the Homework slot are held by the class Tutor in force; the year result is the mean of the quarter results as shown; one phone number belongs to one adult.
 
 ## 15 October 2026: task 5.1b Exams and later changes against the claims
 
