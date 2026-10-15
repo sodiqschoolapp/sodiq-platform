@@ -275,12 +275,15 @@ describe('the settings of a branch', () => {
       const north = await settingsRow(t.north);
       const south = await settingsRow(t.south);
       const count = await t.auditCount();
-      for (const cookie of [t.principal, t.teacher]) {
-        expect((await put(path, t.north, { classDailyLessons: 9 }, cookie)).status).toBe(403);
+      const refused = [
+        await put(path, t.north, { classDailyLessons: 9 }, t.principal),
+        await put(path, t.north, { classDailyLessons: 9 }, t.teacher),
+        await put(path, t.south, { classDailyLessons: 9 }, t.vicePrincipal),
+      ];
+      for (const response of refused) {
+        expect(response.status).toBe(403);
+        expect(errorCode(response)).toBe('permission_denied');
       }
-      expect((await put(path, t.south, { classDailyLessons: 9 }, t.vicePrincipal)).status).toBe(
-        403,
-      );
       expect(await settingsRow(t.north)).toEqual(north);
       expect(await settingsRow(t.south)).toEqual(south);
       expect(await t.auditCount()).toBe(count);

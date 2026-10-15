@@ -36,7 +36,8 @@ describe('the settings of a branch', () => {
     }
   });
 
-  // Task 5.2, decision 2: the bounds of a teacher's most lessons per day; null is "not set".
+  // Task 5.2, decision 2: a class's daily maximum, with the bounds borrowed from a
+  // teacher's most lessons per day; null is "not set".
   it('takes the most lessons per day of a class from 1 to 12, or none', () => {
     expect(CLASS_DAILY_LESSONS_MAX).toBe(12);
     for (const classDailyLessons of [1, 12, null]) {
