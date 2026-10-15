@@ -415,6 +415,38 @@ describe('class transfers', () => {
       const [entry] = await t.entries('student.class_transferred', one.id);
       expect(entry).toMatchObject({ new_value: { confirmLanguage: true } });
     });
+
+    // Task 3.5b, H27 of issue #105 (decision 1): the question is asked once per
+    // move; a change with the same two classes is not asked again, a change to
+    // another target is.
+    it('does not ask again when only the date of a confirmed move changes', async () => {
+      const oxford = await schoolClass({ language: 'uz' });
+      const moscow = await schoolClass({ language: 'ru' });
+      const kazan = await schoolClass({ language: 'ru' });
+      const one = await pupil(oxford);
+      const move = moveOf(
+        ok(await transfer(one.id, moscow, '2026-10-16', { confirmLanguage: true })),
+      );
+      const changed = ok(
+        await post(`/api/classes/transfers/${move}/change`, {
+          version: (await fresh(one.id)).version,
+          toClassId: moscow,
+          from: '2026-10-23',
+        }),
+      );
+      expect(changed.plannedClass).toMatchObject({ id: moscow, from: '2026-10-23' });
+      const before = await rowsOf();
+      refusedWith(
+        await post(`/api/classes/transfers/${moveOf(changed)}/change`, {
+          version: (await fresh(one.id)).version,
+          toClassId: kazan,
+          from: '2026-10-23',
+        }),
+        409,
+        'class_language_differs',
+      );
+      expect(await rowsOf()).toEqual(before);
+    });
   });
 
   describe('the groups of a transfer', () => {

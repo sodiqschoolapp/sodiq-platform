@@ -552,7 +552,13 @@ export function HistoryTab({
     return <LoadingOutline />;
   }
   return (
-    <section className="grid gap-3" aria-label={t('people.students.moves.historyLabel')}>
+    <section
+      className="grid gap-3"
+      aria-label={t('people.students.moves.historyLabel')}
+      // H28: an action started here comes back to the tab with the focus here.
+      tabIndex={-1}
+      data-opens="history"
+    >
       <ol className="grid gap-3 text-sm">
         {history.data.lines.map((line, index) => {
           const from =

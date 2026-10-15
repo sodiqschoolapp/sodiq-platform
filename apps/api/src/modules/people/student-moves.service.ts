@@ -175,6 +175,9 @@ export class StudentMoves {
               toClassId: input.toClassId,
               from: input.from,
               confirmLanguage: input.confirmLanguage,
+              // H27 of issue #105: the question was answered when this move
+              // was saved, for these two classes; it is not asked again.
+              answeredFor: { fromClassId: move.fromClassId, toClassId: move.toClassId },
             },
             requestId,
           );
@@ -378,7 +381,13 @@ export class StudentMoves {
     access: Access,
     student: PlacementStudent,
     today: SchoolDate,
-    input: { toClassId: string; from: SchoolDate; confirmLanguage?: boolean | undefined },
+    input: {
+      toClassId: string;
+      from: SchoolDate;
+      confirmLanguage?: boolean | undefined;
+      /** The two classes of the saved move a change replaces (H27). */
+      answeredFor?: { fromClassId: string | null; toClassId: string | null };
+    },
     requestId: string,
   ): Promise<Moved> {
     const branchId = branchOf(access);
@@ -429,7 +438,11 @@ export class StudentMoves {
       throw new ApiException('membership_outside_year', 409);
     }
     const languageDiffers = left.language !== joined.language;
-    if (languageDiffers && input.confirmLanguage !== true) {
+    // H27 (decision 1 of task 3.5b): the classes are compared, not their languages.
+    const answered =
+      input.answeredFor?.fromClassId?.toLowerCase() === held.classId.toLowerCase() &&
+      input.answeredFor.toClassId?.toLowerCase() === target.id.toLowerCase();
+    if (languageDiffers && input.confirmLanguage !== true && !answered) {
       throw new ApiException('class_language_differs', 409);
     }
     const end = placementEnd(student.statuses, student.startsOn, from, target.ownUntil);

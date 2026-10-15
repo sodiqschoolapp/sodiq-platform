@@ -317,6 +317,43 @@ describe('class and group transfers in the side panel', () => {
       reason: 'Moved by mistake',
       version: 2,
     });
+    // Task 3.5b, H28 of issue #105: the panel stays on History, read again in place.
+    const after = await within(panel).findByRole('region', {
+      name: en.people.students.moves.historyLabel,
+    });
+    expect(
+      within(panel).getByRole<HTMLInputElement>('radio', { name: en.people.students.tabs.history })
+        .checked,
+    ).toBe(true);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(after);
+    });
+    expect(
+      calls.filter((call) => call.route === `GET /api/people/students/${STUDENT.id}/history`)
+        .length,
+    ).toBeGreaterThan(1);
+  });
+
+  // Task 3.5b, H27 of issue #105: the language question once per move.
+  it('changes only the date of a confirmed move with one call and no question', async () => {
+    const toMoscow = { ...MOVE, toClass: MOSCOW, from: '2026-10-16' };
+    const calls = open(detailOf({ scheduledMoves: [toMoscow] }), {
+      [`POST /api/classes/transfers/${MOVE.id}/change`]: () => json(detailOf({ version: 5 })),
+    });
+    renderApp(`${PATH}?open=${STUDENT.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const change = en.people.students.moves.change.replace('{{target}}', '7 Moskva');
+    fireEvent.click(await within(panel).findByRole('button', { name: change }));
+    const form = await within(panel).findByRole('form');
+    fireEvent.change(within(form).getByLabelText(en.people.students.moves.from), {
+      target: { value: '2026-10-23' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await savedInPanel(panel);
+    const sent = calls.filter((call) => call.route.endsWith('/change'));
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.body).toEqual({ version: 2, toClassId: MOSCOW.id, from: '2026-10-23' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
   it('draws no move action and no History tab for a reader the record does not allow, in Russian', async () => {
