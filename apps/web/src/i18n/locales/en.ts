@@ -445,6 +445,14 @@ export const en = {
       'Your staff record is inactive or you have left the school, so you cannot sign in. Ask the Super Admin if this is wrong.',
     subject_has_teachers:
       'Teachers who have not left, or open vacancies, have this subject with these grades in this department. Change their subjects first, then the subject.',
+    department_move_loads:
+      "Teaching loads would have a teacher outside the subject's department. Reassign the loads listed first, then move.",
+    department_move_start_outside:
+      "The start date is before today or after the end of the branch's last academic year. Choose another date.",
+    staff_changed:
+      'Someone changed this staff record while you had it open. Open it again and repeat the change.',
+    subject_changed:
+      'Someone changed this subject while you had it open. Open it again and repeat the change.',
     department_has_staff:
       'Staff members who have not left, or open vacancies, are in this department. Move them to another department or close the vacancies first.',
     photo_invalid: 'Choose a JPEG or PNG photo, up to 5 MB.',

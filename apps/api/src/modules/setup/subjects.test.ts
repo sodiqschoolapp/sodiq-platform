@@ -22,6 +22,9 @@ import { errorCode } from '../../testing/sign-in-kit.js';
 // Five minutes on: the Super Admin's idle limit is 15.
 const LATER = '2026-10-10T23:59:00+05:00';
 
+// The start date a department move carries (task 3.4c, decision 2): after today, inside the year.
+const MOVE_ON = '2026-11-02';
+
 const DAILY = { attendance: 10, classwork: 50, homework: 40 };
 const RATED = { attendance: 10, classwork: 30, homework: 20, ratingExam: 40 };
 const UNRATED = { attendance: 10, classwork: 50, homework: 40, ratingExam: null };
@@ -566,7 +569,11 @@ describe('subjects', () => {
       const moved = await put(
         `/api/setup/subjects/${subject.id}`,
         t.north,
-        editBody(subject, { departmentId: tutors, groupSubject: true }),
+        editBody(subject, {
+          departmentId: tutors,
+          groupSubject: true,
+          departmentStartsOn: MOVE_ON,
+        }),
       );
       expect(moved.status).toBe(200);
       expect(subjectSchema.parse(moved.body).departmentId).toBe(tutors);
@@ -605,7 +612,11 @@ describe('subjects', () => {
       const moved = await put(
         `/api/setup/subjects/${subject.id}`,
         t.north,
-        editBody(subject, { departmentId: tutors, groupSubject: true }),
+        editBody(subject, {
+          departmentId: tutors,
+          groupSubject: true,
+          departmentStartsOn: MOVE_ON,
+        }),
         both.cookie,
       );
 
@@ -629,13 +640,13 @@ describe('subjects', () => {
       const unknown = await put(
         `/api/setup/subjects/${subject.id}`,
         t.north,
-        editBody(subject, { departmentId: UNKNOWN }),
+        editBody(subject, { departmentId: UNKNOWN, departmentStartsOn: MOVE_ON }),
       );
       expect(unknown.status).toBe(404);
       const outside = await put(
         `/api/setup/subjects/${subject.id}`,
         t.north,
-        editBody(subject, { departmentId: medical }),
+        editBody(subject, { departmentId: medical, departmentStartsOn: MOVE_ON }),
       );
       expect(errorCode(outside)).toBe('department_not_academic');
 

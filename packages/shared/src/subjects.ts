@@ -142,7 +142,15 @@ const subjectFieldsSchema = z.object({
  * On an edit, `daily` is sent only when the branch has none yet (decision 15).
  */
 export const subjectRecordSchema = subjectFieldsSchema
-  .extend({ daily: dailyWeightsSchema.nullable() })
+  .extend({
+    daily: dailyWeightsSchema.nullable(),
+    /**
+     * The start date of a department move of the subject (`edge/people-roles-accounts`,
+     * row 15; task 3.4c, decision 2): sent with a move only, today or later in
+     * the branch's time zone and no later than the end of its latest year.
+     */
+    departmentStartsOn: schoolDateSchema.nullable().optional(),
+  })
   .superRefine((subject, context) => {
     if (subject.journalType === 'attendance_only') {
       if (subject.ratingExam) {
@@ -182,6 +190,8 @@ export const newSubjectRecordSchema = subjectRecordSchema.superRefine((subject, 
 /** A subject as the routes answer it, with the weights of the branch of the request. */
 export const subjectSchema = subjectFieldsSchema.extend({
   id: z.uuid(),
+  /** The start date of the department's last move (task 3.4c, decision 8); `null` if never moved. */
+  departmentSince: schoolDateSchema.nullable(),
   archivedAt: z.iso.datetime().nullable(),
   /** This branch's daily distribution; `null` while not set (decision 2). */
   daily: dailyWeightsSchema.nullable(),

@@ -519,6 +519,7 @@ export interface StaffBranches {
 
 export interface StaffDivisions {
   department_id: string | null;
+  department_since: string | null;
   division_id: string;
   is_main: boolean;
   staff_id: string;
@@ -719,6 +720,7 @@ export interface Subjects {
   created_at: Generated<Timestamp>;
   demanding: Generated<boolean>;
   department_id: string;
+  department_since: string | null;
   grades: number[];
   group_subject: Generated<boolean>;
   id: Generated<string>;

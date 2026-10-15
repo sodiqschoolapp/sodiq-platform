@@ -926,7 +926,11 @@ describe('staff records', () => {
       expect(apiErrorSchema.parse(inBranch.body).error.details).toEqual([
         expect.objectContaining({ path: `staff.${teacher.id}`, code: 'teaches' }),
       ]);
-      const elsewhere = await edit(t.south, { departmentId: languages });
+      const elsewhere = await edit(t.south, {
+        departmentId: languages,
+        // A move carries a start date (task 3.4c, decision 2).
+        departmentStartsOn: '2026-11-02',
+      });
       refusedWith(elsewhere, 409, 'subject_has_teachers');
       expect(apiErrorSchema.parse(elsewhere.body).error.details).toEqual([
         expect.objectContaining({ path: 'elsewhere', code: '1' }),

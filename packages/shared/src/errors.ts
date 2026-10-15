@@ -183,6 +183,19 @@ export const ERROR_CODES = [
   'account_inactive',
   /** A subject keeps its department and grades while a teacher who has not left has them (task 2.2a, decision 13). */
   'subject_has_teachers',
+  /**
+   * A department move of a teacher or a subject would leave teaching load rows
+   * with a teacher outside the subject's department; `details` lists the rows
+   * of the branch (`load.<id>`) and counts the others (`elsewhere`)
+   * (`edge/people-roles-accounts`, row 15; task 3.4c).
+   */
+  'department_move_loads',
+  /** The start date of a department move is before today or after the branch's latest year (task 3.4c, decision 2). */
+  'department_move_start_outside',
+  /** The staff record's department changed since it was read: read it again (task 3.4c, decision 9). */
+  'staff_changed',
+  /** The subject's department changed since it was read: read it again (task 3.4c, decision 9). */
+  'subject_changed',
   /** A department cannot be archived while a staff member who has not left is in it (task 2.2a, decision 20). */
   'department_has_staff',
   /** Hours of a staff record overlap its hours in another branch on a date (`06`, Teachers who work in several branches; task 2.2b). `details` names the weekdays when the service finds them. */
@@ -582,6 +595,22 @@ export const errorDetailSchema = z.object({
   freeSeats: z.int().optional(),
   /** The subject without a group with a free seat, on a `class_group_no_seat` (task 3.2c). */
   subjectId: z.uuid().optional(),
+  /**
+   * A teaching load row of the branch of the request that a department move
+   * would leave with a teacher outside the subject's department, on a
+   * `department_move_loads` (task 3.4c, correction 2 of pull request #101):
+   * what its line shows and the version its link opens.
+   */
+  load: z
+    .object({
+      versionId: z.uuid(),
+      versionNumber: z.int().min(1),
+      versionStartsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      unit: z.object({ kind: z.enum(['class', 'group']), id: z.uuid(), name: z.string() }),
+      subjectId: z.uuid(),
+      teacher: z.object({ id: z.uuid(), name: z.string(), vacancy: z.boolean() }),
+    })
+    .optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

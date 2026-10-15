@@ -104,6 +104,12 @@ const MESSAGE: Record<ErrorCode, string> = {
   own_status: 'Nobody sets their own staff record to inactive or left.',
   account_inactive: 'The staff member is inactive or has left.',
   subject_has_teachers: 'Teachers have this subject with these grades in this department.',
+  department_move_loads:
+    "Teaching load rows would have a teacher outside the subject's department; reassign them first.",
+  department_move_start_outside:
+    "The start date of the move is before today or after the end of the branch's latest year.",
+  staff_changed: 'The staff record changed since it was read; read it again.',
+  subject_changed: 'The subject changed since it was read; read it again.',
   department_has_staff: 'The department cannot be archived while a staff member is in it.',
   availability_overlap: 'The hours overlap the hours of another branch on a date.',
   photo_invalid: 'The file is not a JPEG or PNG photo of at most 800 pixels a side.',

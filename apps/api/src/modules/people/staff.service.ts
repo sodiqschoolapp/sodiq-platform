@@ -43,6 +43,12 @@ import type { XlsxFile } from '../../http/xlsx.js';
 import { currentAssignments } from '../access/current-assignments.js';
 import { decide } from '../access/permission-check.js';
 import { activeSuperAdmins, lockSuperAdmins } from '../access/super-admins.js';
+import {
+  checkMoveStart,
+  lockDepartmentMoves,
+  moveStartsOn,
+  refuseMoveLoads,
+} from './department-moves.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { PasswordResets } from '../auth/password-resets.service.js';
@@ -122,7 +128,9 @@ interface StaffRow {
 }
 
 /** The fields of a record as the audit entries and the edit compare them. */
-type StaffFields = Omit<StaffRecord, 'divisions'> & { divisions: StaffDivisions };
+type StaffFields = Omit<StaffRecord, 'divisions' | 'departmentStartsOn'> & {
+  divisions: StaffDivisions;
+};
 
 const text = (value: string | null): string => value ?? '';
 
@@ -162,6 +170,31 @@ const columnsOf = (record: StaffRecord) => ({
   weekly_lessons: record.weeklyLessons,
   daily_lessons: record.dailyLessons,
 });
+
+/**
+ * The department of the Academic division of a list of divisions: `undefined`
+ * without the division (task 3.4c, decision 5).
+ */
+const academicDepartmentOf = (
+  divisions: StaffDivisions,
+  academicId: string,
+): string | null | undefined =>
+  divisions.find((division) => division.divisionId === academicId)?.departmentId;
+
+/**
+ * A teacher move (task 3.4c, decision 5): the Academic division's department
+ * changes to another or the division is removed; adding it is not a move.
+ */
+const isMove = (before: string | null | undefined, after: string | null | undefined): boolean =>
+  before !== undefined && before !== after;
+
+/** A `date` column as `YYYY-MM-DD`, whichever way the driver gave it. */
+const dateOrNull = (value: Date | string | null): string | null =>
+  value === null
+    ? null
+    : typeof value === 'string'
+      ? value.slice(0, 10)
+      : value.toISOString().slice(0, 10);
 
 /** Divisions in one order, the main one first, so two equal lists compare equal. */
 const sortDivisions = (divisions: StaffDivisions): StaffDivisions =>
@@ -374,6 +407,7 @@ export class Staff {
     const branchId = branchOf(access);
     return this.refusing(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
+        moveStartsOn(false, record.departmentStartsOn);
         await this.checkDivisions(transaction, record.divisions);
         const year = Number(record.admissionDate.slice(0, 4));
         const staffId = staffIdOf(year, await takeStaffNumber(transaction, year));
@@ -421,10 +455,25 @@ export class Staff {
     const branchId = branchOf(access);
     return this.refusing(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
+        // Task 3.4c, decision 6: a teacher move takes the lock of department
+        // moves before any row lock, decided from the department read without
+        // one; the locked read must agree (decision 9).
+        const academicId = await this.academicDivisionId(transaction);
+        const asked = academicDepartmentOf(record.divisions, academicId);
+        const unlocked = academicDepartmentOf(await this.divisionsOf(transaction, id), academicId);
+        const lockedForMove = isMove(unlocked, asked);
+        if (lockedForMove) {
+          await lockDepartmentMoves(transaction);
+        }
         const row = await this.lockPerson(transaction, id);
         const divisions = await this.divisionsOf(transaction, id);
+        const moving = isMove(academicDepartmentOf(divisions, academicId), asked);
+        if (moving !== lockedForMove) {
+          throw new ApiException('staff_changed', 409);
+        }
         const before = fieldsOf(row, sortDivisions(divisions));
-        const after: StaffFields = { ...record, divisions: sortDivisions(record.divisions) };
+        const { departmentStartsOn, ...fields } = record;
+        const after: StaffFields = { ...fields, divisions: sortDivisions(record.divisions) };
         const changes = changesOf({ ...before }, { ...after });
         if (changes === null) {
           return this.readDetail(transaction, access, id);
@@ -449,12 +498,32 @@ export class Staff {
             ),
         );
         await this.checkDivisions(transaction, added);
+        // `edge/people-roles-accounts`, row 15 (task 3.4c): a move carries a
+        // start date and is refused while a load would have the teacher outside
+        // the subject's department; the profile's own check comes at the commit.
+        const startsOn = moveStartsOn(moving, departmentStartsOn);
+        if (startsOn !== null) {
+          await checkMoveStart(transaction, branchId, startsOn);
+          await refuseMoveLoads(transaction, branchId, {
+            teacherId: id,
+            departmentId: asked ?? null,
+            startsOn,
+          });
+        }
         await transaction
           .updateTable('staff')
           .set(columnsOf(record))
           .where('id', '=', id)
           .execute();
         await this.writeDivisions(transaction, id, divisions, record.divisions);
+        if (startsOn !== null && asked !== undefined) {
+          await transaction
+            .updateTable('staff_divisions')
+            .set({ department_since: startsOn })
+            .where('staff_id', '=', id)
+            .where('division_id', '=', academicId)
+            .execute();
+        }
         if (emailChanged && row.account_id !== null) {
           // A link of the reset by email to the old address never works
           // (task 2.3c-2, decisions 6 and 11 of pull request #66).
@@ -1038,6 +1107,16 @@ export class Staff {
     }
   }
 
+  /** The built-in Academic division (`03`, Divisions: "Academic is built in"). */
+  private async academicDivisionId(transaction: Transaction): Promise<string> {
+    const found = await transaction
+      .selectFrom('divisions')
+      .select('id')
+      .where('built_in', '=', true)
+      .executeTakeFirstOrThrow();
+    return found.id;
+  }
+
   private async divisionsOf(transaction: Transaction, id: string): Promise<StaffDivisions> {
     return (
       await transaction
@@ -1295,7 +1374,7 @@ export class Staff {
       .execute();
     const divisions = await transaction
       .selectFrom('staff_divisions')
-      .select(['staff_id', 'division_id', 'department_id', 'is_main'])
+      .select(['staff_id', 'division_id', 'department_id', 'is_main', 'department_since'])
       .where('staff_id', 'in', list)
       .orderBy('is_main', 'desc')
       .orderBy('division_id')
@@ -1372,6 +1451,7 @@ export class Staff {
             divisionId: division.division_id,
             departmentId: division.department_id,
             main: division.is_main,
+            departmentSince: dateOrNull(division.department_since),
           })),
         subjects: subjects
           .filter((subject) => subject.staff_id === row.id)
