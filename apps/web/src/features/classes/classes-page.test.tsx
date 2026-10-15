@@ -12,11 +12,11 @@ import {
   type TutorCandidate,
 } from '@sodiq/shared';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { actionsAreLast, edit, panelActionNames, savedInPanel } from '@/testing/panel';
-import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 import { setWindowWidth } from '@/testing/window-width';
 
 const PATH = '/classes';
@@ -494,6 +494,96 @@ describe('a class in the side panel', () => {
       language: 'uz',
       mainRoomId: uid(2),
       maxSize: 30,
+    });
+  });
+
+  // Task 3.5b, H32 of issue #105: a branch switch closes the panel of the old
+  // branch's record, asking first about typed changes, and no request for it
+  // goes with the new branch.
+  describe('a branch switch', () => {
+    const twoBranches = () =>
+      sessionOf({
+        assignments: [
+          { role: 'academic_vice_principal', branchId: NORTH.id },
+          { role: 'academic_vice_principal', branchId: SOUTH.id },
+        ],
+        branches: [NORTH, SOUTH],
+      });
+
+    /** The branch header of every request, by route, as fetch sends them. */
+    function headersSeen(): { route: string; branch: string | null }[] {
+      const seen: { route: string; branch: string | null }[] = [];
+      const inner = globalThis.fetch;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn<typeof fetch>((input, init) => {
+          if (input instanceof Request) {
+            seen.push({
+              route: `${input.method} ${new URL(input.url).pathname}`,
+              branch: input.headers.get('X-Branch-Id'),
+            });
+          }
+          return inner(input, init);
+        }),
+      );
+      return seen;
+    }
+
+    const switchTo = (branchId: string) => {
+      fireEvent.change(screen.getByRole('combobox', { name: en.switcher.branch }), {
+        target: { value: branchId },
+      });
+    };
+
+    it('asks about typed changes, then closes the panel; no request for the record goes with the new branch', async () => {
+      await openList({ session: twoBranches() });
+      const seen = headersSeen();
+      fireEvent.click(rowButton('7 Oxford'));
+      const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
+      const form = await edit(panel, '7 Oxford');
+      type(field(form, en.classes.maxSize), '30');
+      switchTo(SOUTH.id);
+      await confirmWith(en.unsent.leave);
+      await waitFor(() => {
+        expect(screen.queryByRole('complementary', { name: '7 Oxford' })).toBeNull();
+      });
+      await waitFor(() => {
+        expect(
+          screen.getByRole<HTMLSelectElement>('combobox', { name: en.switcher.branch }).value,
+        ).toBe(SOUTH.id);
+      });
+      await waitFor(() => {
+        expect(seen.some((one) => one.branch === SOUTH.id)).toBe(true);
+      });
+      expect(
+        seen.filter((one) => one.route.includes(OXFORD.id) && one.branch === SOUTH.id),
+      ).toEqual([]);
+      expect(new URL(window.location.href).searchParams.get('open')).toBeNull();
+    });
+
+    it('keeps the branch and the form when the person stays', async () => {
+      await openList({ session: twoBranches() });
+      fireEvent.click(rowButton('7 Oxford'));
+      const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
+      const form = await edit(panel, '7 Oxford');
+      type(field(form, en.classes.maxSize), '30');
+      switchTo(SOUTH.id);
+      await confirmWith(en.unsent.stay);
+      expect(
+        screen.getByRole<HTMLSelectElement>('combobox', { name: en.switcher.branch }).value,
+      ).toBe(NORTH.id);
+      expect(field(form, en.classes.maxSize).value).toBe('30');
+    });
+
+    it('closes a panel with nothing typed without asking', async () => {
+      await openList({ session: twoBranches() });
+      fireEvent.click(rowButton('7 Oxford'));
+      await screen.findByRole('complementary', { name: '7 Oxford' });
+      switchTo(SOUTH.id);
+      await waitFor(() => {
+        expect(screen.queryByRole('complementary', { name: '7 Oxford' })).toBeNull();
+      });
+      expect(screen.queryByRole('alertdialog')).toBeNull();
     });
   });
 

@@ -1,3 +1,4 @@
+import { useRouter } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { useTranslation } from 'react-i18next';
 import { ExpandMoreIcon } from '@/components/icons';
@@ -12,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Select } from '@/components/ui/select';
+import { useLeave } from '@/components/unsent/unsent-changes';
 import { isRole } from './view';
 import { useView } from './use-view';
 
@@ -86,6 +88,25 @@ export function RoleSwitcher() {
 export function BranchSwitcher() {
   const { t } = useTranslation();
   const { branches, branchId, chooseBranch } = useView();
+  const { leave } = useLeave();
+  const router = useRouter();
+  /**
+   * Task 3.5b, H32 of issue #105: a form with typed changes asks first; then
+   * the record open in the side panel, of the old branch, is closed, and only
+   * then is the branch chosen, so nothing of the old record is on screen and
+   * no request for it can go with the new branch.
+   */
+  const switchTo = async (next: string) => {
+    if (!(await leave())) {
+      return;
+    }
+    const search: Record<string, unknown> = { ...router.state.location.search };
+    if (search.open !== undefined) {
+      delete search.open;
+      await router.navigate({ to: '.', search, ignoreBlocker: true });
+    }
+    chooseBranch(next);
+  };
   if (branchId === null) {
     return null;
   }
@@ -105,7 +126,7 @@ export function BranchSwitcher() {
         className="max-w-48 min-w-0"
         value={branchId}
         onChange={(event) => {
-          chooseBranch(event.target.value);
+          void switchTo(event.target.value);
         }}
       >
         {branches.map((branch) => (
