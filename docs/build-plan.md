@@ -437,11 +437,17 @@ How to read the task lines:
 
 ## Phase 5. Timetable
 
-- [ ] **5.1 Data model and database constraints**
+- [x] **5.1a Lessons, pattern and time claims** (split of 5.1 Data model and database constraints, pull request #107, decision 1, Look first)
   - Read: `06` (Model, Changes after publishing), `edge/timetable`, `edge/developer-rules`, `edge/time-dates-calendar`.
-  - Build: versions, pattern entries, lesson blocks, and dated lessons with their own start and end; exclusion constraints for teacher, room and class block across all branches; the shared-room trigger; exams in their own tables; the teacher, room and class constraints run over one table of time claims for lessons and exams.
-  - Done when: the database itself refuses each double booking in tests, also when application checks are bypassed.
+  - Build: pattern blocks and entries with the teacher, room and class rules per version; dated lesson blocks and lessons with their own start and end; the time claims table with the teacher, room and class-block exclusion constraints across all branches; the shared-room trigger; the constraint trigger "a student in at most one lesson of a block" on lesson writes.
+  - Done when: the database refuses each double booking of lessons and of pattern entries in tests written as the application user, across two branches and two day templates by clock time.
   - From 3.4a (pull request #99, decision 15): `timetable_versions` exists (branch, year, number, status checked in draft, published, archived with no grant on `status`, `starts_on`, `from_version_id` keyed to the same branch and year, `left_rows`) with `teaching_load_rows`; this task extends it instead of creating one.
+
+- [ ] **5.1b Exams and later changes against the claims**
+  - Read: `06` (Changes after publishing, Exam), `edge/timetable` (Exams), `edge/developer-rules`.
+  - Build: `exams`, `exam_rooms`, `exam_room_classes`, `exam_invigilators` in their own tables (`edge/developer-rules`, Exams), writing claims of the kinds `exam_room`, `exam_invigilator` and `exam_class` into `time_claims` (0058), so lessons and exams are checked by one rule; an invigilator is never a vacancy; a class sits in one room of an exam; the group that sits an exam in its own lesson's slots (`edge/timetable`, Exams, "A group sits an exam"); the re-check of the claims of future lessons when something else changes under them: a class added to or removed from a group (`group_classes`), a group or class membership that puts a student in two lessons of one block, a room's `shared` switch or `max_simultaneous_lessons` changed.
+  - Done when: the database refuses an exam with a double-booked invigilator, room or class, and each of those later changes that would break a claim.
+  - From 5.1a (pull request #107, decision 2): the capacity of a shared room against the students of its lessons together is checked when a claim is written, never on a membership change; the re-check on memberships is the student rule only.
 
 - [ ] **5.2 Rule engine**
   - Read: `06` (Rules, Teachers who work in several branches), `05` (Language of instruction), `edge/timetable`.
@@ -486,6 +492,7 @@ How to read the task lines:
   - Read: `06` (What a change does to existing data, How surprises are prevented), `edge/timetable` (Versions and drafts), `edge/time-dates-calendar`.
   - Build: generation of dated lessons from the start date to the end of the academic year, following the calendar and day templates; no change to any lesson dated today or earlier; stored one-day changes applied again after a publish.
   - Done when: a version that starts mid-week and a holiday inside a week are tested.
+  - From 5.1a (pull request #107, correction 6): `lessons` and `lesson_blocks` (0058) have no delete grant: the removal of empty future lessons at publish adds it in a migration of its own, with the check that a lesson holds no data. The columns that tie a dated lesson to its version (`lesson_blocks.version_id` and `pattern_block_id`, `lessons.load_row_id` and `pattern_entry_id`) have no update grant: this task decides whether an unchanged lesson is re-pointed to the new version under a grant of its own or stays with the version that created it, read through the chain (`edge/timetable`, Versions and drafts: "An unchanged lesson keeps its identity"). The routes map `40P01` and `40001` to `timetable_busy` and pass on a constraint name only, never the detail of an exclusion error.
 
 - [ ] **5.5c Publish: journals, notices and withdraw**
   - Read: `06` (How surprises are prevented), `07` (first paragraph), `edge/timetable` (Versions and drafts), `edge/developer-rules`.
@@ -493,6 +500,7 @@ How to read the task lines:
   - Done when: publishing a load with a new subject creates exactly one journal and removing it closes that journal.
   - From 3.4a (pull request #99): `04`, Teacher and staff record, Academic, "Classes taught, filled from the teaching load", is read from the published load; a vacancy that "held a load" is closed and kept (`04`, Vacancy) once 5.5 publishes it.
   - From 2.1 (pull request #52, decision 4): `edge/calculation`, "'Rating exam' is switched off, or a subject becomes attendance only, in week 5": "These switches are stored per quarter. They are free before the quarter's first lesson." The journal stores the rating exam switch and the journal type per quarter; until now they are one school-wide value on `subjects`.
+  - From 5.1a (pull request #107, correction 6): withdraw before the start date removes the version's dated lessons; the delete grant on `lessons` and `lesson_blocks` comes in a migration of its own.
 
 - [ ] **5.6a One-day changes**
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing).
@@ -504,6 +512,7 @@ How to read the task lines:
   - Build: what happens to existing dated lessons when a day off is added or removed, a day template changes, or quarter dates change; for a group of two grades, the choice when a calendar entry leaves school to only one grade (cancel the block, or keep it and exempt the grade that is off), and a lesson in a slot that does not match in both templates created as cancelled.
   - Done when: every row of the edge-case table has a test.
   - From 1.5 (pull request #46): a length or a template change from a date rechecks every future date with the new times and is refused on an overlap; a lesson slot used by the published timetable is not removed or reordered without a new version (`edge/time-dates-calendar`, "A slot type's length or a day template is changed mid-year"; owner's answer 12).
+  - From 5.1a (pull request #107, correction 6): a day off removes the lessons of its dates (`edge/time-dates-calendar`) under a delete grant on `lessons` and `lesson_blocks` added in a migration of its own; a quarter boundary moved over future dates changes `lesson_blocks.quarter_id`, which `lesson_block_quarter_fixed` (0059) allows only for a block dated after today in the branch's time zone and whose date does not change. `lesson_block_quarter` and `lesson_block_quarter_fixed` run only on writes to `lesson_blocks`: this task adds the guard on `quarters` itself, so that a quarter date moved over a held lesson's date, or leaving a stored quarter that no longer contains a block's date, is refused by the database (`edge/time-dates-calendar`, "Quarter dates are edited after lessons exist"; `edge/00-definitions`, Quarter of a lesson).
 
 - [ ] **5.6c Exams in the timetable**
   - Read: `06` (Changes after publishing, Rules, Free now board), `edge/timetable` (Exams, Versions and drafts), `edge/developer-rules`, `edge/calculation` (the rating exam), `edge/time-dates-calendar`.
@@ -530,6 +539,7 @@ How to read the task lines:
   - Build: a dated lesson with data cannot be deleted or change its class, group or subject; forced delete by the Super Admin with a reason and 30-day restore; version history, comparison of two versions, reopening an old version as a new draft; the version in force on the first day of each quarter.
   - Done when: each of the four Protection rules has a test.
   - From 2.7 (pull request #77, decision 2; issue #39, item 6): the same forced delete for a building, floor or room that nothing references (`03`, Building, floor, room; spec change of 13 October 2026), with a reason, an audit entry and 30 days to restore; a referenced one stays archive-only.
+  - From 5.1a (pull request #107, correction 6): the forced delete of a dated lesson needs a delete grant on `lessons` and `lesson_blocks` (0058 gives none), added with its guard in a migration of its own.
 
 - [ ] **5.9 Timetable views, print and export**
   - Read: `06` (Views and outputs), `edge/system-behaviour`.

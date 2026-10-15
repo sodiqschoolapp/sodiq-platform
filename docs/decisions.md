@@ -213,6 +213,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: lessons, pattern and time claims (task 5.1a)
+
+Plan approved on pull request #107 with corrections 1 to 6; decisions 1 to 19 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 5.1 split into 5.1a (pattern, dated lessons, time claims) and 5.1b (exams on the claims; the re-check of claims when group classes, memberships or a room's switch change) | Decision 1; the build plan's split rule |
+| **Look first.** A shared room is refused over its number of lessons at once and, for the students of those lessons together, over its capacity; a room that is not shared keeps capacity as a warning | Decision 2; `edge/developer-rules`, Room in one use, and `edge/timetable`, Structure, over the `06` warning; proposed `/spec-change` of the `06` capacity row |
+| Claims and pattern block classes are written only by the database's triggers (`pg_trigger_depth()` guard), `TEMPORARY` revoked, no `TRUNCATE`, no SECURITY DEFINER; each test database copy gets the revoke too | Decision 3; a database's rights are not copied from its template |
+| A claim exists only for a lesson that is not cancelled; the time lives on the block and cascades to every lesson row and claim | Decisions 4 and 5 |
+| Exclusion constraints deferrable, initially immediate; the counting triggers deferred, each behind an advisory lock | Decision 6 |
+| The pattern is checked by the clock minutes stored on its blocks, per version and weekday, with no student check and no cross-branch check | Decisions 7, 8 and 18 |
+| A block stores its quarter; the quarter changes only for a block dated after today and never with the date | Decision 10, correction 4, spec review of the build (0059) |
+| A pattern entry's teacher is the load row's, by a cascading key; a deleted draft load row deletes its entries | Decision 19 |
+| No delete on `lessons` and `lesson_blocks`, no update of their version columns, still no grant on `status`: each later task adds its own | Decision 12, correction 6 |
+| The fixes of the spec review of the build are migration 0059, not an edit of 0058 | 0058 was already applied in working databases; the migration runner refuses a changed file |
+
 ## 15 October 2026: exemptions, flags and special outcomes (task 4.3)
 
 Plan approved on pull request #104 with corrections 1 to 4; decisions 1 to 12 marked Look first and confirmed there. Flagged on issue #42.
