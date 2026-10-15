@@ -2411,6 +2411,70 @@ try {
   });
   seeded.moves = { login: movesVice.login, password: movesVice.firstPassword };
 
+  // The Academic Vice Principal of the return test (task 3.3b), in a branch
+  // of its own with the year around today, the classes 7 Oxford (Uzbek) and
+  // 7 Yale (Russian), and a student in 7 Oxford from the start of the year.
+  const returnsBranch = await insertBranch(migrator, 'Returns browser test branch');
+  const returnsVice = await create('Nilufar', 'Olimova');
+  await transactions.run([returnsBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: returnsVice.id,
+      role: 'academic_vice_principal',
+      branchId: returnsBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: returnsBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: returnsBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const classIds: string[] = [];
+    for (const [name, language] of [
+      ['Oxford', 'uz'],
+      ['Yale', 'ru'],
+    ] as const) {
+      const row = await transaction
+        .insertInto('classes')
+        .values({
+          branch_id: returnsBranch,
+          academic_year_id: year.id,
+          grade: 7,
+          name,
+          language,
+          max_size: 25,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      classIds.push(row.id);
+    }
+    await studentInClass(transaction, {
+      branch: returnsBranch,
+      classId: classIds[0] ?? null,
+      uid: '9999941',
+      first: 'Muxlisa',
+      last: 'Hamroyeva',
+      createdBy: returnsVice.id,
+      phone: '+998905550401',
+    });
+  });
+  seeded.returns = { login: returnsVice.login, password: returnsVice.firstPassword };
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')

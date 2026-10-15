@@ -1431,6 +1431,12 @@ export const en = {
       restoreFrom: 'Active from',
       returnConfirmTitle: 'Bring this student back?',
       returnConfirmText: 'The new contract is kept for good, and its number is never given again.',
+      returnNoClass: 'No class of this grade is in an academic year on that date.',
+      restoreNoClass: 'No class is in an academic year on that date.',
+      restoreClassNote: 'The student takes the grade of the class.',
+      returnLanguageTitle: 'Another language of instruction',
+      returnLanguageText:
+        'The class the student left teaches in another language than the class chosen. Return the student into it anyway?',
       restoreConfirmTitle: 'Restore this graduated student to active?',
       restoreConfirmText: 'The student is active again from the date chosen.',
       deleteTitle: 'Delete a student created twice',

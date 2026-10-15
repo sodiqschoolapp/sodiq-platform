@@ -240,7 +240,15 @@ export class MembersKit {
   rowOf(id: string) {
     return this.migrator
       .selectFrom('class_memberships')
-      .select(['valid_from', 'valid_until', 'own_until', 'ended_by', 'leaving_id', 'branch_id', 'cause'])
+      .select([
+        'valid_from',
+        'valid_until',
+        'own_until',
+        'ended_by',
+        'leaving_id',
+        'branch_id',
+        'cause',
+      ])
       .where('id', '=', id)
       .executeTakeFirstOrThrow();
   }

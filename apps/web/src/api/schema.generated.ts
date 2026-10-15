@@ -15030,6 +15030,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -15528,6 +15540,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -15844,6 +15868,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -16130,6 +16166,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -16490,6 +16538,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -16774,6 +16834,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -17059,6 +17131,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -17355,6 +17439,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -17644,6 +17740,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -18001,6 +18109,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -18290,6 +18410,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -18574,6 +18706,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -18859,6 +19003,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -19148,6 +19304,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -19435,6 +19603,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -19717,6 +19897,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;
@@ -20001,6 +20193,18 @@ export interface operations {
                             grade: number;
                             name: string;
                         }[];
+                        classLeft?: {
+                            /** Format: uuid */
+                            id: string;
+                            grade: number;
+                            name: string;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                            /** Format: date */
+                            from: string;
+                            /** Format: date */
+                            until: string;
+                        } | null;
                         groupsPlaced?: {
                             /** Format: uuid */
                             studentId: string;

@@ -1444,6 +1444,12 @@ export const uz: Texts<'one' | 'other'> = {
       restoreFrom: 'Faol boʻlgan sana',
       returnConfirmTitle: 'Bu oʻquvchini qaytarasizmi?',
       returnConfirmText: 'Yangi shartnoma doim saqlanadi, uning raqami boshqa berilmaydi.',
+      returnNoClass: 'Bu sanada oʻquv yilida shu sinf darajasidagi sinf yoʻq.',
+      restoreNoClass: 'Bu sanada oʻquv yilida sinf yoʻq.',
+      restoreClassNote: 'Oʻquvchi shu sinfning sinf darajasiga oʻtadi.',
+      returnLanguageTitle: 'Boshqa taʼlim tili',
+      returnLanguageText:
+        'Oʻquvchi ketgan sinfda taʼlim tili tanlangan sinfnikidan boshqa. Baribir oʻquvchini unga qaytarasizmi?',
       restoreConfirmTitle: 'Bitiruvchini faol holatga tiklaysizmi?',
       restoreConfirmText: 'Oʻquvchi tanlangan kundan yana faol boʻladi.',
       deleteTitle: 'Ikki marta yaratilgan oʻquvchini oʻchirish',

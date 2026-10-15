@@ -535,6 +535,12 @@ export const studentDetailSchema = studentListItemSchema.extend({
    */
   classesNotRestored: z.array(classNotRestoredSchema).optional(),
   /**
+   * The class the student left, which the return form offers first (task
+   * 3.3b): answered to a reader who may return the student, while the
+   * student is inactive; `null` when no class was left.
+   */
+  classLeft: studentClassSchema.nullable().optional(),
+  /**
    * The groups a return or a graduate restore placed automatically, tagged
    * for review (task 3.3b): the notice of "Put into a class". Answered by those
    * changes only.

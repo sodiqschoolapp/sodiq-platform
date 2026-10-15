@@ -293,6 +293,8 @@ describe('the class of a return and of a graduate restore', () => {
       const english = await subject();
       const oxford = await schoolClass();
       const student = await leftFrom(oxford);
+      // The record names the class left, which the form offers first.
+      expect(student.classLeft).toMatchObject({ id: oxford, until: '2026-10-06' });
       const mathsGroup = await group(maths, [oxford]);
       const englishGroup = await group(english, [oxford]);
       const response = await giveBack(student.id, oxford, {}, t.vicePrincipal);

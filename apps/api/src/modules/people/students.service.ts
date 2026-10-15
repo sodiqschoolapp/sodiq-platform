@@ -15,6 +15,7 @@ import {
   type Sex,
   type StudentCheck,
   type StudentCheckResult,
+  type StudentClass,
   type StudentCreate,
   type StudentDetail,
   type StudentIdentity,
@@ -42,12 +43,13 @@ import {
 import {
   classesInService,
   membershipCounts,
+  membershipsOf,
   MEMBERSHIP_REFUSALS,
   studentClassesOn,
   tutorsInForce,
 } from '../classes/class-membership-rows.js';
 import { studentGroupsOn } from '../classes/group-membership-rows.js';
-import { moveSummaries, pastMoverOf } from '../classes/student-moves.js';
+import { cancelledOf, moveSummaries, movesOf, pastMoverOf } from '../classes/student-moves.js';
 import { inGroupScope } from '../access/group-scope.js';
 import { permitting } from '../access/permission-check.js';
 import {
@@ -59,6 +61,7 @@ import {
 import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { refusingRelativeRaces, RelativeWrites } from './relative-writes.js';
 import { exportGroupsOf } from './student-export.js';
+import { classLeft } from './return-class.js';
 import {
   historyLines,
   holdsData,
@@ -1121,7 +1124,55 @@ export class Students {
         ) !== undefined,
       deletable: canArchive && !holdsData(rows, row.scholarship_type, Number(contractCount.count)),
       ...(await this.movesOfDetail(transaction, access, id, today, scope)),
+      ...(await this.classLeftOfDetail(transaction, canArchive, id, rows, today)),
       today,
+    };
+  }
+
+  /**
+   * The class the student left, which the return form offers first (task
+   * 3.3b): read for a reader who may return the student, while the student
+   * is inactive with no change planned; `null` when no class was left.
+   */
+  private async classLeftOfDetail(
+    transaction: Transaction,
+    canArchive: boolean,
+    id: string,
+    rows: readonly StoredStudentStatus[],
+    today: SchoolDate,
+  ): Promise<{ classLeft?: StudentClass | null }> {
+    const last = rows.filter((row) => row.validFrom !== row.validUntil).at(-1);
+    if (
+      !canArchive ||
+      last === undefined ||
+      last.status !== 'inactive' ||
+      last.validUntil !== null ||
+      last.validFrom > today
+    ) {
+      return {};
+    }
+    const left = classLeft(
+      await membershipsOf(transaction, id),
+      last.validFrom,
+      cancelledOf(await movesOf(transaction, id)),
+    );
+    if (left === undefined) {
+      return { classLeft: null };
+    }
+    const named = await transaction
+      .selectFrom('classes')
+      .select(['grade', 'name', 'language'])
+      .where('id', '=', left.classId)
+      .executeTakeFirstOrThrow();
+    return {
+      classLeft: {
+        id: left.classId,
+        grade: named.grade,
+        name: named.name,
+        language: named.language as StudentClass['language'],
+        from: left.validFrom,
+        until: left.validUntil,
+      },
     };
   }
 
