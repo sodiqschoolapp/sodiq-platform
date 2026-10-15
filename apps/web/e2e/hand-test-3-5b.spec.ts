@@ -72,7 +72,7 @@ test('a new student: the full class marked, the parent found by a pasted phone o
   }
   await expect(saved).toBeVisible();
   await expect(page.getByText(en.errors.relative_phone_exists)).toHaveCount(0);
-  await saved.getByRole('radio', { name: texts.tabs.relatives }).click();
+  await saved.getByText(texts.tabs.relatives, { exact: true }).click();
   await expect(saved.getByText('Qodirova Dilbar').first()).toBeVisible();
   await expect(saved.getByText('+998 93 555 33 11').first()).toBeVisible();
 });
