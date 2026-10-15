@@ -24,6 +24,17 @@ Decided once, valid for every task. A session reads this section at its start (`
 | The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3. |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
+## 15 October 2026: balanced reviews and a test at the real size
+
+Decided by the owner on 15 October 2026, after reading Anthropic's "Redesigning source control" (its lessons: adversarial AI review over-engineers; review can be tiered by kind of change; agents can watch a live system; heavy testing is cheap now).
+
+| Decision | Reason |
+| --- | --- |
+| **The reviewers flag over-engineering and never ask for safeguards no rule needs** (`.claude/agents/spec-reviewer.md`, `review-pr` steps 4 and 8 and Rules): such a finding is a should-fix to remove, never alone a `changes needed`; the rules of `CLAUDE.md` are never over-engineering | Tasks were split into four levels (2.7c-2b-2a) and rounds asked for guards no case needs; time before 25 October matters |
+| **A handbook-only pull request gets a lighter review** (`review-pr` step 8) | Text needs a check against what is built, not the code rounds |
+| **Task 5.12 runs the timetable once at the real school's size** | The solver and the pages must be shown fast enough on realistic data before release |
+| **Task 10.2 adds a daily agent that reads the live system's errors and jobs** and reports anomalies | Fixed alerts miss slow or unusual failures |
+
 ## 15 October 2026: the handbook
 
 Decided by the owner on 15 October 2026: "When we finish building Release 1, we must know every single behaviour of the website, from the smallest to the biggest: what features exist, how they work, what happens in X case, Y case. Not the tech stack." Built as it goes, so it is complete and true at release and stays true after.
