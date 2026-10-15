@@ -604,6 +604,7 @@ How to read the task lines:
   - Read: `14` (Timetable).
   - Build: the named cases of the quality plan as automated tests, including simultaneous actions.
   - Done when: all named cases pass in CI.
+  - From the owner (15 October 2026): one run at the real school's size on invented data (3 branches, about 80 classes, 200 teachers and 2,000 students, with groups, splits and teachers shared between branches): generate, check with the rule engine, publish a version and open the board; the report gives the solver's time, the lessons it could not place, and the time of the board, the publish and a journal page.
 
 ## Phase 6. Journal: model, grid and attendance
 
@@ -821,6 +822,7 @@ How to read the task lines:
   - Read: `13` (Hosting and data), `14` (Whole system), `edge/system-behaviour`.
   - Build: the daily export to R2; written steps for restoring to a side copy; Sentry, Grafana Cloud and UptimeRobot alerts to Telegram; the sign-in-and-save check every 5 minutes with a test teacher account.
   - Done when: the owner has restored a backup once by following the written steps.
+  - From the owner (15 October 2026): a daily scheduled task that reads the day's error reports, slow requests and job runs of the live system and sends the owner a short report of anything unusual (a page that fails, a job that did not run, a request much slower than usual), beside the fixed alerts; it reads and reports only.
 
 - [ ] **10.3 Permission and security review**
   - Read: `02`, `13` (Security), `edge/people-roles-accounts`.
