@@ -523,10 +523,12 @@ describe('dated lessons and their time claims in the database', () => {
         { groupId: m.boys, subjectId: m.sport },
         { groupId: m.girls, subjectId: m.technology },
       ]);
-      await kit.inGroup(north, m.girls, m.technology, m.first);
+      // From the next school day: a membership that put the student twice
+      // into the block above is refused by itself since 5.1b (0060).
+      await kit.inGroup(north, m.girls, m.technology, m.first, '2026-10-24');
       expect(
         await refusal(
-          place(north, { date: '2026-10-23', start: '10:00', end: '10:45' }, [
+          place(north, { date: '2026-10-26', start: '10:00', end: '10:45' }, [
             { groupId: m.boys, subjectId: m.sport },
             { groupId: m.girls, subjectId: m.technology },
           ]),

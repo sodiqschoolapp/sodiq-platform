@@ -213,6 +213,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: exams and later changes against the claims (task 5.1b)
+
+Plan approved on pull request #108 with corrections 1 and 2; decisions 1 to 14 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** `time_claims_kind_check` replaced in 0060 to add `exam_group_class` (holder the group's own block); nothing allowed for the five earlier kinds changes | Decision 1; `edge/timetable`, Exams, "A group sits an exam" |
+| **Look first.** An exam room is one use of a shared room; an exam's students are not counted against capacity | Decision 2; `06`, Exam, "room capacity is a warning" |
+| **Look first.** A room's switch is not copied again onto pattern entries | Decision 3; 3.4a decision 3, 5.1a decision 9 |
+| **Look first.** One 5.1a test fixture changed: in "refuses a mixed block with a student in both groups", the second group row starts on 24 October and the refused block is on 26 October, because the new membership re-check refuses the old setup (a membership that put the student twice into a future block) by itself | Build review, should-fix 6; a stronger rule, not a weaker one; the test still proves what it was written for |
+| A group sits only over one block of its lessons or the two of a double pair, with those lessons cancelled; a class sitting whole while its shared block runs on is out of that block (`lesson_block_class_outs`) while the exam stands and overlaps it | Decisions 5, 6, correction 1 |
+| "Future" for a re-check: starts after `app.now` (group classes, memberships), not ended (a room); a started block keeps its class claims | Decision 8 |
+| An exam's cancel (`cancel_cause`) is final; no delete; invigilators reach a person only, by the key `(staff_id, staff_kind)` | Decisions 7, 9 |
+| `exam_claims` writes only what differs and locks the exam row first | Found in the build: two writers of one exam left a claim of a removed invigilator |
+| A write of an exam's rows gives up the claims the exam no longer holds first, then rewrites the blocks its out rows name, then writes its new claims | Build review, must-fix 1: an out row counts only while the exam seats the class |
+| A write to an exam that has started (a title) rewrites its claims from today's group classes and rooms; routes never change a past exam (decision 10) | Build review, nit 8 |
+| A block that has started and already claims classes keeps exactly those, also when a lesson is added to it; a block inserted after its start writes its claims | Build review, nit 9; decision 8 |
+
 ## 15 October 2026: lessons, pattern and time claims (task 5.1a)
 
 Plan approved on pull request #107 with corrections 1 to 6; decisions 1 to 19 confirmed there. Flagged on issue #42.

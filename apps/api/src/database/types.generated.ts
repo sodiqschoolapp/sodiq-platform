@@ -271,6 +271,49 @@ export interface Divisions {
   position: number;
 }
 
+export interface ExamInvigilators {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  exam_id: string;
+  exam_room_id: string;
+  id: Generated<string>;
+  staff_id: string;
+  staff_kind: Generated<string>;
+}
+
+export interface ExamRoomClasses {
+  branch_id: string;
+  class_id: string | null;
+  created_at: Generated<Timestamp>;
+  exam_id: string;
+  exam_room_id: string;
+  group_id: string | null;
+  id: Generated<string>;
+}
+
+export interface ExamRooms {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  exam_id: string;
+  id: Generated<string>;
+  room_id: string;
+}
+
+export interface Exams {
+  academic_year_id: string;
+  branch_id: string;
+  cancel_cause: string | null;
+  created_at: Generated<Timestamp>;
+  ends_at: Timestamp;
+  exam_date: string;
+  first_slot: number;
+  id: Generated<string>;
+  last_slot: number;
+  starts_at: Timestamp;
+  subject_id: string | null;
+  title: string;
+}
+
 export interface FeedbackReports {
   account_id: string;
   created_at: Timestamp;
@@ -333,6 +376,14 @@ export interface KnownDevices {
   account_id: string;
   first_signed_in_at: Timestamp;
   token_hash: string;
+}
+
+export interface LessonBlockClassOuts {
+  block_id: string;
+  branch_id: string;
+  class_id: string;
+  created_at: Generated<Timestamp>;
+  exam_id: string;
 }
 
 export interface LessonBlocks {
@@ -883,12 +934,17 @@ export interface DB {
   day_templates: DayTemplates;
   departments: Departments;
   divisions: Divisions;
+  exam_invigilators: ExamInvigilators;
+  exam_room_classes: ExamRoomClasses;
+  exam_rooms: ExamRooms;
+  exams: Exams;
   feedback_reports: FeedbackReports;
   floors: Floors;
   group_classes: GroupClasses;
   group_memberships: GroupMemberships;
   groups: Groups;
   known_devices: KnownDevices;
+  lesson_block_class_outs: LessonBlockClassOuts;
   lesson_blocks: LessonBlocks;
   lessons: Lessons;
   notifications: Notifications;

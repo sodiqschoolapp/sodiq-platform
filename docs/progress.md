@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 5.1b Exams and later changes against the claims
+
+- Built in migration 0060: `exams`, `exam_rooms`, `exam_room_classes`, `exam_invigilators` and `lesson_block_class_outs`; exam claims in `time_claims` (a new kind `exam_group_class` for a group that sits, holder its own block), so lessons and exams meet one rule; completeness, a final cancel, a group only in its own lesson's slots.
+- The re-check of future claims: a class added to or removed from a group, a membership or a merge that puts a student in two lessons of a block, a room's switch, number at once or capacity; a stale copy of a room's switch refused (`room_shared_stale`). 54 database tests as `sodiq_app`.
+- Left out: exam routes, the lesson-to-exam link and restore, the checks of routes and engine (5.6c, 5.2); a day off, a special template and year dates against exams (5.6b): each with a "From 5.1b" line.
+
+The next sessions must know:
+
+- A writer of an exam's rows meets others on the exam row (`FOR UPDATE` in `exam_claims`); a group lesson's block takes the group's advisory lock; a block's student check takes the units' locks, then the block's.
+- A block that has started keeps its class claims; a re-check reaches only blocks and exams that start after `app.now`, and a room's claims that have not ended.
+- The next task is 5.2.
+
 ## 15 October 2026: task 5.1a Lessons, pattern and time claims
 
 - Built in migrations 0058 and 0059: pattern blocks, entries and block classes with the teacher, room and class rules per version and weekday; dated lesson blocks and lessons with their own start and end; `time_claims` with the teacher, room and class exclusion constraints across all branches.
