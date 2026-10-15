@@ -236,12 +236,10 @@ function StudentParts({ report, words }: { report: StudentReport; words: Words }
               t('people.report.mergedRecord', { uids: one.uids.join(', ') }),
               [words.moment(one.mergedAt), one.reason].join('; '),
             ],
-            ...one.values.map(
-              (value): Row => [
-                t(`people.students.merge.fields.${value.field}`),
-                mergeValueText(t, words.language, value.field, value.value),
-              ],
-            ),
+            ...one.values.map((value): Row => [
+              t(`people.students.merge.fields.${value.field}`),
+              mergeValueText(t, words.language, value.field, value.value),
+            ]),
           ])}
         />
       )}

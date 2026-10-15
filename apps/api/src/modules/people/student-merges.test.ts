@@ -11,7 +11,7 @@ import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
-import { MembersKit } from '../../testing/members-kit.js';
+import { MembersKit, moveStudentBranch } from '../../testing/members-kit.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
@@ -463,6 +463,38 @@ describe('the merge of two student records', () => {
       const entries = await t.entries('student.merged', old.id);
       expect(entries.map((entry) => entry.branch_id).sort()).toEqual([t.north, t.south].sort());
     });
+  });
+
+  it('carries an accepted branch move of the later life after the cuts (the order of step 5)', async () => {
+    const old = await pupil({ from: '2026-09-02' });
+    await leave(old.id, '2026-09-19');
+    const again = await pupil({ from: '2026-10-05' });
+    await moveStudentBranch(
+      t.database.migrator,
+      again.id,
+      t.north,
+      t.south,
+      '2026-10-10T18:55:00Z',
+    );
+    const move = await t.database.migrator
+      .selectFrom('student_branch_moves')
+      .select('id')
+      .where('student_id', '=', again.id)
+      .executeTakeFirstOrThrow();
+    const result = merged(await merge(old.id, again.uid));
+    expect(result.branch).toEqual({ id: t.south, name: 'South' });
+    expect(result.student.lastBranchMove).toMatchObject({ id: move.id, state: 'accepted' });
+    const stored = await t.database.migrator
+      .selectFrom('student_branch_moves')
+      .select(['student_id', 'branch_id'])
+      .where('id', '=', move.id)
+      .executeTakeFirstOrThrow();
+    expect(stored).toEqual({ student_id: old.id, branch_id: t.south });
+    expect((await statusesOf(old.id)).map((row) => [row.status, row.valid_until])).toEqual([
+      ['active', '2026-09-20'],
+      ['inactive', '2026-10-05'],
+      ['active', null],
+    ]);
   });
 
   it('refuses a cut in a closed year (`year_closed`)', async () => {

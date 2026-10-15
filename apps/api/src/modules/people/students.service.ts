@@ -1189,10 +1189,7 @@ export class Students {
   }
 
   /** The same for every kept record the transaction sees, or for one. */
-  async mergedUidsByStudent(
-    transaction: Transaction,
-    id?: string,
-  ): Promise<Map<string, string[]>> {
+  async mergedUidsByStudent(transaction: Transaction, id?: string): Promise<Map<string, string[]>> {
     const rows = await transaction
       .selectFrom('student_merges')
       .select(['kept_id', 'merged_uids'])

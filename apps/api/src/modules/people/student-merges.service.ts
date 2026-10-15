@@ -249,8 +249,14 @@ export class StudentMerges {
     );
     return this.transactions.run(branches, async (transaction) => {
       const names = await branchNames(transaction, [kept.branchId]);
+      // Read as of the kept record's branch (correction 1): the Super Admin
+      // works in every branch, and the record may have left the request's.
       return {
-        student: await this.students.readDetail(transaction, access, kept.id),
+        student: await this.students.readDetail(
+          transaction,
+          { ...access, branchId: kept.branchId },
+          kept.id,
+        ),
         branch: { id: kept.branchId, name: names.get(kept.branchId.toLowerCase()) ?? '' },
       };
     });
@@ -409,8 +415,7 @@ export class StudentMerges {
       leavingId: scalarText(row.leaving_id),
       writtenByMoveId: scalarText(row.written_by_move_id),
       endedByMoveId: scalarText(row.ended_by_move_id),
-      endedByBranchMoveId:
-        scalarText(row.ended_by_branch_move_id),
+      endedByBranchMoveId: scalarText(row.ended_by_branch_move_id),
       ownerId: owner,
       name: names.get(owner.toLowerCase()) ?? '',
     });
@@ -427,16 +432,14 @@ export class StudentMerges {
       effectiveOn: String(row.effective_on),
       cancelled: row.cancelled_at !== null,
       undone: row.undone_at !== null,
-      cancelledByLeavingId:
-        scalarText(row.cancelled_by_leaving_id),
+      cancelledByLeavingId: scalarText(row.cancelled_by_leaving_id),
     }));
     const branchMoves: BranchMoveRow[] = (whole.get('student_branch_moves') ?? []).map(
       ({ row }) => ({
         id: String(row.id),
         side: sideOf(String(row.student_id)),
         open: row.cancelled_at === null && row.declined_at === null && row.accepted_at === null,
-        cancelledByLeavingId:
-          scalarText(row.cancelled_by_leaving_id),
+        cancelledByLeavingId: scalarText(row.cancelled_by_leaving_id),
       }),
     );
     const links: LinkRow[] = (whole.get('student_relatives') ?? []).map(({ row }) => ({
@@ -1050,4 +1053,3 @@ export class StudentMerges {
     });
   }
 }
-

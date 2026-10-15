@@ -26,7 +26,7 @@ import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { SECTION_TITLE } from '@/components/ui/control';
+import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
 import { schoolDateText } from '@/lib/dates';
 import { asFormSchema } from './form-schema';
@@ -165,7 +165,7 @@ function PreviewOf({ preview, branchId }: { preview: StudentMergePreview; branch
       ) : (
         <>
           <section className="grid gap-1 text-sm">
-            <h4 className="font-semibold">{t('people.students.merge.life')}</h4>
+            <h4 className={SUBSECTION_TITLE}>{t('people.students.merge.life')}</h4>
             <ul className="grid gap-1">
               {preview.life.map((stretch) => (
                 <li key={`${stretch.from}-${stretch.side}`}>
@@ -185,7 +185,7 @@ function PreviewOf({ preview, branchId }: { preview: StudentMergePreview; branch
           </section>
           {preview.rows.length > 0 && (
             <section className="grid gap-1 text-sm">
-              <h4 className="font-semibold">{t('people.students.merge.rows')}</h4>
+              <h4 className={SUBSECTION_TITLE}>{t('people.students.merge.rows')}</h4>
               <ul className="grid gap-1">
                 {preview.rows.map((row, index) => {
                   const name = row.kind === 'status' ? statusName(row.name) : row.name;
@@ -215,7 +215,7 @@ function PreviewOf({ preview, branchId }: { preview: StudentMergePreview; branch
           )}
           {preview.differing.length > 0 && (
             <section className="grid gap-1 text-sm">
-              <h4 className="font-semibold">{t('people.students.merge.differing')}</h4>
+              <h4 className={SUBSECTION_TITLE}>{t('people.students.merge.differing')}</h4>
               <ul className="grid gap-1">
                 {preview.differing.map((one) => (
                   <li key={one.field}>
@@ -352,4 +352,3 @@ export function MergeForm({
     </section>
   );
 }
-

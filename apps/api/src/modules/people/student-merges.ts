@@ -235,8 +235,5 @@ export const textOf = (row: Record<string, unknown>, columns: readonly string[])
   if (values.every((value) => value === null || value === undefined)) {
     return null;
   }
-  return values
-    .map((value) => scalarText(value) ?? '')
-    .join(' ');
+  return values.map((value) => scalarText(value) ?? '').join(' ');
 };
-

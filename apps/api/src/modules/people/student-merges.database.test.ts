@@ -415,11 +415,7 @@ describe('student merges in the database', () => {
       const kept = await members.student(north, { startsOn: '2026-09-15' });
       const merged = await members.student(north, { startsOn: '2026-09-01' });
       const start = (transaction: Transaction, id: string, day = '2026-09-01') =>
-        transaction
-          .updateTable('students')
-          .set({ starts_on: day })
-          .where('id', '=', id)
-          .execute();
+        transaction.updateTable('students').set({ starts_on: day }).where('id', '=', id).execute();
       expect(await refusal(everywhere((transaction) => start(transaction, kept)))).toMatchObject({
         constraint: 'students_starts_on',
       });
@@ -472,6 +468,54 @@ describe('student merges in the database', () => {
           ),
         ),
       ).toMatchObject({ constraint: 'memberships_merge' });
+    });
+  });
+
+  describe('the rules a merge meets like any change', () => {
+    it('refuses a carried status row that overlaps the kept record’s, and a class row outside its active days', async () => {
+      const oxford = await classes.schoolClass(north, northYear);
+      const kept = await members.student(north, { startsOn: '2026-09-01' });
+      const merged = await members.student(north, { startsOn: '2026-09-01' });
+      const row = await database.migrator
+        .transaction()
+        .execute((transaction) =>
+          members.member(
+            { branch: north, classId: oxford, studentId: merged, from: '2026-09-01' },
+            transaction,
+          ),
+        );
+      // Two active rows of one record on the same days.
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await mergeRow(transaction, kept, merged);
+            await transaction
+              .updateTable('student_statuses')
+              .set({ student_id: kept })
+              .where('student_id', '=', merged)
+              .execute();
+          }),
+        ),
+      ).toMatchObject({ constraint: 'student_statuses_no_overlap' });
+      // A class row carried to a record that is not active on its days: the
+      // deferred check refuses it at the commit.
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await mergeRow(transaction, kept, merged);
+            await transaction
+              .updateTable('student_statuses')
+              .set({ valid_until: '2026-09-02' })
+              .where('student_id', '=', kept)
+              .execute();
+            await transaction
+              .updateTable('class_memberships')
+              .set({ student_id: kept })
+              .where('id', '=', row)
+              .execute();
+          }),
+        ),
+      ).toMatchObject({ constraint: 'class_memberships_active' });
     });
   });
 
