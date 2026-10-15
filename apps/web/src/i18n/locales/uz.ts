@@ -361,6 +361,40 @@ export const uz: Texts<'one' | 'other'> = {
       'Ikki yozuvdan birida boshqa filialga ochiq chiqarish bor. Avval uni bekor qiling yoki rad eting, soʻng birlashtiring.',
     student_merge_move_scheduled:
       'Ikki yozuvdan birida bugundan keyingi sinf yoki guruh koʻchirilishi bor. Avval uni bekor qiling, soʻng birlashtiring.',
+    version_not_draft:
+      'Bu versiya endi qoralama emas: uning yuklamasi va boshlanish sanasi oʻzgarmaydi. Yuklamani oʻzgartirish uchun yangi qoralama boshlang.',
+    timetable_year_closed:
+      'Bu versiyaning oʻquv yili yopilgan: unda hech narsa oʻzgarmaydi. Rejalashtirilgan yoki joriy yilda ishlang.',
+    version_start_past: 'Boshlanish sanasi bugundan oldin. Bugungi yoki keyingi sanani tanlang.',
+    version_start_outside_year:
+      'Boshlanish sanasi oʻquv yilidan tashqarida. Yil ichidagi sanani tanlang.',
+    version_copy_year:
+      'Bu versiya boshqa oʻquv yiliga tegishli. Shu yilning versiyasidan nusxa oling yoki boʻsh boshlang.',
+    load_unit_year:
+      'Bu sinf yoki guruh versiyadan boshqa oʻquv yiliga tegishli. Versiya yilidagisini tanlang.',
+    load_unit_archived: 'Bu sinf yoki guruh arxivda. Faolini tanlang yoki avval uni tiklang.',
+    load_group_subject: 'Guruh qatori faqat guruhning oʻz fani uchun. Shu fanni tanlang.',
+    load_subject_archived: 'Bu fan arxivda. Faol fanni tanlang.',
+    load_subject_grade:
+      'Bu fan sinf yoki guruhning har bir sinf darajasida oʻtilmaydi. Boshqa fanni tanlang yoki avval fanga darajani qoʻshing.',
+    load_teacher_branch:
+      'Bu oʻqituvchi yoki vakansiya shu filialda ishlamaydi. Filialdagisini tanlang.',
+    load_teacher_status:
+      'Versiya boshlanish sanasida bu oʻqituvchi faol emas yoki ketgan, yoki vakansiya yopilgan. Boshqa oʻqituvchini tanlang.',
+    load_teacher_subject:
+      'Bu oʻqituvchi yoki vakansiya profilida fan yoʻq. Boshqa oʻqituvchini tanlang yoki avval fanni profilga qoʻshing.',
+    load_teacher_grade:
+      'Bu oʻqituvchi yoki vakansiyada fan bor, lekin sinf yoki guruhning hamma darajalari yoʻq. Boshqa oʻqituvchini tanlang yoki avval darajani profilga qoʻshing.',
+    load_teacher_language:
+      'Bu oʻqituvchi yoki vakansiya sinf yoki guruh tilida dars bermaydi, fan esa til qoidasiga boʻysunadi. Boshqa oʻqituvchini tanlang.',
+    load_room_closed: 'Bu xona yopilgan. Boshqa xonani yoki xona turini tanlang.',
+    load_room_choice: 'Xonani yoki xona turini koʻrsating, ikkalasini emas.',
+    load_row_exists:
+      'Bu versiyada shu sinf va fan yoki shu guruh uchun qator allaqachon bor. Uni oʻzgartirish uchun oching.',
+    load_group_no_shared_slot:
+      'Bu guruhning ikki darajasida birorta oʻquv kunida boshlanishi va tugashi bir xil dars yoʻq. Avval darajalarning kun shablonlarini moslang.',
+    vacancy_has_load:
+      'Bu vakansiya oʻquv yuklamasi qatorida koʻrsatilgan, shuning uchun uni yopib yoki oʻchirib boʻlmaydi. Avval shu qatorga boshqa oʻqituvchini tayinlang.',
     student_merge_year_closed:
       'Birlashtirish yopilgan oʻquv yilining qatorini oʻzgartiradi, u esa oʻzgarmaydi. Bu yozuvlarni birlashtirib boʻlmaydi.',
     student_merge_grade:

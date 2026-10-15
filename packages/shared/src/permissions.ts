@@ -274,6 +274,15 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   records; the older UID survives"; task 3.3d): `edit` (the preview and
  *   the merge) for the Super Admin alone. A new area for new routes, decided
  *   on pull request #98 (decision 10); no role is widened.
+ * - `timetable` (`06`, Model, Building a timetable; `edge/timetable`,
+ *   Versions and drafts; task 3.4a): the draft versions and their teaching
+ *   load. The Super Admin and the Academic Vice Principal view, create, edit
+ *   and archive (`02`: "Full edit of ... timetable"; a draft row is deleted
+ *   under `archive`); the Principal views (`02`: "Views everything ...
+ *   timetables, changes nothing"). The scoped timetable views of the Tutor,
+ *   the Head Tutor and the Head Teachers are views of lessons and come with
+ *   task 5.9. A new area for new routes, decided on pull request #99
+ *   (decision 4) and flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -423,6 +432,11 @@ export const PERMISSIONS = freezeTable({
   }),
   student_merges: rows({
     super_admin: ['edit'],
+  }),
+  timetable: rows({
+    super_admin: ['view', 'create', 'edit', 'archive'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive'],
   }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],

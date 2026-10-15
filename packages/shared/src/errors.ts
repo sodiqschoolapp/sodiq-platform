@@ -481,6 +481,46 @@ export const ERROR_CODES = [
   'student_merge_grade',
   /** The group is of another subject than the group the student leaves (task 3.3a). */
   'group_transfer_subject',
+  /** The version is not a draft: its load and start date no longer change (task 3.4a). */
+  'version_not_draft',
+  /** The academic year of the version is closed (task 3.4a). */
+  'timetable_year_closed',
+  /** The intended start date of a draft is before today (task 3.4a, decision 5). */
+  'version_start_past',
+  /** The intended start date of a draft is outside its academic year (task 3.4a, decision 5). */
+  'version_start_outside_year',
+  /** The version copied is of another academic year (task 3.4a, decision 10). */
+  'version_copy_year',
+  /** The class or group of a load row is of another academic year than the version (task 3.4a). */
+  'load_unit_year',
+  /** The class or group of a load row is archived (task 3.4a). */
+  'load_unit_archived',
+  /** A group load row names another subject than the group's (task 3.4a). */
+  'load_group_subject',
+  /** The subject of a load row is archived (task 3.4a). */
+  'load_subject_archived',
+  /** The subject is not taught in every grade of the class or group (task 3.4a). */
+  'load_subject_grade',
+  /** The teacher or vacancy is not linked to the branch (task 3.4a). */
+  'load_teacher_branch',
+  /** The teacher is inactive or has left, or the vacancy is closed, on the start date (06, Rules; task 3.4a). */
+  'load_teacher_status',
+  /** The profile of the teacher or vacancy does not have the subject (05, Teaching load; task 3.4a). */
+  'load_teacher_subject',
+  /** The profile has the subject but not every grade of the class or group (05, Teaching load; task 3.4a). */
+  'load_teacher_grade',
+  /** The teacher or vacancy does not teach in the language of the class or group, under the language rule (05; task 3.4a). */
+  'load_teacher_language',
+  /** The room named is closed (06, Rules; task 3.4a). */
+  'load_room_closed',
+  /** A load row names a room or a room type, not both (task 3.4a, decision 13). */
+  'load_room_choice',
+  /** The version already has a row for this class and subject, or this group; `details` names them (task 3.4a). */
+  'load_row_exists',
+  /** A group of two grades has no school weekday with a lesson slot of the same start and end in both grades (edge/timetable, Structure; task 3.4a, decision 8). */
+  'load_group_no_shared_slot',
+  /** A load row names the vacancy: it cannot be closed or deleted (04, Vacancy; task 3.4a). */
+  'vacancy_has_load',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
