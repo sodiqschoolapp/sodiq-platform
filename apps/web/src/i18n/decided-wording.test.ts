@@ -58,4 +58,24 @@ describe('the decided wording', () => {
     expect(en.setup.checklist.done).toBe('Done');
     expect(en.setup.checklist.missing).toBe('Missing');
   });
+
+  // The owner's answers to the hand test of 15 October 2026 (issue #105, H6,
+  // H7 and H14, "Decided by the owner").
+  it('heads the name columns surname first', () => {
+    for (const texts of [en, uz, ru]) {
+      expect(texts.people.students.name).toBe(texts.people.relatives.listName);
+      expect(texts.people.staff.name).toBe(texts.people.relatives.listName);
+      expect(texts.people.neverUsed.name).toBe(texts.people.relatives.listName);
+    }
+    expect(uz.people.students.name).toBe('Familiya va ism');
+    expect(ru.people.students.name).toBe('Фамилия и имя');
+    expect(en.people.students.name).toBe('Surname and name');
+  });
+
+  it('names the audit link of a panel apart from the History tab', () => {
+    expect(uz.audit.history).toBe('Oʻzgarishlar jurnali');
+    expect(ru.audit.history).toBe('Журнал изменений');
+    expect(en.audit.history).toBe('Change log');
+    expect(uz.people.students.tabs.history).toBe('Tarix');
+  });
 });

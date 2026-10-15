@@ -248,6 +248,34 @@
   }
 }
 
+/* A row of tabs that scrolls sideways when it does not fit (issue #105, H15):
+   never a scrollbar; a cut side fades out over 2rem, the mark set by
+   useScrollRow. A mask on the row's own edge, not a gradient fill
+   (docs/design-system.md, What we never do, item 8). */
+.scroll-row {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.scroll-row::-webkit-scrollbar {
+  display: none;
+}
+.scroll-row[data-cut='end'] {
+  mask-image: linear-gradient(to right, black calc(100% - 2rem), transparent);
+}
+.scroll-row[data-cut='start'] {
+  mask-image: linear-gradient(to left, black calc(100% - 2rem), transparent);
+}
+.scroll-row[data-cut='both'] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 2rem,
+    black calc(100% - 2rem),
+    transparent
+  );
+}
+
 /* docs/design-system.md, Brand moments, Printouts: A4, white, Golos Text, navy
    text. The shell is not printed; the letterhead keeps its navy and orange. */
 @media print {

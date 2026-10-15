@@ -77,6 +77,8 @@ const side = (fields: Partial<StudentMergePreview['kept']> = {}): StudentMergePr
   grade: 7,
   branch: { id: NORTH.id, name: NORTH.name },
   status: 'active',
+  startsOn: '2026-09-02',
+  today: '2026-10-10',
   class: { grade: 7, name: 'Oxford' },
   ...fields,
 });

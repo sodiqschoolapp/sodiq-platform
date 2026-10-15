@@ -579,6 +579,17 @@ describe('the student export, the consent list and the "No class" counter', () =
       expect(again?.slice(1, 6)).toEqual(['Active', null, null, 8, 'EX-RETURN/1']);
     });
 
+    // Issue #105, H13: before the start date an active student reads
+    // "From <date>" in the file as on the screen; "Active" from that day. The
+    // clock stands on 10 October: one student starts tomorrow, one today.
+    it('writes "From <date>" before the start date and "Active" on it', async () => {
+      await speak('en');
+      const tomorrow = await create({ startsOn: '2026-10-11', classId: null });
+      const today = await create({ startsOn: '2026-10-10' });
+      const file = await fileOf(await exportOf(send([tomorrow.id, today.id], ['status'])));
+      expect(file.sheet.rows.map((row) => row[0])).toEqual(['From 11.10.2026', 'Active']);
+    });
+
     it('writes the file in the language of the account', async () => {
       await speak('ru');
       try {

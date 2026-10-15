@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { useMinWidth, XL } from '@/lib/use-min-width';
+import { SM, useMinWidth, XL } from '@/lib/use-min-width';
 import { DataTable, DataTableOutline } from './data-table';
 import {
   addressKey,
@@ -350,6 +350,12 @@ export function ListPage<Row>({
   // Narrow columns ticked in the chooser below 1280 px (task 2.7b-2, finding 14).
   const [shownNarrow, setShownNarrow] = useState(() => readShownColumns(listId));
   const wide = useMinWidth(XL);
+  // Issue #105, H17: below 640 px two or more filters fold behind one
+  // button with the number in use; search, Reset and the columns stay. The
+  // open state is a view setting, not kept in the address.
+  const folds = !useMinWidth(SM) && filters.length >= 2;
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersId = useId();
   const canHide = hideable(columns);
   /** Not hidden by the person: in the export at every width. */
   const chosen = (column: Column<Row>): boolean =>
@@ -604,6 +610,7 @@ export function ListPage<Row>({
   }, [openId, searchBox]);
 
   const filtered = current.q !== undefined || current.f !== undefined;
+  const filtersInUse = filters.filter((filter) => current.f?.[filter.key] !== undefined).length;
   const failed = error !== undefined && error !== null;
 
   return (
@@ -639,36 +646,56 @@ export function ListPage<Row>({
               }}
             />
           </div>
-          {filters.map((filter) => (
-            <label key={filter.key} className="grid gap-0.5 text-xs text-muted-foreground">
-              {filter.label}
-              <Select
-                className="w-auto min-w-40"
-                value={current.f?.[filter.key] ?? ''}
-                onChange={(event) => {
-                  const others = Object.fromEntries(
-                    Object.entries(current.f ?? {}).filter(([key]) => key !== filter.key),
-                  );
-                  change(
-                    {
-                      f:
-                        event.target.value === ''
-                          ? others
-                          : { ...others, [filter.key]: event.target.value },
-                    },
-                    'push',
-                  );
-                }}
-              >
-                <option value="">{t('list.all')}</option>
-                {filter.options.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
-          ))}
+          {folds && (
+            <Button
+              variant="secondary"
+              aria-expanded={filtersOpen}
+              aria-controls={filtersId}
+              onClick={() => {
+                setFiltersOpen((open) => !open);
+              }}
+            >
+              {filtersInUse === 0
+                ? t('list.filters')
+                : t('list.filtersInUse', { n: number.format(filtersInUse) })}
+            </Button>
+          )}
+          <div
+            id={filtersId}
+            hidden={folds && !filtersOpen}
+            className={folds ? 'order-last flex basis-full flex-wrap items-end gap-2' : 'contents'}
+          >
+            {filters.map((filter) => (
+              <label key={filter.key} className="grid gap-0.5 text-xs text-muted-foreground">
+                {filter.label}
+                <Select
+                  className="w-auto min-w-40"
+                  value={current.f?.[filter.key] ?? ''}
+                  onChange={(event) => {
+                    const others = Object.fromEntries(
+                      Object.entries(current.f ?? {}).filter(([key]) => key !== filter.key),
+                    );
+                    change(
+                      {
+                        f:
+                          event.target.value === ''
+                            ? others
+                            : { ...others, [filter.key]: event.target.value },
+                      },
+                      'push',
+                    );
+                  }}
+                >
+                  <option value="">{t('list.all')}</option>
+                  {filter.options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            ))}
+          </div>
           {/* A quiet "Reset" in the toolbar (docs/design-system.md, Lists). */}
           {filtered && (
             <Button

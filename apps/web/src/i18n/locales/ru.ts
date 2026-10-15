@@ -657,6 +657,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     loadMore: 'Загрузить ещё',
     noMatch: 'Под поиск и фильтры ничего не подходит. Измените или сбросьте их.',
     clearSearch: 'Сбросить поиск и фильтры',
+    filters: 'Фильтры',
+    filtersInUse: 'Фильтры · {{n}}',
     closePanel: 'Закрыть',
     recordGoneTitle: 'Записи нет в списке',
     recordGone:
@@ -1494,6 +1496,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       grade: 'Параллель',
       status: 'Статус',
       notStarted: 'Начнёт позже',
+      classesNotRead: 'Список классов не загрузился: в фильтре «Класс» только классы из строк.',
+      startsFrom: 'С {{date}}',
       statuses: {
         active: 'Учится',
         inactive: 'Неактивен',
@@ -1685,7 +1689,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         scheduled: 'Переходит в {{target}} с {{date}}',
         transfers: 'История переводов',
         lastMove: 'Из {{class}}, {{date}}',
-        seeHistory: 'История',
         classMove: 'Переведён из {{from}} в {{to}}',
         groupMove: 'Переведён из группы {{from}} в группу {{to}}',
         classJoin: 'Зачислен в {{class}}',
@@ -2287,6 +2290,18 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     plans: 'Планы уроков',
     requests: 'Запросы',
     audit_log: 'Журнал аудита',
+    short: {
+      home: 'Главная',
+      setup: 'Настройки',
+      people: 'Люди',
+      classes: 'Классы',
+      timetable: 'Расписание',
+      journal: 'Журнал',
+      results: 'Итоги',
+      plans: 'Планы',
+      requests: 'Запросы',
+      audit_log: 'Аудит',
+    },
   },
   switcher: {
     rolePrefix: 'Меню и главная:',
@@ -2332,7 +2347,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     yes: 'Да',
     no: 'Нет',
     allOfRecord: 'Все записи по этой записи',
-    history: 'История',
+    history: 'Журнал изменений',
     groups: {
       sign_in: 'Вход',
       accounts: 'Учётные записи и роли',

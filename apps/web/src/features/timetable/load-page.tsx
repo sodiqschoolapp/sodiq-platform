@@ -29,6 +29,7 @@ import { groupsQuery } from '@/features/classes/groups-api';
 import { nameOf, roomsQuery, yearsQuery } from '@/features/setup/setup-api';
 import { subjectsQuery } from '@/features/setup/subjects-api';
 import { schoolDateText } from '@/lib/dates';
+import { SM, useMinWidth } from '@/lib/use-min-width';
 import { LoadRowForm } from './load-row-form';
 import { LoadRowPanel } from './load-row-panel';
 import { LoadTotalsSection } from './load-totals';
@@ -69,6 +70,7 @@ export function LoadPage(): React.JSX.Element {
   const [drafting, setDrafting] = useState(false);
   const [changingStart, setChangingStart] = useState(false);
   const language = i18n.language;
+  const wide = useMinWidth(SM);
   const can = (action: 'create' | 'edit' | 'archive') =>
     role !== null && permits(PERMISSIONS, role, 'timetable', action);
   const versions = useQuery(versionsQuery(branchId));
@@ -486,13 +488,58 @@ export function LoadPage(): React.JSX.Element {
         filters={filters}
         search={search}
         onSearchChange={open}
+        // Issue #105, H21: below 640 px one card per row (as the classes),
+        // never a table wider than the phone.
+        view={
+          wide
+            ? undefined
+            : ({ rows, open: openRow }) => (
+                <ul className="grid gap-3">
+                  {rows.map((row) => {
+                    const cell = (key: string) =>
+                      columns.find((column) => column.key === key)?.cell(row);
+                    return (
+                      <li key={row.id} data-load-card="" className={`${PANEL} grid gap-2 p-4`}>
+                        <button
+                          type="button"
+                          className="text-link justify-self-start"
+                          onClick={() => {
+                            openRow(row.id);
+                          }}
+                        >
+                          {unitText(row)}
+                        </button>
+                        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                          {(
+                            [
+                              ['subject', t('timetable.load.columns.subject')],
+                              ['teacher', t('timetable.load.columns.teacher')],
+                              ['lessons', t('timetable.load.columns.lessons')],
+                              ['problems', t('timetable.load.columns.problems')],
+                              ['block', t('timetable.load.blockColumn')],
+                              ['room', t('timetable.load.columns.room')],
+                              ['double', t('timetable.load.columns.double')],
+                            ] as const
+                          ).map(([key, term]) => (
+                            <div key={key} className="grid gap-0.5">
+                              <dt className="text-muted-foreground">{term}</dt>
+                              <dd>{cell(key)}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )
+        }
         empty={{
           title: t('timetable.load.emptyTitle'),
           text: t('timetable.load.empty'),
           action:
             canCreate && newRecord.value === null ? (
               <Button
-                variant="secondary"
+                // Issue #105, H19: the empty page's first action is primary.
                 disabled={formsLoading}
                 onClick={() => {
                   newRecord.start(true);

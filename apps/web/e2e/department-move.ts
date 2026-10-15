@@ -52,7 +52,38 @@ export async function moveSubjectDepartment(page: Page): Promise<void> {
     .selectOption({ label: 'Department move browser test branch' });
   const panel = await move();
   const listed = panel.getByRole('status', { name: en.people.moveLoads.title });
-  await expect(listed).toContainText('Oxford · Cosmology · Qodirova Malika');
+  // Issue #105, H8: the class with its grade; H20: readable by a screen
+  // reader, so nothing above it or on it hides it from the accessibility tree.
+  await expect(listed).toContainText('7 Oxford · Cosmology · Qodirova Malika');
+  await expect(listed).toBeVisible();
+  expect(
+    await listed.evaluate(
+      (element) =>
+        element.closest('[aria-hidden="true"], [inert]')?.outerHTML.slice(0, 300) ?? null,
+    ),
+  ).toBeNull();
+  await expect(listed).toMatchAriaSnapshot(`
+    - status "${en.people.moveLoads.title}":
+      - heading "${en.people.moveLoads.title}" [level=4]
+      - list:
+        - listitem:
+          - link /Version 1/
+    `);
+  // The only thing that hides the list is the modal question the link opens
+  // (the form keeps what was typed): while it is open everything behind it is
+  // hidden, as it must be; once it closes the list is readable again (H20).
+  // Found by its attributes: a role query finds nothing the dialog hides.
+  const raw = panel.locator(`[role="status"][aria-label="${en.people.moveLoads.title}"]`);
+  const hidden = () =>
+    raw.evaluate((element) => element.closest('[aria-hidden="true"], [inert]') !== null);
+  await listed.getByRole('link').click();
+  const leave = page.getByRole('alertdialog', { name: en.unsent.leaveTitle });
+  await expect(leave).toBeVisible();
+  expect(await hidden()).toBe(true);
+  await leave.getByRole('button', { name: en.unsent.stay, exact: true }).click();
+  await expect(leave).toBeHidden();
+  expect(await hidden()).toBe(false);
+  await expect(listed).toBeVisible();
   await listed.getByRole('link').click();
   // The form keeps what was typed: the link asks before it leaves it.
   await page

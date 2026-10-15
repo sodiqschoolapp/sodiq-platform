@@ -37,6 +37,7 @@ vi.mock('./menu-pages', async (importOriginal) => {
       // page; the items a principal finds under "More" lead to the account page.
       {
         titleKey: `menu.${item}`,
+        shortKey: `menu.short.${item}`,
         to: item === 'home' ? '/' : MORE_OF_PRINCIPAL.has(item) ? '/account' : '/setup',
         icon: actual.MENU_ICONS[item],
       },

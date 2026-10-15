@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { schoolDateText } from '@/lib/dates';
 import { ru } from '@/i18n/locales/ru';
+import { uz } from '@/i18n/locales/uz';
 import { savedRecordPanel } from '@/testing/new-record';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 import {
@@ -1115,7 +1116,15 @@ describe('leaving, return and delete', () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    expect(await within(panel).findByText(en.people.students.causes.leaving)).toBeDefined();
+    // Issue #105, H3: the leaving is ahead (today 10 October), so it reads in the future.
+    expect(
+      await within(panel).findByText(
+        en.people.students.plannedCauses.leaving.replace(
+          '{{lastDay}}',
+          schoolDateText('2026-10-20', 'en'),
+        ),
+      ),
+    ).toBeDefined();
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(
       within(panel).queryByRole('button', { name: en.people.students.cancelLeaving }),
@@ -2863,5 +2872,125 @@ describe('the class of a return and of a restore', () => {
       expect(field(ru.people.students.class).disabled).toBe(true);
     });
     expect(within(form).getByText(ru.people.students.returnNoClass)).toBeDefined();
+  });
+});
+
+// Issue #105, H3: a scheduled leaving reads in the future until its first
+// inactive day (`04`, Movements: "taken out of classes and groups from that
+// date"); the line names the last day, the day before the stored `from`.
+describe('a scheduled leaving', () => {
+  const statuses = [
+    { status: 'active', from: '2026-09-02', until: '2026-10-21', cause: 'start', reason: null },
+    {
+      status: 'inactive',
+      from: '2026-10-21',
+      until: null,
+      cause: 'leaving',
+      reason: 'Oila boshqa shaharga koʻchdi',
+    },
+  ] as const;
+  const history = {
+    lines: [
+      { kind: 'status', status: 'inactive', cause: 'leaving', from: '2026-10-21', until: null },
+    ],
+  };
+
+  it.each([
+    ['en', '2026-10-20', true],
+    ['en', '2026-10-21', false],
+    ['ru', '2026-10-20', true],
+    ['uz', '2026-10-10', true],
+  ] as const)(
+    'reads in %s on %s as ahead: %s, on the record and on the History tab',
+    async (language, today, ahead) => {
+      const texts = { en, ru, uz }[language];
+      fakeApi({
+        'GET /api/auth/session': () => json({ ...sessionAs('academic_vice_principal'), language }),
+        'GET /api/people/students': () =>
+          json({
+            students: [OTKIR],
+            canArchive: false,
+            exportGroups: [],
+            readsFinancial: false,
+            today,
+          }),
+        [`GET /api/people/students/${OTKIR.id}`]: () =>
+          json(detailOf(OTKIR, { statuses: [...statuses], readsHistory: true, today })),
+        [`GET /api/people/students/${OTKIR.id}/history`]: () => json({ ...history, today }),
+      });
+      renderApp(`${PATH}?open=${OTKIR.id}`, language);
+      const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+      const cause = ahead
+        ? texts.people.students.plannedCauses.leaving.replace(
+            '{{lastDay}}',
+            schoolDateText('2026-10-20', language),
+          )
+        : texts.people.students.causes.leaving;
+      expect(
+        await within(panel).findByText(`${cause}: Oila boshqa shaharga koʻchdi`),
+      ).toBeDefined();
+      fireEvent.click(
+        within(panel).getByRole('radio', { name: texts.people.students.tabs.history }),
+      );
+      const lines = await within(panel).findByRole('region', {
+        name: texts.people.students.moves.historyLabel,
+      });
+      await waitFor(() => {
+        expect(lines.querySelector('li')?.textContent).toContain(
+          `${texts.people.students.statuses.inactive} · ${cause}`,
+        );
+      });
+    },
+  );
+});
+
+// Issue #105, H13: an active student whose start date is ahead reads
+// "From <date>" until that day, in the list and on the record; the status
+// filter still counts the student as active.
+describe('a student who starts later', () => {
+  const LATER: StudentListItem = { ...OTKIR, startsOn: '2026-10-19' };
+
+  it.each([
+    ['2026-10-18', true],
+    ['2026-10-19', false],
+  ] as const)('reads on %s as starting later: %s', async (today, later) => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/people/students': () =>
+        json({
+          students: [LATER],
+          canArchive: false,
+          exportGroups: [],
+          readsFinancial: false,
+          today,
+        }),
+      [`GET /api/people/students/${LATER.id}`]: () => json(detailOf(LATER, { today })),
+    });
+    renderApp(`${PATH}?f.status=active`);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+    const shown = later
+      ? en.people.students.startsFrom.replace('{{date}}', schoolDateText('2026-10-19', 'en'))
+      : en.people.students.statuses.active;
+    expect(rowsDrawn()[0]?.at(-1)).toBe(shown);
+    fireEvent.click(screen.getByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const status = (await within(panel).findByText(en.people.students.status, { selector: 'dt' }))
+      .nextElementSibling;
+    expect(status?.textContent).toBe(shown);
+  });
+
+  it('keeps "Starts later" for a student with no status row', async () => {
+    openList('academic_vice_principal');
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    expect(
+      rowsDrawn()
+        .find((row) => row.some((cell) => cell.includes('Saidova')))
+        ?.at(-1),
+    ).toBe(en.people.students.notStarted);
   });
 });

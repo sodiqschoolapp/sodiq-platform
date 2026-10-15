@@ -333,6 +333,8 @@ export interface ExportTexts {
     statuses: Record<StudentStatus, string>;
     /** A student before the start date (`status` null). */
     notStarted: string;
+    /** An active student whose start date is ahead (issue #105, H13), with `{{date}}` for the date. */
+    startsFrom: string;
     /** The class cell until classes exist (task 3.1), with `{{grade}}` for the grade's text. */
     sexes: Record<Sex, string>;
     documentTypes: Record<DocumentType, string>;
@@ -499,6 +501,7 @@ const en: ExportTexts = {
       graduated: 'Graduated',
     },
     notStarted: 'Starts later',
+    startsFrom: 'From {{date}}',
     sexes: {
       male: 'Male',
       female: 'Female',
@@ -729,6 +732,7 @@ const ru: ExportTexts = {
       graduated: 'Выпускник',
     },
     notStarted: 'Начнёт позже',
+    startsFrom: 'С {{date}}',
     sexes: {
       male: 'Мужской',
       female: 'Женский',
@@ -958,6 +962,7 @@ const uz: ExportTexts = {
       graduated: 'Bitiruvchi',
     },
     notStarted: 'Keyinroq boshlaydi',
+    startsFrom: '{{date}} dan',
     sexes: {
       male: 'Erkak',
       female: 'Ayol',

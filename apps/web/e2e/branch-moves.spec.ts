@@ -60,7 +60,10 @@ test('a student is released by one branch and accepted by another', async ({ pag
     .getByRole('alertdialog', { name: moves.acceptConfirmTitle })
     .getByRole('button', { name: moves.accept, exact: true })
     .click();
-  await expect(incoming.getByText(/is in 7 Cambridge now/)).toBeVisible();
+  // Issue #105, H12: nobody waits any more, so the titled section is gone;
+  // the outcome of the accept stays alone.
+  await expect(page.getByRole('status').filter({ hasText: /is in 7 Cambridge now/ })).toBeVisible();
+  await expect(incoming).toHaveCount(0);
 
   // The record is of this branch now, with the same UID; the History tab
   // shows the old branch's class and the move.

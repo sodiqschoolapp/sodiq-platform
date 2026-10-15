@@ -276,7 +276,7 @@ export function GroupsPage() {
           action:
             canCreate && newRecord.value === null && missing === null ? (
               <Button
-                variant="secondary"
+                // Issue #105, H19: the empty page's first action is primary.
                 disabled={formsLoading}
                 onClick={() => {
                   newRecord.start(true);

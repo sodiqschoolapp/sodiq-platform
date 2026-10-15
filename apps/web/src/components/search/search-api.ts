@@ -40,6 +40,8 @@ export interface Found {
 export interface FoundOf<Kind extends RecordKind> {
   items: Found[Kind][];
   more: boolean;
+  /** Today in the branch's time zone: the students' answer has it (issue #105, H13). */
+  today?: string;
 }
 
 /** From the second typed character (decision 7). */

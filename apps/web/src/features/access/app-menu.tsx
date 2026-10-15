@@ -370,9 +370,11 @@ export function PhoneTabBar({ actions }: { actions: PersonActions }) {
           )}
           activeOptions={{ exact: page.to === '/' }}
           activeProps={{ 'aria-current': 'page' }}
+          // The short label on the bar, the full name as the tab's name (H16).
+          aria-label={t(page.titleKey)}
         >
           <TabIcon Icon={page.icon} />
-          <span className="max-w-full truncate">{t(page.titleKey)}</span>
+          <span className="max-w-full truncate">{t(page.shortKey)}</span>
         </Link>
       ))}
       <Dialog open={open} onOpenChange={setOpen}>

@@ -326,7 +326,11 @@ describe('Ctrl+K over students and staff', () => {
         paternalName: 'Rustamovna',
         class: { grade: 7, name: 'Oxford' },
         status: 'active',
+        startsOn: expect.any(String) as string,
       });
+      // Issue #105, H13: the start date and today, so a later start reads "From <date>".
+      expect(found.today).toBe('2026-10-10');
+      expect(byId.get(notStarted)?.startsOn).toBe('2026-10-20');
       expect(byId.get(planned)?.class).toEqual({ grade: 7, name: 'Cambridge' });
       expect(byId.get(inactive)?.status).toBe('inactive');
       // Before the start date the first row, which is active, as the list shows it.

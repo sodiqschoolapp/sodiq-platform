@@ -1,4 +1,4 @@
-import { previousDay, type StatusCause } from '@sodiq/shared';
+import { previousDay, startsLater, type StatusCause, type StudentStatus } from '@sodiq/shared';
 import type { TFunction } from 'i18next';
 import { schoolDateText } from '@/lib/dates';
 
@@ -19,4 +19,23 @@ export function statusCauseText(
         lastDay: schoolDateText(previousDay(row.from), language),
       })
     : t(`people.students.causes.${row.cause}`);
+}
+
+/**
+ * The status of a student as every list, record and search result shows it:
+ * "Starts later" without a status row, "From <date>" for an active student
+ * whose start date is ahead (issue #105, H13), else the status.
+ */
+export function studentStatusText(
+  t: TFunction,
+  student: { status: StudentStatus | null; startsOn: string },
+  today: string,
+  language: string,
+): string {
+  if (student.status === null) {
+    return t('people.students.notStarted');
+  }
+  return startsLater(student, today)
+    ? t('people.students.startsFrom', { date: schoolDateText(student.startsOn, language) })
+    : t(`people.students.statuses.${student.status}`);
 }

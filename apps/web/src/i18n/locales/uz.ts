@@ -652,6 +652,8 @@ export const uz: Texts<'one' | 'other'> = {
     loadMore: 'Yana yuklash',
     noMatch: 'Qidiruv va filtrlarga hech narsa mos kelmadi. Ularni oʻzgartiring yoki tozalang.',
     clearSearch: 'Qidiruv va filtrlarni tozalash',
+    filters: 'Filtrlar',
+    filtersInUse: 'Filtrlar · {{n}}',
     closePanel: 'Yopish',
     recordGoneTitle: 'Yozuv roʻyxatda yoʻq',
     recordGone:
@@ -1418,6 +1420,9 @@ export const uz: Texts<'one' | 'other'> = {
       grade: 'Sinf darajasi',
       status: 'Holat',
       notStarted: 'Keyinroq boshlaydi',
+      classesNotRead:
+        'Sinflar roʻyxati yuklanmadi: «Sinf» filtrida faqat qatorlardagi sinflar bor.',
+      startsFrom: '{{date}} dan',
       statuses: {
         active: 'Faol',
         inactive: 'Faol emas',
@@ -1607,7 +1612,6 @@ export const uz: Texts<'one' | 'other'> = {
         scheduled: '{{date}} dan {{target}}ga oʻtadi',
         transfers: 'Koʻchirishlar tarixi',
         lastMove: '{{class}}dan, {{date}}',
-        seeHistory: 'Tarix',
         classMove: '{{from}}dan {{to}}ga koʻchirildi',
         groupMove: '{{from}} guruhidan {{to}} guruhiga koʻchirildi',
         classJoin: '{{class}}ga qabul qilindi',
@@ -2193,6 +2197,18 @@ export const uz: Texts<'one' | 'other'> = {
     plans: 'Dars rejalari',
     requests: 'Soʻrovlar',
     audit_log: 'Audit jurnali',
+    short: {
+      home: 'Asosiy',
+      setup: 'Sozlamalar',
+      people: 'Odamlar',
+      classes: 'Sinflar',
+      timetable: 'Jadval',
+      journal: 'Jurnal',
+      results: 'Natijalar',
+      plans: 'Rejalar',
+      requests: 'Soʻrovlar',
+      audit_log: 'Audit',
+    },
   },
   switcher: {
     rolePrefix: 'Menyu va bosh sahifa:',
@@ -2238,7 +2254,7 @@ export const uz: Texts<'one' | 'other'> = {
     yes: 'Ha',
     no: 'Yoʻq',
     allOfRecord: 'Shu yozuvning barcha yozuvlari',
-    history: 'Tarix',
+    history: 'Oʻzgarishlar jurnali',
     groups: {
       sign_in: 'Kirish',
       accounts: 'Hisoblar va rollar',

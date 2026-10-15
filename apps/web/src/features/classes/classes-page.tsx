@@ -273,7 +273,7 @@ export function ClassesPage() {
           action:
             canCreate && newRecord.value === null && !noYear ? (
               <Button
-                variant="secondary"
+                // Issue #105, H19: the empty page's first action is primary.
                 disabled={years.data === undefined || rooms.data === undefined}
                 onClick={() => {
                   newRecord.start(true);

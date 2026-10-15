@@ -50,6 +50,9 @@ export const studentMergeSideSchema = z.object({
   branch: mergeBranchSchema,
   /** The status in force today in the record's branch; `null` before its start. */
   status: studentStatusSchema.nullable(),
+  /** The start date and today in the record's branch: "From <date>" before the start (issue #105, H13). */
+  startsOn: schoolDateSchema,
+  today: schoolDateSchema,
   /** The class in force today, by grade and name; `null` when none. */
   class: z.object({ grade: studentGradeSchema, name: z.string() }).nullable(),
 });

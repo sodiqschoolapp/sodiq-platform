@@ -1086,4 +1086,14 @@ describe('the merge of two student records', () => {
     expect(seen.merged).toMatchObject({ id: other.id, uid: other.uid });
     expect(seen.branch.id).toBe(t.north);
   });
+
+  // Issue #105, H13: each side carries its start date and today in its
+  // branch, so a start still ahead reads "From <date>".
+  it('gives each side of the preview its start date and today', async () => {
+    const kept = await pupil({ from: '2026-09-02' });
+    const later = await pupil({ from: '2026-10-19' });
+    const seen: StudentMergePreview = await previewOf(later.id, kept.uid);
+    expect(seen.kept).toMatchObject({ startsOn: '2026-09-02', today: '2026-10-10' });
+    expect(seen.merged).toMatchObject({ startsOn: '2026-10-19', today: '2026-10-10' });
+  });
 });

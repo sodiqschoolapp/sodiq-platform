@@ -814,6 +814,8 @@ export class StudentMerges {
         name: names.get(record.branchId.toLowerCase()) ?? '',
       },
       status: now === undefined || now.validFrom > today ? null : now.status,
+      startsOn: String(record.whole.starts_on),
+      today,
       class: held === undefined || held === null ? null : { grade: held.grade, name: held.name },
     };
   }

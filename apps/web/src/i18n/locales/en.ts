@@ -642,6 +642,8 @@ export const en = {
     loadMore: 'Load more',
     noMatch: 'Nothing matches the search and filters. Change them or clear them.',
     clearSearch: 'Clear search and filters',
+    filters: 'Filters',
+    filtersInUse: 'Filters · {{n}}',
     closePanel: 'Close',
     recordGoneTitle: 'Record not in the list',
     recordGone:
@@ -1407,6 +1409,9 @@ export const en = {
       grade: 'Grade',
       status: 'Status',
       notStarted: 'Starts later',
+      classesNotRead:
+        'The list of classes did not load: the Class filter offers only the classes of the rows.',
+      startsFrom: 'From {{date}}',
       statuses: {
         active: 'Active',
         inactive: 'Inactive',
@@ -1595,7 +1600,6 @@ export const en = {
         scheduled: 'Moves to {{target}} on {{date}}',
         transfers: 'Transfer history',
         lastMove: 'From {{class}}, {{date}}',
-        seeHistory: 'History',
         classMove: 'Moved from {{from}} to {{to}}',
         groupMove: 'Moved from group {{from}} to group {{to}}',
         classJoin: 'Joined {{class}}',
@@ -2176,6 +2180,19 @@ export const en = {
     plans: 'Lesson plans',
     requests: 'Requests',
     audit_log: 'Audit log',
+    /** The labels of the phone tab bar, which fit at 360 px (issue #105, H16). */
+    short: {
+      home: 'Home',
+      setup: 'Setup',
+      people: 'People',
+      classes: 'Classes',
+      timetable: 'Timetable',
+      journal: 'Journal',
+      results: 'Results',
+      plans: 'Plans',
+      requests: 'Requests',
+      audit_log: 'Audit',
+    },
   },
   switcher: {
     rolePrefix: 'Menu and home page:',
@@ -2221,7 +2238,7 @@ export const en = {
     yes: 'Yes',
     no: 'No',
     allOfRecord: 'All entries of this record',
-    history: 'History',
+    history: 'Change log',
     groups: {
       sign_in: 'Sign-in',
       accounts: 'Accounts and roles',

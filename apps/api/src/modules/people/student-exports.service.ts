@@ -3,6 +3,7 @@ import {
   classDisplayName,
   listName,
   phoneText,
+  startsLater,
   STUDENT_EXPORT_GROUPS,
   type Clock,
   type DocumentType,
@@ -29,6 +30,8 @@ import { Students } from './students.service.js';
 /** A row of the student file: the list's row and the fields of the groups behind it. */
 interface ExportRow {
   item: StudentListItem;
+  /** Today in the branch's time zone, for "From <date>" before the start (issue #105, H13). */
+  today: string;
   phone: string | null;
   email: string | null;
   birth_date: string;
@@ -178,6 +181,7 @@ export class StudentExports {
           rows.set(item.id, {
             ...row,
             item,
+            today,
             contract: contracts.get(item.id),
             relatives: relatives.get(item.id) ?? [],
           });
@@ -222,6 +226,9 @@ const mainContactOf = (row: ExportRow): ExportRelative | undefined =>
 const phonesOf = (phones: readonly string[]): string | null =>
   phones.length === 0 ? null : phones.map(phoneText).join(', ');
 
+/** A school date in a text cell as the files of the school write it: "19.10.2026". */
+const dottedDate = (value: string): string => value.split('-').reverse().join('.');
+
 const date = (value: string | null | undefined) =>
   value === null || value === undefined ? null : { date: value };
 
@@ -252,7 +259,11 @@ const STUDENT_EXPORT_SPECS: Readonly<Record<StudentExportColumn, ExportColumn<Ex
   status: {
     headings: (texts) => [texts.students.columns.status, texts.plannedStatus, texts.plannedFrom],
     cells: (row, texts) => [
-      row.item.status === null ? texts.student.notStarted : texts.student.statuses[row.item.status],
+      row.item.status === null
+        ? texts.student.notStarted
+        : startsLater(row.item, row.today)
+          ? texts.student.startsFrom.replace('{{date}}', dottedDate(row.item.startsOn))
+          : texts.student.statuses[row.item.status],
       row.item.planned === null ? null : texts.student.statuses[row.item.planned.status],
       row.item.planned === null ? null : { date: row.item.planned.from },
     ],

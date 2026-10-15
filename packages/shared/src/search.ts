@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { staffStatusSchema } from './staff.js';
+import { schoolDateSchema } from './academic-year.js';
 import { studentStatusSchema } from './students.js';
 
 /**
@@ -38,6 +39,8 @@ export const studentFoundSchema = z.object({
   paternalName: z.string().nullable(),
   class: z.object({ grade: z.int(), name: z.string() }).nullable(),
   status: studentStatusSchema.nullable(),
+  /** The start date: before it an active student reads "From <date>" (issue #105, H13). */
+  startsOn: schoolDateSchema,
 });
 
 export type StudentFound = z.infer<typeof studentFoundSchema>;
@@ -76,7 +79,10 @@ export type GroupFound = z.infer<typeof groupFoundSchema>;
 const foundSchema = <Item extends z.ZodType>(item: Item) =>
   z.object({ items: z.array(item).max(SEARCH_LIMIT), more: z.boolean() });
 
-export const studentSearchSchema = foundSchema(studentFoundSchema);
+/** With today in the branch's time zone, which the start dates are compared with (H13). */
+export const studentSearchSchema = foundSchema(studentFoundSchema).extend({
+  today: schoolDateSchema,
+});
 export type StudentSearch = z.infer<typeof studentSearchSchema>;
 
 export const staffSearchSchema = foundSchema(staffFoundSchema);

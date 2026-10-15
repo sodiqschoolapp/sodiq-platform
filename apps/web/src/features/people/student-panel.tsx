@@ -65,6 +65,7 @@ import {
   useCancelMove,
 } from './student-moves';
 import { branchMoveRows, isBranchMoveForm, ReleaseForm, useCancelRelease } from './branch-move';
+import { studentStatusText } from './status-cause';
 import { alsoUidRow, isMergeForm, MergeForm } from './student-merge';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
@@ -814,12 +815,7 @@ function Overview({ student }: { student: StudentDetail }) {
     [t('people.students.grade'), t('setup.subjects.grade', { grade: student.grade })],
     [t('people.students.sex'), t(`people.staff.sexes.${student.sex}`)],
     [t('people.students.startsOn'), schoolDateText(student.startsOn, language)],
-    [
-      t('people.students.status'),
-      student.status === null
-        ? t('people.students.notStarted')
-        : t(`people.students.statuses.${student.status}`),
-    ],
+    [t('people.students.status'), studentStatusText(t, student, student.today, language)],
   ];
   if (student.contact !== null) {
     rows.push(
