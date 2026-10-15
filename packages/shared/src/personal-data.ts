@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { studentMergeFieldSchema } from './student-merges.js';
 import { schoolDateSchema } from './academic-year.js';
 import { auditEntrySchema } from './audit.js';
 import { relationshipSchema } from './relatives.js';
@@ -104,6 +105,19 @@ export const studentReportSchema = z.strictObject({
     consentSignedOn: schoolDateSchema.nullable(),
     scholarship: scholarshipSchema,
     contracts: z.array(z.strictObject({ number: z.string(), signedOn: schoolDateSchema })),
+    /**
+     * The records merged into this one (task 3.3d, pull request #98): each
+     * merged record's UIDs, the moment and reason of the merge, and the
+     * personal values it held, archived on the merge (decision 1).
+     */
+    merged: z.array(
+      z.strictObject({
+        uids: z.array(z.string()),
+        mergedAt: z.iso.datetime(),
+        reason: z.string(),
+        values: z.array(z.strictObject({ field: studentMergeFieldSchema, value: z.string() })),
+      }),
+    ),
     statuses: z.array(
       z.strictObject({
         status: studentStatusSchema,

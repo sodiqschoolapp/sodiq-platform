@@ -14927,6 +14927,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             uid: string;
+                            mergedUids: string[];
                             firstName: string;
                             lastName: string;
                             paternalName: string | null;
@@ -15158,6 +15159,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -15418,7 +15420,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -15713,6 +15714,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -15973,7 +15975,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -16083,6 +16084,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -16343,7 +16345,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -16423,6 +16424,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -16683,7 +16685,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -16838,6 +16839,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -17098,7 +17100,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -17176,6 +17177,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -17436,7 +17438,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -17515,6 +17516,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -17775,7 +17777,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -17865,6 +17866,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -18125,7 +18127,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -18208,6 +18209,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -18468,7 +18470,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -18620,6 +18621,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -18880,7 +18882,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -18963,6 +18964,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -19223,7 +19225,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -19301,6 +19302,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -19561,7 +19563,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -19640,6 +19641,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -19900,7 +19902,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -19983,6 +19984,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -20243,7 +20245,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -20324,6 +20325,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -20584,7 +20586,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -20660,6 +20661,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -20920,7 +20922,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -20998,6 +20999,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -21258,7 +21260,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -21520,6 +21521,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -21780,7 +21782,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -21856,6 +21857,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -22116,7 +22118,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -22434,6 +22435,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         uid: string;
+                        mergedUids: string[];
                         firstName: string;
                         lastName: string;
                         paternalName: string | null;
@@ -22694,7 +22696,6 @@ export interface operations {
                             cancelledByLeaving: boolean;
                         } | null;
                         canMoveBranch: boolean;
-                        mergedUids: string[];
                         canMerge: boolean;
                         /** Format: date */
                         today: string;
@@ -23016,6 +23017,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             uid: string;
+                            mergedUids: string[];
                             firstName: string;
                             lastName: string;
                             paternalName: string | null;
@@ -23276,7 +23278,6 @@ export interface operations {
                                 cancelledByLeaving: boolean;
                             } | null;
                             canMoveBranch: boolean;
-                            mergedUids: string[];
                             canMerge: boolean;
                             /** Format: date */
                             today: string;
@@ -24809,6 +24810,17 @@ export interface operations {
                                 number: string;
                                 /** Format: date */
                                 signedOn: string;
+                            }[];
+                            merged: {
+                                uids: string[];
+                                /** Format: date-time */
+                                mergedAt: string;
+                                reason: string;
+                                values: {
+                                    /** @enum {string} */
+                                    field: "firstName" | "lastName" | "paternalName" | "sex" | "birthDate" | "document" | "jshshir" | "phone" | "email" | "address" | "region" | "previousSchool" | "diagnosticScore" | "consentSignedOn";
+                                    value: string;
+                                }[];
                             }[];
                             statuses: {
                                 /** @enum {string} */

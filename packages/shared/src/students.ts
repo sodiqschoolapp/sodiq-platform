@@ -378,6 +378,12 @@ export type StudentFieldGroup = z.infer<typeof studentFieldGroupSchema>;
 export const studentListItemSchema = z.object({
   id: z.uuid(),
   uid: z.string(),
+  /**
+   * The UIDs of the records merged into this one (task 3.3d; the System
+   * block's "Also UID ...", and the list's UID search), by the moment of
+   * the merge, each record's current UID first. For every reader.
+   */
+  mergedUids: z.array(z.string()),
   firstName: z.string(),
   lastName: z.string(),
   paternalName: z.string().nullable(),
@@ -585,12 +591,6 @@ export const studentDetailSchema = studentListItemSchema.extend({
   lastBranchMove: studentBranchMoveSchema.nullable(),
   /** Release and cancel: `branch_moves` `edit` (task 3.3c). */
   canMoveBranch: z.boolean(),
-  /**
-   * The UIDs of the records merged into this one (task 3.3d; the System
-   * block's "Also UID ..."), by the moment of the merge, each record's
-   * current UID first. For every reader of the record.
-   */
-  mergedUids: z.array(z.string()),
   /** The merge with another record: `student_merges` `edit`, the Super Admin (task 3.3d). */
   canMerge: z.boolean(),
   today: schoolDateSchema,

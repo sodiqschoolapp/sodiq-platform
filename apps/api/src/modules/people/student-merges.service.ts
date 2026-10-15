@@ -23,6 +23,9 @@ import { branchNames } from './branch-moves.js';
 import {
   digestOf,
   fateOf,
+  FIELD_COLUMNS,
+  scalarText,
+  textOf,
   joinedLife,
   keptOf,
   MERGE_REFUSALS,
@@ -79,34 +82,6 @@ interface WholeRow {
   studentId: string;
   row: Record<string, unknown>;
 }
-
-/** The personal fields of a record (decision 7) and their columns. */
-const FIELD_COLUMNS: Readonly<Record<StudentMergeField, readonly string[]>> = {
-  firstName: ['first_name'],
-  lastName: ['last_name'],
-  paternalName: ['paternal_name'],
-  sex: ['sex'],
-  birthDate: ['birth_date'],
-  document: ['document_type', 'document_number'],
-  jshshir: ['jshshir'],
-  phone: ['phone'],
-  email: ['email'],
-  address: ['address'],
-  region: ['region'],
-  previousSchool: ['previous_school'],
-  diagnosticScore: ['diagnostic_score'],
-  consentSignedOn: ['consent_signed_on'],
-};
-
-const textOf = (row: Record<string, unknown>, columns: readonly string[]): string | null => {
-  const values = columns.map((column) => row[column]);
-  if (values.every((value) => value === null || value === undefined)) {
-    return null;
-  }
-  return values
-    .map((value) => (value === null || value === undefined ? '' : String(value)))
-    .join(' ');
-};
 
 /** One record of the pair as the merge reads it. */
 interface Record_ {
@@ -413,8 +388,7 @@ export class StudentMerges {
     const [a, b] = records as [Record_, Record_];
     const [kept, merged] = keptOf(a, b);
     const sideOf = (studentId: string): Side => (same(studentId, kept.id) ? 'kept' : 'merged');
-    const date = (value: unknown): SchoolDate | null =>
-      value === null || value === undefined ? null : String(value);
+    const date = (value: unknown): SchoolDate | null => scalarText(value);
 
     const statuses: StatusRow[] = (whole.get('student_statuses') ?? []).map(({ row }) => ({
       id: String(row.id),
@@ -431,12 +405,12 @@ export class StudentMerges {
       from: String(row.valid_from),
       until: String(row.valid_until),
       branchId: String(row.branch_id),
-      endedBy: row.ended_by === null ? null : String(row.ended_by),
-      leavingId: row.leaving_id === null ? null : String(row.leaving_id),
-      writtenByMoveId: row.written_by_move_id === null ? null : String(row.written_by_move_id),
-      endedByMoveId: row.ended_by_move_id === null ? null : String(row.ended_by_move_id),
+      endedBy: scalarText(row.ended_by),
+      leavingId: scalarText(row.leaving_id),
+      writtenByMoveId: scalarText(row.written_by_move_id),
+      endedByMoveId: scalarText(row.ended_by_move_id),
       endedByBranchMoveId:
-        row.ended_by_branch_move_id === null ? null : String(row.ended_by_branch_move_id),
+        scalarText(row.ended_by_branch_move_id),
       ownerId: owner,
       name: names.get(owner.toLowerCase()) ?? '',
     });
@@ -454,7 +428,7 @@ export class StudentMerges {
       cancelled: row.cancelled_at !== null,
       undone: row.undone_at !== null,
       cancelledByLeavingId:
-        row.cancelled_by_leaving_id === null ? null : String(row.cancelled_by_leaving_id),
+        scalarText(row.cancelled_by_leaving_id),
     }));
     const branchMoves: BranchMoveRow[] = (whole.get('student_branch_moves') ?? []).map(
       ({ row }) => ({
@@ -462,7 +436,7 @@ export class StudentMerges {
         side: sideOf(String(row.student_id)),
         open: row.cancelled_at === null && row.declined_at === null && row.accepted_at === null,
         cancelledByLeavingId:
-          row.cancelled_by_leaving_id === null ? null : String(row.cancelled_by_leaving_id),
+          scalarText(row.cancelled_by_leaving_id),
       }),
     );
     const links: LinkRow[] = (whole.get('student_relatives') ?? []).map(({ row }) => ({
@@ -868,10 +842,7 @@ export class StudentMerges {
         .set({
           grade: merged.grade,
           scholarship_type: String(merged.whole.scholarship_type),
-          scholarship_coverage:
-            merged.whole.scholarship_coverage === null
-              ? null
-              : String(merged.whole.scholarship_coverage),
+          scholarship_coverage: scalarText(merged.whole.scholarship_coverage),
           scholarship_amount:
             merged.whole.scholarship_amount === null
               ? null

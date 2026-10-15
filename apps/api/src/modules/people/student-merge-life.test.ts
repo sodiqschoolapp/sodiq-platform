@@ -143,7 +143,7 @@ describe('the joined life', () => {
             return status(
               `${side}${String(index)}`,
               side,
-              part.status as MergeStatusRow['status'],
+              part.status,
               from,
               index === parts.length - 1 ? null : day(at),
             );

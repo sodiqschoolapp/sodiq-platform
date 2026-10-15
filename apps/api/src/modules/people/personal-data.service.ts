@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   PERSONAL_DATA_ENTRY_LIMIT,
+  STUDENT_MERGE_FIELDS,
   scholarshipSchema,
   relationshipSchema,
   roleSchema,
@@ -21,6 +22,7 @@ import { ApiException } from '../../http/api-exception.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { readPersonEntries, type ReportPerson } from './personal-data.query.js';
 import { branchOf, neverUsedAccounts } from './staff-account-records.js';
+import { FIELD_COLUMNS, textOf } from './student-merges.js';
 
 /** An open end is stored as `infinity` (`staff_availability.valid_until`, 0025). */
 const openEnd = (date: string): string | null => (date === 'infinity' ? null : date);
@@ -114,6 +116,14 @@ export class PersonalData {
         .orderBy('valid_from')
         .orderBy('created_at')
         .execute();
+      // The records merged into this one, archived on each merge (task 3.3d).
+      const merges = await transaction
+        .selectFrom('student_merges')
+        .select(['merged_uids', 'merged_at', 'reason', 'merged_record'])
+        .where('kept_id', '=', id)
+        .orderBy('merged_at')
+        .orderBy('id')
+        .execute();
       const account = await transaction
         .selectFrom('student_accounts')
         .select(['created_at', 'switched_on_at'])
@@ -202,6 +212,18 @@ export class PersonalData {
             amount: student.scholarship_amount,
           }),
           contracts: contracts.map((row) => ({ number: row.number, signedOn: row.signed_on })),
+          merged: merges.map((row) => {
+            const record = row.merged_record as Record<string, unknown>;
+            return {
+              uids: row.merged_uids,
+              mergedAt: row.merged_at.toISOString(),
+              reason: row.reason,
+              values: STUDENT_MERGE_FIELDS.flatMap((field) => {
+                const value = textOf(record, FIELD_COLUMNS[field]);
+                return value === null ? [] : [{ field, value }];
+              }),
+            };
+          }),
           statuses: statuses.map((row) => ({
             status: row.status as StudentReport['student']['statuses'][number]['status'],
             from: row.valid_from,

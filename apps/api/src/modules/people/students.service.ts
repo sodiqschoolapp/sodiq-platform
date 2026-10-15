@@ -360,6 +360,7 @@ export class Students {
     // One rule with the record (decision 8 of pull request #90): a row opens
     // when the record would be answered to this reader.
     const scope = await studentClasses(transaction, today, null);
+    const merged = await this.mergedUidsByStudent(transaction);
     return rows.map((row) => {
       const own = statuses.get(row.id) ?? [];
       const held = classes.get(row.id);
@@ -369,6 +370,7 @@ export class Students {
       return {
         id: row.id,
         uid: row.uid,
+        mergedUids: merged.get(row.id) ?? [],
         firstName: row.first_name,
         lastName: row.last_name,
         paternalName: row.paternal_name,
@@ -915,6 +917,27 @@ export class Students {
         // An index refused a value the write did not name: no claim about its holder.
         throw new ApiException('request_refused', 409);
       }
+      const branchId = branchOf(access);
+      const merged =
+        path === 'uid'
+          ? await this.transactions.run(access.branchIds, (transaction) =>
+              this.mergedHolderOf(transaction, value, branchId),
+            )
+          : undefined;
+      if (merged !== undefined) {
+        // A UID of a record merged into another (task 3.3d, correction 2): the
+        // kept record when it is of the branch, "another branch" otherwise.
+        throw new ApiException('student_value_taken', 409, undefined, [
+          merged === null
+            ? { path, code: 'held_elsewhere', message: 'A student of another branch holds it.' }
+            : {
+                path,
+                code: 'uid_merged',
+                message: 'A record merged into a student held it.',
+                recordId: merged,
+              },
+        ]);
+      }
       const holder = await this.transactions.run(access.branchIds, (transaction) =>
         this.holderOf(transaction, path, value),
       );
@@ -927,6 +950,23 @@ export class Students {
             : { path, code: 'already_exists', message: 'A student holds it.', recordId: holder };
       throw new ApiException('student_value_taken', 409, undefined, [detail]);
     }
+  }
+
+  /**
+   * The kept record a merged UID leads to (`student_merged_uid_holder`, 0054,
+   * decision 6): its id when it is of the branch of the request, `null` when
+   * it is of another branch, `undefined` when the UID was never merged.
+   */
+  private async mergedHolderOf(
+    transaction: Transaction,
+    uid: string,
+    branchId: string,
+  ): Promise<string | null | undefined> {
+    const found = await sql<{ student_id: string | null }>`
+      select student_id from student_merged_uid_holder(${uid}, ${branchId}::uuid)
+    `.execute(transaction);
+    const row = found.rows[0];
+    return row === undefined ? undefined : row.student_id;
   }
 
   /**
@@ -1059,6 +1099,7 @@ export class Students {
     return {
       id: row.id,
       uid: row.uid,
+      mergedUids: await this.mergedUidsOf(transaction, id),
       firstName: row.first_name,
       lastName: row.last_name,
       paternalName: row.paternal_name,
@@ -1127,7 +1168,6 @@ export class Students {
       ...(await this.movesOfDetail(transaction, access, id, today, scope)),
       ...(await this.branchMovesOfDetail(transaction, access, id)),
       ...(await this.classLeftOfDetail(transaction, canArchive, id, rows, today, branchId)),
-      mergedUids: await this.mergedUidsOf(transaction, id),
       canMerge:
         decide(
           { area: 'student_merges', action: 'edit', branch: 'request' },
@@ -1145,14 +1185,26 @@ export class Students {
    * chain name the latest kept record (0054).
    */
   async mergedUidsOf(transaction: Transaction, id: string): Promise<string[]> {
+    return (await this.mergedUidsByStudent(transaction, id)).get(id) ?? [];
+  }
+
+  /** The same for every kept record the transaction sees, or for one. */
+  async mergedUidsByStudent(
+    transaction: Transaction,
+    id?: string,
+  ): Promise<Map<string, string[]>> {
     const rows = await transaction
       .selectFrom('student_merges')
-      .select('merged_uids')
-      .where('kept_id', '=', id)
+      .select(['kept_id', 'merged_uids'])
+      .$if(id !== undefined, (query) => query.where('kept_id', '=', id ?? ''))
       .orderBy('merged_at')
       .orderBy('id')
       .execute();
-    return rows.flatMap((row) => row.merged_uids);
+    const found = new Map<string, string[]>();
+    for (const row of rows) {
+      found.set(row.kept_id, [...(found.get(row.kept_id) ?? []), ...row.merged_uids]);
+    }
+    return found;
   }
 
   /**

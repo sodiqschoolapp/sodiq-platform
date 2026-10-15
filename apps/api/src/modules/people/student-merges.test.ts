@@ -781,6 +781,78 @@ describe('the merge of two student records', () => {
     });
   });
 
+  describe('the merged UID leads to the kept record (decisions 6 and 15)', () => {
+    it('is found by the search and the list, and refused on a new student naming the kept record', async () => {
+      const kept = await pupil();
+      const other = await pupil();
+      merged(await merge(kept.id, other.uid));
+      const search = await t.get(`/api/search/students?q=${other.uid}`, t.north);
+      expect(search.status, JSON.stringify(search.body)).toBe(200);
+      expect((search.body as { items: { id: string }[] }).items.map((item) => item.id)).toEqual([
+        kept.id,
+      ]);
+      const list = await t.get('/api/people/students', t.north);
+      const row = (list.body as { students: { id: string; mergedUids: string[] }[] }).students.find(
+        (one) => one.id === kept.id,
+      );
+      expect(row?.mergedUids).toEqual([other.uid]);
+      const classId = await classes.schoolClass(t.north, northYear, { grade: 7 });
+      const created = await t.post('/api/people/students', t.north, {
+        ...body(classId, '2026-09-02'),
+        uid: other.uid,
+      });
+      refusedWith(created, 409, 'student_value_taken');
+      expect((created.body as { error: { details: unknown[] } }).error.details[0]).toMatchObject({
+        path: 'uid',
+        code: 'uid_merged',
+        recordId: kept.id,
+      });
+      // The correction of a UID meets the same answer.
+      const third = await pupil();
+      const corrected = await t.put(`/api/people/students/${third.id}/uid`, t.north, {
+        uid: other.uid,
+        reason: 'Typed wrongly at enrolment.',
+        confirmUidSet: true,
+      });
+      refusedWith(corrected, 409, 'student_value_taken');
+      expect((corrected.body as { error: { details: unknown[] } }).error.details[0]).toMatchObject({
+        code: 'uid_merged',
+        recordId: kept.id,
+      });
+      // From another branch: "a student of another branch".
+      const southClass = await classes.schoolClass(t.south, southYear, { grade: 7 });
+      const elsewhere = await t.post('/api/people/students', t.south, {
+        ...body(southClass, '2026-09-02'),
+        uid: other.uid,
+      });
+      refusedWith(elsewhere, 409, 'student_value_taken');
+      const detail = (elsewhere.body as { error: { details: Record<string, unknown>[] } }).error
+        .details[0];
+      expect(detail).toMatchObject({ path: 'uid', code: 'held_elsewhere' });
+      expect(detail?.recordId).toBeUndefined();
+    });
+
+    it('lists the merged record’s values on the kept record’s personal data report', async () => {
+      const kept = await pupil();
+      const other = await pupil({ fields: { address: 'Navoi street 9' } });
+      merged(await merge(kept.id, other.uid));
+      const report = await t.post(`/api/people/students/${kept.id}/report`, t.north, {});
+      expect(report.status, JSON.stringify(report.body)).toBe(200);
+      const student = (report.body as { student: { merged: unknown[] } }).student;
+      expect(student.merged).toEqual([
+        {
+          uids: [other.uid],
+          mergedAt: expect.any(String) as unknown,
+          reason: 'Created twice by mistake',
+          values: expect.arrayContaining([
+            { field: 'address', value: 'Navoi street 9' },
+            { field: 'lastName', value: other.lastName },
+          ]) as unknown,
+        },
+      ]);
+    });
+  });
+
   // Kept for the reader of the preview (correction 1): the kept record's side.
   it('names both records and the branch in the preview', async () => {
     const kept = await pupil();

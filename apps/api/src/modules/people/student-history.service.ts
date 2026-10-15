@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { schoolDateOf } from '@sodiq/shared';
 import type {
   MoveState,
   SchoolDate,
@@ -159,6 +160,25 @@ export class StudentHistories {
             from: row.validFrom,
             until: row.validUntil,
           },
+        });
+      }
+      // The records merged into this one (task 3.3d): the day of the merge
+      // in the time zone of the branch of the request.
+      const zone = await transaction
+        .selectFrom('branches')
+        .select('time_zone')
+        .where('id', '=', branchId)
+        .executeTakeFirstOrThrow();
+      for (const merge of await transaction
+        .selectFrom('student_merges')
+        .select(['id', 'merged_uid', 'reason', 'merged_at'])
+        .where('kept_id', '=', id)
+        .execute()) {
+        const on = schoolDateOf(merge.merged_at, zone.time_zone);
+        lines.push({
+          date: on,
+          id: merge.id,
+          line: { kind: 'merged', on, uid: merge.merged_uid, reason: merge.reason },
         });
       }
       lines.sort((a, b) =>

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { ErrorCode, SchoolDate, StudentStatus } from '@sodiq/shared';
+import type { ErrorCode, SchoolDate, StudentMergeField, StudentStatus } from '@sodiq/shared';
 
 /**
  * The rules of the merge of two student records (task 3.3d, pull request
@@ -203,3 +203,40 @@ export const MERGE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   group_memberships_only_shrink: 'request_refused',
   student_statuses_before_branch_move: 'request_refused',
 };
+
+/** The personal fields of a record (decision 7) and their columns. */
+export const FIELD_COLUMNS: Readonly<Record<StudentMergeField, readonly string[]>> = {
+  firstName: ['first_name'],
+  lastName: ['last_name'],
+  paternalName: ['paternal_name'],
+  sex: ['sex'],
+  birthDate: ['birth_date'],
+  document: ['document_type', 'document_number'],
+  jshshir: ['jshshir'],
+  phone: ['phone'],
+  email: ['email'],
+  address: ['address'],
+  region: ['region'],
+  previousSchool: ['previous_school'],
+  diagnosticScore: ['diagnostic_score'],
+  consentSignedOn: ['consent_signed_on'],
+};
+
+/** A value of a row read whole, as text: a string, a number or a boolean; `null` for anything else. */
+export const scalarText = (value: unknown): string | null =>
+  typeof value === 'string'
+    ? value
+    : typeof value === 'number' || typeof value === 'boolean'
+      ? String(value)
+      : null;
+
+export const textOf = (row: Record<string, unknown>, columns: readonly string[]): string | null => {
+  const values = columns.map((column) => row[column]);
+  if (values.every((value) => value === null || value === undefined)) {
+    return null;
+  }
+  return values
+    .map((value) => scalarText(value) ?? '')
+    .join(' ');
+};
+

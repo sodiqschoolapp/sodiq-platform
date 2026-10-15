@@ -29,7 +29,8 @@ const UID_PREFIX = /^[0-9]{3,7}$/;
  * Look first): the rule of `GET people/students/:id`, `studentReaderOf` over
  * `studentClasses`, so a Tutor finds the students of own classes in force or
  * planned and every other reader the branch. Found by every typed word in the
- * folded name or paternal name, or by the UID from 3 digits; the Super Admin
+ * folded name or paternal name, or by the UID from 3 digits (also a UID
+ * of a record merged into it, task 3.3d); the Super Admin
  * and the Academic Vice Principal also by the document number, the JSHSHIR
  * and the student's own phone (decision 2, Look first). Every status is
  * found, with the status today (decision 5). The scope is applied before the
@@ -66,12 +67,16 @@ export class StudentSearch {
         .where('branch_id', '=', branchId)
         .execute();
       const scope = await studentClasses(transaction, today, null);
+      // A UID of a record merged into one of the branch finds the kept
+      // record (task 3.3d): the merges follow the kept record's branch.
+      const merged = await this.students.mergedUidsByStudent(transaction);
       const found = rows
         .filter((row) => studentReaderOf(access, 'students', scope.get(row.id) ?? []) !== undefined)
         .filter(
           (row) =>
             namesMatch(typed, [row.last_name, row.first_name, row.paternal_name]) ||
-            (UID_PREFIX.test(typed) && row.uid.startsWith(typed)) ||
+            (UID_PREFIX.test(typed) &&
+              [row.uid, ...(merged.get(row.id) ?? [])].some((uid) => uid.startsWith(typed))) ||
             // Nobody else's query is ever compared with these fields (decision 2).
             (identity &&
               (documentMatches(typed, row.document_number) ||
