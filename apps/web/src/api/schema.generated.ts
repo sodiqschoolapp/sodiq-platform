@@ -9745,7 +9745,7 @@ export interface operations {
                     "application/json": {
                         items: {
                             /** @enum {string} */
-                            key: "branch" | "rooms" | "departments" | "year" | "quarters" | "slotTypes" | "defaultTemplate" | "calendar" | "subjects" | "classes" | "groups";
+                            key: "branch" | "rooms" | "departments" | "year" | "quarters" | "slotTypes" | "defaultTemplate" | "calendar" | "subjects" | "classes" | "groups" | "teachingLoad";
                             done: boolean | null;
                             count: number | null;
                             years: string[];

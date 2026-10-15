@@ -235,7 +235,8 @@ export async function readSubjectFacts(
  * `ids` is `'branch'`: whether linked to the branch, out on the start date
  * (decision 11: the status row in force then; none counts as in), the
  * profile's subjects and languages. A record the branch no longer sees is
- * answered with its kind only (`staff_record_kind`), out of the branch.
+ * answered with its kind only (`staff_record_kind`), out of the branch; a
+ * deleted vacancy as a vacancy with no name.
  */
 export async function readTeacherFacts(
   transaction: Transaction,
@@ -316,10 +317,12 @@ export async function readTeacherFacts(
         transaction,
       )
     ).rows[0]?.kind;
-    if (kind != null) {
+    // A record with no row any more is a deleted vacancy (people are never
+    // deleted), named by a row a copy left (permission review, S1).
+    {
       found.set(id, {
         id,
-        kind: kind === 'vacancy' ? 'vacancy' : 'person',
+        kind: kind === 'person' ? 'person' : 'vacancy',
         name: null,
         inBranch: false,
         out: false,

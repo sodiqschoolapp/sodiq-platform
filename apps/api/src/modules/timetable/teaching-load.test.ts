@@ -102,6 +102,21 @@ describe('draft versions and the teaching load', () => {
       t.database.migrator.selectFrom('timetable_versions').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('teaching_load_rows').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('staff_statuses').selectAll().orderBy('id').execute(),
+      // The vacancy delete removes the record and its rows (permission review, S3).
+      t.database.migrator.selectFrom('staff').select('id').orderBy('id').execute(),
+      t.database.migrator.selectFrom('staff_branches').selectAll().orderBy('staff_id').execute(),
+      t.database.migrator
+        .selectFrom('staff_subjects')
+        .selectAll()
+        .orderBy('staff_id')
+        .orderBy('subject_id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('staff_languages')
+        .selectAll()
+        .orderBy('staff_id')
+        .orderBy('language')
+        .execute(),
       t.auditCount(),
     ]);
 
@@ -327,12 +342,14 @@ describe('draft versions and the teaching load', () => {
         copiedRows: [keptRow.id],
         leftRows: [{ sourceRowId: outRow.id, problems: ['load_teacher_status'] }],
       });
-      const dismissed = versionOf(
-        await patch(`/api/timetable/versions/${copy.id}`, { dismissLeftRows: true }),
-      );
-      expect(dismissed.leftRows).toBe(0);
+      const dismissing = await patch(`/api/timetable/versions/${copy.id}`, {
+        dismissLeftRows: true,
+      });
+      expect(versionOf(dismissing).leftRows).toBe(0);
       const [edit] = await t.entries('timetable_version.edit', copy.id);
       expect(edit).toMatchObject({
+        assignment_id: t.viceAssignment,
+        request_id: dismissing.headers['x-request-id'],
         old_value: { leftRows: [{ sourceRowId: outRow.id }] },
         new_value: { leftRows: 0 },
       });
@@ -503,6 +520,58 @@ describe('draft versions and the teaching load', () => {
         404,
         'not_found',
       );
+    });
+
+    // Permission review of the build, M1, M2 and S2: every id of the
+    // teachers' query and of the row edit, and the Super Admin on each route.
+    it("answers another branch's and an unknown id of the teachers' query and of a row edit 404, also as the Super Admin", async () => {
+      const version = await draft();
+      const own = await fitting();
+      const row = rowOf(
+        await createRow(version.id, { classId: own.classId, teacherId: own.teacher }),
+      );
+      const southClass = await load.classes.schoolClass(t.south, southYear);
+      const southGroup = await load.classes.group(t.south, southYear, subject, [southClass]);
+      const second = await draft();
+      const teachers = (query: string, cookie = t.vicePrincipal) =>
+        get(`/api/timetable/versions/${version.id}/load/teachers?${query}`, cookie);
+      const edit = (fields: object, path = version.id, cookie = t.vicePrincipal) =>
+        patch(
+          `/api/timetable/versions/${path}/load/${row.id}`,
+          { ...rowBody({ teacherId: own.teacher }), ...fields },
+          cookie,
+        );
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        const attempts: (() => Promise<Response>)[] = [
+          () => teachers(`classId=${southClass}&subjectId=${subject}`, cookie),
+          () => teachers(`classId=${UNKNOWN}&subjectId=${subject}`, cookie),
+          () => teachers(`groupId=${southGroup}&subjectId=${subject}`, cookie),
+          () => teachers(`groupId=${UNKNOWN}&subjectId=${subject}`, cookie),
+          () => teachers(`classId=${own.classId}&subjectId=${UNKNOWN}`, cookie),
+          () => edit({ teacherId: UNKNOWN }, version.id, cookie),
+          () => edit({ roomId: UNKNOWN }, version.id, cookie),
+          () => edit({ lessonsPerWeek: 5 }, second.id, cookie),
+          () => patch(`/api/timetable/versions/${UNKNOWN}`, { startsOn: '2026-10-19' }, cookie),
+          () => createRow(UNKNOWN, { classId: own.classId, teacherId: own.teacher }, cookie),
+          () => remove(`/api/timetable/versions/${version.id}/load/${UNKNOWN}`, cookie),
+        ];
+        for (const attempt of attempts) {
+          const before = await rowsOf();
+          refusedWith(await attempt(), 404, 'not_found');
+          expect(await rowsOf()).toEqual(before);
+        }
+      }
+    });
+
+    it('lists no version of another branch, also for the Super Admin', async () => {
+      const southern = await load.version(t.south, southYear);
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        const list = timetableVersionListSchema.parse(
+          (await get('/api/timetable/versions', cookie).expect(200)).body,
+        );
+        expect(list.versions.some((one) => one.id === southern)).toBe(false);
+        expect(list.versions.length).toBeGreaterThan(0);
+      }
     });
 
     it('refuses each blocked case with its rule (06, Rules; 05, Teaching load)', async () => {
@@ -677,13 +746,12 @@ describe('draft versions and the teaching load', () => {
       );
       // A later change elsewhere is not refused because the draft needs it.
       await load.status(own.teacher, 'inactive', '2026-10-11');
-      const edited = rowOf(
-        await patch(`/api/timetable/versions/${version.id}/load/${row.id}`, {
-          ...rowBody({ teacherId: own.teacher }),
-          lessonsPerWeek: 5,
-          doubleLessons: true,
-        }),
-      );
+      const editing = await patch(`/api/timetable/versions/${version.id}/load/${row.id}`, {
+        ...rowBody({ teacherId: own.teacher }),
+        lessonsPerWeek: 5,
+        doubleLessons: true,
+      });
+      const edited = rowOf(editing);
       expect(edited).toMatchObject({
         lessonsPerWeek: 5,
         doubleLessons: true,
@@ -692,6 +760,7 @@ describe('draft versions and the teaching load', () => {
       const [entry] = await t.entries('teaching_load.edit', row.id);
       expect(entry).toMatchObject({
         assignment_id: t.viceAssignment,
+        request_id: editing.headers['x-request-id'],
         old_value: { lessonsPerWeek: 3, doubleLessons: false },
         new_value: { lessonsPerWeek: 5, doubleLessons: true },
       });
@@ -890,6 +959,35 @@ describe('draft versions and the teaching load', () => {
       }
       await remove(`/api/timetable/versions/${version.id}/load/${row.id}`).expect(204);
       await post(`/api/people/vacancies/${vacancy}/close`).expect(200);
+    });
+
+    // Permission review of the build, S1: a vacancy named only by a row a
+    // copy left may be deleted; the draft still reads, the row naming no one.
+    it('is deleted when only a row a copy left names it, and the draft still reads', async () => {
+      const source = await draft();
+      const own = await fitting();
+      const vacancy = await load.vacancy(t.north, { subjects: [{ subject, grades: [7] }] });
+      const row = rowOf(await createRow(source.id, { classId: own.classId, teacherId: vacancy }));
+      await t.database.migrator
+        .deleteFrom('staff_subjects')
+        .where('staff_id', '=', vacancy)
+        .execute();
+      const copy = versionOf(
+        await post('/api/timetable/versions', {
+          academicYearId: year,
+          startsOn: MONDAY,
+          copyFrom: source.id,
+        }),
+      );
+      expect(copy.leftRows).toBe(1);
+      await remove(`/api/timetable/versions/${source.id}/load/${row.id}`).expect(204);
+      await post(`/api/people/vacancies/${vacancy}/delete`).expect(204);
+      const answer = loadSchema.parse(
+        (await get(`/api/timetable/versions/${copy.id}/load`).expect(200)).body,
+      );
+      expect(answer.leftRows).toMatchObject([
+        { id: row.id, teacher: { id: vacancy, kind: 'vacancy', name: null } },
+      ]);
     });
 
     it('refuses the close of a vacancy whose row was being written first', async () => {

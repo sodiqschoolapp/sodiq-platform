@@ -37054,7 +37054,8 @@
                               "calendar",
                               "subjects",
                               "classes",
-                              "groups"
+                              "groups",
+                              "teachingLoad"
                             ]
                           },
                           "done": {
