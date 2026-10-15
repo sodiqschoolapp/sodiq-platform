@@ -1,10 +1,12 @@
 import {
   classSearchSchema,
   groupSearchSchema,
+  relativeSearchSchema,
   staffSearchSchema,
   studentSearchSchema,
   type ClassFound,
   type GroupFound,
+  type RelativeFound,
   type StaffFound,
   type StudentFound,
 } from '@sodiq/shared';
@@ -13,13 +15,15 @@ import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 
 /**
- * The four kinds of records Ctrl+K searches, in the order of `12` ("students,
- * staff, classes, groups"), each with the area of its record route (task
- * 3.2d, decision 3) and the list that opens it.
+ * The kinds of records Ctrl+K searches, in the order of `12` ("students,
+ * staff, relatives ..., classes, groups"), each with the area of its record
+ * route (task 3.2d, decision 3; relatives, task 3.5b, H33 of issue #105) and
+ * the list that opens it.
  */
 export const RECORD_KINDS = [
   { kind: 'students', area: 'students', list: '/people/students' },
   { kind: 'staff', area: 'staff', list: '/people/staff' },
+  { kind: 'relatives', area: 'relatives', list: '/people/parents' },
   { kind: 'classes', area: 'classes', list: '/classes' },
   { kind: 'groups', area: 'groups', list: '/groups' },
 ] as const;
@@ -32,6 +36,7 @@ export type RecordList = (typeof RECORD_KINDS)[number]['list'];
 export interface Found {
   students: StudentFound;
   staff: StaffFound;
+  relatives: RelativeFound;
   classes: ClassFound;
   groups: GroupFound;
 }
@@ -54,6 +59,10 @@ async function read(kind: RecordKind, q: string): Promise<FoundOf<RecordKind>> {
       return studentSearchSchema.parse(await answerOf(api.GET('/api/search/students', { params })));
     case 'staff':
       return staffSearchSchema.parse(await answerOf(api.GET('/api/search/staff', { params })));
+    case 'relatives':
+      return relativeSearchSchema.parse(
+        await answerOf(api.GET('/api/search/relatives', { params })),
+      );
     case 'classes':
       return classSearchSchema.parse(await answerOf(api.GET('/api/search/classes', { params })));
     case 'groups':

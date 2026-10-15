@@ -1,4 +1,6 @@
 import {
+  relativeNameKey,
+  relativeSearchSchema,
   SEARCH_QUERY_MAX_LENGTH,
   staffSearchSchema,
   studentNameKey,
@@ -539,6 +541,126 @@ describe('Ctrl+K over students and staff', () => {
       expect(
         (await students('Gʻulnora', browser.cookie, t.south)).items.map((item) => item.id),
       ).toEqual([southern]);
+    });
+  });
+
+  // Task 3.5b, H33 of issue #105; edge/people-roles-accounts, the Ctrl+K row:
+  // "Relatives' phones are searched too, for the Super Admin, the Principal
+  // and the Academic Vice Principal, and a relative found by phone lists the
+  // relative's children"; the owner's answer L157 on issue #42.
+  describe("relatives and the children found by a relative's phone (H33)", () => {
+    let father: string;
+    let elsewhere: string;
+
+    /** A relative with the links given, written in one transaction (a relative needs a link). */
+    async function relative(fullName: string, phone: string, links: [string, string][]) {
+      return t.database.migrator.transaction().execute(async (transaction) => {
+        const row = await transaction
+          .insertInto('relatives')
+          .values({ full_name: fullName, name_key: relativeNameKey(fullName), phone })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('relative_accounts')
+          .values({ relative_id: row.id, created_at: new Date('2026-09-01T08:00:00Z') })
+          .execute();
+        for (const [studentId, branchId] of links) {
+          await transaction
+            .insertInto('student_relatives')
+            .values({
+              student_id: studentId,
+              branch_id: branchId,
+              relative_id: row.id,
+              relationship: 'father',
+              main_contact: false,
+              linked_at: new Date('2026-09-01T08:00:00Z'),
+            })
+            .execute();
+        }
+        return row.id;
+      });
+    }
+
+    const relatives = async (q: string, cookie: string) => {
+      const response = await searching('relatives', q, cookie);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      return relativeSearchSchema.parse(response.body);
+    };
+
+    beforeAll(async () => {
+      father = await relative('Qodirov Rustam', '+998977771122', [
+        [own, t.north],
+        [southern, t.south],
+      ]);
+      elsewhere = await relative('Halimova Sabina', '+998977773344', [[southern, t.south]]);
+    });
+
+    it('finds the relatives of the branch by name and by main phone for their readers', async () => {
+      for (const cookie of [t.admin, t.principal, t.vicePrincipal]) {
+        for (const q of ['Qodirov Rustam', '977771122', '+998 97 777']) {
+          const found = await relatives(q, cookie);
+          expect(found.items, q).toEqual([
+            { id: father, fullName: 'Qodirov Rustam', phone: '+998977771122', students: 1 },
+          ]);
+        }
+        // Linked to a student of another branch only: not found here.
+        expect((await relatives('Halimova', cookie)).items).toEqual([]);
+        expect((await relatives('977773344', cookie)).items).toEqual([]);
+      }
+      expect(elsewhere).not.toBe(father);
+    });
+
+    it('is refused to every other role of the branch', async () => {
+      for (const cookie of [tutor, headTeacher, headTutor, spiritual, t.teacher]) {
+        const response = await searching('relatives', 'Qodirov', cookie);
+        expect(response.status).toBe(403);
+        expect(errorCode(response)).toBe('permission_denied');
+      }
+    });
+
+    it("finds the child by the relative's phone for the readers of relatives, naming the relative", async () => {
+      for (const cookie of [t.admin, t.principal, t.vicePrincipal]) {
+        const found = await students('977771122', cookie);
+        expect(found.items.map((item) => [item.id, item.relative])).toEqual([
+          [own, 'Qodirov Rustam'],
+        ]);
+      }
+      // Found by the name, no relative is named.
+      expect(
+        (await students('Rustamovna')).items.find((item) => item.id === own)?.relative,
+      ).toBeUndefined();
+    });
+
+    it("never finds the child by the relative's phone for another reader of students", async () => {
+      const senior = await t.kit.completeSession('Nodira', 'Rahimova');
+      await t.kit.giveRole(senior.account.id, { role: 'senior_head_teacher' });
+      for (const cookie of [tutor, headTeacher, headTutor, spiritual, senior.cookie]) {
+        expect(await studentIds('977771122', cookie)).toEqual([]);
+      }
+      expect((await searching('students', '977771122', t.teacher)).status).toBe(403);
+    });
+
+    it('never finds the child by the phone for a Principal of another branch who is a Tutor here', async () => {
+      const browser = await t.kit.completeSession('Jasur', 'Karimov');
+      await classes.person(t.north, ['uz'], {
+        accountId: browser.account.id,
+        first: 'Jasur',
+        last: 'Karimov',
+      });
+      const given = await t.kit.giveRole(browser.account.id, {
+        role: 'tutor',
+        branchId: t.north,
+        validFrom: FROM,
+      });
+      await classes.tutorRow(t.north, cambridge, given.id, { from: FROM });
+      await t.kit.giveRole(browser.account.id, { role: 'principal', branchId: t.south });
+      await relative('Ergashev Bobur', '+998977775566', [[other, t.north]]);
+      // The Tutor finds own student by name in North, not by the parent's phone.
+      expect(await studentIds('Zilola', browser.cookie)).toEqual([other]);
+      expect(await studentIds('977775566', browser.cookie)).toEqual([]);
+      // The Principal of North does.
+      expect(await studentIds('977775566', t.principal)).toEqual([other]);
+      expect((await searching('relatives', 'Qodirov', browser.cookie)).status).toBe(403);
     });
   });
 

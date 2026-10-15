@@ -1,4 +1,11 @@
-import { classDisplayName, listName, PERMISSIONS, permits, searchWords } from '@sodiq/shared';
+import {
+  classDisplayName,
+  listName,
+  PERMISSIONS,
+  permits,
+  phoneText,
+  searchWords,
+} from '@sodiq/shared';
 import { useQueries } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { cn } from 'cn';
@@ -186,6 +193,9 @@ export function CommandSearch() {
       case '/people/staff':
         void navigate({ to: '/people/staff', search });
         break;
+      case '/people/parents':
+        void navigate({ to: '/people/parents', search });
+        break;
       case '/classes':
         void navigate({ to: '/classes', search });
         break;
@@ -208,6 +218,10 @@ export function CommandSearch() {
         return {
           label: parts(listName(student), student.paternalName),
           detail: parts(
+            // H33: the relative whose phone found the student.
+            student.relative === undefined
+              ? null
+              : t('search.relativeOf', { name: student.relative }),
             student.uid,
             student.class === null
               ? null
@@ -229,6 +243,16 @@ export function CommandSearch() {
             person.status === null
               ? t('people.staff.notStarted')
               : t(`people.staff.statuses.${person.status}`),
+          ),
+        };
+      }
+      case 'relatives': {
+        const relative = item as Found['relatives'];
+        return {
+          label: relative.fullName,
+          detail: parts(
+            relative.phone === null ? null : phoneText(relative.phone),
+            t('search.relativeStudents', { count: relative.students }),
           ),
         };
       }

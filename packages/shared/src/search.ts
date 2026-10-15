@@ -41,6 +41,11 @@ export const studentFoundSchema = z.object({
   status: studentStatusSchema.nullable(),
   /** The start date: before it an active student reads "From <date>" (issue #105, H13). */
   startsOn: schoolDateSchema,
+  /**
+   * The relative whose main phone found the student (task 3.5b, H33 of issue
+   * #105), for the readers of relatives; absent when found otherwise.
+   */
+  relative: z.string().optional(),
 });
 
 export type StudentFound = z.infer<typeof studentFoundSchema>;
@@ -55,6 +60,20 @@ export const staffFoundSchema = z.object({
 });
 
 export type StaffFound = z.infer<typeof staffFoundSchema>;
+
+/**
+ * A relative found (task 3.5b, H33 of issue #105): linked to a student of
+ * the branch, with the main phone (`null`: no phone of their own) and the
+ * number of the branch's students linked.
+ */
+export const relativeFoundSchema = z.object({
+  id: z.uuid(),
+  fullName: z.string(),
+  phone: z.string().nullable(),
+  students: z.int().min(1),
+});
+
+export type RelativeFound = z.infer<typeof relativeFoundSchema>;
 
 /** A class found, of a year that is not closed. */
 export const classFoundSchema = z.object({
@@ -87,6 +106,9 @@ export type StudentSearch = z.infer<typeof studentSearchSchema>;
 
 export const staffSearchSchema = foundSchema(staffFoundSchema);
 export type StaffSearch = z.infer<typeof staffSearchSchema>;
+
+export const relativeSearchSchema = foundSchema(relativeFoundSchema);
+export type RelativeSearch = z.infer<typeof relativeSearchSchema>;
 
 export const classSearchSchema = foundSchema(classFoundSchema);
 export type ClassSearch = z.infer<typeof classSearchSchema>;

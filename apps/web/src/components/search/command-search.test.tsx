@@ -314,16 +314,17 @@ describe('the search of records', () => {
     subject: { uz: 'Fizika', ru: 'Физика', en: 'Physics' },
     yearName: '2026–2027',
   };
+  const PARENT_ID = '0198b000-0000-7000-8000-000000000005';
   const none = () => json({ items: [], more: false });
   // The students' answer has today (issue #105, H13).
   const noStudents = () => json({ items: [], more: false, today: '2026-10-10' });
 
   /** A signed-in account of one role in North, at the account page, with the search open. */
   async function searchAs(
-    role: 'teacher' | 'tutor' | 'academic_vice_principal',
+    role: 'teacher' | 'tutor' | 'academic_vice_principal' | 'head_tutor',
     answers: Record<string, () => Response>,
     language: Language = 'en',
-    roles: readonly ('teacher' | 'tutor' | 'academic_vice_principal')[] = [role],
+    roles: readonly ('teacher' | 'tutor' | 'academic_vice_principal' | 'head_tutor')[] = [role],
   ) {
     const calls = fakeApi({
       'GET /api/auth/session': () =>
@@ -480,6 +481,57 @@ describe('the search of records', () => {
     expect(router.state.location.search).toEqual({ q: 'Karimov' });
   });
 
+  // Task 3.5b, H33 of issue #105: parents in Ctrl+K, and the child found by
+  // a parent's phone, for the readers of relatives.
+  it("lists Parents by name and phone, and a child found by the parent's phone, for the Academic Vice Principal", async () => {
+    const { calls, router } = await searchAs('academic_vice_principal', {
+      'GET /api/search/students': () =>
+        json({
+          items: [{ ...STUDENT, relative: 'Qodirov Rustam' }],
+          more: false,
+          today: '2026-10-10',
+        }),
+      'GET /api/search/staff': none,
+      'GET /api/search/relatives': () =>
+        json({
+          items: [
+            { id: PARENT_ID, fullName: 'Qodirov Rustam', phone: '+998977771122', students: 1 },
+          ],
+          more: false,
+        }),
+      'GET /api/search/classes': none,
+      'GET /api/search/groups': none,
+    });
+    type('977771122');
+    const parents = await screen.findByRole('group', { name: en.search.relatives });
+    expect(within(parents).getByRole('option').textContent).toBe(
+      `Qodirov Rustam+998 97 777 11 22 · ${en.search.relativeStudents_one.replace('{{count}}', '1')}`,
+    );
+    const students = screen.getByRole('group', { name: en.search.students });
+    expect(within(students).getByRole('option').textContent).toContain(
+      en.search.relativeOf.replace('{{name}}', 'Qodirov Rustam'),
+    );
+    expect(searchCalls(calls).map((call) => call.route)).toContain('GET /api/search/relatives');
+    fireEvent.click(within(parents).getByRole('option'));
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/people/parents');
+    });
+    expect(router.state.location.search).toEqual({ open: PARENT_ID });
+  });
+
+  it('asks no Parents of a role that does not read relatives', async () => {
+    const { calls } = await searchAs('head_tutor', {
+      'GET /api/search/students': noStudents,
+      'GET /api/search/classes': none,
+      'GET /api/search/groups': none,
+    });
+    type('977771122');
+    await waitFor(() => {
+      expect(searchCalls(calls).length).toBeGreaterThan(0);
+    });
+    expect(searchCalls(calls).map((call) => call.route)).not.toContain('GET /api/search/relatives');
+  });
+
   it('says when a kind could not be searched, keeps the pages, and asks again on Retry', async () => {
     let failing = true;
     const { calls } = await searchAs('academic_vice_principal', {
@@ -488,6 +540,7 @@ describe('the search of records', () => {
           ? refusal('internal_error', 500)
           : json({ items: [STUDENT], more: false, today: '2026-10-10' }),
       'GET /api/search/staff': none,
+      'GET /api/search/relatives': none,
       'GET /api/search/classes': none,
       'GET /api/search/groups': none,
     });
@@ -510,6 +563,7 @@ describe('the search of records', () => {
     const { calls } = await searchAs('academic_vice_principal', {
       'GET /api/search/students': noStudents,
       'GET /api/search/staff': none,
+      'GET /api/search/relatives': none,
       'GET /api/search/classes': none,
       'GET /api/search/groups': none,
     });
@@ -524,7 +578,7 @@ describe('the search of records', () => {
         en.search.noMatch,
       );
     });
-    expect(searchCalls(calls)).toHaveLength(4);
+    expect(searchCalls(calls)).toHaveLength(5);
     expect(screen.queryAllByRole('option')).toEqual([]);
   });
 
@@ -533,6 +587,7 @@ describe('the search of records', () => {
       'GET /api/search/students': () =>
         json({ items: [STUDENT], more: false, today: '2026-10-10' }),
       'GET /api/search/staff': none,
+      'GET /api/search/relatives': none,
       'GET /api/search/classes': none,
       'GET /api/search/groups': none,
     });
@@ -577,6 +632,7 @@ describe('the search of records', () => {
           today: '2026-10-10',
         }),
       'GET /api/search/staff': none,
+      'GET /api/search/relatives': none,
       'GET /api/search/classes': none,
       'GET /api/search/groups': none,
     });

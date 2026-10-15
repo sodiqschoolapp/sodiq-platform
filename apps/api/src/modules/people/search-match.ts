@@ -1,4 +1,5 @@
-import { searchWords, spellingKey } from '@sodiq/shared';
+import { PERMISSIONS, searchWords, spellingKey } from '@sodiq/shared';
+import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { superAdminOf, viceOf } from './staff.service.js';
 
@@ -61,3 +62,19 @@ export function documentMatches(typed: string, stored: string | null): boolean {
 
 /** Two ids in one total order, as the fold keys tie-break. */
 export const byText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+/**
+ * The account searches relatives and finds a student by a relative's main
+ * phone (task 3.5b, H33 of issue #105; `edge/people-roles-accounts`, the
+ * Ctrl+K row: "Relatives' phones are searched too, for the Super Admin, the
+ * Principal and the Academic Vice Principal"): the readers of the area
+ * `relatives` in the branch of the request. Answers the assignment, or
+ * `undefined`.
+ */
+export const relativeSearcherOf = (access: Access): string | undefined =>
+  decide(
+    { area: 'relatives', action: 'view', branch: 'request' },
+    access.assignments,
+    access.branchId,
+    PERMISSIONS,
+  )?.id;

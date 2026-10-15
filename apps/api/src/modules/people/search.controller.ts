@@ -1,8 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
 import {
+  relativeSearchSchema,
   searchQuerySchema,
   staffSearchSchema,
   studentSearchSchema,
+  type RelativeSearch as RelativeSearchAnswer,
   type SearchQuery,
   type StaffSearch as StaffSearchAnswer,
   type StudentSearch as StudentSearchAnswer,
@@ -10,6 +12,7 @@ import {
 import { Returns, ValidQuery } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
+import { RelativeSearch } from './relative-search.js';
 import { StaffSearch } from './staff-search.js';
 import { StudentSearch } from './student-search.js';
 
@@ -25,6 +28,7 @@ export class PeopleSearchController {
   constructor(
     private readonly students: StudentSearch,
     private readonly staff: StaffSearch,
+    private readonly relatives: RelativeSearch,
   ) {}
 
   @Get('students')
@@ -45,5 +49,20 @@ export class PeopleSearchController {
     @ValidQuery(searchQuerySchema) query: SearchQuery,
   ): Promise<StaffSearchAnswer> {
     return this.staff.find(access, query.q);
+  }
+
+  /**
+   * Relatives by name and main phone, for the readers of relatives (task
+   * 3.5b, H33 of issue #105): the Super Admin, the Principal and the Academic
+   * Vice Principal.
+   */
+  @Get('relatives')
+  @Requires('relatives', 'view')
+  @Returns(relativeSearchSchema)
+  findRelatives(
+    @CurrentAccess() access: Access,
+    @ValidQuery(searchQuerySchema) query: SearchQuery,
+  ): Promise<RelativeSearchAnswer> {
+    return this.relatives.find(access, query.q);
   }
 }

@@ -429,6 +429,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // of its record route; the scope is decided in the route (people/search.test.ts,
   // classes/search.test.ts).
   'GET /api/search/students': { branch: 'request', roles: STUDENT_VIEWERS },
+  'GET /api/search/relatives': { branch: 'request', roles: SETUP_VIEWERS },
   'GET /api/search/staff': { branch: 'request', roles: STAFF_VIEWERS },
   'GET /api/search/classes': { branch: 'request', roles: CLASS_VIEWERS },
   'GET /api/search/groups': { branch: 'request', roles: CLASS_VIEWERS },
