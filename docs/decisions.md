@@ -253,6 +253,9 @@ Plan approved on pull request #116 with correction 1; decisions 1 to 11 confirme
 | The merge preview lists the start date, the grade and the scholarship (the later life's), the contracts (all kept) and the relatives (stays, added, already linked) beside the personal fields; the digest covers them | Decision 9; H29 |
 | A branch switch asks `useLeave()` first, then removes `open` from the address of any page, then chooses the branch | Decision 10; H32 |
 | The handbook pages for people, classes and the teaching load are written by task 3.7 from its "From 3.5b" line | Decision 11 |
+| Built: a relative found in Ctrl+K shows the main phone and the number of the branch's students linked; the children themselves are listed under Students by the same typed phone (the spec's "lists the relative's children") | H33; permission review of the build, should-fix 2 |
+| Built: the refusal of several students for a full class names the class, the day and how many students, not a number of free seats (the fewest over the range could belong to another day) | H24; spec review of the build, should-fix 6 |
+| Built: the Ctrl+K line of a child found by a relative's phone reads uz "Qarindoshi: <name>", ru "Родственник: <name>", en "Relative: <name>" (any relationship, not only a parent) | H33; spec review of the build, should-fix 7 |
 
 ## 15 October 2026: the hand-test fixes of wording and small screens (task 3.5a)
 
