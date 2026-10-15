@@ -474,10 +474,10 @@ export class Staff {
         const before = fieldsOf(row, sortDivisions(divisions));
         const { departmentStartsOn, ...fields } = record;
         const after: StaffFields = { ...fields, divisions: sortDivisions(record.divisions) };
-        // A start date is sent with a move only (task 3.4c, decision 2).
-        const startsOn = moveStartsOn(moving, departmentStartsOn);
         const changes = changesOf({ ...before }, { ...after });
         if (changes === null) {
+          // A start date is sent with a move only (task 3.4c, decision 2).
+          moveStartsOn(false, departmentStartsOn);
           return this.readDetail(transaction, access, id);
         }
         const contactOnly = Object.keys(changes.newValue).every((key) =>
@@ -487,6 +487,9 @@ export class Staff {
         if (assignmentId === undefined) {
           throw new ApiException('permission_denied', 403);
         }
+        // A start date is sent with a move only (task 3.4c, decision 2), after
+        // the permission: a move is the Super Admin's.
+        const startsOn = moveStartsOn(moving, departmentStartsOn);
         const emailChanged = 'email' in changes.newValue;
         if (emailChanged && !(await this.mayChangeEmail(transaction, access, row.account_id))) {
           throw new ApiException('permission_denied', 403);

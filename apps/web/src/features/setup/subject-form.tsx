@@ -13,6 +13,7 @@ import {
   CHECKED,
   CheckboxField,
   CheckboxGroupField,
+  DateField,
   Field,
   listValue,
   listValues,
@@ -42,7 +43,8 @@ type SubjectField =
   | 'dailyclasswork'
   | 'dailyhomework'
   | 'dailyratingExam'
-  | 'dailytotal';
+  | 'dailytotal'
+  | 'departmentStartsOn';
 
 /** The field of the form an issue of the record names: `names.uz` is `nameUz`, `daily.total` is `dailytotal`. */
 function fieldOf(path: readonly PropertyKey[]): PropertyKey[] {
@@ -125,6 +127,9 @@ export function SubjectForm({
 }: SubjectFormProps) {
   const { t } = useTranslation();
   const switchValue = (on: boolean) => (on ? CHECKED : '');
+  /** Whether the department chosen moves the saved subject (task 3.4c, decision 2). */
+  const moves = (departmentId: string) =>
+    subject !== null && departmentId !== '' && departmentId !== subject.departmentId;
   const form = useRecordForm<SubjectField, SubjectRecord>({
     schema: formSchema(subject === null),
     // Keyed by the subject alone: its own save keeps "Saved." (finding 18).
@@ -146,10 +151,17 @@ export function SubjectForm({
       dailyhomework: '',
       dailyratingExam: '',
       dailytotal: '',
+      departmentStartsOn: '',
     },
     read: (typed) => {
       const graded = typed.journalType === 'graded';
       return {
+        // A move to another department carries a start date (task 3.4c).
+        ...(moves(typed.departmentId)
+          ? {
+              departmentStartsOn: typed.departmentStartsOn === '' ? null : typed.departmentStartsOn,
+            }
+          : {}),
         names: { uz: typed.nameUz, ru: typed.nameRu, en: typed.nameEn },
         departmentId: typed.departmentId,
         grades: listValues(typed.grades).map(Number),
@@ -204,6 +216,12 @@ export function SubjectForm({
         note={departmentLocked ? t('setup.subjects.departmentLocked') : undefined}
         {...form.bind('departmentId')}
       />
+      {moves(form.bind('departmentId').value) && (
+        <DateField
+          label={t('setup.subjects.departmentStartsOn')}
+          {...form.bind('departmentStartsOn')}
+        />
+      )}
       <CheckboxGroupField
         label={t('setup.subjects.grades')}
         options={SUBJECT_GRADES.map((grade) => ({

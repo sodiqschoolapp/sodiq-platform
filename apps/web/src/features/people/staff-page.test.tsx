@@ -37,6 +37,7 @@ const MANAGEMENT: Division = {
 };
 
 const MATHEMATICS: Subject = {
+  departmentSince: null,
   id: uid(21),
   names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
   departmentId: uid(11),
@@ -65,7 +66,9 @@ const AKMAL: StaffListItem = {
     { branchId: NORTH.id, name: 'North', main: true },
     { branchId: SOUTH.id, name: 'South', main: false },
   ],
-  divisions: [{ divisionId: ACADEMIC.id, departmentId: uid(11), main: true }],
+  divisions: [
+    { divisionId: ACADEMIC.id, departmentId: uid(11), main: true, departmentSince: null },
+  ],
   subjects: [{ subjectId: MATHEMATICS.id, grades: [5, 6] }],
   languages: ['uz', 'ru'],
   phone: '+998901234567',
@@ -82,7 +85,7 @@ const NODIRA: StaffListItem = {
   lastName: 'Aliyeva',
   categories: [],
   branches: [{ branchId: NORTH.id, name: 'North', main: true }],
-  divisions: [{ divisionId: MANAGEMENT.id, departmentId: null, main: true }],
+  divisions: [{ divisionId: MANAGEMENT.id, departmentId: null, main: true, departmentSince: null }],
   subjects: [],
   languages: [],
   phone: '+998907654321',
@@ -464,6 +467,62 @@ describe('the staff page', () => {
     });
   });
 
+  // Task 3.4c (edge/people-roles-accounts, row 15): a change of the Academic
+  // department carries a start date, and a refusal lists the loads.
+  it('asks for the start date of a department move, sends it and lists the loads that keep it', async () => {
+    const version = uid(95);
+    const calls = openList('super_admin', {
+      [`PUT /api/people/staff/${AKMAL.id}`]: () =>
+        Response.json(
+          {
+            error: {
+              code: 'department_move_loads',
+              message: 'ENGLISH TEXT FOR THE DEVELOPER',
+              requestId: 'test-request',
+              details: [
+                {
+                  path: `load.${uid(96)}`,
+                  code: 'teaches',
+                  message: 'x',
+                  load: {
+                    versionId: version,
+                    versionNumber: 1,
+                    versionStartsOn: '2026-10-19',
+                    unit: { kind: 'group', id: uid(97), name: '5-M-1' },
+                    subjectId: MATHEMATICS.id,
+                    teacher: { id: AKMAL.id, name: 'Karimov Akmal', vacancy: false },
+                  },
+                },
+              ],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const record = await edit(panel, 'Akmal Karimov');
+    expect(within(record).queryByLabelText(en.people.staff.departmentStartsOn)).toBeNull();
+    fireEvent.change(within(record).getByLabelText(en.people.staff.department), {
+      target: { value: '' },
+    });
+    fireEvent.change(within(record).getByLabelText(en.people.staff.departmentStartsOn), {
+      target: { value: '2026-11-02' },
+    });
+    fireEvent.click(within(record).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `PUT /api/people/staff/${AKMAL.id}`)?.body,
+      ).toMatchObject({ departmentStartsOn: '2026-11-02' });
+    });
+    const list = await within(panel).findByRole('status', { name: en.people.moveLoads.title });
+    expect(within(list).getByRole('link').getAttribute('href')).toBe(
+      `/timetable/load?version=${version}`,
+    );
+    expect(list.textContent).toContain('5-M-1 · Mathematics · Karimov Akmal');
+  });
+
   it('shows the Principal the record without forms, and birth date and JSHSHIR after a logged show', async () => {
     const calls = openList(
       'principal',
@@ -718,7 +777,9 @@ describe('the actions of the staff panel', () => {
 
   it('switches the subjects off with its reason when the person has no Academic department', async () => {
     openList('super_admin', {}, 'en', {
-      divisions: [{ divisionId: MANAGEMENT.id, departmentId: null, main: true }],
+      divisions: [
+        { divisionId: MANAGEMENT.id, departmentId: null, main: true, departmentSince: null },
+      ],
     });
     const panel = await openAkmal();
     const change = within(panel).getByRole<HTMLButtonElement>('button', {

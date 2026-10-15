@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 3.4c The department move against the load
+
+- Built: migration 0057 (`subjects.department_since`, `staff_divisions.department_since`, `department_move_loads`, SECURITY DEFINER); the move check in `PUT /api/people/staff/:id` and `PUT /api/setup/subjects/:id` (`apps/api/src/modules/people/department-moves.ts`): the start date (`departmentStartsOn`), the lock of department moves, `department_move_loads` with the rows of the branch and the count of the others, `staff_changed` and `subject_changed`; the load create, the teacher edit of a row and the copy lock the row's subject FOR KEY SHARE.
+- The web app: the start date field of the subject and staff forms on a move, "since <date>" beside the department, the list "Teaching loads to reassign first" with a link to each row's version (`features/people/move-loads.tsx`).
+- Left out: the open requests that move to the new Head Teacher (row 15), line added to 8.4; a published version's own end in the count, line added to 5.5a; the vacancy's department change, which is not a move (decision 4).
+
+The next sessions must know:
+
+- `department_move_loads` is the one place of the rule "a teacher outside the subject's department" for a move; it reads the Tutor exception as the row trigger of 0055 does, on the later of the version's start, the move's start and today.
+- The department changes on the record when the move is saved; the profile is not part of the move, so the old subjects leave the profile first (`staff_subject_department` at the commit).
+- A move takes `DEPARTMENT_MOVE_LOCK` before any row lock, decided from a read without a lock; the locked read must agree, or the edit answers `staff_changed` or `subject_changed`.
+- The next task is 4.1.
+
 ## 15 October 2026: task 3.4b Splits, groups and weekly totals
 
 - Built: migration 0056 (`teaching_load_rows.mixed_block`, the commit check of the block rules and the split-or-whole rule under an advisory lock of the version, `load_block_rows`, `teacher_load_elsewhere`); `blocks.ts` and `totals.ts` of `packages/timetable-rules` and six new load problems; a lessons or mixed-mark edit written to every part; the copy leaves broken blocks; `GET api/timetable/versions/:id/totals`; the teacher of a group's load row on `GET api/groups`.

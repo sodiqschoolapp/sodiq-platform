@@ -1003,6 +1003,8 @@ export const uz: Texts<'one' | 'other'> = {
       nameTaken: 'Bu nom boshqa faol fanda bor. Boshqa nom tanlang.',
       department: 'Kafedra',
       departmentLocked: 'Fanni boshqa kafedraga faqat Super administrator oʻtkazadi.',
+      departmentStartsOn: 'Oʻtish sanasi',
+      departmentSince: '{{name}}, {{date}} sanadan',
       chooseDepartment: 'Kafedrani tanlang',
       grades: 'Sinflar',
       grade: '{{grade}}-sinf',
@@ -1325,6 +1327,15 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   people: {
+    moveLoads: {
+      title: 'Avval qayta taqsimlanadigan yuklamalar',
+      rest: ' · {{parts}}',
+      separator: ' · ',
+      version: '{{number}}-versiya, {{date}} sanadan',
+      vacancy: 'Vakansiya: {{name}}',
+      elsewhere_one: 'Boshqa filiallarda: yana {{n}} qator.',
+      elsewhere_other: 'Boshqa filiallarda: yana {{n}} qator.',
+    },
     report: {
       link: 'Shaxsiy maʼlumotlar hisoboti',
       title: 'Shaxsiy maʼlumotlar hisoboti',
@@ -2019,6 +2030,8 @@ export const uz: Texts<'one' | 'other'> = {
       noDepartment: 'Kafedrasiz',
       furtherDivisions: 'Qoʻshimcha boʻlimlar',
       academicDepartment: 'Oʻquv boʻlimidagi kafedra',
+      departmentStartsOn: 'Kafedraga oʻtish sanasi',
+      departmentSince: '{{name}}, {{date}} sanadan',
       recordTitle: 'Kartochka',
       teachingTitle: 'Fanlar va tillar',
       none: 'Yoʻq',

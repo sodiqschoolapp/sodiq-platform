@@ -27,6 +27,7 @@ import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
+import { MoveLoads } from './move-loads';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import {
   CheckboxGroupField,
@@ -176,6 +177,7 @@ export function StaffPanel({ id, name, divisions, subjects }: StaffPanelProps) {
               panel.stop();
             }}
           />
+          <MoveLoads error={edit.error} />
         </section>
       ) : panel.editing === 'status' ? (
         // The status and its history above the form that changes it.
@@ -467,7 +469,12 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
             found === undefined ? '' : nameOf(found.names, language),
             department === null || department === undefined
               ? null
-              : nameOf(department.names, language),
+              : division.departmentSince === null
+                ? nameOf(department.names, language)
+                : t('people.staff.departmentSince', {
+                    name: nameOf(department.names, language),
+                    date: schoolDateText(division.departmentSince, language),
+                  }),
           ]
             .filter((part) => part !== null)
             .join(', ');

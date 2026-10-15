@@ -213,6 +213,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: the department move against the load (task 3.4c)
+
+Plan approved on pull request #101 with corrections 1 to 5; decisions 1, 2 and 3 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** A draft's row counts as "a teaching load": every row of a version that is not archived, of a year not closed and ending on or after the start date, drafts of every branch included | Decision 1; row 15 writes the refusal with no exception for drafts, and decision 3 of pull request #99 reserved this one refusal |
+| **Look first.** The department changes on the record when the move is saved; the profile is not part of the move (the old subjects leave first, `staff_subject_department` of 0024 at the commit); the start date is today or later in the request's branch time and no later than the end of the branch's latest year, with no upper bound in a branch with no year; a version counts when its year ends on or after the start date (5.5a gets the line for a published version's own end). Proposed `/spec-change` for `edge/people-roles-accounts`, row 15: "Both changes carry a start date and are made by the Super Admin. The department changes on the record when the change is saved, and the teaching load must follow it from the start date: the change is refused while a teaching load of a version that runs on or after the start date would have a teacher outside the subject's department; those loads are listed for reassignment first. Open requests move to the new Head Teacher." | Decision 2 with correction 5 |
+| **Look first.** `department_move_loads` SECURITY DEFINER: the rows of the request's branch (a branch of the transaction, and the teacher's branch on a teacher move) by id and version, one count per other branch, never a row, a name or a subject of another branch | Decision 3 with correction 2; row 14 |
+| A vacancy's row counts on a subject move, named `load.<id>` like a teacher's; a vacancy's own department change is not a move and is not refused | Decision 4 with correction 1 |
+| The 409 `department_move_loads` carries in each `load.<id>` detail what its line shows (version id, number and start, class or group, subject, teacher or vacancy); the web names the subject from the subject list | Correction 2 |
+| A teacher move is a change of the department of the Academic division, main or further, to another or to none; adding Academic or swapping main and further is not a move, and `department_since` survives every path of `writeDivisions` that keeps the division | Decision 5, correction 4 |
+| No database constraint for the refusal; the person and the subject FOR UPDATE against the load writes' KEY SHARE (the create, the teacher edit and the copy lock the row's subject in a statement before the write), and `DEPARTMENT_MOVE_LOCK` for two moves | Decision 6 |
+| The Tutor rows of the class Tutor stay outside the rule on both sides of a move, read after the move, on the later of the version's start, the move's start and today | Decision 7; row 13 |
+| `staff_changed` and `subject_changed` answer an edit whose locked read finds another department than the read before the lock, in either direction | Decision 9 |
+| The teacher-move same-moment test asserts what each order gives (the create `load_teacher_subject`, the move 200), with the create waiting for the person's lock and a held create refused under a savepoint | Correction 3: the profile rule stands on both sides |
+| The start date field starts empty on both forms; the server answers `required` on a move without it | Build: the subject list carries no today of the branch, and the device's clock is not used for a date (`edge/00-definitions`, Branch time) |
+| **Look first** (tests changed by a requirement). The move tests of `subjects.test.ts` and `staff.test.ts` send `departmentStartsOn`; the web fixtures of a subject and of a division carry `departmentSince` | Build: the start date and the date shown are new requirements of 3.4c |
+
 ## 15 October 2026: splits, groups and weekly totals (task 3.4b)
 
 Plan approved on pull request #100 with corrections 1 and 2; decisions 1, 2, 8 and 12 marked Look first and confirmed there. Flagged on issue #42.

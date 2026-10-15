@@ -9,6 +9,7 @@ import { EXPORT_TEXTS, SUBJECT_EXPORT_COLUMNS } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import { ru } from '@/i18n/locales/ru';
 import {
   actionsAreLast,
   edit,
@@ -48,6 +49,7 @@ const academic = (departments = [STEAM, TUTORS]): Division => ({
 });
 
 const MATHS: Subject = {
+  departmentSince: null,
   id: uid(21),
   names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
   departmentId: STEAM,
@@ -81,6 +83,7 @@ const SPIRIT: Subject = {
   id: uid(23),
   names: { uz: 'Maʼnaviyat soati', ru: 'Час духовности', en: 'Spiritual hour' },
   departmentId: TUTORS,
+  departmentSince: null,
   grades: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
   colour: 'green',
   journalType: 'attendance_only',
@@ -586,6 +589,103 @@ describe('the subjects page', () => {
     expect(
       within(panel).getByText(subjectsText.teachersElsewhere_other.replace('{{n}}', '2')),
     ).toBeDefined();
+  });
+
+  // Task 3.4c (edge/people-roles-accounts, row 15; correction 2 of pull
+  // request #101): a move carries a start date, and a refusal lists the loads
+  // of the branch, each a link to its version, and counts the others.
+  describe('the department move', () => {
+    const VERSION = uid(95);
+    const refusedMove = () =>
+      Response.json(
+        {
+          error: {
+            code: 'department_move_loads',
+            message: 'ENGLISH TEXT FOR THE DEVELOPER',
+            requestId: 'test-request',
+            details: [
+              {
+                path: `load.${uid(96)}`,
+                code: 'teaches',
+                message: 'x',
+                load: {
+                  versionId: VERSION,
+                  versionNumber: 2,
+                  versionStartsOn: '2026-10-19',
+                  unit: { kind: 'class', id: uid(97), name: 'Oxford' },
+                  subjectId: MATHS.id,
+                  teacher: { id: uid(98), name: 'Hamidova Zarina', vacancy: false },
+                },
+              },
+              { path: 'elsewhere', code: '3', message: 'x' },
+            ],
+          },
+        },
+        { status: 409 },
+      );
+
+    it('asks for the start date only once the department changes, and sends it', async () => {
+      const { calls } = await openList({
+        extra: { [`PUT /api/setup/subjects/${MATHS.id}`]: refusedMove },
+      });
+      fireEvent.click(rowButton('Mathematics'));
+      const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+      const form = await edit(panel, 'Mathematics');
+      expect(within(form).queryByLabelText(subjectsText.departmentStartsOn)).toBeNull();
+      fireEvent.change(within(form).getByLabelText(subjectsText.department), {
+        target: { value: TUTORS },
+      });
+      fireEvent.change(within(form).getByLabelText(subjectsText.departmentStartsOn), {
+        target: { value: '2026-11-02' },
+      });
+      fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+
+      await waitFor(() => {
+        expect(
+          calls.find((call) => call.route === `PUT /api/setup/subjects/${MATHS.id}`)?.body,
+        ).toMatchObject({ departmentId: TUTORS, departmentStartsOn: '2026-11-02' });
+      });
+      const list = await within(panel).findByRole('status', {
+        name: en.people.moveLoads.title,
+      });
+      const link = within(list).getByRole('link');
+      expect(link.getAttribute('href')).toBe(`/timetable/load?version=${VERSION}`);
+      expect(link.parentElement?.textContent).toContain('Oxford · Mathematics · Hamidova Zarina');
+      expect(
+        within(list).getByText(en.people.moveLoads.elsewhere_other.replace('{{n}}', '3')),
+      ).toBeDefined();
+    });
+
+    it('lists the loads in Russian', async () => {
+      await openList({
+        language: 'ru',
+        extra: { [`PUT /api/setup/subjects/${MATHS.id}`]: refusedMove },
+      });
+      fireEvent.click(rowButton('Математика'));
+      const panel = await screen.findByRole('complementary', { name: 'Математика' });
+      const form = await edit(panel, 'Математика', ru.form.edit);
+      fireEvent.change(within(form).getByLabelText(ru.setup.subjects.department), {
+        target: { value: TUTORS },
+      });
+      fireEvent.change(within(form).getByLabelText(ru.setup.subjects.departmentStartsOn), {
+        target: { value: '2026-11-02' },
+      });
+      fireEvent.click(within(form).getByRole('button', { name: ru.form.save }));
+
+      const list = await within(panel).findByRole('status', { name: ru.people.moveLoads.title });
+      expect(list.textContent).toContain('Oxford · Математика · Hamidova Zarina');
+      expect(
+        within(list).getByText(ru.people.moveLoads.elsewhere_other.replace('{{n}}', '3')),
+      ).toBeDefined();
+    });
+
+    it('shows the date the department has held since', async () => {
+      await openList({ subjects: [{ ...MATHS, departmentSince: '2026-11-02' }] });
+      fireEvent.click(rowButton('Mathematics'));
+      const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+      const term = await within(panel).findByText(subjectsText.department, { selector: 'dt' });
+      expect(term.nextElementSibling?.textContent).toMatch(/^STEAM, since /);
+    });
   });
 
   // Task 3.2a, decision 16: the groups of the branch by name, those of other branches as a number.

@@ -994,6 +994,8 @@ export const en = {
       nameTaken: 'Another active subject has this name. Choose another.',
       department: 'Department',
       departmentLocked: 'Only the Super Admin moves a subject to another department.',
+      departmentStartsOn: 'Moves on',
+      departmentSince: '{{name}}, since {{date}}',
       chooseDepartment: 'Choose a department',
       grades: 'Grades',
       grade: 'Grade {{grade}}',
@@ -1314,6 +1316,15 @@ export const en = {
     },
   },
   people: {
+    moveLoads: {
+      title: 'Teaching loads to reassign first',
+      rest: ' · {{parts}}',
+      separator: ' · ',
+      version: 'Version {{number}} from {{date}}',
+      vacancy: 'Vacancy: {{name}}',
+      elsewhere_one: 'In other branches: {{n}} more row.',
+      elsewhere_other: 'In other branches: {{n}} more rows.',
+    },
     report: {
       link: 'Personal data report',
       title: 'Personal data report',
@@ -2003,6 +2014,8 @@ export const en = {
       noDepartment: 'No department',
       furtherDivisions: 'Further divisions',
       academicDepartment: 'Department in Academic',
+      departmentStartsOn: 'Moves to the department on',
+      departmentSince: '{{name}}, since {{date}}',
       recordTitle: 'Record',
       teachingTitle: 'Subjects and languages',
       none: 'None',

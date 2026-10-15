@@ -48,7 +48,7 @@ const LOLA: StaffListItem = {
     { branchId: NORTH.id, name: 'North', main: true },
     { branchId: SOUTH.id, name: 'South', main: false },
   ],
-  divisions: [{ divisionId: ACADEMIC.id, departmentId: null, main: true }],
+  divisions: [{ divisionId: ACADEMIC.id, departmentId: null, main: true, departmentSince: null }],
   subjects: [],
   languages: [],
   phone: '+998901112233',
@@ -115,6 +115,7 @@ const ACCOUNT: AccountDetail = {
 };
 
 const subjectOf = (n: number, en: string, uz: string, ru: string, archived = false): Subject => ({
+  departmentSince: null,
   id: uid(n),
   names: { uz, ru, en },
   departmentId: uid(11),
