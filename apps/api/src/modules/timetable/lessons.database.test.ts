@@ -561,35 +561,36 @@ describe('dated lessons and their time claims in the database', () => {
       await moveBlock(north, block.block, '2026-10-22', '15:00', '15:45');
     });
 
-    it('checks two lessons added to one block at the same moment one after the other', async () => {
+    it('checks two parts of one block restored at the same moment one after the other', async () => {
+      // The two sides meet on no row and no index: the class claim of the
+      // block is already written by its third part, so only the advisory lock
+      // of the block orders them (spec review of the build, must-fix 1).
       const m = await mixed();
       await kit.inGroup(north, m.boys, m.sport, m.first);
       await kit.inGroup(north, m.girls, m.technology, m.first);
-      const block = await place(north, { date: '2026-10-23', start: '13:00', end: '13:45' }, []);
-      const row = await database.migrator
-        .selectFrom('lesson_blocks')
-        .selectAll()
-        .where('id', '=', block.block)
-        .executeTakeFirstOrThrow();
-      const lessonOf = (groupId: string, subjectId: string) => ({
-        branch_id: north,
-        block_id: row.id,
-        lesson_date: row.lesson_date,
-        starts_at: row.starts_at,
-        ends_at: row.ends_at,
-        group_id: groupId,
-        subject_id: subjectId,
-      });
+      const music = await kit.load.classes.subject({ grades: [7] });
+      const choir = await group([m.oxford], music);
+      const block = await place(north, { date: '2026-10-23', start: '13:00', end: '13:45' }, [
+        { groupId: m.boys, subjectId: m.sport, cancel: true },
+        { groupId: m.girls, subjectId: m.technology, cancel: true },
+        { groupId: choir, subjectId: music },
+      ]);
+      const restoreIn = (transaction: Transaction, id: string) =>
+        transaction
+          .updateTable('lessons')
+          .set({ cancel_cause: null, cancel_reason: null })
+          .where('id', '=', id)
+          .execute();
       const held = holding(
         (work) => inBranch(north, work),
         async (transaction) => {
-          await transaction.insertInto('lessons').values(lessonOf(m.boys, m.sport)).execute();
+          await restoreIn(transaction, block.lessons[0] ?? '');
           await sql`set constraints lessons_block_students immediate`.execute(transaction);
         },
       );
       await held.ready;
       const second = inBranch(north, (transaction) =>
-        transaction.insertInto('lessons').values(lessonOf(m.girls, m.technology)).execute(),
+        restoreIn(transaction, block.lessons[1] ?? ''),
       ).then(
         () => 'written',
         (error: unknown) => (error as { constraint?: string }).constraint,
@@ -819,6 +820,24 @@ describe('dated lessons and their time claims in the database', () => {
       ).toMatchObject({ constraint: 'lesson_block_quarter_fixed' });
     });
 
+    it('keeps the quarter of a block dated today whose start is still to come (spec review, should-fix 3)', async () => {
+      const today = await place(north, { date: '2026-10-15', start: '15:00', end: '15:45' }, []);
+      const q2 = quarterOf(north, '2026-11-10');
+      expect(
+        await refusal(
+          database.migrator.transaction().execute(async (transaction) => {
+            await sql`update quarters set end_date = '2026-10-14' where id = ${quarterOf(north, MONDAY)}::uuid`.execute(
+              transaction,
+            );
+            await sql`update quarters set start_date = '2026-10-15' where id = ${q2}::uuid`.execute(
+              transaction,
+            );
+            await setQuarter(transaction, today.block, q2, NOW);
+          }),
+        ),
+      ).toMatchObject({ constraint: 'lesson_block_quarter_fixed' });
+    });
+
     it('refuses a quarter changed together with the date', async () => {
       const block = await place(north, { date: '2026-10-30', start: '10:00', end: '10:45' }, []);
       expect(
@@ -841,7 +860,7 @@ describe('dated lessons and their time claims in the database', () => {
   });
 
   describe('the source of a lesson', () => {
-    it('refuses a regular block of a draft version, and of another year', async () => {
+    it('refuses a regular block of a draft version', async () => {
       const version = await kit.load.version(north, years.get(north)?.year ?? '');
       const block = await sql<{ id: string }>`
         insert into pattern_blocks (branch_id, version_id, weekday, slot_position, start_minutes, end_minutes)
@@ -863,7 +882,7 @@ describe('dated lessons and their time claims in the database', () => {
       ).toMatchObject({ constraint: 'lesson_block_version' });
     });
 
-    it('refuses a regular block without its pattern block, and an extra block with one (correction 2)', async () => {
+    it('refuses a regular block without its pattern block (correction 2)', async () => {
       const version = await kit.load.version(north, years.get(north)?.year ?? '', {
         status: 'published',
       });
@@ -958,6 +977,166 @@ describe('dated lessons and their time claims in the database', () => {
           ),
         ),
       ).toMatchObject({ code: FOREIGN_KEY_VIOLATION });
+    });
+  });
+
+  describe('a regular lesson and its version, load row and pattern entry (correction 2)', () => {
+    let published: string;
+    let other: string;
+    let oxford: string;
+    let princeton: string;
+    let oxfordRow: string;
+    let princetonRow: string;
+    let otherRow: string;
+    let firstBlock: string;
+    let secondBlock: string;
+    let otherBlock: string;
+    let oxfordEntry: string;
+    let princetonEntry: string;
+
+    /** A pattern block of the version with one entry, written by the migrator. */
+    async function patternOf(versionId: string, rowId: string, teacherId: string, start: number) {
+      const block = await sql<{ id: string }>`
+        insert into pattern_blocks (branch_id, version_id, weekday, slot_position, start_minutes, end_minutes)
+        values (${north}::uuid, ${versionId}::uuid, 1, 1, ${start}, ${start + 45}) returning id
+      `.execute(database.migrator);
+      const blockId = block.rows[0]?.id ?? '';
+      const entry = await sql<{ id: string }>`
+        insert into pattern_entries (branch_id, version_id, block_id, weekday, start_minutes, end_minutes, load_row_id, teacher_id)
+        values (${north}::uuid, ${versionId}::uuid, ${blockId}::uuid, 1, ${start}, ${start + 45}, ${rowId}::uuid, ${teacherId}::uuid)
+        returning id
+      `.execute(database.migrator);
+      return { block: blockId, entry: entry.rows[0]?.id ?? '' };
+    }
+
+    beforeAll(async () => {
+      const year = years.get(north)?.year ?? '';
+      published = await kit.load.version(north, year);
+      other = await kit.load.version(north, year);
+      oxford = await schoolClass();
+      princeton = await schoolClass();
+      const smith = (await kit.load.teacher(north, { subjects: [{ subject, grades: [7] }] }))
+        .staffId;
+      const jones = (await kit.load.teacher(north, { subjects: [{ subject, grades: [7] }] }))
+        .staffId;
+      const values = (versionId: string, classId: string, teacherId: string) => ({
+        branch_id: north,
+        version_id: versionId,
+        class_id: classId,
+        subject_id: subject,
+        teacher_id: teacherId,
+      });
+      oxfordRow = await kit.load.row(values(published, oxford, smith));
+      princetonRow = await kit.load.row(values(published, princeton, jones));
+      otherRow = await kit.load.row(values(other, oxford, smith));
+      const first = await patternOf(published, oxfordRow, smith, 540);
+      const second = await patternOf(published, princetonRow, jones, 600);
+      const third = await patternOf(other, otherRow, smith, 540);
+      firstBlock = first.block;
+      secondBlock = second.block;
+      otherBlock = third.block;
+      oxfordEntry = first.entry;
+      princetonEntry = second.entry;
+      await kit.load.setVersion(published, 'published');
+      await kit.load.setVersion(other, 'published');
+    });
+
+    const regular = (
+      patternBlockId: string,
+      lessons: readonly LessonInput[],
+      versionId = published,
+    ) =>
+      place(
+        north,
+        { date: '2026-11-16', start: '09:00', end: '09:45', versionId, patternBlockId },
+        lessons,
+      );
+
+    it('writes a lesson of a published version with its own load row and pattern entry', async () => {
+      const written = await regular(firstBlock, [
+        { classId: oxford, loadRowId: oxfordRow, patternEntryId: oxfordEntry },
+      ]);
+      expect((await claimsOf(written.block)).map((claim) => claim.kind)).toEqual([
+        'block_class',
+        'lesson',
+      ]);
+    });
+
+    it('refuses a lesson of a regular block with no load row and pattern entry', async () => {
+      expect(await refusal(regular(firstBlock, [{ classId: oxford }]))).toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'lesson_load_row',
+      });
+    });
+
+    it('refuses the load row of another class, and of another version', async () => {
+      expect(
+        await refusal(
+          regular(firstBlock, [
+            { classId: oxford, loadRowId: princetonRow, patternEntryId: oxfordEntry },
+          ]),
+        ),
+      ).toMatchObject({ constraint: 'lesson_load_row' });
+      expect(
+        await refusal(
+          regular(firstBlock, [
+            { classId: oxford, loadRowId: otherRow, patternEntryId: oxfordEntry },
+          ]),
+        ),
+      ).toMatchObject({ constraint: 'lesson_load_row' });
+    });
+
+    it('refuses the pattern entry of another pattern block (lesson_pattern_entry)', async () => {
+      expect(
+        await refusal(
+          regular(firstBlock, [
+            { classId: princeton, loadRowId: princetonRow, patternEntryId: princetonEntry },
+          ]),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'lesson_pattern_entry' });
+      await regular(secondBlock, [
+        { classId: princeton, loadRowId: princetonRow, patternEntryId: princetonEntry },
+      ]);
+    });
+
+    it('refuses an extra block with a pattern block, and a block on a pattern block of another version', async () => {
+      expect(
+        await refusal(
+          inBranch(north, (transaction) =>
+            transaction
+              .insertInto('lesson_blocks')
+              .values({
+                branch_id: north,
+                academic_year_id: years.get(north)?.year ?? '',
+                quarter_id: quarterOf(north, '2026-11-16'),
+                lesson_date: '2026-11-16',
+                starts_at: at('2026-11-16', '11:00'),
+                ends_at: at('2026-11-16', '11:45'),
+                pattern_block_id: firstBlock,
+                kind: 'extra',
+              })
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'lesson_blocks_source_check' });
+      expect(await refusal(regular(otherBlock, []))).toMatchObject({
+        code: FOREIGN_KEY_VIOLATION,
+        constraint: 'lesson_blocks_pattern_fkey',
+      });
+    });
+
+    it('refuses a version of another year (lesson_block_version)', async () => {
+      const nextYear = await kit.load.classes.year(north, 'planned', '2028-09-01', '2029-05-31');
+      const later = await kit.load.version(north, nextYear, { startsOn: '2028-09-04' });
+      const block = await sql<{ id: string }>`
+        insert into pattern_blocks (branch_id, version_id, weekday, slot_position, start_minutes, end_minutes)
+        values (${north}::uuid, ${later}::uuid, 1, 1, 540, 585) returning id
+      `.execute(database.migrator);
+      await kit.load.setVersion(later, 'published');
+      expect(await refusal(regular(block.rows[0]?.id ?? '', [], later))).toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'lesson_block_version',
+      });
     });
   });
 

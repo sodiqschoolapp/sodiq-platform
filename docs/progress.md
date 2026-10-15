@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 5.1a Lessons, pattern and time claims
+
+- Built in migrations 0058 and 0059: pattern blocks, entries and block classes with the teacher, room and class rules per version and weekday; dated lesson blocks and lessons with their own start and end; `time_claims` with the teacher, room and class exclusion constraints across all branches.
+- The shared-room trigger (lessons at once and students against capacity), the student-in-one-lesson-of-a-block trigger, the double-pair checks; claims written only by triggers. 62 database tests as `sodiq_app`.
+- Left out: exams and the re-check of claims on group classes, memberships and a room's switch (5.1b); deletes, version re-pointing and every route (5.4a, 5.5b, 5.5c, 5.6b, 5.8), each with a "From 5.1a" line.
+
+The next sessions must know:
+
+- No route writes lessons yet: a route maps the constraint names, never the detail of an exclusion error, and maps `40P01` and `40001` to `timetable_busy`.
+- A swap of blocks defers `time_claims_teacher_excl`, `time_claims_room_excl`, `time_claims_class_excl` in its transaction.
+- The next task is 5.1b.
+
 ## 15 October 2026: task 4.3 Exemptions, flags and special outcomes
 
 - Built in `packages/calc`: `studentQuarterOutcome` (a number, "Exempt", "Not assessed", "No result"; the few-lessons, attendance-only and "left the subject" flags with one decision per student; stale decisions reported, never thrown; "from <date>", "left the subject on", the result at leaving), `outcomeForYear`, `CALC_VERSION` with a pinned source hash per version.

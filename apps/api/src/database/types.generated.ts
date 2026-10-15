@@ -339,6 +339,9 @@ export interface LessonBlocks {
   academic_year_id: string;
   branch_id: string;
   created_at: Generated<Timestamp>;
+  /**
+   * The two blocks of a double lesson share it; made by the API, one branch only.
+   */
   double_pair_id: string | null;
   ends_at: Timestamp;
   id: Generated<string>;
@@ -403,6 +406,9 @@ export interface PatternBlockClasses {
 export interface PatternBlocks {
   branch_id: string;
   created_at: Generated<Timestamp>;
+  /**
+   * The two blocks of a double lesson share it; made by the API, one branch only.
+   */
   double_pair_id: string | null;
   end_minutes: number;
   id: Generated<string>;

@@ -437,7 +437,7 @@ How to read the task lines:
 
 ## Phase 5. Timetable
 
-- [ ] **5.1a Lessons, pattern and time claims** (split of 5.1 Data model and database constraints, pull request #107, decision 1, Look first)
+- [x] **5.1a Lessons, pattern and time claims** (split of 5.1 Data model and database constraints, pull request #107, decision 1, Look first)
   - Read: `06` (Model, Changes after publishing), `edge/timetable`, `edge/developer-rules`, `edge/time-dates-calendar`.
   - Build: pattern blocks and entries with the teacher, room and class rules per version; dated lesson blocks and lessons with their own start and end; the time claims table with the teacher, room and class-block exclusion constraints across all branches; the shared-room trigger; the constraint trigger "a student in at most one lesson of a block" on lesson writes.
   - Done when: the database refuses each double booking of lessons and of pattern entries in tests written as the application user, across two branches and two day templates by clock time.
@@ -512,7 +512,7 @@ How to read the task lines:
   - Build: what happens to existing dated lessons when a day off is added or removed, a day template changes, or quarter dates change; for a group of two grades, the choice when a calendar entry leaves school to only one grade (cancel the block, or keep it and exempt the grade that is off), and a lesson in a slot that does not match in both templates created as cancelled.
   - Done when: every row of the edge-case table has a test.
   - From 1.5 (pull request #46): a length or a template change from a date rechecks every future date with the new times and is refused on an overlap; a lesson slot used by the published timetable is not removed or reordered without a new version (`edge/time-dates-calendar`, "A slot type's length or a day template is changed mid-year"; owner's answer 12).
-  - From 5.1a (pull request #107, correction 6): a day off removes the lessons of its dates (`edge/time-dates-calendar`) under a delete grant on `lessons` and `lesson_blocks` added in a migration of its own; a quarter boundary moved over future dates changes `lesson_blocks.quarter_id`, which `lesson_block_quarter_fixed` allows only for a block whose start is after `app.now` and whose date does not change.
+  - From 5.1a (pull request #107, correction 6): a day off removes the lessons of its dates (`edge/time-dates-calendar`) under a delete grant on `lessons` and `lesson_blocks` added in a migration of its own; a quarter boundary moved over future dates changes `lesson_blocks.quarter_id`, which `lesson_block_quarter_fixed` (0059) allows only for a block dated after today in the branch's time zone and whose date does not change. `lesson_block_quarter` and `lesson_block_quarter_fixed` run only on writes to `lesson_blocks`: this task adds the guard on `quarters` itself, so that a quarter date moved over a held lesson's date, or leaving a stored quarter that no longer contains a block's date, is refused by the database (`edge/time-dates-calendar`, "Quarter dates are edited after lessons exist"; `edge/00-definitions`, Quarter of a lesson).
 
 - [ ] **5.6c Exams in the timetable**
   - Read: `06` (Changes after publishing, Rules, Free now board), `edge/timetable` (Exams, Versions and drafts), `edge/developer-rules`, `edge/calculation` (the rating exam), `edge/time-dates-calendar`.
