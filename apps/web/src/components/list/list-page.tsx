@@ -709,7 +709,8 @@ export function ListPage<Row>({
               {t('list.clearSearch')}
             </Button>
           )}
-          <div className="ml-auto flex items-center gap-2">
+          {/* Wraps at phone width: "Also export" and "Export" may not fit one row (3.5a). */}
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
             {canHide.length > 0 && (
               <DropdownMenu>
                 {/* The column chooser is an icon button (docs/design-system.md, Lists). */}

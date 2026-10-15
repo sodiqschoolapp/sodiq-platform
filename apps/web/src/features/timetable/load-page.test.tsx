@@ -715,3 +715,44 @@ describe('the teaching load page: splits, groups and weekly totals', () => {
     expect(await screen.findByText(en.timetable.load.totals.empty)).not.toBeNull();
   });
 });
+
+// Issue #105, H21: below 640 px the rows and the weekly totals are cards,
+// never a table wider than the phone; H19: the empty page's first action is
+// a primary button.
+describe('the teaching load at phone width and empty', () => {
+  it('draws one card per row and the totals as cards, the overrun in words', async () => {
+    setWindowWidth(375);
+    await openPage({
+      load: { rows: [row(1, { problems: ['load_teacher_status'] })] },
+      totals: {
+        classes: [{ id: OXFORD.id, name: 'Oxford', grade: 7, lessons: 32, lessonSlots: 30 }],
+        teachers: [{ ...TEACHER, lessons: 20, freeSlots: null, elsewhere: [], contract: 18 }],
+      },
+    });
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-load-card]')).toHaveLength(1);
+    });
+    expect(document.querySelector('table')).toBeNull();
+    const card = document.querySelector('[data-load-card]');
+    expect(within(card as HTMLElement).getByRole('button', { name: '7 Oxford' })).toBeDefined();
+    expect(card?.textContent).toContain('Karimova Aziza');
+    expect(card?.textContent).toContain(en.timetable.load.problems.load_teacher_status);
+    const classes = await screen.findByText('7 Oxford', {
+      selector: '[data-totals="classes"] li span',
+    });
+    expect(classes.closest('li')?.textContent).toContain(
+      en.timetable.load.totals.over_other.replace('{{n}}', '2'),
+    );
+    expect(document.querySelector('[data-totals="teachers"] li')?.textContent).toContain(
+      en.timetable.load.totals.over_other.replace('{{n}}', '2'),
+    );
+  });
+
+  it('offers the first row as a primary button on the empty page', async () => {
+    await openPage();
+    const heading = await screen.findByRole('heading', { name: en.timetable.load.emptyTitle });
+    const button = heading.parentElement?.querySelector('button');
+    expect(button?.textContent).toBe(en.timetable.load.add);
+    expect(button?.dataset.variant).toBe('default');
+  });
+});

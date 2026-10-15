@@ -970,3 +970,19 @@ describe('the classes of a Tutor who also reads every class', () => {
     expect(screen.queryByText(en.classes.emptyTutor)).toBeNull();
   });
 });
+
+// Issue #105, H19: the empty Classes page offers "New class" as a primary
+// button; the header's keeps the id the new-record panel gives the focus back to.
+describe('the empty Classes page', () => {
+  it('offers "New class" as a primary button, without a second id', async () => {
+    await openList({ classes: [] });
+    const heading = await screen.findByRole('heading', { name: en.classes.emptyTitle });
+    await waitFor(() => {
+      expect(heading.parentElement?.querySelector('button')?.hasAttribute('disabled')).toBe(false);
+    });
+    const button = heading.parentElement?.querySelector('button');
+    expect(button?.textContent).toBe(en.classes.add);
+    expect(button?.dataset.variant).toBe('default');
+    expect(button?.id).toBe('');
+  });
+});

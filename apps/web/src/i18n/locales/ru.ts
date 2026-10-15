@@ -2292,7 +2292,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     audit_log: 'Журнал аудита',
     short: {
       home: 'Главная',
-      setup: 'Настройки',
+      setup: 'Школа',
       people: 'Люди',
       classes: 'Классы',
       timetable: 'Расписание',

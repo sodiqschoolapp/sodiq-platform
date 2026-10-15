@@ -14,7 +14,7 @@ import { schoolDateText } from '@/lib/dates';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
 import { savedRecordPanel } from '@/testing/new-record';
-import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 import {
   actionsAreLast,
   edit,
@@ -2992,5 +2992,71 @@ describe('a student who starts later', () => {
         .find((row) => row.some((cell) => cell.includes('Saidova')))
         ?.at(-1),
     ).toBe(en.people.students.notStarted);
+  });
+});
+
+// Issue #105, H18: the Class filter offers every active class of the branch
+// and year, an empty one too; the rows' classes while the list fails.
+describe('the Class filter', () => {
+  const options = async () => {
+    const select = await screen.findByLabelText(en.people.students.class, { selector: 'select' });
+    return [...select.querySelectorAll('option')].map((option) => option.textContent);
+  };
+
+  it('offers an empty class, never an archived one or one of a closed year', async () => {
+    openList('principal', {
+      'GET /api/classes': () =>
+        json({
+          classes: [
+            ...CLASSES,
+            schoolClass(53, { name: 'Harvard', students: 0 }),
+            schoolClass(54, { name: 'Cambridge', yearStatus: 'closed' }),
+          ],
+        }),
+    });
+    renderApp(`${PATH}?f=${encodeURIComponent(JSON.stringify({ class: uid(53) }))}`);
+    await waitFor(async () => {
+      expect(await options()).toEqual([
+        en.list.all,
+        '7 Harvard',
+        '7 Oxford',
+        '8 Princeton',
+        en.people.students.noClass,
+      ]);
+    });
+    expect(
+      screen.getByLabelText<HTMLSelectElement>(en.people.students.class, { selector: 'select' })
+        .value,
+    ).toBe(uid(53));
+    expect(await screen.findByText(en.list.noMatch)).toBeDefined();
+    expect(rowsDrawn()).toEqual([]);
+  });
+
+  it('keeps the classes of the rows when the class list fails, says so and reads it again', async () => {
+    let failing = true;
+    const calls = openList('principal', {
+      'GET /api/classes': () =>
+        failing
+          ? refusal('internal_error', 500)
+          : json({ classes: [...CLASSES, schoolClass(53, { name: 'Harvard', students: 0 })] }),
+    });
+    renderApp(PATH);
+    const line = await screen.findByText(en.people.students.classesNotRead);
+    expect(await options()).toEqual([
+      en.list.all,
+      '7 Oxford',
+      '8 Princeton',
+      en.people.students.noClass,
+    ]);
+    failing = false;
+    const before = calls.filter((call) => call.route === 'GET /api/classes').length;
+    fireEvent.click(within(line).getByRole('button', { name: en.problems.retry }));
+    await waitFor(async () => {
+      expect(await options()).toContain('7 Harvard');
+    });
+    expect(calls.filter((call) => call.route === 'GET /api/classes').length).toBeGreaterThan(
+      before,
+    );
+    expect(screen.queryByText(en.people.students.classesNotRead)).toBeNull();
   });
 });

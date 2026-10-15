@@ -56,12 +56,13 @@ export async function moveSubjectDepartment(page: Page): Promise<void> {
   // reader, so nothing above it or on it hides it from the accessibility tree.
   await expect(listed).toContainText('7 Oxford · Cosmology · Qodirova Malika');
   await expect(listed).toBeVisible();
-  expect(
-    await listed.evaluate(
-      (element) =>
-        element.closest('[aria-hidden="true"], [inert]')?.outerHTML.slice(0, 300) ?? null,
-    ),
-  ).toBeNull();
+  // Found by its attributes: a role query finds nothing that is hidden.
+  const selector = `[role="status"][aria-label="${en.people.moveLoads.title}"]`;
+  const hidden = () =>
+    page.evaluate<boolean>(
+      `(() => document.querySelector(${JSON.stringify(selector)})?.closest('[aria-hidden="true"], [inert]') != null)()`,
+    );
+  expect(await hidden()).toBe(false);
   await expect(listed).toMatchAriaSnapshot(`
     - status "${en.people.moveLoads.title}":
       - heading "${en.people.moveLoads.title}" [level=4]
@@ -72,10 +73,6 @@ export async function moveSubjectDepartment(page: Page): Promise<void> {
   // The only thing that hides the list is the modal question the link opens
   // (the form keeps what was typed): while it is open everything behind it is
   // hidden, as it must be; once it closes the list is readable again (H20).
-  // Found by its attributes: a role query finds nothing the dialog hides.
-  const raw = panel.locator(`[role="status"][aria-label="${en.people.moveLoads.title}"]`);
-  const hidden = () =>
-    raw.evaluate((element) => element.closest('[aria-hidden="true"], [inert]') !== null);
   await listed.getByRole('link').click();
   const leave = page.getByRole('alertdialog', { name: en.unsent.leaveTitle });
   await expect(leave).toBeVisible();

@@ -46,6 +46,8 @@ export type AccountKey =
   | 'samePerson'
   | 'peopleTabs'
   | 'pages'
+  | 'handTestUz'
+  | 'handTestRu'
   | 'classes'
   | 'groups'
   | 'groupMembers'

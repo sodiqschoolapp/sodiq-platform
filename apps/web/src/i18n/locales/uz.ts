@@ -2199,7 +2199,7 @@ export const uz: Texts<'one' | 'other'> = {
     audit_log: 'Audit jurnali',
     short: {
       home: 'Asosiy',
-      setup: 'Sozlamalar',
+      setup: 'Maktab',
       people: 'Odamlar',
       classes: 'Sinflar',
       timetable: 'Jadval',

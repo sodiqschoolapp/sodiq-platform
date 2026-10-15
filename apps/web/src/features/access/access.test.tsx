@@ -331,7 +331,13 @@ describe('the tab bar on a phone', () => {
 
     const bar = within(screen.getByRole('navigation', { name: en.menu.tabs }));
     const items = MENU.principal.map((item) => en.menu[item]);
-    expect(bar.getAllByRole('link').map((link) => link.textContent)).toEqual(items.slice(0, 4));
+    // Issue #105, H16: the short labels on the bar, the full names as the tabs' names.
+    expect(bar.getAllByRole('link').map((link) => link.textContent)).toEqual(
+      MENU.principal.slice(0, 4).map((item) => en.menu.short[item]),
+    );
+    expect(bar.getAllByRole('link').map((link) => link.getAttribute('aria-label'))).toEqual(
+      items.slice(0, 4),
+    );
     expect(bar.getAllByRole('link')[0]?.getAttribute('aria-current')).toBe('page');
 
     fireEvent.click(bar.getByRole('button', { name: en.menu.more }));
