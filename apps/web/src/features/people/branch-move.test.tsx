@@ -251,6 +251,45 @@ describe('the move to another branch', () => {
     await savedInPanel(panel);
   });
 
+  it('reads the student again when the release was closed meanwhile, and keeps the refusal', async () => {
+    let closed = false;
+    const calls = open(detailOf({ branchMove: RELEASE }), {
+      [`GET /api/people/students/${STUDENT.id}`]: () =>
+        json(closed ? detailOf() : detailOf({ branchMove: RELEASE })),
+      [`POST /api/people/branch-moves/${RELEASE.id}/cancel`]: () => {
+        closed = true;
+        return json(
+          {
+            error: {
+              code: 'branch_move_closed',
+              message: 'The release was cancelled, declined or accepted meanwhile.',
+              requestId: 'r-1',
+            },
+          },
+          409,
+        );
+      },
+    });
+    renderApp(`${PATH}?open=${STUDENT.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await waitFor(() => {
+      expect(panelActionNames(panel)).toContain(texts.cancel);
+    });
+    const reads = () =>
+      calls.filter((call) => call.route === `GET /api/people/students/${STUDENT.id}`).length;
+    const before = reads();
+    fireEvent.click(within(panel).getByRole('button', { name: texts.cancel }));
+    const dialog = await screen.findByRole('alertdialog', { name: texts.cancelTitle });
+    fireEvent.click(within(dialog).getByRole('button', { name: texts.cancel }));
+    await waitFor(() => {
+      expect(reads()).toBeGreaterThan(before);
+    });
+    await waitFor(() => {
+      expect(panelActionNames(panel)).not.toContain(texts.cancel);
+    });
+    expect(within(panel).getByText(en.errors.branch_move_closed)).toBeDefined();
+  });
+
   it('shows the move into this branch in the Academic block', async () => {
     open(
       detailOf({

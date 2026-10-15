@@ -214,11 +214,16 @@ export function ReleaseForm({
   );
 }
 
-/** The cancel of the open release, after a confirmation naming the student; `null` when kept. */
+/**
+ * The cancel of the open release, after a confirmation naming the student;
+ * `null` when kept. A release closed meanwhile reads the student again, so
+ * its row and button go while the refusal stays (as `useCancelMove`).
+ */
 export function useCancelRelease(
   student: StudentDetail | undefined,
   label: string,
   onChanged: (answer: unknown) => Promise<void>,
+  onStale: () => Promise<void>,
 ) {
   const { t } = useTranslation();
   const confirm = useConfirm();
@@ -248,6 +253,11 @@ export function useCancelRelease(
     onSuccess: async (answer) => {
       if (answer !== null) {
         await onChanged(answer);
+      }
+    },
+    onError: async (error) => {
+      if (error instanceof ApiFailure && error.code === 'branch_move_closed') {
+        await onStale();
       }
     },
   });

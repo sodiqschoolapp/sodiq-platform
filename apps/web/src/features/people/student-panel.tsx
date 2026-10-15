@@ -213,10 +213,15 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     reread,
   );
   // Task 3.3c: the cancel of the open release to another branch.
-  const cancelRelease = useCancelRelease(student, name, async (answer) => {
-    await statusChanged(answer);
-    panel.point('status');
-  });
+  const cancelRelease = useCancelRelease(
+    student,
+    name,
+    async (answer) => {
+      await statusChanged(answer);
+      panel.point('status');
+    },
+    reread,
+  );
   // A status form whose action is no longer allowed (the student was read
   // again) is not drawn: the panel reads as with no form open.
   const gone = isStatusForm(panel.editing) && allowed !== null && !allowed[panel.editing];

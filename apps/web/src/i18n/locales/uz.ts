@@ -340,7 +340,7 @@ export const uz: Texts<'one' | 'other'> = {
     branch_move_open:
       'Bu oʻquvchi boshqa filialga allaqachon yuborilgan. Yuborishni bekor qiling yoki u filial qabul qilishi yoki rad etishini kuting.',
     branch_move_closed:
-      'Bu yuborish shu orada bekor qilingan, rad etilgan yoki qabul qilingan. Roʻyxatni qayta oching.',
+      'Bu yuborish shu orada bekor qilingan, rad etilgan yoki qabul qilingan, shuning uchun hech narsa oʻzgarmadi.',
     branch_move_not_yet:
       'Bu yuborishni uning birinchi kunidan boshlab qabul qilish mumkin. Oʻsha kuni qabul qiling.',
     branch_move_language_differs:
@@ -351,7 +351,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu sana filialning hech bir oʻquv yilida emas. Yil ichidagi sanani tanlang.',
     branch_move_year_closed: 'Bu sana yopilgan oʻquv yilida. Ochiq yildagi sanani tanlang.',
     status_scheduled:
-      'Bu oʻquvchining ketishi yoki bitirishi shu sanadan keyin rejalashtirilgan. Avval uni oʻzgartiring yoki bekor qiling.',
+      'Bu oʻquvchining ketishi yoki bitirishi shu sanadan keyin rejalashtirilgan. Avval uni oʻquvchi oʻqiyotgan filial oʻzgartiradi yoki bekor qiladi.',
     before_branch_move:
       'Bu sana oʻquvchi shu filialga oʻtishidan oldin. Oʻtish kuni yoki undan keyingi sanani tanlang.',
     move_scheduled:

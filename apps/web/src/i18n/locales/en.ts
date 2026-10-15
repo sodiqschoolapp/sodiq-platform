@@ -334,7 +334,7 @@ export const en = {
     branch_move_open:
       'This student already has a release to another branch. Cancel it, or wait until that branch accepts or declines it.',
     branch_move_closed:
-      'This release was cancelled, declined or accepted meanwhile. Read the list again.',
+      'This release was cancelled, declined or accepted meanwhile, so nothing was changed.',
     branch_move_not_yet:
       'This release can be accepted from its first day on. Accept it on that day.',
     branch_move_language_differs:
@@ -346,7 +346,7 @@ export const en = {
     branch_move_year_closed:
       'That date is in a closed academic year. Choose a date in the open year.',
     status_scheduled:
-      'A leaving or graduation of this student is scheduled after that date. Change or cancel it first.',
+      'A leaving or graduation of this student is scheduled after that date. The branch the student studies in changes or cancels it first.',
     before_branch_move:
       'That date is before the student moved to this branch. Choose a date on or after the move.',
     move_scheduled:
