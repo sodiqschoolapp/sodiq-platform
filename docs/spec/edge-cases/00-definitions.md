@@ -14,7 +14,7 @@ These words are used throughout the spec. Each has one meaning, written once in 
 | Held lesson | A lesson whose start time has passed, which is not cancelled, and which has a teacher recorded (not "needs a teacher" or "unresolved"). Whether anything was entered does not matter. |
 | Data on a lesson | An attendance mark, a number, a total, a "not held" mark or a comment entered by a person. Exemption marks, plan items and one-day changes are not data. |
 | Expected student | A student who is a member of the class or group on the lesson's date and is not exempt for that lesson. |
-| Previous lesson | For homework: the nearest earlier held lesson of the same journal in the same academic year. Cancelled lessons are skipped; extra and substituted lessons count. |
+| Previous lesson | For homework: the nearest earlier held lesson of the same journal in the same academic year. Cancelled lessons are skipped; substituted lessons count. |
 | Quarter of a lesson | The quarter that contains its date. It is stored on the lesson. |
 | Lock moment | 23:59 branch time on the lesson's date plus the edit days (7). Calendar days are counted and vacations do not pause the count. It is fixed per lesson; changing the setting affects only lessons dated after the change. |
 | Reference date | For class and group figures: the last day of the quarter, or today while the quarter is open. |
