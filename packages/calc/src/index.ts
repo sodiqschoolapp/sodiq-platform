@@ -1,3 +1,13 @@
 // The calculation module. Every percentage, average, result and grade comes from here.
-// The exact fraction type and the first rules arrive in task 4.1.
-export {};
+export { attendanceValue, type AttendanceMark, type AttendanceValues } from './attendance.js';
+export {
+  lessonScore,
+  type DailyWeights,
+  type LessonParts,
+  type LessonScore,
+  type LessonScoreInput,
+  type Work,
+} from './daily.js';
+export { Fraction } from './fraction.js';
+export { CalcInputError, type CalcInputErrorCode } from './input.js';
+export { shownPercent, workPercent } from './work.js';
