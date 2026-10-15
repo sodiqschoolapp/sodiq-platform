@@ -1060,6 +1060,8 @@ describe('draft versions and the teaching load', () => {
       });
       const out = await load.teacher(t.north, { subjects: [{ subject, grades: [7] }] });
       await load.status(out.staffId, 'left', '2026-10-11');
+      // A teacher of another branch with the subject is never named here.
+      const southern = await load.teacher(t.south, { subjects: [{ subject, grades: [8] }] });
       const otherSubject = await load.classes.subject({ grades: [7] });
       const noSubject = await load.teacher(t.north, {
         subjects: [{ subject: otherSubject, grades: [7] }],
@@ -1076,6 +1078,7 @@ describe('draft versions and the teaching load', () => {
       expect(reasons.get(noLanguage.staffId)).toBe('language');
       expect(reasons.get(out.staffId)).toBe('status');
       expect(reasons.has(noSubject.staffId)).toBe(false);
+      expect(reasons.has(southern.staffId)).toBe(false);
       expect(reasons.has(own.teacher)).toBe(false);
       expect(offered.noTutor).toBe(false);
       // A Tutor subject on a class with no Tutor says so.

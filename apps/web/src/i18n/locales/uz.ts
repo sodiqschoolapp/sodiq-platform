@@ -606,7 +606,7 @@ export const uz: Texts<'one' | 'other'> = {
     students: 'Oʻquvchilar',
     staff: 'Xodimlar',
     relatives: 'Ota-onalar',
-    relativeOf: 'Ota-onasi: {{name}}',
+    relativeOf: 'Qarindoshi: {{name}}',
     relativeStudents_one: 'Bu yerda {{count}} ta oʻquvchi',
     relativeStudents_other: 'Bu yerda {{count}} ta oʻquvchi',
     classes: 'Sinflar',
@@ -2665,10 +2665,8 @@ export const uz: Texts<'one' | 'other'> = {
       '{{class}} sinfida {{date}}dan boʻsh oʻrin yoʻq. Boshqa sinfni tanlang yoki sinf sigʻimini oshiring.',
     fullFromUnnamed:
       'Sinfda {{date}}dan boʻsh oʻrin yoʻq. Boshqa sinfni tanlang yoki sinf sigʻimini oshiring.',
-    fullFromSeveral:
-      '{{class}} sinfida {{date}}dan {{students}} ta oʻquvchiga joy yetmaydi: boʻsh oʻrin {{free}} ta.',
-    fullFromSeveralUnnamed:
-      'Sinfda {{date}}dan {{students}} ta oʻquvchiga joy yetmaydi: boʻsh oʻrin {{free}} ta.',
+    fullFromSeveral: '{{class}} sinfida {{date}}dan {{students}} ta oʻquvchiga joy yetmaydi.',
+    fullFromSeveralUnnamed: 'Sinfda {{date}}dan {{students}} ta oʻquvchiga joy yetmaydi.',
     endCauses: { ended: 'Yakunlangan', role: 'Rol yakunlangan', archive: 'Sinf arxivlangan' },
     groupsLink: 'Guruhlar',
     mixedGroupsTitle: 'Bu guruhlarning tili saqlansinmi?',

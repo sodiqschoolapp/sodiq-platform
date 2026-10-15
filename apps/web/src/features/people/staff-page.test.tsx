@@ -654,7 +654,8 @@ describe('the staff page', () => {
     type(en.people.staff.lastName, 'Rahimov');
     type(en.people.staff.sex, 'male');
     type(en.people.staff.birthDate, '1985-02-03');
-    type(en.people.staff.phone, '+998 90 111 22 33');
+    // Task 3.5b, H25: a whole number pasted after the prefilled "+998 ".
+    type(en.people.staff.phone, '+998 +998901112233');
     type(en.people.staff.admissionDate, '2026-09-01');
     type(en.people.staff.department, uid(11));
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));

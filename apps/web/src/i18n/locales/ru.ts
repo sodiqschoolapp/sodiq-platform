@@ -601,7 +601,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     students: 'Ученики',
     staff: 'Сотрудники',
     relatives: 'Родители',
-    relativeOf: 'Родитель: {{name}}',
+    relativeOf: 'Родственник: {{name}}',
     relativeStudents_one: '{{count}} ученик здесь',
     relativeStudents_few: '{{count}} ученика здесь',
     relativeStudents_many: '{{count}} учеников здесь',
@@ -2766,10 +2766,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'В классе {{class}} нет свободного места с {{date}}. Выберите другой класс или увеличьте вместимость.',
     fullFromUnnamed:
       'В классе нет свободного места с {{date}}. Выберите другой класс или увеличьте вместимость.',
-    fullFromSeveral:
-      'В классе {{class}} с {{date}} не хватает мест для {{students}} учеников: свободно {{free}}.',
-    fullFromSeveralUnnamed:
-      'В классе с {{date}} не хватает мест для {{students}} учеников: свободно {{free}}.',
+    fullFromSeveral: 'В классе {{class}} с {{date}} не хватает мест для {{students}} учеников.',
+    fullFromSeveralUnnamed: 'В классе с {{date}} не хватает мест для {{students}} учеников.',
     endCauses: { ended: 'Завершён', role: 'Роль завершена', archive: 'Класс в архиве' },
     groupsLink: 'Группы',
     mixedGroupsTitle: 'Оставить язык этих групп?',

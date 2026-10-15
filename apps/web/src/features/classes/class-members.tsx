@@ -180,7 +180,6 @@ export function useClassFullText(error: unknown): string | undefined {
   const values = {
     date: schoolDateText(detail.fullFrom, i18n.language),
     students: detail.students ?? 1,
-    free: Math.max(detail.freeSeats ?? 0, 0),
     ...(found === undefined ? {} : { class: classDisplayName(found.grade, found.name) }),
   };
   if ((detail.students ?? 1) > 1) {

@@ -183,8 +183,13 @@ describe('a phone field', () => {
     fireEvent.change(field(), { target: { value: '+998 ' } });
     expect(screen.getByText(en.form.required)).toBeDefined();
     unmount();
-    render(<Phone error="x" uzbekOnly />);
+    const { unmount: again } = render(<Phone error="x" uzbekOnly />);
     fireEvent.change(field(), { target: { value: '+998 90 12' } });
     expect(screen.getByText(en.form.phoneFormat)).toBeDefined();
+    again();
+    // A well-formed number refused for another reason keeps that reason.
+    render(<Phone error="Another phone, please." />);
+    fireEvent.change(field(), { target: { value: '+998 90 123 45 01' } });
+    expect(screen.getByText('Another phone, please.')).toBeDefined();
   });
 });

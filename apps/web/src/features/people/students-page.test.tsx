@@ -840,6 +840,61 @@ describe('adding a student', () => {
     );
   });
 
+  const fullRefusal = (classId: string, students: number) => () =>
+    Response.json(
+      {
+        error: {
+          code: 'class_full',
+          message: 'x',
+          requestId: 'r',
+          details: [
+            {
+              path: 'students',
+              code: 'class_full',
+              message: 'x',
+              freeSeats: 0,
+              classId,
+              fullFrom: '2026-10-21',
+              students,
+            },
+          ],
+        },
+      },
+      { status: 409 },
+    );
+
+  it('says the full class without its name when the list does not hold it, and reads the list again', async () => {
+    const calls = openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/students': fullRefusal(uid(99), 1),
+    });
+    renderApp(PATH);
+    const form = await fillAndSave(uid(50));
+    expect((await within(form).findByRole('alert')).textContent).toBe(
+      en.classes.fullFromUnnamed.replace('{{date}}', schoolDateText('2026-10-21', 'en')),
+    );
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === 'GET /api/classes').length).toBeGreaterThan(1);
+    });
+  });
+
+  it('says how many students a full class lacks seats for', async () => {
+    openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/students': fullRefusal(uid(50), 3),
+    });
+    renderApp(PATH);
+    const form = await fillAndSave(uid(50));
+    expect((await within(form).findByRole('alert')).textContent).toBe(
+      en.classes.fullFromSeveral
+        .replace('{{class}}', '7 Oxford')
+        .replace('{{students}}', '3')
+        .replace('{{date}}', schoolDateText('2026-10-21', 'en')),
+    );
+  });
+
   // Owner's answer to finding 27 (task 2.7b-1, decision 3): a list of names
   // inside a message is a list, surname first.
   it('names the students of the same name and date of birth surname first', async () => {

@@ -2648,10 +2648,8 @@ export const en = {
       '{{class}} has no free seat from {{date}}. Choose another class or raise its maximum.',
     fullFromUnnamed:
       'The class has no free seat from {{date}}. Choose another class or raise its maximum.',
-    fullFromSeveral:
-      '{{class}} lacks seats for {{students}} students from {{date}}: {{free}} free.',
-    fullFromSeveralUnnamed:
-      'The class lacks seats for {{students}} students from {{date}}: {{free}} free.',
+    fullFromSeveral: '{{class}} lacks seats for {{students}} students from {{date}}.',
+    fullFromSeveralUnnamed: 'The class lacks seats for {{students}} students from {{date}}.',
     endCauses: { ended: 'Ended', role: 'Role ended', archive: 'Class archived' },
     groupsLink: 'Groups',
     mixedGroupsTitle: 'Keep the language of these groups?',

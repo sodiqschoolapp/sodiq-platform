@@ -2,7 +2,13 @@ import { cn } from 'cn';
 import { ArrowDownwardIcon, ArrowUpwardIcon, CloseIcon } from '@/components/icons';
 import { useId, useState, type ComponentProps, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { phoneLeftEmpty, typedPhoneText } from '@sodiq/shared';
+import {
+  BRANCH_PHONE_FORMAT,
+  PHONE_FORMAT,
+  phoneLeftEmpty,
+  storedPhone,
+  typedPhoneText,
+} from '@sodiq/shared';
 import { Button } from '@/components/ui/button';
 import { CHECKBOX, CHECKBOX_TARGET } from '@/components/ui/control';
 import { Input } from '@/components/ui/input';
@@ -146,14 +152,20 @@ export function PhoneField({
   ...field
 }: PhoneFieldProps) {
   const { t } = useTranslation();
+  // The format text only when the format is wrong; any other refusal of a
+  // well-formed number (the earlier owner's phone equal to the new one) keeps
+  // its own message (spec review of the build, must-fix 3).
+  const wellFormed = (uzbekOnly ? BRANCH_PHONE_FORMAT : PHONE_FORMAT).test(storedPhone(value));
   const shown =
     error === undefined
       ? otherError
       : phoneLeftEmpty(value)
         ? t('form.required')
-        : uzbekOnly
-          ? t('form.phoneFormat')
-          : t('form.phoneFormatAny');
+        : wellFormed
+          ? error
+          : uzbekOnly
+            ? t('form.phoneFormat')
+            : t('form.phoneFormatAny');
   return (
     <Field
       {...field}
