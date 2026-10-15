@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 3.5b Hand test of Phase 3: forms, refusals and messages
+
+- Built every item H22 to H33 of issue #105 (Part C): Give Tutor says who gives roles and links to Staff; Archive off while a class or group holds students; a full class marked in the Add student choice and named with its first full day in every seat refusal (the class move now checks seats before its write); one phone parser (`storedPhone`, `PHONE_FORMAT`) for every phone field and schema; Save waits for the relative lookup; the language question once per move; the panel stays on History; the merge preview lists the values that differ; the reasons no teacher can take a load row; the vacancy Subjects field with its line; a branch switch closes the old branch's record; Parents and children by phone in Ctrl+K.
+- A browser test (`e2e/hand-test-3-5b.spec.ts`) adds a student with a pasted phone and a full class, switches branch with an edited class open, and finds a parent and the child by phone.
+- Left out: Part D (H34 to H36), task 3.5c; the handbook pages, task 3.7 (its "From 3.5b" line); the Parents list's phone search for the Principal (a known gap, on 3.6a's "From 3.5b" line).
+
+The next sessions must know:
+
+- `PhoneField` (`components/field.tsx`) is the phone field of every form; the schemas read phones through `storedPhone`: an Uzbek number is "+998" and exactly nine digits.
+- `class_full` from a check before the write carries `classId`, `fullFrom` and `students`; `useClassFullText` names it on the screen. `fullFrom` reads `class_members_peak` on the candidate days of the stay.
+- `usePhoneLookup` and `linkingFound` (`relative-form.tsx`) are the lookup a Save waits for.
+- The next task is 3.5c.
+
 ## 15 October 2026: task 3.5a Hand test of Phase 3: wording and small screen fixes
 
 - Built every item H1 to H21 and H11b of issue #105 (Parts A and B): the list counts in words; the branch name written once; a scheduled leaving in the future tense; the duplicate class or group name, the language question of a move and a return, and the department move refusal naming the class with its grade; surname-first headers in the lists and exports; the Russian and Uzbek words; the role switch as a menu button with its hint; the incoming moves hidden when empty; "From <date>" for a later start (list, record, Ctrl+K, merge preview, export); "Change log"; scrollbar-free tabs with a faded cut edge; short phone tab labels; folded filters; every class in the Class filter; primary empty-state buttons; the teaching load and its totals as cards at phone width.
