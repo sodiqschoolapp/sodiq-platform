@@ -19,11 +19,16 @@ import { inGroupScope } from '../access/group-scope.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { CLASS_GROUP_REFUSALS, coverClassRows, lockClassGroups } from '../classes/class-groups.js';
-import { MEMBERSHIP_REFUSALS, classesInService } from '../classes/class-membership-rows.js';
+import {
+  MEMBERSHIP_REFUSALS,
+  classesInService,
+  membersPeak,
+} from '../classes/class-membership-rows.js';
 import {
   lockPlacementStudents,
   readPlacementClass,
   type PlacementStudent,
+  classFull,
 } from '../classes/class-placement.js';
 import {
   CLASS_PATH_GROUP_REFUSALS,
@@ -449,6 +454,13 @@ export class StudentMoves {
     );
     for (const row of cut) {
       await this.cutClassRow(transaction, row, later(row.validFrom, from), moveId);
+    }
+    // H24 of issue #105: the seats of the target over the days the row holds,
+    // checked before the write so the refusal names the class and the first
+    // full day (the guard of 0045 still checks under its locks).
+    const peak = await membersPeak(transaction, target.id, from, end.until);
+    if (peak >= target.maxSize) {
+      throw await classFull(transaction, target, from, end.until, 1, 'toClassId');
     }
     const written = await transaction
       .insertInto('class_memberships')

@@ -10,6 +10,8 @@ import {
   classPlacementResultSchema,
   classParamsSchema,
   classPlacementSchema,
+  classSeatsQuerySchema,
+  classSeatsSchema,
   classTutorEndSchema,
   classTutorGiveSchema,
   classTutorParamsSchema,
@@ -24,13 +26,15 @@ import {
   type ClassPlacementResult,
   type ClassParams,
   type ClassPlacement,
+  type ClassSeats,
+  type ClassSeatsQuery,
   type ClassTutorEnd,
   type ClassTutorGive,
   type ClassTutorParams,
   type TutorCandidateList,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ReturnsFile, ValidBody, ValidParams } from '../../http/schemas.js';
+import { Returns, ReturnsFile, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
@@ -69,6 +73,21 @@ export class ClassesController {
   @Returns(tutorCandidateListSchema)
   candidates(@CurrentAccess() access: Access): Promise<TutorCandidateList> {
     return this.tutors.candidates(access);
+  }
+
+  /**
+   * The free seats of the classes a new student can join from a date (task
+   * 3.5b, H24 of issue #105): for the roles that add a student. Declared
+   * before `:id`, which would take it otherwise.
+   */
+  @Get('seats')
+  @Requires('students', 'create')
+  @Returns(classSeatsSchema)
+  seats(
+    @CurrentAccess() access: Access,
+    @ValidQuery(classSeatsQuerySchema) query: ClassSeatsQuery,
+  ): Promise<ClassSeats> {
+    return this.members.seats(access, query.from);
   }
 
   /** The Excel file of the list. */

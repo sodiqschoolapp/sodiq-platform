@@ -146,6 +146,51 @@ export function GroupSeatRefusal({ error }: { error: unknown }) {
   );
 }
 
+/**
+ * The text of a `class_full` that names the class and the first day without
+ * a seat (task 3.5b, H24 of issue #105), by the classes list already read;
+ * while that list does not hold the class, the text without the name and the
+ * list read again (.claude/rules/web.md). `undefined` for any other failure,
+ * and for the database's refusal, which names no day.
+ */
+export function useClassFullText(error: unknown): string | undefined {
+  const { t, i18n } = useTranslation();
+  const { branchId } = useView();
+  const detail =
+    error instanceof ApiFailure && error.code === 'class_full'
+      ? error.details?.find((one) => one.classId !== undefined && one.fullFrom !== undefined)
+      : undefined;
+  const classes = useQuery({
+    ...classesQuery(branchId),
+    enabled: branchId !== null && detail !== undefined,
+  });
+  const found = classes.data?.classes.find((one) => one.id === detail?.classId);
+  const missing = detail !== undefined && classes.data !== undefined && found === undefined;
+  const reread = useRef<unknown>(null);
+  const { refetch } = classes;
+  useEffect(() => {
+    if (missing && reread.current !== error) {
+      reread.current = error;
+      void refetch();
+    }
+  }, [missing, error, refetch]);
+  if (detail?.fullFrom === undefined) {
+    return undefined;
+  }
+  const values = {
+    date: schoolDateText(detail.fullFrom, i18n.language),
+    students: detail.students ?? 1,
+    free: Math.max(detail.freeSeats ?? 0, 0),
+    ...(found === undefined ? {} : { class: classDisplayName(found.grade, found.name) }),
+  };
+  if ((detail.students ?? 1) > 1) {
+    return found === undefined
+      ? t('classes.fullFromSeveralUnnamed', values)
+      : t('classes.fullFromSeveral', values);
+  }
+  return found === undefined ? t('classes.fullFromUnnamed', values) : t('classes.fullFrom', values);
+}
+
 /** After "Put into a class": how many students were placed into groups automatically, and where to review them. */
 export function GroupsPlacedNotice({ count }: { count: number }) {
   const { t, i18n } = useTranslation();
@@ -371,6 +416,8 @@ function PickForm({
       }),
     ),
   );
+  // H24: a full class named with its first day without a seat.
+  const classFullText = useClassFullText(form.failure);
   if (students.isError) {
     return (
       <ErrorState
@@ -389,7 +436,7 @@ function PickForm({
     return row === undefined ? undefined : listName(row);
   });
   return (
-    <RecordForm form={form} label={label} onCancel={onCancel}>
+    <RecordForm form={form} failureText={classFullText} label={label} onCancel={onCancel}>
       {candidates.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('classes.noPlaceable')}</p>
       ) : (
@@ -461,6 +508,8 @@ export function PlaceTickedForm({
       onPlaced(rows.length, new Set(answer.groupsPlaced.map((one) => one.studentId)).size);
     },
   });
+  // H24: a full class named with its first day without a seat.
+  const classFullText = useClassFullText(form.failure);
   const chosen = offered.find((one) => one.id === form.bind('classId').value);
   useFollowingDefault(
     form.bind('from'),
@@ -494,7 +543,7 @@ export function PlaceTickedForm({
     return row === undefined ? undefined : listName(row);
   });
   return (
-    <RecordForm form={form} label={title}>
+    <RecordForm form={form} failureText={classFullText} label={title}>
       <p className="text-sm">{rows.map((row) => listName(row)).join(', ')}</p>
       {offered.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('classes.noClassOfGrade')}</p>

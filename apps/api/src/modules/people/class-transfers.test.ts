@@ -1,4 +1,4 @@
-import { studentDetailSchema, type StudentDetail } from '@sodiq/shared';
+import { apiErrorSchema, studentDetailSchema, type StudentDetail } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -1013,6 +1013,58 @@ describe('class transfers', () => {
       const one = await pupil(oxford);
       ok(await transfer(one.id, yale, '2026-10-05'));
       refusedWith(await transfer(one.id, harvard, '2026-10-03'), 409, 'move_before_later');
+    });
+  });
+
+  // Task 3.5b, H24 of issue #105, and correction 1 of its review: the class
+  // move checks the seats of the target before its write, over the days the
+  // new row holds, and the refusal names the class and the first full day.
+  describe('a full target class (H24)', () => {
+    it('refuses a move into a full class naming the class and the first day without a seat', async () => {
+      const oxford = await schoolClass();
+      const yale = await schoolClass({ maxSize: 1 });
+      await pupil(yale);
+      const one = await pupil(oxford);
+      const response = await transfer(one.id, yale);
+      refusedWith(response, 409, 'class_full');
+      expect(apiErrorSchema.parse(response.body).error.details).toEqual([
+        expect.objectContaining({
+          path: 'toClassId',
+          code: 'class_full',
+          classId: yale,
+          fullFrom: TOMORROW,
+          students: 1,
+          freeSeats: 0,
+        }),
+      ]);
+      expect(await held(one.id)).toEqual([[oxford, '2026-09-02', '2027-06-01']]);
+    });
+
+    it('names a later first full day when the target fills with a scheduled join', async () => {
+      const oxford = await schoolClass();
+      const yale = await schoolClass({ maxSize: 1 });
+      const joining = await pupil(oxford);
+      ok(await transfer(joining.id, yale, '2026-11-02'));
+      const one = await pupil(oxford);
+      const response = await transfer(one.id, yale);
+      refusedWith(response, 409, 'class_full');
+      expect(apiErrorSchema.parse(response.body).error.details).toEqual([
+        expect.objectContaining({ classId: yale, fullFrom: '2026-11-02' }),
+      ]);
+    });
+
+    it('moves a student with a scheduled leaving into a class that fills only after the leaving', async () => {
+      const oxford = await schoolClass();
+      const yale = await schoolClass({ maxSize: 1 });
+      const joining = await pupil(oxford);
+      ok(await transfer(joining.id, yale, '2026-11-02'));
+      const one = await pupil(oxford);
+      await leave(one.id, '2026-10-31');
+      ok(await transfer(one.id, yale));
+      expect(await held(one.id)).toEqual([
+        [oxford, '2026-09-02', TOMORROW],
+        [yale, TOMORROW, '2026-11-01'],
+      ]);
     });
   });
 });

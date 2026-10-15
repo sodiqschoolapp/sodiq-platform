@@ -761,6 +761,85 @@ describe('adding a student', () => {
     });
   });
 
+  // Task 3.5b, H24 of issue #105: a full class is marked in the choice.
+  it('marks a class full from the start date, or from a later day, and keeps it selectable', async () => {
+    const twin = schoolClass(53, { name: 'Harvard' });
+    openList('academic_vice_principal', {
+      'GET /api/classes': () => json({ classes: [...CLASSES, twin] }),
+      'GET /api/classes/seats': () =>
+        json({
+          classes: [
+            { classId: uid(50), maxSize: 25, fullFrom: '2026-09-02' },
+            { classId: twin.id, maxSize: 25, fullFrom: '2026-10-21' },
+          ],
+        }),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.students.newTitle }),
+    ).getByRole('form', { name: en.people.students.newTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2026-09-02');
+    const classField = await within(form).findByLabelText<HTMLSelectElement>(
+      en.people.students.class,
+    );
+    const later = en.classes.seatsFullFrom
+      .replace('{{class}}', '7 Harvard')
+      .replace('{{date}}', schoolDateText('2026-10-21', 'en'));
+    await waitFor(() => {
+      expect([...classField.querySelectorAll('option')].map((one) => one.textContent)).toEqual([
+        en.people.students.noClassYet,
+        `${en.classes.seatsFull.replace('{{class}}', '7 Oxford')} · 2026–2027`,
+        `${later} · 2026–2027`,
+      ]);
+    });
+    type(en.people.students.class, uid(50));
+    expect(classField.value).toBe(uid(50));
+    expect(
+      within(form).getByText(en.classes.seatsFull.replace('{{class}}', '7 Oxford')),
+    ).toBeDefined();
+  });
+
+  it('names the full class and its first day without a seat in the refusal', async () => {
+    openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/students': () =>
+        Response.json(
+          {
+            error: {
+              code: 'class_full',
+              message: 'x',
+              requestId: 'r',
+              details: [
+                {
+                  path: 'students',
+                  code: 'class_full',
+                  message: 'x',
+                  freeSeats: 0,
+                  classId: uid(50),
+                  fullFrom: '2026-10-21',
+                  students: 1,
+                },
+              ],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    const form = await fillAndSave(uid(50));
+    expect((await within(form).findByRole('alert')).textContent).toBe(
+      en.classes.fullFrom
+        .replace('{{class}}', '7 Oxford')
+        .replace('{{date}}', schoolDateText('2026-10-21', 'en')),
+    );
+  });
+
   // Owner's answer to finding 27 (task 2.7b-1, decision 3): a list of names
   // inside a message is a list, surname first.
   it('names the students of the same name and date of birth surname first', async () => {

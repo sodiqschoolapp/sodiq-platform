@@ -4,7 +4,7 @@ import type { Transaction } from '../../database/transactions.js';
 import type { Access } from '../access/permission.guard.js';
 import type { Audit } from '../audit/audit.service.js';
 import { notFound } from '../setup/setup-refusals.js';
-import { membersPeak, membershipsOf } from './class-membership-rows.js';
+import { fullFrom, membersPeak, membershipsOf } from './class-membership-rows.js';
 import {
   holdsDays,
   placementEnd,
@@ -194,14 +194,7 @@ export async function planPlacement(
   const until = rows.reduce((latest, row) => (row.until > latest ? row.until : latest), from);
   const free = placement.maxSize - (await membersPeak(transaction, placement.id, from, until));
   if (rows.length > free) {
-    throw new ApiException('class_full', 409, undefined, [
-      {
-        path: 'students',
-        code: 'class_full',
-        message: 'The class has fewer free seats than students.',
-        freeSeats: Math.max(free, 0),
-      },
-    ]);
+    throw await classFull(transaction, placement, from, until, rows.length, 'students');
   }
   return rows;
 }
@@ -256,4 +249,32 @@ export async function writePlacement(
     ids.push(written.id);
   }
   return ids;
+}
+
+/**
+ * The refusal `class_full` of a check before the write (task 3.5b, H24 of
+ * issue #105): the fewest free seats, the class, the first day it has fewer
+ * free seats than the students placed in `[from, until)`, and how many.
+ */
+export async function classFull(
+  transaction: Transaction,
+  placement: { id: string; maxSize: number },
+  from: SchoolDate,
+  until: SchoolDate | null,
+  students: number,
+  path: string,
+): Promise<ApiException> {
+  const free = placement.maxSize - (await membersPeak(transaction, placement.id, from, until));
+  const day = await fullFrom(transaction, placement.id, placement.maxSize, from, until, students);
+  return new ApiException('class_full', 409, undefined, [
+    {
+      path,
+      code: 'class_full',
+      message: 'The class has fewer free seats than students.',
+      freeSeats: Math.max(free, 0),
+      classId: placement.id,
+      students,
+      ...(day === null ? {} : { fullFrom: day }),
+    },
+  ]);
 }

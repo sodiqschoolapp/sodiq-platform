@@ -31,6 +31,7 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { useMayView, useView } from '@/features/access/use-view';
+import { useClassFullText } from '@/features/classes/class-members';
 import { classesQuery } from '@/features/classes/classes-api';
 import { nameOf } from '@/features/setup/setup-api';
 import { subjectsQuery } from '@/features/setup/subjects-api';
@@ -453,8 +454,10 @@ function AcceptGroupsForm({
       onDone(className);
     },
   });
+  // H24: a full class named with its first day without a seat.
+  const classFullText = useClassFullText(form.failure);
   return (
-    <RecordForm form={form} label={label} onCancel={onCancel}>
+    <RecordForm form={form} failureText={classFullText} label={label} onCancel={onCancel}>
       <p className="text-sm text-muted-foreground">
         {t('people.students.branchMoves.freeSeats', { count: freeSeats })}
       </p>

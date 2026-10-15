@@ -16,7 +16,14 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
-import { CheckboxGroupField, DateField, Field, listValue, PhoneField, listValues } from '@/components/field';
+import {
+  CheckboxGroupField,
+  DateField,
+  Field,
+  listValue,
+  PhoneField,
+  listValues,
+} from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { PageHeader } from '@/components/page-header';

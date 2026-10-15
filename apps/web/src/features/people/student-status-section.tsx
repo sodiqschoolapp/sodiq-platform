@@ -32,7 +32,7 @@ import { SECTION_TITLE } from '@/components/ui/control';
 import type { PanelEditing } from '@/components/list/use-panel-editing';
 import { ErrorState } from '@/components/states';
 import { useView } from '@/features/access/use-view';
-import { GroupSeatRefusal } from '@/features/classes/class-members';
+import { GroupSeatRefusal, useClassFullText } from '@/features/classes/class-members';
 import { classesQuery, classMembersQuery } from '@/features/classes/classes-api';
 import { yearsQuery } from '@/features/setup/setup-api';
 
@@ -481,10 +481,17 @@ export function ReturnForm({
       [chooseClass],
     ),
   });
+  // H24: a full class named with its first day without a seat.
+  const classFullText = useClassFullText(form.failure);
   return (
     <section className="grid gap-3">
       <h3 className={SECTION_TITLE}>{t('people.students.returnTitle')}</h3>
-      <RecordForm form={form} label={t('people.students.returnTitle')} onCancel={onCancel}>
+      <RecordForm
+        form={form}
+        failureText={classFullText}
+        label={t('people.students.returnTitle')}
+        onCancel={onCancel}
+      >
         <DateField
           label={t('people.students.returnFrom')}
           {...from}
@@ -599,10 +606,17 @@ export function RestoreForm({ student, label, onChanged, onStale, onCancel }: Ch
       [chooseClass],
     ),
   });
+  // H24: a full class named with its first day without a seat.
+  const classFullText = useClassFullText(form.failure);
   return (
     <section className="grid gap-3">
       <h3 className={SECTION_TITLE}>{t('people.students.restoreTitle')}</h3>
-      <RecordForm form={form} label={t('people.students.restoreTitle')} onCancel={onCancel}>
+      <RecordForm
+        form={form}
+        failureText={classFullText}
+        label={t('people.students.restoreTitle')}
+        onCancel={onCancel}
+      >
         <DateField
           label={t('people.students.restoreFrom')}
           {...from}

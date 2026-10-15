@@ -35,8 +35,9 @@ import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
-import { classesQuery } from '@/features/classes/classes-api';
-import { GroupSeatRefusal } from '@/features/classes/class-members';
+import { classesQuery, classSeatsQuery } from '@/features/classes/classes-api';
+import { schoolDateText } from '@/lib/dates';
+import { GroupSeatRefusal, useClassFullText } from '@/features/classes/class-members';
 import { yearsQuery } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import {
@@ -262,7 +263,7 @@ export function StudentForm({
   onPhoneMatch,
   onCancel,
 }: StudentFormProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { branchId } = useView();
   const creating = student === null;
   const [match, setMatch] = useState<Match | null>(null);
@@ -490,6 +491,22 @@ export function StudentForm({
       String(one.grade) === form.bind('grade').value &&
       one.academicYearId === startYear?.id,
   );
+  // H24 of issue #105: a full class is marked in the choice, with the first
+  // day without a seat from the start date; it stays selectable (the server
+  // decides on the date).
+  const seats = useQuery(
+    classSeatsQuery(branchId, startsOn, creating && /^\d{4}-\d{2}-\d{2}$/.test(startsOn)),
+  );
+  const fullText = (schoolClass: { id: string; grade: number; name: string }): string | null => {
+    const day = seats.data?.classes.find((one) => one.classId === schoolClass.id)?.fullFrom;
+    const name = classDisplayName(schoolClass.grade, schoolClass.name);
+    if (day === undefined || day === null) {
+      return null;
+    }
+    return day <= startsOn
+      ? t('classes.seatsFull', { class: name })
+      : t('classes.seatsFullFrom', { class: name, date: schoolDateText(day, i18n.language) });
+  };
   // A choice no longer offered (another grade or start date) falls back to
   // none, so what the field shows is what is sent (.claude/rules/web.md).
   const { value: chosenClass, onChange: chooseClass } = form.bind('classId');
@@ -502,9 +519,11 @@ export function StudentForm({
   const scholarshipType = form.bind('scholarshipType').value;
   const coverage = form.bind('scholarshipCoverage').value;
 
+  // H24: a full class named with its first day without a seat.
+  const classFullText = useClassFullText(form.failure);
   return (
     <>
-      <RecordForm form={form} label={label} onCancel={onCancel}>
+      <RecordForm form={form} failureText={classFullText} label={label} onCancel={onCancel}>
         {creating && (
           <Field label={t('people.students.uid')} inputMode="numeric" {...bind('uid')} />
         )}
@@ -555,15 +574,33 @@ export function StudentForm({
                   option(
                     one.id,
                     t('classes.classYear', {
-                      class: classDisplayName(one.grade, one.name),
+                      class: fullText(one) ?? classDisplayName(one.grade, one.name),
                       year: one.yearName,
                     }),
                   ),
                 ),
               ]}
               {...bind('classId')}
+              note={(() => {
+                const chosen = offeredClasses.find((one) => one.id === chosenClass);
+                return chosen === undefined ? undefined : (fullText(chosen) ?? undefined);
+              })()}
             />
           ))}
+        {creating && seats.isError && (
+          <p className="text-sm text-muted-foreground">
+            {t('classes.seatsFailed')}{' '}
+            <button
+              type="button"
+              className="font-semibold text-link underline-offset-4 hover:underline"
+              onClick={() => {
+                void seats.refetch();
+              }}
+            >
+              {t('problems.retry')}
+            </button>
+          </p>
+        )}
         {/* Task 3.2c: the subject of the class without a group with a free seat. */}
         {creating && <GroupSeatRefusal error={form.failure} />}
         <SelectField
