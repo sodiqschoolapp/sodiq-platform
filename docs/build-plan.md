@@ -449,7 +449,7 @@ How to read the task lines:
   - Done when: the database refuses an exam with a double-booked invigilator, room or class, and each of those later changes that would break a claim.
   - From 5.1a (pull request #107, decision 2): the capacity of a shared room against the students of its lessons together is checked when a claim is written, never on a membership change; the re-check on memberships is the student rule only.
 
-- [ ] **5.2 Rule engine**
+- [x] **5.2 Rule engine** (pull request #109)
   - Read: `06` (Rules, Teachers who work in several branches), `05` (Language of instruction), `edge/timetable`.
   - Build in `packages/timetable-rules`: every blocked rule and warning, by clock time; travel time between branches; the language rule; a result that names the rule and the lessons involved.
   - Done when: each rule in the Rules table has passing and failing test cases.
@@ -468,6 +468,7 @@ How to read the task lines:
   - Read: `06` (Editing in the grid), `12`.
   - Build: the board with Pragmatic drag and drop; move and swap; live conflict marking from the rule engine; the server refuses what the grid refuses.
   - Done when: Playwright moves a lesson, sees a blocked move refused with the rule named, and the same move is refused when the API is called directly.
+  - From 5.2 (pull request #109, decisions 5 and 13): the grid and its server check call `checkCandidate` and `checkTimetable` of `packages/timetable-rules` (`check.ts`) with the input `placement.ts` documents (which date each fact is read on); every lesson write calls them, and they call `lessonTimeProblem` on every lesson (the "From 1.5" line of 5.2). A result names its rule code; its texts are the i18n keys `timetable.rule.<code>` added here. `other_draft` reads the other branches' drafts the grid chooses (decision 12).
 
 - [ ] **5.4b Grid: panels and views**
   - Read: `06` (Editing in the grid, Teachers who work in several branches, Views and outputs).
@@ -487,6 +488,7 @@ How to read the task lines:
   - From 2.1 (pull request #52, decisions 2, 3 and 14): the publish check of `edge/academic-year`, "Publishing is blocked unless the year has four dated quarters and every subject in the load has its journal type and, if it is graded, its daily distribution and its quarterly distribution for each quarter the version touches. Attendance-only subjects need no weights." The distributions are the branch's (`subject_daily_weights`, `subject_quarter_weights`); a row counts only in the subject's current `weights_round` and, for a quarter, when its rating exam part fits the subject's switch (as `quarterWeightsMissing` in `apps/api/src/modules/setup/subjects.service.ts` counts).
   - From 3.4b (pull request #100, decisions 1 and 4, Look first): publish blocks on every problem of a load row (`loadRowProblems`), the six of 3.4b included (`load_group_gaps` among them), and from the published version in force on a date `class_group_subjects` (0049) reads the subjects of its group rows whose groups draw from the class, in place of the active groups, so that the load is the source of the split and group subjects of a class (`05`, Group).
   - From 3.4c (pull request #101, decision 2, Look first): `department_move_loads` (0057) counts every version of a year that is not closed and ends on or after the start date of a department move; once a published version has a run of its own, a published version whose run ends before the start date no longer counts.
+  - From 5.2 (pull request #109, decisions 1, 8, 11 and 13): publish runs `checkTimetable` over the dated lessons it creates and refuses any `blocked` result; `teacher_unavailable_later` gives the warnings by date; `load_mismatch` becomes a refusal here (fewer lessons than the load unless the row is marked "deliberately short" with a reason, more lessons always), and this task stores that mark and its reason on the load row, which the engine reads as `deliberatelyShort`. An unset travel time between two branches blocks (`travel_time_not_set`).
 
 - [ ] **5.5b Publish: dated lessons**
   - Read: `06` (What a change does to existing data, How surprises are prevented), `edge/timetable` (Versions and drafts), `edge/time-dates-calendar`.
@@ -506,6 +508,7 @@ How to read the task lines:
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing).
   - Build: move, room change, cancel and restore, extra lesson, bulk cancel, and correction of a past lesson by the Academic Vice Principal with a reason.
   - Done when: each row of the "After publishing" table that concerns these actions has a test.
+  - From 5.2 (pull request #109, decision 13): every one-day change calls `checkCandidate` with the lesson at its new place (`mode: 'dated'`), which calls `lessonTimeProblem`; `vacation` and `outside_year` refuse a move out of the quarters.
 
 - [ ] **5.6b Calendar and template changes after publishing**
   - Read: `edge/time-dates-calendar`, `06` (Rules, What a change does to existing data), `edge/timetable` (Structure, Versions and drafts).
@@ -520,6 +523,7 @@ How to read the task lines:
   - Build: create, change and cancel an exam; cancellation of the classes' lessons in the same save; refusal while other lessons hold the rooms or the invigilators; the rating-exam link; exams on every view and print; notices.
   - Done when: an exam cannot be saved with a double-booked invigilator or room, and cancelling it restores the lessons.
   - From 5.1b (pull request #108): the exam tables, their claims and checks are in 0060. The save writes the exam, then its `lesson_block_class_outs` rows (a class kept out of a block shared with classes that do not sit, with its students exempted for those lessons, 8.5), then rooms, classes or groups and invigilators, with the classes' lessons cancelled with the cause `exam` in the same transaction (or the constraints deferred). This task adds the link from a lesson to the exam that cancelled it, so that cancelling the exam restores only those lessons (decision 9); checks an active invigilator, one day template for all classes, the template's slots, "from today on and only in slots that have not started", and the warnings on availability, subject and capacity (decision 10); maps the constraint names of 0060 to error codes and `40P01`, `40001` to `timetable_busy`.
+  - From 5.2 (pull request #109, decisions 7 and 16, correction 2): the exam is a placement of kind `exam` for the engine; its invigilator rules (`invigilator_vacancy`, `invigilator_inactive` blocked; `invigilator_unavailable`, `invigilator_subject` warnings with a tick) and `room_capacity` against the students of its classes come from `checkTimetable`; the consecutive slots of its own time are checked here.
 
 - [ ] **5.7a Teacher absence**
   - Read: `06` (Changes after publishing, Teachers who work in several branches), `04` (Teacher and staff record), `edge/timetable` (Versions and drafts, After publishing), `edge/people-roles-accounts` (Staff over time), `07` (Closing a quarter, Who can do what), `09` (When something else changes).
@@ -530,6 +534,7 @@ How to read the task lines:
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing).
   - Build: the one Substitution action, started from a lesson or from an absent teacher; suggestions ordered by subject, department and language; the substitution record; the substitute's rights on that lesson.
   - Done when: the exception "no teacher of the subject is free" works as the edge case says.
+  - From 5.2 (pull request #109, decision 17, correction 3): a substitute is a placement with `substitute: true`; `substitute_language` is a warning that needs a confirmation, `substitute_vacancy` blocks, and the option `noSubjectTeacherFree` of `checkTimetable` turns `teacher_subject`, `teacher_grade` and `teacher_unavailable` into warnings with a tick, double booking staying blocked.
 
 - [ ] **5.7c Free now board**
   - Read: `06` (Free now board), `edge/timetable` (After publishing).
@@ -552,6 +557,7 @@ How to read the task lines:
   - Read: `06` (Auto-generation, Rules), `13`, `edge/timetable` (Generator and editing).
   - Build: `apps/solver` in Kotlin with Timefold Solver Community Edition; hard constraints equal to the blocked rules and soft constraints from the preferences table; pinned lessons kept; a time limit of 5 minutes with a first draft in about a minute.
   - Done when: on sample data of one branch the solver returns a draft that the TypeScript rule engine accepts with zero blocked rules.
+  - From 5.2 (pull request #109): the re-check of the solver's output is `checkTimetable` in `mode: 'pattern'`; the blocked rules of `RULE_ORDER` (every code not in `WARNINGS`) are the hard constraints to mirror in Kotlin.
 
 - [ ] **5.11 Generation in the product**
   - Read: `06` (Auto-generation, Building a timetable), `edge/timetable` (Generator and editing).
