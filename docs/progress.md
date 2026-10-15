@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 3.4a Draft versions and load rows
+
+- Built: migration 0055 (`departments.tutors`, `timetable_versions`, `teaching_load_rows` with the trigger of the blocked rules of one row, `vacancy_load_rows`, the vacancy close and delete refused while a row names it); `loadRowProblems` of `packages/timetable-rules`; the area `timetable` and eight routes (versions, the copy, the load, the teachers a row may take, the rows).
+- The web app: Timetable in the menu (Super Admin, Principal, Academic Vice Principal), the Teaching load page with the version picker, New draft (empty or a copy), the rows not copied, the rows with their problems, the row form and panel; the checklist item "Teaching load".
+- Left out: splits, groups and weekly totals (3.4b), the department move (3.4c), the rest of step 1 and the readiness of the load (5.3), publish (5.5a to 5.5c): lines added.
+
+The next sessions must know:
+
+- `timetable_versions` exists: 5.1 extends it. Only drafts are written; `status` has no grant, a test sets it through the migrator (`LoadKit.setVersion`).
+- Every rule of one row is in `loadRowProblems`; the API's create, the teacher list, the copy and the problems shown all call it, and `LOAD_PROBLEMS` of `packages/shared` equals its order (a test).
+- A test of the load uses `LoadKit` (`apps/api/src/testing/load-kit.ts`).
+- The menu item "Timetable" follows the area `timetable`: a role gets it back with its views of lessons (5.9).
+- The next task is 3.4b.
+
 ## 15 October 2026: task 3.3d Merge of two student records
 
 - Built: migration 0054 (`student_merges` with the merged record and the rows not carried archived on it, `student_merge_here`, the merge paths of the status, membership, move, branch-move, contract, branch, start and delete guards, the end `merge`, `student_merged_uid_holder`); the preview and the merge (`student_merges` `edit`, the Super Admin), all or none, with the joined life, the cuts, the carries, the relatives, the fields, the chain and an entry in every branch whose rows change.

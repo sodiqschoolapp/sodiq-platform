@@ -1,0 +1,37 @@
+import { PERMISSIONS, permits } from '@sodiq/shared';
+import { Link } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
+import { PageHeader } from '@/components/page-header';
+import { PANEL } from '@/components/ui/control';
+import { useView } from '@/features/access/use-view';
+
+/**
+ * The entry of the menu item "Timetable" (task 3.4a): a title and its links.
+ * The teaching load is the first part built; the steps of the draft builder,
+ * the grid and the views come with phase 5.
+ */
+export function TimetablePage() {
+  const { t } = useTranslation();
+  const { role } = useView();
+  const views = role !== null && permits(PERMISSIONS, role, 'timetable', 'view');
+  return (
+    <>
+      <PageHeader
+        title={t('timetable.title')}
+        breadcrumbs={[{ label: t('home.title'), to: '/' }]}
+      />
+      {views && (
+        <ul aria-label={t('timetable.title')} className="grid max-w-3xl gap-6">
+          <li className={PANEL}>
+            <Link
+              to="/timetable/load"
+              className="font-semibold text-link underline-offset-4 hover:underline"
+            >
+              {t('timetable.loadLink')}
+            </Link>
+          </li>
+        </ul>
+      )}
+    </>
+  );
+}

@@ -546,6 +546,20 @@ describe('the vacancies', () => {
     expect(actionsAreLast(panel)).toBe(true);
   });
 
+  // Task 3.4a (04, Vacancy): "A vacancy cannot be closed while a load row names it."
+  it('name the load row that keeps a vacancy from closing', async () => {
+    api('academic_vice_principal', {
+      [`POST /api/people/vacancies/${OPEN.id}/close`]: () => refusal('vacancy_has_load', 409),
+    });
+    renderApp(`/people/vacancies?open=${OPEN.id}`);
+    const panel = await screen.findByRole('complementary', { name: OPEN.name });
+    await within(panel).findByRole('heading', { name: en.people.vacancies.statusTitle });
+    fireEvent.click(within(panel).getByRole('button', { name: en.people.vacancies.close }));
+    await waitFor(() => {
+      expect(panelActions(panel)?.textContent).toContain(en.errors.vacancy_has_load);
+    });
+  });
+
   it('are closed, and deleted after a confirmation that names them', async () => {
     let closed = false;
     const calls = api('academic_vice_principal', {

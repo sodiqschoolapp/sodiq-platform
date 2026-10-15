@@ -52,6 +52,8 @@ const LISTS = [
   ['groups', '/groups', en.groups.title],
   // Task 3.2b: the seeded student of 7 Harvard in no Geometry group.
   ['groups-placement', '/groups/placement', en.groups.placement.title],
+  // Task 3.4a: the seeded load row of 7 Harvard.
+  ['timetable-load', '/timetable/load', en.timetable.load.title],
 ] as const;
 
 /** The lists the Academic Vice Principal adds to, with the "New …" button and the panel's title. */
@@ -192,6 +194,8 @@ const PAGES = [
   ['people', '/people', en.people.title],
   ['people-head-teachers', '/people/head-teachers', en.people.headTeachers.title],
   ['people-never-used', '/people/never-used', en.people.neverUsed.title],
+  // Task 3.4a: the entry of the Timetable item.
+  ['timetable', '/timetable', en.timetable.title],
 ] as const;
 
 // docs/build-plan.md, task 2.7c-1 (pull request #80), done when: every page of

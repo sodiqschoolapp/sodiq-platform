@@ -1763,6 +1763,51 @@ try {
       .values({ group_id: pagesGroup.id, class_id: harvard.id, branch_id: pagesBranch })
       .execute();
   });
+  // Task 3.4a: a draft of the year with a load row of 7 Harvard, so the
+  // teaching load list opens with a record; the seeded vacancy teaches
+  // Geometry in grade 7, in Uzbek.
+  await migrator.transaction().execute(async (transaction) => {
+    const harvard = await transaction
+      .selectFrom('classes')
+      .select(['id', 'academic_year_id'])
+      .where('branch_id', '=', pagesBranch)
+      .where('name', '=', 'Harvard')
+      .executeTakeFirstOrThrow();
+    const geometry = await transaction
+      .selectFrom('subjects')
+      .select('id')
+      .where('name_en', '=', 'Geometry')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_languages')
+      .values({ staff_id: pagesVacancy, language: 'uz' })
+      .execute();
+    await transaction
+      .insertInto('staff_subjects')
+      .values({ staff_id: pagesVacancy, subject_id: geometry.id, grades: [7] })
+      .execute();
+    const version = await transaction
+      .insertInto('timetable_versions')
+      .values({
+        branch_id: pagesBranch,
+        academic_year_id: harvard.academic_year_id,
+        number: 1,
+        starts_on: startDate,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('teaching_load_rows')
+      .values({
+        branch_id: pagesBranch,
+        version_id: version.id,
+        class_id: harvard.id,
+        subject_id: geometry.id,
+        teacher_id: pagesVacancy,
+        lessons_per_week: 3,
+      })
+      .execute();
+  });
   seeded.pages = { login: pages.login, password: pages.firstPassword };
 
   // The Academic Vice Principal of the classes test (task 3.1a), in a branch
@@ -2628,6 +2673,102 @@ try {
       from: isoDate(new Date(yearStart.getTime() + 40 * dayMs)),
     }),
   );
+
+  // The Academic Vice Principal of the teaching load test (task 3.4a), in a
+  // branch of its own with a planned year around today, 7 Oxford (Uzbek), a
+  // teacher of Geometry in grade 7 and one of Geometry in grade 8 only.
+  const loadBranch = await insertBranch(migrator, 'Teaching load browser test branch');
+  const loadVice = await create('Shahlo', 'Rasulova');
+  await transactions.run([loadBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: loadVice.id,
+      role: 'academic_vice_principal',
+      branchId: loadBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: loadBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: loadBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    await transaction
+      .insertInto('classes')
+      .values({
+        branch_id: loadBranch,
+        academic_year_id: year.id,
+        grade: 7,
+        name: 'Oxford',
+        language: 'uz',
+        max_size: 25,
+      })
+      .execute();
+    const geometry = await transaction
+      .selectFrom('subjects')
+      .select('id')
+      .where('name_en', '=', 'Geometry')
+      .executeTakeFirstOrThrow();
+    for (const [staffId, first, last, phone, grade] of [
+      ['S-269301', 'Aziza', 'Karimova', '+998935557301', 7],
+      ['S-269302', 'Nodira', 'Usmonova', '+998935557302', 8],
+    ] as const) {
+      const person = await transaction
+        .insertInto('staff')
+        .values({
+          kind: 'person',
+          staff_id: staffId,
+          first_name: first,
+          last_name: last,
+          sex: 'female',
+          birth_date: '1988-05-14',
+          phone,
+          admission_date: '2026-09-01',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('staff_branches')
+        .values({ staff_id: person.id, branch_id: loadBranch, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_divisions')
+        .values({
+          staff_id: person.id,
+          division_id: academic.id,
+          department_id: steam.id,
+          is_main: true,
+        })
+        .execute();
+      await transaction
+        .insertInto('staff_languages')
+        .values({ staff_id: person.id, language: 'uz' })
+        .execute();
+      await transaction
+        .insertInto('staff_subjects')
+        .values({ staff_id: person.id, subject_id: geometry.id, grades: [grade] })
+        .execute();
+      await transaction
+        .insertInto('staff_statuses')
+        .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+        .execute();
+    }
+  });
+  seeded.teachingLoad = { login: loadVice.login, password: loadVice.firstPassword };
 
   for (const branch of classBranches) {
     const years = await migrator

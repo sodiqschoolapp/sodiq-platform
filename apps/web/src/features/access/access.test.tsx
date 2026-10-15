@@ -1,4 +1,12 @@
-import { HOME_KIND, MENU, ROLES, type Role } from '@sodiq/shared';
+import {
+  HOME_KIND,
+  MENU,
+  MENU_ITEMS,
+  PERMISSIONS,
+  ROLES,
+  visibleMenu,
+  type Role,
+} from '@sodiq/shared';
 import { MutationObserver } from '@tanstack/react-query';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -67,7 +75,12 @@ describe('the menu and the home page of each role', () => {
 
     await heading(en.home.title);
     const links = side().getAllByRole('link');
-    expect(links.map((link) => link.textContent)).toEqual(MENU[role].map((item) => en.menu[item]));
+    // The row of the table, less an item whose area the role may not view:
+    // "Timetable" is the area `timetable` (task 3.4a, decision 4), whose
+    // scoped views of lessons for the Tutors and Head Teachers come with 5.9.
+    expect(links.map((link) => link.textContent)).toEqual(
+      visibleMenu(role, new Set(MENU_ITEMS), PERMISSIONS).map((item) => en.menu[item]),
+    );
     // The current page is marked for a screen reader as well as by its fill
     // (docs/design-system.md, Layout shell, Menu; pull request #61, decision 9).
     expect(links.filter((link) => link.getAttribute('aria-current') === 'page')).toEqual([

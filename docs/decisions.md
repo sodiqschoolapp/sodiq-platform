@@ -213,6 +213,33 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: draft versions and load rows (task 3.4a)
+
+Plan approved on pull request #99 with corrections 1 to 6; decisions 1, 2, 3 and 15 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Task 3.4 split into 3.4a (draft versions, load rows, the blocked rules of one row, the copy, the vacancy refusals, the load page), 3.4b (splits, groups, weekly totals) and 3.4c (the department move against the load), each inherited line moved to the part that builds it | Decision 1: eight rule groups, two outside changes and a screen |
+| **Look first.** A Tutor subject is a subject of the department marked `departments.tutors` (the seeded Tutors department, at most one row, no grant; the migration fails when the row is not found); on a class row a Tutor of that class whose row overlaps the start date (00:00 to 00:00 in the branch's time zone, found through the assignment's account), main or acting, takes it without the profile row; the language rule and the subject's grades still apply | Decision 2, corrections 4 and 5; `edge/people-roles-accounts` row 13; `edge/timetable`, "the class Tutor by default" |
+| **Look first.** A later change elsewhere (profile, status, room, archive, language rule) is not refused because a draft's row needs it; the row shows the problem, and readiness (5.3) and publish (5.5a) block on it. Only the vacancy close and delete refuse here, the department move in 3.4c | Decision 3; `05` and `06` word the rules as rules of choosing |
+| **Look first.** A minimal `timetable_versions` now (branch, year, number, status with no grant, `starts_on`, `from_version_id` of the same branch and year, `left_rows`), which 5.1 to 5.5 extend | Decision 15; `edge/timetable`: "The load belongs to a timetable version" |
+| **Look first.** The menu item "Timetable" now follows the area `timetable` of the same name, so the Vice Principal for Spiritual and Moral Education, the Head Tutor, the Tutor, the Head Teachers and the Teacher do not see it until their views of lessons come (5.9); the menu test of `access.test.tsx` expects `visibleMenu` of the role instead of its whole row | Build: decision 4 gives the area to three roles; `visibleMenu` lets the permission table win, as for `classes` and `audit_log` |
+| A new area `timetable`: the Super Admin and the Academic Vice Principal view, create, edit, archive; the Principal view | Decision 4; `02` |
+| The start date of a draft on or after today and inside the year, next Monday by default (the year's first day when later); `version_start_past` and `version_start_outside_year`, 422 on `startsOn` | Decision 5 |
+| A draft's row is deleted (`archive`), the whole row in the audit entry; a vacancy "held a load" while a row of any version names it | Decision 6 |
+| A create runs every rule; an edit the version and year always, the teacher rules on a teacher change, the room rule on a room change | Decision 7 |
+| The two-grade slot rule from the templates in force on the start date, by the API only | Decision 8 |
+| Every constraint of 0055 maps to a code; the database's `load_teacher_subject` stands for a subject or a grade, the API names which (`load_teacher_grade`) | Decision 9 |
+| A copy of a version of the same branch and year; the rows that no longer pass stay on the draft (`left_rows`, with their problems) until dismissed; a version of another year answers `version_copy_year` | Decision 10; build: a code of its own for the year |
+| A status is read on the start date, no row counting as in; lessons per week 1 to 40; a room, a room type or neither, `under_repair` passing; the checklist item `teachingLoad` | Decisions 11 to 14 |
+| The new draft names its academic year (`academicYearId`) | Build: the plan's schema named `startsOn` and `copyFrom` only; an empty draft needs a year |
+| A closed year answers `timetable_year_closed`, not `year_closed`, whose text names the year's dates and quarters | Build; `.claude/rules/web.md`: the text of a code is true on every path |
+| The row trigger leaves a version, class, group or room of another branch, a missing teacher and a unit that is neither or both to the keys and checks of the table | Build: a before trigger runs before the keys; its own refusal would name the wrong rule |
+| The trigger and the API lock the teacher's record FOR KEY SHARE before reading its status, so a vacancy close waits for a row being written or is waited for | Build: the key's own lock comes after the before trigger, too late for the status read |
+| The engine's "every grade and language" property is tested over every grade set of one and two grades and both languages, not with fast-check | Build: `packages/timetable-rules` has no fast-check, and an exhaustive loop is stronger here; no dependency added |
+| The form's room need is one field: no special room, any room of a type, or one room not closed | Build; decision 13 |
+| The seeded vacancy of the pages branch teaches Geometry in grade 7 and holds the seeded load row | Build: `e2e/pages.spec.ts` opens every list with a record |
+
 ## 15 October 2026: the move to another branch (task 3.3c)
 
 Plan approved on pull request #97 with corrections 1 to 3; decisions 1 to 6 marked Look first and confirmed there. Flagged on issue #42.
