@@ -25,9 +25,14 @@ describe('yearResult', () => {
   });
 
   it('means the exact quarter results, not the shown ones', () => {
-    // Shown 50, 50, 49, 50, whose mean 49.75 would show 50 and grade 3; the exact mean shows 49.
-    const result = yearResult([HALF_49, HALF_49, Fraction.of(247n, 5n), HALF_49]);
-    expect(result).toMatchObject({ kind: 'number', shown: 49n, grade: 2 });
+    // 66.4, 66.4, 66.5, 66.5 are shown 66, 66, 67, 67, whose mean 66.5 would show 67 and grade 4;
+    // the exact mean is 66.45, shown 66, grade 3.
+    const low = Fraction.of(332n, 5n);
+    const high = Fraction.of(133n, 2n);
+    const result = yearResult([low, low, high, high]);
+    expect(result).toMatchObject({ kind: 'number', shown: 66n, grade: 3 });
+    if (result.kind !== 'number') return;
+    expect(result.value.equals(Fraction.of(1329n, 20n))).toBe(true);
   });
 
   it('leaves an Exempt quarter out, based on 3 of 4', () => {

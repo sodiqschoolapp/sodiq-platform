@@ -24,8 +24,10 @@ function fail(path: string, expected: string): never {
 
 type Json = unknown;
 
-function record(value: Json, path: string): Record<string, Json> {
+function record(value: Json, path: string, allowed: readonly string[]): Record<string, Json> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) fail(path, 'an object');
+  const unknown = Object.keys(value).find((key) => !allowed.includes(key));
+  if (unknown !== undefined) fail(`${path}.${unknown}`, `one of ${allowed.join(', ')}`);
   return value as Record<string, Json>;
 }
 
@@ -89,7 +91,7 @@ function works(value: Json, path: string) {
 }
 
 function lesson(value: Json, path: string): QuarterLesson {
-  const item = record(value, path);
+  const item = record(value, path, ['mark', 'countsForAttendance', 'classworks', 'homeworks']);
   const mark = wholeOrNull(item.mark, `${path}.mark`);
   if (mark !== null && (mark < 0 || mark > 5)) fail(`${path}.mark`, 'a mark from 0 to 5');
   return {
@@ -105,7 +107,7 @@ function lesson(value: Json, path: string): QuarterLesson {
 
 function ratingExam(value: Json, path: string): RatingExamEntry | null {
   if (value === null) return null;
-  const entry = record(value, path);
+  const entry = record(value, path, ['kind', 'score']);
   switch (entry.kind) {
     case 'score':
       return { kind: 'score', score: whole(entry.score, `${path}.score`) };
@@ -120,7 +122,7 @@ function ratingExam(value: Json, path: string): RatingExamEntry | null {
 
 function leftOut(value: Json, path: string): LeftOutPart[] {
   return list(value, path).map((item, index) => {
-    const part = record(item, `${path}[${index}]`);
+    const part = record(item, `${path}[${index}]`, ['part', 'reason']);
     if (!['attendance', 'classwork', 'homework', 'ratingExam'].includes(String(part.part))) {
       fail(`${path}[${index}].part`, 'attendance, classwork, homework or ratingExam');
     }
@@ -131,7 +133,7 @@ function leftOut(value: Json, path: string): LeftOutPart[] {
   });
 }
 
-function header(file: Record<string, Json>): void {
+function checkHeader(file: Record<string, Json>): void {
   text(file.title, 'title');
   text(file.source, 'source');
   if (file.status !== 'sample' && file.status !== 'signed off')
@@ -150,8 +152,13 @@ function expectFigure(actual: Fraction | null, expected: Fraction | null, label:
 }
 
 function quarterCases(file: Record<string, Json>): Case[] {
-  const weights = record(file.weights, 'weights');
-  const values = record(file.attendanceValues, 'attendanceValues');
+  const weights = record(file.weights, 'weights', [
+    'attendance',
+    'classwork',
+    'homework',
+    'ratingExam',
+  ]);
+  const values = record(file.attendanceValues, 'attendanceValues', ['lateValue', 'skippedValue']);
   const base = {
     weights: {
       attendance: whole(weights.attendance, 'weights.attendance'),
@@ -169,7 +176,7 @@ function quarterCases(file: Record<string, Json>): Case[] {
   if (students.length === 0) fail('students', 'at least one student');
   return students.map((value, index) => {
     const path = `students[${index}]`;
-    const student = record(value, path);
+    const student = record(value, path, ['name', 'lessons', 'ratingExam', 'expected']);
     const name = text(student.name, `${path}.name`);
     const input: QuarterResultInput = {
       ...base,
@@ -178,7 +185,17 @@ function quarterCases(file: Record<string, Json>): Case[] {
       ),
       ratingExam: ratingExam(student.ratingExam, `${path}.ratingExam`),
     };
-    const want = record(student.expected, `${path}.expected`);
+    const want = record(student.expected, `${path}.expected`, [
+      'attendance',
+      'classwork',
+      'homework',
+      'ratingExam',
+      'result',
+      'shown',
+      'grade',
+      'leftOut',
+      'provisional',
+    ]);
     const expected = {
       attendance: exactOrNull(want.attendance, `${path}.expected.attendance`),
       classwork: exactOrNull(want.classwork, `${path}.expected.classwork`),
@@ -207,8 +224,11 @@ function quarterCases(file: Record<string, Json>): Case[] {
           expect(result.leftOut, 'leftOut').toEqual(expected.leftOut);
           expect(result.provisional, 'provisional').toBe(expected.provisional);
         } else {
+          // "No result" carries no figure, no marker and is never provisional (README).
           expect(expected.result, 'result').toBeNull();
           expect([expected.shown, expected.grade], 'shown and grade').toEqual([null, null]);
+          expect(expected.leftOut, 'leftOut').toEqual([]);
+          expect(expected.provisional, 'provisional').toBe(false);
         }
       },
     };
@@ -218,13 +238,13 @@ function quarterCases(file: Record<string, Json>): Case[] {
 const QUARTER_STATES = ['exempt', 'not_assessed', 'no_result', 'not_in_system', 'not_official'];
 
 function yearCases(file: Record<string, Json>): Case[] {
-  const year = record(file.year, 'year');
+  const year = record(file.year, 'year', ['quarters', 'expected']);
   const quarters: QuarterOutcome[] = list(year.quarters, 'year.quarters').map((value, index) =>
     typeof value === 'string' && QUARTER_STATES.includes(value)
       ? (value as QuarterOutcome)
       : exact(value, `year.quarters[${index}]`),
   );
-  const want = record(year.expected, 'year.expected');
+  const want = record(year.expected, 'year.expected', ['result', 'shown', 'grade', 'basedOn']);
   const expected = {
     result: exactOrNull(want.result, 'year.expected.result'),
     shown: wholeOrNull(want.shown, 'year.expected.shown'),
@@ -257,8 +277,26 @@ function yearCases(file: Record<string, Json>): Case[] {
 }
 
 function casesOf(value: Json): Case[] {
-  const file = record(value, 'the file');
-  header(file);
+  const header = ['title', 'source', 'status'];
+  const top = record(value, 'the file', [
+    ...header,
+    'year',
+    'weights',
+    'attendanceValues',
+    'quarterClosed',
+    'students',
+  ]);
+  const file =
+    'year' in top
+      ? record(top, 'the file', [...header, 'year'])
+      : record(top, 'the file', [
+          ...header,
+          'weights',
+          'attendanceValues',
+          'quarterClosed',
+          'students',
+        ]);
+  checkHeader(file);
   return 'year' in file ? yearCases(file) : quarterCases(file);
 }
 
@@ -284,16 +322,26 @@ describe('reference journals', () => {
       'status: expected "sample" or "signed off"',
     );
     expect(() =>
-      casesOf({ ...valid, weights: { ...record(valid.weights, 'w'), homework: 20.5 } }),
+      casesOf({
+        ...valid,
+        weights: { ...(valid.weights as Record<string, Json>), homework: 20.5 },
+      }),
     ).toThrow('weights.homework: expected a whole number');
-    const student = record(list(valid.students, 's')[0], 's');
-    const expected = record(student.expected, 'e');
+    const student = list(valid.students, 's')[0] as Record<string, Json>;
+    const expected = student.expected as Record<string, Json>;
     expect(() =>
       casesOf({ ...valid, students: [{ ...student, expected: { ...expected, result: '55,6' } }] }),
     ).toThrow('students[0].expected.result: expected an exact figure');
     expect(() =>
       casesOf({ ...valid, students: [{ ...student, expected: { ...expected, result: 55.6 } }] }),
     ).toThrow('students[0].expected.result: expected a text');
+    const lesson = list(student.lessons, 'l')[0] as Record<string, Json>;
+    expect(() =>
+      casesOf({
+        ...valid,
+        students: [{ ...student, lessons: [{ ...lesson, countsForAtendance: false }] }],
+      }),
+    ).toThrow('students[0].lessons[0].countsForAtendance: expected one of');
   });
 
   it('reads exact figures without floating point', () => {
