@@ -32,7 +32,16 @@ const byStart = (a: Placement, b: Placement) =>
 
 const RANK = new Map<RuleCode, number>(RULE_ORDER.map((code, index) => [code, index]));
 
-/** Collects results, one per rule, day and set of placements. */
+/** A detail written the same way whatever the order of its fields. */
+const detailKey = (detail: Readonly<Record<string, number | string>> | undefined) =>
+  detail === undefined
+    ? ''
+    : JSON.stringify(Object.entries(detail).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+
+/**
+ * Collects results, one per rule, day, set of placements and detail. Results
+ * that tie in the report order keep the order they were found in.
+ */
 class Results {
   private readonly seen = new Map<string, RuleResult>();
 
@@ -55,7 +64,11 @@ class Results {
     const ids = [...new Map(placements.map((one) => [one.id, one])).values()]
       .sort(byStart)
       .map((one) => one.id);
-    const key = `${rule}|${day}|${ids.join(',')}`;
+    // The detail is part of a result's identity: two results of one rule over
+    // the same placements that differ in a date, a load row, a teacher, a
+    // room or a slot are two results; the same rule over the same set with
+    // the same detail (a shared room reached from several starts) stays one.
+    const key = `${rule}|${day}|${ids.join(',')}|${detailKey(detail)}`;
     if (this.seen.has(key)) {
       return;
     }

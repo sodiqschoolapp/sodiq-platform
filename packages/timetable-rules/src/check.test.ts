@@ -1097,6 +1097,92 @@ describe('warnings', () => {
   });
 });
 
+describe('results that differ only in their detail (review of the build, must-fix 1)', () => {
+  it('lists every later date a pattern lesson falls outside the hours', () => {
+    // Hours shorten from 16 November, and Fridays end from 7 December: a Friday
+    // lesson at 10:45 is outside both, on two dates.
+    const shorter = week(480, 600);
+    const partTime = teacher('t9', {
+      availability: [
+        { branchId: A, validFrom: '2026-09-01', validUntil: '2026-11-16', ranges: week(480, 900) },
+        { branchId: A, validFrom: '2026-11-16', validUntil: '2026-12-07', ranges: shorter },
+        {
+          branchId: A,
+          validFrom: '2026-12-07',
+          validUntil: null,
+          ranges: shorter.filter((one) => one.weekday !== 5),
+        },
+      ],
+    });
+    const f = facts({ teachers: new Map([['t9', partTime]]) });
+    const results = only(
+      checkTimetable([place({ teacherIds: ['t9'], day: '5', ...L4 })], f),
+      'teacher_unavailable_later',
+    );
+    expect(results.map((one) => one.detail)).toEqual([
+      { date: '2026-11-20' },
+      { date: '2026-12-11' },
+    ]);
+  });
+
+  it('lists every load row with no lesson placed', () => {
+    const rows = [
+      { id: 'row1', lessonsPerWeek: 2, deliberatelyShort: false },
+      { id: 'row2', lessonsPerWeek: 3, deliberatelyShort: false },
+    ];
+    expect(
+      only(checkTimetable([], facts({ loadRows: rows })), 'load_mismatch').map((one) => one.detail),
+    ).toEqual([
+      { loadRowId: 'row1', placed: 0, lessonsPerWeek: 2 },
+      { loadRowId: 'row2', placed: 0, lessonsPerWeek: 3 },
+    ]);
+  });
+
+  it('names each invigilator and each room of one exam', () => {
+    const f = facts({
+      teachers: new Map([
+        ['vac', teacher('vac', { vacancy: true })],
+        ['vac2', teacher('vac2', { vacancy: true })],
+      ]),
+      rooms: new Map([
+        ['closed', room('closed', { status: 'closed' })],
+        ['closed2', room('closed2', { status: 'closed' })],
+      ]),
+    });
+    const results = checkTimetable(
+      [
+        exam({
+          teacherIds: ['vac', 'vac2'],
+          examRooms: [
+            { roomId: 'closed', students: 2 },
+            { roomId: 'closed2', students: 2 },
+          ],
+        }),
+      ],
+      f,
+    );
+    expect(only(results, 'invigilator_vacancy').map((one) => one.detail)).toEqual([
+      { teacherId: 'vac' },
+      { teacherId: 'vac2' },
+    ]);
+    expect(only(results, 'room_inactive').map((one) => one.detail)).toEqual([
+      { roomId: 'closed' },
+      { roomId: 'closed2' },
+    ]);
+  });
+
+  it('lists every free period of a class day', () => {
+    const results = checkTimetable(
+      [place({ id: 'a' }), place({ id: 'b', subjectId: 'english', ...L4 })],
+      facts(),
+    );
+    expect(only(results, 'class_free_period').map((one) => one.detail)).toEqual([
+      { classId: '7a', start: L2.start, end: L2.end },
+      { classId: '7a', start: L3.start, end: L3.end },
+    ]);
+  });
+});
+
 describe('missing facts', () => {
   // A caller that leaves out a fact gets a fault, never a free slot (spec review should-fix 1).
   it.each([

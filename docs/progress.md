@@ -4,7 +4,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 ## 15 October 2026: task 5.2 Rule engine
 
-- Built in `packages/timetable-rules` (`rules.ts`, `placement.ts`, `check.ts`): `checkTimetable` and `checkCandidate` give every blocked rule and warning of the `06` Rules table for lessons and exams by clock time, each result with its rule code and the placements involved; `slotStatus` for the grid. 57 engine tests, one a fast-check property test of the clash sweep against all pairs.
+- Built in `packages/timetable-rules` (`rules.ts`, `placement.ts`, `check.ts`): `checkTimetable` and `checkCandidate` give every blocked rule and warning of the `06` Rules table for lessons and exams by clock time, each result with its rule code and the placements involved; `slotStatus` for the grid. 61 engine tests, one a fast-check property test of the clash sweep against all pairs.
 - The class's most lessons per day as a branch setting (0061, `PUT /api/setup/settings/class-daily-lessons`, the settings page in three languages).
 - Left out: calling the engine from routes, the grid, publish, one-day changes, exams, substitution and the solver (5.4a, 5.5a, 5.6a, 5.6c, 5.7b, 5.10, each with a "From 5.2" line); storing "deliberately short" (5.5a); the texts `timetable.rule.<code>` (5.4a).
 
