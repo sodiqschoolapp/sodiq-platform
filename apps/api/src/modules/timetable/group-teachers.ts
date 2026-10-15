@@ -45,7 +45,8 @@ export async function readGroupTeachers(
         (v.status = 'published' and v.starts_on <= d.day)
         or (v.status = 'draft' and ${drafts} and not exists (
           select 1 from timetable_versions p
-          where p.academic_year_id = v.academic_year_id
+          where p.branch_id = ${branchId}
+            and p.academic_year_id = v.academic_year_id
             and p.status = 'published'
             and p.starts_on <= d.day
         ))
@@ -73,6 +74,7 @@ export async function readGroupTeachers(
       'staff.last_name',
       'staff.vacancy_name',
     ])
+    .where('teaching_load_rows.branch_id', '=', branchId)
     .where(
       'teaching_load_rows.version_id',
       'in',

@@ -1,5 +1,6 @@
 import {
   groupDetailSchema,
+  groupListSchema,
   loadRowSchema,
   loadSchema,
   loadTeachersSchema,
@@ -514,8 +515,17 @@ describe('splits, groups and weekly totals of the teaching load', () => {
         lessons_per_week: 4,
       });
       const found = (await totalsOf(version.id)).teachers.find((one) => one.id === shared);
+      const southName = (
+        await t.database.migrator
+          .selectFrom('branches')
+          .select('name')
+          .where('id', '=', t.south)
+          .executeTakeFirstOrThrow()
+      ).name;
+      // The name is read although the transaction holds the North only (permission review, S2).
+      expect(southName).not.toBe('');
       expect(found?.elsewhere).toEqual([
-        { branchId: t.south, branchName: expect.any(String) as string, lessons: 4, draft: true },
+        { branchId: t.south, branchName: southName, lessons: 4, draft: true },
       ]);
       expect((await totalsOf(version.id, t.principal)).teachers).toHaveLength(1);
     });
@@ -577,6 +587,47 @@ describe('splits, groups and weekly totals of the teaching load', () => {
       for (const cookie of [t.vicePrincipal, headTutor]) {
         expect(await detail(cookie)).toMatchObject({ id: earlyTeacher, draft: false });
       }
+    });
+
+    // Permission review, S3: the list carries the same teacher; the Super Admin
+    // reads the draft; a reader of the timetable in another branch only does not.
+    it('is the same on the list, read by the Super Admin, and decided in the branch of the request', async () => {
+      const browser = await t.kit.completeSession('Kamola', 'Yusupova');
+      await t.kit.giveRole(browser.account.id, { role: 'head_tutor', branchId: t.north });
+      await t.kit.giveRole(browser.account.id, {
+        role: 'academic_vice_principal',
+        branchId: t.south,
+      });
+      const twoBranches = browser.cookie;
+      // A planned year of its own: the test before published a version of the current year.
+      const planned = await load.classes.year(t.north, 'planned', '2027-09-01', '2028-05-31');
+      const plannedClass = await load.classes.schoolClass(t.north, planned, {
+        grade: 7,
+        language: 'uz',
+      });
+      const g = await load.classes.group(t.north, planned, subject, [plannedClass]);
+      const own = await teacher();
+      const draftVersion = await load.version(t.north, planned, { startsOn: '2027-09-01' });
+      await load.row({
+        branch_id: t.north,
+        version_id: draftVersion,
+        group_id: g,
+        subject_id: subject,
+        teacher_id: own,
+      });
+      const listed = async (cookie: string) =>
+        groupListSchema
+          .parse((await get('/api/groups', cookie).expect(200)).body)
+          .groups.find((one) => one.id === g)?.teacher;
+      expect(await listed(t.vicePrincipal)).toMatchObject({ id: own, draft: true });
+      expect(await listed(t.admin)).toMatchObject({ id: own, draft: true });
+      expect(await listed(twoBranches)).toBeNull();
+      expect(
+        groupDetailSchema.parse((await get(`/api/groups/${g}`, twoBranches).expect(200)).body)
+          .teacher,
+      ).toBeNull();
+      await load.setVersion(draftVersion, 'published');
+      expect(await listed(twoBranches)).toMatchObject({ id: own, draft: false });
     });
   });
 
