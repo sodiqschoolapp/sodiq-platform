@@ -123044,6 +123044,229 @@
                         "additionalProperties": false
                       }
                     },
+                    "values": {
+                      "type": "object",
+                      "properties": {
+                        "later": {
+                          "type": "string",
+                          "enum": [
+                            "kept",
+                            "merged"
+                          ]
+                        },
+                        "startsOn": {
+                          "type": "object",
+                          "properties": {
+                            "kept": {
+                              "type": "string",
+                              "format": "date",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                            },
+                            "merged": {
+                              "type": "string",
+                              "format": "date",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                            },
+                            "result": {
+                              "nullable": true,
+                              "type": "string",
+                              "format": "date",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                            }
+                          },
+                          "required": [
+                            "kept",
+                            "merged",
+                            "result"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "grade": {
+                          "type": "object",
+                          "properties": {
+                            "kept": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 11
+                            },
+                            "merged": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 11
+                            }
+                          },
+                          "required": [
+                            "kept",
+                            "merged"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "scholarship": {
+                          "type": "object",
+                          "properties": {
+                            "kept": {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "none",
+                                    "merit",
+                                    "financial_aid",
+                                    "gift"
+                                  ]
+                                },
+                                "coverage": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "enum": [
+                                    "full",
+                                    "partial"
+                                  ]
+                                },
+                                "amount": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "coverage",
+                                "amount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "merged": {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "none",
+                                    "merit",
+                                    "financial_aid",
+                                    "gift"
+                                  ]
+                                },
+                                "coverage": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "enum": [
+                                    "full",
+                                    "partial"
+                                  ]
+                                },
+                                "amount": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "coverage",
+                                "amount"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "kept",
+                            "merged"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "contracts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "side": {
+                                "type": "string",
+                                "enum": [
+                                  "kept",
+                                  "merged"
+                                ]
+                              },
+                              "number": {
+                                "type": "string"
+                              },
+                              "signedOn": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              }
+                            },
+                            "required": [
+                              "side",
+                              "number",
+                              "signedOn"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "relatives": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "side": {
+                                "type": "string",
+                                "enum": [
+                                  "kept",
+                                  "merged"
+                                ]
+                              },
+                              "fullName": {
+                                "type": "string"
+                              },
+                              "relationship": {
+                                "type": "string",
+                                "enum": [
+                                  "father",
+                                  "mother",
+                                  "grandfather",
+                                  "grandmother",
+                                  "uncle",
+                                  "aunt",
+                                  "brother",
+                                  "sister",
+                                  "guardian",
+                                  "other"
+                                ]
+                              },
+                              "fate": {
+                                "type": "string",
+                                "enum": [
+                                  "stays",
+                                  "added",
+                                  "already_linked"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "side",
+                              "fullName",
+                              "relationship",
+                              "fate"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "later",
+                        "startsOn",
+                        "grade",
+                        "scholarship",
+                        "contracts",
+                        "relatives"
+                      ],
+                      "additionalProperties": false
+                    },
                     "refusal": {
                       "nullable": true,
                       "type": "object",
@@ -123077,6 +123300,7 @@
                     "carried",
                     "filled",
                     "differing",
+                    "values",
                     "refusal",
                     "digest"
                   ],

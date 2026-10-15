@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
+  relationshipSchema,
+  scholarshipCoverageSchema,
+  scholarshipTypeSchema,
   schoolDateSchema,
   type AuditAction,
   type SchoolDate,
@@ -789,7 +792,74 @@ export class StudentMerges {
               code: plan.refusal.code,
               day: plan.refusal.details?.find((detail) => detail.day !== undefined)?.day ?? null,
             },
+      values: await this.valuesOf(transaction, plan),
       digest: plan.digest,
+    };
+  }
+
+  /**
+   * The values beside the personal fields and what the merge keeps of each
+   * (task 3.5b, H29 of issue #105), as `write` does: the start of the joined
+   * life, the later life's grade and scholarship, every contract, and the
+   * relatives with what happens to each link.
+   */
+  private async valuesOf(
+    transaction: Transaction,
+    plan: MergePlan,
+  ): Promise<StudentMergePreview['values']> {
+    const scholarshipOf = (record: Record_) => ({
+      type: scholarshipTypeSchema.parse(record.whole.scholarship_type),
+      coverage: scholarshipCoverageSchema
+        .nullable()
+        .parse(scalarText(record.whole.scholarship_coverage)),
+      amount:
+        record.whole.scholarship_amount === null ? null : Number(record.whole.scholarship_amount),
+    });
+    const sideOfStudent = (studentId: string): Side =>
+      same(studentId, plan.kept.id) ? 'kept' : 'merged';
+    const contracts = (plan.whole.get('student_contracts') ?? []).map(({ studentId, row }) => ({
+      side: sideOfStudent(studentId),
+      number: String(row.number),
+      signedOn: String(row.signed_on),
+    }));
+    const live = plan.links.filter((link) => link.live);
+    const ids = [...new Set(live.map((link) => link.relativeId.toLowerCase()))].sort();
+    const names =
+      ids.length === 0
+        ? []
+        : await transaction
+            .selectFrom('relatives')
+            .select(['id', 'full_name'])
+            .where('id', 'in', ids)
+            .execute();
+    const nameOf = (id: string) => names.find((one) => same(one.id, id))?.full_name ?? '';
+    const keptIds = new Set(
+      live.filter((link) => link.side === 'kept').map((link) => link.relativeId.toLowerCase()),
+    );
+    const relatives = live
+      .map((link) => ({
+        side: link.side,
+        fullName: nameOf(link.relativeId),
+        relationship: relationshipSchema.parse(link.relationship),
+        fate:
+          link.side === 'kept'
+            ? ('stays' as const)
+            : keptIds.has(link.relativeId.toLowerCase())
+              ? ('already_linked' as const)
+              : ('added' as const),
+      }))
+      .sort((a, b) => a.side.localeCompare(b.side) || a.fullName.localeCompare(b.fullName));
+    return {
+      later: plan.later,
+      startsOn: {
+        kept: String(plan.kept.whole.starts_on),
+        merged: String(plan.merged.whole.starts_on),
+        result: plan.startsOn,
+      },
+      grade: { kept: plan.kept.grade, merged: plan.merged.grade },
+      scholarship: { kept: scholarshipOf(plan.kept), merged: scholarshipOf(plan.merged) },
+      contracts,
+      relatives,
     };
   }
 

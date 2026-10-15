@@ -1683,8 +1683,22 @@ export const en = {
         carried_other:
           '{{count}} rows of the merged record are carried whole to the record that stays.',
         filled: 'Filled from the merged record',
-        differing: 'Different on the merged record (the value of the record that stays is kept)',
-        differs: '{{field}}: {{merged}}',
+        differing: 'Values that differ',
+        differs:
+          '{{field}}: the record that stays — {{kept}}; the merged record — {{merged}}. Kept: {{result}}.',
+        valueFields: {
+          startsOn: 'Start date',
+          grade: 'Grade',
+          scholarship: 'Scholarship',
+          contracts: 'Contracts',
+          relatives: 'Relatives',
+        },
+        allKept: 'all of them',
+        noValue: '—',
+        contractText: '{{number}} of {{date}}',
+        relativeText: '{{name}} ({{relationship}})',
+        alreadyLinked:
+          '{{name}} ({{relationship}}): already linked to the record that stays; that link stays',
         refused: 'These records cannot be merged.',
         refusedDay: 'First day concerned: {{date}}',
         reason: 'Reason',
@@ -2622,10 +2636,14 @@ export const en = {
     seatsFull: '{{class}} — full',
     seatsFullFrom: '{{class}} — no free seat from {{date}}',
     seatsFailed: 'The free seats of the classes could not be read.',
-    fullFrom: '{{class}} has no free seat from {{date}}. Choose another class or raise its maximum.',
-    fullFromUnnamed: 'The class has no free seat from {{date}}. Choose another class or raise its maximum.',
-    fullFromSeveral: '{{class}} lacks seats for {{students}} students from {{date}}: {{free}} free.',
-    fullFromSeveralUnnamed: 'The class lacks seats for {{students}} students from {{date}}: {{free}} free.',
+    fullFrom:
+      '{{class}} has no free seat from {{date}}. Choose another class or raise its maximum.',
+    fullFromUnnamed:
+      'The class has no free seat from {{date}}. Choose another class or raise its maximum.',
+    fullFromSeveral:
+      '{{class}} lacks seats for {{students}} students from {{date}}: {{free}} free.',
+    fullFromSeveralUnnamed:
+      'The class lacks seats for {{students}} students from {{date}}: {{free}} free.',
     endCauses: { ended: 'Ended', role: 'Role ended', archive: 'Class archived' },
     groupsLink: 'Groups',
     mixedGroupsTitle: 'Keep the language of these groups?',

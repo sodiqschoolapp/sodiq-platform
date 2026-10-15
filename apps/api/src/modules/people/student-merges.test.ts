@@ -792,6 +792,75 @@ describe('the merge of two student records', () => {
       expect(archived.every((one) => one.archived_at === null)).toBe(true);
     });
 
+    // Task 3.5b, H29 of issue #105: the values beside the personal fields.
+    it('lists the start dates, grades, scholarships, contracts and relatives with what is kept', async () => {
+      const kept = await pupil();
+      const other = await pupil({
+        fields: { scholarship: { type: 'merit', coverage: 'full', amount: null } },
+      });
+      const links = await t.database.migrator
+        .selectFrom('student_relatives')
+        .select(['relative_id', 'student_id'])
+        .where('student_id', 'in', [kept.id, other.id])
+        .execute();
+      const keptMain = links.find((one) => one.student_id === kept.id)?.relative_id ?? '';
+      await t.database.migrator
+        .insertInto('student_relatives')
+        .values({
+          student_id: other.id,
+          branch_id: t.north,
+          relative_id: keptMain,
+          relationship: 'aunt',
+          main_contact: false,
+          linked_at: new Date('2026-10-01T08:00:00Z'),
+        })
+        .execute();
+      const seen = await previewOf(kept.id, other.uid);
+      expect(seen.values.startsOn).toEqual({
+        kept: '2026-09-02',
+        merged: '2026-09-02',
+        result: '2026-09-02',
+      });
+      expect(seen.values.grade).toEqual({ kept: 7, merged: 7 });
+      expect(seen.values.scholarship).toEqual({
+        kept: { type: 'none', coverage: null, amount: null },
+        merged: { type: 'merit', coverage: 'full', amount: null },
+      });
+      const contracts = await t.database.migrator
+        .selectFrom('student_contracts')
+        .select(['student_id', 'number'])
+        .where('student_id', 'in', [kept.id, other.id])
+        .execute();
+      expect(seen.values.contracts.map((one) => [one.side, one.number]).sort()).toEqual(
+        contracts.map((one) => [one.student_id === kept.id ? 'kept' : 'merged', one.number]).sort(),
+      );
+      expect(
+        seen.values.relatives.map((one) => [one.side, one.relationship, one.fate]).sort(),
+      ).toEqual(
+        [
+          ['kept', 'mother', 'stays'],
+          ['merged', 'aunt', 'already_linked'],
+          ['merged', 'mother', 'added'],
+        ].sort(),
+      );
+      expect(seen.values.relatives.every((one) => one.fullName !== '')).toBe(true);
+      // The merge does what the preview said: the later life's scholarship.
+      merged(await post(kept.id, { uid: other.uid, reason: 'Twice', digest: seen.digest }));
+      const stored = await t.database.migrator
+        .selectFrom('students')
+        .select('scholarship_type')
+        .where('id', '=', kept.id)
+        .executeTakeFirstOrThrow();
+      expect(stored.scholarship_type).toBe(seen.values.later === 'merged' ? 'merit' : 'none');
+      expect(
+        await t.database.migrator
+          .selectFrom('student_contracts')
+          .select('number')
+          .where('student_id', '=', kept.id)
+          .execute(),
+      ).toHaveLength(2);
+    });
+
     it('fills the kept record’s empty fields, the document with its type, and keeps differing values on the merge', async () => {
       const kept = await pupil({ fields: { phone: '+998901112233' } });
       const other = await pupil({

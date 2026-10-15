@@ -1696,8 +1696,22 @@ export const uz: Texts<'one' | 'other'> = {
         carried_other:
           'Qoʻshiladigan yozuvning {{count}} ta qatori qoladigan yozuvga toʻliq oʻtkaziladi.',
         filled: 'Qoʻshiladigan yozuvdan toʻldiriladi',
-        differing: 'Qoʻshiladigan yozuvda farq qiladi (qoladigan yozuvdagi qiymat saqlanadi)',
-        differs: '{{field}}: {{merged}}',
+        differing: 'Farq qiladigan qiymatlar',
+        differs:
+          '{{field}}: qoladigan yozuvda — {{kept}}; qoʻshiladigan yozuvda — {{merged}}. Qoladi: {{result}}.',
+        valueFields: {
+          startsOn: 'Boshlanish sanasi',
+          grade: 'Sinf darajasi',
+          scholarship: 'Stipendiya',
+          contracts: 'Shartnomalar',
+          relatives: 'Qarindoshlar',
+        },
+        allKept: 'hammasi',
+        noValue: '—',
+        contractText: '{{number}}, {{date}}',
+        relativeText: '{{name}} ({{relationship}})',
+        alreadyLinked:
+          '{{name}} ({{relationship}}): qoladigan yozuvga allaqachon bogʻlangan; u bogʻlanish qoladi',
         refused: 'Bu yozuvlarni birlashtirib boʻlmaydi.',
         refusedDay: 'Tegishli birinchi kun: {{date}}',
         reason: 'Sabab',
@@ -2639,10 +2653,14 @@ export const uz: Texts<'one' | 'other'> = {
     seatsFull: '{{class}} — toʻla',
     seatsFullFrom: '{{class}} — {{date}}dan boʻsh oʻrin yoʻq',
     seatsFailed: 'Sinflardagi boʻsh oʻrinlarni oʻqib boʻlmadi.',
-    fullFrom: '{{class}} sinfida {{date}}dan boʻsh oʻrin yoʻq. Boshqa sinfni tanlang yoki sinf sigʻimini oshiring.',
-    fullFromUnnamed: 'Sinfda {{date}}dan boʻsh oʻrin yoʻq. Boshqa sinfni tanlang yoki sinf sigʻimini oshiring.',
-    fullFromSeveral: '{{class}} sinfida {{date}}dan {{students}} ta oʻquvchiga joy yetmaydi: boʻsh oʻrin {{free}} ta.',
-    fullFromSeveralUnnamed: 'Sinfda {{date}}dan {{students}} ta oʻquvchiga joy yetmaydi: boʻsh oʻrin {{free}} ta.',
+    fullFrom:
+      '{{class}} sinfida {{date}}dan boʻsh oʻrin yoʻq. Boshqa sinfni tanlang yoki sinf sigʻimini oshiring.',
+    fullFromUnnamed:
+      'Sinfda {{date}}dan boʻsh oʻrin yoʻq. Boshqa sinfni tanlang yoki sinf sigʻimini oshiring.',
+    fullFromSeveral:
+      '{{class}} sinfida {{date}}dan {{students}} ta oʻquvchiga joy yetmaydi: boʻsh oʻrin {{free}} ta.',
+    fullFromSeveralUnnamed:
+      'Sinfda {{date}}dan {{students}} ta oʻquvchiga joy yetmaydi: boʻsh oʻrin {{free}} ta.',
     endCauses: { ended: 'Yakunlangan', role: 'Rol yakunlangan', archive: 'Sinf arxivlangan' },
     groupsLink: 'Guruhlar',
     mixedGroupsTitle: 'Bu guruhlarning tili saqlansinmi?',

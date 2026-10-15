@@ -27136,6 +27136,54 @@ export interface operations {
                             kept: string;
                             merged: string;
                         }[];
+                        values: {
+                            /** @enum {string} */
+                            later: "kept" | "merged";
+                            startsOn: {
+                                /** Format: date */
+                                kept: string;
+                                /** Format: date */
+                                merged: string;
+                                /** Format: date */
+                                result: string | null;
+                            };
+                            grade: {
+                                kept: number;
+                                merged: number;
+                            };
+                            scholarship: {
+                                kept: {
+                                    /** @enum {string} */
+                                    type: "none" | "merit" | "financial_aid" | "gift";
+                                    /** @enum {string|null} */
+                                    coverage: "full" | "partial" | null;
+                                    amount: number | null;
+                                };
+                                merged: {
+                                    /** @enum {string} */
+                                    type: "none" | "merit" | "financial_aid" | "gift";
+                                    /** @enum {string|null} */
+                                    coverage: "full" | "partial" | null;
+                                    amount: number | null;
+                                };
+                            };
+                            contracts: {
+                                /** @enum {string} */
+                                side: "kept" | "merged";
+                                number: string;
+                                /** Format: date */
+                                signedOn: string;
+                            }[];
+                            relatives: {
+                                /** @enum {string} */
+                                side: "kept" | "merged";
+                                fullName: string;
+                                /** @enum {string} */
+                                relationship: "father" | "mother" | "grandfather" | "grandmother" | "uncle" | "aunt" | "brother" | "sister" | "guardian" | "other";
+                                /** @enum {string} */
+                                fate: "stays" | "added" | "already_linked";
+                            }[];
+                        };
                         refusal: {
                             code: string;
                             /** Format: date */

@@ -1778,8 +1778,22 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         carried_many: '{{count}} строк присоединяемой записи переносятся целиком в остающуюся.',
         carried_other: '{{count}} строки присоединяемой записи переносятся целиком в остающуюся.',
         filled: 'Заполняется из присоединяемой записи',
-        differing: 'Отличается в присоединяемой записи (сохраняется значение остающейся записи)',
-        differs: '{{field}}: {{merged}}',
+        differing: 'Различающиеся значения',
+        differs:
+          '{{field}}: в остающейся записи — {{kept}}; в присоединяемой — {{merged}}. Остаётся: {{result}}.',
+        valueFields: {
+          startsOn: 'Дата начала',
+          grade: 'Параллель',
+          scholarship: 'Стипендия',
+          contracts: 'Договоры',
+          relatives: 'Родственники',
+        },
+        allKept: 'все',
+        noValue: '—',
+        contractText: '{{number}} от {{date}}',
+        relativeText: '{{name}} ({{relationship}})',
+        alreadyLinked:
+          '{{name}} ({{relationship}}): уже связан с остающейся записью; эта связь остаётся',
         refused: 'Эти записи нельзя объединить.',
         refusedDay: 'Первый затронутый день: {{date}}',
         reason: 'Причина',
@@ -2738,10 +2752,14 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     seatsFull: '{{class}} — мест нет',
     seatsFullFrom: '{{class}} — нет мест с {{date}}',
     seatsFailed: 'Не удалось получить свободные места в классах.',
-    fullFrom: 'В классе {{class}} нет свободного места с {{date}}. Выберите другой класс или увеличьте вместимость.',
-    fullFromUnnamed: 'В классе нет свободного места с {{date}}. Выберите другой класс или увеличьте вместимость.',
-    fullFromSeveral: 'В классе {{class}} с {{date}} не хватает мест для {{students}} учеников: свободно {{free}}.',
-    fullFromSeveralUnnamed: 'В классе с {{date}} не хватает мест для {{students}} учеников: свободно {{free}}.',
+    fullFrom:
+      'В классе {{class}} нет свободного места с {{date}}. Выберите другой класс или увеличьте вместимость.',
+    fullFromUnnamed:
+      'В классе нет свободного места с {{date}}. Выберите другой класс или увеличьте вместимость.',
+    fullFromSeveral:
+      'В классе {{class}} с {{date}} не хватает мест для {{students}} учеников: свободно {{free}}.',
+    fullFromSeveralUnnamed:
+      'В классе с {{date}} не хватает мест для {{students}} учеников: свободно {{free}}.',
     endCauses: { ended: 'Завершён', role: 'Роль завершена', archive: 'Класс в архиве' },
     groupsLink: 'Группы',
     mixedGroupsTitle: 'Оставить язык этих групп?',
