@@ -15,7 +15,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:changed": "turbo run build --filter=\"./packages/*\" && pnpm -r --filter \"...[origin/main]\" --filter \"!sodiq-platform\" run test:changed",
-    "test:e2e": "turbo run build --filter=@sodiq/api && pnpm --filter @sodiq/api e2e:build && pnpm --filter @sodiq/web test:e2e",
+    "test:e2e": "turbo run build --filter=@sodiq/api --filter=@sodiq/web^... && pnpm --filter @sodiq/api e2e:build && pnpm --filter @sodiq/web test:e2e",
     "sync": "git switch main && git pull --ff-only && pnpm install --frozen-lockfile && pnpm db:migrate",
     "db:migrate": "turbo run build --filter=@sodiq/api && pnpm --filter @sodiq/api db:migrate",
     "db:codegen": "pnpm --filter @sodiq/api db:codegen",
