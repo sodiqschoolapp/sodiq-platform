@@ -335,6 +335,40 @@ export interface KnownDevices {
   token_hash: string;
 }
 
+export interface LessonBlocks {
+  academic_year_id: string;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  double_pair_id: string | null;
+  ends_at: Timestamp;
+  id: Generated<string>;
+  kind: string;
+  lesson_date: string;
+  pattern_block_id: string | null;
+  quarter_id: string;
+  starts_at: Timestamp;
+  version_id: string | null;
+}
+
+export interface Lessons {
+  block_id: string;
+  branch_id: string;
+  cancel_cause: string | null;
+  cancel_reason: string | null;
+  class_id: string | null;
+  created_at: Generated<Timestamp>;
+  ends_at: Timestamp;
+  group_id: string | null;
+  id: Generated<string>;
+  lesson_date: string;
+  load_row_id: string | null;
+  pattern_entry_id: string | null;
+  room_id: string | null;
+  starts_at: Timestamp;
+  subject_id: string;
+  teacher_id: string | null;
+}
+
 export interface Notifications {
   account_id: string;
   branch_id: string | null;
@@ -354,6 +388,43 @@ export interface PasswordResetLinks {
   token_hash: string | null;
   used_at: Timestamp | null;
   valid_until: Timestamp | null;
+}
+
+export interface PatternBlockClasses {
+  block_id: string;
+  branch_id: string;
+  class_id: string;
+  end_minutes: number;
+  start_minutes: number;
+  version_id: string;
+  weekday: number;
+}
+
+export interface PatternBlocks {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  double_pair_id: string | null;
+  end_minutes: number;
+  id: Generated<string>;
+  slot_position: number;
+  start_minutes: number;
+  version_id: string;
+  weekday: number;
+}
+
+export interface PatternEntries {
+  block_id: string;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  end_minutes: number;
+  id: Generated<string>;
+  load_row_id: string;
+  room_id: string | null;
+  room_shared: Generated<boolean>;
+  start_minutes: number;
+  teacher_id: string;
+  version_id: string;
+  weekday: number;
 }
 
 export interface Quarters {
@@ -750,6 +821,22 @@ export interface TeachingLoadRows {
   version_id: string;
 }
 
+export interface TimeClaims {
+  block_id: string | null;
+  branch_id: string;
+  class_id: string | null;
+  created_at: Generated<Timestamp>;
+  during: string;
+  exam_id: string | null;
+  holder: string;
+  id: Generated<string>;
+  kind: string;
+  lesson_id: string | null;
+  room_id: string | null;
+  room_shared: Generated<boolean>;
+  teacher_id: string | null;
+}
+
 export interface TimetableVersions {
   academic_year_id: string;
   branch_id: string;
@@ -796,8 +883,13 @@ export interface DB {
   group_memberships: GroupMemberships;
   groups: Groups;
   known_devices: KnownDevices;
+  lesson_blocks: LessonBlocks;
+  lessons: Lessons;
   notifications: Notifications;
   password_reset_links: PasswordResetLinks;
+  pattern_block_classes: PatternBlockClasses;
+  pattern_blocks: PatternBlocks;
+  pattern_entries: PatternEntries;
   quarters: Quarters;
   relative_accounts: RelativeAccounts;
   relatives: Relatives;
@@ -832,6 +924,7 @@ export interface DB {
   subject_quarter_weights: SubjectQuarterWeights;
   subjects: Subjects;
   teaching_load_rows: TeachingLoadRows;
+  time_claims: TimeClaims;
   timetable_versions: TimetableVersions;
   travel_times: TravelTimes;
 }

@@ -84,6 +84,11 @@ export async function createTestDatabase(options: { empty?: boolean } = {}): Pro
         `create database ${escapeIdentifier(name)} template ${escapeIdentifier(templateOf(runPrefix))}`,
       ),
     );
+    // A database's rights are not copied from its template: the revoke of
+    // 0058 (task 5.1a, decision 3) is made again on the copy.
+    await onServer((client) =>
+      client.query(`revoke temporary on database ${escapeIdentifier(name)} from public, sodiq_app`),
+    );
   }
   const appUrl = withDatabaseName(databaseUrl('DATABASE_URL'), name);
   const migrationUrl = withDatabaseName(databaseUrl('DATABASE_MIGRATION_URL'), name);
