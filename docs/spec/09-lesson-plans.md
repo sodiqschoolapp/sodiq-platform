@@ -76,7 +76,6 @@ One rule: plan items follow the lessons in order. The items of lessons already h
 | --- | --- |
 | A future lesson is cancelled: one-day cancel, bulk cancel, a new day off | Its item moves to the next lesson of that class and the following items move one step. This happens by itself and is not an edit. Items that no longer fit in the quarter go to a "not covered" list at the end of the plan, and the system prepares an edit request for the teacher. The teacher and the Head Teacher are told. |
 | A lesson is cancelled after its date | Its item moves to the next lesson not yet held; later items move from there. Lessons already held keep their items. |
-| An extra lesson is added | Nothing moves, unless the extra lesson is marked as replacing a cancelled lesson of the same quarter. An unmarked extra lesson has a topic typed by the teacher; using it to catch up on the plan needs an edit request. |
 | A lesson moves to another day or slot | Only the dates change. Items stay in date order. |
 | Lessons per week or quarter dates change | Fewer lessons: the last items go to "not covered". More lessons: empty rows appear at the end. In both cases the plan stays locked and the system prepares an edit request for the teacher. |
 | The teacher of the class changes | The plan stays with the class and the new teacher becomes its owner. It stays locked; the system prepares an edit request so that the new teacher can adjust the future lessons. The part taught earlier stays readable. |

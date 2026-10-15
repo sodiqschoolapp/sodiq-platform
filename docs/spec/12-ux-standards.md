@@ -9,7 +9,7 @@ These rules apply to every page and every role.
 
 - **Home page.** Each role opens on "what do I need to do today", with one click to the place where it is done.
 - **Lists.** Every list (students, teachers, classes, groups, subjects, rooms) works the same way: search, filters, column chooser, sorting, checkboxes with bulk actions, export, and a side panel that opens a record without leaving the list.
-- **Search.** Ctrl+K opens a search across students, staff, classes, groups and pages.
+- **Search.** Ctrl+K opens a search across students, staff, relatives (by phone, for the readers named in the edge cases), classes, groups and pages.
 - **Context.** The branch, academic year and quarter in use are always shown in the top bar. Past years open read only with a clear label.
 - **Navigation.** A left menu that shows only what the role can use, with no more than about ten items. Breadcrumbs on inner pages. Every page has its own address, so links and the browser Back button work.
 
