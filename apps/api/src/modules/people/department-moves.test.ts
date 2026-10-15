@@ -1,0 +1,780 @@
+import {
+  apiErrorSchema,
+  BRANCH_HEADER,
+  staffDetailSchema,
+  subjectSchema,
+  type ErrorDetail,
+  type StaffDetail,
+  type Subject,
+} from '@sodiq/shared';
+import { sql } from 'kysely';
+import request, { type Response } from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Transactions, type Transaction } from '../../database/transactions.js';
+import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import { LoadKit } from '../../testing/load-kit.js';
+import { errorCode } from '../../testing/sign-in-kit.js';
+
+/** A start date after the kit's today (Saturday 10 October 2026) and inside the year. */
+const MOVE_ON = '2026-11-02';
+const STARTS_ON = '2026-10-19';
+
+const refusedWith = (response: Response, status: number, code: string) => {
+  expect(response.status, JSON.stringify(response.body)).toBe(status);
+  expect(errorCode(response)).toBe(code);
+};
+
+const detailsOf = (response: Response): ErrorDetail[] =>
+  apiErrorSchema.parse(response.body).error.details ?? [];
+
+// All names are invented. edge-cases/people-roles-accounts.md, row 15: "A
+// teacher moves to another department, or a subject is moved, mid-year. Both
+// changes carry a start date and are made by the Super Admin. They are refused
+// while a teaching load would have a teacher outside the subject's department;
+// those loads are listed for reassignment first." Task 3.4c, the plan approved
+// on pull request #101 with corrections 1 to 5. The clock stands at 23:55 on
+// Saturday 10 October 2026 in Tashkent.
+describe('the department move against the load', () => {
+  let t: DayTemplatesKit;
+  let load: LoadKit;
+  let year: string;
+  let academic: string;
+  let management: string;
+  let steam: string;
+  let national: string;
+  let tutors: string;
+
+  const put = (path: string, body: object, cookie = t.admin, branch = t.north) =>
+    request(t.kit.server).put(path).set('Cookie', cookie).set(BRANCH_HEADER, branch).send(body);
+
+  const detail = async (id: string, branch = t.north): Promise<StaffDetail> => {
+    const response = await t.get(`/api/people/staff/${id}`, branch, t.admin);
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    return staffDetailSchema.parse(response.body);
+  };
+
+  /** What a staff edit sends: the fields of the answer. */
+  const staffBody = (staff: StaffDetail, overrides: Record<string, unknown> = {}) => ({
+    firstName: staff.firstName,
+    lastName: staff.lastName,
+    fatherName: staff.fatherName ?? '',
+    sex: staff.sex,
+    birthDate: staff.birthDate,
+    educationLevel: staff.educationLevel,
+    phone: staff.phone,
+    email: staff.email ?? '',
+    jshshir: staff.jshshir ?? '',
+    admissionDate: staff.admissionDate,
+    contractType: staff.contractType,
+    contractDate: staff.contractDate,
+    weeklyLessons: staff.weeklyLessons,
+    dailyLessons: staff.dailyLessons,
+    divisions: staff.divisions.map(({ divisionId, departmentId, main }) => ({
+      divisionId,
+      departmentId,
+      main,
+    })),
+    ...overrides,
+  });
+
+  const toDepartment = (departmentId: string | null) => [
+    { divisionId: academic, departmentId, main: true },
+  ];
+
+  const subjectAnswer = async (id: string): Promise<Subject> => {
+    const response = await t.get('/api/setup/subjects', t.north, t.admin);
+    const found = (response.body as { subjects: unknown[] }).subjects
+      .map((one) => subjectSchema.parse(one))
+      .find((one) => one.id === id);
+    if (found === undefined) {
+      throw new Error('The subject is listed.');
+    }
+    return found;
+  };
+
+  /** What a subject edit sends: the fields of the answer, without the branch's weights. */
+  const subjectBody = (subject: Subject, overrides: Record<string, unknown> = {}) => ({
+    names: subject.names,
+    departmentId: subject.departmentId,
+    grades: subject.grades,
+    colour: subject.colour,
+    journalType: subject.journalType,
+    ratingExam: subject.ratingExam,
+    groupSubject: subject.groupSubject,
+    languageRule: subject.languageRule,
+    demanding: subject.demanding,
+    // The kit's subjects have no daily distribution in the North yet.
+    daily: subject.daily === null ? { attendance: 10, classwork: 50, homework: 40 } : null,
+    ...overrides,
+  });
+
+  /** A STEAM teacher of a STEAM subject of grade 7 on a class row of a new draft of the North. */
+  async function steamRow(
+    input: { branch?: string; year?: string; further?: string[] } = {},
+  ): Promise<{ row: string; teacher: string; subject: string; version: string; classId: string }> {
+    const branch = input.branch ?? t.north;
+    const subject = await load.classes.subject({ grades: [7] });
+    const classId = await load.classes.schoolClass(branch, input.year ?? year, { grade: 7 });
+    const { staffId } = await load.teacher(branch, {
+      subjects: [{ subject, grades: [7] }],
+      ...(input.further === undefined ? {} : { further: input.further }),
+    });
+    const version = await load.version(branch, input.year ?? year, { startsOn: STARTS_ON });
+    const row = await load.row({
+      branch_id: branch,
+      version_id: version,
+      class_id: classId,
+      subject_id: subject,
+      teacher_id: staffId,
+    });
+    return { row, teacher: staffId, subject, version, classId };
+  }
+
+  /** Every row the two edits write, in both branches, and the audit count. */
+  const rowsOf = () =>
+    Promise.all([
+      sql`select * from staff order by id`.execute(t.database.migrator),
+      sql`select * from staff_divisions order by staff_id, division_id`.execute(
+        t.database.migrator,
+      ),
+      sql`select * from staff_subjects order by staff_id, subject_id`.execute(t.database.migrator),
+      sql`select * from subjects order by id`.execute(t.database.migrator),
+      sql`select * from teaching_load_rows order by id`.execute(t.database.migrator),
+      t.auditCount(),
+    ]);
+
+  /** The rows of the branch a refusal lists, by id. */
+  const listed = (response: Response): string[] =>
+    detailsOf(response)
+      .filter((detail) => detail.path.startsWith('load.'))
+      .map((detail) => detail.path.slice('load.'.length));
+
+  beforeAll(async () => {
+    t = await dayTemplatesKit();
+    load = new LoadKit(t.database.migrator);
+    year = await load.classes.year(t.north);
+    await load.classes.year(t.south);
+    const id = async (table: 'divisions' | 'departments', en: string) =>
+      (
+        await t.database.migrator
+          .selectFrom(table)
+          .select('id')
+          .where('name_en', '=', en)
+          .executeTakeFirstOrThrow()
+      ).id;
+    academic = await id('divisions', 'Academic');
+    management = await id('divisions', 'Management');
+    steam = await id('departments', 'STEAM');
+    national = await id('departments', 'National');
+    tutors = await id('departments', 'Tutors');
+  });
+
+  afterAll(async () => {
+    await t.close();
+  });
+
+  describe('a teacher move', () => {
+    it('is refused with the rows of the branch listed, what each line shows, and nothing written', async () => {
+      const { row, teacher, subject, version, classId } = await steamRow();
+      const staff = await detail(teacher);
+      const before = await rowsOf();
+      const refused = await put(
+        `/api/people/staff/${teacher}`,
+        staffBody(staff, { divisions: toDepartment(national), departmentStartsOn: MOVE_ON }),
+      );
+      refusedWith(refused, 409, 'department_move_loads');
+      expect(detailsOf(refused)).toEqual([
+        {
+          path: `load.${row}`,
+          code: 'teaches',
+          message: expect.any(String) as string,
+          load: {
+            versionId: version,
+            versionNumber: expect.any(Number) as number,
+            versionStartsOn: STARTS_ON,
+            unit: { kind: 'class', id: classId, name: expect.any(String) as string },
+            subjectId: subject,
+            teacher: { id: teacher, name: `${staff.lastName} ${staff.firstName}`, vacancy: false },
+          },
+        },
+      ]);
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('passes once the rows are reassigned and the profile fits, with the start date audited and shown', async () => {
+      const { row, teacher } = await steamRow();
+      const staff = await detail(teacher);
+      const move = staffBody(staff, {
+        divisions: toDepartment(national),
+        departmentStartsOn: MOVE_ON,
+      });
+      const other = await load.teacher(t.north, {
+        subjects: (
+          await t.database.migrator
+            .selectFrom('staff_subjects')
+            .select(['subject_id', 'grades'])
+            .where('staff_id', '=', teacher)
+            .execute()
+        ).map((one) => ({ subject: one.subject_id, grades: one.grades })),
+      });
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ teacher_id: other.staffId })
+        .where('id', '=', row)
+        .execute();
+      // The loads pass; the profile's own check at the commit still refuses
+      // (task 3.4c, decision 2).
+      refusedWith(
+        await put(`/api/people/staff/${teacher}`, move),
+        409,
+        'subject_outside_department',
+      );
+      const cleared = await put(`/api/people/staff/${teacher}/teaching`, {
+        subjects: [],
+        languages: ['uz'],
+      });
+      expect(cleared.status, JSON.stringify(cleared.body)).toBe(200);
+      const moved = await put(`/api/people/staff/${teacher}`, move);
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      expect(staffDetailSchema.parse(moved.body).divisions).toEqual([
+        { divisionId: academic, departmentId: national, main: true, departmentSince: MOVE_ON },
+      ]);
+      const entry = (await t.entries('staff.edit', teacher)).at(-1);
+      expect(entry).toMatchObject({
+        assignment_id: t.adminAssignment,
+        request_id: moved.headers['x-request-id'],
+        new_value: { departmentStartsOn: MOVE_ON },
+      });
+    });
+
+    it('lists the rows of the branch first and counts those of another branch', async () => {
+      const subject = await load.classes.subject({ grades: [7] });
+      const southYear = (
+        await t.database.migrator
+          .selectFrom('academic_years')
+          .select('id')
+          .where('branch_id', '=', t.south)
+          .executeTakeFirstOrThrow()
+      ).id;
+      const { staffId } = await load.teacher(t.north, {
+        further: [t.south],
+        subjects: [{ subject, grades: [7] }],
+      });
+      const southVersion = await load.version(t.south, southYear, { startsOn: STARTS_ON });
+      await load.row({
+        branch_id: t.south,
+        version_id: southVersion,
+        class_id: await load.classes.schoolClass(t.south, southYear, { grade: 7 }),
+        subject_id: subject,
+        teacher_id: staffId,
+      });
+      const northVersion = await load.version(t.north, year, { startsOn: STARTS_ON });
+      const northRow = await load.row({
+        branch_id: t.north,
+        version_id: northVersion,
+        class_id: await load.classes.schoolClass(t.north, year, { grade: 7 }),
+        subject_id: subject,
+        teacher_id: staffId,
+      });
+      const refused = await put(
+        `/api/people/staff/${staffId}`,
+        staffBody(await detail(staffId), {
+          divisions: toDepartment(national),
+          departmentStartsOn: MOVE_ON,
+        }),
+      );
+      refusedWith(refused, 409, 'department_move_loads');
+      expect(listed(refused)).toEqual([northRow]);
+      expect(detailsOf(refused).at(-1)).toMatchObject({ path: 'elsewhere', code: '1' });
+    });
+
+    it('with the Academic division removed lists every row', async () => {
+      const { row, teacher } = await steamRow();
+      const refused = await put(
+        `/api/people/staff/${teacher}`,
+        staffBody(await detail(teacher), {
+          divisions: [{ divisionId: management, departmentId: null, main: true }],
+          departmentStartsOn: MOVE_ON,
+        }),
+      );
+      refusedWith(refused, 409, 'department_move_loads');
+      expect(listed(refused)).toEqual([row]);
+    });
+
+    it('passes when the only rows are of a version whose year ends before the start date', async () => {
+      const own = await t.newBranch();
+      const ownYear = await load.classes.year(own, 'current', '2026-09-01', '2027-05-31');
+      const subject = await load.classes.subject({ grades: [7] });
+      const { staffId } = await load.teacher(own, {
+        further: [t.north],
+        subjects: [{ subject, grades: [7] }],
+      });
+      await load.row({
+        branch_id: own,
+        version_id: await load.version(own, ownYear, { startsOn: STARTS_ON }),
+        class_id: await load.classes.schoolClass(own, ownYear, { grade: 7 }),
+        subject_id: subject,
+        teacher_id: staffId,
+      });
+      // The North's planned year reaches into 2028: a start date in it is
+      // allowed, and the own branch's year ended before it.
+      await load.classes.year(t.north, 'planned', '2027-09-01', '2028-05-31');
+      await put(
+        `/api/people/staff/${staffId}/teaching`,
+        { subjects: [], languages: ['uz'] },
+        t.admin,
+        own,
+      );
+      const moved = await put(
+        `/api/people/staff/${staffId}`,
+        staffBody(await detail(staffId), {
+          divisions: toDepartment(national),
+          departmentStartsOn: '2027-09-01',
+        }),
+      );
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+    });
+  });
+
+  describe('the start date (decision 2, correction 5)', () => {
+    it('is required for a move and refused without one', async () => {
+      const { teacher } = await steamRow();
+      const staff = await detail(teacher);
+      const required = await put(
+        `/api/people/staff/${teacher}`,
+        staffBody(staff, { divisions: toDepartment(national) }),
+      );
+      refusedWith(required, 400, 'validation_failed');
+      expect(detailsOf(required)).toEqual([
+        expect.objectContaining({ path: 'departmentStartsOn', code: 'required' }),
+      ]);
+      const noMove = await put(
+        `/api/people/staff/${teacher}`,
+        staffBody(staff, { departmentStartsOn: MOVE_ON }),
+      );
+      refusedWith(noMove, 400, 'validation_failed');
+      expect(detailsOf(noMove)).toEqual([
+        expect.objectContaining({ path: 'departmentStartsOn', code: 'no_move' }),
+      ]);
+    });
+
+    it('is today or later in branch time and no later than the end of the latest year', async () => {
+      const { teacher } = await steamRow();
+      const staff = await detail(teacher);
+      const at = (date: string) =>
+        put(
+          `/api/people/staff/${teacher}`,
+          staffBody(staff, { divisions: toDepartment(national), departmentStartsOn: date }),
+        );
+      for (const date of ['2026-10-09', '2099-09-01']) {
+        const refused = await at(date);
+        refusedWith(refused, 422, 'department_move_start_outside');
+        expect(detailsOf(refused)).toEqual([
+          expect.objectContaining({ path: 'departmentStartsOn' }),
+        ]);
+      }
+      // Today passes the date (the loads answer next), until midnight in Tashkent.
+      refusedWith(await at('2026-10-10'), 409, 'department_move_loads');
+      t.clock.set('2026-10-11T00:01:00+05:00');
+      try {
+        refusedWith(await at('2026-10-10'), 422, 'department_move_start_outside');
+      } finally {
+        t.clock.set('2026-10-10T23:55:00+05:00');
+      }
+    });
+
+    it('has no upper bound in a branch with no year; other branches still count against their own', async () => {
+      const own = await t.newBranch();
+      const subject = await load.classes.subject({ grades: [7] });
+      const { staffId } = await load.teacher(own, {
+        further: [t.north],
+        subjects: [{ subject, grades: [7] }],
+      });
+      await load.row({
+        branch_id: t.north,
+        version_id: await load.version(t.north, year, { startsOn: STARTS_ON }),
+        class_id: await load.classes.schoolClass(t.north, year, { grade: 7 }),
+        subject_id: subject,
+        teacher_id: staffId,
+      });
+      const at = async (date: string) =>
+        put(
+          `/api/people/staff/${staffId}`,
+          staffBody(await detail(staffId, own), {
+            divisions: toDepartment(national),
+            departmentStartsOn: date,
+          }),
+          t.admin,
+          own,
+        );
+      const counted = await at(MOVE_ON);
+      refusedWith(counted, 409, 'department_move_loads');
+      expect(detailsOf(counted)).toEqual([
+        expect.objectContaining({ path: 'elsewhere', code: '1' }),
+      ]);
+      // A far date: the North's year ends before it; only the profile is left.
+      refusedWith(await at('2099-09-01'), 409, 'subject_outside_department');
+    });
+  });
+
+  describe('what is not a move (decision 5, correction 4)', () => {
+    /** A teacher with a stale row the check would refuse: its subject moved to National. */
+    async function staleTeacher(): Promise<{ teacher: string; row: string }> {
+      const { teacher, row, subject } = await steamRow();
+      await t.database.migrator
+        .deleteFrom('staff_subjects')
+        .where('staff_id', '=', teacher)
+        .execute();
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ department_id: national })
+        .where('id', '=', subject)
+        .execute();
+      return { teacher, row };
+    }
+
+    it('swapping main and further with the department unchanged runs no check and keeps the date', async () => {
+      const { teacher } = await staleTeacher();
+      await t.database.migrator
+        .insertInto('staff_divisions')
+        .values({ staff_id: teacher, division_id: management, department_id: null, is_main: false })
+        .execute();
+      await t.database.migrator
+        .updateTable('staff_divisions')
+        .set({ department_since: '2026-09-15' })
+        .where('staff_id', '=', teacher)
+        .where('division_id', '=', academic)
+        .execute();
+      const swapped = [
+        { divisionId: academic, departmentId: steam, main: false },
+        { divisionId: management, departmentId: null, main: true },
+      ];
+      const staff = await detail(teacher);
+      refusedWith(
+        await put(
+          `/api/people/staff/${teacher}`,
+          staffBody(staff, { divisions: swapped, departmentStartsOn: MOVE_ON }),
+        ),
+        400,
+        'validation_failed',
+      );
+      const moved = await put(
+        `/api/people/staff/${teacher}`,
+        staffBody(staff, { divisions: swapped }),
+      );
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      expect(staffDetailSchema.parse(moved.body).divisions).toContainEqual({
+        divisionId: academic,
+        departmentId: steam,
+        main: false,
+        departmentSince: '2026-09-15',
+      });
+    });
+
+    it('adding Academic as a further division is not a move', async () => {
+      const created = await t.post('/api/people/staff', t.north, {
+        ...staffBody(await detail((await load.teacher(t.north)).staffId)),
+        firstName: 'Nodira',
+        lastName: 'Rahimova',
+        phone: '+998901234500',
+        divisions: [{ divisionId: management, departmentId: null, main: true }],
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const staff = staffDetailSchema.parse(created.body);
+      const added = [
+        { divisionId: management, departmentId: null, main: true },
+        { divisionId: academic, departmentId: steam, main: false },
+      ];
+      refusedWith(
+        await put(
+          `/api/people/staff/${staff.id}`,
+          staffBody(staff, { divisions: added, departmentStartsOn: MOVE_ON }),
+        ),
+        400,
+        'validation_failed',
+      );
+      const moved = await put(
+        `/api/people/staff/${staff.id}`,
+        staffBody(staff, { divisions: added }),
+      );
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+    });
+  });
+
+  describe('who may move', () => {
+    it('refuses the Academic Vice Principal and a Teacher, and answers 404 for another branch', async () => {
+      const { teacher } = await steamRow();
+      const body = staffBody(await detail(teacher), {
+        divisions: toDepartment(national),
+        departmentStartsOn: MOVE_ON,
+      });
+      const before = await rowsOf();
+      refusedWith(
+        await put(`/api/people/staff/${teacher}`, body, t.vicePrincipal),
+        403,
+        'permission_denied',
+      );
+      expect((await put(`/api/people/staff/${teacher}`, body, t.teacher)).status).toBe(403);
+      const elsewhere = await put(`/api/people/staff/${teacher}`, body, t.admin, t.south);
+      expect(elsewhere.status).toBe(404);
+      expect((await put(`/api/people/staff/${UNKNOWN}`, body)).status).toBe(404);
+      expect(await rowsOf()).toEqual(before);
+    });
+  });
+
+  describe('a subject move', () => {
+    it('is refused with the loads before the profiles, and passes once both are cleared', async () => {
+      const { row, teacher, subject } = await steamRow();
+      const body = subjectBody(await subjectAnswer(subject), {
+        departmentId: national,
+        departmentStartsOn: MOVE_ON,
+      });
+      const before = await rowsOf();
+      const refused = await put(`/api/setup/subjects/${subject}`, body);
+      refusedWith(refused, 409, 'department_move_loads');
+      expect(listed(refused)).toEqual([row]);
+      expect(await rowsOf()).toEqual(before);
+      await t.database.migrator.deleteFrom('teaching_load_rows').where('id', '=', row).execute();
+      refusedWith(await put(`/api/setup/subjects/${subject}`, body), 409, 'subject_has_teachers');
+      await t.database.migrator
+        .deleteFrom('staff_subjects')
+        .where('staff_id', '=', teacher)
+        .execute();
+      const moved = await put(`/api/setup/subjects/${subject}`, body);
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      expect(subjectSchema.parse(moved.body)).toMatchObject({
+        departmentId: national,
+        departmentSince: MOVE_ON,
+      });
+      expect(
+        (
+          await t.database.migrator
+            .selectFrom('audit_log_school')
+            .selectAll()
+            .where('action', '=', 'subject.edit')
+            .where('record_id', '=', subject)
+            .orderBy('occurred_at')
+            .orderBy('id')
+            .execute()
+        ).at(-1),
+      ).toMatchObject({
+        assignment_id: t.adminAssignment,
+        old_value: { departmentId: steam },
+        new_value: { departmentId: national, departmentStartsOn: MOVE_ON },
+      });
+    });
+
+    it('is refused by a row that names a vacancy of the old department (correction 1)', async () => {
+      const subject = await load.classes.subject({ grades: [7] });
+      const vacancy = await load.vacancy(t.north, { subjects: [{ subject, grades: [7] }] });
+      const row = await load.row({
+        branch_id: t.north,
+        version_id: await load.version(t.north, year, { startsOn: STARTS_ON }),
+        class_id: await load.classes.schoolClass(t.north, year, { grade: 7 }),
+        subject_id: subject,
+        teacher_id: vacancy,
+      });
+      const refused = await put(
+        `/api/setup/subjects/${subject}`,
+        subjectBody(await subjectAnswer(subject), {
+          departmentId: national,
+          departmentStartsOn: MOVE_ON,
+        }),
+      );
+      refusedWith(refused, 409, 'department_move_loads');
+      expect(detailsOf(refused)).toEqual([
+        expect.objectContaining({
+          path: `load.${row}`,
+          load: expect.objectContaining({
+            teacher: { id: vacancy, name: expect.any(String) as string, vacancy: true },
+          }) as unknown,
+        }),
+      ]);
+    });
+
+    it('into the Tutors department leaves the class Tutor’s rows out', async () => {
+      const { teacher, subject, classId } = await steamRow();
+      const accountId = (
+        await t.database.migrator
+          .selectFrom('staff')
+          .select('account_id')
+          .where('id', '=', teacher)
+          .executeTakeFirstOrThrow()
+      ).account_id;
+      if (accountId === null) {
+        throw new Error('The kit gives every person an account.');
+      }
+      await load.tutorOf(t.north, classId, accountId);
+      await t.database.migrator
+        .deleteFrom('staff_subjects')
+        .where('staff_id', '=', teacher)
+        .execute();
+      const moved = await put(
+        `/api/setup/subjects/${subject}`,
+        subjectBody(await subjectAnswer(subject), {
+          departmentId: tutors,
+          departmentStartsOn: MOVE_ON,
+        }),
+      );
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+    });
+
+    it('needs a start date, refuses one without a move, and refuses the Academic Vice Principal', async () => {
+      const subject = await load.classes.subject({ grades: [7] });
+      const answer = await subjectAnswer(subject);
+      const required = await put(
+        `/api/setup/subjects/${subject}`,
+        subjectBody(answer, { departmentId: national }),
+      );
+      refusedWith(required, 400, 'validation_failed');
+      expect(detailsOf(required)).toEqual([
+        expect.objectContaining({ path: 'departmentStartsOn', code: 'required' }),
+      ]);
+      refusedWith(
+        await put(
+          `/api/setup/subjects/${subject}`,
+          subjectBody(answer, { departmentStartsOn: MOVE_ON }),
+        ),
+        400,
+        'validation_failed',
+      );
+      refusedWith(
+        await put(
+          `/api/setup/subjects/${subject}`,
+          subjectBody(answer, { departmentId: national, departmentStartsOn: '2099-09-01' }),
+        ),
+        422,
+        'department_move_start_outside',
+      );
+      refusedWith(
+        await put(
+          `/api/setup/subjects/${subject}`,
+          subjectBody(answer, { departmentId: national, departmentStartsOn: MOVE_ON }),
+          t.vicePrincipal,
+        ),
+        403,
+        'subject_move_super_admin',
+      );
+    });
+  });
+
+  // Decision 9: the edit decides the lock of department moves from a read
+  // without a row lock; a change of the department that lands between that
+  // read and the row lock was not ordered, in either direction.
+  describe('a department changed between the read and the lock', () => {
+    /** Runs `work` in a transaction of the application that stays open until released. */
+    async function holdOpen(work: (transaction: Transaction) => Promise<void>) {
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const done = t.app
+        .get(Transactions)
+        .run([t.north], async (transaction) => {
+          await work(transaction);
+          ready();
+          await released;
+        })
+        .catch((error: unknown) => error);
+      await Promise.race([isReady, done]);
+      return { release, done };
+    }
+
+    async function waitingForALock(): Promise<number> {
+      const found = await sql<{ waiting: number }>`
+        select count(distinct l.pid)::int as waiting
+        from pg_locks l join pg_stat_activity a on a.pid = l.pid
+        where a.datname = current_database() and not l.granted
+      `.execute(t.database.migrator);
+      return found.rows[0]?.waiting ?? 0;
+    }
+
+    const untilWaiting = async () => {
+      for (let tries = 0; tries < 200 && (await waitingForALock()) === 0; tries += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      expect(await waitingForALock()).toBeGreaterThan(0);
+    };
+
+    /** A teacher with no subjects and no rows, whose department the held side changes. */
+    async function bareTeacher(): Promise<string> {
+      return (await load.teacher(t.north)).staffId;
+    }
+
+    const heldDepartment = (teacher: string, department: string) =>
+      holdOpen(async (transaction) => {
+        await transaction
+          .selectFrom('staff')
+          .select('id')
+          .where('id', '=', teacher)
+          .forUpdate()
+          .execute();
+        await transaction
+          .updateTable('staff_divisions')
+          .set({ department_id: department })
+          .where('staff_id', '=', teacher)
+          .where('division_id', '=', academic)
+          .execute();
+      });
+
+    it('answers staff_changed when the move the edit locked for is gone', async () => {
+      const teacher = await bareTeacher();
+      const staff = await detail(teacher);
+      const held = await heldDepartment(teacher, national);
+      const sent = put(
+        `/api/people/staff/${teacher}`,
+        staffBody(staff, { divisions: toDepartment(national), departmentStartsOn: MOVE_ON }),
+      ).then((response) => response);
+      await untilWaiting();
+      held.release();
+      expect(await held.done).toBeUndefined();
+      refusedWith(await sent, 409, 'staff_changed');
+    });
+
+    it('answers staff_changed when a move appears that the edit did not lock for', async () => {
+      const teacher = await bareTeacher();
+      const staff = await detail(teacher);
+      const held = await heldDepartment(teacher, national);
+      const sent = put(`/api/people/staff/${teacher}`, staffBody(staff)).then(
+        (response) => response,
+      );
+      await untilWaiting();
+      held.release();
+      expect(await held.done).toBeUndefined();
+      refusedWith(await sent, 409, 'staff_changed');
+    });
+
+    it('answers subject_changed in both directions', async () => {
+      for (const asked of ['national', 'steam'] as const) {
+        const subject = await load.classes.subject({ grades: [7] });
+        const answer = await subjectAnswer(subject);
+        const held = await holdOpen(async (transaction) => {
+          await transaction
+            .selectFrom('subjects')
+            .select('id')
+            .where('id', '=', subject)
+            .forUpdate()
+            .execute();
+          await transaction
+            .updateTable('subjects')
+            .set({ department_id: national })
+            .where('id', '=', subject)
+            .execute();
+        });
+        const body =
+          asked === 'national'
+            ? subjectBody(answer, { departmentId: national, departmentStartsOn: MOVE_ON })
+            : subjectBody(answer);
+        const sent = put(`/api/setup/subjects/${subject}`, body).then((response) => response);
+        await untilWaiting();
+        held.release();
+        expect(await held.done).toBeUndefined();
+        refusedWith(await sent, 409, 'subject_changed');
+      }
+    });
+  });
+});

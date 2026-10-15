@@ -474,6 +474,8 @@ export class Staff {
         const before = fieldsOf(row, sortDivisions(divisions));
         const { departmentStartsOn, ...fields } = record;
         const after: StaffFields = { ...fields, divisions: sortDivisions(record.divisions) };
+        // A start date is sent with a move only (task 3.4c, decision 2).
+        const startsOn = moveStartsOn(moving, departmentStartsOn);
         const changes = changesOf({ ...before }, { ...after });
         if (changes === null) {
           return this.readDetail(transaction, access, id);
@@ -501,7 +503,6 @@ export class Staff {
         // `edge/people-roles-accounts`, row 15 (task 3.4c): a move carries a
         // start date and is refused while a load would have the teacher outside
         // the subject's department; the profile's own check comes at the commit.
-        const startsOn = moveStartsOn(moving, departmentStartsOn);
         if (startsOn !== null) {
           await checkMoveStart(transaction, branchId, startsOn);
           await refuseMoveLoads(transaction, branchId, {
@@ -541,7 +542,10 @@ export class Staff {
           action: 'staff.edit',
           record: { type: 'staff', id },
           oldValue: changes.oldValue,
-          newValue: changes.newValue,
+          newValue:
+            startsOn === null
+              ? changes.newValue
+              : { ...changes.newValue, departmentStartsOn: startsOn },
           requestId,
         });
         return this.readDetail(transaction, access, id);
