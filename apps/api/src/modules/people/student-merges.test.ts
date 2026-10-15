@@ -1094,6 +1094,10 @@ describe('the merge of two student records', () => {
     const later = await pupil({ from: '2026-10-19' });
     const seen: StudentMergePreview = await previewOf(later.id, kept.uid);
     expect(seen.kept).toMatchObject({ startsOn: '2026-09-02', today: '2026-10-10' });
-    expect(seen.merged).toMatchObject({ startsOn: '2026-10-19', today: '2026-10-10' });
+    expect(seen.merged).toMatchObject({
+      status: 'active',
+      startsOn: '2026-10-19',
+      today: '2026-10-10',
+    });
   });
 });

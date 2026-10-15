@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  schoolDateSchema,
   type AuditAction,
   type SchoolDate,
   type StudentMerge,
@@ -813,8 +814,10 @@ export class StudentMerges {
         id: record.branchId,
         name: names.get(record.branchId.toLowerCase()) ?? '',
       },
-      status: now === undefined || now.validFrom > today ? null : now.status,
-      startsOn: String(record.whole.starts_on),
+      // As the list reads it (`statusOfStudentOn`): before the start date the
+      // first row, active, so a later start reads "From <date>" (issue #105, H13).
+      status: now === undefined ? null : now.status,
+      startsOn: schoolDateSchema.parse(record.whole.starts_on),
       today,
       class: held === undefined || held === null ? null : { grade: held.grade, name: held.name },
     };
