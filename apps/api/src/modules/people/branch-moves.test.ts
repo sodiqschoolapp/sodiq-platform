@@ -1,4 +1,5 @@
 import {
+  apiErrorSchema,
   branchMoveGroupsSchema,
   branchMoveTargetsSchema,
   incomingBranchMovesSchema,
@@ -825,7 +826,12 @@ describe('the move of a student to another branch', () => {
       const other = await southClass();
       const elsewhere = await classes.group(t.south, southYear, english, [other]);
       const before = await rowsOf();
-      refusedWith(await accept(moveId, { classId: full }), 409, 'class_full');
+      const fullRefusal = await accept(moveId, { classId: full });
+      refusedWith(fullRefusal, 409, 'class_full');
+      // Task 3.5b, H24: the refusal names the class and its first day without a seat.
+      expect(apiErrorSchema.parse(fullRefusal.body).error.details).toEqual([
+        expect.objectContaining({ classId: full, students: 1, fullFrom: expect.any(String) }),
+      ]);
       refusedWith(await accept(moveId, { classId: eighth }), 409, 'class_grade_differs');
       refusedWith(
         await accept(moveId, {
