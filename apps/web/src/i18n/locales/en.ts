@@ -955,6 +955,11 @@ export const en = {
       editDays: 'Days a lesson stays open',
       editDaysNote:
         'Calendar days after the lesson, {{min}} to {{max}}. Applies to lessons dated after the change.',
+      classDailyTitle: 'Lessons of a class per day',
+      classDaily: 'Most lessons in a day',
+      classDailyNote:
+        '{{min}} to {{max}}, or empty for no limit. A class with more lessons in a day is marked in the timetable.',
+      classDailyNotSet: 'Not set',
       earlyWarningTitle: 'Early-warning list',
       thresholds: {
         lowResult: 'Quarter result below',
@@ -2372,6 +2377,7 @@ export const en = {
       settings: {
         edit_days: 'Edit days changed',
         early_warning: 'Early warning settings changed',
+        class_daily_lessons: 'Most lessons per day of a class changed',
       },
       subject: {
         create: 'Subject created',

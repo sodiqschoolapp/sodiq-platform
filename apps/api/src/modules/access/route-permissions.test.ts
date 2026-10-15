@@ -238,6 +238,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/setup/settings': { branch: 'request', roles: SETTINGS_VIEWERS },
   'PUT /api/setup/settings/edit-days': { branch: 'request', roles: SETTINGS_WRITERS },
   'PUT /api/setup/settings/early-warning': { branch: 'request', roles: SETTINGS_WRITERS },
+  'PUT /api/setup/settings/class-daily-lessons': { branch: 'request', roles: SETTINGS_WRITERS },
   'GET /api/setup/attendance-values': { branch: 'request', roles: SETTINGS_VIEWERS },
   'PUT /api/setup/quarters/:id/attendance-values': { branch: 'request', roles: SETTINGS_WRITERS },
   'GET /api/setup/checklist': { branch: 'request', roles: SETTINGS_VIEWERS },

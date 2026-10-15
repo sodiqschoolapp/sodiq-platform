@@ -224,6 +224,32 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: the rule engine (task 5.2)
+
+Plan approved on pull request #109 with corrections 1 to 5; decisions 1 to 18 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** An unset travel time between two branches blocks a teacher's lesson and their next lesson that day in the other branch (`travel_time_not_set`), whatever the gap | Decision 1; `06`, Rules; 1.6 decision 4: "never 0 minutes" |
+| **Look first.** A class's most lessons per day is one branch setting, `branch_settings.class_daily_lessons` (0061), 1 to 12, null not set; proposed `/spec-change` of `edge/timetable`, Structure: "a class's most lessons per day (one value in the branch's settings)" | Decision 2; `06`, Rules: "the daily maximum in settings" |
+| **Look first.** `room_shared_capacity` blocks for a shared room, `room_capacity` warns for a room that is not shared, as the database does | Decision 3; 5.1a decision 2 |
+| One call, one axis: `day` and clock minutes in branch time; the caller converts; `placement.ts` names the date each fact is read on | Decision 4, correction 5 |
+| A result is rule, severity, day, every placement involved and numbers; no text in the engine | Decision 5 |
+| Two lessons of one block at once are no class clash; a teacher, room or student in two of them is | Decision 6 |
+| Exams: one place at a time, rooms and `room_capacity` only; an exam in a shared room is one use, its students not counted against the shared capacity; invigilator vacancy and inactive block, availability and subject warn | Decisions 7, 16, correction 2 |
+| Availability of a pattern from the entry in force on the intended start date; later entries up to the version's end as warnings by date | Decision 8 |
+| A double pair counts once for `subject_twice`; a split block once for `class_day_load`; free periods read the class's own template | Decision 9 |
+| `teacher_week_load` and `teacher_day_load` count every branch | Decision 10 |
+| `load_mismatch` is a warning; publish (5.5a) stores "deliberately short" and refuses | Decision 11 |
+| `noSubjectTeacherFree` turns `teacher_subject`, `teacher_grade`, `teacher_unavailable` into warnings; `substitute_language` warns, `substitute_vacancy` blocks | Decision 17, correction 3 |
+| A day in no quarter is `vacation`, outside the year `outside_year`; a room under repair warns, a closed one blocks | Corrections 1 and 4 |
+| `fast-check` 4.10.2 as a devDependency of `packages/timetable-rules` for the property test of the sweep | Decision 14; the version the workspace already pins |
+| `noSubjectTeacherFree` relaxes only a substitute's own lesson in a dated call | Spec review of the build, must-fix 2; `edge/timetable`: "For a one-day change only" |
+| All parts of a block in one slot: parts at other times are `split_apart`; travel time compares a lesson with the one that ends last before it | Spec review of the build, must-fix 1 and should-fix 2 |
+| A placement whose teacher, unit, subject or room is missing from the facts throws: a caller's fault, never a free slot | Spec review of the build, should-fix 1 |
+| A result is told apart by its rule, day, placements and detail: two later dates, two load rows, two invigilators or rooms of one exam, two free periods are each listed | Review of the build, must-fix 1: a conflict list that drops entries is not correct |
+| The setting has its own route, `PUT /api/setup/settings/class-daily-lessons`, area `settings`, as each settings section has | Found in the build: the settings controller has one PUT route per section |
+
 ## 15 October 2026: exams and later changes against the claims (task 5.1b)
 
 Plan approved on pull request #108 with corrections 1 and 2; decisions 1 to 14 confirmed there. Flagged on issue #42.

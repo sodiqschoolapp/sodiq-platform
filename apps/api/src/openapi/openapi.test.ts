@@ -209,6 +209,7 @@ describe('OpenAPI document', () => {
         '/api/setup/rooms/export',
         '/api/setup/rooms/{id}',
         '/api/setup/settings',
+        '/api/setup/settings/class-daily-lessons',
         '/api/setup/settings/early-warning',
         '/api/setup/settings/edit-days',
         '/api/setup/slot-types',

@@ -998,6 +998,11 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       editDays: 'Сколько дней урок открыт для правки',
       editDaysNote:
         'Календарные дни после урока, от {{min}} до {{max}}. Действует для уроков с датой после изменения.',
+      classDailyTitle: 'Уроки класса в день',
+      classDaily: 'Больше всего уроков в день',
+      classDailyNote:
+        'От {{min}} до {{max}} или пусто, если без ограничения. Класс, у которого в день больше уроков, отмечается в расписании.',
+      classDailyNotSet: 'Не задано',
       earlyWarningTitle: 'Список раннего предупреждения',
       thresholds: {
         lowResult: 'Результат четверти ниже',
@@ -2483,6 +2488,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       settings: {
         edit_days: 'Дни на исправление изменены',
         early_warning: 'Настройки раннего предупреждения изменены',
+        class_daily_lessons: 'Наибольшее число уроков класса в день изменено',
       },
       subject: {
         create: 'Предмет создан',

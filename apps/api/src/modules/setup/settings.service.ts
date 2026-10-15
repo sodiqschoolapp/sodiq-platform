@@ -6,6 +6,7 @@ import {
   type AttendanceValuesRecord,
   type BranchSettings,
   type ChecklistItem,
+  type ClassDailyLessonsRecord,
   type Clock,
   type EarlyWarningRecord,
   type EditDaysRecord,
@@ -143,6 +144,22 @@ export class Settings {
         absences_in_row: record.absencesInRow,
       },
       'settings.early_warning',
+      requestId,
+    );
+  }
+
+  /** `06`, Rules: the daily maximum of a class (task 5.2, decision 2); `null` clears it. */
+  setClassDailyLessons(
+    access: Access,
+    branchId: string,
+    record: ClassDailyLessonsRecord,
+    requestId: string,
+  ): Promise<BranchSettings> {
+    return this.change(
+      access,
+      branchId,
+      { class_daily_lessons: record.classDailyLessons },
+      'settings.class_daily_lessons',
       requestId,
     );
   }

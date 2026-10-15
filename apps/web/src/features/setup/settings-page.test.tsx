@@ -20,6 +20,7 @@ const SETTINGS: BranchSettings = {
   resultDrop: 15,
   attendancePercent: 80,
   absencesInRow: 3,
+  classDailyLessons: null,
 };
 
 const QUARTER_ID = '0199b000-0000-7000-8000-000000000011';
@@ -116,6 +117,57 @@ describe('the settings page', () => {
         )?.body,
       ).toEqual({ lateValue: 75, skippedValue: 0 });
     });
+  });
+
+  // Task 5.2, decision 2: one value per branch; empty is not set.
+  it('sets and clears the most lessons per day of a class', async () => {
+    const calls = settingsApi('academic_vice_principal', {
+      'PUT /api/setup/settings/class-daily-lessons': (body) =>
+        json({ ...SETTINGS, ...(body as object) }),
+    });
+    renderApp('/setup/settings');
+    const field = await (
+      await section(en.setup.settings.classDailyTitle)
+    ).findByLabelText(en.setup.settings.classDaily);
+    expect((field as HTMLInputElement).value).toBe('');
+    fireEvent.change(field, { target: { value: '7' } });
+    fireEvent.click(
+      (await section(en.setup.settings.classDailyTitle)).getByRole('button', {
+        name: en.form.save,
+      }),
+    );
+    await waitFor(() => {
+      expect((field as HTMLInputElement).value).toBe('7');
+      expect(
+        calls.filter((call) => call.route === 'PUT /api/setup/settings/class-daily-lessons'),
+      ).toHaveLength(1);
+    });
+    expect(
+      calls.find((call) => call.route === 'PUT /api/setup/settings/class-daily-lessons')?.body,
+    ).toEqual({ classDailyLessons: 7 });
+
+    fireEvent.change(field, { target: { value: '' } });
+    fireEvent.click(
+      (await section(en.setup.settings.classDailyTitle)).getByRole('button', {
+        name: en.form.save,
+      }),
+    );
+    await waitFor(() => {
+      expect(
+        calls.filter((call) => call.route === 'PUT /api/setup/settings/class-daily-lessons')[1]
+          ?.body,
+      ).toEqual({ classDailyLessons: null });
+    });
+  });
+
+  it('shows "Not set" for the most lessons per day of a class to the Principal', async () => {
+    settingsApi('principal');
+    renderApp('/setup/settings');
+    const part = await section(en.setup.settings.classDailyTitle);
+    expect(part.queryByLabelText(en.setup.settings.classDaily)).toBeNull();
+    expect(part.getByText(en.setup.settings.classDaily).nextElementSibling?.textContent).toBe(
+      en.setup.settings.classDailyNotSet,
+    );
   });
 
   // Answer 24: the Principal views.

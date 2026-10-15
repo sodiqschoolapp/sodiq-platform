@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   attendanceValuesRecordSchema,
   CHECKLIST_ITEMS,
+  CLASS_DAILY_LESSONS_MAX,
+  classDailyLessonsRecordSchema,
   EARLY_WARNING_BOUNDS,
   earlyWarningRecordSchema,
   EDIT_DAYS_DEFAULT,
@@ -31,6 +33,21 @@ describe('the settings of a branch', () => {
     expect(editDaysRecordSchema.safeParse({ editDays: 30 }).success).toBe(true);
     for (const editDays of [0, 31, 7.5, '7', null]) {
       expect(editDaysRecordSchema.safeParse({ editDays }).success, String(editDays)).toBe(false);
+    }
+  });
+
+  // Task 5.2, decision 2: a class's daily maximum, with the bounds borrowed from a
+  // teacher's most lessons per day; null is "not set".
+  it('takes the most lessons per day of a class from 1 to 12, or none', () => {
+    expect(CLASS_DAILY_LESSONS_MAX).toBe(12);
+    for (const classDailyLessons of [1, 12, null]) {
+      expect(classDailyLessonsRecordSchema.safeParse({ classDailyLessons }).success).toBe(true);
+    }
+    for (const classDailyLessons of [0, 13, 6.5, '6', undefined]) {
+      expect(
+        classDailyLessonsRecordSchema.safeParse({ classDailyLessons }).success,
+        String(classDailyLessons),
+      ).toBe(false);
     }
   });
 

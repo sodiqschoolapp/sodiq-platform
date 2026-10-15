@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 5.2 Rule engine
+
+- Built in `packages/timetable-rules` (`rules.ts`, `placement.ts`, `check.ts`): `checkTimetable` and `checkCandidate` give every blocked rule and warning of the `06` Rules table for lessons and exams by clock time, each result with its rule code and the placements involved; `slotStatus` for the grid. 61 engine tests, one a fast-check property test of the clash sweep against all pairs.
+- The class's most lessons per day as a branch setting (0061, `PUT /api/setup/settings/class-daily-lessons`, the settings page in three languages).
+- Left out: calling the engine from routes, the grid, publish, one-day changes, exams, substitution and the solver (5.4a, 5.5a, 5.6a, 5.6c, 5.7b, 5.10, each with a "From 5.2" line); storing "deliberately short" (5.5a); the texts `timetable.rule.<code>` (5.4a).
+
+The next sessions must know:
+
+- A caller builds `Facts` as `placement.ts` documents (which date each fact is read on); the engine throws on a placement whose teacher, unit, subject or room is missing from the facts, and leaves out what the caller does not pass (cancelled lessons, exempt students).
+- `noSubjectTeacherFree` relaxes only a substitute's own lesson in a dated call.
+- The next task is 3.5a (the hand-test fixes of issue #105 come first), then 3.5b to 3.6c, then 5.3.
+
 ## 15 October 2026: the owner's answers on issue #42
 
 - The owner answered every Look first decision of tasks 2.2b to 4.2 (211 items): 198 confirmed, 12 changed, and two more answers (no extra lessons; Tutor lessons follow the Tutor). The comment of 15 October 2026 on issue #42 lists them.
