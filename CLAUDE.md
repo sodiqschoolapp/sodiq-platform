@@ -11,7 +11,7 @@ A school management web platform for Sodiq School (Uzbekistan): three branches, 
 ## Rules that are never broken
 
 - **Calculation in one place.** Every percentage, average, result and grade comes from `packages/calc`. No page, report or SQL query calculates a result on its own.
-- **Exact arithmetic.** Results are exact fractions (BigInt numerator and denominator) from typed numbers to the final result, rounded once at the end. No floating point in calculations. Typed scores and totals are whole numbers.
+- **Exact arithmetic.** Results are exact fractions (BigInt numerator and denominator) from typed numbers to the final result, rounded once at the end. The one exception is the year result: the exact mean of the quarter results as published, rounded once more for the year (owner, 15 October 2026; `07`, rule 11). No floating point in calculations. Typed scores and totals are whole numbers.
 - **The database guards the rules.** Double booking of a teacher, room or class, overlapping memberships and duplicate cells are prevented by PostgreSQL constraints listed in `docs/spec/edge-cases/developer-rules.md`, not only by application code. Never weaken or remove one to make a test pass.
 - **Permissions on the server.** Every API route checks role, branch and scope (subjects, class, own lessons). Hiding a button is not a permission check. Every route has allow and refuse tests.
 - **Every change is audited.** Changes to timetable, journal, results, people and settings write to the append-only audit log in the same transaction.
