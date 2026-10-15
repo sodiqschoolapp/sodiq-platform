@@ -492,6 +492,15 @@ describe('the claims of future lessons after a change elsewhere', () => {
         ]);
       }
       await updateRoom(other, { max_simultaneous_lessons: 2 });
+      const third = await h.state.kit.room(north(), { most: 2, capacity: 30 });
+      for (let index = 0; index < 2; index += 1) {
+        const school = await h.schoolClass(north());
+        await h.state.kit.pupils(north(), school, 2);
+        await h.place(north(), { date: PAST, start: '11:00', end: '11:45' }, [
+          { classId: school, roomId: third },
+        ]);
+      }
+      await updateRoom(third, { capacity: 3 });
     });
 
     it('refuses a lesson written from the old switch while the room is switched to not shared (room_shared_stale)', async () => {
@@ -526,6 +535,32 @@ describe('the claims of future lessons after a change elsewhere', () => {
       held.release();
       await held.done;
       expect(await second).toBe('room_shared_stale');
+    });
+
+    it('refuses the switch to not shared made while a lesson is written into the room (build review, should-fix 7)', async () => {
+      const hall = await h.state.kit.room(north(), { most: 2 });
+      await h.place(north(), { date: '2026-11-16', start: '09:00', end: '09:45' }, [
+        { classId: await h.schoolClass(north()), roomId: hall },
+      ]);
+      const cambridge = await h.schoolClass(north());
+      const held = holding(
+        (work) => h.inBranch(north(), work),
+        async (transaction) => {
+          await h.writeBlock(
+            transaction,
+            north(),
+            { date: '2026-11-16', start: '09:00', end: '09:45' },
+            [{ classId: cambridge, roomId: hall }],
+          );
+          await sql`set constraints time_claims_shared_room immediate`.execute(transaction);
+        },
+      );
+      await held.ready;
+      const switched = outcome(updateRoom(hall, { shared: false, max_simultaneous_lessons: null }));
+      await h.untilWaiting(1);
+      held.release();
+      await held.done;
+      expect(await switched).toBe('time_claims_room_excl');
     });
   });
 });

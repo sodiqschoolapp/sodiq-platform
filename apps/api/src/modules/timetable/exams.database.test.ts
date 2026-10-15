@@ -499,6 +499,145 @@ describe('exams and their time claims in the database', () => {
       }
     });
 
+    it('refuses an exam over one half of a double lesson of the group (build review, should-fix 3)', async () => {
+      const oxford = await h.schoolClass(north());
+      const english = await h.state.kit.load.classes.subject({ grades: [7] });
+      const team = await h.group(north(), [oxford], english);
+      const pair = '0192a3b4-0000-7000-8000-000000000002';
+      await h.place(north(), { date: '2026-11-25', start: '09:00', end: '09:45', pairId: pair }, [
+        { groupId: team, subjectId: english, cancel: true },
+      ]);
+      await h.place(north(), { date: '2026-11-25', start: '09:55', end: '10:40', pairId: pair }, [
+        { groupId: team, subjectId: english },
+      ]);
+      expect(
+        await refusal(
+          h.exam(north(), {
+            date: '2026-11-25',
+            start: '09:00',
+            end: '09:45',
+            subjectId: english,
+            rooms: [
+              { roomId: await room(), groups: [team], invigilators: [await h.teacher(north())] },
+            ],
+          }),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'exam_group_slots' });
+    });
+
+    it('refuses three blocks of the group, and two blocks of two different pairs (build review, should-fix 4)', async () => {
+      const english = await h.state.kit.load.classes.subject({ grades: [7] });
+      const three = await h.group(north(), [await h.schoolClass(north())], english);
+      for (const [start, end] of [
+        ['09:00', '09:45'],
+        ['09:50', '10:35'],
+        ['10:40', '11:25'],
+      ] as const) {
+        await h.place(north(), { date: '2026-11-26', start, end }, [
+          { groupId: three, subjectId: english, cancel: true },
+        ]);
+      }
+      expect(
+        await refusal(
+          h.exam(north(), {
+            date: '2026-11-26',
+            start: '09:00',
+            end: '11:25',
+            subjectId: english,
+            rooms: [
+              { roomId: await room(), groups: [three], invigilators: [await h.teacher(north())] },
+            ],
+          }),
+        ),
+      ).toMatchObject({ constraint: 'exam_group_slots' });
+      // Two consecutive blocks, each the only block of its own pair.
+      const two = await h.group(north(), [await h.schoolClass(north())], english);
+      await h.place(
+        north(),
+        {
+          date: '2026-11-26',
+          start: '12:00',
+          end: '12:45',
+          pairId: '0192a3b4-0000-7000-8000-000000000003',
+        },
+        [{ groupId: two, subjectId: english, cancel: true }],
+      );
+      await h.place(
+        north(),
+        {
+          date: '2026-11-26',
+          start: '12:50',
+          end: '13:35',
+          pairId: '0192a3b4-0000-7000-8000-000000000004',
+        },
+        [{ groupId: two, subjectId: english, cancel: true }],
+      );
+      expect(
+        await refusal(
+          h.exam(north(), {
+            date: '2026-11-26',
+            start: '12:00',
+            end: '13:35',
+            subjectId: english,
+            rooms: [
+              { roomId: await room(), groups: [two], invigilators: [await h.teacher(north())] },
+            ],
+          }),
+        ),
+      ).toMatchObject({ constraint: 'exam_group_slots' });
+    });
+
+    it('checks a group row and a change of the exam’s subject at the same moment one after the other (build review, must-fix 2)', async () => {
+      const oxford = await h.schoolClass(north());
+      const english = await h.state.kit.load.classes.subject({ grades: [7] });
+      const team = await h.group(north(), [oxford], english);
+      await h.place(north(), { date: '2026-11-27', start: '09:00', end: '09:45' }, [
+        { groupId: team, subjectId: english, cancel: true },
+      ]);
+      const written = await h.exam(north(), {
+        date: '2026-11-27',
+        start: '09:00',
+        end: '09:45',
+        subjectId: english,
+        rooms: [
+          {
+            roomId: await room(),
+            classes: [await h.schoolClass(north())],
+            invigilators: [await h.teacher(north())],
+          },
+        ],
+      });
+      const held = holding(
+        (work) => h.inBranch(north(), work),
+        async (transaction) => {
+          await transaction
+            .updateTable('exams')
+            .set({ subject_id: h.state.subject })
+            .where('id', '=', written.exam)
+            .execute();
+          await sql`set constraints exams_group_subject immediate`.execute(transaction);
+        },
+      );
+      await held.ready;
+      const second = outcome(
+        h.inBranch(north(), (transaction) =>
+          transaction
+            .insertInto('exam_room_classes')
+            .values({
+              branch_id: north(),
+              exam_id: written.exam,
+              exam_room_id: written.rooms[0] ?? '',
+              group_id: team,
+            })
+            .execute(),
+        ),
+      );
+      await h.untilWaiting(1);
+      held.release();
+      await held.done;
+      expect(await second).toBe('exam_group_subject');
+    });
+
     it('refuses a group whose subject is not the exam’s, on insert and on a change of the exam’s subject', async () => {
       const s = await split('2026-11-18');
       const hall = await room();
@@ -667,6 +806,84 @@ describe('exams and their time claims in the database', () => {
           ),
         ),
       ).toMatchObject({ code: EXCLUSION_VIOLATION, constraint: 'time_claims_class_excl' });
+    });
+
+    it('brings the class back when it no longer sits the exam, and refuses that while its time was taken (build review, must-fix 1)', async () => {
+      const s = await shared('2026-11-30');
+      const green = await h.schoolClass(north(), 10);
+      const written = await h.exam(north(), {
+        date: '2026-11-30',
+        start: '09:30',
+        end: '10:30',
+        rooms: [
+          {
+            roomId: await room(),
+            classes: [s.brown, green],
+            invigilators: [await h.teacher(north())],
+          },
+        ],
+        outs: [{ blockId: s.block.block, classId: s.brown }],
+      });
+      await h.place(north(), { date: '2026-11-30', start: '09:00', end: '09:30' }, [
+        { classId: s.brown },
+      ]);
+      const removeBrown = () =>
+        h.inBranch(north(), (transaction) =>
+          transaction
+            .deleteFrom('exam_room_classes')
+            .where('exam_id', '=', written.exam)
+            .where('class_id', '=', s.brown)
+            .execute(),
+        );
+      expect(await refusal(removeBrown())).toMatchObject({
+        code: EXCLUSION_VIOLATION,
+        constraint: 'time_claims_class_excl',
+      });
+
+      const t = await shared('2026-12-01');
+      const other = await h.exam(north(), {
+        date: '2026-12-01',
+        start: '09:00',
+        end: '09:45',
+        rooms: [
+          { roomId: await room(), classes: [t.brown], invigilators: [await h.teacher(north())] },
+          {
+            roomId: await room(),
+            classes: [await h.schoolClass(north(), 10)],
+            invigilators: [await h.teacher(north())],
+          },
+        ],
+        outs: [{ blockId: t.block.block, classId: t.brown }],
+      });
+      // Its room taken away (the cascade removes the class row).
+      await h.inBranch(north(), (transaction) =>
+        transaction
+          .deleteFrom('exam_rooms')
+          .where('id', '=', other.rooms[0] ?? '')
+          .execute(),
+      );
+      expect((await h.blockClasses(t.block.block)).sort()).toEqual([t.brown, t.green].sort());
+    });
+
+    it('brings the class back when the exam moves away from the block (correction 1)', async () => {
+      const s = await shared('2026-12-02');
+      const written = await h.exam(north(), {
+        date: '2026-12-02',
+        start: '09:00',
+        end: '09:45',
+        rooms: [
+          { roomId: await room(), classes: [s.brown], invigilators: [await h.teacher(north())] },
+        ],
+        outs: [{ blockId: s.block.block, classId: s.brown }],
+      });
+      await h.inBranch(north(), (transaction) =>
+        transaction
+          .updateTable('exams')
+          .set({ starts_at: at('2026-12-02', '11:00'), ends_at: at('2026-12-02', '11:45') })
+          .where('id', '=', written.exam)
+          .execute(),
+      );
+      expect((await h.blockClasses(s.block.block)).sort()).toEqual([s.brown, s.green].sort());
     });
 
     it('brings the class back when the block moves away from the exam', async () => {
@@ -873,6 +1090,9 @@ describe('exams and their time claims in the database', () => {
     });
 
     it('checks two deletes of a room’s two invigilators at the same moment one after the other', async () => {
+      // Completeness under concurrency, not a lock of its own: every write of an
+      // exam's rows meets on the exam row in exam_claims already (the test
+      // below proves that lock).
       const p = await plain('09:00', '10:00', '2026-11-13');
       const jones = await h.teacher(north());
       const written = await h.exam(north(), {
@@ -966,6 +1186,34 @@ describe('exams and their time claims in the database', () => {
         constraint: 'exam_cancel_final',
       });
       expect(await refusal(setCause('day_off'))).toMatchObject({ constraint: 'exam_cancel_final' });
+    });
+
+    it('moves the room claim with a changed exam room, and refuses a room that holds a lesson then (build review, should-fix 5)', async () => {
+      const p = await plain('09:00', '10:00', '2026-12-03');
+      const written = await h.exam(north(), p.input);
+      const lab = await room();
+      const taken = await room();
+      await h.place(north(), { date: '2026-12-03', start: '09:30', end: '10:15' }, [
+        { classId: await h.schoolClass(north()), roomId: taken },
+      ]);
+      const moveRoom = (roomId: string) =>
+        h.inBranch(north(), (transaction) =>
+          transaction
+            .updateTable('exam_rooms')
+            .set({ room_id: roomId })
+            .where('id', '=', written.rooms[0] ?? '')
+            .execute(),
+        );
+      await moveRoom(lab);
+      expect(
+        (await h.examClaims(written.exam))
+          .filter((c) => c.kind === 'exam_room')
+          .map((c) => c.room_id),
+      ).toEqual([lab]);
+      expect(await refusal(moveRoom(taken))).toMatchObject({
+        code: EXCLUSION_VIOLATION,
+        constraint: 'time_claims_room_excl',
+      });
     });
 
     it('moves every claim with the exam’s time and refuses a move into a taken time', async () => {

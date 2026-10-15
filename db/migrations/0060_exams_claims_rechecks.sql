@@ -432,7 +432,7 @@ $$;
 -- overlapping the exam, over the block's time, holder the block (decision 1).
 -- The exam row is locked first, then the groups in the order of the id (spec
 -- review 9); only what differs is written. Runs as the invoker.
-create function exam_claims(exam_ref uuid) returns void
+create function exam_claims(exam_ref uuid, prune_only boolean default false) returns void
 language plpgsql
 set search_path = pg_catalog, public
 as $$
@@ -452,6 +452,17 @@ begin
     delete from time_claims c where c.exam_id = exam_ref;
     return;
   end if;
+  -- The subject of every group that sits, read again after the lock: a
+  -- group row inserted while the subject changed read the old one (build
+  -- review, must-fix 2).
+  if exists (
+    select 1 from exam_room_classes rc
+      join groups g on g.id = rc.group_id
+      where rc.exam_id = exam_ref and g.subject_id is distinct from exam.subject_id
+  ) then
+    raise exception 'exam_group_subject'
+      using errcode = 'check_violation', constraint = 'exam_group_subject';
+  end if;
   for group_ref in
     select distinct rc.group_id from exam_room_classes rc
       where rc.exam_id = exam_ref and rc.group_id is not null
@@ -461,10 +472,30 @@ begin
   end loop;
   exam_range := tstzrange(exam.starts_at, exam.ends_at);
 
-  -- Rooms, with the switch of each copied (edge/developer-rules, Room in one use).
+  -- What the exam no longer holds goes first, a claim at an old time too.
+  delete from time_claims c
+    where c.exam_id = exam_ref and c.kind in ('exam_room', 'exam_invigilator', 'exam_class')
+      and c.during <> exam_range;
   delete from time_claims c
     where c.exam_id = exam_ref and c.kind = 'exam_room'
       and c.room_id not in (select r.room_id from exam_rooms r where r.exam_id = exam_ref);
+  delete from time_claims c
+    where c.exam_id = exam_ref and c.kind = 'exam_invigilator'
+      and c.teacher_id not in (select i.staff_id from exam_invigilators i where i.exam_id = exam_ref);
+  delete from time_claims c
+    where c.exam_id = exam_ref and c.kind = 'exam_class'
+      and c.class_id not in (
+        select rc.class_id from exam_room_classes rc
+          where rc.exam_id = exam_ref and rc.class_id is not null
+      );
+  delete from time_claims c
+    where c.exam_id = exam_ref and c.kind = 'exam_group_class'
+      and (c.block_id, c.class_id) not in (select w.block_id, w.class_id from exam_group_blocks(exam_ref) w);
+  if prune_only then
+    return;
+  end if;
+
+  -- Rooms, with the switch of each copied (edge/developer-rules, Room in one use).
   update time_claims c set during = exam_range, room_shared = rm.shared
     from rooms rm
     where c.exam_id = exam_ref and c.kind = 'exam_room' and rm.id = c.room_id
@@ -478,9 +509,6 @@ begin
   on conflict (exam_id, room_id, branch_id) where kind = 'exam_room' do nothing;
 
   -- Invigilators.
-  delete from time_claims c
-    where c.exam_id = exam_ref and c.kind = 'exam_invigilator'
-      and c.teacher_id not in (select i.staff_id from exam_invigilators i where i.exam_id = exam_ref);
   update time_claims c set during = exam_range
     where c.exam_id = exam_ref and c.kind = 'exam_invigilator' and c.during <> exam_range;
   insert into time_claims (branch_id, kind, exam_id, holder, during, teacher_id)
@@ -491,12 +519,6 @@ begin
   on conflict (exam_id, teacher_id, branch_id) where kind = 'exam_invigilator' do nothing;
 
   -- Classes that sit whole (a group row writes only exam_group_class).
-  delete from time_claims c
-    where c.exam_id = exam_ref and c.kind = 'exam_class'
-      and c.class_id not in (
-        select rc.class_id from exam_room_classes rc
-          where rc.exam_id = exam_ref and rc.class_id is not null
-      );
   update time_claims c set during = exam_range
     where c.exam_id = exam_ref and c.kind = 'exam_class' and c.during <> exam_range;
   insert into time_claims (branch_id, kind, exam_id, holder, during, class_id)
@@ -507,9 +529,6 @@ begin
   on conflict (exam_id, class_id, branch_id) where kind = 'exam_class' do nothing;
 
   -- Groups that sit, held by their own blocks.
-  delete from time_claims c
-    where c.exam_id = exam_ref and c.kind = 'exam_group_class'
-      and (c.block_id, c.class_id) not in (select w.block_id, w.class_id from exam_group_blocks(exam_ref) w);
   update time_claims c set during = w.during
     from exam_group_blocks(exam_ref) w
     where c.exam_id = exam_ref and c.kind = 'exam_group_class'
@@ -575,7 +594,8 @@ $$;
 
 -- The classes a block occupies now: the class of a class lesson and the
 -- classes of a group lesson's group, of its lessons that are not cancelled,
--- less a class out of the block for an exam that stands and overlaps it.
+-- less a class out of the block for an exam that stands, still seats it and
+-- overlaps the block.
 -- Runs as the invoker.
 create function lesson_block_classes(block_ref uuid) returns table (class_id uuid)
 language sql
@@ -598,6 +618,10 @@ as $$
     join exams e on e.id = o.exam_id
     where o.block_id = block_ref and o.class_id = w.class_id
       and e.cancel_cause is null
+      -- The exam still seats the class whole (build review, must-fix 1).
+      and exists (
+        select 1 from exam_room_classes rc where rc.exam_id = o.exam_id and rc.class_id = o.class_id
+      )
       and e.exam_date = b.lesson_date
       and tstzrange(e.starts_at, e.ends_at) && tstzrange(b.starts_at, b.ends_at)
   )
@@ -620,14 +644,17 @@ begin
   else
     exam_ref := new.exam_id;
   end if;
+  -- After a write of any of the four tables: what the exam no longer holds
+  -- is given up first, then a class it no longer seats (or an exam cancelled
+  -- or moved) returns to its block, and only then are the exam's new claims
+  -- written (build review, must-fix 1).
+  perform exam_claims(exam_ref, true);
+  for block_ref in
+    select o.block_id from lesson_block_class_outs o where o.exam_id = exam_ref order by o.block_id
+  loop
+    perform lesson_block_claims(block_ref);
+  end loop;
   perform exam_claims(exam_ref);
-  if tg_table_name = 'exams' then
-    for block_ref in
-      select o.block_id from lesson_block_class_outs o where o.exam_id = exam_ref order by o.block_id
-    loop
-      perform lesson_block_claims(block_ref);
-    end loop;
-  end if;
   return null;
 end;
 $$;
@@ -776,6 +803,22 @@ begin
       or first_start <> exam.starts_at
       or last_end <> exam.ends_at
       or open_lessons > 0 then
+      return true;
+    end if;
+    -- Both halves of a double lesson together (06, Exam): no block of the
+    -- group in the exam has a partner with a lesson of the group outside it
+    -- (build review, should-fix 3).
+    if exists (
+      select 1
+      from lessons l
+      join lesson_blocks b on b.id = l.block_id
+      join lesson_blocks partner on partner.double_pair_id = b.double_pair_id and partner.id <> b.id
+      join lessons pl on pl.block_id = partner.id and pl.group_id = group_ref
+      where l.group_id = group_ref
+        and b.lesson_date = exam.exam_date
+        and tstzrange(b.starts_at, b.ends_at) && tstzrange(exam.starts_at, exam.ends_at)
+        and not tstzrange(partner.starts_at, partner.ends_at) && tstzrange(exam.starts_at, exam.ends_at)
+    ) then
       return true;
     end if;
   end loop;
