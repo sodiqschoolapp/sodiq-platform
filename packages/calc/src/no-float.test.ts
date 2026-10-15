@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 // docs/spec/14-quality-plan.md: "exact fractions …, never floating point"; CLAUDE.md,
 // "Exact arithmetic". The property tests show the results are exact; this keeps a
-// later edit from bringing a float into the module's own source.
+// later edit from bringing a float into the module's own source. A division of two
+// JS numbers cannot be told apart from text alone; that is left to the review and
+// to the property tests against the BigInt reference.
 const directory = new URL('./', import.meta.url);
 const sources = readdirSync(directory).filter(
   (name) => name.endsWith('.ts') && !name.endsWith('.test.ts'),
@@ -20,6 +22,7 @@ const FORBIDDEN: readonly [string, RegExp][] = [
   ['toPrecision', /\.toPrecision\b/],
   ['Number()', /\bNumber\(/],
   ['a decimal literal', /\b\d+\.\d/],
+  ['a decimal literal with a leading dot', /(^|[^\w.)\]])\.\d/m],
   ['an exponent literal', /\b\d+e[+-]?\d/i],
 ];
 

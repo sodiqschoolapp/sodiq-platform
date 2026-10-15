@@ -25,6 +25,16 @@ function scoreOf(value: LessonScoreInput): Fraction {
   return result.value;
 }
 
+function codeOf(value: LessonScoreInput): string | undefined {
+  try {
+    lessonScore(value);
+  } catch (error) {
+    if (error instanceof CalcInputError) return error.code;
+    throw error;
+  }
+  return undefined;
+}
+
 function expectExactly(actual: Fraction, num: bigint, den = 1n): void {
   expect({ num: actual.num, den: actual.den }).toEqual({ num, den });
 }
@@ -173,11 +183,15 @@ describe('lessonScore', () => {
     expect(lessonScore(input({ mark: 5, classworks: [{ total: 10, score: null }] }))).toEqual({
       kind: 'exempt',
     });
-    expect(() => lessonScore(input({ mark: 5, classworks: [{ total: 10, score: 4 }] }))).toThrow(
-      CalcInputError,
+    expect(codeOf(input({ mark: 5, classworks: [{ total: 10, score: 4 }] }))).toBe(
+      'number_on_exempt_lesson',
     );
-    expect(() => lessonScore(input({ mark: 4, homeworks: [{ total: 10, score: 0 }] }))).toThrow(
-      CalcInputError,
+    expect(codeOf(input({ mark: 4, homeworks: [{ total: 10, score: 0 }] }))).toBe(
+      'number_on_exempt_lesson',
+    );
+    // The totals are checked on the exempt path too.
+    expect(codeOf(input({ mark: 4, classworks: [{ total: 0, score: null }] }))).toBe(
+      'total_below_one',
     );
   });
 
@@ -190,22 +204,31 @@ describe('lessonScore', () => {
     expect(lessonScore(input({ countsForAttendance: false, mark: 1 }))).toEqual({ kind: 'blank' });
   });
 
+  // Decision 8: every input is checked on every call, whatever the mark and the switch.
+  it('checks the mark and the quarter values on every call', () => {
+    expect(codeOf(input({ countsForAttendance: false, mark: 6 as AttendanceMark }))).toBe(
+      'unknown_mark',
+    );
+    expect(
+      codeOf(input({ mark: null, attendanceValues: { lateValue: 101, skippedValue: 0 } })),
+    ).toBe('out_of_range');
+    expect(
+      codeOf(input({ mark: null, attendanceValues: { lateValue: 50, skippedValue: 0.5 } })),
+    ).toBe('not_whole_number');
+  });
+
   it('refuses a daily distribution that is not three whole parts of 1 to 100 totalling 100', () => {
-    const refuse = (weights: DailyWeights) =>
-      expect(() => lessonScore(input({ weights }))).toThrow(CalcInputError);
-    refuse({ attendance: 20, classwork: 30, homework: 40 });
-    refuse({ attendance: 0, classwork: 50, homework: 50 });
-    refuse({ attendance: 2.5, classwork: 47.5, homework: 50 });
-    refuse({ attendance: 101, classwork: -1, homework: 0 });
+    const refused = (weights: DailyWeights) => codeOf(input({ weights }));
+    expect(refused({ attendance: 20, classwork: 30, homework: 40 })).toBe('weights_not_100');
+    expect(refused({ attendance: 0, classwork: 50, homework: 50 })).toBe('out_of_range');
+    expect(refused({ attendance: 20, classwork: 80, homework: 0 })).toBe('out_of_range');
+    expect(refused({ attendance: 2.5, classwork: 47.5, homework: 50 })).toBe('not_whole_number');
+    expect(refused({ attendance: 101, classwork: -1, homework: 0 })).toBe('out_of_range');
   });
 
   it('refuses a work that workPercent refuses', () => {
-    expect(() => lessonScore(input({ classworks: [{ total: 10, score: 11 }] }))).toThrow(
-      CalcInputError,
-    );
-    expect(() => lessonScore(input({ homeworks: [{ total: 0, score: null }] }))).toThrow(
-      CalcInputError,
-    );
+    expect(codeOf(input({ classworks: [{ total: 10, score: 11 }] }))).toBe('score_above_total');
+    expect(codeOf(input({ homeworks: [{ total: 0, score: null }] }))).toBe('total_below_one');
   });
 });
 

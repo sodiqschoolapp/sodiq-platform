@@ -35,12 +35,28 @@ describe('attendanceValue', () => {
   });
 
   it('refuses values outside 0 to 100 or not whole, and an unknown mark', () => {
-    const refuse = (run: () => unknown) => expect(run).toThrow(CalcInputError);
-    refuse(() => attendanceValue(2, { lateValue: 101, skippedValue: 0 }));
-    refuse(() => attendanceValue(2, { lateValue: -1, skippedValue: 0 }));
-    refuse(() => attendanceValue(2, { lateValue: 50.5, skippedValue: 0 }));
-    refuse(() => attendanceValue(3, { lateValue: 50, skippedValue: 100.5 }));
-    refuse(() => attendanceValue(6 as AttendanceMark, DEFAULTS));
-    refuse(() => attendanceValue(1.5 as AttendanceMark, DEFAULTS));
+    const codeOf = (run: () => unknown): string | undefined => {
+      try {
+        run();
+      } catch (error) {
+        if (error instanceof CalcInputError) return error.code;
+        throw error;
+      }
+      return undefined;
+    };
+    expect(codeOf(() => attendanceValue(2, { lateValue: 101, skippedValue: 0 }))).toBe(
+      'out_of_range',
+    );
+    expect(codeOf(() => attendanceValue(2, { lateValue: -1, skippedValue: 0 }))).toBe(
+      'out_of_range',
+    );
+    expect(codeOf(() => attendanceValue(2, { lateValue: 50.5, skippedValue: 0 }))).toBe(
+      'not_whole_number',
+    );
+    expect(codeOf(() => attendanceValue(3, { lateValue: 50, skippedValue: 100.5 }))).toBe(
+      'not_whole_number',
+    );
+    expect(codeOf(() => attendanceValue(6 as AttendanceMark, DEFAULTS))).toBe('unknown_mark');
+    expect(codeOf(() => attendanceValue(1.5 as AttendanceMark, DEFAULTS))).toBe('unknown_mark');
   });
 });

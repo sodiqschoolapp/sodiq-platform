@@ -18,16 +18,19 @@ export interface AttendanceValues {
   readonly skippedValue: number;
 }
 
-export function isExemptMark(mark: AttendanceMark): boolean {
-  return mark === 4 || mark === 5;
+/** The quarter's values as `bigint`s; refused unless whole numbers from 0 to 100. */
+export function checkedAttendanceValues(values: AttendanceValues): readonly [bigint, bigint] {
+  return [
+    wholeNumberIn(values.lateValue, 'lateValue', 0n, 100n),
+    wholeNumberIn(values.skippedValue, 'skippedValue', 0n, 100n),
+  ];
 }
 
 export function attendanceValue(
   mark: AttendanceMark,
   values: AttendanceValues,
 ): Fraction | 'exempt' {
-  const late = wholeNumberIn(values.lateValue, 'lateValue', 0n, 100n);
-  const skipped = wholeNumberIn(values.skippedValue, 'skippedValue', 0n, 100n);
+  const [late, skipped] = checkedAttendanceValues(values);
   switch (mark) {
     case 0:
       return Fraction.whole(0n);

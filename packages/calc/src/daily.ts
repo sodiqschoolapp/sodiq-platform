@@ -28,7 +28,7 @@
  */
 import {
   attendanceValue,
-  isExemptMark,
+  checkedAttendanceValues,
   type AttendanceMark,
   type AttendanceValues,
 } from './attendance.js';
@@ -101,21 +101,19 @@ function partOf(works: readonly Work[]): Fraction | null {
 export function lessonScore(input: LessonScoreInput): LessonScore {
   const [attendanceWeight, classworkWeight, homeworkWeight] = checkedWeights(input.weights);
 
-  if (input.mark !== null && isExemptMark(input.mark)) {
+  // Every input is checked on every call, whatever the mark and the switch (decision 8).
+  checkedAttendanceValues(input.attendanceValues);
+  const value = input.mark === null ? null : attendanceValue(input.mark, input.attendanceValues);
+  const classwork = partOf(input.classworks);
+  const homework = partOf(input.homeworks);
+
+  if (value === 'exempt') {
     if ([...input.classworks, ...input.homeworks].some((work) => work.score !== null)) {
       throw new CalcInputError('number_on_exempt_lesson', 'An exempt lesson holds no number.');
     }
     return { kind: 'exempt' };
   }
-
-  let attendance: Fraction | null = null;
-  if (input.countsForAttendance && input.mark !== null) {
-    const value = attendanceValue(input.mark, input.attendanceValues);
-    // Not exempt: the exempt marks returned above.
-    attendance = value === 'exempt' ? null : value;
-  }
-  const classwork = partOf(input.classworks);
-  const homework = partOf(input.homeworks);
+  const attendance = input.countsForAttendance ? value : null;
 
   const present = (
     [
