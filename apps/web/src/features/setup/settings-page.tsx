@@ -14,6 +14,7 @@ import {
   type EditDaysRecord,
   type QuarterAttendanceValues,
 } from '@sodiq/shared';
+import { GRADE_BANDS } from '@sodiq/calc';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,9 +39,6 @@ import { attendanceValuesQuery, invalidateSettings, settingsQuery } from './sett
 import { cn } from 'cn';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { schoolDateText } from '@/lib/dates';
-
-/** The four grade bands of `03`, Grade bands, in the order the page lists them. */
-const GRADE_BANDS = ['two', 'three', 'four', 'five'] as const;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -301,10 +299,13 @@ function FixedSections() {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {/* The fixed bands of `07` rule 9, from packages/calc (task 4.2). */}
             {GRADE_BANDS.map((band) => (
-              <TableRow key={band}>
-                <TableCell>{t(`setup.settings.gradeBands.${band}.scores`)}</TableCell>
-                <TableCell>{t(`setup.settings.gradeBands.${band}.grade`)}</TableCell>
+              <TableRow key={band.grade}>
+                <TableCell>
+                  {t('setup.settings.bandRange', { from: band.from, to: band.to })}
+                </TableCell>
+                <TableCell>{band.grade}</TableCell>
               </TableRow>
             ))}
           </TableBody>

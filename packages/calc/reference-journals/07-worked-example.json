@@ -1,0 +1,26 @@
+{
+  "title": "The worked example of the journal: weights 20 · 20 · 20 · 40 give 55.6, grade 3",
+  "source": "docs/spec/07-journal.md, Calculation rules, worked example",
+  "status": "sample",
+  "weights": { "attendance": 20, "classwork": 20, "homework": 20, "ratingExam": 40 },
+  "attendanceValues": { "lateValue": 50, "skippedValue": 0 },
+  "quarterClosed": true,
+  "students": [
+    {
+      "name": "Dilnoza Karimova",
+      "lessons": [{ "mark": 1, "classworks": [[15, 30]], "homeworks": [[3, 10]] }],
+      "ratingExam": { "kind": "score", "score": 49 },
+      "expected": {
+        "attendance": "100",
+        "classwork": "50",
+        "homework": "30",
+        "ratingExam": "49",
+        "result": "55.6",
+        "shown": 56,
+        "grade": 3,
+        "leftOut": [],
+        "provisional": false
+      }
+    }
+  ]
+}
