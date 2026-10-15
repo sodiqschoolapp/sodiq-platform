@@ -11,20 +11,22 @@
  * number, and `moduleVersion`. It is plain JSON: a fraction is `{ num, den }`, the decimal strings
  * of the reduced `bigint`s, a `bigint` is its decimal string, so nothing passes through a float
  * (task 4.3, decision 13). `format: 1` names this shape, which is frozen: a later shape is
- * format 2, with a reader for format 1.
+ * format 2, with a reader for format 1. `recalculateAndCompare` lists a record the current
+ * module refuses (`refused`, its code) instead of throwing, so a check over many records goes on.
  *
  * Two kinds (decisions 6 and 8):
  * - `closing`, made when the quarter is closed: refused for an open quarter, for a flag that is
  *   undecided or carries a stale decision (the closing checklist lists it as "decision outdated:
  *   clear it or decide again", review of the plan, correction 1; 9.2a), and for a rating subject
- *   with no rating exam entry, "exempt on exam day, pending" included (07 rule 8);
+ *   with no rating exam entry, "exempt on exam day, pending" included (07 rule 8), and for a
+ *   student with a leaving date, who is not on the checklist (`final_record_at_leaving`);
  * - `at_leaving`, the "result at leaving", stored when the student leaves the school or the
  *   branch while the quarter is open; the student is not on the closing checklist, so none of
  *   the closing refusals apply.
  */
 import type { AttendanceMark } from './attendance.js';
 import { Fraction } from './fraction.js';
-import { CalcInputError } from './input.js';
+import { CalcInputError, type CalcInputErrorCode } from './input.js';
 import { studentQuarterOutcome, type StudentQuarterInput } from './outcome.js';
 import type { QuarterLesson, RatingExamEntry } from './quarter.js';
 import type { Work } from './daily.js';
@@ -55,7 +57,10 @@ export interface Comparison {
   /** The paths in the outcome whose stored value differs from the value calculated now. */
   readonly differences: readonly string[];
   readonly stored: StoredValue;
-  readonly now: StoredValue;
+  /** The outcome calculated now; `null` when the current module refuses the stored inputs. */
+  readonly now: StoredValue | null;
+  /** The code the current module refuses the stored inputs with, else `null`. */
+  readonly refused: CalcInputErrorCode | null;
 }
 
 /** A value of the module as plain JSON: a fraction as `{ num, den }`, a `bigint` as a string. */
@@ -201,6 +206,11 @@ export function finalQuarterRecord(
       throw new CalcInputError('final_record_not_leaving', 'A result at leaving needs its date.');
     }
   } else {
+    // A student who left is not on the closing checklist (decision 6): a closing record would
+    // skip the flags without a word.
+    if (inputs.atLeaving !== null) {
+      throw new CalcInputError('final_record_at_leaving', 'A result at leaving is not closed.');
+    }
     if (!inputs.quarterClosed) {
       throw new CalcInputError('final_record_open_quarter', 'The quarter is not closed.');
     }
@@ -236,7 +246,14 @@ function differencesOf(before: StoredValue, after: StoredValue, path: string): s
   if (isRecord(before) && isRecord(after)) {
     const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])].sort();
     return keys.flatMap((key) =>
-      differencesOf(before[key] ?? null, after[key] ?? null, path === '' ? key : `${path}.${key}`),
+      // A key on one side only is a difference: a stored record that lost a field is not "same".
+      key in before && key in after
+        ? differencesOf(
+            before[key] ?? null,
+            after[key] ?? null,
+            path === '' ? key : `${path}.${key}`,
+          )
+        : [path === '' ? key : `${path}.${key}`],
     );
   }
   return before === after ? [] : [path === '' ? '(outcome)' : path];
@@ -264,9 +281,28 @@ export function recalculateAndCompare(record: unknown): Comparison {
   if (value.format !== 1) throw shapeError('format');
   if (value.kind !== 'closing' && value.kind !== 'at_leaving') throw shapeError('kind');
   const storedVersion = numberAt(value.moduleVersion, 'moduleVersion');
+  if (!Number.isSafeInteger(storedVersion) || storedVersion < 1) throw shapeError('moduleVersion');
   const inputs = inputsAt(value.inputs, 'inputs');
+  // The kind agrees with the inputs, as `finalQuarterRecord` made it.
+  if ((value.kind === 'at_leaving') !== (inputs.atLeaving !== null)) throw shapeError('kind');
+  if (value.kind === 'closing' && !inputs.quarterClosed) throw shapeError('kind');
   const before = storedValueAt(value.outcome, 'outcome');
-  const now = stored(studentQuarterOutcome(inputs));
+  let now: StoredValue;
+  try {
+    now = stored(studentQuarterOutcome(inputs));
+  } catch (error) {
+    // The nightly check over many records lists a refused one and goes on (9.2c).
+    if (!(error instanceof CalcInputError)) throw error;
+    return {
+      storedVersion,
+      currentVersion: CALC_VERSION,
+      same: false,
+      differences: ['(refused)'],
+      stored: before,
+      now: null,
+      refused: error.code,
+    };
+  }
   const differences = differencesOf(before, now, '');
   return {
     storedVersion,
@@ -275,5 +311,6 @@ export function recalculateAndCompare(record: unknown): Comparison {
     differences,
     stored: before,
     now,
+    refused: null,
   };
 }

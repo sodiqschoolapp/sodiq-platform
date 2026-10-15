@@ -16,7 +16,8 @@
  *   A result at leaving raises none: the student is left out of the closing checklist
  *   (decision 6), and its date wins over a "left the subject" date (decision 12).
  * - One decision per student, subject and quarter covers every flag raised: `keep` and
- *   `not_assessed` for any flag, `exempt` only with `few_lessons` when the exemption explains it,
+ *   `not_assessed` for any flag, `exempt` only when `few_lessons` is the one flag raised (the rows
+ *   of the other two offer keep or Not assessed only) and the exemption explains it,
  *   (n + e) × 3 ≥ N. A decision the current data does not allow is not applied and reported as
  *   `staleDecision`; it never throws, so a stored decision stays readable (decision 3).
  * - The start quarter's "from <date>" label is carried on every outcome. No dated lessons exist
@@ -176,7 +177,8 @@ export function studentQuarterOutcome(input: StudentQuarterInput): StudentQuarte
   const allowed =
     decision !== null &&
     flags.length > 0 &&
-    (decision !== 'exempt' || (flags.includes('few_lessons') && (n + e) * 3n >= held));
+    (decision !== 'exempt' ||
+      (flags.length === 1 && flags[0] === 'few_lessons' && (n + e) * 3n >= held));
 
   if (allowed && decision === 'exempt') {
     return { ...labels, kind: 'exempt', cause: 'decided', flags, staleDecision: false };

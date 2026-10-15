@@ -27,6 +27,7 @@ export type CalcInputErrorCode =
   | 'final_record_undecided'
   | 'final_record_rating_missing'
   | 'final_record_not_leaving'
+  | 'final_record_at_leaving'
   | 'record_shape';
 
 export class CalcInputError extends Error {

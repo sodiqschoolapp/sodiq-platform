@@ -169,6 +169,11 @@ describe('finalQuarterRecord', () => {
     });
   });
 
+  it('refuses a closing record of a student who left: the flags would be skipped', () => {
+    const left = { ...CLOSED, lessons: [lesson(1)], heldInJournals: 40, atLeaving: '2026-10-09' };
+    expect(codeOf(() => finalQuarterRecord(left, 'closing'))).toBe('final_record_at_leaving');
+  });
+
   it('refuses a record at leaving with no leaving date', () => {
     expect(codeOf(() => finalQuarterRecord(CLOSED, 'at_leaving'))).toBe('final_record_not_leaving');
   });
@@ -197,6 +202,33 @@ describe('recalculateAndCompare', () => {
     expect(JSON.stringify(tampered)).toBe(before);
   });
 
+  it.each(['decision', 'from', 'result.averages.homework'])(
+    'lists a stored field that was lost: %s',
+    (path) => {
+      const stored = throughJson(finalQuarterRecord(CLOSED, 'closing')) as {
+        outcome: Record<string, unknown>;
+      };
+      const keys = path.split('.');
+      const last = keys.pop() ?? '';
+      let holder: Record<string, unknown> = stored.outcome;
+      for (const key of keys) holder = holder[key] as Record<string, unknown>;
+      expect(last in holder).toBe(true);
+      delete holder[last];
+      const compared = recalculateAndCompare(stored);
+      expect(compared.same).toBe(false);
+      expect(compared.differences).toEqual([path]);
+    },
+  );
+
+  it('lists a record the current module refuses, and does not throw', () => {
+    const stored = throughJson(finalQuarterRecord(CLOSED, 'closing')) as {
+      inputs: { weights: Record<string, unknown> };
+    };
+    stored.inputs.weights.attendance = 21;
+    const compared = recalculateAndCompare(stored);
+    expect(compared).toMatchObject({ same: false, refused: 'weights_not_100', now: null });
+  });
+
   it('lists a changed outcome kind', () => {
     const stored = throughJson(finalQuarterRecord(CLOSED, 'closing')) as Record<string, unknown>;
     const compared = recalculateAndCompare({
@@ -220,6 +252,13 @@ describe('recalculateAndCompare', () => {
       (stored) => ({ ...stored, inputs: { ...(stored.inputs as Stored), heldInJournals: '1' } }),
     ],
     ['an unknown kind', (stored) => ({ ...stored, kind: 'reopened' })],
+    ['module version 0', (stored) => ({ ...stored, moduleVersion: 0 })],
+    ['module version 1.5', (stored) => ({ ...stored, moduleVersion: 1.5 })],
+    ['a kind at leaving with no leaving date', (stored) => ({ ...stored, kind: 'at_leaving' })],
+    [
+      'a closing kind of an open quarter',
+      (stored) => ({ ...stored, inputs: { ...(stored.inputs as Stored), quarterClosed: false } }),
+    ],
     [
       'a lesson with no works list',
       (stored): unknown =>

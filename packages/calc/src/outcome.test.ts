@@ -263,6 +263,34 @@ describe('edge/calculation: few lessons', () => {
 
 // Decision 3: a stored decision the data no longer allows is not applied and never throws.
 describe('stale decisions', () => {
+  // Decision 5 and the build: "Exempt" only when the few-lessons flag is the one flag raised;
+  // the rows of the other two flags offer keep or Not assessed only.
+  it('does not apply Exempt with few lessons and "left the subject" both raised', () => {
+    const outcome = numberOf(
+      studentQuarterOutcome(
+        input({
+          lessons: [lesson(1, 70, 70), lesson(1, 70, 70), ...times(8, () => lesson(4))],
+          heldInJournals: 10,
+          leftSubjectOn: '2026-11-02',
+          decision: 'exempt',
+        }),
+      ),
+    );
+    expect(outcome.flags).toEqual(['few_lessons', 'left_subject']);
+    expect(outcome.staleDecision).toBe(true);
+    expect(outcome.undecided).toBe(true);
+  });
+
+  it('does not apply Exempt with few lessons and attendance alone both raised', () => {
+    const outcome = numberOf(
+      studentQuarterOutcome(
+        input({ lessons: [lesson(1), ...times(39, () => lesson(4))], decision: 'exempt' }),
+      ),
+    );
+    expect(outcome.flags).toEqual(['few_lessons', 'attendance_only']);
+    expect(outcome.staleDecision).toBe(true);
+  });
+
   it('reports a voided exemption under an Exempt decision as stale', () => {
     // The only exempt lessons were voided: the marks given back are absences.
     const outcome = numberOf(
@@ -393,13 +421,20 @@ describe('edge/academic-year: the start quarter', () => {
     );
   });
 
-  it('counts only the lessons given: none exist before the start date', () => {
-    const outcome = numberOf(
-      studentQuarterOutcome(
-        input({ lessons: times(12, () => lesson(1, 70, 70)), countsFrom: '2026-11-16' }),
-      ),
+  // Decision 7: no dated lessons exist before the start date, so N and the lessons passed are
+  // already from it, and the label changes nothing else.
+  it('changes nothing but the label: the result, counts and flags are those without it', () => {
+    // Go-live in week 7: 12 lessons held from the start date, 4 of them attended.
+    const lessons = [...times(4, () => lesson(1, 70, 70)), ...times(8, () => lesson(4))];
+    const plain = numberOf(studentQuarterOutcome(input({ lessons, heldInJournals: 12 })));
+    const start = numberOf(
+      studentQuarterOutcome(input({ lessons, heldInJournals: 12, countsFrom: '2026-11-16' })),
     );
-    expect(outcome.flags).toEqual([]);
+    expect(start.result.value.equals(plain.result.value)).toBe(true);
+    expect(start.basedOn).toEqual({ expected: 4, held: 12 });
+    expect(start.flags).toEqual(plain.flags);
+    expect(start.flags).toEqual([]);
+    expect(plain.from).toBeNull();
   });
 });
 
@@ -472,7 +507,9 @@ describe('outcomeForYear', () => {
       'not_assessed',
     ]);
     const year = yearResult(quarters);
-    expect(year).toMatchObject({ kind: 'number', basedOn: 2 });
+    // (76 + 60) ÷ 2 = 68.
+    expect(year).toMatchObject({ kind: 'number', basedOn: 2, shown: 68n, grade: 4 });
+    if (year.kind === 'number') expect(year.value.equals(Fraction.whole(68n))).toBe(true);
   });
 
   it('passes the exact value of a number and No result as it is', () => {
@@ -494,8 +531,11 @@ describe('refused input', () => {
     ).toBe('lessons_above_held');
   });
 
-  it.each([-1, 1.5])('refuses heldInJournals %d', (heldInJournals) => {
-    expect(codeOf(() => studentQuarterOutcome(input({ heldInJournals })))).toBeDefined();
+  it.each([
+    [-1, 'out_of_range'],
+    [1.5, 'not_whole_number'],
+  ] as const)('refuses heldInJournals %d with %s', (heldInJournals, code) => {
+    expect(codeOf(() => studentQuarterOutcome(input({ heldInJournals })))).toBe(code);
   });
 
   it.each(['2026-02-30', '2026-1-5', '2027-02-29', '2026-13-01', '2026-00-10', ' 2026-01-05'])(

@@ -13,7 +13,7 @@ import { CALC_VERSION } from './version.js';
 // cannot stop someone from rewriting the last entry instead: it makes the change visible in the
 // diff, and the review checks that the version was raised.
 const SOURCE_HASHES: readonly string[] = [
-  '8810939bcedcadb5f6e5e7550c198e42337c63982bbb5d58a1bb4ec9f47e1406',
+  'aef6025c99d7b06899808e7d4e56849bfe4ab99e1ceef710e07871ed503b3303',
 ];
 
 const directory = new URL('./', import.meta.url);

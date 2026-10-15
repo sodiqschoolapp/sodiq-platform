@@ -613,6 +613,7 @@ How to read the task lines:
   - Done when: a non-rating subject has no exam column.
   - From 2.1 (pull request #52, decision 4): `edge/calculation`: "In a started quarter the change is refused while scores exist." `PUT /api/setup/subjects/:id` refuses a change of the rating exam switch or the journal type while a started quarter holds scores of the subject, with its test.
   - From 2.4b-1 (pull request #68): the tables of numbers and comments reference `students` with no action, as the line of 6.1 says, so a student with them is never deleted.
+  - From 4.3 (pull request #104, row table): reads `edge/calculation`, "The rating exam" (one column per rating journal and quarter, an exam date set by the teacher or the Academic Vice Principal, whole numbers 0 to 100 from that date with the edit period and unlock of a lesson; a score, "did not sit" set by the teacher, or "exempt" set only by the Academic Vice Principal; a late sitting or a retake replaces the score with a required reason, history kept), "A student is exempt on the exam day" (the cell shows "exempt on exam day, pending"; the teacher may later enter a score, otherwise the Academic Vice Principal sets "exempt"; pending is passed to `packages/calc` as no entry) and "The exam is not held for one group this quarter" ("not held" per journal and quarter, set by the Academic Vice Principal).
 
 - [ ] **8.3a Saving and stale saves**
   - Read: `07`, `12` (No lost work), `edge/journal` (Saving and working together), `edge/system-behaviour`.
@@ -686,7 +687,7 @@ How to read the task lines:
   - Read: `07` (Closing a quarter), `edge/journal` (Closing and reopening), `edge/calculation`.
   - Build: the checklist with blocking items and warnings; decisions on flagged results, one by one or for a whole journal.
   - Done when: each row of the checklist table has a test.
-  - From 4.3 (pull request #104, decisions 3, 5 and 8, correction 1): the decisions are the `decision` of `studentQuarterOutcome`, one per student, subject and quarter, set one by one or for a whole journal; `exempt` is refused where the module would not apply it (only with the few-lessons flag and (n + e) × 3 ≥ N); the three flags (`few_lessons`, `attendance_only`, `left_subject`) block closing while undecided, and a stored decision the module no longer applies (`staleDecision`) is a blocking item of its own, "decision outdated: clear it or decide again", one by one or for a whole journal.
+  - From 4.3 (pull request #104, decisions 3, 5 and 8, correction 1): the decisions are the `decision` of `studentQuarterOutcome`, one per student, subject and quarter, set one by one or for a whole journal; `exempt` is refused where the module would not apply it (only when the few-lessons flag is the one flag raised and (n + e) × 3 ≥ N; the attendance-only and "left the subject" rows offer keep or Not assessed); the three flags (`few_lessons`, `attendance_only`, `left_subject`) block closing while undecided, and a stored decision the module no longer applies (`staleDecision`) is a blocking item of its own, "decision outdated: clear it or decide again", one by one or for a whole journal.
 
 - [ ] **9.2b Closing a quarter**
   - Read: `07` (Closing a quarter), `edge/journal` (Closing and reopening), `edge/academic-year`, `edge/system-behaviour`.
@@ -697,13 +698,13 @@ How to read the task lines:
   - From 3.3a (pull request #95, decision 4): a class or group move dated in a closed quarter is refused (`edge`: "Backdating is for the Academic Vice Principal, in an open quarter").
   - From 3.3c (pull request #97, decision 9): a release to another branch dated in a closed quarter is refused, and so is its accept.
   - From 2.4b-1 (pull request #68): a leaving, an undo, a return or a graduated restore dated in a closed quarter is refused (`edge/students-classes-groups`: "A date in a closed quarter is refused"), in the database as `student_statuses_closed_year_guard` (0033) does for a closed year.
-  - From 4.3 (pull request #104, decisions 8 and 13): the stored final result is `finalQuarterRecord(…, 'closing')` (format 1, inputs, outcome, `CALC_VERSION`) in a `jsonb` column; it refuses an open quarter, an undecided or stale flag and a missing rating exam entry.
+  - From 4.3 (pull request #104, decisions 8 and 13): the stored final result is `finalQuarterRecord(…, 'closing')` (format 1, inputs, outcome, `CALC_VERSION`) in a `jsonb` column; it refuses an open quarter, an undecided or stale flag, a missing rating exam entry and a student with a result at leaving (`final_record_at_leaving`: not on the checklist).
 
 - [ ] **9.2c Reopening and the nightly check**
   - Read: `edge/journal` (Closing and reopening), `edge/system-behaviour`.
   - Build: reopen rules; the nightly job that recalculates open journals and stored results, alerts on a difference and blocks closing that journal.
   - Done when: a deliberately corrupted stored result is caught by the check in a test.
-  - From 4.3 (pull request #104, `edge/calculation`, "A bug is found after results were closed and exported"): the "recalculate and compare" tool over `recalculateAndCompare` (lists the differences, changes nothing) and "apply with a reason", which keeps the old results and tells the teachers concerned; the nightly check uses the same function.
+  - From 4.3 (pull request #104, `edge/calculation`, "A bug is found after results were closed and exported"): the "recalculate and compare" tool over `recalculateAndCompare` (lists the differences, changes nothing; a record the current module refuses is listed with its code, `refused`, not thrown) and "apply with a reason", which keeps the old results and tells the teachers concerned; the nightly check uses the same function.
 
 - [ ] **9.3a Rating**
   - Read: `08` (Rating).
