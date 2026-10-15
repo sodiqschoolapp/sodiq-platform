@@ -2873,6 +2873,8 @@ export const en = {
       unplaced_other: 'Not placed: {{n}}',
       mixedBlock: 'Mixed block (the halves meet in different slots)',
       mixedNote: 'One teacher may take both halves. The mark is written to every half.',
+      blockLessonsCreateNote:
+        'From {{min}} to {{max}}. Every part of the block has the same lessons.',
       blockLessonsNote:
         'From {{min}} to {{max}}. The lessons are written to every part of the block.',
       groupDefault: 'This subject is taught in groups by default.',
@@ -2880,7 +2882,6 @@ export const en = {
       useGroup: 'Use group {{name}}',
       totals: {
         title: 'Weekly totals',
-        note: 'Shown to compare; they refuse nothing.',
         classes: 'Classes',
         teachers: 'Teachers',
         class: 'Class',

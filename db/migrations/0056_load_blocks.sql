@@ -26,7 +26,9 @@
 
 -- Decision 12: the halves of a split marked as part of a mixed block meet in
 -- different slots, so one teacher may take both.
-alter table teaching_load_rows add column mixed_block boolean not null default false;
+alter table teaching_load_rows add column mixed_block boolean not null default false
+  -- Only a group row can be a half of a split (spec review of the build, must-fix 1).
+  constraint load_mixed_not_split check (not mixed_block or group_id is not null);
 
 grant insert (mixed_block), update (mixed_block) on teaching_load_rows to sodiq_app;
 

@@ -2895,6 +2895,8 @@ export const uz: Texts<'one' | 'other'> = {
       mixedBlock: 'Aralash blok (qismlar turli vaqtda oʻtadi)',
       mixedNote:
         'Bitta oʻqituvchi ikkala qismni ham olishi mumkin. Belgi barcha qismlarga yoziladi.',
+      blockLessonsCreateNote:
+        '{{min}} dan {{max}} gacha. Blokning barcha qismlarida darslar soni bir xil.',
       blockLessonsNote:
         '{{min}} dan {{max}} gacha. Darslar soni blokning barcha qismlariga yoziladi.',
       groupDefault: 'Bu fan odatda guruhlarda oʻtiladi.',
@@ -2902,7 +2904,6 @@ export const uz: Texts<'one' | 'other'> = {
       useGroup: '{{name}} guruhini tanlash',
       totals: {
         title: 'Haftalik jami',
-        note: 'Taqqoslash uchun koʻrsatilgan; hech narsani rad etmaydi.',
         classes: 'Sinflar',
         teachers: 'Oʻqituvchilar',
         class: 'Sinf',

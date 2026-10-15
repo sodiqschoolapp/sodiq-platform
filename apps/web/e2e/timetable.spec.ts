@@ -141,11 +141,16 @@ test('an Academic Vice Principal gives a split its two parts and changes their l
   await edit.getByLabel(texts.lessons, { exact: true }).fill('4');
   await edit.getByRole('button', { name: en.form.save, exact: true }).click();
   for (const teacher of ['Saidova Madina', 'Olimova Zarina']) {
-    await expect(page.getByRole('row').filter({ hasText: teacher }).first()).toContainText('4');
+    // The lessons cell of each half (spec review of the build, should-fix 6).
+    await expect(
+      page.getByRole('row').filter({ hasText: teacher }).first().locator('td').nth(4),
+    ).toHaveText('4');
   }
 
   // The split counts once for 7 Oxford in the weekly totals.
   const totals = page.locator('[data-totals="classes"]');
-  await expect(totals.getByRole('row').filter({ hasText: '7 Oxford' })).toContainText('4');
+  await expect(
+    totals.getByRole('row').filter({ hasText: '7 Oxford' }).locator('td').nth(1),
+  ).toHaveText(/^4(?!\d)/);
   await screenshot(page, 'weekly-totals');
 });

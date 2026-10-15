@@ -546,7 +546,8 @@ export class Timetable {
    * The weekly totals of a version (06, Building a timetable, steps 2 and 3;
    * Teachers who work in several branches, Weekly load; task 3.4b, decisions
    * 5 to 8 with corrections 1 and 2): shown, never refusing. Each weekday is
-   * read on its first date on or after the start date.
+   * read on its first date on or after the start date, or today when the
+   * start date has passed (`statusOn`; spec review of the build, should-fix 5).
    */
   totals(access: Access, id: string): Promise<LoadTotals> {
     const branchId = branchOf(access);
@@ -594,7 +595,7 @@ export class Timetable {
         }
         const days = weekDaysOf(
           grade,
-          version.starts_on,
+          context.statusOn,
           branch.working_weekdays,
           { assignments },
           (templateId, date) => dayOf(store, templateId, date)?.day ?? null,
@@ -644,7 +645,7 @@ export class Timetable {
               sql<{ teacher_id: string; branch_id: string; lessons: number; draft: boolean }>`
                 select teacher_id, branch_id, lessons, draft
                 from teacher_load_elsewhere(
-                  ${branchId}::uuid, ${sql.val(teacherIds)}::uuid[], ${version.starts_on}::date
+                  ${branchId}::uuid, ${sql.val(teacherIds)}::uuid[], ${context.statusOn}::date
                 )
               `
                 .execute(transaction)
@@ -666,7 +667,7 @@ export class Timetable {
         let any = false;
         let sum = 0;
         for (const weekday of [...branch.working_weekdays].sort((a, b) => a - b)) {
-          const date = firstOn(version.starts_on, weekday);
+          const date = firstOn(context.statusOn, weekday);
           const entry = entries.find(
             (one) => one.staff_id === teacherId && one.valid_from <= date && date < one.valid_until,
           );
@@ -945,6 +946,10 @@ export class Timetable {
     after: StoredLoadRow,
   ): Promise<{ before: StoredLoadRow; after: StoredLoadRow }[]> {
     if (before.group_id === null) {
+      // A class row is never a half of a split (spec review of the build, must-fix 1).
+      if (after.mixed_block && !before.mixed_block) {
+        this.refuse(['load_mixed_not_split']);
+      }
       return [];
     }
     const versionRows = await this.rowsOf(transaction, versionId);

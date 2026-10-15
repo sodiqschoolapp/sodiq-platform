@@ -137,7 +137,8 @@ export function blockProblems(
 ): BlockProblem[] {
   const group = row.groupId === null ? undefined : groups.get(row.groupId);
   if (group === undefined) {
-    return [];
+    // A class row is never a half of a split (spec review of the build, must-fix 1).
+    return row.mixedBlock && row.groupId === null ? ['load_mixed_not_split'] : [];
   }
   const others = block.filter((other) => other.id !== row.id);
   const problems: BlockProblem[] = [];

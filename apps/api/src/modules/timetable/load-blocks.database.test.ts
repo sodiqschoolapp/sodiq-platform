@@ -105,6 +105,16 @@ describe('the blocks of a teaching load in the database', () => {
       }
     });
 
+  /** How many connections to the test database wait for a lock right now. */
+  async function waitingForALock(): Promise<number> {
+    const found = await sql<{ waiting: number }>`
+      select count(distinct l.pid)::int as waiting
+      from pg_locks l join pg_stat_activity a on a.pid = l.pid
+      where a.datname = current_database() and not l.granted
+    `.execute(database.migrator);
+    return found.rows[0]?.waiting ?? 0;
+  }
+
   /** A class of grade 7 in Uzbek of the north. */
   const schoolClass = () => kit.classes.schoolClass(north, northYear, { grade: 7, language: 'uz' });
 
@@ -262,6 +272,24 @@ describe('the blocks of a teaching load in the database', () => {
       });
     });
 
+    it('refuses the mark on a class row, on insert and on update', async () => {
+      const classRow = {
+        branch_id: north,
+        version_id: version,
+        class_id: oxford,
+        subject_id: subject,
+        teacher_id: first,
+      };
+      expect(await refusal(insertRow({ ...classRow, mixed_block: true }))).toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'load_mixed_not_split',
+      });
+      const row = await insertRow(classRow);
+      expect(await refusal(updateRows([[row, { mixed_block: true }]]))).toMatchObject({
+        constraint: 'load_mixed_not_split',
+      });
+    });
+
     it('lets PE and technology splits of one class have other lessons and one teacher', async () => {
       const technology = await kit.classes.subject({ grades: [7] });
       await kit.profile(first, [{ subject: technology, grades: [7] }]);
@@ -356,20 +384,33 @@ describe('the blocks of a teaching load in the database', () => {
 
   // Writes that bypass the API take no version lock before their rows, so they
   // run side by side; the commit checks run one after the other (an advisory
-  // lock of the version), and the one that commits second sees the first's
-  // rows and is refused. The API takes the version FOR UPDATE first (route
-  // tests of teaching-load.test.ts).
+  // lock of the version), and the check that waits sees the other's rows and
+  // refuses. The API takes the version FOR UPDATE first (route tests of
+  // load-blocks.test.ts).
   describe('two writes at the same moment', () => {
-    /** The held side writes and stays open; the other writes and commits; then the held side commits. */
+    /**
+     * The held side writes, runs its commit check at once (`set constraints
+     * ... immediate`: the check takes the advisory lock of the version and
+     * passes) and stays open; the other side writes and reaches its own commit
+     * check, which must wait for the lock (spec review of the build, must-fix
+     * 2); then the held side commits, and the other's check reads its rows.
+     */
     async function race(
       held: (transaction: Transaction) => Promise<void>,
       other: (transaction: Transaction) => Promise<void>,
     ): Promise<{ held: string | undefined; other: string | undefined }> {
-      const holder = holding((run) => inBranch(north, run), held);
+      const holder = holding(
+        (run) => inBranch(north, run),
+        async (transaction) => {
+          await held(transaction);
+          await sql`set constraints teaching_load_rows_blocks immediate`.execute(transaction);
+        },
+      );
       await holder.ready;
-      const otherOutcome = await outcome(inBranch(north, other));
+      const otherOutcome = outcome(inBranch(north, other));
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
       holder.release();
-      return { held: await outcome(holder.done), other: otherOutcome };
+      return { held: await outcome(holder.done), other: await otherOutcome };
     }
 
     const insertPart = (values: LoadRowValues) => async (transaction: Transaction) => {
@@ -379,7 +420,7 @@ describe('the blocks of a teaching load in the database', () => {
         .execute();
     };
 
-    it('refuses the second of two parts with unequal lessons to commit, in both orders', async () => {
+    it('refuses the part whose commit check waits, with unequal lessons, in both orders', async () => {
       for (const [heldLessons, otherLessons] of [
         [3, 2],
         [2, 3],
@@ -390,11 +431,11 @@ describe('the blocks of a teaching load in the database', () => {
             insertPart(part(a, { lessons_per_week: heldLessons })),
             insertPart(part(b, { teacher_id: second, lessons_per_week: otherLessons })),
           ),
-        ).toEqual({ held: 'load_block_lessons', other: 'written' });
+        ).toEqual({ held: 'written', other: 'load_block_lessons' });
       }
     });
 
-    it('refuses a class row and a group row of one class and subject, whichever commits second', async () => {
+    it('refuses a class row and a group row of one class and subject, whichever check waits', async () => {
       for (const order of ['class held', 'group held'] as const) {
         const classId = await schoolClass();
         const [g = ''] = await split(classId);
@@ -408,8 +449,8 @@ describe('the blocks of a teaching load in the database', () => {
         const groupRow = insertPart(part(g, { teacher_id: second }));
         const [held, other] = order === 'class held' ? [classRow, groupRow] : [groupRow, classRow];
         expect(await race(held, other), order).toEqual({
-          held: 'load_split_and_whole',
-          other: 'written',
+          held: 'written',
+          other: 'load_split_and_whole',
         });
       }
     });
@@ -436,17 +477,17 @@ describe('the blocks of a teaching load in the database', () => {
         const insert = insertPart(part(groups[2], { teacher_id: third, lessons_per_week: 3 }));
         const [held, other] = order === 'edit held' ? [edit, insert] : [insert, edit];
         expect(await race(held, other), order).toEqual({
-          held: 'load_block_lessons',
-          other: 'written',
+          held: 'written',
+          other: 'load_block_lessons',
         });
       }
     });
 
-    it('refuses the second of two parts with one teacher to commit', async () => {
+    it('refuses the part whose commit check waits, with one teacher', async () => {
       const [a = '', b = ''] = await split();
       expect(await race(insertPart(part(a)), insertPart(part(b)))).toEqual({
-        held: 'load_block_teacher',
-        other: 'written',
+        held: 'written',
+        other: 'load_block_teacher',
       });
     });
   });

@@ -47,7 +47,6 @@ export function LoadTotalsSection({ versionId }: { versionId: string }) {
         <h2 id="load-totals" className={SECTION_TITLE}>
           {t('timetable.load.totals.title')}
         </h2>
-        <p className="text-sm text-muted-foreground">{t('timetable.load.totals.note')}</p>
       </div>
       {totals.isError ? (
         <ErrorState

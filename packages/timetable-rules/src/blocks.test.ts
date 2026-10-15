@@ -150,6 +150,12 @@ describe('blockProblems', () => {
     expect(blockProblems(rows[1] as BlockRow, rows, split)).toEqual(['load_block_mixed']);
   });
 
+  it('finds a mixed mark on a class row', () => {
+    const one = { ...classRow('c', 'oxford'), mixedBlock: true };
+    expect(blockProblems(one, [one], split)).toEqual(['load_mixed_not_split']);
+    expect(blockProblems(classRow('d', 'oxford'), [], split)).toEqual([]);
+  });
+
   it('finds a mixed mark on a group across classes, and one teacher there still refused', () => {
     const groups = groupsOf(
       group('m1', ['oxford', 'princeton'], [7]),

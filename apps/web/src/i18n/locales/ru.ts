@@ -3016,6 +3016,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       unplaced_other: 'Не распределено: {{n}}',
       mixedBlock: 'Смешанный блок (половины занимаются в разное время)',
       mixedNote: 'Один учитель может вести обе половины. Отметка записывается во все половины.',
+      blockLessonsCreateNote: 'От {{min}} до {{max}}. У всех частей блока одинаковое число уроков.',
       blockLessonsNote: 'От {{min}} до {{max}}. Число уроков записывается во все части блока.',
       groupDefault: 'По умолчанию этот предмет ведётся по группам.',
       groupDefaultNone:
@@ -3023,7 +3024,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       useGroup: 'Выбрать группу {{name}}',
       totals: {
         title: 'Итоги недели',
-        note: 'Показано для сравнения; ничего не запрещается.',
         classes: 'Классы',
         teachers: 'Учителя',
         class: 'Класс',

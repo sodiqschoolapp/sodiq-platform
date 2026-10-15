@@ -117,7 +117,7 @@ export function LoadRowForm({
         doubleLessons: typed.doubleLessons === CHECKED,
       };
       if (row !== null) {
-        return row.unit.kind === 'group' && isSplit(row.unit.id)
+        return (row.unit.kind === 'group' && isSplit(row.unit.id)) || row.mixedBlock
           ? { ...fields, mixedBlock: typed.mixedBlock === CHECKED }
           : fields;
       }
@@ -206,7 +206,9 @@ export function LoadRowForm({
         )
       : null;
   const unitField = form.bind('unit');
-  const split = group !== undefined && group.classes.length === 1;
+  // A row marked wrongly since (a class added to its group) shows the switch
+  // too, so that the mark can be cleared (spec review of the build, should-fix 2).
+  const split = (group !== undefined && group.classes.length === 1) || row?.mixedBlock === true;
   const teacherName = (one: { kind: string; name: string | null; tutor: boolean }) => {
     const name = one.name ?? t('timetable.load.gone');
     return one.tutor
@@ -294,7 +296,11 @@ export function LoadRowForm({
       <NumberField
         label={t('timetable.load.lessons')}
         note={t(
-          group === undefined ? 'timetable.load.lessonsNote' : 'timetable.load.blockLessonsNote',
+          group === undefined
+            ? 'timetable.load.lessonsNote'
+            : row === null
+              ? 'timetable.load.blockLessonsCreateNote'
+              : 'timetable.load.blockLessonsNote',
           {
             min: number.format(1),
             max: number.format(LOAD_LESSONS_MAX),

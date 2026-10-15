@@ -574,7 +574,7 @@ describe('the teaching load page: splits, groups and weekly totals', () => {
     expect(screen.getByText(en.timetable.load.mixedNote)).not.toBeNull();
     expect(
       screen.getByText(
-        en.timetable.load.blockLessonsNote.replace('{{min}}', '1').replace('{{max}}', '40'),
+        en.timetable.load.blockLessonsCreateNote.replace('{{min}}', '1').replace('{{max}}', '40'),
       ),
     ).not.toBeNull();
     const teacher = await within(form).findByLabelText<HTMLSelectElement>(
@@ -615,6 +615,54 @@ describe('the teaching load page: splits, groups and weekly totals', () => {
     fireEvent.click(within(form).getByRole('button', { name: 'Use group 7-E-1' }));
     await waitFor(() => {
       expect(unit.value).toBe(`group:${groupOfIt.id}`);
+    });
+  });
+
+  // Spec review of the build, should-fix 2: a group marked as a mixed block
+  // that gained a class since shows the switch, so the mark can be cleared.
+  it('lets the mark of a row that is no longer a split be cleared', async () => {
+    setWindowWidth(1440);
+    const across: SchoolGroup = {
+      ...HALF,
+      kind: 'across',
+      classes: [
+        ...HALF.classes,
+        { id: uid(103), grade: 7, name: 'Princeton', language: 'uz', archived: false },
+      ],
+    };
+    const marked = groupRow(1, across, { mixedBlock: true, problems: ['load_mixed_not_split'] });
+    const calls = await openPage({
+      teachers: () => ({ teachers: [{ ...TEACHER, tutor: false }], defaultTeacherId: null }),
+      load: { rows: [marked] },
+      extra: {
+        'GET /api/groups': () => json({ groups: [across] }),
+        [`PATCH /api/timetable/versions/${version(1).id}/load/${marked.id}`]: () =>
+          json({ ...marked, mixedBlock: false, problems: [] }),
+      },
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+    fireEvent.click(
+      within(document.querySelectorAll('tbody tr')[0] as HTMLElement).getAllByRole(
+        'button',
+      )[0] as HTMLElement,
+    );
+    const panel = await screen.findByRole('complementary');
+    fireEvent.click(await within(panel).findByRole('button', { name: en.form.edit }));
+    const mixed = await within(panel).findByLabelText<HTMLInputElement>(
+      en.timetable.load.mixedBlock,
+    );
+    expect(mixed.checked).toBe(true);
+    fireEvent.click(mixed);
+    fireEvent.click(within(panel).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find(
+          (call) =>
+            call.route === `PATCH /api/timetable/versions/${version(1).id}/load/${marked.id}`,
+        )?.body,
+      ).toMatchObject({ mixedBlock: false });
     });
   });
 

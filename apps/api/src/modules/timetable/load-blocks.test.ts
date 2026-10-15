@@ -217,7 +217,19 @@ describe('splits, groups and weekly totals of the teaching load', () => {
         old_value: { lessonsPerWeek: 3, parts: [{ rowId: second.id, lessonsPerWeek: 3 }] },
         new_value: { lessonsPerWeek: 5, parts: [{ rowId: second.id, lessonsPerWeek: 5 }] },
       });
-      await editRow(version.id, { ...first, lessonsPerWeek: 5 }, { mixedBlock: true }).expect(200);
+      const marked = await editRow(
+        version.id,
+        { ...first, lessonsPerWeek: 5 },
+        { mixedBlock: true },
+      );
+      expect(marked.status, JSON.stringify(marked.body)).toBe(200);
+      const markEntry = (await t.entries('teaching_load.edit', first.id)).find(
+        (one) => one.request_id === marked.headers['x-request-id'],
+      );
+      expect(markEntry).toMatchObject({
+        old_value: { mixedBlock: false, parts: [{ rowId: second.id, mixedBlock: false }] },
+        new_value: { mixedBlock: true, parts: [{ rowId: second.id, mixedBlock: true }] },
+      });
       expect((await loadOf(version.id)).rows.map((row) => row.mixedBlock)).toEqual([true, true]);
       // One teacher on both mixed halves: a teacher change passes.
       rowOf(
@@ -227,6 +239,62 @@ describe('splits, groups and weekly totals of the teaching load', () => {
           { teacherId: first.teacher.id },
         ),
       );
+    });
+
+    it('refuses halves that disagree on the mark, a cleared mark with one teacher, and the mark outside a split, changing nothing', async () => {
+      const version = await draft();
+      const oxford = await schoolClass();
+      const [a, b] = [await group([oxford]), await group([oxford])];
+      const one = await teacher();
+      rowOf(await createRow(version.id, { groupId: a, teacherId: one, mixedBlock: true }));
+      let before = await rowsOf();
+      refusedWith(
+        await createRow(version.id, { groupId: b, teacherId: await teacher() }),
+        409,
+        'load_block_mixed',
+      );
+      expect(await rowsOf()).toEqual(before);
+      const second = rowOf(
+        await createRow(version.id, { groupId: b, teacherId: one, mixedBlock: true }),
+      );
+      before = await rowsOf();
+      // The cleared mark is written to both halves, which then share one teacher.
+      refusedWith(
+        await editRow(version.id, second, { mixedBlock: false }),
+        409,
+        'load_block_teacher',
+      );
+      expect(await rowsOf()).toEqual(before);
+      const across = await group([await schoolClass(), await schoolClass()]);
+      const acrossRow = rowOf(
+        await createRow(version.id, { groupId: across, teacherId: await teacher() }),
+      );
+      const classRow = rowOf(
+        await createRow(version.id, { classId: await schoolClass(), teacherId: await teacher() }),
+      );
+      const otherClass = await schoolClass();
+      const otherTeacher = await teacher();
+      before = await rowsOf();
+      refusedWith(
+        await editRow(version.id, acrossRow, { mixedBlock: true }),
+        409,
+        'load_mixed_not_split',
+      );
+      refusedWith(
+        await createRow(version.id, {
+          classId: otherClass,
+          teacherId: otherTeacher,
+          mixedBlock: true,
+        }),
+        409,
+        'load_mixed_not_split',
+      );
+      refusedWith(
+        await editRow(version.id, classRow, { mixedBlock: true }),
+        409,
+        'load_mixed_not_split',
+      );
+      expect(await rowsOf()).toEqual(before);
     });
 
     /** Two splits of two classes joined into one block by a class added to a group later. */
@@ -530,6 +598,52 @@ describe('splits, groups and weekly totals of the teaching load', () => {
       expect((await totalsOf(version.id, t.principal)).teachers).toHaveLength(1);
     });
 
+    // Spec review of the build, should-fix 5: a draft whose start date has
+    // passed is read on today, as the students not placed are.
+    it('reads the hours and templates on today once the start date has passed', async () => {
+      const version = await load.version(t.north, year, { startsOn: '2026-10-05' });
+      const late = await teacher();
+      // Hours from Thursday 8 October: none on Monday 5 to Wednesday 7 October.
+      const entry = await t.database.migrator
+        .insertInto('staff_availability')
+        .values({ branch_id: t.north, staff_id: late, valid_from: '2026-10-08' })
+        .returning(['id', 'valid_until'])
+        .executeTakeFirstOrThrow();
+      const weekdays = (
+        await t.database.migrator
+          .selectFrom('branches')
+          .select('working_weekdays')
+          .where('id', '=', t.north)
+          .executeTakeFirstOrThrow()
+      ).working_weekdays;
+      for (const weekday of weekdays) {
+        await t.database.migrator
+          .insertInto('staff_availability_ranges')
+          .values({
+            entry_id: entry.id,
+            branch_id: t.north,
+            staff_id: late,
+            weekday,
+            start_minutes: 0,
+            end_minutes: 1440,
+            valid_from: '2026-10-08',
+            valid_until: entry.valid_until,
+          })
+          .execute();
+      }
+      await load.row({
+        branch_id: t.north,
+        version_id: version,
+        class_id: await schoolClass(),
+        subject_id: subject,
+        teacher_id: late,
+        lessons_per_week: 2,
+      });
+      const found = (await totalsOf(version)).teachers.find((one) => one.id === late);
+      // Every working weekday from Saturday 10 October on: three lesson slots each.
+      expect(found?.freeSlots).toBe(3 * weekdays.length);
+    });
+
     it("answers 404 for another branch's version and an unknown one, also to the Super Admin, and nothing to a Teacher", async () => {
       const southern = await load.version(t.south, southYear);
       for (const cookie of [t.vicePrincipal, t.admin]) {
@@ -628,6 +742,73 @@ describe('splits, groups and weekly totals of the teaching load', () => {
       ).toBeNull();
       await load.setVersion(draftVersion, 'published');
       expect(await listed(twoBranches)).toMatchObject({ id: own, draft: false });
+    });
+  });
+
+  describe('the teacher of a group: which draft, and the Tutor (spec review of the build, should-fix 7)', () => {
+    it('reads the earliest later draft, then the highest number of one start', async () => {
+      const classId = await load.classes.schoolClass(t.south, southYear, {
+        grade: 7,
+        language: 'uz',
+      });
+      const g = await load.classes.group(t.south, southYear, subject, [classId]);
+      const teacherOf = async () =>
+        (await load.teacher(t.south, { subjects: [{ subject, grades: [7] }] })).staffId;
+      const rowIn = async (startsOn: string) => {
+        const version = await load.version(t.south, southYear, { startsOn });
+        const teacherId = await teacherOf();
+        await load.row({
+          branch_id: t.south,
+          version_id: version,
+          group_id: g,
+          subject_id: subject,
+          teacher_id: teacherId,
+        });
+        return teacherId;
+      };
+      const detail = async () =>
+        groupDetailSchema.parse((await get(`/api/groups/${g}`, t.admin, t.south).expect(200)).body)
+          .teacher;
+      const sooner = await rowIn('2026-10-19');
+      await rowIn('2026-10-26');
+      expect(await detail()).toMatchObject({ id: sooner, draft: true });
+      await rowIn('2026-10-12');
+      const higher = await rowIn('2026-10-12');
+      expect(await detail()).toMatchObject({ id: higher, draft: true });
+    });
+
+    it("gives a Tutor the published teacher of a group of own class, never a draft's", async () => {
+      const browser = await t.kit.completeSession('Malika', 'Qodirova');
+      const tutorClass = await schoolClass();
+      await load.classes.person(t.north, ['uz'], { accountId: browser.account.id });
+      await load.tutorOf(t.north, tutorClass, browser.account.id, {
+        from: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      const g = await group([tutorClass]);
+      const detail = async (cookie: string) =>
+        groupDetailSchema.parse((await get(`/api/groups/${g}`, cookie).expect(200)).body).teacher;
+      // A published version of the current year is in force from an earlier test.
+      const draftOnly = await load.version(t.north, year, { startsOn: '2026-10-19' });
+      await load.row({
+        branch_id: t.north,
+        version_id: draftOnly,
+        group_id: g,
+        subject_id: subject,
+        teacher_id: await teacher(),
+      });
+      expect(await detail(browser.cookie)).toBeNull();
+      const published = await load.version(t.north, year, { startsOn: '2026-10-07' });
+      const shown = await teacher();
+      await load.row({
+        branch_id: t.north,
+        version_id: published,
+        group_id: g,
+        subject_id: subject,
+        teacher_id: shown,
+      });
+      await load.setVersion(published, 'published');
+      expect(await detail(browser.cookie)).toMatchObject({ id: shown, draft: false });
+      expect(await detail(t.vicePrincipal)).toMatchObject({ id: shown, draft: false });
     });
   });
 
@@ -736,6 +917,94 @@ describe('splits, groups and weekly totals of the teaching load', () => {
       held.release();
       expect(await held.done).toBeUndefined();
       refusedWith(await creating, 409, 'load_split_and_whole');
+    });
+
+    it('makes a create of a group row wait for a class row of its class, then refuses it', async () => {
+      const version = await draft();
+      const oxford = await schoolClass();
+      const g = await group([oxford]);
+      const first = await teacher();
+      const held = await holdOpen(async (transaction) => {
+        await lockVersion(transaction, version.id);
+        await transaction
+          .insertInto('teaching_load_rows')
+          .values({
+            branch_id: t.north,
+            version_id: version.id,
+            class_id: oxford,
+            subject_id: subject,
+            teacher_id: first,
+            lessons_per_week: 3,
+          })
+          .execute();
+      });
+      const creating = createRow(version.id, { groupId: g, teacherId: await teacher() }).then(
+        (response) => response,
+      );
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      refusedWith(await creating, 409, 'load_split_and_whole');
+    });
+
+    it('makes a lessons edit wait for a part being written, then writes the lessons to it too', async () => {
+      const version = await draft();
+      const oxford = await schoolClass();
+      const [a, b, c] = [await group([oxford]), await group([oxford]), await group([oxford])];
+      const first = rowOf(await createRow(version.id, { groupId: a, teacherId: await teacher() }));
+      rowOf(await createRow(version.id, { groupId: b, teacherId: await teacher() }));
+      const third = await teacher();
+      const held = await holdOpen(async (transaction) => {
+        await lockVersion(transaction, version.id);
+        await transaction
+          .insertInto('teaching_load_rows')
+          .values({
+            branch_id: t.north,
+            version_id: version.id,
+            group_id: c,
+            subject_id: subject,
+            teacher_id: third,
+            lessons_per_week: 3,
+          })
+          .execute();
+      });
+      const editing = editRow(version.id, first, { lessonsPerWeek: 5 }).then(
+        (response) => response,
+      );
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      rowOf(await editing);
+      expect((await loadOf(version.id)).rows.map((row) => row.lessonsPerWeek)).toEqual([5, 5, 5]);
+    });
+
+    it('makes a create of a part wait for a lessons edit of its block, then refuses unequal lessons', async () => {
+      const version = await draft();
+      const oxford = await schoolClass();
+      const [a, b, c] = [await group([oxford]), await group([oxford]), await group([oxford])];
+      const rows = [
+        rowOf(await createRow(version.id, { groupId: a, teacherId: await teacher() })),
+        rowOf(await createRow(version.id, { groupId: b, teacherId: await teacher() })),
+      ];
+      const held = await holdOpen(async (transaction) => {
+        await lockVersion(transaction, version.id);
+        for (const one of rows) {
+          await transaction
+            .updateTable('teaching_load_rows')
+            .set({ lessons_per_week: 4 })
+            .where('id', '=', one.id)
+            .execute();
+        }
+      });
+      const creating = createRow(version.id, {
+        groupId: c,
+        teacherId: await teacher(),
+        lessonsPerWeek: 3,
+      }).then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      refusedWith(await creating, 409, 'load_block_lessons');
     });
   });
 });
