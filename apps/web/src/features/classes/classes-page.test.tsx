@@ -396,11 +396,61 @@ describe('a new class', () => {
     type(field(form, en.classes.className), 'yale');
     type(field(form, en.classes.maxSize), '25');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    // Issue #105, H4: the refusal names the class that holds the name, as stored.
+    expect(
+      await within(form).findByText(
+        en.classes.nameTaken.replace('{{grade}}', '7').replace('{{name}}', 'Yale'),
+      ),
+    ).toBeDefined();
     fireEvent.click(await within(form).findByRole('button', { name: en.classes.takenOpen }));
     // What was typed is not saved: the page asks before it leaves it.
     await confirmWith(en.unsent.leave);
     const panel = await screen.findByRole('complementary', { name: '7 Yale' });
     expect(panelActionNames(panel)).toContain(en.classes.restoreClass);
+  });
+
+  // Issue #105, H4, and `.claude/rules/web.md`: a holder the list does not
+  // hold keeps the general text and reads the list again; never a blank.
+  it('keeps the general refusal for a holder the list does not hold, and reads the list again', async () => {
+    const refused = refusal('already_exists', 409);
+    const body = (await refused.clone().json()) as { error: object };
+    const calls = await openList({
+      extra: {
+        'POST /api/classes': () =>
+          json(
+            {
+              error: {
+                ...body.error,
+                requestId: 'test-request',
+                details: [
+                  { path: 'name', code: 'already_exists', message: '', recordId: uid(199) },
+                ],
+              },
+            },
+            409,
+          ),
+      },
+    });
+    await waitFor(() => {
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: en.classes.add }).disabled).toBe(
+        false,
+      );
+    });
+    const before = calls.filter((call) => call.route === 'GET /api/classes').length;
+    fireEvent.click(screen.getByRole('button', { name: en.classes.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.classes.newTitle }),
+    ).getByRole('form', { name: en.classes.newTitle });
+    type(field(form, en.classes.grade), '7');
+    type(field(form, en.classes.className), 'Harvard');
+    type(field(form, en.classes.maxSize), '25');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(await within(form).findByText(en.errors.already_exists)).toBeDefined();
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === 'GET /api/classes').length).toBeGreaterThan(
+        before,
+      );
+    });
   });
 
   // Decision 12: "An action whose prerequisite is missing is switched off and says what is missing."
@@ -918,5 +968,21 @@ describe('the classes of a Tutor who also reads every class', () => {
     });
     expect(await screen.findByText(en.classes.empty)).toBeDefined();
     expect(screen.queryByText(en.classes.emptyTutor)).toBeNull();
+  });
+});
+
+// Issue #105, H19: the empty Classes page offers "New class" as a primary
+// button; the header's keeps the id the new-record panel gives the focus back to.
+describe('the empty Classes page', () => {
+  it('offers "New class" as a primary button, without a second id', async () => {
+    await openList({ classes: [] });
+    const heading = await screen.findByRole('heading', { name: en.classes.emptyTitle });
+    await waitFor(() => {
+      expect(heading.parentElement?.querySelector('button')?.hasAttribute('disabled')).toBe(false);
+    });
+    const button = heading.parentElement?.querySelector('button');
+    expect(button?.textContent).toBe(en.classes.add);
+    expect(button?.dataset.variant).toBe('default');
+    expect(button?.id).toBe('');
   });
 });

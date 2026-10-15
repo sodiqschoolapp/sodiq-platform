@@ -521,7 +521,7 @@ describe('classes', () => {
         'Taʼlim tili',
         'Tyutor',
         'Asosiy xona',
-        'Eng koʻp oʻquvchi',
+        'Sigʻim',
         'Holati',
       ]);
       expect(file.sheet.rows[0]?.slice(0, 3)).toEqual(['4 Exported', '2026–2027', 'Oʻzbek']);

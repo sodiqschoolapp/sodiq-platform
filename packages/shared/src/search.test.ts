@@ -39,11 +39,18 @@ describe('the answer of a search route', () => {
       paternalName: null,
       class: null,
       status: 'active',
+      startsOn: '2026-09-02',
     };
     const items = Array.from({ length: SEARCH_LIMIT + 1 }, () => student);
-    expect(studentSearchSchema.safeParse({ items, more: true }).success).toBe(false);
+    expect(studentSearchSchema.safeParse({ items, more: true, today: '2026-10-10' }).success).toBe(
+      false,
+    );
     expect(
-      studentSearchSchema.safeParse({ items: items.slice(0, SEARCH_LIMIT), more: true }).success,
+      studentSearchSchema.safeParse({
+        items: items.slice(0, SEARCH_LIMIT),
+        more: true,
+        today: '2026-10-10',
+      }).success,
     ).toBe(true);
   });
 

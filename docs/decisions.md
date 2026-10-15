@@ -236,6 +236,29 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: the hand-test fixes of wording and small screens (task 3.5a)
+
+Plan approved on pull request #113 with corrections 1 and 2; decisions 1 to 13 confirmed there, decision 10 changed by correction 1. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Names are surname first under "Surname and name" in the Students, Staff, Never used and Parents lists and their exports; the `/spec-change` of `04`, Student record, is the one 2.7b-1 decision 3 proposed, with the Staff header added | Decision 1; issue #105, H6 (decided by the owner) |
+| **Look first.** A relative's name stays one "Full name" field stored as typed; its label asks "Surname, name, patronymic" and the seed is written so; names already typed stay | Decision 2; `04`, Close relatives; H7 |
+| **Look first.** The role switch is a menu button "Menu and home page: <role>" whose menu says the rights stay; `docs/design-system.md`, This app, Top bar, says so | Decision 3; H11b; `02` and `edge/people-roles-accounts` unchanged |
+| An active student whose start date is ahead reads "From <date>" (`startsLater`) in the list, the record, Ctrl+K, the merge preview and the export; the status filter still counts the student active; "Starts later" stays for no status row | Decision 5; H13; #42 task 2.4a |
+| A scheduled leaving reads "Leaves the school (last day <the day before from>)" until its first inactive day, on the record and the History tab | Correction 2; `04`, Movements; H3 |
+| The Class filter offers every class of the branch not archived and of a year not closed, plus the rows' classes; while the list loads or fails, the rows' classes, the failure said with a retry | Decision 4; H18; `.claude/rules/web.md` |
+| Below 640 px two or more filters fold behind "Filters · <number in use>"; the open state is not in the address | Decision 6; H17 |
+| Short labels for the phone tab bar only (`menu.short`), the full name its accessible name | Decision 7; H16 |
+| A tab row that scrolls has no scrollbar and fades its cut edge with a mask (`.scroll-row`), not a gradient fill | Decision 12; H15 |
+| The department move refusal's lines carry the class's grade (`unit.grade`, null for a group), sorted by grade then name | H8 |
+| The changed behaviours are handed to task 3.7 with a "From 3.5a" line of `docs/build-plan.md`; `docs/handbook/02-school-setup.md` has nothing to change | Correction 1 (decision 10 changed) |
+| H20: nothing in the source hides the refusal list; only the modal "Leave without saving?" hides it while open, which is right | Plan, H20; browser test |
+| Built beyond the plan: the phone tab labels that are cut at 360 px are shorter: School setup is "Maktab" / "Школа" (not "Sozlamalar" / "Настройки"), and the Russian Timetable "Уроки"; a browser test draws every short label of every item in the three languages at 360 px | H16; the issue's labels were examples ("e.g.") |
+| Built beyond the plan: the right group of a list's toolbar (columns, "Also export", "Export") wraps, because in Uzbek it pushed the Students page 4 px sideways at 375 px | `12`, Devices; the task's Done when (no sideways scroll at 375 px) |
+| Built beyond the plan: the export writes the date of "From <date>" as "19.10.2026" (a text cell; the school's files write dates so), the rest of the text as the screen's key | Decision 5; `export-texts.test.ts` ties the texts |
+| The merge preview reads a side's status as the list does: active before the start date, so a later start reads "From <date>" | H13; permission review of the build |
+
 ## 15 October 2026: the rule engine (task 5.2)
 
 Plan approved on pull request #109 with corrections 1 to 5; decisions 1 to 18 confirmed there. Flagged on issue #42.

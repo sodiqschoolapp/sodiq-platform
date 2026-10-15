@@ -3,6 +3,9 @@ import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
 import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
 
+const roleButton = (role: 'tutor' | 'teacher') =>
+  en.switcher.roleButton.replace('{{role}}', en.roles[role]);
+
 // docs/build-plan.md, task 0.8c: a role switcher and a branch switcher in the top
 // bar change the menu and the home page (docs/spec/02-roles-and-access.md); every
 // request names its one branch (docs/decisions.md, task 0.4b).
@@ -17,15 +20,31 @@ test('the role switcher changes the home page and the branch switcher the branch
   await expect(heading(page, en.home.title)).toBeVisible();
 
   // The first role of the table of 02: Tutor.
-  const roles = page.getByRole('combobox', { name: en.switcher.role, exact: true });
+  // Issue #105, H11b: a menu button that says what it changes, its menu the hint.
+  const roles = page.getByRole('button', { name: roleButton('tutor'), exact: true });
   await expect(page.getByText(en.home.tutor)).toBeVisible();
-  await expect(roles).toHaveValue('tutor');
+  await expect(roles).toHaveText(`${en.switcher.rolePrefix}${en.roles.tutor}`);
+  // The keyboard: Enter opens the menu with its hint, Escape closes it, the
+  // arrows move between the roles and Enter chooses one.
+  await roles.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText(en.switcher.roleHint, { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByText(en.switcher.roleHint, { exact: true })).toBeHidden();
+  await expect(roles).toBeFocused();
   // The Tutor holds one branch: no branch switcher.
   const branches = page.getByRole('combobox', { name: en.switcher.branch, exact: true });
   await expect(branches).toHaveCount(0);
 
-  await roles.selectOption('teacher');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menuitemradio', { name: en.roles.tutor })).toBeVisible();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('menuitemradio', { name: en.roles.teacher })).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page.getByText(en.home.teaching)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: roleButton('teacher'), exact: true }),
+  ).toBeVisible();
   await expect(branches).toHaveCount(1);
   await expect(branches.locator('option')).toHaveCount(2);
 

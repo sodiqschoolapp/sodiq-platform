@@ -293,7 +293,7 @@ describe('the page of a relative', () => {
       panel,
       en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
     );
-    fireEvent.change(within(form).getByLabelText(en.people.relatives.fullName), {
+    fireEvent.change(within(form).getByLabelText(en.people.relatives.fullNameField), {
       target: { value: 'Dilfuza Rahimova-Karimova' },
     });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));

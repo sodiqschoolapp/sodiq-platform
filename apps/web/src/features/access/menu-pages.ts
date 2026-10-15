@@ -39,6 +39,8 @@ export const MENU_ICONS: Record<MenuItem, Icon> = {
 
 export interface MenuPage {
   titleKey: ParseKeys;
+  /** The label of the phone tab bar (issue #105, H16): short enough for 360 px. */
+  shortKey: ParseKeys;
   to: LinkProps['to'];
   icon: Icon;
   /**
@@ -58,10 +60,16 @@ export interface MenuPage {
  * `audit_log` with 2.6a.
  */
 export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
-  home: { titleKey: 'menu.home', to: '/', icon: MENU_ICONS.home },
-  setup: { titleKey: 'menu.setup', to: '/setup', icon: MENU_ICONS.setup },
+  home: { titleKey: 'menu.home', shortKey: 'menu.short.home', to: '/', icon: MENU_ICONS.home },
+  setup: {
+    titleKey: 'menu.setup',
+    shortKey: 'menu.short.setup',
+    to: '/setup',
+    icon: MENU_ICONS.setup,
+  },
   people: {
     titleKey: 'menu.people',
+    shortKey: 'menu.short.people',
     to: '/people',
     icon: MENU_ICONS.people,
     // Head Teachers and Senior Head Teachers view no staff list, only the
@@ -71,11 +79,26 @@ export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
     areas: ['staff', 'head_teachers', 'students'],
   },
   // The classes (task 3.1a): the area `classes` of the same name decides who sees it.
-  classes: { titleKey: 'menu.classes', to: '/classes', icon: MENU_ICONS.classes },
+  classes: {
+    titleKey: 'menu.classes',
+    shortKey: 'menu.short.classes',
+    to: '/classes',
+    icon: MENU_ICONS.classes,
+  },
   // The timetable (task 3.4a): the area `timetable` of the same name decides who sees it.
-  timetable: { titleKey: 'menu.timetable', to: '/timetable', icon: MENU_ICONS.timetable },
+  timetable: {
+    titleKey: 'menu.timetable',
+    shortKey: 'menu.short.timetable',
+    to: '/timetable',
+    icon: MENU_ICONS.timetable,
+  },
   // The Audit log (task 2.6a): the area `audit_log` of the same name decides who sees it.
-  audit_log: { titleKey: 'menu.audit_log', to: '/audit', icon: MENU_ICONS.audit_log },
+  audit_log: {
+    titleKey: 'menu.audit_log',
+    shortKey: 'menu.short.audit_log',
+    to: '/audit',
+    icon: MENU_ICONS.audit_log,
+  },
 };
 
 export const BUILT_ITEMS: ReadonlySet<MenuItem> = new Set(

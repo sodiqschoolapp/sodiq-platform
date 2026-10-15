@@ -585,6 +585,7 @@ export {
   type StudentParams,
   type StudentRecord,
   type StudentStatus,
+  startsLater,
   type StudentUidCorrection,
   type StatusCause,
   type StudentCancelLeaving,

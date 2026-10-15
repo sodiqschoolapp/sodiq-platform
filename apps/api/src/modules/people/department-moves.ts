@@ -117,7 +117,10 @@ export async function refuseMoveLoads(
 
 type LoadLine = NonNullable<ErrorDetail['load']>;
 
-/** The lines of rows of the branch of the request, by version number, unit name and id. */
+/**
+ * The lines of rows of the branch of the request, by version number, then the
+ * class's grade (groups after the classes), unit name and id.
+ */
 async function readLoadLines(
   transaction: Transaction,
   ids: readonly string[],
@@ -142,6 +145,7 @@ async function readLoadLines(
       'r.class_id',
       'r.group_id',
       'c.name as class_name',
+      'c.grade as class_grade',
       'g.name as group_name',
       'r.subject_id',
       'r.teacher_id',
@@ -152,6 +156,8 @@ async function readLoadLines(
     ])
     .where('r.id', 'in', [...ids])
     .orderBy('v.number')
+    // PostgreSQL puts the null grade of a group after every class when ascending.
+    .orderBy('c.grade')
     .orderBy((eb) => eb.fn.coalesce('c.name', 'g.name'))
     .orderBy('r.id')
     .execute();
@@ -159,8 +165,13 @@ async function readLoadLines(
     const vacancy = row.kind === 'vacancy';
     const unit: LoadLine['unit'] =
       row.class_id !== null
-        ? { kind: 'class', id: row.class_id, name: row.class_name ?? '' }
-        : { kind: 'group', id: row.group_id ?? '', name: row.group_name ?? '' };
+        ? {
+            kind: 'class',
+            id: row.class_id,
+            name: row.class_name ?? '',
+            grade: row.class_grade,
+          }
+        : { kind: 'group', id: row.group_id ?? '', name: row.group_name ?? '', grade: null };
     return {
       id: row.id,
       line: {

@@ -63,6 +63,7 @@ export class StudentSearch {
           'document_number',
           'jshshir',
           'phone',
+          'starts_on',
         ])
         .where('branch_id', '=', branchId)
         .execute();
@@ -86,7 +87,7 @@ export class StudentSearch {
         .sort((a, b) => byText(a.name_key, b.name_key) || byText(a.id, b.id));
       const { items, more } = limited(found);
       if (items.length === 0) {
-        return { items: [], more };
+        return { items: [], more, today };
       }
       const statuses = new Map(
         (
@@ -113,9 +114,11 @@ export class StudentSearch {
             paternalName: row.paternal_name,
             class: current === null ? null : { grade: current.grade, name: current.name },
             status: statuses.get(row.id) ?? null,
+            startsOn: row.starts_on,
           };
         }),
         more,
+        today,
       };
     });
   }

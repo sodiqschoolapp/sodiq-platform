@@ -159,8 +159,9 @@ test('the top bar is one row at laptop width, Rooms fits, and More shows Send fe
 
   // The Teacher's two branches: the role and the branch are both selects.
   const bar = page.getByRole('banner', { name: en.layout.topBar });
-  const role = bar.getByLabel(en.switcher.role);
-  await role.selectOption({ label: en.roles.teacher });
+  const roleSwitch = bar.getByRole('button', { name: new RegExp(`^${en.switcher.rolePrefix}`) });
+  await roleSwitch.click();
+  await page.getByRole('menuitemradio', { name: en.roles.teacher }).click();
   const branch = bar.getByLabel(en.switcher.branch);
   await expect(branch).toBeVisible();
   await branch.selectOption({ label: 'Top bar browser test branch' });
@@ -185,7 +186,8 @@ test('the top bar is one row at laptop width, Rooms fits, and More shows Send fe
   expect((await widths(page)).barFits).toBe(true);
 
   await page.setViewportSize({ width: 1047, height: 800 });
-  await role.selectOption({ label: en.roles.academic_vice_principal });
+  await roleSwitch.click();
+  await page.getByRole('menuitemradio', { name: en.roles.academic_vice_principal }).click();
   await page.goto('/setup/rooms');
   await expect(heading(page, en.setup.rooms.title)).toBeVisible();
   await expect(page.locator('tbody tr')).toHaveCount(3);

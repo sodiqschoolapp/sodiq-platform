@@ -160,6 +160,8 @@ describe('the headings of the export files', () => {
       // Task 2.4b-2: the student file.
       expect(file.student.statuses).toEqual(screen.people.students.statuses);
       expect(file.student.notStarted).toBe(screen.people.students.notStarted);
+      // Issue #105, H13: "From <date>" in the file as on the screen.
+      expect(file.student.startsFrom).toBe(screen.people.students.startsFrom);
       expect(file.student.sexes).toEqual(screen.people.staff.sexes);
       expect(file.student.documentTypes).toEqual(screen.people.students.documentTypes);
       expect(file.student.regions).toEqual(screen.people.students.regions);

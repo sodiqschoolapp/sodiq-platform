@@ -340,7 +340,7 @@ describe('the bulk placement screen', () => {
       .getByRole('heading', { name: en.groups.placement.groups })
       .closest('section');
     expect(groups?.textContent).toContain('7-M-1');
-    expect(groups?.textContent).toContain('2 of 20 · fewest free seats 18');
+    expect(groups?.textContent).toContain('2 of 20 taken · fewest free seats ahead 18');
   });
 
   it('puts the ticked students into a chosen group from the date', async () => {

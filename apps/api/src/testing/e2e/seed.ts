@@ -5,7 +5,7 @@ import { Assignments } from '../../modules/access/assignments.service.js';
 import { Audit } from '../../modules/audit/audit.service.js';
 import { Accounts } from '../../modules/auth/accounts.service.js';
 import { FirstAccountModule } from '../../modules/auth/first-account.command.js';
-import { studentNameKey } from '@sodiq/shared';
+import { relativeNameKey, studentNameKey } from '@sodiq/shared';
 import { insertBranch } from '../branch-filter-sql.js';
 import { linkRelative } from '../relatives-kit.js';
 import { e2eDatabaseUrls } from './database.js';
@@ -2997,6 +2997,197 @@ try {
     // The profile row goes; the load row stays (3.4a decision 3).
     await transaction.deleteFrom('staff_subjects').where('staff_id', '=', person.id).execute();
   });
+
+  // Task 3.5a (issue #105): the hand test pages at 375 and 1440 px in Uzbek
+  // and in Russian, one Academic Vice Principal each. 7 Oxford holds a
+  // student, one whose leaving is scheduled and one who starts later; 7
+  // Princeton is empty (H18); the parents are written surname first (H7); a
+  // draft holds a load row (H21). All names are invented.
+  const handBranch = await insertBranch(migrator, 'Hand test 3.5a branch');
+  const handTestUz = await create('Dildora', 'Ahmedova');
+  const handTestRu = await create('Ruslan', 'Sharipov');
+  for (const account of [handTestUz, handTestRu]) {
+    await transactions.run([handBranch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: account.id,
+        role: 'academic_vice_principal',
+        branchId: handBranch,
+        givenBy: null,
+      }),
+    );
+  }
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: handBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: handBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const written = await transaction
+      .insertInto('classes')
+      .values([
+        {
+          branch_id: handBranch,
+          academic_year_id: year.id,
+          grade: 7,
+          name: 'Oxford',
+          language: 'uz',
+          max_size: 24,
+        },
+        {
+          branch_id: handBranch,
+          academic_year_id: year.id,
+          grade: 7,
+          name: 'Princeton',
+          language: 'ru',
+          max_size: 24,
+        },
+      ])
+      .returning(['id', 'name'])
+      .execute();
+    // Picked by name: the order of the rows an insert returns is not relied on.
+    const oxford = written.find((one) => one.name === 'Oxford');
+    if (oxford === undefined) {
+      throw new Error('7 Oxford was not written.');
+    }
+    const leaveFrom = isoDate(new Date(tashkentToday.getTime() + 5 * dayMs));
+    const startsLater = isoDate(new Date(tashkentToday.getTime() + 7 * dayMs));
+    const students = [
+      { uid: '9999711', first: 'Bekzod', last: 'Aliyev', parent: 'Aliyeva Zarina' },
+      { uid: '9999712', first: 'Malika', last: 'Karimova', parent: 'Karimova Gulnora' },
+      {
+        uid: '9999713',
+        first: 'Nodira',
+        last: 'Rasulova',
+        parent: 'Rasulova Dilfuza',
+        from: startsLater,
+      },
+    ];
+    const ids: string[] = [];
+    for (const [index, student] of students.entries()) {
+      ids.push(
+        await studentInClass(transaction, {
+          branch: handBranch,
+          // Malika's stay is written below, ending at her leaving.
+          classId: index === 1 ? null : oxford.id,
+          uid: student.uid,
+          first: student.first,
+          last: student.last,
+          createdBy: handTestUz.id,
+          phone: `+9989355507${String(11 + index)}`,
+          ...(student.from === undefined ? {} : { from: student.from }),
+        }),
+      );
+      // H7: the parent's one "Full name" field, typed surname first.
+      const linked = await transaction
+        .selectFrom('student_relatives')
+        .select('relative_id')
+        .where('student_id', '=', ids[index] ?? '')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .updateTable('relatives')
+        .set({ full_name: student.parent, name_key: relativeNameKey(student.parent) })
+        .where('id', '=', linked.relative_id)
+        .execute();
+    }
+    // H3: Malika's leaving is scheduled, her last day the day before leaveFrom.
+    const leaving = ids[1] ?? '';
+    await transaction
+      .insertInto('class_memberships')
+      .values({
+        branch_id: handBranch,
+        student_id: leaving,
+        class_id: oxford.id,
+        valid_from: startDate,
+        valid_until: leaveFrom,
+        own_until: leaveFrom,
+        cause: 'placement',
+      })
+      .execute();
+    await transaction
+      .updateTable('student_statuses')
+      .set({ valid_until: leaveFrom })
+      .where('student_id', '=', leaving)
+      .execute();
+    await transaction
+      .insertInto('student_statuses')
+      .values({
+        student_id: leaving,
+        branch_id: handBranch,
+        status: 'inactive',
+        valid_from: leaveFrom,
+        cause: 'leaving',
+        reason: 'Oila boshqa shaharga koʻchdi',
+      })
+      .execute();
+    // H21: a draft with a load row of 7 Oxford, taught by a vacancy.
+    const geometry = await transaction
+      .selectFrom('subjects')
+      .select('id')
+      .where('name_en', '=', 'Geometry')
+      .executeTakeFirstOrThrow();
+    const vacancy = await transaction
+      .insertInto('staff')
+      .values({ kind: 'vacancy', vacancy_name: 'Geometry vacancy 2' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: vacancy.id, branch_id: handBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: vacancy.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: vacancy.id, status: 'open', valid_from: startDate })
+      .execute();
+    await transaction
+      .insertInto('staff_languages')
+      .values({ staff_id: vacancy.id, language: 'uz' })
+      .execute();
+    await transaction
+      .insertInto('staff_subjects')
+      .values({ staff_id: vacancy.id, subject_id: geometry.id, grades: [7] })
+      .execute();
+    const version = await transaction
+      .insertInto('timetable_versions')
+      .values({ branch_id: handBranch, academic_year_id: year.id, number: 1, starts_on: startDate })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('teaching_load_rows')
+      .values({
+        branch_id: handBranch,
+        version_id: version.id,
+        class_id: oxford.id,
+        subject_id: geometry.id,
+        teacher_id: vacancy.id,
+        lessons_per_week: 3,
+      })
+      .execute();
+  });
+  seeded.handTestUz = { login: handTestUz.login, password: handTestUz.firstPassword };
+  seeded.handTestRu = { login: handTestRu.login, password: handTestRu.firstPassword };
 
   for (const branch of classBranches) {
     const years = await migrator

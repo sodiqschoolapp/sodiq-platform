@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
+import { schoolDateText } from '@/lib/dates';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { isSearchShortcut } from './command-search';
 import { recordSearchQuery } from './search-api';
@@ -298,6 +299,7 @@ describe('the search of records', () => {
     paternalName: 'Rustamovna',
     class: { grade: 7, name: 'Oxford' },
     status: 'active',
+    startsOn: '2026-09-02',
   };
   const PERSON = {
     id: '0198b000-0000-7000-8000-000000000003',
@@ -313,6 +315,8 @@ describe('the search of records', () => {
     yearName: '2026–2027',
   };
   const none = () => json({ items: [], more: false });
+  // The students' answer has today (issue #105, H13).
+  const noStudents = () => json({ items: [], more: false, today: '2026-10-10' });
 
   /** A signed-in account of one role in North, at the account page, with the search open. */
   async function searchAs(
@@ -373,7 +377,7 @@ describe('the search of records', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
     try {
       const { calls } = await searchAs('tutor', {
-        'GET /api/search/students': none,
+        'GET /api/search/students': noStudents,
         'GET /api/search/classes': none,
         'GET /api/search/groups': none,
       });
@@ -392,7 +396,8 @@ describe('the search of records', () => {
 
   it('asks a Tutor’s students, classes and groups, never staff, from the second character', async () => {
     const { calls } = await searchAs('tutor', {
-      'GET /api/search/students': () => json({ items: [STUDENT], more: false }),
+      'GET /api/search/students': () =>
+        json({ items: [STUDENT], more: false, today: '2026-10-10' }),
       'GET /api/search/classes': () => json({ items: [OXFORD], more: false }),
       'GET /api/search/groups': () => json({ items: [GROUP], more: false }),
     });
@@ -429,7 +434,8 @@ describe('the search of records', () => {
 
   it('moves with the arrows across the kinds and opens a class in the side panel of its list', async () => {
     const { router } = await searchAs('tutor', {
-      'GET /api/search/students': () => json({ items: [STUDENT], more: false }),
+      'GET /api/search/students': () =>
+        json({ items: [STUDENT], more: false, today: '2026-10-10' }),
       'GET /api/search/classes': () => json({ items: [OXFORD], more: false }),
       'GET /api/search/groups': none,
     });
@@ -453,7 +459,7 @@ describe('the search of records', () => {
 
   it('shows a person with the status and opens the list searched from "More on the list"', async () => {
     const { router } = await searchAs('academic_vice_principal', {
-      'GET /api/search/students': none,
+      'GET /api/search/students': noStudents,
       'GET /api/search/staff': () => json({ items: [PERSON], more: true }),
       'GET /api/search/classes': none,
       'GET /api/search/groups': none,
@@ -478,7 +484,9 @@ describe('the search of records', () => {
     let failing = true;
     const { calls } = await searchAs('academic_vice_principal', {
       'GET /api/search/students': () =>
-        failing ? refusal('internal_error', 500) : json({ items: [STUDENT], more: false }),
+        failing
+          ? refusal('internal_error', 500)
+          : json({ items: [STUDENT], more: false, today: '2026-10-10' }),
       'GET /api/search/staff': none,
       'GET /api/search/classes': none,
       'GET /api/search/groups': none,
@@ -500,7 +508,7 @@ describe('the search of records', () => {
 
   it('says that nothing matches only when no page and every kind answered with nothing', async () => {
     const { calls } = await searchAs('academic_vice_principal', {
-      'GET /api/search/students': none,
+      'GET /api/search/students': noStudents,
       'GET /api/search/staff': none,
       'GET /api/search/classes': none,
       'GET /api/search/groups': none,
@@ -522,7 +530,8 @@ describe('the search of records', () => {
 
   it('never says that nothing matches when no page matches but a kind found a record', async () => {
     await searchAs('academic_vice_principal', {
-      'GET /api/search/students': () => json({ items: [STUDENT], more: false }),
+      'GET /api/search/students': () =>
+        json({ items: [STUDENT], more: false, today: '2026-10-10' }),
       'GET /api/search/staff': none,
       'GET /api/search/classes': none,
       'GET /api/search/groups': none,
@@ -538,7 +547,11 @@ describe('the search of records', () => {
   it('shows the status of a person and of a student with none in force', async () => {
     await searchAs('academic_vice_principal', {
       'GET /api/search/students': () =>
-        json({ items: [{ ...STUDENT, class: null, status: null }], more: false }),
+        json({
+          items: [{ ...STUDENT, class: null, status: null }],
+          more: false,
+          today: '2026-10-10',
+        }),
       'GET /api/search/staff': () => json({ items: [{ ...PERSON, status: null }], more: false }),
       'GET /api/search/classes': none,
       'GET /api/search/groups': none,
@@ -554,11 +567,31 @@ describe('the search of records', () => {
     );
   });
 
+  // Issue #105, H13: a student whose start date is ahead reads "From <date>".
+  it('shows "From <date>" for a student who starts later', async () => {
+    await searchAs('academic_vice_principal', {
+      'GET /api/search/students': () =>
+        json({
+          items: [{ ...STUDENT, class: null, startsOn: '2026-10-19' }],
+          more: false,
+          today: '2026-10-10',
+        }),
+      'GET /api/search/staff': none,
+      'GET /api/search/classes': none,
+      'GET /api/search/groups': none,
+    });
+    type('Qodirova');
+    const students = within(await screen.findByRole('group', { name: en.search.students }));
+    expect(students.getByRole('option').textContent).toBe(
+      `Qodirova Gʻulnora · Rustamovna2600123 · ${en.people.students.startsFrom.replace('{{date}}', schoolDateText('2026-10-19', 'en'))}`,
+    );
+  });
+
   it('speaks Russian, with the subject of a group in Russian', async () => {
     await searchAs(
       'tutor',
       {
-        'GET /api/search/students': none,
+        'GET /api/search/students': noStudents,
         'GET /api/search/classes': none,
         'GET /api/search/groups': () => json({ items: [GROUP], more: false }),
       },

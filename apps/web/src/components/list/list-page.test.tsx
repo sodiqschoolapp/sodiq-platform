@@ -15,7 +15,7 @@ import {
   type ExportState,
   type NewRecord,
 } from './list-page';
-import type { Column, ListSearch } from './list-state';
+import type { Column, Filter, ListSearch } from './list-state';
 
 // What the sample list cannot show: rows that change under the list, a failed
 // later load, and what exactly the export and a bulk action are handed.
@@ -70,6 +70,7 @@ interface HarnessProps {
   }) => React.ReactNode;
   /** Sees every address the list writes. */
   onAddress?: (search: ListSearch) => void;
+  filters?: Filter<Room>[];
 }
 
 /** A list whose address is a piece of state. */
@@ -88,6 +89,7 @@ function Harness({
   onOpenRow,
   view,
   onAddress,
+  filters,
 }: HarnessProps) {
   const [search, setSearch] = useState(start);
   return (
@@ -99,6 +101,7 @@ function Harness({
       rowId={(row) => row.id}
       rowName={(row) => row.name}
       columns={columns}
+      filters={filters}
       search={search}
       onSearchChange={(next) => {
         onAddress?.(next);
@@ -678,5 +681,73 @@ describe('another view of the rows', () => {
     expect(exported.mock.calls[0]?.[3]).toBe('matching');
     fireEvent.click(screen.getByRole('button', { name: 'Switch' }));
     expect(tick('Room 4').checked).toBe(false);
+  });
+});
+
+// Issue #105, H1: the footer counts in words, the short form without a
+// search or a filter.
+describe('the count under a list', () => {
+  it('says "Shown: 3 of 3" when nothing is left out', () => {
+    show({ rows: ROOMS });
+    expect(screen.getByText('Shown: 3 of 3')).toBeDefined();
+  });
+
+  it('names what matches when a search leaves rows out', () => {
+    show({ rows: ROOMS, start: { q: 'Room' } });
+    expect(screen.getByText('Shown: 2. Matching: 2. In the list: 3.')).toBeDefined();
+  });
+});
+
+// Issue #105, H17: below 640 px two or more filters fold behind one button
+// with the number in use; search stays visible.
+describe('the filters of a list at phone width', () => {
+  const FILTERS: Filter<Room>[] = [
+    {
+      key: 'size',
+      label: 'Size',
+      options: [
+        { value: 'big', label: 'Big' },
+        { value: 'small', label: 'Small' },
+      ],
+      matches: (row, value) => (value === 'big') === row.seats >= 24,
+    },
+    {
+      key: 'kind',
+      label: 'Kind',
+      options: [{ value: 'lab', label: 'Laboratory' }],
+      matches: (row) => row.name === 'Laboratory',
+    },
+  ];
+  const sizeField = () => screen.queryByLabelText<HTMLSelectElement>('Size');
+
+  it('folds them behind "Filters" with the number in use, and opens them', () => {
+    setWindowWidth(375);
+    show({ rows: ROOMS, filters: FILTERS, start: { f: { size: 'big' } } });
+    expect(screen.getByLabelText(en.list.search)).toBeDefined();
+    const button = screen.getByRole('button', { name: 'Filters · 1' });
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(sizeField()?.closest('[hidden]')).not.toBeNull();
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(sizeField()?.closest('[hidden]')).toBeNull();
+    expect(sizeField()?.value).toBe('big');
+  });
+
+  it('says "Filters" with none in use', () => {
+    setWindowWidth(375);
+    show({ rows: ROOMS, filters: FILTERS });
+    expect(screen.getByRole('button', { name: en.list.filters })).toBeDefined();
+  });
+
+  it('keeps one filter, and every filter at desktop width, in the toolbar', () => {
+    setWindowWidth(375);
+    const one = show({ rows: ROOMS, filters: FILTERS.slice(0, 1) });
+    expect(screen.queryByRole('button', { name: en.list.filters })).toBeNull();
+    expect(sizeField()?.closest('[hidden]')).toBeNull();
+    one.unmount();
+    setWindowWidth(1440);
+    show({ rows: ROOMS, filters: FILTERS });
+    expect(screen.queryByRole('button', { name: en.list.filters })).toBeNull();
+    expect(sizeField()?.closest('[hidden]')).toBeNull();
   });
 });

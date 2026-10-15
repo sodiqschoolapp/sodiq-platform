@@ -42,7 +42,8 @@ import { type Column, type Filter, type ListSearch } from '@/components/list/lis
 import { PageHeader } from '@/components/page-header';
 import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { Button } from '@/components/ui/button';
-import { useView } from '@/features/access/use-view';
+import { useMayView, useView } from '@/features/access/use-view';
+import { classesQuery } from '@/features/classes/classes-api';
 import { asFormSchema } from './form-schema';
 import {
   invalidateRelatives,
@@ -57,6 +58,7 @@ import { PlaceTickedInGroupForm } from '@/features/classes/group-members';
 import { StudentForm } from './student-form';
 import { StudentPanel } from './student-panel';
 import { IncomingMoves } from './branch-move';
+import { studentStatusText } from './status-cause';
 import { schoolDateText } from '@/lib/dates';
 
 /**
@@ -195,6 +197,15 @@ export function StudentsPage() {
   const students = wantsConsent ? withoutConsent : all;
   const exportGroups = all.data?.exportGroups;
   const readsFinancial = all.data?.readsFinancial === true;
+  const today = students.data?.today ?? null;
+  // Issue #105, H18: the Class filter offers every class of the branch that
+  // is not archived and whose year is not closed, the empty ones too, for a
+  // reader of the class list; the rows' classes meanwhile and without it.
+  const readsClasses = useMayView('classes');
+  const classList = useQuery({
+    ...classesQuery(branchId),
+    enabled: branchId !== null && readsClasses,
+  });
 
   const byId = useMemo(
     () => new Map((all.data?.students ?? []).map((row) => [row.id, row] as const)),
@@ -466,9 +477,11 @@ export function StudentsPage() {
         header: t('people.students.status'),
         cell: (row) => (
           <>
-            {row.status === null
-              ? t('people.students.notStarted')
-              : t(`people.students.statuses.${row.status}`)}
+            {today === null
+              ? row.status === null
+                ? t('people.students.notStarted')
+                : t(`people.students.statuses.${row.status}`)
+              : studentStatusText(t, row, today, i18n.language)}
             {row.planned?.status === 'inactive' && (
               <span className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                 {t('people.students.inactiveFrom', {
@@ -481,7 +494,7 @@ export function StudentsPage() {
         sortValue: (row) => row.status ?? '',
       },
     ],
-    [t, i18n.language, branchId],
+    [t, i18n.language, branchId, today],
   );
 
   const filters = useMemo(
@@ -496,18 +509,21 @@ export function StudentsPage() {
         matches: (row, value) => row.grade === Number(value),
       },
       {
-        // The classes the rows name (the list's own answer: a Tutor reads no
-        // class list before 3.1c), and "No class" (task 3.1b).
+        // Every active class of the branch (H18) and the classes the rows
+        // name (a planned class of the next year), and "No class" (task 3.1b).
         key: 'class',
         label: t('people.students.class'),
         options: [
           ...[
-            ...new Map(
-              (all.data?.students ?? []).flatMap((row) => {
+            ...new Map<string, { id: string; grade: number; name: string }>([
+              ...(classList.data?.classes ?? [])
+                .filter((one) => !one.archived && one.yearStatus !== 'closed')
+                .map((one) => [one.id, { id: one.id, grade: one.grade, name: one.name }] as const),
+              ...(all.data?.students ?? []).flatMap((row) => {
                 const shown = shownClass(row);
                 return shown === null ? [] : [[shown.id, shown] as const];
               }),
-            ).values(),
+            ]).values(),
           ]
             .sort((a, b) => a.grade - b.grade || a.name.localeCompare(b.name))
             .map((one) => ({ value: one.id, label: classDisplayName(one.grade, one.name) })),
@@ -566,7 +582,7 @@ export function StudentsPage() {
           ]
         : []),
     ],
-    [t, readsFinancial, all.data],
+    [t, readsFinancial, all.data, classList.data],
   );
 
   const open = (next: ListSearch, how: 'push' | 'replace'): void => {
@@ -713,6 +729,21 @@ export function StudentsPage() {
         <div className="mb-3">
           <FailureAlert error={outcome.failure} />
         </div>
+      )}
+      {classList.isError && (
+        // The class list did not load: the filter keeps the rows' classes
+        // (`.claude/rules/web.md`: a part drawn from a second query shows its failure).
+        <p role="status" className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+          {t('people.students.classesNotRead')}
+          <Button
+            variant="ghost"
+            onClick={() => {
+              void classList.refetch();
+            }}
+          >
+            {t('problems.retry')}
+          </Button>
+        </p>
       )}
       <ListPage
         listId="students"

@@ -77,6 +77,8 @@ const side = (fields: Partial<StudentMergePreview['kept']> = {}): StudentMergePr
   grade: 7,
   branch: { id: NORTH.id, name: NORTH.name },
   status: 'active',
+  startsOn: '2026-09-02',
+  today: '2026-10-10',
   class: { grade: 7, name: 'Oxford' },
   ...fields,
 });
@@ -221,6 +223,23 @@ describe('the merge of two student records', () => {
     // The System block names the merged UID ("Also UID ...").
     expect(within(panel).getByText(OTHER.uid)).toBeDefined();
     expect(within(panel).getByText(texts.alsoUid)).toBeDefined();
+  });
+
+  // Issue #105, H13: a record whose start date is ahead reads "From <date>".
+  it('shows "From <date>" for a record that starts later', async () => {
+    open(detailOf(), {
+      [`GET /api/people/students/${STUDENT.id}/merge`]: () =>
+        json({ ...PREVIEW, merged: { ...OTHER, startsOn: '2026-10-19' } }),
+    });
+    renderApp(`${PATH}?open=${STUDENT.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const form = await previewed(panel);
+    expect(
+      within(form).getByText(
+        en.people.students.startsFrom.replace('{{date}}', schoolDateText('2026-10-19', 'en')),
+      ),
+    ).toBeDefined();
+    expect(within(form).getByText(en.people.students.statuses.active)).toBeDefined();
   });
 
   it('shows the refusal of the preview with its day, and merges nothing', async () => {

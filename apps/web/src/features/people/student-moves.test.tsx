@@ -235,6 +235,12 @@ describe('class and group transfers in the side panel', () => {
       name: en.people.students.moves.languageTitle,
     });
     expect(within(dialog).getByText('Oʻtkir Rahimov')).toBeDefined();
+    // Issue #105, H5: the question names both classes and their languages.
+    expect(
+      within(dialog).getByText(
+        '7 Oxford teaches in Uzbek, 7 Moskva in Russian. Move the student anyway?',
+      ),
+    ).toBeDefined();
     fireEvent.click(
       within(dialog).getByRole('button', { name: en.people.students.moves.languageAction }),
     );

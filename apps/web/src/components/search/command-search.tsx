@@ -11,6 +11,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { studentStatusText } from '@/features/people/status-cause';
 import { indexedPages, type IndexedPage } from '@/app/page-index';
 import { useMenuPages } from '@/features/access/use-menu';
 import { useView } from '@/features/access/use-view';
@@ -197,6 +198,7 @@ export function CommandSearch() {
   const detailOf = (
     kind: RecordKind,
     item: Found[RecordKind],
+    today: string | undefined,
   ): Pick<Option, 'label' | 'detail'> => {
     const parts = (...texts: (string | null)[]): string =>
       texts.filter((text) => text !== null && text !== '').join(' · ');
@@ -210,9 +212,11 @@ export function CommandSearch() {
             student.class === null
               ? null
               : classDisplayName(student.class.grade, student.class.name),
-            student.status === null
-              ? t('people.students.notStarted')
-              : t(`people.students.statuses.${student.status}`),
+            today === undefined
+              ? student.status === null
+                ? t('people.students.notStarted')
+                : t(`people.students.statuses.${student.status}`)
+              : studentStatusText(t, student, today, i18n.language),
           ),
         };
       }
@@ -263,7 +267,7 @@ export function CommandSearch() {
       }
       const options: Option[] = data.items.map((item) => ({
         key: `${kind}:${item.id}`,
-        ...detailOf(kind, item),
+        ...detailOf(kind, item, data.today),
         open: () => {
           openList(list, { open: item.id });
         },

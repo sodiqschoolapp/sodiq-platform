@@ -22,6 +22,8 @@ interface RecordFormProps<Field extends string> {
    * in a side panel, task 2.7c-2b-1): typed text is asked about first.
    */
   onCancel?: (() => void) | undefined;
+  /** The refusal said more exactly than its code can (`FailureAlert`'s `text`). */
+  failureText?: string | undefined;
 }
 
 /**
@@ -39,6 +41,7 @@ export function RecordForm<Field extends string>({
   label,
   children,
   onCancel,
+  failureText,
 }: RecordFormProps<Field>) {
   const { t } = useTranslation();
   const confirm = useConfirm();
@@ -110,7 +113,7 @@ export function RecordForm<Field extends string>({
       noValidate
     >
       {children}
-      <FailureAlert error={form.failure} />
+      <FailureAlert error={form.failure} text={failureText} />
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={form.status === 'saving'}>
           {t('form.save')}

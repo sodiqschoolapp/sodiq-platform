@@ -30,6 +30,7 @@ import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
 import { schoolDateText } from '@/lib/dates';
 import { asFormSchema } from './form-schema';
+import { studentStatusText } from './status-cause';
 import { studentsKey } from './people-api';
 
 /**
@@ -108,7 +109,7 @@ export function alsoUidRow(t: TFunction, student: StudentDetail): [string, strin
 }
 
 function SideOf({ title, side }: { title: string; side: StudentMergeSide }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   return (
     <div className="grid gap-1 text-sm">
       <span className="text-muted-foreground">{title}</span>
@@ -119,11 +120,7 @@ function SideOf({ title, side }: { title: string; side: StudentMergeSide }) {
           branch: side.branch.name,
         })}
       </span>
-      <span>
-        {side.status === null
-          ? t('people.students.notStarted')
-          : t(`people.students.statuses.${side.status}`)}
-      </span>
+      <span>{studentStatusText(t, side, side.today, i18n.language)}</span>
       <span>
         {side.class === null
           ? t('people.students.noClass')

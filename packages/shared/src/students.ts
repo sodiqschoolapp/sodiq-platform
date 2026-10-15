@@ -32,6 +32,17 @@ export const studentStatusSchema = z.enum(STUDENT_STATUSES);
 export type StudentStatus = z.infer<typeof studentStatusSchema>;
 
 /**
+ * A student active today whose start date is still ahead (`04`, Student
+ * record: a student is active before the start date, #42 task 2.4a): shown
+ * "From <date>" in place of "Active" until that day (issue #105, H13). The
+ * status filter still counts the student as active.
+ */
+export const startsLater = (
+  student: { status: StudentStatus | null; startsOn: string },
+  today: string,
+): boolean => student.status === 'active' && student.startsOn > today;
+
+/**
  * What wrote a status row (task 2.4b-1, decision 8): the create, a leaving,
  * a return, an undo of a leaving, the cancel of a scheduled one, the
  * graduation (task 9.5a) and the Super Admin's restore of a graduated student.
@@ -398,7 +409,10 @@ export const studentListItemSchema = z.object({
    * where the consent belongs (decision 4 of pull request #67).
    */
   consentMissing: z.boolean().nullable(),
-  /** The status in force today in the branch's time zone; `null` before the start date. */
+  /**
+   * The status in force today in the branch's time zone: from the create on,
+   * also before the start date (`startsLater`); `null` only without a status row.
+   */
   status: studentStatusSchema.nullable(),
   /**
    * The next change after the status shown, when it begins after today: a

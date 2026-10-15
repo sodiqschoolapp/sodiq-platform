@@ -606,7 +606,16 @@ export const errorDetailSchema = z.object({
       versionId: z.uuid(),
       versionNumber: z.int().min(1),
       versionStartsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      unit: z.object({ kind: z.enum(['class', 'group']), id: z.uuid(), name: z.string() }),
+      /**
+       * `grade` is the class's grade, shown as "7 Oxford" (issue #105, H8);
+       * `null` for a group, whose name carries its grade.
+       */
+      unit: z.object({
+        kind: z.enum(['class', 'group']),
+        id: z.uuid(),
+        name: z.string(),
+        grade: z.int().nullable(),
+      }),
       subjectId: z.uuid(),
       /** `name` is `null` for a teacher this branch no longer sees. */
       teacher: z.object({ id: z.uuid(), name: z.string().nullable(), vacancy: z.boolean() }),

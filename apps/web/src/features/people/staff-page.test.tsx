@@ -488,7 +488,7 @@ describe('the staff page', () => {
                     versionId: version,
                     versionNumber: 1,
                     versionStartsOn: '2026-10-19',
-                    unit: { kind: 'group', id: uid(97), name: '5-M-1' },
+                    unit: { kind: 'group', id: uid(97), name: '5-M-1', grade: null },
                     subjectId: MATHEMATICS.id,
                     teacher: { id: AKMAL.id, name: 'Karimov Akmal', vacancy: false },
                   },

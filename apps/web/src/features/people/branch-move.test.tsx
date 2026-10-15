@@ -9,7 +9,9 @@ import {
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import { createI18n } from '@/i18n/i18n';
 import { ru } from '@/i18n/locales/ru';
+import { uz } from '@/i18n/locales/uz';
 import { schoolDateText } from '@/lib/dates';
 import { edit, panelActionNames, savedInPanel } from '@/testing/panel';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
@@ -105,7 +107,7 @@ const schoolClass = (
   version: 0,
 });
 
-const sessionAs = (role: Role, language: 'en' | 'ru' = 'en') => ({
+const sessionAs = (role: Role, language: 'en' | 'ru' | 'uz' = 'en') => ({
   ...sessionOf({
     assignments: [{ role, branchId: role === 'super_admin' ? null : NORTH.id }],
     branches: [NORTH, SOUTH],
@@ -145,7 +147,7 @@ const INCOMING: IncomingBranchMoves = {
 function open(
   detail: StudentDetail,
   extra: Record<string, (body: unknown) => Response> = {},
-  options: { role?: Role; language?: 'en' | 'ru'; incoming?: IncomingBranchMoves } = {},
+  options: { role?: Role; language?: 'en' | 'ru' | 'uz'; incoming?: IncomingBranchMoves } = {},
 ) {
   return fakeApi({
     'GET /api/auth/session': () =>
@@ -535,5 +537,193 @@ describe('the move to another branch', () => {
     expect(calls.some((call) => call.route === 'GET /api/people/branch-moves/incoming')).toBe(
       false,
     );
+  });
+});
+
+// Issue #105, H2: a branch name ending in "filiali" is written once.
+describe('the branch name in the texts of a move', () => {
+  const SINOV = { id: SOUTH.id, name: 'Sinov filiali' };
+  const sent: IncomingBranchMoves = {
+    ...INCOMING,
+    moves: INCOMING.moves.slice(0, 1).map((move) => ({ ...move, fromBranch: SINOV })),
+  };
+
+  it('stands alone after a label in the Uzbek incoming line and accept question', async () => {
+    const move = sent.moves[0];
+    if (move === undefined) {
+      throw new Error('The fixture holds a release.');
+    }
+    open(
+      detailOf(),
+      {
+        [`GET /api/people/branch-moves/${move.id}/groups`]: () =>
+          json({ subjects: [], freeSeats: 4 }),
+      },
+      { incoming: sent, language: 'uz' },
+    );
+    renderApp(PATH, 'uz');
+    const row = await screen.findByRole('listitem', { name: 'Karimova Malika' });
+    const line = row.querySelector('span')?.textContent ?? '';
+    expect(line).toBe(
+      `Karimova Malika · UID 2607002 · 7-sinf · Yuboruvchi filial: Sinov filiali · birinchi kun ${schoolDateText('2026-10-10', 'uz')}`,
+    );
+    expect(line).not.toMatch(/filiali filial/);
+    fireEvent.click(
+      within(row).getByRole('button', { name: uz.people.students.branchMoves.accept }),
+    );
+    fireEvent.change(await within(row).findByLabelText(uz.people.students.branchMoves.class), {
+      target: { value: YALE.id },
+    });
+    fireEvent.click(await within(row).findByRole('button', { name: uz.form.save }));
+    const sure = await screen.findByRole('alertdialog', {
+      name: uz.people.students.branchMoves.acceptConfirmTitle,
+    });
+    expect(
+      within(sure).getByText(
+        'Oʻquvchi qabul qilinadi va 7 Yale sinfiga oʻtadi (yuboruvchi filial: Sinov filiali). Qabul qilishni qaytarib boʻlmaydi.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('is written once in the Russian incoming line', async () => {
+    open(detailOf(), {}, { incoming: sent, language: 'ru' });
+    renderApp(PATH, 'ru');
+    const row = await screen.findByRole('listitem', { name: 'Karimova Malika' });
+    const line = row.querySelector('span')?.textContent ?? '';
+    expect(line).toBe(
+      `Karimova Malika · UID 2607002 · 7 класс · из Sinov filiali, первый день ${schoolDateText('2026-10-10', 'ru')}`,
+    );
+    expect(line.match(/филиал/g) ?? []).toEqual([]);
+  });
+
+  it('stands alone in the Uzbek History line', async () => {
+    open(
+      detailOf({ readsHistory: true, canMoveBranch: false }),
+      {
+        [`GET /api/people/students/${STUDENT.id}/history`]: () =>
+          json({
+            lines: [
+              {
+                kind: 'branch_move',
+                move: { ...RELEASE, from: '2026-10-05', state: 'accepted', toBranch: SINOV },
+                toClass: YALE,
+              },
+            ],
+            today: '2026-10-10',
+          }),
+      },
+      { language: 'uz' },
+    );
+    renderApp(`${PATH}?open=${STUDENT.id}`, 'uz');
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(
+      await within(panel).findByRole('radio', { name: uz.people.students.tabs.history }),
+    );
+    const history = await within(panel).findByRole('region', {
+      name: uz.people.students.moves.historyLabel,
+    });
+    // The line itself, whole: its date is the span before it.
+    const line = history.querySelector('li')?.querySelectorAll('span')[1]?.textContent ?? '';
+    expect(line).toBe(
+      `Boshqa filialga oʻtdi: ${NORTH.name} → Sinov filiali, 7 Yale sinfiga · ${uz.people.students.branchMoves.states.accepted}`,
+    );
+    expect(line).not.toMatch(/filiali filial/);
+  });
+
+  it('stands alone after a label in the Russian accept question', async () => {
+    const move = sent.moves[0];
+    if (move === undefined) {
+      throw new Error('The fixture holds a release.');
+    }
+    open(
+      detailOf(),
+      {
+        [`GET /api/people/branch-moves/${move.id}/groups`]: () =>
+          json({ subjects: [], freeSeats: 4 }),
+      },
+      { incoming: sent, language: 'ru' },
+    );
+    renderApp(PATH, 'ru');
+    const rtexts = ru.people.students.branchMoves;
+    const row = await screen.findByRole('listitem', { name: 'Karimova Malika' });
+    fireEvent.click(within(row).getByRole('button', { name: rtexts.accept }));
+    fireEvent.change(await within(row).findByLabelText(rtexts.class), {
+      target: { value: YALE.id },
+    });
+    fireEvent.click(await within(row).findByRole('button', { name: ru.form.save }));
+    const sure = await screen.findByRole('alertdialog', { name: rtexts.acceptConfirmTitle });
+    expect(
+      within(sure).getByText(
+        'Ученик уходит из Sinov filiali и зачисляется в 7 Yale. Приём нельзя отменить.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('is written once in the Russian texts of a merge', () => {
+    const i18n = createI18n('ru');
+    expect(i18n.t('people.students.merge.branchAfter', { branch: 'Sinov filiali' })).toBe(
+      'После объединения филиал ученика: Sinov filiali.',
+    );
+    expect(
+      i18n.t('people.students.merge.leftBranch', {
+        name: 'Karimova Malika',
+        branch: 'Sinov filiali',
+      }),
+    ).toBe(
+      'Karimova Malika теперь ученик другого филиала (филиал: Sinov filiali). Перейдите в этот филиал, чтобы открыть запись.',
+    );
+  });
+});
+
+// Issue #105, H12: no empty section once nobody waits.
+describe('the section of the students released to the branch', () => {
+  it('leaves only the outcome after the last accept, and nothing after a branch switch', async () => {
+    const move = INCOMING.moves[0];
+    if (move === undefined) {
+      throw new Error('The fixture holds a release.');
+    }
+    let waiting: IncomingBranchMoves = { ...INCOMING, moves: [move] };
+    open(
+      detailOf(),
+      {
+        'GET /api/people/branch-moves/incoming': () => json(waiting),
+        [`GET /api/people/branch-moves/${move.id}/groups`]: () =>
+          json({ subjects: [], freeSeats: 4 }),
+        [`POST /api/people/branch-moves/${move.id}/accept`]: () => {
+          waiting = { ...INCOMING, moves: [] };
+          return json(detailOf({ id: move.studentId }));
+        },
+      },
+      { role: 'super_admin', incoming: waiting },
+    );
+    renderApp(PATH);
+    const section = await screen.findByRole('region', {
+      name: texts.incomingTitle_one.replace('{{count}}', '1'),
+    });
+    const row = within(section).getByRole('listitem', { name: 'Karimova Malika' });
+    fireEvent.click(within(row).getByRole('button', { name: texts.accept }));
+    fireEvent.change(await within(row).findByLabelText(texts.class), {
+      target: { value: YALE.id },
+    });
+    fireEvent.click(await within(row).findByRole('button', { name: en.form.save }));
+    const sure = await screen.findByRole('alertdialog', { name: texts.acceptConfirmTitle });
+    fireEvent.click(within(sure).getByRole('button', { name: texts.accept }));
+    const outcome = await screen.findByText(
+      texts.accepted.replace('{{name}}', 'Karimova Malika').replace('{{class}}', '7 Yale'),
+    );
+    expect(outcome.getAttribute('role')).toBe('status');
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: /Released to this branch/ })).toBeNull();
+    });
+    expect(screen.queryByText(/Released to this branch: 0/)).toBeNull();
+
+    fireEvent.change(screen.getByLabelText(en.switcher.branch), { target: { value: SOUTH.id } });
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          texts.accepted.replace('{{name}}', 'Karimova Malika').replace('{{class}}', '7 Yale'),
+        ),
+      ).toBeNull();
+    });
   });
 });

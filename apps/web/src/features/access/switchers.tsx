@@ -1,13 +1,28 @@
+import { cn } from 'cn';
+import { useTranslation } from 'react-i18next';
+import { ExpandMoreIcon } from '@/components/icons';
+import { FOCUS_RING, QUICK } from '@/components/ui/control';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Select } from '@/components/ui/select';
 import { isRole } from './view';
-import { useTranslation } from 'react-i18next';
 import { useView } from './use-view';
 
 /**
  * The role switcher of the top bar (`02`: "a role switcher in the top bar
  * changes the menu and home page"). Shown with more than one role. It changes
  * what is displayed only: the server allows an action when any current
- * assignment permits it.
+ * assignment permits it. So the button says what it changes ("Menu and home
+ * page: Tutor") and its menu says that the rights stay (issue #105, H11b): a
+ * menu button like the person menu, since a select can carry neither. Below
+ * 640 px the button shows the role alone; its name keeps the whole text.
  */
 export function RoleSwitcher() {
   const { t } = useTranslation();
@@ -15,26 +30,49 @@ export function RoleSwitcher() {
   if (roles.length < 2 || role === null) {
     return null;
   }
+  const roleName = t(`roles.${role}`);
   return (
-    <label className="flex min-w-0 items-center gap-1.5 text-sm">
-      <span className="sr-only">{t('switcher.role')}</span>
-      {/* Room for the longest role name; shorter only when the bar has no room. */}
-      <Select
-        className="max-w-72 min-w-0"
-        value={role}
-        onChange={(event) => {
-          if (isRole(event.target.value)) {
-            chooseRole(event.target.value);
-          }
-        }}
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <button
+            type="button"
+            aria-label={t('switcher.roleButton', { role: roleName })}
+            className={cn(
+              'flex h-10 max-w-96 min-w-0 items-center gap-1.5 rounded-lg border border-input bg-card pr-2.5 pl-3 text-left text-sm text-foreground max-sm:h-11',
+              QUICK,
+              FOCUS_RING,
+            )}
+          />
+        }
       >
-        {roles.map((option) => (
-          <option key={option} value={option}>
-            {t(`roles.${option}`)}
-          </option>
-        ))}
-      </Select>
-    </label>
+        {/* The prefix never shortens; the role does when the bar has no room. */}
+        <span className="shrink-0 max-sm:hidden">{t('switcher.rolePrefix')}</span>
+        <span className="min-w-0 truncate font-semibold">{roleName}</span>
+        <ExpandMoreIcon className="shrink-0 text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="whitespace-normal">
+            {t('switcher.roleHint')}
+          </DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={role}
+            onValueChange={(value: unknown) => {
+              if (isRole(value)) {
+                chooseRole(value);
+              }
+            }}
+          >
+            {roles.map((option) => (
+              <DropdownMenuRadioItem key={option} value={option} closeOnClick>
+                {t(`roles.${option}`)}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

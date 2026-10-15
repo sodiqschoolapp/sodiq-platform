@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useView } from '@/features/access/use-view';
+import { SM, useMinWidth } from '@/lib/use-min-width';
 import { totalsQuery } from './timetable-api';
 
 type TeacherTotal = LoadTotals['teachers'][number];
@@ -30,6 +31,8 @@ export function LoadTotalsSection({ versionId }: { versionId: string }) {
   const totals = useQuery(totalsQuery(branchId, versionId));
   const number = new Intl.NumberFormat(i18n.language);
   const count = (value: number) => number.format(value);
+  // Issue #105, H21: below 640 px the totals are cards, the overrun still in words.
+  const wide = useMinWidth(SM);
 
   const over = (value: number, limit: number | null) =>
     limit !== null && value > limit ? (
@@ -40,6 +43,44 @@ export function LoadTotalsSection({ versionId }: { versionId: string }) {
 
   const totalOf = (teacher: TeacherTotal) =>
     teacher.lessons + teacher.elsewhere.reduce((sum, one) => sum + one.lessons, 0);
+
+  const teacherName = (one: TeacherTotal) => {
+    const name = one.name ?? t('timetable.load.gone');
+    return one.kind === 'vacancy' ? t('timetable.load.vacancyOption', { name }) : name;
+  };
+
+  const elsewhereText = (one: TeacherTotal) =>
+    one.elsewhere.length === 0
+      ? t('timetable.load.blockNone')
+      : one.elsewhere
+          .map((other) =>
+            t(
+              other.draft
+                ? 'timetable.load.totals.elsewhereDraft'
+                : 'timetable.load.totals.elsewhereItem',
+              { branch: other.branchName, count: other.lessons, n: count(other.lessons) },
+            ),
+          )
+          .join(', ');
+
+  /** One card of the phone: a title and its terms. */
+  const card = (
+    key: string,
+    title: string,
+    terms: readonly (readonly [string, React.ReactNode])[],
+  ) => (
+    <li key={key} className="grid gap-2 rounded-lg border p-3">
+      <span className="font-semibold">{title}</span>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+        {terms.map(([term, value]) => (
+          <div key={term} className="grid gap-0.5">
+            <dt className="text-muted-foreground">{term}</dt>
+            <dd className="tabular-nums">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </li>
+  );
 
   return (
     <section aria-labelledby="load-totals" className={`${PANEL} grid gap-4`}>
@@ -62,90 +103,125 @@ export function LoadTotalsSection({ versionId }: { versionId: string }) {
       ) : (
         <>
           <h3 className={SECTION_TITLE}>{t('timetable.load.totals.classes')}</h3>
-          <Table data-totals="classes">
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('timetable.load.totals.class')}</TableHead>
-                <TableHead className="text-right">{t('timetable.load.totals.lessons')}</TableHead>
-                <TableHead className="text-right">
-                  {t('timetable.load.totals.lessonSlots')}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {totals.data.classes.map((one) => (
-                <TableRow key={one.id}>
-                  <TableCell>{classDisplayName(one.grade, one.name)}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {count(one.lessons)}
-                    {over(one.lessons, one.lessonSlots)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {count(one.lessonSlots)}
-                  </TableCell>
+          {!wide ? (
+            <ul data-totals="classes" className="grid gap-2">
+              {totals.data.classes.map((one) =>
+                card(one.id, classDisplayName(one.grade, one.name), [
+                  [
+                    t('timetable.load.totals.lessons'),
+                    <>
+                      {count(one.lessons)}
+                      {over(one.lessons, one.lessonSlots)}
+                    </>,
+                  ],
+                  [t('timetable.load.totals.lessonSlots'), count(one.lessonSlots)],
+                ]),
+              )}
+            </ul>
+          ) : (
+            <Table data-totals="classes">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('timetable.load.totals.class')}</TableHead>
+                  <TableHead className="text-right">{t('timetable.load.totals.lessons')}</TableHead>
+                  <TableHead className="text-right">
+                    {t('timetable.load.totals.lessonSlots')}
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <h3 className={SECTION_TITLE}>{t('timetable.load.totals.teachers')}</h3>
-          <Table data-totals="teachers">
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('timetable.load.totals.teacher')}</TableHead>
-                <TableHead className="text-right">{t('timetable.load.totals.here')}</TableHead>
-                <TableHead className="text-right">{t('timetable.load.totals.free')}</TableHead>
-                <TableHead>{t('timetable.load.totals.elsewhere')}</TableHead>
-                <TableHead className="text-right">{t('timetable.load.totals.total')}</TableHead>
-                <TableHead className="text-right">{t('timetable.load.totals.contract')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {totals.data.teachers.map((one) => {
-                const name = one.name ?? t('timetable.load.gone');
-                return (
+              </TableHeader>
+              <TableBody>
+                {totals.data.classes.map((one) => (
                   <TableRow key={one.id}>
-                    <TableCell>
-                      {one.kind === 'vacancy' ? t('timetable.load.vacancyOption', { name }) : name}
-                    </TableCell>
+                    <TableCell>{classDisplayName(one.grade, one.name)}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {count(one.lessons)}
-                      {over(one.lessons, one.freeSlots)}
+                      {over(one.lessons, one.lessonSlots)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {one.freeSlots === null
-                        ? t('timetable.load.totals.noHours')
-                        : count(one.freeSlots)}
-                    </TableCell>
-                    <TableCell>
-                      {one.elsewhere.length === 0
-                        ? t('timetable.load.blockNone')
-                        : one.elsewhere
-                            .map((other) =>
-                              t(
-                                other.draft
-                                  ? 'timetable.load.totals.elsewhereDraft'
-                                  : 'timetable.load.totals.elsewhereItem',
-                                {
-                                  branch: other.branchName,
-                                  count: other.lessons,
-                                  n: count(other.lessons),
-                                },
-                              ),
-                            )
-                            .join(', ')}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {count(totalOf(one))}
-                      {over(totalOf(one), one.contract)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {one.contract === null ? t('timetable.load.blockNone') : count(one.contract)}
+                      {count(one.lessonSlots)}
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          <h3 className={SECTION_TITLE}>{t('timetable.load.totals.teachers')}</h3>
+          {!wide ? (
+            <ul data-totals="teachers" className="grid gap-2">
+              {totals.data.teachers.map((one) =>
+                card(one.id, teacherName(one), [
+                  [
+                    t('timetable.load.totals.here'),
+                    <>
+                      {count(one.lessons)}
+                      {over(one.lessons, one.freeSlots)}
+                    </>,
+                  ],
+                  [
+                    t('timetable.load.totals.free'),
+                    one.freeSlots === null
+                      ? t('timetable.load.totals.noHours')
+                      : count(one.freeSlots),
+                  ],
+                  [t('timetable.load.totals.elsewhere'), elsewhereText(one)],
+                  [
+                    t('timetable.load.totals.total'),
+                    <>
+                      {count(totalOf(one))}
+                      {over(totalOf(one), one.contract)}
+                    </>,
+                  ],
+                  [
+                    t('timetable.load.totals.contract'),
+                    one.contract === null ? t('timetable.load.blockNone') : count(one.contract),
+                  ],
+                ]),
+              )}
+            </ul>
+          ) : (
+            <Table data-totals="teachers">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('timetable.load.totals.teacher')}</TableHead>
+                  <TableHead className="text-right">{t('timetable.load.totals.here')}</TableHead>
+                  <TableHead className="text-right">{t('timetable.load.totals.free')}</TableHead>
+                  <TableHead>{t('timetable.load.totals.elsewhere')}</TableHead>
+                  <TableHead className="text-right">{t('timetable.load.totals.total')}</TableHead>
+                  <TableHead className="text-right">
+                    {t('timetable.load.totals.contract')}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {totals.data.teachers.map((one) => {
+                  return (
+                    <TableRow key={one.id}>
+                      <TableCell>{teacherName(one)}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {count(one.lessons)}
+                        {over(one.lessons, one.freeSlots)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {one.freeSlots === null
+                          ? t('timetable.load.totals.noHours')
+                          : count(one.freeSlots)}
+                      </TableCell>
+                      <TableCell>{elsewhereText(one)}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {count(totalOf(one))}
+                        {over(totalOf(one), one.contract)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {one.contract === null
+                          ? t('timetable.load.blockNone')
+                          : count(one.contract)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </>
       )}
     </section>

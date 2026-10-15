@@ -3177,6 +3177,7 @@ export interface components {
                             /** Format: uuid */
                             id: string;
                             name: string;
+                            grade: number | null;
                         };
                         /** Format: uuid */
                         subjectId: string;
@@ -3935,6 +3936,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -4055,6 +4057,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -4287,6 +4290,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -4389,6 +4393,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -4483,6 +4488,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -4587,6 +4593,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -4688,6 +4695,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -4787,6 +4795,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -4890,6 +4899,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -4986,6 +4996,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -5091,6 +5102,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -5190,6 +5202,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -5289,6 +5302,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -5387,6 +5401,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -5485,6 +5500,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -5577,6 +5593,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -5669,6 +5686,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -5771,6 +5789,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -5886,6 +5905,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -5982,6 +6002,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -6099,6 +6120,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -6211,6 +6233,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -6324,6 +6347,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -6420,6 +6444,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -6535,6 +6560,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -6640,6 +6666,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -6745,6 +6772,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -6848,6 +6876,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -6951,6 +6980,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -7044,6 +7074,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -7137,6 +7168,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -7239,6 +7271,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -7348,6 +7381,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -7459,6 +7493,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -7561,6 +7596,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -7674,6 +7710,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -7783,6 +7820,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -7886,6 +7924,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -7994,6 +8033,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -8101,6 +8141,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -8210,6 +8251,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -8311,6 +8353,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -8412,6 +8455,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -8509,6 +8553,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -8630,6 +8675,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -8747,6 +8793,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -8868,6 +8915,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -8992,6 +9040,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -9107,6 +9156,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -9222,6 +9272,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -9323,6 +9374,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -9434,6 +9486,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -9540,6 +9593,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -9641,6 +9695,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -9811,6 +9866,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -9918,6 +9974,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -10040,6 +10097,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -10228,6 +10286,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -10352,6 +10411,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -10457,6 +10517,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -10562,6 +10623,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -10674,6 +10736,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -10764,6 +10827,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -10860,6 +10924,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -10959,6 +11024,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -11055,6 +11121,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -11157,6 +11224,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -11259,6 +11327,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -11350,6 +11419,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -11440,6 +11510,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -11538,6 +11609,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -11654,6 +11726,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -11795,6 +11868,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -11891,6 +11965,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -12034,6 +12109,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -12157,6 +12233,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -12272,6 +12349,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -12387,6 +12465,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -12495,6 +12574,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -12611,6 +12691,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -12724,6 +12805,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -12851,6 +12933,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -13050,6 +13133,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -13146,6 +13230,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -13313,6 +13398,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -13514,6 +13600,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -13625,6 +13712,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -13803,6 +13891,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -13978,6 +14067,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -14162,6 +14252,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -14251,6 +14342,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -14388,6 +14480,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -14486,6 +14579,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -14573,6 +14667,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -14710,6 +14805,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -14859,6 +14955,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -15004,6 +15101,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -15150,6 +15248,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -15233,6 +15332,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -15320,6 +15420,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -15442,6 +15543,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -15570,6 +15672,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -15692,6 +15795,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -15784,6 +15888,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -15876,6 +15981,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -15974,6 +16080,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -16087,6 +16194,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -16173,6 +16281,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -16345,6 +16454,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -16428,6 +16538,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -16635,6 +16746,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -16768,6 +16880,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -16871,6 +16984,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -16998,6 +17112,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -17094,6 +17209,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -17207,6 +17323,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -17336,6 +17453,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -17449,6 +17567,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -17562,6 +17681,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -17645,6 +17765,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -17809,6 +17930,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -18252,6 +18374,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -18337,6 +18460,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -18433,6 +18557,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -18538,6 +18663,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -18891,6 +19017,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -19282,6 +19409,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -19643,6 +19771,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -19738,6 +19867,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -20100,6 +20230,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -20459,6 +20590,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -20819,6 +20951,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -21190,6 +21323,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -21554,6 +21688,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -21644,6 +21779,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -22008,6 +22144,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -22372,6 +22509,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -22731,6 +22869,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -23091,6 +23230,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -23455,6 +23595,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -23817,6 +23958,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -24174,6 +24316,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -24533,6 +24676,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -24734,6 +24878,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -25097,6 +25242,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -25454,6 +25600,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -25543,6 +25690,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -25648,6 +25796,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -25749,6 +25898,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -26116,6 +26266,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -26229,6 +26380,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -26290,6 +26442,10 @@ export interface operations {
                             };
                             /** @enum {string|null} */
                             status: "active" | "inactive" | "graduated" | null;
+                            /** Format: date */
+                            startsOn: string;
+                            /** Format: date */
+                            today: string;
                             class: {
                                 grade: number;
                                 name: string;
@@ -26309,6 +26465,10 @@ export interface operations {
                             };
                             /** @enum {string|null} */
                             status: "active" | "inactive" | "graduated" | null;
+                            /** Format: date */
+                            startsOn: string;
+                            /** Format: date */
+                            today: string;
                             class: {
                                 grade: number;
                                 name: string;
@@ -26399,6 +26559,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -26767,6 +26928,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -26853,6 +27015,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -26941,6 +27104,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -27024,6 +27188,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -27132,6 +27297,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -27217,6 +27383,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -27313,6 +27480,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -27429,6 +27597,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -27560,6 +27729,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -27689,6 +27859,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -27812,6 +27983,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -27895,6 +28067,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -27983,6 +28156,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -28086,6 +28260,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -28237,6 +28412,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -28351,6 +28527,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -28462,6 +28639,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -28706,6 +28884,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -28960,6 +29139,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -29141,6 +29321,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -29199,8 +29380,12 @@ export interface operations {
                             } | null;
                             /** @enum {string|null} */
                             status: "active" | "inactive" | "graduated" | null;
+                            /** Format: date */
+                            startsOn: string;
                         }[];
                         more: boolean;
+                        /** Format: date */
+                        today: string;
                     };
                 };
             };
@@ -29242,6 +29427,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -29338,6 +29524,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -29490,6 +29677,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -29678,6 +29866,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -29785,6 +29974,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -29881,6 +30071,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -30057,6 +30248,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -30248,6 +30440,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -30424,6 +30617,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -30600,6 +30794,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -30789,6 +30984,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -30973,6 +31169,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -31078,6 +31275,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -31203,6 +31401,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -31309,6 +31508,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -31439,6 +31639,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -31597,6 +31798,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -31697,6 +31899,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -31818,6 +32021,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -31918,6 +32122,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -32014,6 +32219,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -32158,6 +32364,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -32315,6 +32522,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -32459,6 +32667,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -32610,6 +32819,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -32723,6 +32933,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -32847,6 +33058,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -32961,6 +33173,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -33075,6 +33288,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -33169,6 +33383,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -33267,6 +33482,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -33374,6 +33590,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -33491,6 +33708,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -33605,6 +33823,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -33808,6 +34027,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -33961,6 +34181,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -34072,6 +34293,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -34172,6 +34394,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -34256,6 +34479,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;
@@ -34403,6 +34627,7 @@ export interface operations {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
+                                        grade: number | null;
                                     };
                                     /** Format: uuid */
                                     subjectId: string;

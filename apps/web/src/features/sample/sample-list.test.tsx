@@ -49,11 +49,14 @@ const type = (value: string): void => {
   fireEvent.change(searchBox(), { target: { value } });
 };
 
+// Issue #105, H1: the short form while no search or filter leaves a row out.
 const countText = (shown: number, matching: number, total = ROWS.length): string =>
-  en.list.count
-    .replace('{{shown}}', String(shown))
-    .replace('{{matching}}', String(matching))
-    .replace('{{total}}', String(total));
+  matching === total
+    ? en.list.countAll.replace('{{shown}}', String(shown)).replace('{{total}}', String(total))
+    : en.list.count
+        .replace('{{shown}}', String(shown))
+        .replace('{{matching}}', String(matching))
+        .replace('{{total}}', String(total));
 
 const selectedText = (count: number): string =>
   (count === 1 ? en.list.selected_one : en.list.selected_other).replace('{{n}}', String(count));

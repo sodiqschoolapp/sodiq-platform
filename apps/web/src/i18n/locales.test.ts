@@ -54,9 +54,30 @@ describe('the Uzbek texts', () => {
     expect(wrong).toEqual([]);
   });
 
+  // Issue #105, H1: never "3 tadan 3 tasi"; a count says what it counts
+  // ("15 oʻrindan 1 tasi band", "Koʻrsatilgan: 3 ta, jami 3").
+  it('have no "N tadan N ta" count', () => {
+    const count = String.raw`(\{\{\w+\}\}|\d+)`;
+    const pattern = new RegExp(`${count} tadan ${count} ta`);
+    expect(pattern.test('{{matching}} tadan {{shown}} tasi')).toBe(true);
+    expect(pattern.test('4 tadan {{n}} tasining sanasi bor')).toBe(true);
+    expect(textsOf(RESOURCES.uz).filter((text) => pattern.test(text))).toEqual([]);
+  });
+
   it('use the letters oʻ and gʻ', () => {
     expect(textsOf(RESOURCES.uz).some((text) => text.includes('o\u02bb'))).toBe(true);
     expect(textsOf(RESOURCES.uz).some((text) => text.includes('g\u02bb'))).toBe(true);
+  });
+});
+
+// Issue #105, H10: one spelling, "суперадминистратор".
+describe('the Russian texts', () => {
+  const textsOf = (tree: TextTree): string[] =>
+    Object.values(tree).flatMap((value) => (typeof value === 'string' ? [value] : textsOf(value)));
+
+  it('write "суперадминистратор" in one word', () => {
+    expect(textsOf(RESOURCES.ru).filter((text) => /супер-админ/i.test(text))).toEqual([]);
+    expect(RESOURCES.ru.roles.super_admin).toBe('Суперадминистратор');
   });
 });
 

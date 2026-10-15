@@ -501,3 +501,48 @@ describe('a group in the side panel', () => {
     });
   });
 });
+
+// Issue #105, H4: a taken group name names the group that holds it; H19: the
+// empty Groups page offers "New group" as a primary button.
+describe('the group name refusal and the empty page', () => {
+  it('names the group that holds a taken name', async () => {
+    const refused = refusal('already_exists', 409);
+    const body = (await refused.clone().json()) as { error: object };
+    await openList({
+      extra: {
+        'POST /api/groups': () =>
+          json(
+            {
+              error: {
+                ...body.error,
+                requestId: 'test-request',
+                details: [{ path: 'name', code: 'already_exists', message: '', recordId: M1.id }],
+              },
+            },
+            409,
+          ),
+      },
+    });
+    const form = await openNewGroup();
+    type(field(form, en.groups.subject), MATHS.id);
+    tick(form, '7 Oxford');
+    type(field(form, en.groups.groupName), '7-m-1');
+    type(field(form, en.groups.maxSize), '18');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(
+      await within(form).findByText(en.groups.nameTaken.replace('{{name}}', M1.name)),
+    ).toBeDefined();
+  });
+
+  it('offers "New group" as a primary button on the empty page', async () => {
+    await openList({ groups: [] });
+    const heading = await screen.findByRole('heading', { name: en.groups.emptyTitle });
+    await waitFor(() => {
+      expect(heading.parentElement?.querySelector('button')?.hasAttribute('disabled')).toBe(false);
+    });
+    const button = heading.parentElement?.querySelector('button');
+    expect(button?.textContent).toBe(en.groups.add);
+    expect(button?.dataset.variant).toBe('default');
+    expect(button?.id).toBe('');
+  });
+});

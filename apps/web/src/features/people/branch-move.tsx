@@ -545,7 +545,13 @@ export function IncomingMoves() {
   const reads = useMayView('branch_moves');
   const incoming = useQuery({ ...incomingQuery(branchId), enabled: branchId !== null && reads });
   const [open, setOpen] = useState<{ id: string; kind: 'accept' | 'decline' } | null>(null);
-  const [done, setDone] = useState<string | null>(null);
+  // The outcome of the last Accept or Decline, in the branch it was made in:
+  // a branch switch leaves it behind (issue #105, H12).
+  const [outcome, setOutcome] = useState<{ branchId: string | null; text: string } | null>(null);
+  const done = outcome !== null && outcome.branchId === branchId ? outcome.text : null;
+  const setDone = (text: string | null) => {
+    setOutcome(text === null ? null : { branchId, text });
+  };
   if (!reads) {
     return null;
   }
@@ -564,6 +570,17 @@ export function IncomingMoves() {
   const moves = incoming.data?.moves ?? [];
   if (moves.length === 0 && done === null) {
     return null;
+  }
+  if (moves.length === 0) {
+    // Nobody waits any more: no title and no empty list, only the outcome
+    // of the last decision, so the person sees it went through (H12).
+    return (
+      <section className={`${PANEL} mb-3`}>
+        <p role="status" className="text-sm">
+          {done}
+        </p>
+      </section>
+    );
   }
   const title = t('people.students.branchMoves.incomingTitle', { count: moves.length });
   return (

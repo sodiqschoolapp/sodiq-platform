@@ -2,6 +2,7 @@ import { PERMISSIONS, permits } from '@sodiq/shared';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useScrollRow } from '@/components/scroll-row';
 import { useView } from '@/features/access/use-view';
 
 type Section = 'staff' | 'students' | 'parents' | 'vacancies' | 'head-teachers' | 'never-used';
@@ -77,17 +78,19 @@ export function PeopleTabs({ current }: { current: Section }) {
       tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
   }, [current]);
+  useScrollRow(row);
   if (shown.length < 2) {
     return null;
   }
   return (
     // One row that scrolls sideways inside its own box when the tabs do not
     // fit (a phone), with the tab in use scrolled into view (issue #39, hand
-    // test of 13 October 2026, finding 8).
+    // test of 13 October 2026, finding 8), never with a scrollbar; a cut
+    // edge fades (issue #105, H15).
     <nav
       ref={row}
       aria-label={t('people.sections')}
-      className="mb-4 flex gap-6 overflow-x-auto border-b whitespace-nowrap"
+      className="scroll-row mb-4 flex gap-6 border-b whitespace-nowrap"
     >
       {shown.map((section) => (
         <Link

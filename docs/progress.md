@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 3.5a Hand test of Phase 3: wording and small screen fixes
+
+- Built every item H1 to H21 and H11b of issue #105 (Parts A and B): the list counts in words; the branch name written once; a scheduled leaving in the future tense; the duplicate class or group name, the language question of a move and a return, and the department move refusal naming the class with its grade; surname-first headers in the lists and exports; the Russian and Uzbek words; the role switch as a menu button with its hint; the incoming moves hidden when empty; "From <date>" for a later start (list, record, Ctrl+K, merge preview, export); "Change log"; scrollbar-free tabs with a faded cut edge; short phone tab labels; folded filters; every class in the Class filter; primary empty-state buttons; the teaching load and its totals as cards at phone width.
+- H20: nothing in the source hides the refusal list; the browser test shows that only the modal "Leave without saving?" (opened by the version link) hides it while open, as it must, and that it is readable before and after.
+- A browser test (`e2e/hand-test-3-5a.spec.ts`) opens the Students list, a student panel, Classes, Parents and the teaching load at 375 and 1440 px in Uzbek and Russian; screenshots in `docs/screens/3.5a`.
+- Left out: Part C (3.5b) and Part D (3.5c); parents typed first name first on the test site keep that order (one field stored as typed, decision 2); the wording is the builder's proposal, the owner corrects it later.
+
+The next sessions must know:
+
+- `startsLater` (`packages/shared`) decides "From <date>"; the search answer of students and each side of the merge preview carry `startsOn` and `today`.
+- `RecordForm` and `FailureAlert` take a `failureText`/`text` for a refusal said more exactly than its code; `useTakenRecord` finds the record named by `already_exists`.
+- A list row of tabs takes the class `scroll-row` and `useScrollRow`; a menu page needs a `shortKey` for the phone tab bar.
+- The next task is 3.5b.
+
 ## 15 October 2026: task 5.2 Rule engine
 
 - Built in `packages/timetable-rules` (`rules.ts`, `placement.ts`, `check.ts`): `checkTimetable` and `checkCandidate` give every blocked rule and warning of the `06` Rules table for lessons and exams by clock time, each result with its rule code and the placements involved; `slotStatus` for the grid. 61 engine tests, one a fast-check property test of the clash sweep against all pairs.

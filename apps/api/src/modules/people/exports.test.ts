@@ -212,7 +212,7 @@ describe('the export of the staff and vacancy lists', () => {
       expect(file.columns).toBe('name,staffId,department,subjects,grades,languages,phone,status');
       expect(file.sheet.name).toBe('Staff');
       expect(file.sheet.headings).toEqual([
-        'Name',
+        'Surname and name',
         'Staff ID',
         'Department',
         'Subjects',
@@ -307,7 +307,12 @@ describe('the export of the staff and vacancy lists', () => {
       expect(response.status).toBe(200);
       const file = await fileOf(response);
       expect(file.columns).toBe('name,status');
-      expect(file.sheet.headings).toEqual(['Name', 'Status', 'Planned status', 'Planned from']);
+      expect(file.sheet.headings).toEqual([
+        'Surname and name',
+        'Status',
+        'Planned status',
+        'Planned from',
+      ]);
       expect(JSON.stringify(file.sheet.rows)).not.toContain(someone.phone);
       expect(JSON.stringify(file.sheet.rows)).not.toContain(grouped(someone.phone));
       expect((await t.entries('staff.export')).at(-1)).toMatchObject({
@@ -411,7 +416,7 @@ describe('the export of the staff and vacancy lists', () => {
         await exportOf('/api/people/staff/export', send([someone.id], ['name', 'status'])),
       );
       expect(russian.sheet.name).toBe('Сотрудники');
-      expect(russian.sheet.headings.slice(0, 2)).toEqual(['Имя', 'Статус']);
+      expect(russian.sheet.headings.slice(0, 2)).toEqual(['Фамилия и имя', 'Статус']);
       expect(russian.sheet.rows[0]?.[1]).toBe('Активен');
       expect(russian.disposition).toContain(
         `filename*=UTF-8''${encodeURIComponent('Сотрудники-2026-10-10.xlsx')}`,

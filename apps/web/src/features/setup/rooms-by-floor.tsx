@@ -8,6 +8,7 @@ import {
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { useMemo, useRef, type KeyboardEvent } from 'react';
+import { useScrollRow } from '@/components/scroll-row';
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '@/components/states';
 import { buttonVariants } from '@/components/ui/button';
@@ -77,6 +78,7 @@ export function RoomsByFloor({
     [i18n.language],
   );
   const tabs = useRef<HTMLDivElement>(null);
+  useScrollRow(tabs);
 
   const active = useMemo(
     () =>
@@ -225,7 +227,7 @@ export function RoomsByFloor({
               ref={tabs}
               role="tablist"
               aria-label={t('setup.rooms.floorsTabs')}
-              className="flex gap-6 overflow-x-auto border-b whitespace-nowrap"
+              className="scroll-row flex gap-6 border-b whitespace-nowrap"
             >
               {building.floors.map((one, index) => {
                 const selected = one.id === floor.id;

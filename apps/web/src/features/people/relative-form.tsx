@@ -334,7 +334,11 @@ export function RelativeForm({
   const holder = phoneHolderOf(form.failure);
   return (
     <RecordForm form={form} label={label} onCancel={onCancel}>
-      <Field label={t('people.relatives.fullName')} autoComplete="off" {...form.bind('fullName')} />
+      <Field
+        label={t('people.relatives.fullNameField')}
+        autoComplete="off"
+        {...form.bind('fullName')}
+      />
       <CheckboxField label={t('people.relatives.noPhone')} {...form.bind('noPhone')} />
       {!noPhone && (
         <Field

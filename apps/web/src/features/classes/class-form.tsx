@@ -10,6 +10,7 @@ import {
   type ClassEdit,
   type Room,
 } from '@sodiq/shared';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { Field, NumberField, SelectField } from '@/components/field';
@@ -18,6 +19,9 @@ import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
+import { useView } from '@/features/access/use-view';
+import { classesQuery } from './classes-api';
+import { useTakenRecord } from './taken-name';
 
 interface ClassFormProps {
   /** The class as saved; `null` for a new class. */
@@ -85,6 +89,9 @@ export function ClassForm({
     save: onSave,
   });
   const taken = takenClassOf(form.failure);
+  const { branchId } = useView();
+  const classes = useQuery({ ...classesQuery(branchId), select: (list) => list.classes });
+  const holder = useTakenRecord(taken, classes);
   // A room closed after it was chosen stays on its class (decision 7) and is offered as it is.
   const kept = schoolClass?.mainRoom ?? null;
   const roomOptions = [
@@ -98,7 +105,16 @@ export function ClassForm({
   ];
 
   return (
-    <RecordForm form={form} label={label} onCancel={onCancel}>
+    <RecordForm
+      form={form}
+      label={label}
+      onCancel={onCancel}
+      failureText={
+        holder === undefined
+          ? undefined
+          : t('classes.nameTaken', { grade: number.format(holder.grade), name: holder.name })
+      }
+    >
       {schoolClass === null && (
         <SelectField
           label={t('classes.year')}
