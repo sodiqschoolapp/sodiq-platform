@@ -623,7 +623,7 @@ grant update (student_id) on group_memberships to sodiq_app;
 -- for the branch of the request named by the caller: the kept record's id
 -- when it is of that branch, a row with no id when it is of another branch,
 -- no row when the UID was never merged. Nothing else of the record. Read by
--- the UID check of the create and the correction, and by the searches.
+-- the UID check of the create and the correction.
 create function student_merged_uid_holder(uid text, branch uuid)
 returns table (student_id uuid)
 language sql

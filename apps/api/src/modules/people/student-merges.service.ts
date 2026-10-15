@@ -1023,9 +1023,16 @@ export class StudentMerges {
         ...plan.moves.filter((one) => one.row.side === 'merged').map((one) => one.row.branchId),
       ].map((one) => one.toLowerCase()),
     );
+    // The personal values (the fields filled, the values left behind) only
+    // in the kept record's branch, where the merged record's values are
+    // readable (decision 5); every other branch gets ids, UIDs, dates and
+    // rows only (`.claude/rules/database.md`, permission review must-fix 1).
+    const withoutValues = Object.fromEntries(
+      Object.entries(value).filter(([key]) => key !== 'filled' && key !== 'leftValues'),
+    );
     for (const branch of [...touched].sort()) {
       await this.record(transaction, access, assignmentId, branch, kept.id, 'student.merged', {
-        newValue: value,
+        newValue: same(branch, finalBranch) ? value : withoutValues,
         reason,
         requestId,
       });

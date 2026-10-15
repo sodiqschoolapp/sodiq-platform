@@ -428,9 +428,13 @@ describe('the merge of two student records', () => {
 
   describe('two branches (decision 5, correction 1)', () => {
     it('gives the kept record the later life’s branch, keeps the earlier branch’s rows readable there, and logs in both', async () => {
-      const old = await pupil({ from: '2026-09-02' });
+      const old = await pupil({ from: '2026-09-02', fields: { phone: '+998901110001' } });
       await leave(old.id, '2026-09-19');
-      const again = await pupil({ branch: t.south, from: '2026-10-05' });
+      const again = await pupil({
+        branch: t.south,
+        from: '2026-10-05',
+        fields: { phone: '+998902220002', address: 'Yunusobod 4' },
+      });
       const oldRows = await classRowsOf(old.id);
       const seen = await previewOf(old.id, again.uid);
       expect(seen.branch).toEqual({ id: t.south, name: 'South' });
@@ -462,6 +466,23 @@ describe('the merge of two student records', () => {
       });
       const entries = await t.entries('student.merged', old.id);
       expect(entries.map((entry) => entry.branch_id).sort()).toEqual([t.north, t.south].sort());
+      // The personal values only in the kept record's branch (decision 5;
+      // permission review, must-fix 1): the North entry names no value of
+      // either record.
+      const north = entries.find((entry) => entry.branch_id === t.north);
+      const south = entries.find((entry) => entry.branch_id === t.south);
+      const northText = JSON.stringify(north?.new_value);
+      for (const value of ['+998901110001', '+998902220002', 'Yunusobod 4']) {
+        expect(northText).not.toContain(value);
+      }
+      expect(north?.new_value).not.toHaveProperty('filled');
+      expect(north?.new_value).not.toHaveProperty('leftValues');
+      expect(south?.new_value).toMatchObject({
+        filled: { address: 'Yunusobod 4' },
+        leftValues: expect.arrayContaining([
+          { field: 'phone', kept: '+998901110001', merged: '+998902220002' },
+        ]) as unknown,
+      });
     });
   });
 
@@ -828,6 +849,19 @@ describe('the merge of two student records', () => {
         (one) => one.id === kept.id,
       );
       expect(row?.mergedUids).toEqual([other.uid]);
+      // Not from another branch, and not for a reader outside the record's
+      // scope (a Tutor of no class of it; permission review, should-fix 2).
+      const southSearch = await t.get(`/api/search/students?q=${other.uid}`, t.south);
+      expect((southSearch.body as { items: unknown[] }).items).toEqual([]);
+      const southList = await t.get('/api/people/students', t.south);
+      expect(
+        (southList.body as { students: { id: string }[] }).students.some(
+          (one) => one.id === kept.id,
+        ),
+      ).toBe(false);
+      const tutorSearch = await t.get(`/api/search/students?q=${other.uid}`, t.north, tutor);
+      expect(tutorSearch.status, JSON.stringify(tutorSearch.body)).toBe(200);
+      expect((tutorSearch.body as { items: unknown[] }).items).toEqual([]);
       const classId = await classes.schoolClass(t.north, northYear, { grade: 7 });
       const created = await t.post('/api/people/students', t.north, {
         ...body(classId, '2026-09-02'),

@@ -187,7 +187,7 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'student_rows_elsewhere(uuid,uuid)':
     "The class rows, group rows and moves of a student of the request's branch in every other branch, ids, class and group names, dates, causes and links only, for the History tab after a move to another branch (task 3.3c, decision 3 of pull request #97, Look first).",
   'student_merged_uid_holder(text,uuid)':
-    'The record a merged UID leads to, for the branch of the request named by the caller: the kept record id when it is of that branch, a row with no id otherwise, for the UID checks and the searches (task 3.3d, decision 6 of pull request #98, Look first): the kept record may be of another branch.',
+    'The record a merged UID leads to, for the branch of the request named by the caller: the kept record id when it is of that branch, a row with no id otherwise, for the UID checks of the create and the correction (task 3.3d, decision 6 of pull request #98, Look first): the kept record may be of another branch.',
   'branches_without_vice_principal(timestamp with time zone)':
     "The branches (id and name only) where no Academic Vice Principal is active now, for the Super Admin's alert (Who can act); the route is school-wide, where the membership filter hides every staff row.",
   'last_email_change(uuid)':
