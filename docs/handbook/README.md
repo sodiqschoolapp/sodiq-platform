@@ -42,10 +42,20 @@ Each feature has its own heading on its page, and under it, in this order, the p
 - One rule is described in one place. Another page that needs it links to it.
 - Under each feature, an HTML comment lists its sources for the reviewers, invisible on the rendered page: `<!-- Sources: spec 05 (Class), edge/students-classes-groups; tasks 3.1a, 3.1b; #42 answers of 15 October 2026 -->`.
 
+## Role guides
+
+The pages above are the reference: every rule and case once, by feature. On top of them come short role guides in `docs/handbook/roles/`, one per role of `02` (Teacher, Tutor, Head Tutor, Head Teacher, Senior Head Teacher, Academic Vice Principal, Spiritual and Moral Vice Principal, Principal, Super Admin, and the others). Each guide has:
+
+1. **What you can see and do.** One list, taken from the "Who can use it" tables of the reference.
+2. **Your work, step by step.** The daily, weekly and quarterly tasks of the role ("Mark attendance", "Ask to unlock a lesson", "Close the quarter") as short numbered steps.
+3. **Links** into the reference for every rule and "What happens if…" case. A guide never restates a rule; it points to it.
+
+The guides are written once, by task 9.6, when the features are finished; until then the reference alone is kept.
+
 ## How it stays true
 
 Every task that adds or changes what a person can see or do updates the handbook pages of that behaviour in its own pull request (`CLAUDE.md`, Definition of done). The spec reviewer checks the pages against the diff. A behaviour without its page, or a page that says something the platform does not do, is a finding like a missing test.
 
 ## Languages
 
-The handbook is written in English. The Uzbek and Russian versions are made from it by task 9.6, before the go-live review.
+The handbook is written in English. The role guides and the Uzbek and Russian versions of the reference and the guides are made from it by task 9.6, before the go-live review. The role guides are for training the staff.
