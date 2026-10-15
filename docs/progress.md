@@ -2,6 +2,14 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: the owner's answers on issue #42
+
+- The owner answered every Look first decision of tasks 2.2b to 4.2 (211 items): 198 confirmed, 12 changed, and two more answers (no extra lessons; Tutor lessons follow the Tutor). The comment of 15 October 2026 on issue #42 lists them.
+- Tasks 3.6a, 3.6b and 3.6c build the changes, after 3.5a to 3.5c.
+
+The next sessions must know:
+- Until 3.6c is merged and `/spec-change` updates the spec, the owner's answers on #42 rule where the spec or an earlier decision says otherwise: no extra lessons or make-up lessons for one class; Maʼnaviyat soati and the Homework slot are held by the class Tutor in force; the year result is the mean of the quarter results as shown; one phone number belongs to one adult.
+
 ## 15 October 2026: task 5.1b Exams and later changes against the claims
 
 - Built in migration 0060: `exams`, `exam_rooms`, `exam_room_classes`, `exam_invigilators` and `lesson_block_class_outs`; exam claims in `time_claims` (a new kind `exam_group_class` for a group that sits, holder its own block), so lessons and exams meet one rule; completeness, a final cancel, a group only in its own lesson's slots.
