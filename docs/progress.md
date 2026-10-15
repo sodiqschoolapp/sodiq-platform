@@ -10,7 +10,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 The next sessions must know:
 
-- `department_move_loads` is the one place of the rule "a teacher outside the subject's department" for a move; it reads the Tutor exception as the row trigger of 0055 does, on the later of the version's start, the move's start and today.
+- `department_move_loads` is the one place of the rule "a teacher outside the subject's department" for a move; it joins the Tutor exception as the row trigger of 0055 does, but reads the Tutor on the later of the version's start, the move's start and today, where the trigger of 0055 reads the version's start only: for a draft whose start has passed the two differ, which 5.3 (readiness) should settle.
 - The department changes on the record when the move is saved; the profile is not part of the move, so the old subjects leave the profile first (`staff_subject_department` at the commit).
 - A move takes `DEPARTMENT_MOVE_LOCK` before any row lock, decided from a read without a lock; the locked read must agree, or the edit answers `staff_changed` or `subject_changed`.
 - The next task is 4.1.

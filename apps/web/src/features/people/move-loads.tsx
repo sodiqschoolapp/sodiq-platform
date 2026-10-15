@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { ErrorState, LoadingOutline } from '@/components/states';
@@ -27,6 +28,18 @@ export function MoveLoads({ error }: { error: unknown }) {
     ...subjectsQuery(branchId),
     enabled: lines.length > 0 && branchId !== null,
   });
+  // A subject the list does not hold reads the list again, once per refusal
+  // (`.claude/rules/web.md`: a refusal that names a record by id).
+  const missing =
+    subjects.data !== undefined &&
+    lines.some((line) => !subjects.data.subjects.some((one) => one.id === line.subjectId));
+  const reread = useRef<unknown>(null);
+  useEffect(() => {
+    if (missing && reread.current !== error) {
+      reread.current = error;
+      void subjects.refetch();
+    }
+  }, [missing, error, subjects]);
   if (!refused) {
     return null;
   }

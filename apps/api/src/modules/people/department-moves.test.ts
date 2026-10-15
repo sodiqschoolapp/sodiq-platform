@@ -28,6 +28,14 @@ const refusedWith = (response: Response, status: number, code: string) => {
 const detailsOf = (response: Response): ErrorDetail[] =>
   apiErrorSchema.parse(response.body).error.details ?? [];
 
+/** A start date sent without a move (spec review, should-fix 4: the detail code, not only the status). */
+const refusedNoMove = (response: Response) => {
+  refusedWith(response, 400, 'validation_failed');
+  expect(detailsOf(response)).toEqual([
+    expect.objectContaining({ path: 'departmentStartsOn', code: 'no_move' }),
+  ]);
+};
+
 // All names are invented. edge-cases/people-roles-accounts.md, row 15: "A
 // teacher moves to another department, or a subject is moved, mid-year. Both
 // changes carry a start date and are made by the Super Admin. They are refused
@@ -108,6 +116,28 @@ describe('the department move against the load', () => {
     daily: subject.daily === null ? { attendance: 10, classwork: 50, homework: 40 } : null,
     ...overrides,
   });
+
+  /** A subject move sent by the Super Admin, in the North unless said. */
+  const moveSubjectTo = async (
+    subject: string,
+    department: string,
+    startsOn: string,
+    branch = t.north,
+  ) => {
+    const listedNow = await t.get('/api/setup/subjects', branch, t.admin);
+    const answer = (listedNow.body as { subjects: unknown[] }).subjects
+      .map((one) => subjectSchema.parse(one))
+      .find((one) => one.id === subject);
+    if (answer === undefined) {
+      throw new Error('The subject is listed.');
+    }
+    return put(
+      `/api/setup/subjects/${subject}`,
+      subjectBody(answer, { departmentId: department, departmentStartsOn: startsOn }),
+      t.admin,
+      branch,
+    );
+  };
 
   /** A STEAM teacher of a STEAM subject of grade 7 on a class row of a new draft of the North. */
   async function steamRow(
@@ -489,13 +519,11 @@ describe('the department move against the load', () => {
         { divisionId: management, departmentId: null, main: true },
       ];
       const staff = await detail(teacher);
-      refusedWith(
+      refusedNoMove(
         await put(
           `/api/people/staff/${teacher}`,
           staffBody(staff, { divisions: swapped, departmentStartsOn: MOVE_ON }),
         ),
-        400,
-        'validation_failed',
       );
       const moved = await put(
         `/api/people/staff/${teacher}`,
@@ -510,30 +538,36 @@ describe('the department move against the load', () => {
       });
     });
 
-    it('adding Academic as a further division is not a move', async () => {
-      const created = await t.post('/api/people/staff', t.north, {
-        ...staffBody(await detail((await load.teacher(t.north)).staffId)),
-        firstName: 'Nodira',
-        lastName: 'Rahimova',
-        phone: '+998901234500',
-        divisions: [{ divisionId: management, departmentId: null, main: true }],
+    it('adding Academic as a further division is not a move, and runs no check', async () => {
+      // A person of Management whose stale row of a STEAM subject a move to
+      // National would refuse.
+      const { teacher } = await steamRow();
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await transaction.deleteFrom('staff_subjects').where('staff_id', '=', teacher).execute();
+        await transaction.deleteFrom('staff_divisions').where('staff_id', '=', teacher).execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({
+            staff_id: teacher,
+            division_id: management,
+            department_id: null,
+            is_main: true,
+          })
+          .execute();
       });
-      expect(created.status, JSON.stringify(created.body)).toBe(201);
-      const staff = staffDetailSchema.parse(created.body);
+      const staff = await detail(teacher);
       const added = [
         { divisionId: management, departmentId: null, main: true },
-        { divisionId: academic, departmentId: steam, main: false },
+        { divisionId: academic, departmentId: national, main: false },
       ];
-      refusedWith(
+      refusedNoMove(
         await put(
-          `/api/people/staff/${staff.id}`,
+          `/api/people/staff/${teacher}`,
           staffBody(staff, { divisions: added, departmentStartsOn: MOVE_ON }),
         ),
-        400,
-        'validation_failed',
       );
       const moved = await put(
-        `/api/people/staff/${staff.id}`,
+        `/api/people/staff/${teacher}`,
         staffBody(staff, { divisions: added }),
       );
       expect(moved.status, JSON.stringify(moved.body)).toBe(200);
@@ -609,6 +643,61 @@ describe('the department move against the load', () => {
       });
     });
 
+    it('lists the rows of the branch and counts those of another branch', async () => {
+      const subject = await load.classes.subject({ grades: [7] });
+      const southYear = (
+        await t.database.migrator
+          .selectFrom('academic_years')
+          .select('id')
+          .where('branch_id', '=', t.south)
+          .executeTakeFirstOrThrow()
+      ).id;
+      const southTeacher = await load.teacher(t.south, { subjects: [{ subject, grades: [7] }] });
+      await load.row({
+        branch_id: t.south,
+        version_id: await load.version(t.south, southYear, { startsOn: STARTS_ON }),
+        class_id: await load.classes.schoolClass(t.south, southYear, { grade: 7 }),
+        subject_id: subject,
+        teacher_id: southTeacher.staffId,
+      });
+      const northTeacher = await load.teacher(t.north, { subjects: [{ subject, grades: [7] }] });
+      const northRow = await load.row({
+        branch_id: t.north,
+        version_id: await load.version(t.north, year, { startsOn: STARTS_ON }),
+        class_id: await load.classes.schoolClass(t.north, year, { grade: 7 }),
+        subject_id: subject,
+        teacher_id: northTeacher.staffId,
+      });
+      const refused = await moveSubjectTo(subject, national, MOVE_ON);
+      refusedWith(refused, 409, 'department_move_loads');
+      expect(listed(refused)).toEqual([northRow]);
+      expect(detailsOf(refused).at(-1)).toMatchObject({ path: 'elsewhere', code: '1' });
+    });
+
+    it('passes when the only rows are of a version whose year ends before the start date', async () => {
+      const own = await t.newBranch();
+      const ownYear = await load.classes.year(own, 'current', '2026-09-01', '2027-05-31');
+      const subject = await load.classes.subject({ grades: [7] });
+      const { staffId } = await load.teacher(own, { subjects: [{ subject, grades: [7] }] });
+      await load.row({
+        branch_id: own,
+        version_id: await load.version(own, ownYear, { startsOn: STARTS_ON }),
+        class_id: await load.classes.schoolClass(own, ownYear, { grade: 7 }),
+        subject_id: subject,
+        teacher_id: staffId,
+      });
+      await t.database.migrator
+        .deleteFrom('staff_subjects')
+        .where('staff_id', '=', staffId)
+        .execute();
+      // Asked in a branch with no year: no upper bound (correction 5).
+      const bare = await t.newBranch();
+      const moved = await moveSubjectTo(subject, national, '2027-09-01', bare);
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      const subjectAfter = subjectSchema.parse(moved.body);
+      expect(subjectAfter.departmentSince).toBe('2027-09-01');
+    });
+
     it('is refused by a row that names a vacancy of the old department (correction 1)', async () => {
       const subject = await load.classes.subject({ grades: [7] });
       const vacancy = await load.vacancy(t.north, { subjects: [{ subject, grades: [7] }] });
@@ -675,13 +764,11 @@ describe('the department move against the load', () => {
       expect(detailsOf(required)).toEqual([
         expect.objectContaining({ path: 'departmentStartsOn', code: 'required' }),
       ]);
-      refusedWith(
+      refusedNoMove(
         await put(
           `/api/setup/subjects/${subject}`,
           subjectBody(answer, { departmentStartsOn: MOVE_ON }),
         ),
-        400,
-        'validation_failed',
       );
       refusedWith(
         await put(
@@ -1030,6 +1117,7 @@ describe('the department move against the load', () => {
         tutor: string;
         version: string;
         row: string;
+        other: string;
       }> {
         const tutorCaseRows = await tutorCase();
         const { staffId } = await load.teacher(t.north);
@@ -1051,7 +1139,7 @@ describe('the department move against the load', () => {
           .deleteFrom('staff_subjects')
           .where('staff_id', '=', staffId)
           .execute();
-        return { ...tutorCaseRows, row };
+        return { ...tutorCaseRows, row, other: staffId };
       }
 
       const editBody = (teacherId: string) => ({
@@ -1080,9 +1168,15 @@ describe('the department move against the load', () => {
       });
 
       it('and the teacher edit of a row to the Tutor: a move sent during the edit is refused', async () => {
-        const { subject, tutor, row } = await rowOfAnother();
-        // The other teacher's row would already refuse the move: it is
-        // removed, and the edit's row stands alone.
+        const { subject, tutor, row, other } = await rowOfAnother();
+        // The other teacher moves to National first, so that before the edit
+        // the row does not count against a move of the subject to National:
+        // only the edit's teacher makes it count (spec review, must-fix 1).
+        await t.database.migrator
+          .updateTable('staff_divisions')
+          .set({ department_id: national })
+          .where('staff_id', '=', other)
+          .execute();
         const held = await holdOpen(async (transaction) => {
           await transaction
             .selectFrom('subjects')
@@ -1141,20 +1235,33 @@ describe('the department move against the load', () => {
 
       it('and a copy: a move sent during the copy is refused by the copied row too', async () => {
         const { subject, classId, tutor, version } = await tutorCase();
-        await load.row({
+        const source = await load.row({
           branch_id: t.north,
           version_id: version,
           class_id: classId,
           subject_id: subject,
           teacher_id: tutor,
         });
-        // The source's row is moved out of the way: the copy's own row decides.
-        await t.database.migrator
-          .updateTable('timetable_versions')
-          .set({ status: 'archived' })
-          .where('id', '=', version)
-          .execute();
+        let copied = '';
+        // What the copy writes, in its order: the year FOR UPDATE, the
+        // teachers and then the subjects FOR KEY SHARE, the version with its
+        // source and the copied row. The copy route takes its locks before any
+        // point where a third transaction could stop it after the subject
+        // lock, so the two real routes cannot be ordered with `inOrder`; the
+        // other direction runs the real copy.
         const held = await holdOpen(async (transaction) => {
+          await transaction
+            .selectFrom('academic_years')
+            .select('id')
+            .where('id', '=', year)
+            .forUpdate()
+            .execute();
+          await transaction
+            .selectFrom('staff')
+            .select('id')
+            .where('id', '=', tutor)
+            .forKeyShare()
+            .execute();
           await transaction
             .selectFrom('subjects')
             .select('id')
@@ -1168,26 +1275,33 @@ describe('the department move against the load', () => {
               academic_year_id: year,
               number: 900,
               starts_on: STARTS_ON,
+              from_version_id: version,
             })
             .returning('id')
             .executeTakeFirstOrThrow();
-          await transaction
-            .insertInto('teaching_load_rows')
-            .values({
-              branch_id: t.north,
-              version_id: copy.id,
-              class_id: classId,
-              subject_id: subject,
-              teacher_id: tutor,
-              lessons_per_week: 2,
-            })
-            .execute();
+          copied = (
+            await transaction
+              .insertInto('teaching_load_rows')
+              .values({
+                branch_id: t.north,
+                version_id: copy.id,
+                class_id: classId,
+                subject_id: subject,
+                teacher_id: tutor,
+                lessons_per_week: 2,
+              })
+              .returning('id')
+              .executeTakeFirstOrThrow()
+          ).id;
         });
         const sent = moveSubject(subject, national);
         await untilWaiting();
         held.release();
         expect(await held.done).toBeUndefined();
-        refusedWith(await sent, 409, 'department_move_loads');
+        const refused = await sent;
+        refusedWith(refused, 409, 'department_move_loads');
+        // The copied row is listed beside its source: the move read after the copy.
+        expect([...listed(refused)].sort()).toEqual([source, copied].sort());
       });
     });
 

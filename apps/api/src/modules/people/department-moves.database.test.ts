@@ -1,6 +1,6 @@
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { BRANCH_SETTING, Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { LoadKit } from '../../testing/load-kit.js';
@@ -286,6 +286,68 @@ describe('department_move_loads in the database', () => {
         [{ row_id: row, version_id: version, branch_id: north, rows: 1 }],
       );
     });
+
+    it('counts a Tutor subject on a group row of the class Tutor', async () => {
+      const subject = await kit.tutorSubject({ grades: [7] });
+      await database.migrator
+        .updateTable('subjects')
+        .set({ group_subject: true })
+        .where('id', '=', subject)
+        .execute();
+      const classId = await kit.classes.schoolClass(north, northYear, { grade: 7 });
+      const group = await kit.classes.group(north, northYear, subject, [classId]);
+      const { staffId, accountId } = await kit.teacher(north);
+      await kit.tutorOf(north, classId, accountId);
+      await database.migrator
+        .updateTable('staff_divisions')
+        .set({ department_id: tutorsDepartment })
+        .where('staff_id', '=', staffId)
+        .execute();
+      await kit.profile(staffId, [{ subject, grades: [7] }]);
+      const version = await kit.version(north, northYear, { startsOn: STARTS_ON });
+      const row = await kit.row({
+        branch_id: north,
+        version_id: version,
+        group_id: group,
+        subject_id: subject,
+        teacher_id: staffId,
+      });
+      expect(await loads(north, { teacher: staffId, department: national })).toEqual([
+        { row_id: row, version_id: version, branch_id: north, rows: 1 },
+      ]);
+    });
+
+    it('counts a Tutor subject on a class row of a vacancy, which is never a Tutor', async () => {
+      const subject = await kit.tutorSubject({ grades: [7] });
+      const classId = await kit.classes.schoolClass(north, northYear, { grade: 7 });
+      const vacancy = await kit.vacancy(north);
+      await database.migrator
+        .updateTable('staff_divisions')
+        .set({ department_id: tutorsDepartment })
+        .where('staff_id', '=', vacancy)
+        .execute();
+      await kit.profile(vacancy, [{ subject, grades: [7] }]);
+      const version = await kit.version(north, northYear, { startsOn: STARTS_ON });
+      const row = await kit.row({
+        branch_id: north,
+        version_id: version,
+        class_id: classId,
+        subject_id: subject,
+        teacher_id: vacancy,
+      });
+      // The vacancy's record leaves the Tutors department; the subject stays.
+      await database.migrator.transaction().execute(async (transaction) => {
+        await transaction.deleteFrom('staff_subjects').where('staff_id', '=', vacancy).execute();
+        await transaction
+          .updateTable('staff_divisions')
+          .set({ department_id: steam })
+          .where('staff_id', '=', vacancy)
+          .execute();
+      });
+      expect(await loads(north, { subject, department: tutorsDepartment })).toEqual([
+        { row_id: row, version_id: version, branch_id: north, rows: 1 },
+      ]);
+    });
   });
 
   describe('the versions that count (decisions 1 and 2)', () => {
@@ -383,6 +445,21 @@ describe('department_move_loads in the database', () => {
         expect((await refusal(loads(north, input))).constraint).toBe('department_move_input');
       }
     });
+
+    it('refuses a transaction with no moment', async () => {
+      const { teacher } = await steamRow();
+      const refused = await refusal(
+        database.migrator.transaction().execute(async (transaction) => {
+          await sql`select set_config(${BRANCH_SETTING}, ${`{${north}}`}, true)`.execute(
+            transaction,
+          );
+          await sql`select * from department_move_loads(${north}::uuid, ${teacher}::uuid, null, ${national}::uuid, ${STARTS_ON}::date)`.execute(
+            transaction,
+          );
+        }),
+      );
+      expect(refused.constraint).toBe('department_move_needs_moment');
+    });
   });
 
   describe('the grants', () => {
@@ -398,7 +475,7 @@ describe('department_move_loads in the database', () => {
       ).toEqual(['sodiq_app']);
     });
 
-    it('lets the application write the start date of the department, and nothing new besides', async () => {
+    it('lets the application write the start date of the department', async () => {
       const { subject, teacher } = await steamRow();
       await inBranch(north, async (transaction) => {
         await transaction
@@ -418,6 +495,25 @@ describe('department_move_loads in the database', () => {
         ),
       );
       expect(refused.code).toBe(INSUFFICIENT_PRIVILEGE);
+    });
+
+    it('adds the update of department_since to the columns the application writes, and nothing else', async () => {
+      const found = await sql<{ table_name: string; columns: string }>`
+        select table_name, string_agg(column_name, ',' order by column_name) as columns
+        from information_schema.column_privileges
+        where grantee = 'sodiq_app' and privilege_type = 'UPDATE'
+          and table_name in ('subjects', 'staff_divisions')
+        group by table_name
+        order by table_name
+      `.execute(database.migrator);
+      expect(found.rows).toEqual([
+        { table_name: 'staff_divisions', columns: 'department_id,department_since,is_main' },
+        {
+          table_name: 'subjects',
+          columns:
+            'archived_at,colour,demanding,department_id,department_since,grades,group_subject,journal_type,language_rule,name_en,name_ru,name_uz,rating_exam,rating_round,weights_round',
+        },
+      ]);
     });
   });
 });

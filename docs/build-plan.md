@@ -456,6 +456,7 @@ How to read the task lines:
   - Done when: a draft cannot move to generation while a readiness check fails.
   - From 3.4a (pull request #99, decision 15 and correction 6): draft versions exist with their start date ("next Monday by default") and the load; this task adds the rest of step 1, the first day of a coming quarter as a shortcut, the readiness of the load step (the problems of each row, `loadRowProblems`), and the load step's list of a Tutor of two classes whose pinned lessons fall at the same time.
   - From 3.4b (pull request #100, decisions 4, 5 and 7): the readiness of steps 2 and 3 reads the weekly totals (`totals.ts` of `packages/timetable-rules`: each class's lessons against the lesson slots of its week, each teacher's lessons against the free slots in the branch) and blocks on `load_group_gaps` (students not placed) and the block problems (`load_block_lessons`, `load_block_teacher`, `load_block_mixed`, `load_mixed_not_split`, `load_split_and_whole`), which the load page only shows.
+  - From 3.4c (pull request #101, spec review nit 8): the row trigger of 0055 reads the class Tutor of a Tutor subject on the version's start date only, while `department_move_loads` (0057) reads it on the later of the start date, the move's start and today; for a draft whose start date has passed the two differ, and readiness settles one reading for the row checks.
 
 - [ ] **5.4a Grid: board and drag**
   - Read: `06` (Editing in the grid), `12`.
