@@ -37,9 +37,9 @@ Students who left or moved are shown in a folded section at the bottom with thei
 | 5 | Fully exempt. Set by the system from an exemption; the teacher cannot type it. |
 
 - **Attendance.** "All present" marks 1 for every student who is not yet marked and not exempt; the teacher then types the exceptions: 0, 2 or 3. This takes seconds.
-- **Classwork and homework.** The columns come from the lesson plan, so a lesson shows only the works it really has. A lesson can have any number of classworks and any number of homeworks given, including none of one kind, for example three homeworks and no classwork. Each work has its own column and its own total. The teacher sets the total of a work, then types a number for each student. The system shows the percent next to the number. The rules are under "The total" below. In an extra lesson, or a lesson held while its plan item is missing, the teacher can add any number of classworks and of "homework given" by hand. These are the only columns that do not come from the plan.
+- **Classwork and homework.** The columns come from the lesson plan, so a lesson shows only the works it really has. A lesson can have any number of classworks and any number of homeworks given, including none of one kind, for example three homeworks and no classwork. Each work has its own column and its own total. The teacher sets the total of a work, then types a number for each student. The system shows the percent next to the number. The rules are under "The total" below. In a lesson held while its plan item is missing, the teacher can add any number of classworks and of "homework given" by hand. These are the only columns that do not come from the plan.
 - **Homework column.** The homework numbers in a lesson's homework columns are for the homeworks checked at that lesson, which are the tasks given at the previous lesson: one column for each homework given there. An empty homework column is never shown. So the first lesson of the year has none, and neither does a lesson after one where no homework was given. Homework given at the last lesson of a quarter is checked, and counted, in the next quarter.
-- **Topic.** Taken from the lesson plan and read only in the journal. Only an extra lesson has a topic typed here.
+- **Topic.** Taken from the lesson plan and read only in the journal.
 - **Rating exam.** One score from 0 to 100 per student per quarter, only in rating subjects.
 - **Comments.** A comment can be attached to any attendance mark or score, and a general note to a student for a lesson. Each comment is either "staff only" or "visible to parents".
 - **Saving.** Every cell saves by itself and shows a saved sign. There is no Save button. If the connection drops, entries wait on the device and are sent when it returns; the page warns before closing with unsent entries.
@@ -94,7 +94,7 @@ One rule covers every figure: a student is measured only on the lessons they wer
 | Student's attendance, classwork and homework averages | Exempt lessons, and works given in them, are left out. |
 | Quarter result | Calculated from the remaining lessons. If none remain, the result is "Exempt": no number and no grade. If fewer than one third of the quarter's lessons remain, the result is calculated and flagged with the count, for example "based on 8 of 40 lessons". When closing the quarter, the Academic Vice Principal decides each flagged case: keep the number, or set "Exempt". The quarter cannot be closed while a flagged result is undecided. |
 | Rating exam | If the exemption covers the exam date, the student is exempt from the exam (that part is left out and the other weights are scaled up), or sits it later and the score is entered then. |
-| Year result | The mean of the quarters that have a result. |
+| Year result | The mean of the quarters that have a result, each as published (rule 11). |
 | Class and group averages, subject mastery | Exempt lessons and "Exempt" results are not counted. |
 | Rating | In one subject, a student with "Exempt" is not ranked. Across subjects, the mean covers the subjects that have a result, and the student is marked as having fewer subjects. |
 | Stipend list | A candidate with an "Exempt" or flagged result is marked for the Super Admin's decision. |
@@ -127,8 +127,8 @@ One rule covers every figure: a student is measured only on the lessons they wer
 7. Quarter result = attendance average × its weight + classwork average × its weight + homework average × its weight + rating exam × its weight, using the weights of that subject and quarter.
 8. While a part has no data, the result is shown as provisional: calculated on the parts that exist, scaled to 100, and marked. A quarter cannot be closed in a rating subject until every student has a rating exam score, "did not sit" (counts 0) or "exempt" (the part is left out).
 9. Grade = the band of the rounded quarter result: 0–49 is 2, 50–66 is 3, 67–83 is 4, 84–100 is 5.
-10. Numbers are kept exact and rounded only for display: to a whole number, halves up.
-11. Year result = the mean of the four quarter results. A quarter whose result is "Exempt" is left out.
+10. Numbers are kept exact and rounded only for display: to a whole number, halves up. The year result is the one figure calculated from rounded numbers, the quarter results as published (rule 11).
+11. Year result = the mean of the four quarter results as published, each rounded to a whole number as it is shown, rounded once more for the year. A quarter whose result is "Exempt" is left out. Quarters shown 50, 50, 49 and 50 give 49.75, shown as 50, grade 3: a report card must add up.
 
 Worked example with weights 20 · 20 · 20 · 40: attendance 100, classwork 50, homework 30, rating exam 49 give 20 + 10 + 6 + 19.6 = 55.6, shown as 56, grade 3. This matches a real row in last year's journal on myss.uz.
 

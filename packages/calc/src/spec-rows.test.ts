@@ -32,7 +32,7 @@ const EXEMPTIONS: readonly Row[] = [
   },
   {
     case: 'Slots 5–7 on Friday are exempted, then Friday becomes a shortened day and a lesson moves into slot 6.',
-    rule: '9bcd6e51a09389b1',
+    rule: 'bfd4541d84af7707',
     tests: [],
     tasks: ['8.5'],
   },
@@ -227,9 +227,9 @@ const CALCULATION: readonly Row[] = [
   },
   {
     case: 'The year result when quarters show 50, 50, 49, 50 but are exactly 49.5, 49.5, 49.4, 49.5.',
-    rule: '6e49784fe24558de',
+    rule: '1f8f7d059eb7861e',
     tests: [['year.test.ts'], ['outcome.test.ts', 'outcomeForYear']],
-    tasks: [],
+    tasks: ['3.6c'],
   },
   {
     case: "Ma'naviyat soati and the Homework slot.",
@@ -260,12 +260,6 @@ const CALCULATION: readonly Row[] = [
     rule: 'e6baf0416ba3e304',
     tests: [],
     tasks: ['9.4a'],
-  },
-  {
-    case: 'An extra Saturday lesson where only 9 of 22 come.',
-    rule: 'e7777ba81e8f5e89',
-    tests: [['daily.test.ts'], ['quarter.test.ts']],
-    tasks: [],
   },
   {
     case: 'A bug is found after results were closed and exported.',

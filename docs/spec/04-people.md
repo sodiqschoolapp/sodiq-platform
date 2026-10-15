@@ -23,6 +23,7 @@ Every student and staff member has one profile that keeps its full history. Reco
 - Bulk actions on ticked rows: put into a class, put into a group, archive, export.
 - Excel import is not built for now. The school will give the import format for each feature that benefits from one, and each import is added then. Until then students are entered by hand, with the bulk screens for placing them. Export to Excel is available from the start.
 - Profile tabs: Overview, Results, Attendance, Exemptions, Timetable, Relatives, Contract and scholarship, History, Comments.
+- **Who reads what.** Each role sees the data related to its work. The fields are grouped, and each group has named readers (Edge cases, people, roles and accounts: Personal data and the audit log); the diagnostic test score has readers of its own there. A Teacher sees only the students they teach, with the Basic fields.
 
 ## UID sets
 
@@ -55,7 +56,7 @@ A close relative is a person record of its own, not a set of fields inside the s
 | Field | Rule |
 | --- | --- |
 | Full name | Required. |
-| Main phone | Required, except for a relative recorded with "no phone of their own" (see Edge cases). Unique: no two relatives can have the same main phone. Stored in international format, +998 by default; other country codes are accepted. |
+| Main phone | Required, except for a relative recorded with "no phone of their own" (see Edge cases). Unique: no two relatives can have the same main phone, and one phone number belongs to one adult, a staff member or a relative. A relative whose main phone is a staff member's phone is marked as the same person automatically (see Edge cases). A student's own phone may repeat a relative's. Stored in international format, +998 by default; other country codes are accepted. |
 | Workplace | Optional. |
 | Email | Optional. |
 | Relationship | Required. Kept on the link between the relative and each student, so the same person can be father of one student and uncle of another. |
@@ -65,7 +66,7 @@ A close relative is a person record of its own, not a set of fields inside the s
 - **Changing a phone.** If the new number already belongs to another relative, the change is refused and that relative is shown.
 - **Main contact.** One relative of each student is marked as the main contact and receives notices first.
 - **Relative's page.** Shows the relative's data and all linked students. Editing the phone or name here changes it for every linked student.
-- **Finding relatives.** The Academic Vice Principal has a Relatives list with search by name and phone. The student's Relatives tab shows the linked relatives.
+- **Finding relatives.** The Academic Vice Principal has a Relatives list with search by name and phone. Ctrl+K finds a relative by phone for the Super Admin, the Principal and the Academic Vice Principal, and lists the relative's children. The student's Relatives tab shows the linked relatives.
 - **Removing a link.** Unlinking a relative from one student does not affect their other students. A relative with no linked students is archived.
 - **Parent account.** In Release 2 the relative record becomes the parent account: the relative signs in with the main phone and sees every linked student whose link has portal access switched on. This is why the phone must be unique.
 
