@@ -811,9 +811,23 @@ describe('class membership in the database', () => {
           ),
         ),
       ).toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+      // Task 3.3d (decision 2 of pull request #98, Look first): the student
+      // has an update grant, guarded: never without a merge of the pair
+      // written in the transaction (`memberships_merge`, 0054).
+      const other = await members.student(north);
+      expect(
+        await refusal(
+          inBranch(north, (transaction) =>
+            transaction
+              .updateTable('class_memberships')
+              .set({ student_id: other })
+              .where('id', '=', id)
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ constraint: 'memberships_merge' });
       for (const values of [
         { class_id: yale },
-        { student_id: student },
         { valid_from: '2026-09-02' },
         { own_until: '2027-05-01' },
         { cause: 'undo' },

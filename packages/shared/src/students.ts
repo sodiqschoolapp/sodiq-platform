@@ -585,6 +585,14 @@ export const studentDetailSchema = studentListItemSchema.extend({
   lastBranchMove: studentBranchMoveSchema.nullable(),
   /** Release and cancel: `branch_moves` `edit` (task 3.3c). */
   canMoveBranch: z.boolean(),
+  /**
+   * The UIDs of the records merged into this one (task 3.3d; the System
+   * block's "Also UID ..."), by the moment of the merge, each record's
+   * current UID first. For every reader of the record.
+   */
+  mergedUids: z.array(z.string()),
+  /** The merge with another record: `student_merges` `edit`, the Super Admin (task 3.3d). */
+  canMerge: z.boolean(),
   today: schoolDateSchema,
 });
 
@@ -618,6 +626,16 @@ export const studentHistoryLineSchema = z.discriminatedUnion('kind', [
     cause: statusCauseSchema,
     from: schoolDateSchema,
     until: schoolDateSchema.nullable(),
+  }),
+  /**
+   * A record merged into this one (task 3.3d): the day of the merge in the
+   * branch of the request, the merged UID and the reason.
+   */
+  z.object({
+    kind: z.literal('merged'),
+    on: schoolDateSchema,
+    uid: z.string(),
+    reason: z.string(),
   }),
 ]);
 

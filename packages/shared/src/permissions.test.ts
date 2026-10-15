@@ -302,6 +302,16 @@ describe('a frozen permission table', () => {
     }
   });
 
+  // Task 3.3d, decision 10 of pull request #98: edge/students-classes-groups,
+  // "The Super Admin can merge two records; the older UID survives".
+  it('gives the merge of two student records to the Super Admin alone', () => {
+    for (const role of ROLES) {
+      expect(PERMISSIONS.student_merges[role], role).toEqual(
+        role === 'super_admin' ? ['edit'] : [],
+      );
+    }
+  });
+
   // Task 2.6a, decision 2 of pull request #75: edge/people-roles-accounts,
   // "The Super Admin reads all; the Principal and Academic Vice Principal
   // read their branch".
@@ -348,6 +358,7 @@ describe('a frozen permission table', () => {
       'student_graduates',
       'student_history',
       'student_identity',
+      'student_merges',
       'students',
       'subjects',
       'vacancies',

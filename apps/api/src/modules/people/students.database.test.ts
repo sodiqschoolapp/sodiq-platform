@@ -244,6 +244,9 @@ describe('student records in the database', () => {
 
     it('keeps the start date and the branch: no update of either', async () => {
       const id = await createStudent({ branch: north, uid: '2607045' });
+      // Task 3.3d (decision 2 of pull request #98, Look first): the start
+      // has an update grant, guarded: only for the kept record of a merge
+      // written in the transaction (`students_starts_on`, 0054).
       await expect(
         inBranch(north, (transaction) =>
           transaction
@@ -252,7 +255,7 @@ describe('student records in the database', () => {
             .where('id', '=', id)
             .execute(),
         ),
-      ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+      ).rejects.toMatchObject({ constraint: 'students_starts_on' });
       // Task 3.3c (decision 4 of pull request #97, Look first): the branch
       // has an update grant, guarded: never without a move accepted in the
       // transaction (`students_branch_move`, 0053).

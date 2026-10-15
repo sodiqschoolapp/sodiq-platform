@@ -465,6 +465,12 @@ export const ERROR_CODES = [
   'status_scheduled',
   /** The date is before the student's move to this branch: the old branch's rows are not changed from here (task 3.3c, decision 12). */
   'before_branch_move',
+  /** A record cannot be merged with itself (task 3.3d). */
+  'student_merge_same',
+  /** No student holds the UID named for a merge: unknown, or merged already (task 3.3d). */
+  'student_merge_not_found',
+  /** A row of the two records would lose days at its start or in its middle; `details` names the first such day (task 3.3d, decision 4). */
+  'student_merge_overlap',
   /** The group is of another subject than the group the student leaves (task 3.3a). */
   'group_transfer_subject',
   /** Any other refusal that has no code of its own yet. */
