@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SystemClock } from '../../clock/system-clock.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { moveStudentBranch } from '../../testing/members-kit.js';
 import { linkRelative } from '../../testing/relatives-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { staffIdOf } from './staff-numbers.js';
@@ -509,13 +510,9 @@ describe('close relatives in the database', () => {
             .where('id', '=', student)
             .execute();
         });
-        for (const branch of [south, north]) {
-          await database.migrator
-            .updateTable('students')
-            .set({ branch_id: branch })
-            .where('id', '=', student)
-            .execute();
-        }
+        // Task 3.3c: the branch changes only with an accepted move (0053).
+        await moveStudentBranch(database.migrator, student, north, south);
+        await moveStudentBranch(database.migrator, student, south, north);
       });
 
       it('lets the edit pass with a relative linked in the same transaction', async () => {
@@ -578,13 +575,9 @@ describe('close relatives in the database', () => {
     it('lets an unlinked row move with its student to another branch (task 3.3)', async () => {
       const { student, second } = await twoRelatives();
       await inBranch(north, (transaction) => unlink(transaction, student, second));
-      for (const branch of [south, north]) {
-        await database.migrator
-          .updateTable('students')
-          .set({ branch_id: branch })
-          .where('id', '=', student)
-          .execute();
-      }
+      // Task 3.3c: the branch changes only with an accepted move (0053).
+      await moveStudentBranch(database.migrator, student, north, south);
+      await moveStudentBranch(database.migrator, student, south, north);
       const rows = await database.migrator
         .selectFrom('student_relatives')
         .select(['branch_id', 'unlinked_at'])

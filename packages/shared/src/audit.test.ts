@@ -62,6 +62,24 @@ describe('the audit log in packages/shared', () => {
       );
     });
 
+    // Task 3.3c (pull request #97): the keys of the branch move entries are
+    // ids, dates and counts, kept for a reader without Identity.
+    it('keeps the keys of a move to another branch', () => {
+      const value = {
+        branchMoveId: '01a13d33-bb83-7470-beab-217d44ec92e6',
+        fromBranchId: '01a13d33-bb83-7470-beab-217d44ec92e7',
+        toBranchId: '01a13d33-bb83-7470-beab-217d44ec92e8',
+        from: '2026-10-14',
+        groupsChosen: 1,
+        groupsPlaced: 0,
+        branchMoveCancelled: '01a13d33-bb83-7470-beab-217d44ec92e9',
+        branchMoves: [{ id: '01a13d33-bb83-7470-beab-217d44ec92e6' }],
+      };
+      const hidden = hideIdentity(entryOf({ action: 'student.branch_moved', newValue: value }));
+      expect(hidden.newValue).toEqual(value);
+      expect(hidden.hidden).toEqual([]);
+    });
+
     it('hides the nested snake_case row of a deleted student', () => {
       const hidden = hideIdentity(
         entryOf({

@@ -62,6 +62,7 @@ import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusal
 import { refusingRelativeRaces, RelativeWrites } from './relative-writes.js';
 import { exportGroupsOf } from './student-export.js';
 import { classLeft } from './return-class.js';
+import { branchMoveState, branchMovesOf, branchNames, summaryOf } from './branch-moves.js';
 import {
   historyLines,
   holdsData,
@@ -1124,6 +1125,7 @@ export class Students {
         ) !== undefined,
       deletable: canArchive && !holdsData(rows, row.scholarship_type, Number(contractCount.count)),
       ...(await this.movesOfDetail(transaction, access, id, today, scope)),
+      ...(await this.branchMovesOfDetail(transaction, access, id)),
       ...(await this.classLeftOfDetail(transaction, canArchive, id, rows, today)),
       today,
     };
@@ -1200,7 +1202,9 @@ export class Students {
       | 'readsHistory'
     >
   > {
-    const moves = await moveSummaries(transaction, id, today);
+    // The moves of this branch: the Super Admin's transaction sees every
+    // branch, and a move of an earlier branch is on the History tab (task 3.3c).
+    const moves = await moveSummaries(transaction, id, today, branchOf(access));
     const movers = permitting(
       { area: 'group_transfers', action: 'edit', branch: 'request' },
       access.assignments,
@@ -1238,6 +1242,44 @@ export class Students {
       ),
       canMoveInPast: pastMoverOf(access) !== undefined,
       readsHistory: readerOf(access, 'student_history', scope) !== undefined,
+    };
+  }
+
+  /**
+   * The move to another branch on the record (task 3.3c): the open release,
+   * read by a reader of `branch_moves` (the badge of the sending branch);
+   * the latest move into this branch that was accepted (the Academic block,
+   * decision 3); whether this reader releases and cancels.
+   */
+  private async branchMovesOfDetail(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+  ): Promise<Pick<StudentDetail, 'branchMove' | 'lastBranchMove' | 'canMoveBranch'>> {
+    const branchId = branchOf(access);
+    const moves = await branchMovesOf(transaction, id, branchId);
+    const names = await branchNames(
+      transaction,
+      moves.flatMap((move) => [move.fromBranchId, move.toBranchId]),
+    );
+    const can = (action: 'view' | 'edit') =>
+      decide(
+        { area: 'branch_moves', action, branch: 'request' },
+        access.assignments,
+        access.branchId,
+        PERMISSIONS,
+      ) !== undefined;
+    const open = moves.find((move) => branchMoveState(move) === 'open');
+    const arrived = moves
+      .filter(
+        (move) =>
+          move.acceptedAt !== null && move.toBranchId.toLowerCase() === branchId.toLowerCase(),
+      )
+      .at(-1);
+    return {
+      branchMove: open !== undefined && can('view') ? summaryOf(open, names) : null,
+      lastBranchMove: arrived === undefined ? null : summaryOf(arrived, names),
+      canMoveBranch: can('edit'),
     };
   }
 

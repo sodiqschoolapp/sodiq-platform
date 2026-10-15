@@ -1,7 +1,7 @@
 import { studentNameKey } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Database } from '../database/database.js';
-import type { Transaction } from '../database/transactions.js';
+import { BRANCH_SETTING, MOMENT_SETTING, type Transaction } from '../database/transactions.js';
 import { linkRelative } from './relatives-kit.js';
 
 let count = 0;
@@ -252,4 +252,48 @@ export class MembersKit {
       .where('id', '=', id)
       .executeTakeFirstOrThrow();
   }
+}
+
+/**
+ * The move of a student to another branch as an accept writes it (task 3.3c,
+ * db/migrations/0053): a release from `from` to `to`, accepted, and the branch
+ * of the student changed, in one transaction of the migrator with the moment
+ * and the filter an accept has. The class and group rows are the caller's:
+ * a test of 2.4a or 3.1b moves the student with its rows left as they were.
+ */
+export async function moveStudentBranch(
+  migrator: Database,
+  studentId: string,
+  from: string,
+  to: string,
+  moment = '2026-10-14T10:00:00+05:00',
+): Promise<void> {
+  await migrator.transaction().execute(async (transaction) => {
+    await sql`
+      select set_config(${BRANCH_SETTING}, ${`{${from},${to}}`}, true),
+        set_config(${MOMENT_SETTING}, ${new Date(moment).toISOString()}, true)
+    `.execute(transaction);
+    const release = await transaction
+      .insertInto('student_branch_moves')
+      .values({
+        branch_id: from,
+        student_id: studentId,
+        from_branch_id: from,
+        to_branch_id: to,
+        effective_on: sql<string>`branch_today(${to}::uuid)`,
+        released_at: new Date(moment),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .updateTable('student_branch_moves')
+      .set({ accepted_at: new Date(moment) })
+      .where('id', '=', release.id)
+      .execute();
+    await transaction
+      .updateTable('students')
+      .set({ branch_id: to })
+      .where('id', '=', studentId)
+      .execute();
+  });
 }

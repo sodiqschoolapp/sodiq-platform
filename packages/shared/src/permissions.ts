@@ -261,6 +261,14 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   History. A new area for new routes, decided on pull request #95
  *   (decision 9 as changed by correction 3, Look first) and flagged on
  *   issue #42.
+ * - `branch_moves` (`edge/students-classes-groups`, "A student moves to
+ *   another branch": "The sending Academic Vice Principal releases the
+ *   student and the receiving one accepts ... the Super Admin can do both";
+ *   task 3.3c): `edit` (release, cancel, accept, decline) for the Super
+ *   Admin and the Academic Vice Principal, `view` (the incoming list, the
+ *   release on the record) for them and the Principal ("Views everything in
+ *   the branch", `02`). A new area for new routes, decided on pull request
+ *   #97 (decision 8 as changed by correction 3) and flagged on issue #42.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -402,6 +410,11 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['edit'],
     senior_head_teacher: ['edit'],
     head_teacher: ['edit'],
+  }),
+  branch_moves: rows({
+    super_admin: ['view', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'edit'],
   }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],

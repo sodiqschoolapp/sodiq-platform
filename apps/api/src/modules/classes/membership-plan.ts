@@ -8,10 +8,18 @@ export interface StoredMembership {
   readonly validUntil: SchoolDate;
   /** The row's own end (correction 1), which a leaving taken back gives back. */
   readonly ownUntil: SchoolDate;
-  readonly endedBy: 'leaving' | 'withdrawn' | 'transfer' | 'undone' | null;
+  readonly endedBy: 'leaving' | 'withdrawn' | 'transfer' | 'undone' | 'branch_move' | null;
   readonly leavingId: string | null;
-  /** What wrote the row (0045, 0050, 0052): a placement, the create, a cancel, an undo, a move, a return, a restore. */
-  readonly cause: 'placement' | 'create' | 'cancel' | 'undo' | 'transfer' | 'return' | 'restore';
+  /** What wrote the row (0045, 0050, 0052, 0053): a placement, the create, a cancel, an undo, a move, a return, a restore, a move to another branch. */
+  readonly cause:
+    | 'placement'
+    | 'create'
+    | 'cancel'
+    | 'undo'
+    | 'transfer'
+    | 'return'
+    | 'restore'
+    | 'branch_move';
   /** The move whose action inserted the row (task 3.3a, 0050), if any. */
   readonly writtenByMoveId: string | null;
   /** The move that cut or emptied the row (task 3.3a, 0050), if any. */

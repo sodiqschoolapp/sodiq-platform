@@ -4,6 +4,7 @@ import { personNameSchema } from './accounts.js';
 import { classNotRestoredSchema, studentClassSchema } from './classes.js';
 import { studentGroupSchema } from './groups.js';
 import { moveClassSchema, moveGroupSchema, studentMoveSchema } from './moves.js';
+import { branchMoveLineSchema, studentBranchMoveSchema } from './branch-moves.js';
 import { spellingKey, storedStudentName, validName } from './names.js';
 import { studentRelativesInputSchema } from './relatives.js';
 import { jshshirSchema, sexSchema, staffPhoneSchema } from './staff.js';
@@ -575,6 +576,15 @@ export const studentDetailSchema = studentListItemSchema.extend({
   canMoveInPast: z.boolean(),
   /** The History tab (`student_history` `view` in its scope; task 3.3a, decision 9). */
   readsHistory: z.boolean(),
+  /**
+   * The open release of the student to another branch (task 3.3c; the badge
+   * of the sending branch), for a reader of `branch_moves`; `null` when none.
+   */
+  branchMove: studentBranchMoveSchema.nullable(),
+  /** The Academic block: the latest accepted move to this branch (decision 3), for every reader of the record. */
+  lastBranchMove: studentBranchMoveSchema.nullable(),
+  /** Release and cancel: `branch_moves` `edit` (task 3.3c). */
+  canMoveBranch: z.boolean(),
   today: schoolDateSchema,
 });
 
@@ -588,6 +598,7 @@ export type StudentDetail = z.infer<typeof studentDetailSchema>;
  */
 export const studentHistoryLineSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('move'), move: studentMoveSchema }),
+  branchMoveLineSchema,
   z.object({
     kind: z.literal('class'),
     class: moveClassSchema,

@@ -182,6 +182,7 @@ export interface ClassMemberships {
   class_id: string;
   created_at: Generated<Timestamp>;
   ended_by: string | null;
+  ended_by_branch_move_id: string | null;
   ended_by_move_id: string | null;
   id: Generated<string>;
   leaving_id: string | null;
@@ -299,6 +300,7 @@ export interface GroupMemberships {
   cause: string;
   created_at: Generated<Timestamp>;
   ended_by: string | null;
+  ended_by_branch_move_id: string | null;
   ended_by_move_id: string | null;
   group_id: string;
   id: Generated<string>;
@@ -561,6 +563,23 @@ export interface StudentAccounts {
   switched_on_at: Timestamp | null;
 }
 
+export interface StudentBranchMoves {
+  accepted_at: Timestamp | null;
+  accepted_xact: string | null;
+  branch_id: string;
+  cancelled_at: Timestamp | null;
+  cancelled_by_leaving_id: string | null;
+  created_at: Generated<Timestamp>;
+  decline_reason: string | null;
+  declined_at: Timestamp | null;
+  effective_on: string;
+  from_branch_id: string;
+  id: Generated<string>;
+  released_at: Timestamp;
+  student_id: string;
+  to_branch_id: string;
+}
+
 export interface StudentContracts {
   branch_id: string;
   created_at: Generated<Timestamp>;
@@ -751,6 +770,7 @@ export interface DB {
   staff_statuses: StaffStatuses;
   staff_subjects: StaffSubjects;
   student_accounts: StudentAccounts;
+  student_branch_moves: StudentBranchMoves;
   student_contracts: StudentContracts;
   student_moves: StudentMoves;
   student_relatives: StudentRelatives;

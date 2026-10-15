@@ -47,6 +47,7 @@ import {
   type StoredMove,
 } from '../classes/student-moves.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
+import { arrivedOn, branchMoveState, branchMovesOf } from './branch-moves.js';
 import { Students } from './students.service.js';
 
 /** Plain data for an audit entry: dates as text, no class instances. */
@@ -382,6 +383,7 @@ export class StudentMoves {
       throw notFound();
     }
     const pastAssignmentId = this.pastAllowed(access, from, today);
+    await refuseBranchMove(transaction, branchId, student.id, from);
     const held = student.memberships.find(
       (row) => holdsDays(row) && row.validFrom <= from && from < row.validUntil,
     );
@@ -875,6 +877,7 @@ export class StudentMoves {
       throw new ApiException('group_transfer_subject', 409);
     }
     const pastAssignmentId = this.pastAllowed(access, from, today);
+    await refuseBranchMove(transaction, branchOf(access), student.id, from);
     if (!(holdsDays(row) && row.validFrom <= from && from < row.validUntil)) {
       // The row the person saw no longer holds the date (decision 6).
       throw new ApiException(input.seen ? 'student_changed' : 'move_no_membership', 409);
@@ -1163,6 +1166,27 @@ export class StudentMoves {
       .set({ valid_until: until, ended_by: 'transfer', leaving_id: null, ended_by_move_id: moveId })
       .where('id', '=', row.id)
       .execute();
+  }
+}
+
+/**
+ * Task 3.3c (decision 11): a class or group move waits for an open release
+ * of the student to another branch; nothing is dated before the student's
+ * move into this branch (decision 12).
+ */
+async function refuseBranchMove(
+  transaction: Transaction,
+  branchId: string,
+  studentId: string,
+  from: SchoolDate,
+): Promise<void> {
+  const moves = await branchMovesOf(transaction, studentId, branchId);
+  if (moves.some((move) => branchMoveState(move) === 'open')) {
+    throw new ApiException('branch_move_open', 409);
+  }
+  const arrived = arrivedOn(moves, branchId);
+  if (arrived !== undefined && from < arrived) {
+    throw new ApiException('before_branch_move', 409);
   }
 }
 

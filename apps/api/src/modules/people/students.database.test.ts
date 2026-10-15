@@ -17,6 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SystemClock } from '../../clock/system-clock.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { moveStudentBranch } from '../../testing/members-kit.js';
 import { linkRelative } from '../../testing/relatives-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
@@ -252,15 +253,18 @@ describe('student records in the database', () => {
             .execute(),
         ),
       ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+      // Task 3.3c (decision 4 of pull request #97, Look first): the branch
+      // has an update grant, guarded: never without a move accepted in the
+      // transaction (`students_branch_move`, 0053).
       await expect(
-        inBranch(north, (transaction) =>
+        transactions.run([north, south], (transaction) =>
           transaction
             .updateTable('students')
             .set({ branch_id: south })
             .where('id', '=', id)
             .execute(),
         ),
-      ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+      ).rejects.toMatchObject({ constraint: 'students_branch_move' });
     });
 
     it('keeps a reserved UID: no update and no delete of student_uids', async () => {
@@ -524,11 +528,8 @@ describe('student records in the database', () => {
 
     it('carries the rows of a student when its branch changes (the move of task 3.3)', async () => {
       const id = await createStudent({ branch: north, uid: '2607082' });
-      await database.migrator
-        .updateTable('students')
-        .set({ branch_id: south })
-        .where('id', '=', id)
-        .execute();
+      // Task 3.3c: the branch changes only with an accepted move (0053).
+      await moveStudentBranch(database.migrator, id, north, south);
       for (const table of [
         'student_uids',
         'student_contracts',
@@ -547,7 +548,9 @@ describe('student records in the database', () => {
       }
     });
 
-    it('gives the application no right to change the branch of a student', async () => {
+    // Task 3.3c (decision 4 of pull request #97, Look first): the right is
+    // granted on the column alone and guarded by `students_branch_move`.
+    it('lets the application change the branch of a student only with a move accepted in the transaction', async () => {
       const id = await createStudent({ branch: north, uid: '2607083' });
       await expect(
         transactions.run([north, south], (transaction) =>
@@ -557,7 +560,7 @@ describe('student records in the database', () => {
             .where('id', '=', id)
             .execute(),
         ),
-      ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+      ).rejects.toMatchObject({ constraint: 'students_branch_move' });
     });
   });
 

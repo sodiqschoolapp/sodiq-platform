@@ -92,9 +92,14 @@ const storedOf = (row: MoveRow): StoredMove => ({
  * The moves of one student the transaction sees, by date, then the moment
  * made, then the id (the review's should-fix 8: never the order of a read).
  */
-export async function movesOf(transaction: Transaction, studentId: string): Promise<StoredMove[]> {
+export async function movesOf(
+  transaction: Transaction,
+  studentId: string,
+  branchId?: string,
+): Promise<StoredMove[]> {
   const rows = await movesIn(transaction)
     .where('student_id', '=', studentId)
+    .$if(branchId !== undefined, (query) => query.where('branch_id', '=', branchId ?? ''))
     .orderBy('effective_on')
     .orderBy('made_at')
     .orderBy('id')
@@ -294,8 +299,9 @@ export async function moveSummaries(
   transaction: Transaction,
   studentId: string,
   today: SchoolDate,
+  branchId?: string,
 ): Promise<StudentMove[]> {
-  const moves = await movesOf(transaction, studentId);
+  const moves = await movesOf(transaction, studentId, branchId);
   if (moves.length === 0) {
     return [];
   }

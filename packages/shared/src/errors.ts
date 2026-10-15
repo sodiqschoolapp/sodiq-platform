@@ -445,6 +445,22 @@ export const ERROR_CODES = [
   'return_language_differs',
   /** The date of a return or a graduate restore is not in the academic year of the class named (task 3.3b, decision 10). */
   'return_outside_year',
+  /** A release to the branch the student is in (task 3.3c). */
+  'branch_move_same_branch',
+  /** The student has an open release to another branch: it is cancelled, declined or accepted first; a class or group move waits for it (task 3.3c, decision 11). */
+  'branch_move_open',
+  /** The release was cancelled, declined or accepted meanwhile (task 3.3c). */
+  'branch_move_closed',
+  /** The release is accepted from its date on, in the receiving branch's time zone (task 3.3c, decision 6). */
+  'branch_move_not_yet',
+  /** The class left in the old branch and the class chosen differ in language: confirmed first (`05`, Language of instruction; task 3.3c, decision 15). */
+  'branch_move_language_differs',
+  /** The group chosen for a subject is not a group of that subject offered to the class (task 3.3c, decision 13). */
+  'branch_move_group',
+  /** A leaving or graduation of the student is scheduled after the date of the move: it is changed first (task 3.3c, decision 11). */
+  'status_scheduled',
+  /** The date is before the student's move to this branch: the old branch's rows are not changed from here (task 3.3c, decision 12). */
+  'before_branch_move',
   /** The group is of another subject than the group the student leaves (task 3.3a). */
   'group_transfer_subject',
   /** Any other refusal that has no code of its own yet. */

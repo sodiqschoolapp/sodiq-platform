@@ -129,6 +129,13 @@ export const ENTRY_ABOUT: Readonly<Record<PeopleAction, readonly About[]>> = {
   'student.group_transfer_changed': ['record'],
   'student.group_transfer_cancelled': ['record'],
   'student.group_transfer_undone': ['record'],
+  // Task 3.3c: the move to another branch, written in the log of the branch
+  // of each side (the accept and the decline in both).
+  'student.branch_released': ['record'],
+  'student.branch_release_cancelled': ['record'],
+  'student.branch_release_declined': ['record'],
+  'student.branch_left': ['record'],
+  'student.branch_moved': ['record'],
   'student.identity_shown': ['record'],
   'student.export': ['none'],
   'student.personal_data_report': ['record', 'person'],

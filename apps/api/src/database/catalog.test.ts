@@ -180,6 +180,12 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     "The Tutor rows of one assignment in every branch, ids and end moments only, for the audit entry of a role end or a `left` that the mirror carries to the rows of another branch than the request's (task 3.1a, correction 1 of the code review of pull request #88, Look first).",
   'assignments_subjects_end()':
     'Writes the end of an assignment on its subject rows, which the application cannot update, so the exclusion constraints of one Head Teacher per subject see every end (task 2.3b-1, decision 2 of pull request #63).',
+  'branch_moves_incoming(uuid)':
+    "The open releases of students to one branch of the request, with the UID, name and grade of each student and nothing else of the record, for that branch's incoming list (task 3.3c, decision 2 of pull request #97, Look first): the student is still of the sending branch.",
+  'branch_move_sending(uuid,uuid)':
+    'The student and the sending branch of an open release to the branch of the request, ids and the date only, no lock, for Transactions.joinSendingBranch and the groups offered to the accept (task 3.3c, decision 1 of pull request #97, Look first): the release is a row of the sending branch.',
+  'student_rows_elsewhere(uuid,uuid)':
+    "The class rows, group rows and moves of a student of the request's branch in every other branch, ids, class and group names, dates, causes and links only, for the History tab after a move to another branch (task 3.3c, decision 3 of pull request #97, Look first).",
   'branches_without_vice_principal(timestamp with time zone)':
     "The branches (id and name only) where no Academic Vice Principal is active now, for the Super Admin's alert (Who can act); the route is school-wide, where the membership filter hides every staff row.",
   'last_email_change(uuid)':

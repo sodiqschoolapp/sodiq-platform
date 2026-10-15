@@ -109,6 +109,64 @@ export class Transactions {
     });
   }
 
+  /** The transactions that joined a sending branch: one join each. */
+  private readonly joined = new WeakSet<Transaction>();
+
+  /**
+   * The accept and the decline of a move to another branch only (task 3.3c,
+   * decision 1 of pull request #97, Look first): the receiving branch must
+   * cut the sending branch's class and group rows, close its release, write
+   * its audit entry and change the branch of the student, which the filter of
+   * the receiving branch forbids. Asks `branch_move_sending` (0053) for an
+   * open release with the id given to `branchId`, the branch of the request,
+   * which the filter of this transaction must already hold; then adds the
+   * sending branch of that release, and no other, to the filter of the rest
+   * of this one transaction. Answers the student and the sending branch, or
+   * `undefined` when no such release is open (the caller answers 404).
+   * Refuses a second join in one transaction.
+   */
+  async joinSendingBranch(
+    transaction: Transaction,
+    moveId: string,
+    branchId: string,
+  ): Promise<{ studentId: string; fromBranchId: string; effectiveOn: string } | undefined> {
+    if (this.joined.has(transaction)) {
+      throw new Error('A transaction joins a sending branch once.');
+    }
+    const found = await sql<{
+      student_id: string;
+      from_branch_id: string;
+      effective_on: string;
+      filter: string | null;
+    }>`
+      select s.student_id, s.from_branch_id, s.effective_on::text as effective_on,
+        current_setting(${BRANCH_SETTING}, true) as filter
+      from branch_move_sending(${moveId}::uuid, ${branchId}::uuid) s
+    `.execute(transaction);
+    const row = found.rows[0];
+    if (row === undefined) {
+      return undefined;
+    }
+    const current = (row.filter ?? '')
+      .replace(/^\{|\}$/g, '')
+      .split(',')
+      .filter((id) => id !== '');
+    const has = (id: string) => current.some((one) => one.toLowerCase() === id.toLowerCase());
+    if (!has(branchId)) {
+      throw new Error('The receiving branch is not in the filter of this transaction.');
+    }
+    if (!has(row.from_branch_id)) {
+      const filter = branchFilterValue([...current, row.from_branch_id]);
+      await sql`select set_config(${BRANCH_SETTING}, ${filter}, true)`.execute(transaction);
+    }
+    this.joined.add(transaction);
+    return {
+      studentId: row.student_id,
+      fromBranchId: row.from_branch_id,
+      effectiveOn: row.effective_on,
+    };
+  }
+
   /**
    * The branch create only (task 1.6, correction 2 of pull request #49): its
    * transaction begins with no branch (the branch does not exist yet), and the

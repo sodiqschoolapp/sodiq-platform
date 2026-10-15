@@ -286,6 +286,22 @@ describe('a frozen permission table', () => {
     }
   });
 
+  // Task 3.3c, decision 8 as changed by correction 3 of pull request #97:
+  // edge/students-classes-groups, "the sending Academic Vice Principal
+  // releases ... the receiving one accepts ... the Super Admin can do both";
+  // 02, Principal: "Views everything in the branch ... Changes nothing".
+  it('gives the branch moves to the Super Admin and the Academic Vice Principal, and view to the Principal', () => {
+    for (const role of ROLES) {
+      const expected =
+        role === 'super_admin' || role === 'academic_vice_principal'
+          ? ['view', 'edit']
+          : role === 'principal'
+            ? ['view']
+            : [];
+      expect(PERMISSIONS.branch_moves[role], role).toEqual(expected);
+    }
+  });
+
   // Task 2.6a, decision 2 of pull request #75: edge/people-roles-accounts,
   // "The Super Admin reads all; the Principal and Academic Vice Principal
   // read their branch".
@@ -310,6 +326,7 @@ describe('a frozen permission table', () => {
       'account_access',
       'accounts',
       'audit_log',
+      'branch_moves',
       'branches',
       'calendar',
       'classes',

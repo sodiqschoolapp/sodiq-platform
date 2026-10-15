@@ -34,10 +34,15 @@ export const MEMBERSHIP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   class_memberships_move: 'request_refused',
 };
 
-/** The class rows of one student the transaction sees, by start. */
+/**
+ * The class rows of one student the transaction sees, by start; of one
+ * branch only when `branchId` is given (the History tab, task 3.3c: the
+ * Super Admin's transaction sees every branch).
+ */
 export async function membershipsOf(
   transaction: Transaction,
   studentId: string,
+  branchId?: string,
 ): Promise<StoredMembership[]> {
   const rows = await transaction
     .selectFrom('class_memberships')
@@ -54,6 +59,7 @@ export async function membershipsOf(
       'ended_by_move_id',
     ])
     .where('student_id', '=', studentId)
+    .$if(branchId !== undefined, (query) => query.where('branch_id', '=', branchId ?? ''))
     .orderBy('valid_from')
     .orderBy('id')
     .execute();
