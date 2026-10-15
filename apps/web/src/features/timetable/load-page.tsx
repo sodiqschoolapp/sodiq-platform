@@ -31,6 +31,7 @@ import { subjectsQuery } from '@/features/setup/subjects-api';
 import { schoolDateText } from '@/lib/dates';
 import { LoadRowForm } from './load-row-form';
 import { LoadRowPanel } from './load-row-panel';
+import { LoadTotalsSection } from './load-totals';
 import {
   createLoadRow,
   createVersion,
@@ -53,7 +54,9 @@ const unitText = (row: LoadRow): string =>
  * task 3.4a). The version picker, "New draft" (empty or a copy of a version of
  * the same year), the rows a copy left with their reasons (decision 10), and
  * the rows as a list with the problems each has today (decision 3). Only a
- * draft of an open year is changed; the Principal reads (decision 4).
+ * draft of an open year is changed; the Principal reads (decision 4). Task
+ * 3.4b: the block of each group row, students not placed, and the weekly
+ * totals below the rows.
  */
 export function LoadPage(): React.JSX.Element {
   const { t, i18n } = useTranslation();
@@ -130,10 +133,20 @@ export function LoadPage(): React.JSX.Element {
     });
   };
 
+  // Task 3.4b: students not placed are named with their count (decision 4).
   const problemsText = (row: LoadRow): string =>
     row.problems.length === 0
       ? t('timetable.load.none')
-      : row.problems.map((code) => t(`timetable.load.problems.${code}`)).join(', ');
+      : row.problems
+          .map((code) =>
+            code === 'load_group_gaps'
+              ? `${t('timetable.load.problems.load_group_gaps')} (${t('timetable.load.unplaced', {
+                  count: row.unplaced,
+                  n: new Intl.NumberFormat(language).format(row.unplaced),
+                })})`
+              : t(`timetable.load.problems.${code}`),
+          )
+          .join(', ');
 
   const columns = useMemo(
     (): Column<LoadRow>[] => [
@@ -144,6 +157,16 @@ export function LoadPage(): React.JSX.Element {
         sortValue: (row) => `${String(row.unit.grades[0] ?? 0).padStart(2, '0')} ${row.unit.name}`,
         searchText: (row) => unitText(row),
         opens: true,
+      },
+      {
+        // Task 3.4b: the parts of a group row's block, by group name.
+        key: 'block',
+        header: t('timetable.load.blockColumn'),
+        cell: (row) =>
+          row.block.length === 0
+            ? t('timetable.load.blockNone')
+            : row.block.map((part) => part.name).join(', '),
+        sortValue: (row) => row.block.map((part) => part.name).join(', '),
       },
       {
         key: 'subject',
@@ -415,7 +438,7 @@ export function LoadPage(): React.JSX.Element {
               <li key={row.id} data-left-row="">
                 <span className="font-semibold">{rowName(row)}</span>
                 {' · '}
-                {columns[2]?.cell(row)}
+                {columns.find((column) => column.key === 'teacher')?.cell(row)}
                 {' · '}
                 <span className="text-destructive">{problemsText(row)}</span>
               </li>
@@ -529,6 +552,7 @@ export function LoadPage(): React.JSX.Element {
           />
         )}
       />
+      <LoadTotalsSection versionId={chosen.id} />
     </>
   );
 }

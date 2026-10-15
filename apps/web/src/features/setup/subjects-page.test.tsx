@@ -626,6 +626,7 @@ describe('the subjects page', () => {
                 ],
                 kind: 'split',
                 students: 0,
+                teacher: null,
                 archived: false,
                 version: 0,
               },

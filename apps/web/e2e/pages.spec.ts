@@ -17,10 +17,13 @@ async function open(page: Page, address: string, title: string): Promise<void> {
   await expect(heading(page, title)).toBeVisible();
 }
 
-/** The first record of the list opened in its side panel: the list is the last table of the page. */
+/**
+ * The first record of the list opened in its side panel: the list is the last
+ * table of the page, the weekly totals below the teaching load aside (task 3.4b).
+ */
 async function openFirstRecord(page: Page): Promise<void> {
   await page
-    .locator('table')
+    .locator('table:not([data-totals])')
     .last()
     .locator('tbody tr')
     .first()

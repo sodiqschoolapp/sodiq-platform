@@ -393,6 +393,18 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu versiyada shu sinf va fan yoki shu guruh uchun qator allaqachon bor. Uni oʻzgartirish uchun oching.',
     load_group_no_shared_slot:
       'Bu guruhning ikki darajasida birorta oʻquv kunida boshlanishi va tugashi bir xil dars yoʻq. Avval darajalarning kun shablonlarini moslang.',
+    load_split_and_whole:
+      'Bu versiyada shu sinf va fan uchun butun sinf qatori ham, guruh qatori ham bor. Sinf fan boʻyicha yo butun, yo boʻlingan boʻladi: avval qatorlardan birini oʻchiring.',
+    load_mixed_not_split:
+      'Aralash blokka faqat bitta sinfning boʻlingan qismlari kira oladi. Bu guruh uchun belgini olib tashlang.',
+    load_block_mixed:
+      'Bitta boʻlinishning qismlari aralash blok belgisida bir xil boʻlishi kerak. Belgini bitta qismda oʻzgartiring: u barcha qismlarga yoziladi.',
+    load_block_lessons:
+      'Boʻlinish yoki parallel guruhlarning barcha qismlarida haftalik darslar soni bir xil. Boshqa qismlar darslar sonini kiriting yoki avval bitta qismda oʻzgartiring: u barcha qismlarga yoziladi.',
+    load_block_teacher:
+      'Bu boʻlinish yoki parallel guruhlarning boshqa qismida shu oʻqituvchi bor, qismlar esa bir vaqtda oʻtadi. Boshqa oʻqituvchini tanlang.',
+    load_group_gaps:
+      'Sinflarning oʻquvchilari bu blokning guruhlariga joylashtirilmagan. Ularni guruhlarga joylashtirish ekranida joylashtiring.',
     vacancy_has_load:
       'Bu vakansiya oʻquv yuklamasi qatorida koʻrsatilgan, shuning uchun uni yopib yoki oʻchirib boʻlmaydi. Avval shu qatorga boshqa oʻqituvchini tayinlang.',
     student_merge_year_closed:
@@ -2624,6 +2636,8 @@ export const uz: Texts<'one' | 'other'> = {
     average: 'Oʻrtacha baho',
     attendance: 'Davomat',
     notYet: '—',
+    teacherVacancy: 'Vakansiya: {{name}}',
+    teacherDraft: '{{name}} (qoralama)',
     sharedSlots: 'Ikkala parallel uchun umumiy darslar',
     noSharedSlot:
       'Hech bir kunda ikkala parallelda bir vaqtda dars yoʻq. Oʻquv yuklamasi bu guruhni qabul qilmaydi.',
@@ -2867,6 +2881,48 @@ export const uz: Texts<'one' | 'other'> = {
         load_teacher_grade: 'Daraja profilda yoʻq',
         load_teacher_language: 'Taʼlim tili',
         load_room_closed: 'Xona yopilgan',
+        load_split_and_whole: 'Sinf ham butun, ham boʻlingan',
+        load_mixed_not_split: 'Bir necha sinf guruhida aralash blok',
+        load_block_mixed: 'Qismlar aralash blokda mos emas',
+        load_block_lessons: 'Qismlarda darslar soni har xil',
+        load_block_teacher: 'Ikki qismda bitta oʻqituvchi',
+        load_group_gaps: 'Oʻquvchilar joylashtirilmagan',
+      },
+      blockColumn: 'Blok',
+      blockNone: '—',
+      unplaced_one: 'Joylashtirilmagan: {{n}}',
+      unplaced_other: 'Joylashtirilmagan: {{n}}',
+      mixedBlock: 'Aralash blok (qismlar turli vaqtda oʻtadi)',
+      mixedNote:
+        'Bitta oʻqituvchi ikkala qismni ham olishi mumkin. Belgi barcha qismlarga yoziladi.',
+      blockLessonsCreateNote:
+        '{{min}} dan {{max}} gacha. Blokning barcha qismlarida darslar soni bir xil.',
+      blockLessonsNote:
+        '{{min}} dan {{max}} gacha. Darslar soni blokning barcha qismlariga yoziladi.',
+      groupDefault: 'Bu fan odatda guruhlarda oʻtiladi.',
+      groupDefaultNone: 'Bu sinfning hech bir guruhida hozircha yoʻq; butun sinf qatori saqlanadi.',
+      useGroup: '{{name}} guruhini tanlash',
+      totals: {
+        title: 'Haftalik jami',
+        classes: 'Sinflar',
+        teachers: 'Oʻqituvchilar',
+        class: 'Sinf',
+        lessons: 'Yuklamadagi darslar',
+        lessonSlots: 'Haftadagi dars vaqtlari',
+        over_one: '{{n}} ta ortiq',
+        over_other: '{{n}} ta ortiq',
+        teacher: 'Oʻqituvchi',
+        here: 'Bu filialdagi darslar',
+        free: 'Bu filialdagi boʻsh vaqtlar',
+        noHours: 'Ish vaqti kiritilmagan',
+        elsewhere: 'Boshqa filiallar',
+        elsewhereItem_one: '{{branch}}: {{n}}',
+        elsewhereItem_other: '{{branch}}: {{n}}',
+        elsewhereDraft_one: '{{branch}}: {{n}} (qoralama)',
+        elsewhereDraft_other: '{{branch}}: {{n}} (qoralama)',
+        total: 'Jami',
+        contract: 'Shartnoma yuklamasi',
+        empty: 'Hozircha qatorlar yoʻq: hisoblash uchun hech narsa yoʻq.',
       },
       leftTitle: 'Nusxa olinmagan qatorlar',
       dismiss: 'Olib tashlash',

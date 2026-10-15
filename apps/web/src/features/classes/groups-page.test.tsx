@@ -93,6 +93,7 @@ const group = (n: number, fields: Partial<SchoolGroup> = {}): SchoolGroup => ({
   ],
   kind: 'across',
   students: 0,
+  teacher: null,
   archived: false,
   version: 0,
   ...fields,
@@ -232,6 +233,38 @@ describe('the group list', () => {
       en.groups.average,
       en.groups.attendance,
     ]);
+    setWindowWidth(1440);
+  });
+
+  // Task 3.4b, decision 9: the teacher of the group's load row, a vacancy
+  // named as one, a draft's marked; "—" without a row.
+  it("shows the teacher of the group's load row on the card and in the panel", async () => {
+    setWindowWidth(400);
+    const taught = group(5, {
+      name: '7-M-5',
+      teacher: { id: uid(950), kind: 'person', name: 'Karimova Aziza', draft: false },
+    });
+    const wanted = group(6, {
+      name: '7-M-6',
+      teacher: { id: uid(951), kind: 'vacancy', name: 'Teacher wanted', draft: true },
+    });
+    await openList({ groups: [taught, wanted, M1] });
+    const teacherOn = (name: string) => {
+      const card = screen.getByRole('button', { name }).closest('li');
+      const terms = [...(card?.querySelectorAll('div') ?? [])].filter(
+        (one) => one.querySelector('dt')?.textContent === en.groups.teacher,
+      );
+      return terms[0]?.querySelector('dd')?.textContent;
+    };
+    expect(teacherOn('7-M-5')).toBe('Karimova Aziza');
+    expect(teacherOn('7-M-6')).toBe('Vacancy: Teacher wanted (draft)');
+    expect(teacherOn(M1.name)).toBe('—');
+    fireEvent.click(screen.getByRole('button', { name: '7-M-6' }));
+    await waitFor(() => {
+      expect(document.querySelector('[data-group-teacher]')?.textContent).toBe(
+        'Vacancy: Teacher wanted (draft)',
+      );
+    });
     setWindowWidth(1440);
   });
 

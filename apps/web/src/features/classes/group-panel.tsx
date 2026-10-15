@@ -21,6 +21,7 @@ import { useView } from '@/features/access/use-view';
 import { GroupForm, sharedLanguage } from './group-form';
 import { GroupMembers } from './group-members';
 import { SharedSlots } from './group-slots';
+import { groupTeacherText } from './group-teacher';
 import { archiveGroup, editGroup, groupQuery, invalidateGroups, restoreGroup } from './groups-api';
 
 interface GroupPanelProps {
@@ -159,12 +160,15 @@ export function GroupPanel({
               <dt className="text-sm text-muted-foreground">{t('groups.kind')}</dt>
               <dd>{t(`groups.kinds.${group.kind}`)}</dd>
             </div>
+            <div className="grid gap-0.5">
+              <dt className="text-sm text-muted-foreground">{t('groups.teacher')}</dt>
+              <dd data-group-teacher="">{groupTeacherText(t, group)}</dd>
+            </div>
             {(
               [
-                // Decision 15 of 3.2a: the teacher comes with the teaching load
-                // (3.4), the figures with the journal; the students are a
-                // column (3.2b).
-                ['teacher', t('groups.teacher')],
+                // Decision 15 of 3.2a: the teacher is the load row's (task
+                // 3.4b, decision 9), the figures come with the journal; the
+                // students are a column (3.2b).
                 ['average', t('groups.average')],
                 ['attendance', t('groups.attendance')],
               ] as const

@@ -1,7 +1,11 @@
 import { instructionLanguageSchema, listName, type ErrorCode, type LoadRow } from '@sodiq/shared';
 import {
+  blockOf,
+  blockProblems,
   loadRowProblems,
+  splitAndWhole,
   twoGradeSlots,
+  type BlockGroup,
   type LoadProblem,
   type LoadSubject,
   type LoadTeacher,
@@ -11,6 +15,7 @@ import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { isWithdrawn } from '../setup/dated-rows.js';
+import { blockRowOf, readBlockGroups, readUnplaced } from './load-blocks.js';
 
 /**
  * The refusals of the database for versions and load rows (db/migrations/0055),
@@ -36,6 +41,12 @@ export const LOAD_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   load_teacher_language: 'load_teacher_language',
   load_room_closed: 'load_room_closed',
   teaching_load_rows_room_check: 'load_room_choice',
+  // Task 3.4b (db/migrations/0056), at the commit.
+  load_split_and_whole: 'load_split_and_whole',
+  load_mixed_not_split: 'load_mixed_not_split',
+  load_block_mixed: 'load_block_mixed',
+  load_block_lessons: 'load_block_lessons',
+  load_block_teacher: 'load_block_teacher',
   teaching_load_rows_class_key: 'load_row_exists',
   teaching_load_rows_group_key: 'load_row_exists',
   // The version create takes its year FOR UPDATE before the number; a fault
@@ -93,6 +104,7 @@ export interface StoredLoadRow {
   readonly room_id: string | null;
   readonly room_type: string | null;
   readonly double_lessons: boolean;
+  readonly mixed_block: boolean;
 }
 
 const unique = (ids: readonly (string | null)[]): string[] =>
@@ -395,6 +407,21 @@ export async function sharedSlotOf(
   return days.some((day) => day.slots.length > 0);
 }
 
+/** The facts of a row that are not of its own records (task 3.4b). */
+type FactsRow = Omit<StoredLoadRow, 'room_type' | 'double_lessons'>;
+
+/**
+ * What the facts read beside the rows asked for (task 3.4b): `versionRows`,
+ * the rows of the version the blocks and the split-or-whole rule read (a row
+ * asked for with the id of one of them stands in its place; one with a new id
+ * is added); `unplaced`, whether the students not placed are counted
+ * (decision 4; a count the answers show, never a refusal).
+ */
+export interface FactsOptions {
+  readonly versionRows?: readonly StoredLoadRow[];
+  readonly unplaced?: boolean;
+}
+
 /** Every fact the rows of a version need, read in a few statements. */
 export class LoadFacts {
   private constructor(
@@ -404,16 +431,32 @@ export class LoadFacts {
     readonly teachers: ReadonlyMap<string, TeacherFacts>,
     readonly rooms: ReadonlyMap<string, RoomFacts>,
     private readonly slots: ReadonlyMap<string, boolean | null>,
+    readonly versionRows: readonly StoredLoadRow[],
+    readonly groups: ReadonlyMap<string, BlockGroup>,
+    private readonly unplaced: ReadonlyMap<string, number>,
   ) {}
 
   static async of(
     transaction: Transaction,
     context: VersionContext,
-    rows: readonly Omit<
-      StoredLoadRow,
-      'id' | 'lessons_per_week' | 'room_type' | 'double_lessons'
-    >[],
+    rows: readonly StoredLoadRow[],
+    options: FactsOptions = {},
   ): Promise<LoadFacts> {
+    const versionRows = options.versionRows ?? [];
+    const groupFacts = await readBlockGroups(transaction, [
+      ...rows.map((row) => row.group_id),
+      ...versionRows.map((row) => row.group_id),
+    ]);
+    const unplaced =
+      options.unplaced === true
+        ? await readUnplaced(
+            transaction,
+            context.branchId,
+            versionRows,
+            groupFacts,
+            context.statusOn,
+          )
+        : new Map<string, number>();
     const classes = await readClassFacts(
       transaction,
       context,
@@ -422,12 +465,17 @@ export class LoadFacts {
     const groups = await readGroupFacts(
       transaction,
       context,
-      rows.map((row) => row.group_id).filter((id): id is string => id !== null),
+      [...rows, ...versionRows]
+        .map((row) => row.group_id)
+        .filter((id): id is string => id !== null),
     );
     const units = new Map([...classes, ...groups]);
     const slots = new Map<string, boolean | null>();
-    for (const [id, facts] of groups) {
-      slots.set(id, await sharedSlotOf(transaction, context, facts.unit));
+    for (const id of new Set(rows.map((row) => row.group_id))) {
+      const facts = id === null ? undefined : groups.get(id);
+      if (id !== null && facts !== undefined) {
+        slots.set(id, await sharedSlotOf(transaction, context, facts.unit));
+      }
     }
     return new LoadFacts(
       context,
@@ -447,7 +495,27 @@ export class LoadFacts {
         rows.map((row) => row.room_id),
       ),
       slots,
+      versionRows,
+      groupFacts,
+      unplaced,
     );
+  }
+
+  /** The version's rows with `row` in place of the row of its id, or added. */
+  private rowsWith(row: FactsRow): StoredLoadRow[] {
+    const asStored: StoredLoadRow = {
+      room_type: null,
+      double_lessons: false,
+      ...row,
+    };
+    return [...this.versionRows.filter((one) => one.id !== row.id), asStored];
+  }
+
+  /** The rows of the block of `row` among the version's rows, `row` included; empty for a class row. */
+  blockOf(row: FactsRow): StoredLoadRow[] {
+    const rows = this.rowsWith(row);
+    const ids = new Set(blockOf(row.id, rows.map(blockRowOf), this.groups).map((one) => one.id));
+    return rows.filter((one) => ids.has(one.id));
   }
 
   /**
@@ -455,9 +523,7 @@ export class LoadFacts {
    * names is of the branch or answered by `readTeacherFacts`; one that is not
    * is a fault (spec review of the build, should-fix 6).
    */
-  problemsOf(
-    row: Omit<StoredLoadRow, 'id' | 'lessons_per_week' | 'room_type' | 'double_lessons'>,
-  ): LoadProblem[] {
+  problemsOf(row: FactsRow): LoadProblem[] {
     const unitId = row.class_id ?? row.group_id;
     const unit = unitId === null ? undefined : this.units.get(unitId);
     const subject = this.subjects.get(row.subject_id);
@@ -478,7 +544,39 @@ export class LoadFacts {
       teacher,
       room,
       sharedSlot: unitId === null ? null : (this.slots.get(unitId) ?? null),
+      ...this.blockFactsOf(row),
     });
+  }
+
+  /** Task 3.4b: the split-or-whole rule, the block rules and the students not placed of a row. */
+  blockFactsOf(row: FactsRow): {
+    splitAndWhole: boolean;
+    blockProblems: ReturnType<typeof blockProblems>;
+    unplaced: number;
+  } {
+    const rows = this.rowsWith(row).map(blockRowOf);
+    const own = rows.find((one) => one.id === row.id);
+    if (own === undefined) {
+      throw new Error('A row is always among its own rows.');
+    }
+    return {
+      splitAndWhole: splitAndWhole(own, rows, this.groups),
+      blockProblems: blockProblems(own, blockOf(row.id, rows, this.groups), this.groups),
+      unplaced: this.unplaced.get(row.id) ?? 0,
+    };
+  }
+
+  /** The parts of the block of a row of the version, by group name; empty for a class row or a left row. */
+  private blockNamesOf(row: StoredLoadRow): { id: string; name: string }[] {
+    if (row.group_id === null || !this.versionRows.some((one) => one.id === row.id)) {
+      return [];
+    }
+    return this.blockOf(row)
+      .map((part) => ({
+        id: part.id,
+        name: part.group_id === null ? '' : (this.units.get(part.group_id)?.name ?? ''),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   }
 
   /** A row as the page shows it, with the problems given (today's, or those a copy kept). */
@@ -507,6 +605,9 @@ export class LoadFacts {
       room: room === undefined ? null : { id: room.id, name: room.name },
       roomType: row.room_type === null ? null : roomTypeOf(row.room_type),
       doubleLessons: row.double_lessons,
+      mixedBlock: row.mixed_block,
+      block: this.blockNamesOf(row),
+      unplaced: this.unplaced.get(row.id) ?? 0,
       problems: [...problems],
     };
   }

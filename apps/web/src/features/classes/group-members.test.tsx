@@ -47,6 +47,7 @@ const group = (n: number, fields: Partial<SchoolGroup> = {}): SchoolGroup => ({
   classes: [OXFORD, PRINCETON],
   kind: 'across',
   students: 2,
+  teacher: null,
   archived: false,
   version: 0,
   ...fields,

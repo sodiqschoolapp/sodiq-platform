@@ -231,6 +231,7 @@ describe('OpenAPI document', () => {
         '/api/timetable/versions/{id}/load',
         '/api/timetable/versions/{id}/load/teachers',
         '/api/timetable/versions/{id}/load/{rowId}',
+        '/api/timetable/versions/{id}/totals',
       ]);
       expect(document.paths['/api/health']?.get?.responses).toEqual({
         '200': {

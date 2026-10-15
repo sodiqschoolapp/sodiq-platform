@@ -21,6 +21,7 @@ export interface LoadRowValues {
   room_id?: string | null;
   room_type?: string | null;
   double_lessons?: boolean;
+  mixed_block?: boolean;
 }
 
 /**

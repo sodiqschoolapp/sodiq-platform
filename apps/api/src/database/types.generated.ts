@@ -740,6 +740,7 @@ export interface TeachingLoadRows {
   group_id: string | null;
   id: Generated<string>;
   lessons_per_week: number;
+  mixed_block: Generated<boolean>;
   room_id: string | null;
   room_type: string | null;
   subject_id: string;

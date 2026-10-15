@@ -470,7 +470,13 @@ describe('teaching load in the database', () => {
         code: UNIQUE_VIOLATION,
         constraint: 'teaching_load_rows_class_key',
       });
-      const group = await kit.classes.group(north, northYear, subject, [own.classId]);
+      // A group of another class: a version never holds a whole-class row and a
+      // group row of one class and subject (task 3.4b, load_split_and_whole).
+      const otherClass = await kit.classes.schoolClass(north, northYear, {
+        grade: 7,
+        language: 'uz',
+      });
+      const group = await kit.classes.group(north, northYear, subject, [otherClass]);
       const groupRow = { ...base, class_id: null, group_id: group };
       await insertRow(groupRow);
       expect(await refusal(insertRow(groupRow))).toMatchObject({

@@ -16,6 +16,7 @@ import { transactionMoment, type Transaction } from '../../database/transactions
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { isWithdrawn } from '../setup/dated-rows.js';
 import { notFound } from '../setup/setup-refusals.js';
+import { readGroupTeachers } from '../timetable/group-teachers.js';
 
 /**
  * The refusals of the database for groups (db/migrations/0046), by the name
@@ -173,7 +174,11 @@ export function sharedLanguageOf(
   return languages.size === 1 && only !== undefined ? instructionLanguageSchema.parse(only) : null;
 }
 
-export function toGroup(row: GroupRow, classes: readonly GroupClassRow[]): SchoolGroup {
+export function toGroup(
+  row: GroupRow,
+  classes: readonly GroupClassRow[],
+  teacher: SchoolGroup['teacher'] = null,
+): SchoolGroup {
   return {
     id: row.id,
     academicYearId: row.academic_year_id,
@@ -198,13 +203,26 @@ export function toGroup(row: GroupRow, classes: readonly GroupClassRow[]): Schoo
     })),
     kind: groupKindOf(classes.length),
     students: row.students,
+    teacher,
     archived: row.archived_at !== null,
     version: row.version,
   };
 }
 
-/** The groups of the branch, newest year first, by name. */
-export async function readGroups(transaction: Transaction): Promise<SchoolGroup[]> {
+/**
+ * Who reads a group: the branch of the request, and whether the reader sees a
+ * draft's teacher (a reader of the area `timetable`; task 3.4b, decision 9).
+ */
+export interface GroupReader {
+  readonly branchId: string;
+  readonly drafts: boolean;
+}
+
+/** The groups of the branch, newest year first, by name, each with the teacher of its load row. */
+export async function readGroups(
+  transaction: Transaction,
+  reader: GroupReader,
+): Promise<SchoolGroup[]> {
   const rows = await groupsIn(transaction)
     .orderBy('academic_years.start_date', 'desc')
     .orderBy('groups.name_key')
@@ -214,7 +232,13 @@ export async function readGroups(transaction: Transaction): Promise<SchoolGroup[
     transaction,
     rows.map((row) => row.id),
   );
-  return rows.map((row) => toGroup(row, classes.get(row.id) ?? []));
+  const teachers = await readGroupTeachers(
+    transaction,
+    reader.branchId,
+    rows.map((row) => ({ id: row.id, academicYearId: row.academic_year_id })),
+    reader.drafts,
+  );
+  return rows.map((row) => toGroup(row, classes.get(row.id) ?? [], teachers.get(row.id) ?? null));
 }
 
 /** One group's row; 404 for another branch's or an unknown id. */
@@ -262,14 +286,21 @@ export async function slotsOf(
   return { grades: [gradeA, gradeB], days: days.map((day) => ({ ...day, slots: [...day.slots] })) };
 }
 
-/** A group with the shared slots of its two grades. */
+/** A group with the shared slots of its two grades and the teacher of its load row. */
 export async function readGroupDetail(
   transaction: Transaction,
-  branchId: string,
+  reader: GroupReader,
   id: string,
 ): Promise<GroupDetail> {
+  const branchId = reader.branchId;
   const row = await readGroupRow(transaction, id);
   const classes = (await classesOfGroups(transaction, [id])).get(id) ?? [];
-  const group = toGroup(row, classes);
+  const teachers = await readGroupTeachers(
+    transaction,
+    branchId,
+    [{ id: row.id, academicYearId: row.academic_year_id }],
+    reader.drafts,
+  );
+  const group = toGroup(row, classes, teachers.get(row.id) ?? null);
   return { ...group, slots: await slotsOf(transaction, branchId, row.start_date, group.grades) };
 }

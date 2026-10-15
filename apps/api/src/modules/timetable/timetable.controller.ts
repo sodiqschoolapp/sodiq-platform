@@ -7,6 +7,7 @@ import {
   loadSchema,
   loadTeachersQuerySchema,
   loadTeachersSchema,
+  loadTotalsSchema,
   timetableVersionCreateSchema,
   timetableVersionEditSchema,
   timetableVersionListSchema,
@@ -19,6 +20,7 @@ import {
   type LoadRowRecord,
   type LoadTeachers,
   type LoadTeachersQuery,
+  type LoadTotals,
   type TimetableVersion,
   type TimetableVersionCreate,
   type TimetableVersionEdit,
@@ -79,6 +81,17 @@ export class TimetableController {
     @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
   ): Promise<Load> {
     return this.timetable.load(access, params.id);
+  }
+
+  /** The weekly totals of a version (task 3.4b, decisions 5 to 8): shown, never refusing. */
+  @Get('versions/:id/totals')
+  @Requires('timetable', 'view')
+  @Returns(loadTotalsSchema)
+  totals(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+  ): Promise<LoadTotals> {
+    return this.timetable.totals(access, params.id);
   }
 
   /** The teachers and vacancies a row may take (decision 2), by the rules of the create. */
