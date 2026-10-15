@@ -327,7 +327,8 @@ test('every page of Phases 0 to 2 is drawn with the design system in light, dark
 
   // The same account as Teacher: its home and its account.
   await page.goto('/');
-  await page.getByRole('combobox', { name: en.switcher.role, exact: true }).selectOption('teacher');
+  await page.getByRole('button', { name: new RegExp(`^${en.switcher.rolePrefix}`) }).click();
+  await page.getByRole('menuitemradio', { name: en.roles.teacher }).click();
   await expect(page.getByText(en.home.teaching)).toBeVisible();
   await checkPage(page, 'home-teacher');
   await open(page, '/account', en.account.title);

@@ -326,7 +326,9 @@ test('an Academic Vice Principal adds a student and is refused a second with the
     await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(today);
     // Task 2.5a: a student is saved with a relative.
     await form.getByRole('checkbox', { name: en.people.relatives.noPhone }).check();
-    await form.getByLabel(en.people.relatives.fullName, { exact: true }).fill('Dilfuza Rahimova');
+    await form
+      .getByLabel(en.people.relatives.fullNameField, { exact: true })
+      .fill('Dilfuza Rahimova');
     await form.getByLabel(en.people.relatives.relationship, { exact: true }).selectOption('mother');
     await form.getByRole('button', { name: en.form.save, exact: true }).click();
     const question = page.getByRole('alertdialog', { name: texts.setTitle });
@@ -419,7 +421,9 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
     await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(daysAgo(61));
     // Task 2.5a: a student is saved with a relative.
     await form.getByRole('checkbox', { name: en.people.relatives.noPhone }).check();
-    await form.getByLabel(en.people.relatives.fullName, { exact: true }).fill('Dilfuza Rahimova');
+    await form
+      .getByLabel(en.people.relatives.fullNameField, { exact: true })
+      .fill('Dilfuza Rahimova');
     await form.getByLabel(en.people.relatives.relationship, { exact: true }).selectOption('mother');
     await form.getByRole('button', { name: en.form.save, exact: true }).click();
     const question = page.getByRole('alertdialog', { name: texts.setTitle });
@@ -587,7 +591,9 @@ test('an Academic Vice Principal exports students with their documents, adds a p
     await form.getByLabel(texts.contractSignedOn, { exact: true }).fill(daysAgo(41));
     // Task 2.5a: a student is saved with a relative.
     await form.getByRole('checkbox', { name: en.people.relatives.noPhone }).check();
-    await form.getByLabel(en.people.relatives.fullName, { exact: true }).fill('Dilfuza Rahimova');
+    await form
+      .getByLabel(en.people.relatives.fullNameField, { exact: true })
+      .fill('Dilfuza Rahimova');
     await form.getByLabel(en.people.relatives.relationship, { exact: true }).selectOption('mother');
     await form.getByRole('button', { name: en.form.save, exact: true }).click();
     const question = page.getByRole('alertdialog', { name: texts.setTitle });
@@ -706,7 +712,7 @@ test('an Academic Vice Principal links one relative to students of two branches'
         ),
       ).toBeVisible();
     } else {
-      await form.getByLabel(relatives.fullName, { exact: true }).fill('Gulnora Tursunova');
+      await form.getByLabel(relatives.fullNameField, { exact: true }).fill('Gulnora Tursunova');
     }
     await form.getByLabel(relatives.relationship, { exact: true }).selectOption('mother');
     await form.getByRole('button', { name: en.form.save, exact: true }).click();
@@ -788,7 +794,7 @@ test('the number of a relative of another branch gets a new owner, and that bran
   });
   await expect(choice).toBeVisible();
   await choice.selectOption('new_owner');
-  await form.getByLabel(relatives.fullName, { exact: true }).fill('Nodira Rasulova');
+  await form.getByLabel(relatives.fullNameField, { exact: true }).fill('Nodira Rasulova');
   await form
     .getByRole('checkbox', {
       name: relatives.previousUnknown.replace('{{name}}', 'Zarina Aliyeva'),

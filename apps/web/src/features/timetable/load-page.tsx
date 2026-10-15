@@ -139,11 +139,12 @@ export function LoadPage(): React.JSX.Element {
       ? t('timetable.load.none')
       : row.problems
           .map((code) =>
-            code === 'load_group_gaps'
-              ? `${t('timetable.load.problems.load_group_gaps')} (${t('timetable.load.unplaced', {
+            // Issue #105, H9: the number of students said once, not after the general text.
+            code === 'load_group_gaps' && row.unplaced > 0
+              ? t('timetable.load.unplacedStudents', {
                   count: row.unplaced,
                   n: new Intl.NumberFormat(language).format(row.unplaced),
-                })})`
+                })
               : t(`timetable.load.problems.${code}`),
           )
           .join(', ');

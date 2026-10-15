@@ -25,6 +25,7 @@ import { RecordForm } from '@/components/form/record-form';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { asFormSchema } from './form-schema';
+import { statusCauseText } from './status-cause';
 import { takenOf, takenText } from './student-form';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
@@ -123,9 +124,9 @@ export function StatusSection({ student, panel }: { student: StudentDetail; pane
             </span>
             <span className="text-muted-foreground">
               {row.reason === null
-                ? t(`people.students.causes.${row.cause}`)
+                ? statusCauseText(t, row, student.today, language)
                 : t('people.students.causeReason', {
-                    cause: t(`people.students.causes.${row.cause}`),
+                    cause: statusCauseText(t, row, student.today, language),
                     reason: row.reason,
                   })}
             </span>
@@ -366,6 +367,7 @@ function useClassChoice(input: {
       const found = offered.find((one) => one.id === id);
       return found === undefined ? undefined : classDisplayName(found.grade, found.name);
     },
+    languageOf: (id: string) => offered.find((one) => one.id === id)?.language,
   };
 }
 
@@ -408,6 +410,7 @@ export function ReturnForm({
     }),
     save: async (input) => {
       const chosen = choice.nameOf(input.classId);
+      const chosenLanguage = choice.languageOf(input.classId);
       const go = await confirm({
         title: t('people.students.returnConfirmTitle'),
         text: t('people.students.returnConfirmText'),
@@ -435,7 +438,15 @@ export function ReturnForm({
             }
             const sure = await confirm({
               title: t('people.students.returnLanguageTitle'),
-              text: t('people.students.returnLanguageText'),
+              text:
+                left === null || chosen === undefined || chosenLanguage === undefined
+                  ? t('people.students.returnLanguageText')
+                  : t('people.students.returnLanguageTextNamed', {
+                      from: classDisplayName(left.grade, left.name),
+                      fromLanguage: t(`classes.inLanguage.${left.language}`),
+                      to: chosen,
+                      toLanguage: t(`classes.inLanguage.${chosenLanguage}`),
+                    }),
               names: [
                 ...(left === null ? [] : [classDisplayName(left.grade, left.name)]),
                 ...(chosen === undefined ? [] : [chosen]),

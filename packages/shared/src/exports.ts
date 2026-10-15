@@ -373,7 +373,7 @@ const en: ExportTexts = {
   staff: {
     name: 'Staff',
     columns: {
-      name: 'Name',
+      name: 'Surname and name',
       staffId: 'Staff ID',
       category: 'Category',
       branches: 'Branches',
@@ -440,7 +440,7 @@ const en: ExportTexts = {
       tutor: 'Tutor',
       mainRoom: 'Main classroom',
       students: 'Students',
-      maxSize: 'Maximum size',
+      maxSize: 'Max. students',
       status: 'Status',
     },
   },
@@ -452,7 +452,7 @@ const en: ExportTexts = {
       classes: 'Classes',
       language: 'Language of instruction',
       students: 'Students',
-      maxSize: 'Maximum size',
+      maxSize: 'Max. students',
       status: 'Status',
     },
   },
@@ -460,7 +460,7 @@ const en: ExportTexts = {
     name: 'Students',
     columns: {
       uid: 'UID',
-      name: 'Name and surname',
+      name: 'Surname and name',
       class: 'Class',
       groups: 'Groups',
       tutor: 'Tutor',
@@ -598,7 +598,7 @@ const ru: ExportTexts = {
   staff: {
     name: 'Сотрудники',
     columns: {
-      name: 'Имя',
+      name: 'Фамилия и имя',
       staffId: 'Табельный номер',
       category: 'Категория',
       branches: 'Филиалы',
@@ -670,7 +670,7 @@ const ru: ExportTexts = {
       tutor: 'Тьютор',
       mainRoom: 'Основной кабинет',
       students: 'Ученики',
-      maxSize: 'Наибольший размер',
+      maxSize: 'Макс. учеников',
       status: 'Состояние',
     },
   },
@@ -682,7 +682,7 @@ const ru: ExportTexts = {
       classes: 'Классы',
       language: 'Язык обучения',
       students: 'Ученики',
-      maxSize: 'Наибольший размер',
+      maxSize: 'Макс. учеников',
       status: 'Состояние',
     },
   },
@@ -690,7 +690,7 @@ const ru: ExportTexts = {
     name: 'Ученики',
     columns: {
       uid: 'UID',
-      name: 'Имя и фамилия',
+      name: 'Фамилия и имя',
       class: 'Класс',
       groups: 'Группы',
       tutor: 'Тьютор',
@@ -781,7 +781,7 @@ const ru: ExportTexts = {
   plannedStatus: 'Запланированный статус',
   plannedFrom: 'Запланирован с',
   roles: {
-    super_admin: 'Супер-администратор',
+    super_admin: 'Суперадминистратор',
     principal: 'Директор',
     academic_vice_principal: 'Заместитель директора по учебной работе',
     spiritual_vice_principal: 'Заместитель директора по духовно-нравственному воспитанию',
@@ -832,7 +832,7 @@ const uz: ExportTexts = {
   staff: {
     name: 'Xodimlar',
     columns: {
-      name: 'Ism',
+      name: 'Familiya va ism',
       staffId: 'Xodim raqami',
       category: 'Toifa',
       branches: 'Filiallar',
@@ -899,7 +899,7 @@ const uz: ExportTexts = {
       tutor: 'Tyutor',
       mainRoom: 'Asosiy xona',
       students: 'Oʻquvchilar',
-      maxSize: 'Eng koʻp oʻquvchi',
+      maxSize: 'Sigʻim',
       status: 'Holati',
     },
   },
@@ -911,7 +911,7 @@ const uz: ExportTexts = {
       classes: 'Sinflar',
       language: 'Taʼlim tili',
       students: 'Oʻquvchilar',
-      maxSize: 'Eng koʻp oʻquvchi',
+      maxSize: 'Sigʻim',
       status: 'Holati',
     },
   },
@@ -919,7 +919,7 @@ const uz: ExportTexts = {
     name: 'Oʻquvchilar',
     columns: {
       uid: 'UID',
-      name: 'Ism va familiya',
+      name: 'Familiya va ism',
       class: 'Sinf',
       groups: 'Guruhlar',
       tutor: 'Tyutor',

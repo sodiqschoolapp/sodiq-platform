@@ -162,7 +162,7 @@ describe('the relative step of a new student', () => {
       ),
     ).toBeDefined();
     // The fields of a new relative are gone: this person is linked.
-    expect(within(form).queryByLabelText(en.people.relatives.fullName)).toBeNull();
+    expect(within(form).queryByLabelText(en.people.relatives.fullNameField)).toBeNull();
     type(en.people.relatives.relationship, 'aunt');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     await waitFor(() => {
@@ -216,7 +216,7 @@ describe('the new owner of a typed phone (task 2.5b-1; edge/close-relatives, row
     );
     fireEvent.change(choice, { target: { value: 'new_owner' } });
     // The fields of the new person are back, with the earlier relative's new phone.
-    type(en.people.relatives.fullName, 'Nodira Rasulova');
+    type(en.people.relatives.fullNameField, 'Nodira Rasulova');
     type(
       en.people.relatives.previousPhone.replace('{{name}}', 'Shoira Nazarova'),
       '+998 90 111 22 33',
@@ -532,7 +532,7 @@ describe('the extra phones of a relative', () => {
       );
     };
     type(en.people.relatives.phone, '+998 90 777 88 99');
-    type(en.people.relatives.fullName, 'Nodira Rasulova');
+    type(en.people.relatives.fullNameField, 'Nodira Rasulova');
     type(en.people.relatives.relationship, 'grandmother');
     add();
     add();
@@ -600,7 +600,7 @@ describe('the extra phones of a relative', () => {
     type(en.people.students.contractNumber, 'SQ-2026/142');
     type(en.people.students.contractSignedOn, '2026-08-20');
     type(en.people.relatives.phone, '+998 90 777 88 99');
-    type(en.people.relatives.fullName, 'Nodira Rasulova');
+    type(en.people.relatives.fullNameField, 'Nodira Rasulova');
     type(en.people.relatives.relationship, 'mother');
     fireEvent.click(within(form).getByRole('button', { name: en.people.relatives.addExtraPhone }));
     type(en.people.relatives.extraPhone.replace('{{n}}', '1'), '+998 93 111 22 33');

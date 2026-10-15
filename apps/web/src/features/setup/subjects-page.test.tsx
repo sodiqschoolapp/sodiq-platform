@@ -612,7 +612,7 @@ describe('the subjects page', () => {
                   versionId: VERSION,
                   versionNumber: 2,
                   versionStartsOn: '2026-10-19',
-                  unit: { kind: 'class', id: uid(97), name: 'Oxford' },
+                  unit: { kind: 'class', id: uid(97), name: 'Oxford', grade: 7 },
                   subjectId: MATHS.id,
                   teacher: { id: uid(98), name: 'Hamidova Zarina', vacancy: false },
                 },
@@ -650,7 +650,7 @@ describe('the subjects page', () => {
       });
       const link = within(list).getByRole('link');
       expect(link.getAttribute('href')).toBe(`/timetable/load?version=${VERSION}`);
-      expect(link.parentElement?.textContent).toContain('Oxford · Mathematics · Hamidova Zarina');
+      expect(link.parentElement?.textContent).toContain('7 Oxford · Mathematics · Hamidova Zarina');
       expect(
         within(list).getByText(en.people.moveLoads.elsewhere_other.replace('{{n}}', '3')),
       ).toBeDefined();
@@ -673,7 +673,7 @@ describe('the subjects page', () => {
       fireEvent.click(within(form).getByRole('button', { name: ru.form.save }));
 
       const list = await within(panel).findByRole('status', { name: ru.people.moveLoads.title });
-      expect(list.textContent).toContain('Oxford · Математика · Hamidova Zarina');
+      expect(list.textContent).toContain('7 Oxford · Математика · Hamidova Zarina');
       expect(
         within(list).getByText(ru.people.moveLoads.elsewhere_other.replace('{{n}}', '3')),
       ).toBeDefined();

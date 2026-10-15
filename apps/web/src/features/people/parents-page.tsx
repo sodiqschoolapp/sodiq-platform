@@ -44,7 +44,7 @@ export function ParentsPage() {
     return [
       {
         key: 'name',
-        header: t('people.relatives.fullName'),
+        header: t('people.relatives.listName'),
         cell: (row) => row.fullName,
         sortValue: (row) => row.fullName,
         searchText: (row) =>

@@ -36,6 +36,7 @@ import { asFormSchema } from './form-schema';
 import { branchMoveLineText } from './branch-move';
 import { mergedLineText } from './student-merge';
 import { studentHistoryQuery } from './people-api';
+import { statusCauseText } from './status-cause';
 
 /**
  * Class and group transfers in the student's side panel (docs/spec/04-people.md,
@@ -90,7 +91,11 @@ async function sending<T>(send: () => Promise<T>, onStale: () => Promise<void>):
 function useLanguageConfirm(label: string) {
   const { t } = useTranslation();
   const confirm = useConfirm();
-  return async <T,>(send: (confirmLanguage: boolean) => Promise<T>): Promise<T> => {
+  return async <T,>(
+    send: (confirmLanguage: boolean) => Promise<T>,
+    /** The question naming both classes and their languages (issue #105, H5), when both are known. */
+    named?: string,
+  ): Promise<T> => {
     try {
       return await send(false);
     } catch (error) {
@@ -99,7 +104,7 @@ function useLanguageConfirm(label: string) {
       }
       const go = await confirm({
         title: t('people.students.moves.languageTitle'),
-        text: t('people.students.moves.languageText'),
+        text: named ?? t('people.students.moves.languageText'),
         names: [label],
         action: t('people.students.moves.languageAction'),
         destructive: false,
@@ -162,28 +167,41 @@ export function ClassMoveForm({
           }
         : { version: student.version, toClassId: typed.toClassId, from: typed.from },
     save: async (input) => {
+      const to = classes.data?.classes.find((one) => one.id === input.toClassId);
+      const from = student.class;
+      const named =
+        to === undefined || from === null
+          ? undefined
+          : t('people.students.moves.languageTextNamed', {
+              from: classDisplayName(from.grade, from.name),
+              fromLanguage: t(`classes.inLanguage.${from.language}`),
+              to: classDisplayName(to.grade, to.name),
+              toLanguage: t(`classes.inLanguage.${to.language}`),
+            });
       const answer = await sending(
         () =>
-          withLanguage((confirmLanguage) =>
-            move === null
-              ? answerOf(
-                  api.POST('/api/classes/transfers', {
-                    params: { header: branchHeader() },
-                    body: {
-                      ...(input as ClassTransfer),
-                      ...(confirmLanguage ? { confirmLanguage } : {}),
-                    },
-                  }),
-                )
-              : answerOf(
-                  api.POST('/api/classes/transfers/{id}/change', {
-                    params: { header: branchHeader(), path: { id: move.id } },
-                    body: {
-                      ...input,
-                      ...(confirmLanguage ? { confirmLanguage } : {}),
-                    },
-                  }),
-                ),
+          withLanguage(
+            (confirmLanguage) =>
+              move === null
+                ? answerOf(
+                    api.POST('/api/classes/transfers', {
+                      params: { header: branchHeader() },
+                      body: {
+                        ...(input as ClassTransfer),
+                        ...(confirmLanguage ? { confirmLanguage } : {}),
+                      },
+                    }),
+                  )
+                : answerOf(
+                    api.POST('/api/classes/transfers/{id}/change', {
+                      params: { header: branchHeader(), path: { id: move.id } },
+                      body: {
+                        ...input,
+                        ...(confirmLanguage ? { confirmLanguage } : {}),
+                      },
+                    }),
+                  ),
+            named,
           ),
         onStale,
       );
@@ -465,7 +483,7 @@ export function moveRows(
 }
 
 /** The text of one line of the History tab. */
-function lineText(t: TFunction, line: StudentHistoryLine): string {
+function lineText(t: TFunction, line: StudentHistoryLine, today: string, language: string): string {
   switch (line.kind) {
     case 'move': {
       const { move } = line;
@@ -498,7 +516,7 @@ function lineText(t: TFunction, line: StudentHistoryLine): string {
     case 'merged':
       return mergedLineText(t, line);
     case 'status':
-      return `${t(`people.students.statuses.${line.status}`)} · ${t(`people.students.causes.${line.cause}`)}`;
+      return `${t(`people.students.statuses.${line.status}`)} · ${statusCauseText(t, line, today, language)}`;
   }
 }
 
@@ -544,7 +562,7 @@ export function HistoryTab({
           return (
             <li key={`${line.kind}-${from}-${String(index)}`} className="grid gap-1">
               <span className="text-muted-foreground">{schoolDateText(from, i18n.language)}</span>
-              <span>{lineText(t, line)}</span>
+              <span>{lineText(t, line, history.data.today, i18n.language)}</span>
               {move !== null && move.undoable && movesIt(student, move) && (
                 <span>
                   <Button

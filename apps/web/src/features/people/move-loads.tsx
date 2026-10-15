@@ -1,3 +1,4 @@
+import { classDisplayName } from '@sodiq/shared';
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
@@ -66,7 +67,9 @@ export function MoveLoads({ error }: { error: unknown }) {
           {lines.map((line) => {
             const subject = subjects.data?.subjects.find((one) => one.id === line.subjectId);
             const parts = [
-              line.unit.name,
+              line.unit.grade === null
+                ? line.unit.name
+                : classDisplayName(line.unit.grade, line.unit.name),
               ...(subject === undefined ? [] : [nameOf(subject.names, i18n.language)]),
               ...(line.teacher.name === null
                 ? []

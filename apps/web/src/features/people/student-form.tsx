@@ -721,7 +721,7 @@ function RelativeStep({
       {(found === null || bind('relativeOwner').value === NEW_OWNER) && (
         <>
           <Field
-            label={t('people.relatives.fullName')}
+            label={t('people.relatives.fullNameField')}
             autoComplete="off"
             {...bind('relativeName')}
           />

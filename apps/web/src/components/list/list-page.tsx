@@ -912,11 +912,17 @@ export function ListPage<Row>({
             <div aria-live="polite" className="grid justify-items-start gap-2">
               {matching.length === 0 && <p>{t('list.noMatch')}</p>}
               <p className="text-sm text-muted-foreground">
-                {t('list.count', {
-                  shown: number.format(Math.min(count, matching.length)),
-                  matching: number.format(matching.length),
-                  total: number.format(rows.length),
-                })}
+                {/* Issue #105, H1: the short form while no search or filter leaves a row out. */}
+                {matching.length === rows.length
+                  ? t('list.countAll', {
+                      shown: number.format(Math.min(count, matching.length)),
+                      total: number.format(rows.length),
+                    })
+                  : t('list.count', {
+                      shown: number.format(Math.min(count, matching.length)),
+                      matching: number.format(matching.length),
+                      total: number.format(rows.length),
+                    })}
               </p>
             </div>
             {matching.length > count && (

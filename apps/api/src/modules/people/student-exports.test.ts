@@ -377,7 +377,7 @@ describe('the student export, the consent list and the "No class" counter', () =
         expect(file.sheet.name).toBe('Students');
         expect(file.sheet.headings).toEqual([
           'UID',
-          'Name and surname',
+          'Surname and name',
           'Class',
           'Status',
           'Planned status',

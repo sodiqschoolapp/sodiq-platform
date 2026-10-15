@@ -556,7 +556,7 @@ describe('the teaching load page: splits, groups and weekly totals', () => {
     });
     const [cells] = rowsDrawn();
     expect(cells?.[1]).toBe('7-M-1, 7-M-2');
-    expect(cells?.at(-1)).toBe('Students not placed (Not placed: 3)');
+    expect(cells?.at(-1)).toBe('3 students not placed');
   });
 
   it('marks a split as a mixed block, with the lessons written to every part', async () => {

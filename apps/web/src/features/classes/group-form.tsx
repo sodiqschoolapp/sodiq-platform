@@ -33,7 +33,8 @@ import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { GroupSlots } from './group-slots';
-import { groupSlotsQuery } from './groups-api';
+import { groupSlotsQuery, groupsQuery } from './groups-api';
+import { useTakenRecord } from './taken-name';
 
 interface GroupFormProps {
   /** The group as saved; `null` for a new group. */
@@ -150,6 +151,8 @@ export function GroupForm({
     },
   });
   const taken = takenGroupOf(form.failure);
+  const groups = useQuery({ ...groupsQuery(branchId), select: (list) => list.groups });
+  const holder = useTakenRecord(taken, groups);
   const yearId = form.bind('academicYearId').value;
   const offered = classes.filter(
     (one) =>
@@ -168,7 +171,12 @@ export function GroupForm({
   });
 
   return (
-    <RecordForm form={form} label={label} onCancel={onCancel}>
+    <RecordForm
+      form={form}
+      label={label}
+      onCancel={onCancel}
+      failureText={holder === undefined ? undefined : t('groups.nameTaken', { name: holder.name })}
+    >
       {group === null && (
         <SelectField
           label={t('groups.year')}

@@ -62,7 +62,7 @@ const STAFF: Record<string, ParseKeys> = {
 };
 
 const RELATIVE: Record<string, ParseKeys> = {
-  fullName: 'people.relatives.fullName',
+  fullName: 'people.relatives.fullNameField',
   phone: 'people.relatives.phone',
   workplace: 'people.relatives.workplace',
   email: 'people.relatives.email',

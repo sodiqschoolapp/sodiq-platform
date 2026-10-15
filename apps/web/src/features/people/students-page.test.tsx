@@ -498,7 +498,7 @@ describe('the profile of a student', () => {
     const form = await within(panel).findByRole('form', {
       name: en.people.relatives.formLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
     });
-    fireEvent.change(within(form).getByLabelText(en.people.relatives.fullName), {
+    fireEvent.change(within(form).getByLabelText(en.people.relatives.fullNameField), {
       target: { value: 'Nodir Rahimov' },
     });
 
@@ -508,9 +508,9 @@ describe('the profile of a student', () => {
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).toBeNull();
     });
-    expect(within(panel).getByLabelText<HTMLInputElement>(en.people.relatives.fullName).value).toBe(
-      'Nodir Rahimov',
-    );
+    expect(
+      within(panel).getByLabelText<HTMLInputElement>(en.people.relatives.fullNameField).value,
+    ).toBe('Nodir Rahimov');
 
     fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.overview }));
     dialog = await screen.findByRole('alertdialog');
@@ -574,7 +574,7 @@ describe('adding a student', () => {
     type(en.people.students.contractSignedOn, '2026-08-20');
     // Task 2.5a: the relative, typed phone first.
     type(en.people.relatives.phone, '+998 90 111 22 33');
-    type(en.people.relatives.fullName, 'Dilfuza Rahimova');
+    type(en.people.relatives.fullNameField, 'Dilfuza Rahimova');
     type(en.people.relatives.relationship, 'mother');
     if (classId !== undefined) {
       type(en.people.students.class, classId);
@@ -1478,7 +1478,7 @@ describe('leaving, return and delete', () => {
     type(en.people.students.contractNumber, 'SQ-2026/130');
     type(en.people.students.contractSignedOn, '2026-08-20');
     type(en.people.relatives.phone, '+998 90 111 22 33');
-    type(en.people.relatives.fullName, 'Dilfuza Rahimova');
+    type(en.people.relatives.fullNameField, 'Dilfuza Rahimova');
     type(en.people.relatives.relationship, 'mother');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     fireEvent.click(await screen.findByRole('button', { name: en.people.students.restoreThis }));
@@ -1533,7 +1533,7 @@ describe('leaving, return and delete', () => {
     type(en.people.students.contractNumber, 'SQ-2026/132');
     type(en.people.students.contractSignedOn, '2026-08-20');
     type(en.people.relatives.phone, '+998 90 111 22 33');
-    type(en.people.relatives.fullName, 'Dilfuza Rahimova');
+    type(en.people.relatives.fullNameField, 'Dilfuza Rahimova');
     type(en.people.relatives.relationship, 'mother');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     expect(
@@ -1576,7 +1576,7 @@ describe('leaving, return and delete', () => {
     type(en.people.students.contractNumber, 'SQ-2026/131');
     type(en.people.students.contractSignedOn, '2026-08-20');
     type(en.people.relatives.phone, '+998 90 111 22 33');
-    type(en.people.relatives.fullName, 'Dilfuza Rahimova');
+    type(en.people.relatives.fullNameField, 'Dilfuza Rahimova');
     type(en.people.relatives.relationship, 'mother');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     expect(await within(form).findByText(en.people.students.uidReleased)).toBeDefined();
@@ -1966,7 +1966,7 @@ describe('the Status section', () => {
       type(en.people.students.contractNumber, 'SQ-2026/140');
       type(en.people.students.contractSignedOn, '2026-08-20');
       type(en.people.relatives.phone, '+998 90 111 22 33');
-      type(en.people.relatives.fullName, 'Dilfuza Rahimova');
+      type(en.people.relatives.fullNameField, 'Dilfuza Rahimova');
       type(en.people.relatives.relationship, 'mother');
       fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
       expect(

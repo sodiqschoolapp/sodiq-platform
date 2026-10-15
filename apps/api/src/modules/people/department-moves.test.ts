@@ -261,7 +261,7 @@ describe('the department move against the load', () => {
             versionId: version,
             versionNumber: expect.any(Number) as number,
             versionStartsOn: STARTS_ON,
-            unit: { kind: 'class', id: classId, name: expect.any(String) as string },
+            unit: { kind: 'class', id: classId, name: expect.any(String) as string, grade: 7 },
             subjectId: subject,
             teacher: { id: teacher, name: `${staff.lastName} ${staff.firstName}`, vacancy: false },
           },

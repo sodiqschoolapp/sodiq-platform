@@ -18,6 +18,9 @@ import {
 } from '@/testing/render-app';
 import { BRANCH_STORAGE_KEY, ROLE_STORAGE_KEY } from './view-store';
 
+const roleButton = (role: Role) => en.switcher.roleButton.replace('{{role}}', en.roles[role]);
+const ROLE_BUTTON = new RegExp(`^${en.switcher.rolePrefix}`);
+
 // The items a principal finds under "More" (the fifth to the eighth of its row).
 const { MORE_OF_PRINCIPAL } = vi.hoisted(() => ({
   MORE_OF_PRINCIPAL: new Set(['timetable', 'journal', 'results', 'plans']),
@@ -98,7 +101,7 @@ describe('the menu and the home page of each role', () => {
     const line = await screen.findByText(en.home[HOME_KIND[role]]);
     expect(line.tagName).toBe('P');
     expect(screen.getByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
-    expect(screen.queryByLabelText(en.switcher.role)).toBeNull();
+    expect(screen.queryByRole('button', { name: ROLE_BUTTON })).toBeNull();
   });
 });
 
@@ -122,7 +125,20 @@ describe('the role switcher', () => {
     expect(side().queryByText(en.menu.classes)).not.toBeNull();
     const before = calls.length;
 
-    fireEvent.change(screen.getByLabelText(en.switcher.role), { target: { value: 'teacher' } });
+    // Issue #105, H11b: the button says what the choice changes; its menu says the rights stay.
+    const button = screen.getByRole('button', { name: roleButton('tutor') });
+    expect(button.textContent).toBe(`${en.switcher.rolePrefix}${en.roles.tutor}`);
+    fireEvent.click(button);
+    expect(await screen.findByText(en.switcher.roleHint)).toBeDefined();
+    expect(
+      screen
+        .getAllByRole('menuitemradio')
+        .map((item) => [item.textContent, item.getAttribute('aria-checked')]),
+    ).toEqual([
+      [en.roles.tutor, 'true'],
+      [en.roles.teacher, 'false'],
+    ]);
+    fireEvent.click(screen.getByRole('menuitemradio', { name: en.roles.teacher }));
 
     expect(await screen.findByText(en.home.teaching)).toBeDefined();
     expect(side().queryByText(en.menu.plans)).not.toBeNull();
@@ -130,6 +146,7 @@ describe('the role switcher', () => {
     expect(side().queryByText(en.menu.classes)).toBeNull();
     expect(calls).toHaveLength(before);
     expect(window.sessionStorage.getItem(ROLE_STORAGE_KEY)).toBe('teacher');
+    expect(screen.getByRole('button', { name: roleButton('teacher') })).toBeDefined();
   });
 
   it('is not shown for one role', async () => {
@@ -137,7 +154,7 @@ describe('the role switcher', () => {
     renderApp('/');
     await heading(en.home.title);
 
-    expect(screen.queryByLabelText(en.switcher.role)).toBeNull();
+    expect(screen.queryByRole('button', { name: ROLE_BUTTON })).toBeNull();
   });
 
   it('falls back to the default when the stored role is not held', async () => {
