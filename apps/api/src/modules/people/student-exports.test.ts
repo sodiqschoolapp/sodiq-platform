@@ -558,6 +558,8 @@ describe('the student export, the consent list and the "No class" counter', () =
       const returned = await t.post(`/api/people/students/${back.id}/return`, t.north, {
         from: '2026-10-05',
         grade: 8,
+        // Task 3.3b: a return names its class.
+        classId: await t.classOf(t.north, 8, '2026-10-05'),
         contract: { number: 'EX-RETURN/1', signedOn: '2026-10-05' },
         reason: null,
         version: back.version,
