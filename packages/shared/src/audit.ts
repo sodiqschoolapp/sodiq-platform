@@ -477,6 +477,10 @@ const NOT_IDENTITY_KEYS = new Set([
   'cancelledByLeavingId',
   'writtenByMoveId',
   'endedByMoveId',
+  // the class of a return or a graduate restore (task 3.3b, decision 4)
+  'classMembershipId',
+  'languageConfirmed',
+  'groupsPlaced',
   // nested records: the student and the links kept by `student.delete`
   'student',
   'relatives',

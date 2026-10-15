@@ -307,6 +307,44 @@ describe('groups on the class side in the database', () => {
       ).toMatchObject({ constraint: 'class_memberships_need_groups' });
     });
 
+    it('refuses at the commit a return row of a class split for a subject without a group row (task 3.3b)', async () => {
+      const oxford = await classes.schoolClass(north, northYear);
+      const group = await classes.group(north, northYear, maths, [oxford]);
+      const student = await members.student(north, { startsOn: '2026-09-01' });
+      expect(
+        await refusal(
+          members.member({
+            branch: north,
+            classId: oxford,
+            studentId: student,
+            from: '2026-10-12',
+            cause: 'return',
+          }),
+        ),
+      ).toMatchObject({ constraint: 'class_memberships_need_groups' });
+      // With its group row it goes in.
+      await together(
+        {
+          branch: north,
+          classId: oxford,
+          studentId: student,
+          from: '2026-10-12',
+          cause: 'return',
+        },
+        [
+          {
+            branch: north,
+            groupId: group,
+            subjectId: maths,
+            studentId: student,
+            from: '2026-10-12',
+            cause: 'automatic',
+            review: true,
+          },
+        ],
+      );
+    });
+
     it('refuses a class feeding two subjects with only one placed', async () => {
       const oxford = await classes.schoolClass(north, northYear);
       const mathsGroup = await classes.group(north, northYear, maths, [oxford]);

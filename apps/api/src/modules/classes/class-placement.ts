@@ -209,7 +209,8 @@ export async function planPlacement(
 /**
  * Writes the rows of a placement and one audit entry per student on the
  * student record (decision 14), in the transaction of the change. The guard
- * of the database checks every rule again under its locks.
+ * of the database checks every rule again under its locks. Answers the id of
+ * each row written, in the order of `rows`.
  */
 export async function writePlacement(
   transaction: Transaction,
@@ -217,9 +218,10 @@ export async function writePlacement(
   access: Access,
   placement: PlacementClass,
   rows: readonly PlacedRow[],
-  cause: 'placement' | 'create',
+  cause: 'placement' | 'create' | 'return' | 'restore',
   requestId: string,
-): Promise<void> {
+): Promise<string[]> {
+  const ids: string[] = [];
   for (const row of rows) {
     const written = await transaction
       .insertInto('class_memberships')
@@ -251,5 +253,7 @@ export async function writePlacement(
       },
       requestId,
     });
+    ids.push(written.id);
   }
+  return ids;
 }

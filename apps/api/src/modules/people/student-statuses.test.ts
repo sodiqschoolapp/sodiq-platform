@@ -104,7 +104,8 @@ describe('leaving, return and delete of a student', () => {
       cookie,
     );
 
-  const giveBack = (
+  /** A return into grade 8, into the kit's class of grade 8 of the date (task 3.3b, decision 1). */
+  const giveBack = async (
     student: StudentDetail,
     from: string,
     number: string,
@@ -114,7 +115,14 @@ describe('leaving, return and delete of a student', () => {
     t.post(
       `/api/people/students/${student.id}/return`,
       t.north,
-      { from, grade: 8, contract: { number, signedOn: from }, reason: null, version },
+      {
+        from,
+        grade: 8,
+        classId: await t.classOf(t.north, 8, from),
+        contract: { number, signedOn: from },
+        reason: null,
+        version,
+      },
       cookie,
     );
 
@@ -223,7 +231,7 @@ describe('leaving, return and delete of a student', () => {
       .execute();
   }
 
-  /** The writes of a return from a date with a contract, after the lock. */
+  /** The writes of a return from a date with a contract and its class row, after the lock. */
   async function heldReturn(
     transaction: Transaction,
     id: string,
@@ -250,6 +258,19 @@ describe('leaving, return and delete of a student', () => {
     await transaction
       .insertInto('student_contracts')
       .values({ student_id: id, branch_id: t.north, number, signed_on: from })
+      .execute();
+    // Task 3.3b: a return writes its class row too (the kit's class of grade 7).
+    await transaction
+      .insertInto('class_memberships')
+      .values({
+        branch_id: t.north,
+        student_id: id,
+        class_id: (await t.classOf(t.north, 7, from)) ?? UNKNOWN,
+        valid_from: from,
+        valid_until: '2027-06-01',
+        own_until: '2027-06-01',
+        cause: 'return',
+      })
       .execute();
   }
 
@@ -623,8 +644,9 @@ describe('leaving, return and delete of a student', () => {
         t.vicePrincipal,
       );
       const back = accepted(response);
-      // Three status rows and the class row the leaving cut; a return places in no class (decision 2).
-      expect(back).toMatchObject({ uid: student.uid, status: 'active', grade: 8, version: 4 });
+      // Three status rows, the class row the leaving cut and the class row of
+      // the return (task 3.3b, decision 1).
+      expect(back).toMatchObject({ uid: student.uid, status: 'active', grade: 8, version: 5 });
       expect(back.statuses.map((row) => [row.status, row.from, row.until, row.cause])).toEqual([
         ['active', '2026-09-02', '2026-10-01', 'start'],
         ['inactive', '2026-10-01', '2026-10-05', 'leaving'],
@@ -693,7 +715,12 @@ describe('leaving, return and delete of a student', () => {
       const student = await graduated();
       expect(student).toMatchObject({ status: 'graduated', canRestoreGraduated: true });
       expect((await detail(student.id, t.vicePrincipal)).canRestoreGraduated).toBe(false);
-      const input = { from: '2026-10-01', reason: 'Grade 10, not 11.', version: student.version };
+      const input = {
+        from: '2026-10-01',
+        classId: await t.classOf(t.north, 7, '2026-10-01'),
+        reason: 'Grade 10, not 11.',
+        version: student.version,
+      };
       refusedWith(
         await t.post(`/api/people/students/${student.id}/restore`, t.north, input, t.vicePrincipal),
         403,
@@ -809,7 +836,7 @@ describe('leaving, return and delete of a student', () => {
         seniorHeadTeacher,
         t.teacher,
       ]) {
-        for (const [path, input] of routes(student)) {
+        for (const [path, input] of await routes(student)) {
           refusedWith(await t.post(path, t.north, input, cookie), 403, 'permission_denied');
         }
       }
@@ -820,7 +847,7 @@ describe('leaving, return and delete of a student', () => {
       const south = await create({}, t.south);
       const before = await snapshot();
       for (const id of [south.id, UNKNOWN]) {
-        for (const [path, input] of routes({ ...south, id })) {
+        for (const [path, input] of await routes({ ...south, id })) {
           refusedWith(await t.post(path, t.north, input), 404, 'not_found');
         }
       }
@@ -1085,8 +1112,10 @@ describe('leaving, return and delete of a student', () => {
   });
 
   /** Every route of the task with a valid body for the student. */
-  function routes(student: StudentDetail): [string, Record<string, unknown>][] {
+  async function routes(student: StudentDetail): Promise<[string, Record<string, unknown>][]> {
     const base = `/api/people/students/${student.id}`;
+    // Task 3.3b: the return and the restore name a class of the branch of the request.
+    const classId = await t.classOf(t.north, 7, '2026-10-05');
     return [
       [`${base}/leaving`, { lastDay: '2026-10-20', reason: 'Moved.', version: student.version }],
       [`${base}/leaving/cancel`, { version: student.version }],
@@ -1096,12 +1125,16 @@ describe('leaving, return and delete of a student', () => {
         {
           from: '2026-10-05',
           grade: 7,
+          classId,
           contract: { number: 'LV-ROLE/1', signedOn: '2026-10-05' },
           reason: null,
           version: student.version,
         },
       ],
-      [`${base}/restore`, { from: '2026-10-05', reason: 'Mistake.', version: student.version }],
+      [
+        `${base}/restore`,
+        { from: '2026-10-05', classId, reason: 'Mistake.', version: student.version },
+      ],
       [`${base}/delete`, { reason: 'Twice.', version: student.version }],
     ];
   }

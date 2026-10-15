@@ -10,8 +10,8 @@ export interface StoredMembership {
   readonly ownUntil: SchoolDate;
   readonly endedBy: 'leaving' | 'withdrawn' | 'transfer' | 'undone' | null;
   readonly leavingId: string | null;
-  /** What wrote the row (0045, 0050): a placement, the create, a cancel, an undo, a move. */
-  readonly cause: 'placement' | 'create' | 'cancel' | 'undo' | 'transfer';
+  /** What wrote the row (0045, 0050, 0052): a placement, the create, a cancel, an undo, a move, a return, a restore. */
+  readonly cause: 'placement' | 'create' | 'cancel' | 'undo' | 'transfer' | 'return' | 'restore';
   /** The move whose action inserted the row (task 3.3a, 0050), if any. */
   readonly writtenByMoveId: string | null;
   /** The move that cut or emptied the row (task 3.3a, 0050), if any. */

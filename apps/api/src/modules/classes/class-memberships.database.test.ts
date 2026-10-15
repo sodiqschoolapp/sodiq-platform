@@ -907,6 +907,106 @@ describe('class membership in the database', () => {
     });
   });
 
+  // Task 3.3b, decision 3: the class row of a return and of a graduate
+  // restore, with every guard of an insert (edge: "A class is full ... on
+  // every path").
+  describe('the rows of a return and a restore (task 3.3b)', () => {
+    it('lets in a row with the cause return and one with restore, and refuses an unknown cause', async () => {
+      const oxford = await schoolClass(north, northYear);
+      const back = await members.student(north);
+      const restored = await members.student(north);
+      const returned = await place({
+        branch: north,
+        classId: oxford,
+        studentId: back,
+        from: '2026-10-14',
+        cause: 'return',
+      });
+      const restoredRow = await place({
+        branch: north,
+        classId: oxford,
+        studentId: restored,
+        from: '2026-10-14',
+        cause: 'restore',
+      });
+      expect(await members.rowOf(returned)).toMatchObject({ cause: 'return' });
+      expect(await members.rowOf(restoredRow)).toMatchObject({ cause: 'restore' });
+      const other = await members.student(north);
+      expect(
+        await refusal(
+          inBranch(north, (transaction) =>
+            transaction
+              .insertInto('class_memberships')
+              .values({
+                ...memberValues({
+                  branch: north,
+                  classId: oxford,
+                  studentId: other,
+                  from: '2026-10-14',
+                }),
+                cause: 'graduate',
+              })
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'class_memberships_cause_check' });
+    });
+
+    it('refuses a return row into a full class, a class of another grade, an archived class and a class of a closed year', async () => {
+      const full = await schoolClass(north, northYear, { size: 1 });
+      await place({
+        branch: north,
+        classId: full,
+        studentId: await members.student(north),
+        from: '2026-11-02',
+      });
+      const student = await members.student(north, { grade: 7 });
+      const returning = (classId: string) =>
+        refusal(
+          place({
+            branch: north,
+            classId,
+            studentId: student,
+            from: '2026-10-14',
+            cause: 'return',
+          }),
+        );
+      expect(await returning(full)).toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'class_memberships_full',
+      });
+      const eighth = await schoolClass(north, northYear, { grade: 8 });
+      expect(await returning(eighth)).toMatchObject({ constraint: 'class_memberships_grade' });
+      const archived = await schoolClass(north, northYear);
+      await database.migrator
+        .updateTable('classes')
+        .set({ archived_at: new Date(NOW) })
+        .where('id', '=', archived)
+        .execute();
+      expect(await returning(archived)).toMatchObject({
+        constraint: 'class_memberships_class_archived',
+      });
+      const branch = await insertBranch(database.migrator, 'Closed year of a return');
+      const year = await classes.year(branch, 'current', '2025-09-01', '2026-05-31');
+      const old = await schoolClass(branch, year);
+      const graduate = await members.student(branch, { startsOn: '2025-09-01' });
+      await classes.setYear(year, 'closed');
+      expect(
+        await refusal(
+          place({
+            branch,
+            classId: old,
+            studentId: graduate,
+            from: '2025-09-01',
+            ownUntil: '2026-06-01',
+            cause: 'restore',
+          }),
+        ),
+      ).toMatchObject({ constraint: 'class_year_closed' });
+      expect(await rowsOfStudent(student)).toEqual([]);
+    });
+  });
+
   describe('two changes at the same moment (the lock order of the guard)', () => {
     /** A held transaction that does `work`, and a placement that meets it. */
     async function race(

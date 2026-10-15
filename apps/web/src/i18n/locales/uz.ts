@@ -254,7 +254,7 @@ export const uz: Texts<'one' | 'other'> = {
     class_grade_differs:
       'Sinf oʻquvchidan boshqa sinf darajasida. Oʻquvchining sinf darajasidagi sinfni tanlang.',
     class_full:
-      'Bu sanadan boshlab qaysidir kuni sinfda boʻsh oʻrin yetmaydi. Eng koʻp oʻquvchi sonini oshiring yoki kamroq oʻquvchi tanlang.',
+      'Bu sanadan boshlab qaysidir kuni sinfda boʻsh oʻrin yetmaydi. Eng koʻp oʻquvchi sonini oshiring, boshqa sinf yoki kamroq oʻquvchi tanlang.',
     membership_outside_year: 'Sana sinfning oʻquv yilidan tashqarida. Yil ichidagi sanani tanlang.',
     membership_before_start:
       'Sana oʻquvchining oʻqish boshlanish sanasidan oldin. Boshlanish sanasini yoki undan keyingisini tanlang.',
@@ -343,6 +343,10 @@ export const uz: Texts<'one' | 'other'> = {
     move_same_target: 'Bu sanada oʻquvchi allaqachon shu sinf yoki guruhda. Boshqasini tanlang.',
     class_language_differs:
       'Bu ikki sinfda taʼlim tili har xil. Davom etish uchun koʻchirishni tasdiqlang.',
+    return_language_differs:
+      'Oʻquvchi ketgan sinfda taʼlim tili bu sinfnikidan boshqa. Davom etish uchun tasdiqlang.',
+    return_outside_year:
+      'Qaytish sanasi bu sinfning oʻquv yilida emas. Qaytish yoki tiklash sinf oʻquv yilining biror kuniga yoziladi: joriy yilning sinfini tanlang yoki uni sinf oʻquv yilining birinchi kuniga yozing.',
     group_transfer_subject: 'Bu guruh boshqa fanga tegishli. Shu fanning guruhini tanlang.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',

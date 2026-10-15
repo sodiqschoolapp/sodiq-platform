@@ -226,6 +226,24 @@ describe('a frozen permission table', () => {
     }
   });
 
+  // Task 3.3b, decision 7 of pull request #96: a return (`students`
+  // `archive`) and a graduate restore (`student_graduates` `edit`) write a
+  // class row and its groups, and the restore writes the grade; no role does
+  // more than before.
+  it('gives the returners and the restorers the edit of classes and groups, and the restorers the edit of students', () => {
+    for (const role of ROLES) {
+      const returns = permits(PERMISSIONS, role, 'students', 'archive');
+      const restores = permits(PERMISSIONS, role, 'student_graduates', 'edit');
+      if (returns || restores) {
+        expect(permits(PERMISSIONS, role, 'classes', 'edit'), role).toBe(true);
+        expect(permits(PERMISSIONS, role, 'groups', 'edit'), role).toBe(true);
+      }
+      if (restores) {
+        expect(permits(PERMISSIONS, role, 'students', 'edit'), role).toBe(true);
+      }
+    }
+  });
+
   // Task 3.3a, decision 2 of pull request #95 (Look first): 02, Head Teacher:
   // "Moves students between groups of those subjects"; the Senior Head Teacher
   // does everything a Head Teacher does in every branch. Their scope (own

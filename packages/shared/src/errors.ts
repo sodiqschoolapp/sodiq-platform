@@ -441,6 +441,10 @@ export const ERROR_CODES = [
   'move_same_target',
   /** The two classes differ in language of instruction: the move is confirmed first (`05`, Language of instruction, Students; task 3.3a). */
   'class_language_differs',
+  /** The class the returning student left differs in language from the class of the return: confirmed first (`05`, Language of instruction; task 3.3b, decision 2). */
+  'return_language_differs',
+  /** The date of a return or a graduate restore is not in the academic year of the class named (task 3.3b, decision 10). */
+  'return_outside_year',
   /** The group is of another subject than the group the student leaves (task 3.3a). */
   'group_transfer_subject',
   /** Any other refusal that has no code of its own yet. */

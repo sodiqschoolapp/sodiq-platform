@@ -63,10 +63,16 @@ export class StudentHistories {
         lines.push({ date: move.from, id: move.id, line: { kind: 'move', move } });
       }
       // A class or a group joined outside a move: a placement, the create,
-      // "Place automatically". The rows a move, a cancel or an undo wrote are
-      // the move's line; a row that holds no day is no line.
+      // "Place automatically", a return and a graduate restore (task 3.3b).
+      // The rows a move, a cancel or an undo wrote are the move's line; a row
+      // that holds no day is no line.
       const classRows = (await membershipsOf(transaction, id)).filter(
-        (row) => holdsDays(row) && (row.cause === 'placement' || row.cause === 'create'),
+        (row) =>
+          holdsDays(row) &&
+          (row.cause === 'placement' ||
+            row.cause === 'create' ||
+            row.cause === 'return' ||
+            row.cause === 'restore'),
       );
       const groupRows = (await groupMembershipsOf(transaction, id)).filter(
         (row) =>

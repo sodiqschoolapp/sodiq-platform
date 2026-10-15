@@ -403,6 +403,14 @@ export function groupSubjectsOf(
  * runs to the end of the class row, cut at the same leaving, or stops where
  * the next group row of the subject begins, its own end that day (spec review
  * of the plan, must-fix 1). Refusals are named per student and subject.
+ *
+ * A group named by `preferredOf` for the student and subject (task 3.3b,
+ * decision 5 with correction 1: the group a leaving cut, on a return into the
+ * class left) is tried first, among the same groups offered and with the same
+ * seat count; when it is not offered (archived, of a closed year, no longer
+ * drawing from the class) or has no seat on every day of the run, the
+ * smallest suitable group is chosen. Either way the row is automatic and
+ * tagged for review.
  */
 export async function planClassGroups(
   book: SeatBook,
@@ -413,6 +421,7 @@ export async function planClassGroups(
   ) => readonly { subjectId: string; from: SchoolDate; until: SchoolDate }[],
   pathOf: (index: number) => string = (index) => `students.${String(index)}`,
   moveId: string | null = null,
+  preferredOf: (studentId: string, subjectId: string) => string | undefined = () => undefined,
 ): Promise<{ rows: CoverRow[]; refused: ErrorDetail[] }> {
   const rows: CoverRow[] = [];
   const refused: ErrorDetail[] = [];
@@ -433,6 +442,11 @@ export async function planClassGroups(
           group.subjectId === subjectId &&
           group.classIds.has(row.classId.toLowerCase()),
       );
+      const preferredId = preferredOf(row.studentId, subjectId)?.toLowerCase();
+      const preferred =
+        preferredId === undefined
+          ? undefined
+          : offered.find((group) => group.id.toLowerCase() === preferredId);
       let day = row.from;
       while (day < row.until) {
         const holding = held.find((one) => one.from <= day && day < one.until);
@@ -442,7 +456,10 @@ export async function planClassGroups(
         }
         const next = held.find((one) => one.from > day && one.from < row.until);
         const stop = next === undefined ? row.until : next.from;
-        const best = await smallestGroup(book, offered, { from: day, until: stop });
+        const best =
+          preferred !== undefined && (await book.fits(preferred, { from: day, until: stop }))
+            ? preferred
+            : await smallestGroup(book, offered, { from: day, until: stop });
         if (best === undefined) {
           refused.push({
             path: pathOf(index),
@@ -633,6 +650,11 @@ export async function coverClassRows(
     moveId?: string | null;
     /** The moves cancelled: their rows are never given back (task 3.3a, decision 8). */
     cancelledMoves?: ReadonlySet<string>;
+    /**
+     * The group to try first for a student and a subject, by student id then
+     * subject id (task 3.3b, decision 5 with correction 1).
+     */
+    preferred?: ReadonlyMap<string, ReadonlyMap<string, string>>;
   },
   requestId: string,
 ): Promise<{ written: GroupRowWritten[]; automatic: GroupRowWritten[] }> {
@@ -681,6 +703,7 @@ export async function coverClassRows(
     ],
     input.pathOf,
     input.moveId ?? null,
+    (studentId, subjectId) => input.preferred?.get(studentId)?.get(subjectId),
   );
   refuseNoSeat(
     [...planned.refused].sort(
