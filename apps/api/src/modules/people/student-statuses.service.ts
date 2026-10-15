@@ -390,10 +390,12 @@ export class StudentStatuses {
     const left =
       input.leaving === null
         ? undefined
-        : classLeft(
-            student.memberships,
+        : // The rows of this branch only (task 3.3c, permission review): the
+          // Super Admin's transaction also sees a branch the student left.
+          classLeft(
+            await membershipsOf(transaction, id, branchOf(access)),
             input.leaving.from,
-            cancelledOf(await movesOf(transaction, id)),
+            cancelledOf(await movesOf(transaction, id, branchOf(access))),
           );
     let languageConfirmed = false;
     if (left !== undefined) {

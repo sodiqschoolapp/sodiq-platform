@@ -754,6 +754,74 @@ describe('the move of a student to another branch', () => {
     });
   });
 
+  // The permission review of the build: the Super Admin's transaction sees
+  // every branch, so these 404s are the route's own checks.
+  describe('ids outside the branch of the request, also for the Super Admin', () => {
+    it('answers 404 to a cancel by the Super Admin in the receiving or a third branch', async () => {
+      const { moveId } = await released({ from: TOMORROW });
+      const before = await rowsOf();
+      for (const branch of [t.south, east]) {
+        refusedWith(
+          await t.post(`/api/people/branch-moves/${moveId}/cancel`, branch, {}, t.admin),
+          404,
+          'not_found',
+        );
+      }
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('answers 404 to a decline of an unknown release', async () => {
+      const before = await rowsOf();
+      refusedWith(
+        await t.post(
+          `/api/people/branch-moves/${UNKNOWN}/decline`,
+          t.south,
+          { reason: 'No seat' },
+          southVice,
+        ),
+        404,
+        'not_found',
+      );
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('answers 404 to the History of a student of another branch, for the Super Admin too', async () => {
+      const { student, moveId } = await released();
+      accepted(await accept(moveId, { classId: await southClass() }));
+      for (const cookie of [t.admin, t.vicePrincipal]) {
+        refusedWith(
+          await t.get(`/api/people/students/${student.id}/history`, t.north, cookie),
+          404,
+          'not_found',
+        );
+      }
+    });
+
+    it('names no class of the old branch as the class left, for the Super Admin as for the Academic Vice Principal', async () => {
+      const { student, moveId } = await released();
+      accepted(await accept(moveId, { classId: await southClass() }));
+      // The first inactive day is the date of the move: the row of the new
+      // class is emptied and the old branch's row ends on the same day.
+      const left = await t.post(
+        `/api/people/students/${student.id}/leaving`,
+        t.south,
+        {
+          lastDay: '2026-10-09',
+          reason: 'The family moved back.',
+          version: (await fresh(student.id, t.south)).version,
+        },
+        southVice,
+      );
+      expect(left.status, JSON.stringify(left.body)).toBe(200);
+      const read = async (cookie: string) =>
+        studentDetailSchema.parse(
+          (await t.get(`/api/people/students/${student.id}`, t.south, cookie)).body,
+        ).classLeft?.id;
+      const asAdmin = await read(t.admin);
+      expect(asAdmin).toBe(await read(southVice));
+    });
+  });
+
   describe('the leaving and the move', () => {
     it('a leaving cancels an open release, and its cancel does not bring it back', async () => {
       const { student, moveId } = await released({ from: TOMORROW });

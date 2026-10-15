@@ -1126,7 +1126,7 @@ export class Students {
       deletable: canArchive && !holdsData(rows, row.scholarship_type, Number(contractCount.count)),
       ...(await this.movesOfDetail(transaction, access, id, today, scope)),
       ...(await this.branchMovesOfDetail(transaction, access, id)),
-      ...(await this.classLeftOfDetail(transaction, canArchive, id, rows, today)),
+      ...(await this.classLeftOfDetail(transaction, canArchive, id, rows, today, branchId)),
       today,
     };
   }
@@ -1142,6 +1142,7 @@ export class Students {
     id: string,
     rows: readonly StoredStudentStatus[],
     today: SchoolDate,
+    branchId: string,
   ): Promise<{ classLeft?: StudentClass | null }> {
     const last = rows.filter((row) => row.validFrom !== row.validUntil).at(-1);
     if (
@@ -1153,10 +1154,12 @@ export class Students {
     ) {
       return {};
     }
+    // The rows of this branch: the Super Admin's transaction also sees those
+    // of a branch the student left by a move (task 3.3c, permission review).
     const left = classLeft(
-      await membershipsOf(transaction, id),
+      await membershipsOf(transaction, id, branchId),
       last.validFrom,
-      cancelledOf(await movesOf(transaction, id)),
+      cancelledOf(await movesOf(transaction, id, branchId)),
     );
     if (left === undefined) {
       return { classLeft: null };

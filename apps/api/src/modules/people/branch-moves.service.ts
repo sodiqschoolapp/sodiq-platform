@@ -218,13 +218,19 @@ export class BranchMoves {
             .select('student_id')
             .where('id', '=', moveId)
             .where('branch_id', '=', branchId)
+            // The sending side (permission review, should-fix 3).
+            .where('from_branch_id', '=', branchId)
             .executeTakeFirst();
           if (found === undefined) {
             throw notFound();
           }
           await this.lockStudentOf(transaction, found.student_id, branchId);
           const move = await lockBranchMove(transaction, moveId);
-          if (move === undefined || !same(move.branchId, branchId)) {
+          if (
+            move === undefined ||
+            !same(move.branchId, branchId) ||
+            !same(move.fromBranchId, branchId)
+          ) {
             throw notFound();
           }
           if (branchMoveState(move) !== 'open') {
@@ -345,10 +351,8 @@ export class BranchMoves {
     const studentId = await refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const sending = await this.transactions.joinSendingBranch(transaction, moveId, branchId);
-          if (sending === undefined) {
-            throw notFound();
-          }
+          // The ids of the body first, while the filter is the request's
+          // (permission review, should-fix 2); then the join.
           const target = await this.classOfBranch(transaction, input.classId, branchId);
           const chosenIds = input.groups.map((group) => group.groupId);
           if (chosenIds.length > 0) {
@@ -361,6 +365,10 @@ export class BranchMoves {
             if (known.length !== new Set(chosenIds.map((id) => id.toLowerCase())).size) {
               throw notFound();
             }
+          }
+          const sending = await this.transactions.joinSendingBranch(transaction, moveId, branchId);
+          if (sending === undefined) {
+            throw notFound();
           }
           // The student FOR UPDATE first, then the release: a change that came
           // first (an accept, a cancel, a leaving) leaves the release closed.
