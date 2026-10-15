@@ -341,8 +341,12 @@ export const en = {
       'The class the student left teaches in another language. Confirm to accept the student anyway.',
     branch_move_group:
       'This group is not offered to the class for that subject. Choose another group.',
+    branch_move_outside_year:
+      'That date is in no academic year of this branch. Choose a date inside the year.',
+    branch_move_year_closed:
+      'That date is in a closed academic year. Choose a date in the open year.',
     status_scheduled:
-      'A leaving of this student is scheduled after that date. Change or cancel the leaving first.',
+      'A leaving or graduation of this student is scheduled after that date. Change or cancel it first.',
     before_branch_move:
       'That date is before the student moved to this branch. Choose a date on or after the move.',
     move_scheduled:
@@ -1547,6 +1551,12 @@ export const en = {
         notYet: 'Can be accepted from {{date}}',
         class: 'Class',
         noClass: 'No class of this grade in an open year.',
+        acceptConfirmTitle: 'Accept this student?',
+        acceptConfirmText:
+          'The student leaves {{branch}} and joins {{class}}. An accept cannot be undone.',
+        declineConfirmTitle: 'Decline this release?',
+        declineConfirmText: 'The student stays in {{branch}}. The release is closed for good.',
+        subjectUnknown: 'Group of a subject',
         placeAutomatically: 'Place automatically',
         groupOption_one: '{{name}} · {{count}} free seat',
         groupOption_other: '{{name}} · {{count}} free seats',

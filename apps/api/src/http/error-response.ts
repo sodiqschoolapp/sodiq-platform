@@ -240,6 +240,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   branch_move_language_differs:
     'The class left and the class chosen differ in language; confirm first.',
   branch_move_group: 'The group is not offered to the class for that subject.',
+  branch_move_outside_year: 'The date is in no academic year of the branch.',
+  branch_move_year_closed: 'The date is in a closed academic year.',
   status_scheduled: 'A leaving or graduation is scheduled after the date.',
   before_branch_move: 'The date is before the student moved to this branch.',
   move_before_later: 'A later move of the student has begun.',

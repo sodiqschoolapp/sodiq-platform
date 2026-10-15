@@ -781,6 +781,207 @@ describe('branch moves in the database', () => {
     });
   });
 
+  // The spec review of the build, must-fix 2: each refused branch of the
+  // guards of 0053, reached with nothing earlier that refuses it.
+  describe('every refusal of the guards, on its own', () => {
+    const accepting = (transaction: Transaction, move: string) =>
+      transaction
+        .updateTable('student_branch_moves')
+        .set({ accepted_at: new Date(NOW) })
+        .where('id', '=', move)
+        .execute();
+
+    it('keeps a row a branch move ended from being ended another way', async () => {
+      const { student, row } = await moved();
+      const status = await database.migrator
+        .selectFrom('student_statuses')
+        .select('id')
+        .where('student_id', '=', student)
+        .executeTakeFirstOrThrow();
+      expect(
+        await refusal(
+          database.migrator
+            .updateTable('class_memberships')
+            .set({
+              ended_by: 'leaving',
+              ended_by_branch_move_id: null,
+              leaving_id: status.id,
+            })
+            .where('id', '=', row)
+            .execute(),
+        ),
+      ).toMatchObject({ constraint: 'class_memberships_only_shrink' });
+    });
+
+    it('writes a class row of a branch move only from the date of the move accepted, into its target', async () => {
+      const facts = await pupil();
+      const move = await release(facts.student);
+      const insert = (transaction: Transaction, branch: string, classId: string, from: string) =>
+        transaction
+          .insertInto('class_memberships')
+          .values({
+            branch_id: branch,
+            student_id: facts.student,
+            class_id: classId,
+            valid_from: from,
+            valid_until: '2027-06-01',
+            own_until: '2027-06-01',
+            cause: 'branch_move',
+          })
+          .execute();
+      expect(
+        await refusal(
+          inBranches([south, north], async (transaction) => {
+            await accepting(transaction, move);
+            await insert(transaction, south, facts.yale, '2026-10-20');
+          }),
+        ),
+      ).toMatchObject({ constraint: 'memberships_branch_move' });
+      expect(
+        await refusal(
+          inBranches([south, north], async (transaction) => {
+            await accepting(transaction, move);
+            await insert(transaction, north, facts.oxford, '2026-10-14');
+          }),
+        ),
+      ).toMatchObject({ constraint: 'memberships_branch_move' });
+    });
+
+    it('cuts a row only for a move of its own student from its own branch, and empties only a row from the date on', async () => {
+      const one = await pupil();
+      const other = await pupil();
+      const move = await release(one.student);
+      const otherMove = await release(other.student);
+      const cut = (transaction: Transaction, id: string, until: string, by: string) =>
+        transaction
+          .updateTable('class_memberships')
+          .set({ valid_until: until, ended_by: 'branch_move', ended_by_branch_move_id: by })
+          .where('id', '=', id)
+          .execute();
+      expect(
+        await refusal(
+          inBranches([south, north], async (transaction) => {
+            await accepting(transaction, otherMove);
+            await cut(transaction, one.row, '2026-10-14', otherMove);
+          }),
+        ),
+      ).toMatchObject({ constraint: 'memberships_branch_move' });
+      // The row starts on 1 September: emptied, it would end before the date.
+      expect(
+        await refusal(
+          inBranches([south, north], async (transaction) => {
+            await accepting(transaction, move);
+            await cut(transaction, one.row, '2026-09-01', move);
+          }),
+        ),
+      ).toMatchObject({ constraint: 'memberships_branch_move' });
+    });
+
+    it('refuses a status inserted, or a status end moved, before the date of an accepted move', async () => {
+      const facts = await moved();
+      expect(
+        await refusal(
+          database.migrator
+            .insertInto('student_statuses')
+            .values({
+              student_id: facts.student,
+              branch_id: south,
+              status: 'inactive',
+              valid_from: '2026-10-05',
+              valid_until: '2026-10-05',
+              cause: 'cancel',
+            })
+            .execute(),
+        ),
+      ).toMatchObject({ constraint: 'student_statuses_before_branch_move' });
+      expect(
+        await refusal(
+          database.migrator
+            .updateTable('student_statuses')
+            .set({ valid_until: '2026-10-05' })
+            .where('student_id', '=', facts.student)
+            .where('valid_until', 'is', null)
+            .execute(),
+        ),
+      ).toMatchObject({ constraint: 'student_statuses_before_branch_move' });
+    });
+
+    it('writes an accept and a decline only at the moment of the transaction', async () => {
+      const facts = await pupil();
+      const move = await release(facts.student);
+      const yesterday = new Date('2026-10-13T10:00:00+05:00');
+      for (const values of [
+        { accepted_at: yesterday },
+        { declined_at: yesterday, decline_reason: 'No seat' },
+      ]) {
+        expect(
+          await refusal(
+            inBranches([south, north], (transaction) =>
+              transaction
+                .updateTable('student_branch_moves')
+                .set(values)
+                .where('id', '=', move)
+                .execute(),
+            ),
+          ),
+        ).toMatchObject({ constraint: 'student_branch_moves_state' });
+      }
+    });
+
+    it('refuses a release from a branch the student is not of', async () => {
+      const facts = await pupil();
+      expect(
+        await refusal(
+          inBranches([south], (transaction) =>
+            transaction
+              .insertInto('student_branch_moves')
+              .values({
+                branch_id: south,
+                student_id: facts.student,
+                from_branch_id: south,
+                to_branch_id: east,
+                effective_on: '2026-10-14',
+                released_at: new Date(NOW),
+              })
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ constraint: 'student_branch_moves_student_branch' });
+    });
+
+    it('refuses the other writes of an accept without the join, as the receiving branch alone', async () => {
+      const facts = await pupil();
+      await release(facts.student);
+      const changed = await inBranches([south], async (transaction) => {
+        const cut = await transaction
+          .updateTable('class_memberships')
+          .set({ valid_until: '2026-10-14' })
+          .where('id', '=', facts.row)
+          .executeTakeFirst();
+        return cut.numUpdatedRows;
+      });
+      expect(changed).toBe(0n);
+      expect(
+        await refusal(
+          inBranches([south], (transaction) =>
+            transaction
+              .insertInto('class_memberships')
+              .values({
+                branch_id: south,
+                student_id: facts.student,
+                class_id: facts.yale,
+                valid_from: '2026-10-14',
+                valid_until: '2027-06-01',
+                own_until: '2027-06-01',
+                cause: 'branch_move',
+              })
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ constraint: 'memberships_branch_move' });
+    });
+  });
+
   describe('the readers past the filter', () => {
     it('lists the open releases to the branch named, only when the transaction holds it', async () => {
       const facts = await pupil();

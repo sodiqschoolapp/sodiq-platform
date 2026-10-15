@@ -18,7 +18,7 @@ import {
 } from '@sodiq/shared';
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
@@ -284,6 +284,19 @@ function AcceptForm({
   // A class no longer offered (archived meanwhile) falls back to none.
   const classId = options.some((one) => one.value === chosen) ? chosen : '';
   const groups = useQuery(groupsQuery(branchId, move.id, classId));
+  // A subject of the groups that the list does not hold (added meanwhile):
+  // the list is read again, and its field says "Group of a subject" until then.
+  const missing =
+    subjects.data !== undefined &&
+    (groups.data?.subjects ?? []).some(
+      (one) => !subjects.data.subjects.some((subject) => subject.id === one.subjectId),
+    );
+  const { refetch } = subjects;
+  useEffect(() => {
+    if (missing) {
+      void refetch();
+    }
+  }, [missing, refetch]);
   const failed = classes.isError ? classes : subjects.isError ? subjects : null;
   if (failed !== null) {
     return (
@@ -298,9 +311,14 @@ function AcceptForm({
   if (classes.data === undefined || subjects.data === undefined) {
     return <LoadingOutline />;
   }
+  // A subject the list does not hold (added meanwhile): a general label,
+  // and the list read again; never a blank label.
   const subjectName = (id: string) => {
     const found = subjects.data.subjects.find((one) => one.id === id);
-    return found === undefined ? '' : nameOf(found.names, i18n.language);
+    if (found === undefined) {
+      return t('people.students.branchMoves.subjectUnknown');
+    }
+    return nameOf(found.names, i18n.language);
   };
   return (
     <div className="grid gap-3">
@@ -381,6 +399,21 @@ function AcceptGroupsForm({
       }),
     }),
     save: async (input) => {
+      // No undo of an accept (decision 14): asked first, naming the student,
+      // the branch left and the class.
+      const go = await confirm({
+        title: t('people.students.branchMoves.acceptConfirmTitle'),
+        text: t('people.students.branchMoves.acceptConfirmText', {
+          branch: move.fromBranch.name,
+          class: className,
+        }),
+        names: [listName(move)],
+        action: t('people.students.branchMoves.accept'),
+        destructive: false,
+      });
+      if (!go) {
+        throw new SaveCancelled();
+      }
       const send = (confirmLanguage: boolean) =>
         answerOf(
           api.POST('/api/people/branch-moves/{id}/accept', {
@@ -452,6 +485,7 @@ function DeclineForm({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const { branchId } = useView();
   const label = t('people.students.branchMoves.declineTitle', { name: listName(move) });
@@ -459,6 +493,19 @@ function DeclineForm({
     schema: DECLINE_SCHEMA,
     initial: { reason: '' },
     save: async (input) => {
+      // A decline closes the release for good (decision 14): asked first.
+      const go = await confirm({
+        title: t('people.students.branchMoves.declineConfirmTitle'),
+        text: t('people.students.branchMoves.declineConfirmText', {
+          branch: move.fromBranch.name,
+        }),
+        names: [listName(move)],
+        action: t('people.students.branchMoves.decline'),
+        destructive: true,
+      });
+      if (!go) {
+        throw new SaveCancelled();
+      }
       const answer = await answerOf(
         api.POST('/api/people/branch-moves/{id}/decline', {
           params: { header: branchHeader(), path: { id: move.id } },

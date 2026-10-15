@@ -11,6 +11,7 @@ import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
+import { MembersKit } from '../../testing/members-kit.js';
 import {
   dayTemplatesKit,
   TODAY,
@@ -44,6 +45,8 @@ describe('the move of a student to another branch', () => {
   let classes: ClassesKit;
   let northYear: string;
   let southYear: string;
+  let nextSouthYear: string;
+  let members: MembersKit;
   let east: string;
   let southVice: string;
   let eastVice: string;
@@ -245,8 +248,12 @@ describe('the move of a student to another branch', () => {
   beforeAll(async () => {
     t = await dayTemplatesKit();
     classes = new ClassesKit(t.database.migrator);
+    // The closed year first: one year of a branch is current at a time.
+    await classes.year(t.north, 'closed', '2025-09-01', '2026-05-31');
     northYear = await classes.year(t.north);
     southYear = await classes.year(t.south);
+    nextSouthYear = await classes.year(t.south, 'planned', '2027-09-01', '2028-05-31');
+    members = new MembersKit(t.database.migrator, await classes.account());
     east = await t.newBranch();
     await classes.year(east);
     const south = await t.kit.completeSession('Gulnora', 'Tursunova');
@@ -311,6 +318,7 @@ describe('the move of a student to another branch', () => {
         404,
         'not_found',
       );
+      expect(await rowsOf()).toEqual(before);
       const own = await pupil();
       const mid = await rowsOf();
       refusedWith(await release(own.student.id, { to: UNKNOWN }), 404, 'not_found');
@@ -325,7 +333,6 @@ describe('the move of a student to another branch', () => {
         'not_found',
       );
       expect(await rowsOf()).toEqual(mid);
-      expect(before[1]).toEqual(mid[1]);
     });
 
     it('refuses the same branch, a second release, a stale version, a closed state', async () => {
@@ -380,6 +387,116 @@ describe('the move of a student to another branch', () => {
         ),
         409,
         'branch_move_open',
+      );
+    });
+
+    it('refuses a release dated before a class move that has begun', async () => {
+      const { student } = await pupil();
+      const yale = await classes.schoolClass(t.north, northYear, { grade: 7 });
+      const moved = await t.post(
+        '/api/classes/transfers',
+        t.north,
+        { studentId: student.id, version: student.version, toClassId: yale, from: TODAY },
+        t.vicePrincipal,
+      );
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      refusedWith(await release(student.id, { from: '2026-10-05' }), 409, 'move_before_later');
+    });
+
+    it('refuses a date outside any year of the branch, or in a closed one', async () => {
+      const { student } = await pupil();
+      const before = await rowsOf();
+      refusedWith(
+        await release(student.id, { from: '2027-07-01' }),
+        409,
+        'branch_move_outside_year',
+      );
+      refusedWith(
+        await release(student.id, { from: '2026-03-02' }),
+        409,
+        'branch_move_year_closed',
+      );
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('refuses a group move while a release is open', async () => {
+      const english = await classes.subject({ grades: [7, 8] });
+      const oxford = await classes.schoolClass(t.north, northYear, { grade: 7 });
+      await classes.group(t.north, northYear, english, [oxford], { name: 'O-1' });
+      const other = await classes.group(t.north, northYear, english, [oxford], { name: 'O-2' });
+      const { student } = await pupil(t.north, oxford);
+      const row = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select(['id', 'group_id'])
+        .where('student_id', '=', student.id)
+        .executeTakeFirstOrThrow();
+      accepted(await release(student.id, { from: TOMORROW }));
+      refusedWith(
+        await t.post(
+          '/api/groups/transfers',
+          t.north,
+          {
+            studentId: student.id,
+            memberId: row.id,
+            toGroupId:
+              row.group_id === other
+                ? await classes.group(t.north, northYear, english, [oxford], { name: 'O-3' })
+                : other,
+            from: '2026-10-15',
+          },
+          t.vicePrincipal,
+        ),
+        409,
+        'branch_move_open',
+      );
+    });
+
+    it('refuses a release, a class move and a group move of the new branch dated before the arrival', async () => {
+      const english = await classes.subject({ grades: [7, 8] });
+      const yale = await southClass();
+      const g1 = await classes.group(t.south, southYear, english, [yale], { name: 'S-1' });
+      const g2 = await classes.group(t.south, southYear, english, [yale], { name: 'S-2' });
+      const harvard = await southClass();
+      const { student, moveId } = await released({ from: '2026-10-05' });
+      accepted(
+        await accept(moveId, { classId: yale, groups: [{ subjectId: english, groupId: g1 }] }),
+      );
+      const version = (await fresh(student.id, t.south)).version;
+      refusedWith(
+        await release(student.id, {
+          branch: t.south,
+          to: t.north,
+          from: '2026-10-03',
+          cookie: southVice,
+        }),
+        409,
+        'before_branch_move',
+      );
+      refusedWith(
+        await t.post(
+          '/api/classes/transfers',
+          t.south,
+          { studentId: student.id, version, toClassId: harvard, from: '2026-10-03' },
+          southVice,
+        ),
+        409,
+        'before_branch_move',
+      );
+      const row = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select('id')
+        .where('student_id', '=', student.id)
+        .where('group_id', '=', g1)
+        .executeTakeFirstOrThrow();
+      refusedWith(
+        await t.post(
+          '/api/groups/transfers',
+          t.south,
+          { studentId: student.id, memberId: row.id, toGroupId: g2, from: '2026-10-03' },
+          southVice,
+        ),
+        409,
+        'before_branch_move',
       );
     });
 
@@ -467,8 +584,14 @@ describe('the move of a student to another branch', () => {
       const { moveId } = await released();
       const yale = await southClass();
       const english = await classes.subject({ grades: [7, 8] });
-      const small = await classes.group(t.south, southYear, english, [yale], { size: 1 });
-      const large = await classes.group(t.south, southYear, english, [yale], { size: 10 });
+      const small = await classes.group(t.south, southYear, english, [yale], {
+        size: 1,
+        name: 'A-small',
+      });
+      const large = await classes.group(t.south, southYear, english, [yale], {
+        size: 10,
+        name: 'B-large',
+      });
       const response = await t.get(
         `/api/people/branch-moves/${moveId}/groups?classId=${yale}`,
         t.south,
@@ -479,7 +602,8 @@ describe('the move of a student to another branch', () => {
       expect(answer.freeSeats).toBe(25);
       const subject = answer.subjects.find((one) => one.subjectId === english);
       expect(subject?.groups.map((group) => group.id).sort()).toEqual([small, large].sort());
-      expect(subject?.suggested).not.toBeNull();
+      // Both empty: the smallest suitable group by the fewest members, then the name.
+      expect(subject?.suggested).toBe(small);
     });
 
     it('answers 404 for a class of the sending branch, an unknown class, an unknown release and a release to another branch', async () => {
@@ -716,10 +840,20 @@ describe('the move of a student to another branch', () => {
       accepted(await accept(moveId, { classId: yale }));
     });
 
+    it('refuses a class of a year that does not hold the date, all or none', async () => {
+      const { moveId } = await released();
+      const later = await classes.schoolClass(t.south, nextSouthYear, { grade: 7 });
+      const before = await rowsOf();
+      refusedWith(await accept(moveId, { classId: later }), 409, 'membership_outside_year');
+      expect(await rowsOf()).toEqual(before);
+    });
+
     it('asks a confirmation when the class left and the class chosen differ in language', async () => {
       const { moveId } = await released();
       const russian = await southClass({ language: 'ru' });
+      const before = await rowsOf();
       refusedWith(await accept(moveId, { classId: russian }), 409, 'branch_move_language_differs');
+      expect(await rowsOf()).toEqual(before);
       const detail = accepted(await accept(moveId, { classId: russian, confirmLanguage: true }));
       expect(detail.class?.id).toBe(russian);
     });
@@ -937,6 +1071,162 @@ describe('the move of a student to another branch', () => {
       refusedWith(two, 409, 'branch_move_closed');
     });
 
+    it('two accepts, the other order: the second finds the release closed', async () => {
+      const { student, moveId } = await released();
+      const yale = await southClass();
+      const [one, two] = await inOrder(
+        studentGate(student.id),
+        () => accept(moveId, { classId: yale }, t.admin),
+        () => accept(moveId, { classId: yale }),
+      );
+      accepted(one);
+      refusedWith(two, 409, 'branch_move_closed');
+    });
+
+    it('an accept and a decline, the other order: the decline finds the release closed', async () => {
+      const { student, moveId } = await released();
+      const yale = await southClass();
+      const [one, two] = await inOrder(
+        studentGate(student.id),
+        () => accept(moveId, { classId: yale }, t.admin),
+        () =>
+          t.post(
+            `/api/people/branch-moves/${moveId}/decline`,
+            t.south,
+            { reason: 'No seat' },
+            southVice,
+          ),
+      );
+      accepted(one);
+      refusedWith(two, 409, 'branch_move_closed');
+    });
+
+    it('a cancel and a leaving, both directions', async () => {
+      const leaving = (id: string, version: number) => () =>
+        t.post(
+          `/api/people/students/${id}/leaving`,
+          t.north,
+          { lastDay: '2026-10-20', reason: 'The family moves.', version },
+          t.vicePrincipal,
+        );
+      const cancel = (moveId: string) => () =>
+        t.post(`/api/people/branch-moves/${moveId}/cancel`, t.north, {}, t.vicePrincipal);
+      const first = await released({ from: TOMORROW });
+      const firstVersion = (await fresh(first.student.id)).version;
+      const [a, b] = await inOrder(
+        studentGate(first.student.id),
+        cancel(first.moveId),
+        leaving(first.student.id, firstVersion),
+      );
+      accepted(a);
+      expect(b.status, JSON.stringify(b.body)).toBe(200);
+      // The release was cancelled by the cancel, not by the leaving.
+      const cancelled = await t.database.migrator
+        .selectFrom('student_branch_moves')
+        .select('cancelled_by_leaving_id')
+        .where('id', '=', first.moveId)
+        .executeTakeFirstOrThrow();
+      expect(cancelled.cancelled_by_leaving_id).toBeNull();
+      const second = await released({ from: TOMORROW });
+      const secondVersion = (await fresh(second.student.id)).version;
+      const [c, d] = await inOrder(
+        studentGate(second.student.id),
+        leaving(second.student.id, secondVersion),
+        cancel(second.moveId),
+      );
+      expect(c.status, JSON.stringify(c.body)).toBe(200);
+      refusedWith(d, 409, 'branch_move_closed');
+    });
+
+    it('an accept and a placement of the same student in the old branch, both directions', async () => {
+      const oxford = await classes.schoolClass(t.north, northYear, { grade: 7 });
+      const yale = await southClass();
+      // A student of the North with no class (written as a create of 2.4a left one).
+      const withoutClass = async () => {
+        const id = await members.student(t.north, { startsOn: '2026-09-02' });
+        const detail = accepted(await release(id));
+        return { id, moveId: detail.branchMove?.id ?? '', version: detail.version };
+      };
+      const place = (id: string, version: number) => () =>
+        t.post(
+          `/api/classes/${oxford}/members`,
+          t.north,
+          { students: [{ id, version }], from: TODAY },
+          t.vicePrincipal,
+        );
+      const first = await withoutClass();
+      const [a, b] = await inOrder(studentGate(first.id), place(first.id, first.version), () =>
+        accept(first.moveId, { classId: yale }),
+      );
+      expect(a.status, JSON.stringify(a.body)).toBe(201);
+      accepted(b);
+      // The placement in the old branch starts on the date: the accept emptied it.
+      expect(await classRowsOf(first.id)).toEqual([
+        expect.objectContaining({
+          branch_id: t.north,
+          valid_from: TODAY,
+          valid_until: TODAY,
+          ended_by: 'branch_move',
+        }),
+        expect.objectContaining({ branch_id: t.south, cause: 'branch_move' }),
+      ]);
+      const second = await withoutClass();
+      const [c, d] = await inOrder(
+        studentGate(second.id),
+        () => accept(second.moveId, { classId: yale }),
+        place(second.id, second.version),
+      );
+      accepted(c);
+      // The student is of the South now: the North's placement finds no student.
+      refusedWith(d, 404, 'not_found');
+    });
+
+    it('an accept and a group transfer in the old branch, both directions', async () => {
+      const english = await classes.subject({ grades: [7, 8] });
+      const oxford = await classes.schoolClass(t.north, northYear, { grade: 7 });
+      const g1 = await classes.group(t.north, northYear, english, [oxford], { name: 'N-1' });
+      const g2 = await classes.group(t.north, northYear, english, [oxford], { name: 'N-2' });
+      const yale = await southClass();
+      const ready = async () => {
+        const { student } = await pupil(t.north, oxford);
+        const row = await t.database.migrator
+          .selectFrom('group_memberships')
+          .select(['id', 'group_id'])
+          .where('student_id', '=', student.id)
+          .executeTakeFirstOrThrow();
+        const moveId = accepted(await release(student.id)).branchMove?.id ?? '';
+        return { student, row, moveId };
+      };
+      const transfer = (id: string, row: { id: string; group_id: string }) => () =>
+        t.post(
+          '/api/groups/transfers',
+          t.north,
+          {
+            studentId: id,
+            memberId: row.id,
+            toGroupId: row.group_id === g1 ? g2 : g1,
+            from: TOMORROW,
+          },
+          t.vicePrincipal,
+        );
+      const first = await ready();
+      const [a, b] = await inOrder(
+        studentGate(first.student.id),
+        transfer(first.student.id, first.row),
+        () => accept(first.moveId, { classId: yale }),
+      );
+      refusedWith(a, 409, 'branch_move_open');
+      accepted(b);
+      const second = await ready();
+      const [c, d] = await inOrder(
+        studentGate(second.student.id),
+        () => accept(second.moveId, { classId: yale }),
+        transfer(second.student.id, second.row),
+      );
+      accepted(c);
+      refusedWith(d, 404, 'not_found');
+    });
+
     it('an accept and a leaving, both directions', async () => {
       const yale = await southClass();
       const first = await released();
@@ -975,8 +1265,8 @@ describe('the move of a student to another branch', () => {
         () => release(student.id, { version, to: east }),
       );
       accepted(one);
-      expect(two.status).toBe(409);
-      expect(['branch_move_open', 'student_changed']).toContain(errorCode(two));
+      // A release changes no status or class row: the same version, and the open release refuses.
+      refusedWith(two, 409, 'branch_move_open');
     });
 
     it('a release and a class transfer, both directions', async () => {
@@ -995,7 +1285,7 @@ describe('the move of a student to another branch', () => {
         transfer(first.id, first.version),
       );
       accepted(a);
-      expect(b.status).toBe(409);
+      refusedWith(b, 409, 'branch_move_open');
       const second = (await pupil()).student;
       const [c, d] = await inOrder(
         studentGate(second.id),
@@ -1003,7 +1293,8 @@ describe('the move of a student to another branch', () => {
         () => release(second.id, { version: second.version, from: TOMORROW }),
       );
       expect(c.status, JSON.stringify(c.body)).toBe(200);
-      expect(d.status).toBe(409);
+      // The transfer wrote class rows: the release sent the version read before it.
+      refusedWith(d, 409, 'student_changed');
     });
 
     it('an accept and a placement into the last seat of the class, both directions', async () => {
@@ -1032,7 +1323,7 @@ describe('the move of a student to another branch', () => {
         place(firstClass, waiting.id, waiting.version),
       );
       accepted(a);
-      expect(b.status).toBe(409);
+      refusedWith(b, 409, 'class_full');
       const second = await released();
       const secondClass = await southClass({ maxSize: 1 });
       const other = await noClass();

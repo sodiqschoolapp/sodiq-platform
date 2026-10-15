@@ -457,6 +457,10 @@ export const ERROR_CODES = [
   'branch_move_language_differs',
   /** The group chosen for a subject is not a group of that subject offered to the class (task 3.3c, decision 13). */
   'branch_move_group',
+  /** The date of a release is in no academic year of the sending branch (task 3.3c). */
+  'branch_move_outside_year',
+  /** The date of a release is in a closed academic year of the sending branch (task 3.3c). */
+  'branch_move_year_closed',
   /** A leaving or graduation of the student is scheduled after the date of the move: it is changed first (task 3.3c, decision 11). */
   'status_scheduled',
   /** The date is before the student's move to this branch: the old branch's rows are not changed from here (task 3.3c, decision 12). */

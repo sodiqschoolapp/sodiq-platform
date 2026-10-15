@@ -347,8 +347,11 @@ export const uz: Texts<'one' | 'other'> = {
       'Oʻquvchi chiqib ketgan sinf boshqa tilda oʻqitadi. Baribir qabul qilish uchun tasdiqlang.',
     branch_move_group:
       'Bu guruh sinfga shu fan boʻyicha taklif qilinmaydi. Boshqa guruhni tanlang.',
+    branch_move_outside_year:
+      'Bu sana filialning hech bir oʻquv yilida emas. Yil ichidagi sanani tanlang.',
+    branch_move_year_closed: 'Bu sana yopilgan oʻquv yilida. Ochiq yildagi sanani tanlang.',
     status_scheduled:
-      'Bu oʻquvchining ketishi shu sanadan keyin rejalashtirilgan. Avval ketishni oʻzgartiring yoki bekor qiling.',
+      'Bu oʻquvchining ketishi yoki bitirishi shu sanadan keyin rejalashtirilgan. Avval uni oʻzgartiring yoki bekor qiling.',
     before_branch_move:
       'Bu sana oʻquvchi shu filialga oʻtishidan oldin. Oʻtish kuni yoki undan keyingi sanani tanlang.',
     move_scheduled:
@@ -1561,6 +1564,12 @@ export const uz: Texts<'one' | 'other'> = {
         notYet: '{{date}} dan qabul qilish mumkin',
         class: 'Sinf',
         noClass: 'Ochiq oʻquv yilida bu sinf darajasidagi sinf yoʻq.',
+        acceptConfirmTitle: 'Bu oʻquvchi qabul qilinsinmi?',
+        acceptConfirmText:
+          'Oʻquvchi {{branch}} filialidan ketadi va {{class}} sinfiga oʻtadi. Qabul qilishni qaytarib boʻlmaydi.',
+        declineConfirmTitle: 'Bu yuborish rad etilsinmi?',
+        declineConfirmText: 'Oʻquvchi {{branch}} filialida qoladi. Yuborish butunlay yopiladi.',
+        subjectUnknown: 'Fan guruhi',
         placeAutomatically: 'Avtomatik joylashtirish',
         groupOption_one: '{{name}} · {{count}} ta boʻsh oʻrin',
         groupOption_other: '{{name}} · {{count}} ta boʻsh oʻrin',

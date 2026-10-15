@@ -388,6 +388,15 @@ describe('the move to another branch', () => {
     ]);
     fireEvent.change(group, { target: { value: uid(80) } });
     fireEvent.click(within(row).getByRole('button', { name: en.form.save }));
+    // An accept cannot be undone: asked first, naming the student, the branch and the class.
+    const sure = await screen.findByRole('alertdialog', { name: texts.acceptConfirmTitle });
+    expect(within(sure).getByText('Karimova Malika')).toBeDefined();
+    expect(
+      within(sure).getByText(
+        texts.acceptConfirmText.replace('{{branch}}', SOUTH.name).replace('{{class}}', '7 Moskva'),
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(sure).getByRole('button', { name: texts.accept }));
     const dialog = await screen.findByRole('alertdialog', { name: texts.languageTitle });
     fireEvent.click(within(dialog).getByRole('button', { name: texts.accept }));
     await waitFor(() => {
@@ -403,6 +412,37 @@ describe('the move to another branch', () => {
         texts.accepted.replace('{{name}}', 'Karimova Malika').replace('{{class}}', '7 Moskva'),
       ),
     ).toBeDefined();
+  });
+
+  it('sends nothing when the confirmation of an accept is declined', async () => {
+    const move = INCOMING.moves[0];
+    if (move === undefined) {
+      throw new Error('The fixture holds a release.');
+    }
+    const calls = open(
+      detailOf(),
+      {
+        [`GET /api/people/branch-moves/${move.id}/groups`]: () =>
+          json({ subjects: [], freeSeats: 4 }),
+      },
+      { incoming: INCOMING },
+    );
+    renderApp(PATH);
+    const section = await screen.findByRole('region', {
+      name: texts.incomingTitle_other.replace('{{count}}', '2'),
+    });
+    const row = within(section).getByRole('listitem', { name: 'Karimova Malika' });
+    fireEvent.click(within(row).getByRole('button', { name: texts.accept }));
+    fireEvent.change(await within(row).findByLabelText(texts.class), {
+      target: { value: YALE.id },
+    });
+    fireEvent.click(await within(row).findByRole('button', { name: en.form.save }));
+    const sure = await screen.findByRole('alertdialog', { name: texts.acceptConfirmTitle });
+    fireEvent.click(within(sure).getByRole('button', { name: en.confirm.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(calls.some((call) => call.route.endsWith('/accept'))).toBe(false);
   });
 
   it('declines a release with a reason, in Russian', async () => {
@@ -428,6 +468,8 @@ describe('the move to another branch', () => {
     const reason = await within(row).findByLabelText(ru.people.students.reason);
     fireEvent.change(reason, { target: { value: 'Нет мест в 7 классе' } });
     fireEvent.click(within(row).getByRole('button', { name: ru.form.save }));
+    const sure = await screen.findByRole('alertdialog', { name: rtexts.declineConfirmTitle });
+    fireEvent.click(within(sure).getByRole('button', { name: rtexts.decline }));
     await waitFor(() => {
       expect(calls.some((call) => call.route.endsWith('/decline'))).toBe(true);
     });

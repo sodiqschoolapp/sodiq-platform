@@ -56,6 +56,10 @@ test('a student is released by one branch and accepted by another', async ({ pag
   await row.getByRole('button', { name: moves.accept, exact: true }).click();
   await row.getByLabel(moves.class, { exact: true }).selectOption({ label: '7 Cambridge' });
   await row.getByRole('button', { name: en.form.save, exact: true }).click();
+  await page
+    .getByRole('alertdialog', { name: moves.acceptConfirmTitle })
+    .getByRole('button', { name: moves.accept, exact: true })
+    .click();
   await expect(incoming.getByText(/is in 7 Cambridge now/)).toBeVisible();
 
   // The record is of this branch now, with the same UID; the History tab

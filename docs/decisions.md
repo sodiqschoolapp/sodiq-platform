@@ -240,6 +240,11 @@ Plan approved on pull request #97 with corrections 1 to 3; decisions 1 to 6 mark
 | The accept form sits in the incoming list's row, not in the side panel; the class is chosen first, then a group per subject | Build: the record is not of the branch before the accept |
 | The record is read after the accept in a new transaction of the request's branches alone | Build: the joined filter would count the old branch's rows into the `version` |
 | The History route of a student checks the branch explicitly: the Super Admin's transaction sees every branch | Build; `.claude/rules/api.md`, the Super Admin's 404 |
+| A release dated in no year or in a closed year of the sending branch answers codes of its own (`branch_move_outside_year`, `branch_move_year_closed`) | Spec review of the build, should-fix 2: the class codes' texts name a class |
+| The accept and the decline ask a confirmation naming the student (and the branch and class), as an action that cannot be undone | Spec review of the build, must-fix 5; `.claude/rules/web.md` |
+| An account that is the Academic Vice Principal of both branches may release and accept the same move, as the Super Admin may; no "own request" rule | Spec review of the build, should-fix 7: `edge` lets the Super Admin do both; the account holds both roles in force |
+| The accept reads the target class again after its lock; the class left and the moves read on the return path and the record are of the request's branch | Spec review of the build, should-fix 1; permission review, should-fix 1 |
+| A table that references the student is named carried or kept in a test; the 2.4a, 2.5a and 3.1b database tests that changed a branch by hand use `moveStudentBranch` | Build: the branch changes only with an accepted move |
 
 ## 15 October 2026: return and graduate restore into a class (task 3.3b)
 

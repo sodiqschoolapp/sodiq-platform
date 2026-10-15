@@ -406,6 +406,9 @@ export class BranchMoves {
             transaction,
             held === undefined ? [target.id] : [held.classId, target.id],
           );
+          // Read again after its lock (spec review of the build, should-fix 1):
+          // archived, its year closed or its size changed meanwhile.
+          const locked = await this.classOfBranch(transaction, target.id, branchId);
           const languages = await transaction
             .selectFrom('classes')
             .select(['id', 'language'])
@@ -466,7 +469,7 @@ export class BranchMoves {
           const moved = await this.placementStudent(transaction, move.studentId);
           const rows = await planPlacement(
             transaction,
-            target,
+            locked,
             [{ student: moved, version: null }],
             from,
           );
@@ -474,7 +477,7 @@ export class BranchMoves {
             transaction,
             this.audit,
             access,
-            target,
+            locked,
             rows,
             'branch_move',
             requestId,
@@ -483,7 +486,7 @@ export class BranchMoves {
           if (row === undefined || membershipId === undefined) {
             throw new Error('The placement of an accept writes one row.');
           }
-          const chosen = await this.writeChosen(transaction, groups, target, input, {
+          const chosen = await this.writeChosen(transaction, groups, locked, input, {
             studentId: move.studentId,
             from: row.from,
             until: row.until,
@@ -499,10 +502,10 @@ export class BranchMoves {
                   index: 0,
                   row: {
                     studentId: move.studentId,
-                    classId: target.id,
+                    classId: locked.id,
                     from: row.from,
                     until: row.until,
-                    ownUntil: target.ownUntil,
+                    ownUntil: locked.ownUntil,
                     leavingId: row.leavingId,
                   },
                 },
@@ -756,12 +759,22 @@ export class BranchMoves {
       .where('end_date', '>=', day)
       .executeTakeFirst();
     if (year === undefined) {
-      throw new ApiException('membership_outside_year', 409, undefined, [
-        { path: 'from', code: 'membership_outside_year', message: 'The date is outside the year.' },
+      throw new ApiException('branch_move_outside_year', 409, undefined, [
+        {
+          path: 'from',
+          code: 'branch_move_outside_year',
+          message: 'The date is in no academic year of the branch.',
+        },
       ]);
     }
     if (year.status === 'closed') {
-      throw new ApiException('class_year_closed', 409);
+      throw new ApiException('branch_move_year_closed', 409, undefined, [
+        {
+          path: 'from',
+          code: 'branch_move_year_closed',
+          message: 'The date is in a closed academic year.',
+        },
+      ]);
     }
   }
 
