@@ -1,8 +1,8 @@
 // The timetable rule engine, used by the API, the grid and to re-check the solver's output.
 // Task 1.5 adds the times of a day and the template of a class on a date, task
 // 1.4 the calendar (what a grade has on a date), task 3.4a the rules of one
-// teaching load row, task 3.4b the blocks and weekly totals of a load; the
-// placement rules arrive in task 5.2.
+// teaching load row, task 3.4b the blocks and weekly totals of a load, task
+// 5.2 every rule of a placed timetable (check.ts).
 export {
   dayEndsAfterMidnight,
   dayTimes,
@@ -81,3 +81,27 @@ export {
   type TotalsRow,
   type WeekDay,
 } from './totals.js';
+export {
+  RELAXED_WHEN_NO_TEACHER_FREE,
+  RULE_ORDER,
+  slotStatus,
+  WARNINGS,
+  type RuleCode,
+  type RuleResult,
+  type Severity,
+  type SlotStatus,
+} from './rules.js';
+export type {
+  AvailabilityEntry,
+  CheckOptions,
+  EngineDay,
+  EngineLoadRow,
+  EngineRoom,
+  EngineSubject,
+  EngineTeacher,
+  EngineUnit,
+  EngineYear,
+  Facts,
+  Placement,
+} from './placement.js';
+export { checkCandidate, checkTimetable, overlappingPairs } from './check.js';
