@@ -12,14 +12,7 @@ export interface StoredMembership {
   readonly leavingId: string | null;
   /** What wrote the row (0045, 0050, 0052, 0053): a placement, the create, a cancel, an undo, a move, a return, a restore, a move to another branch. */
   readonly cause:
-    | 'placement'
-    | 'create'
-    | 'cancel'
-    | 'undo'
-    | 'transfer'
-    | 'return'
-    | 'restore'
-    | 'branch_move';
+    'placement' | 'create' | 'cancel' | 'undo' | 'transfer' | 'return' | 'restore' | 'branch_move';
   /** The move whose action inserted the row (task 3.3a, 0050), if any. */
   readonly writtenByMoveId: string | null;
   /** The move that cut or emptied the row (task 3.3a, 0050), if any. */

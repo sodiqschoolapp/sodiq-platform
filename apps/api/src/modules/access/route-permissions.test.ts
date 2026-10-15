@@ -103,7 +103,11 @@ const GROUP_MOVERS: readonly Role[] = [
 ];
 // Task 3.3c (pull request #97): the area `branch_moves` (decision 8 as changed by correction 3).
 const BRANCH_MOVERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
-const BRANCH_MOVE_READERS: readonly Role[] = ['super_admin', 'principal', 'academic_vice_principal'];
+const BRANCH_MOVE_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+];
 const HISTORY_READERS: readonly Role[] = [
   'super_admin',
   'principal',

@@ -70,22 +70,24 @@ describe('branch moves in the database', () => {
     const southGroup = await classes.group(south, southYear, english, [yale]);
     const student = await members.student(north, { startsOn: '2026-09-01' });
     // The class row and its group row in one transaction (0049, at the commit).
-    const { row, groupRow } = await database.migrator.transaction().execute(async (transaction) => ({
-      row: await members.member(
-        { branch: north, classId: oxford, studentId: student, from: '2026-09-01' },
-        transaction,
-      ),
-      groupRow: await members.groupMember(
-        {
-          branch: north,
-          groupId: northGroup,
-          subjectId: english,
-          studentId: student,
-          from: '2026-09-01',
-        },
-        transaction,
-      ),
-    }));
+    const { row, groupRow } = await database.migrator
+      .transaction()
+      .execute(async (transaction) => ({
+        row: await members.member(
+          { branch: north, classId: oxford, studentId: student, from: '2026-09-01' },
+          transaction,
+        ),
+        groupRow: await members.groupMember(
+          {
+            branch: north,
+            groupId: northGroup,
+            subjectId: english,
+            studentId: student,
+            from: '2026-09-01',
+          },
+          transaction,
+        ),
+      }));
     return { oxford, northGroup, yale, southGroup, student, row, groupRow };
   }
 

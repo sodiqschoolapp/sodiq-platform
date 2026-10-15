@@ -875,4 +875,3 @@ export class BranchMoves {
     });
   }
 }
-

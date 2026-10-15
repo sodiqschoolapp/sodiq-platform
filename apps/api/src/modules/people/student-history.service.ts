@@ -78,9 +78,7 @@ export class StudentHistories {
       for (const move of elsewhere.moves) {
         lines.push({ date: move.from, id: move.id, line: { kind: 'move', move } });
       }
-      lines.push(
-        ...(await this.branchMoveLines(transaction, id, branchId, elsewhere.classRows)),
-      );
+      lines.push(...(await this.branchMoveLines(transaction, id, branchId, elsewhere.classRows)));
       for (const row of elsewhere.classRows.filter((one) => joinedOutsideMove(one))) {
         lines.push({
           date: row.validFrom,
