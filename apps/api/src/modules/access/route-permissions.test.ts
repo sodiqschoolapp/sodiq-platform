@@ -472,6 +472,40 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // records under the new area `student_merges`, the Super Admin alone.
   'GET /api/people/students/:id/merge': { branch: 'request', roles: ['super_admin'] },
   'POST /api/people/students/:id/merge': { branch: 'request', roles: ['super_admin'] },
+  // Task 3.4a, decision 4 of pull request #99: draft versions and their
+  // teaching load under the new area `timetable`.
+  'GET /api/timetable/versions': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/versions': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'PATCH /api/timetable/versions/:id': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'GET /api/timetable/versions/:id/load': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'GET /api/timetable/versions/:id/load/teachers': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/versions/:id/load': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'PATCH /api/timetable/versions/:id/load/:rowId': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'DELETE /api/timetable/versions/:id/load/:rowId': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

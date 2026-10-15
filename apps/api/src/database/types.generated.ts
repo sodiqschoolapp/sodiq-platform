@@ -257,6 +257,7 @@ export interface Departments {
   name_ru: string;
   name_uz: string;
   position: number;
+  tutors: Generated<boolean>;
 }
 
 export interface Divisions {
@@ -731,6 +732,33 @@ export interface Subjects {
   weights_round: Generated<number>;
 }
 
+export interface TeachingLoadRows {
+  branch_id: string;
+  class_id: string | null;
+  created_at: Generated<Timestamp>;
+  double_lessons: Generated<boolean>;
+  group_id: string | null;
+  id: Generated<string>;
+  lessons_per_week: number;
+  room_id: string | null;
+  room_type: string | null;
+  subject_id: string;
+  teacher_id: string;
+  version_id: string;
+}
+
+export interface TimetableVersions {
+  academic_year_id: string;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  from_version_id: string | null;
+  id: Generated<string>;
+  left_rows: Generated<Json>;
+  number: number;
+  starts_on: string;
+  status: Generated<string>;
+}
+
 export interface TravelTimes {
   branch_high: string;
   branch_low: string;
@@ -800,5 +828,7 @@ export interface DB {
   subject_daily_weights: SubjectDailyWeights;
   subject_quarter_weights: SubjectQuarterWeights;
   subjects: Subjects;
+  teaching_load_rows: TeachingLoadRows;
+  timetable_versions: TimetableVersions;
   travel_times: TravelTimes;
 }

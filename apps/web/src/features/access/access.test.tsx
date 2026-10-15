@@ -42,6 +42,16 @@ vi.mock('./menu-pages', async (importOriginal) => {
   return { ...actual, BUILT_PAGES: pages, BUILT_ITEMS: new Set(MENU_ITEMS) };
 });
 
+/** The roles whose menu row has "Timetable" without the area (task 3.4a, decision 4). */
+const WITHOUT_TIMETABLE: ReadonlySet<Role> = new Set([
+  'spiritual_vice_principal',
+  'head_tutor',
+  'tutor',
+  'senior_head_teacher',
+  'head_teacher',
+  'teacher',
+]);
+
 const heading = (name: string) => screen.findByRole('heading', { name });
 const side = () => within(screen.getByRole('navigation', { name: en.layout.menu }));
 
@@ -67,7 +77,14 @@ describe('the menu and the home page of each role', () => {
 
     await heading(en.home.title);
     const links = side().getAllByRole('link');
-    expect(links.map((link) => link.textContent)).toEqual(MENU[role].map((item) => en.menu[item]));
+    // The row of the table, less "Timetable" for the six roles whose views of
+    // lessons come with 5.9: the area `timetable` (task 3.4a, decision 4) is
+    // the Super Admin's, the Principal's and the Academic Vice Principal's.
+    expect(links.map((link) => link.textContent)).toEqual(
+      MENU[role]
+        .filter((item) => item !== 'timetable' || !WITHOUT_TIMETABLE.has(role))
+        .map((item) => en.menu[item]),
+    );
     // The current page is marked for a screen reader as well as by its fill
     // (docs/design-system.md, Layout shell, Menu; pull request #61, decision 9).
     expect(links.filter((link) => link.getAttribute('aria-current') === 'page')).toEqual([

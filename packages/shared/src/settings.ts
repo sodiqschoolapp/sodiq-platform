@@ -145,6 +145,8 @@ export const CHECKLIST_ITEMS = [
   'classes',
   // Task 3.2a, decision 14: an active group in a planned or current year.
   'groups',
+  // Task 3.4a, decision 14: a version of a planned or current year with a load row.
+  'teachingLoad',
 ] as const;
 
 export const checklistItemKeySchema = z.enum(CHECKLIST_ITEMS);

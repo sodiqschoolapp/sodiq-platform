@@ -361,6 +361,40 @@ export const uz: Texts<'one' | 'other'> = {
       'Ikki yozuvdan birida boshqa filialga ochiq chiqarish bor. Avval uni bekor qiling yoki rad eting, soʻng birlashtiring.',
     student_merge_move_scheduled:
       'Ikki yozuvdan birida bugundan keyingi sinf yoki guruh koʻchirilishi bor. Avval uni bekor qiling, soʻng birlashtiring.',
+    version_not_draft:
+      'Bu versiya endi qoralama emas: uning yuklamasi va boshlanish sanasi oʻzgarmaydi. Yuklamani oʻzgartirish uchun yangi qoralama boshlang.',
+    timetable_year_closed:
+      'Bu versiyaning oʻquv yili yopilgan: unda hech narsa oʻzgarmaydi. Rejalashtirilgan yoki joriy yilda ishlang.',
+    version_start_past: 'Boshlanish sanasi bugundan oldin. Bugungi yoki keyingi sanani tanlang.',
+    version_start_outside_year:
+      'Boshlanish sanasi oʻquv yilidan tashqarida. Yil ichidagi sanani tanlang.',
+    version_copy_year:
+      'Bu versiya boshqa oʻquv yiliga tegishli. Shu yilning versiyasidan nusxa oling yoki boʻsh boshlang.',
+    load_unit_year:
+      'Bu sinf yoki guruh versiyadan boshqa oʻquv yiliga tegishli. Versiya yilidagisini tanlang.',
+    load_unit_archived: 'Bu sinf yoki guruh arxivda. Faolini tanlang yoki avval uni tiklang.',
+    load_group_subject: 'Guruh qatori faqat guruhning oʻz fani uchun. Shu fanni tanlang.',
+    load_subject_archived: 'Bu fan arxivda. Faol fanni tanlang.',
+    load_subject_grade:
+      'Bu fan sinf yoki guruhning har bir sinf darajasida oʻtilmaydi. Boshqa fanni tanlang yoki avval fanga darajani qoʻshing.',
+    load_teacher_branch:
+      'Bu oʻqituvchi yoki vakansiya shu filialda ishlamaydi. Filialdagisini tanlang.',
+    load_teacher_status:
+      'Versiya boshlanish sanasida bu oʻqituvchi faol emas yoki ketgan, yoki vakansiya yopilgan. Boshqa oʻqituvchini tanlang.',
+    load_teacher_subject:
+      'Bu oʻqituvchi yoki vakansiya profilida fan yoʻq. Boshqa oʻqituvchini tanlang yoki avval fanni profilga qoʻshing.',
+    load_teacher_grade:
+      'Bu oʻqituvchi yoki vakansiyada fan bor, lekin sinf yoki guruhning hamma darajalari yoʻq. Boshqa oʻqituvchini tanlang yoki avval darajani profilga qoʻshing.',
+    load_teacher_language:
+      'Bu oʻqituvchi yoki vakansiya sinf yoki guruh tilida dars bermaydi, fan esa til qoidasiga boʻysunadi. Boshqa oʻqituvchini tanlang.',
+    load_room_closed: 'Bu xona yopilgan. Boshqa xonani yoki xona turini tanlang.',
+    load_room_choice: 'Xonani yoki xona turini koʻrsating, ikkalasini emas.',
+    load_row_exists:
+      'Bu versiyada shu sinf va fan yoki shu guruh uchun qator allaqachon bor. Uni oʻzgartirish uchun oching.',
+    load_group_no_shared_slot:
+      'Bu guruhning ikki darajasida birorta oʻquv kunida boshlanishi va tugashi bir xil dars yoʻq. Avval darajalarning kun shablonlarini moslang.',
+    vacancy_has_load:
+      'Bu vakansiya oʻquv yuklamasi qatorida koʻrsatilgan, shuning uchun uni yopib yoki oʻchirib boʻlmaydi. Avval shu qatorga boshqa oʻqituvchini tayinlang.',
     student_merge_year_closed:
       'Birlashtirish yopilgan oʻquv yilining qatorini oʻzgartiradi, u esa oʻzgarmaydi. Bu yozuvlarni birlashtirib boʻlmaydi.',
     student_merge_grade:
@@ -1065,6 +1099,7 @@ export const uz: Texts<'one' | 'other'> = {
         subjects: 'Fanlar va vaznlar',
         classes: 'Sinflar',
         groups: 'Guruhlar',
+        teachingLoad: 'Oʻquv yuklamasi',
       },
       calendarCount_one: '{{count}} ta yozuv',
       calendarCount_other: '{{count}} ta yozuv',
@@ -2168,6 +2203,7 @@ export const uz: Texts<'one' | 'other'> = {
       exports: 'Eksportlar',
       shows: 'Koʻrsatilgan yashirin maydonlar',
       classes: 'Sinflar',
+      timetable: 'Dars jadvali',
     },
     scopes: {
       branch: 'Shu filial',
@@ -2201,6 +2237,8 @@ export const uz: Texts<'one' | 'other'> = {
       audit_entry: 'Jurnal yozuvi',
       class: 'Sinf',
       group: 'Guruh',
+      timetable_version: 'Dars jadvali versiyasi',
+      teaching_load_row: 'Oʻquv yuklamasi qatori',
     },
     actions: {
       auth: {
@@ -2423,6 +2461,15 @@ export const uz: Texts<'one' | 'other'> = {
         archive: 'Guruh arxivlandi',
         restore: 'Guruh tiklandi',
         export: 'Guruhlar eksport qilindi',
+      },
+      timetable_version: {
+        create: 'Dars jadvali qoralamasi yaratildi',
+        edit: 'Dars jadvali qoralamasi oʻzgartirildi',
+      },
+      teaching_load: {
+        create: 'Oʻquv yuklamasi qatori qoʻshildi',
+        edit: 'Oʻquv yuklamasi qatori oʻzgartirildi',
+        delete: 'Oʻquv yuklamasi qatori oʻchirildi',
       },
       audit: {
         entry_shown: 'Jurnal yozuvining yashirin qiymatlari koʻrsatildi',
@@ -2738,6 +2785,96 @@ export const uz: Texts<'one' | 'other'> = {
         merged:
           '{{keptName}} va {{mergedName}} ota-ona yozuvlari boshqa filialda birlashtirildi; {{fullName}} ismi qoldi.',
       },
+    },
+  },
+  timetable: {
+    title: 'Dars jadvali',
+    loadLink: 'Oʻquv yuklamasi',
+    load: {
+      title: 'Oʻquv yuklamasi',
+      caption: 'Versiya qatorlari',
+      version: 'Versiya',
+      versionOption: '{{number}}-versiya, {{year}}: {{status}}',
+      statuses: {
+        draft: 'Qoralama',
+        published: 'Eʼlon qilingan',
+        archived: 'Arxivda',
+      },
+      startsOn: 'Boshlanish sanasi',
+      startsOnText: '{{date}} dan boshlanadi',
+      fromVersion: '{{number}}-versiyadan nusxa olingan',
+      newDraft: 'Yangi qoralama',
+      newDraftTitle: 'Yangi qoralama',
+      year: 'Oʻquv yili',
+      copyFrom: 'Nimadan boshlash',
+      startEmpty: 'Boʻsh',
+      copyOption: '{{number}}-versiya nusxasi',
+      changeStart: 'Boshlanish sanasini oʻzgartirish',
+      noVersionTitle: 'Hali qoralama yoʻq',
+      noVersion: 'Qoralama yilning oʻquv yuklamasini saqlaydi. Birinchi qoralamani boshlang.',
+      noVersionRead: 'Dars jadvalining qoralamasi hali yoʻq.',
+      noYear: 'Avval rejalashtirilgan yoki joriy oʻquv yilini qoʻshing.',
+      readOnly: 'Qoralama emas: faqat koʻrish.',
+      emptyTitle: 'Hali qator yoʻq',
+      empty:
+        'Qator sinf yoki guruhga fan, oʻqituvchi va haftalik darslar sonini beradi. Birinchi qatorni qoʻshing.',
+      add: 'Qator qoʻshish',
+      newRow: 'Yangi qator',
+      cancel: 'Bekor qilish',
+      columns: {
+        unit: 'Sinf yoki guruh',
+        subject: 'Fan',
+        teacher: 'Oʻqituvchi',
+        lessons: 'Haftalik darslar',
+        room: 'Xona',
+        double: 'Juft darslar',
+        problems: 'Muammolar',
+      },
+      unit: 'Sinf yoki guruh',
+      chooseUnit: 'Sinf yoki guruhni tanlang',
+      subject: 'Fan',
+      chooseSubject: 'Fanni tanlang',
+      teacher: 'Oʻqituvchi',
+      chooseTeacher: 'Oʻqituvchini tanlang',
+      chooseFirst: 'Avval sinf yoki guruhni va fanni tanlang.',
+      noTeachers: 'Filialning hech bir oʻqituvchisi yoki vakansiyasi bu qatorni ola olmaydi.',
+      tutorOption: '{{name}} (tyutor)',
+      vacancyOption: '{{name}} (vakansiya)',
+      vacancy: 'Vakansiya',
+      gone: 'Endi filialda emas',
+      lessons: 'Haftalik darslar',
+      lessonsNote: '{{min}} dan {{max}} gacha.',
+      room: 'Xona',
+      noRoom: 'Maxsus xona kerak emas',
+      roomTypeOption: 'Istalgan: {{type}}',
+      doubleLessons: 'Juft darslarga ruxsat',
+      yes: 'Ha',
+      no: 'Yoʻq',
+      none: 'Yoʻq',
+      withProblems: 'Muammolar',
+      hasProblems: 'Muammoli',
+      noProblems: 'Muammosiz',
+      problems: {
+        load_unit_year: 'Boshqa yil',
+        load_unit_archived: 'Sinf yoki guruh arxivda',
+        load_group_subject: 'Guruhning fani emas',
+        load_subject_archived: 'Fan arxivda',
+        load_subject_grade: 'Fan bu darajada oʻtilmaydi',
+        load_group_no_shared_slot: 'Umumiy dars vaqti yoʻq',
+        load_teacher_branch: 'Oʻqituvchi filialdan emas',
+        load_teacher_status: 'Oʻqituvchi boshlanish sanasida ishlamaydi',
+        load_teacher_subject: 'Fan profilda yoʻq',
+        load_teacher_grade: 'Daraja profilda yoʻq',
+        load_teacher_language: 'Taʼlim tili',
+        load_room_closed: 'Xona yopilgan',
+      },
+      leftTitle: 'Nusxa olinmagan qatorlar',
+      dismiss: 'Olib tashlash',
+      dismissTitle: 'Nusxa olinmagan qatorlar olib tashlansinmi?',
+      dismissText: 'Ular endi bu yerda koʻrsatilmaydi. Audit jurnali ularni saqlaydi.',
+      deleteRow: 'Qatorni oʻchirish',
+      deleteTitle: 'Qator oʻchirilsinmi?',
+      deleteText: 'Qator qoralamadan chiqadi. Audit jurnali nusxasini saqlaydi.',
     },
   },
 };

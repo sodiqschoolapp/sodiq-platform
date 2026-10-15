@@ -49,6 +49,8 @@ const VACANCY_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   staff_statuses_no_overlap: 'request_refused',
   staff_statuses_kind: 'request_refused',
   vacancy_not_deletable: 'request_refused',
+  // Task 3.4a (04, Vacancy): a load row names the vacancy (db/migrations/0055).
+  vacancy_has_load: 'vacancy_has_load',
 };
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
@@ -310,6 +312,9 @@ export class Vacancies {
             await this.lockBranch(transaction, branchId);
           }
           await this.vacancyOf(transaction, id, branchId, true);
+          if (status === 'closed') {
+            await this.refuseLoad(transaction, id);
+          }
           const today = await this.todayIn(transaction, branchId);
           const statuses = await this.statusesOf(transaction, id, true);
           const current = statuses.find((row) => inForceOn(row, today));
@@ -357,8 +362,8 @@ export class Vacancies {
   }
 
   /**
-   * `04`: "One that never held a load can be deleted" (no load exists before
-   * phase 5). The audit entry holds the whole vacancy with its history, the
+   * `04`: "One that never held a load can be deleted": refused while a load
+   * row names it (task 3.4a, decision 6). The audit entry holds the whole vacancy with its history, the
    * only copy left (review of pull request #57, correction 1).
    */
   delete(access: Access, id: string, requestId: string): Promise<void> {
@@ -367,6 +372,7 @@ export class Vacancies {
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
           await this.vacancyOf(transaction, id, branchId, true);
+          await this.refuseLoad(transaction, id);
           const fields = await this.fieldsOfStored(transaction, id);
           const statuses = await this.statusesOf(transaction, id, true);
           const entries = await transaction
@@ -439,6 +445,40 @@ export class Vacancies {
       .where('id', '=', branchId)
       .forNoKeyUpdate()
       .executeTakeFirstOrThrow();
+  }
+
+  /**
+   * `04`, Vacancy: "A vacancy cannot be closed while a load row names it"
+   * (task 3.4a). Read after the record's FOR UPDATE, in a statement of its
+   * own: a load write holds the record FOR KEY SHARE, so a row being written
+   * is committed before this reads. `details` names the versions.
+   */
+  private async refuseLoad(transaction: Transaction, id: string): Promise<void> {
+    const rows = await transaction
+      .selectFrom('teaching_load_rows')
+      .innerJoin('timetable_versions', 'timetable_versions.id', 'teaching_load_rows.version_id')
+      .select([
+        'teaching_load_rows.id',
+        'timetable_versions.id as version_id',
+        'timetable_versions.number',
+      ])
+      .where('teaching_load_rows.teacher_id', '=', id)
+      .orderBy('timetable_versions.number')
+      .orderBy('teaching_load_rows.id')
+      .execute();
+    if (rows.length > 0) {
+      throw new ApiException(
+        'vacancy_has_load',
+        409,
+        undefined,
+        rows.map((row) => ({
+          path: 'load',
+          code: 'vacancy_has_load',
+          message: `Version ${String(row.number)} has a load row that names the vacancy.`,
+          recordId: row.version_id,
+        })),
+      );
+    }
   }
 
   /** A vacancy linked to the branch of the request, locked when asked; 404 otherwise. */

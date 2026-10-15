@@ -66,6 +66,11 @@ export const CLASS_PAGES: readonly (IndexedPage & { area: string; action?: Actio
   { titleKey: 'groups.placement.title', to: '/groups/placement', area: 'groups', action: 'edit' },
 ];
 
+/** The pages under "Timetable" (task 3.4a), indexed when the menu of the role has the item. */
+export const TIMETABLE_PAGES: readonly IndexedPage[] = [
+  { titleKey: 'timetable.load.title', to: '/timetable/load' },
+];
+
 /** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */
 export function indexedPages(
   menuPages: readonly IndexedPage[],
@@ -85,5 +90,7 @@ export function indexedPages(
         to,
       }))
     : [];
-  return [...menuPages, ...setup, ...people, ...classes, ...COMMON_PAGES];
+  // The menu shows "Timetable" only to the roles that view the area.
+  const timetable = menuPages.some((page) => page.to === '/timetable') ? TIMETABLE_PAGES : [];
+  return [...menuPages, ...setup, ...people, ...classes, ...timetable, ...COMMON_PAGES];
 }

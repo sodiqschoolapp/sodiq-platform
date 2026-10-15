@@ -312,6 +312,22 @@ describe('a frozen permission table', () => {
     }
   });
 
+  // Task 3.4a, decision 4 of pull request #99: 02, the Academic Vice
+  // Principal has "Full edit of ... timetable", the Principal "views
+  // everything ... changes nothing"; no other role reads the load.
+  it('gives the draft versions and their load to the Super Admin and the Academic Vice Principal, view to the Principal', () => {
+    const editors = ['super_admin', 'academic_vice_principal'];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.timetable[role], role).toEqual(
+        editors.includes(role)
+          ? ['view', 'create', 'edit', 'archive']
+          : role === 'principal'
+            ? ['view']
+            : [],
+      );
+    }
+  });
+
   // Task 2.6a, decision 2 of pull request #75: edge/people-roles-accounts,
   // "The Super Admin reads all; the Principal and Academic Vice Principal
   // read their branch".
@@ -361,6 +377,7 @@ describe('a frozen permission table', () => {
       'student_merges',
       'students',
       'subjects',
+      'timetable',
       'vacancies',
     ]);
     expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);

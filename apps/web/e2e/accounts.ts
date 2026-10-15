@@ -55,7 +55,8 @@ export type AccountKey =
   | 'recordSearch'
   | 'moves'
   | 'returns'
-  | 'branchMoves';
+  | 'branchMoves'
+  | 'teachingLoad';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

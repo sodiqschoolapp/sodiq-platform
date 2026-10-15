@@ -395,14 +395,26 @@ How to read the task lines:
   - From 2.4a (pull request #67): the Super Admin's merge of two student records, the older UID kept (`edge`: "The Super Admin can merge two records").
   - From 3.3c (pull request #97): the releases to another branch (`student_branch_moves`) are rows of the record too, and the two records may be of two branches (the class and group rows of an earlier branch keep their branch; `student_rows_elsewhere` reads them).
 
-- [ ] **3.4 Teaching load**
-  - Read: `05`, `04` (Teacher and staff record), `06` (Building a timetable, Rules), `edge/timetable` (Structure, After publishing).
-  - Build: load rows (class or group, subject, one teacher, lessons per week, room needs, double lessons); checks for subject and grade in the teacher's profile, the language rule, split rules, weekly totals against slots and against the contract load across branches; the load belongs to a timetable version; a load row may name a vacancy.
-  - Done when: each blocked case in the spec has a test.
-  - From 2.1 (pull request #52, decision 17): `edge/people-roles-accounts`, "A teacher moves to another department, or a subject is moved, mid-year. Both changes carry a start date and are made by the Super Admin. They are refused while a teaching load would have a teacher outside the subject's department; those loads are listed for reassignment first." Since 2.1 only the Super Admin changes `departmentId` on `PUT /api/setup/subjects/:id`; the start date and the refusal against the load come here.
+- [x] **3.4a Draft versions and load rows** (3.4 split in three, pull request #99, decision 1)
+  - Read: `05`, `04` (Teacher and staff record, Vacancy), `06` (Model, Building a timetable, Rules), `02` (Tutor), `edge/timetable` (Structure, Versions and drafts, After publishing), `edge/people-roles-accounts` (rows 13 and 15), `edge/academic-year`, the plan of pull request #99.
+  - Build: the minimal draft version record; the load rows (class or group, subject, one teacher or one vacancy, lessons per week, room or room type, double lessons); the per-row blocked checks (subject and every grade in the profile, the Tutor subjects, the language rule, inactive teachers, subjects, classes, groups and closed rooms, vacancies under the same conditions, the two-grade group refusal); the copy of a version's load with the rows not copied kept on the draft; the vacancy close and delete refused while a load row names it; the load page.
+  - Done when: each blocked case of a single row has a test at the route and in the database, on insert and on update.
+  - Inherited: the two-grade refusal of the 3.2a line below (the group's teacher and card go to 3.4b); the 2.2b line below; from 3.1a, "Tutor subjects (3.4)".
   - From 3.2a (pull request #91, decisions 9 and 15): the load step refuses a group of two grades when no school weekday has a lesson slot with the same start and end in both grades' templates (`edge/timetable`, Structure; `sharedLessonSlots` and `twoGradeSlots` of `packages/timetable-rules`, which the group's save only shows), or when the subject is not taught in both grades; the teacher (or the vacancy) of a group is the teacher of its load row, and the group card and panel show it in place of "—".
-  - From 3.2c (pull request #91, decision 18): the load becomes the source of the split and group subjects of a class (`05`: "Whether a class is split for a subject is set in the teaching load"), and a load row of a group or split is valid only when `group_placement_gaps` is empty.
   - From 2.2b (pull request #57, decision 7): `04` Vacancy, "A vacancy cannot be closed while a load row names it or a future lesson is under it. One that never held a load can be deleted; one that did is closed and kept." `POST /api/people/vacancies/:id/close` refuses while a load row names the vacancy (the future lessons come with 5.5b), and `vacancy_delete` of db/migrations/0025 refuses a vacancy that ever held a load, each with its test; the vacancy panel names the refusal.
+
+- [ ] **3.4b Splits, groups and weekly totals** (3.4 split in three, pull request #99, decision 1)
+  - Read: `05` (Group, Teaching load), `06` (Building a timetable, step 2; Teachers who work in several branches; Weekly load), `edge/timetable` (Structure), the plan of pull request #99.
+  - Build: the parts of one split have equal lessons per week and different teachers (`edge/timetable`, Structure); one version never holds both a whole-class row and a group or split row for the same class and subject (`05`, Group: "Whether a class is split for a subject is set in the teaching load"); the load as the source of the split and group subjects of a class; a group or split row whose `group_placement_gaps` is not empty has that problem, which blocks readiness (5.3) and publish (5.5a); the group card and panel show the teacher of the group's load row; the weekly totals of a class against the week's lesson slots and of a teacher against free slots and the contract load across branches.
+  - Done when: each rule above has a test at the route and in the database where it is a constraint.
+  - From 3.2a (pull request #91, decisions 9 and 15; here the group teacher and card, the refusal is built in 3.4a): the load step refuses a group of two grades when no school weekday has a lesson slot with the same start and end in both grades' templates (`edge/timetable`, Structure; `sharedLessonSlots` and `twoGradeSlots` of `packages/timetable-rules`, which the group's save only shows), or when the subject is not taught in both grades; the teacher (or the vacancy) of a group is the teacher of its load row, and the group card and panel show it in place of "—".
+  - From 3.2c (pull request #91, decision 18): the load becomes the source of the split and group subjects of a class (`05`: "Whether a class is split for a subject is set in the teaching load"), and a load row of a group or split is valid only when `group_placement_gaps` is empty.
+
+- [ ] **3.4c The department move against the load** (3.4 split in three, pull request #99, decision 1)
+  - Read: `edge/people-roles-accounts` (row 15), `03` (Divisions), the plan of pull request #99.
+  - Build: the department move of a teacher or a subject with a start date, by the Super Admin, refused while a load would have a teacher outside the subject's department, the loads listed for reassignment. Decides whether a draft's row counts as "a teaching load" for the refusal (decision 3 of pull request #99).
+  - Done when: the move is refused with the loads listed, with allow and refuse tests.
+  - From 2.1 (pull request #52, decision 17): `edge/people-roles-accounts`, "A teacher moves to another department, or a subject is moved, mid-year. Both changes carry a start date and are made by the Super Admin. They are refused while a teaching load would have a teacher outside the subject's department; those loads are listed for reassignment first." Since 2.1 only the Super Admin changes `departmentId` on `PUT /api/setup/subjects/:id`; the start date and the refusal against the load come here.
 
 ## Phase 4. Calculation module
 
@@ -429,6 +441,7 @@ How to read the task lines:
   - Read: `06` (Model, Changes after publishing), `edge/timetable`, `edge/developer-rules`, `edge/time-dates-calendar`.
   - Build: versions, pattern entries, lesson blocks, and dated lessons with their own start and end; exclusion constraints for teacher, room and class block across all branches; the shared-room trigger; exams in their own tables; the teacher, room and class constraints run over one table of time claims for lessons and exams.
   - Done when: the database itself refuses each double booking in tests, also when application checks are bypassed.
+  - From 3.4a (pull request #99, decision 15): `timetable_versions` exists (branch, year, number, status checked in draft, published, archived with no grant on `status`, `starts_on`, `from_version_id` keyed to the same branch and year, `left_rows`) with `teaching_load_rows`; this task extends it instead of creating one.
 
 - [ ] **5.2 Rule engine**
   - Read: `06` (Rules, Teachers who work in several branches), `05` (Language of instruction), `edge/timetable`.
@@ -441,6 +454,7 @@ How to read the task lines:
   - Read: `06` (Building a timetable, Rules), `03` (Slot types and day templates), `04` (Teacher and staff record), `edge/timetable` (After publishing).
   - Build: draft versions; the steps for templates, load, teachers, rooms and rules with their "ready when" checks; pinned lessons; availability as dated entries; a draft checks the entries in force on its intended start date.
   - Done when: a draft cannot move to generation while a readiness check fails.
+  - From 3.4a (pull request #99, decision 15 and correction 6): draft versions exist with their start date ("next Monday by default") and the load; this task adds the rest of step 1, the first day of a coming quarter as a shortcut, the readiness of the load step (the problems of each row, `loadRowProblems`), and the load step's list of a Tutor of two classes whose pinned lessons fall at the same time.
 
 - [ ] **5.4a Grid: board and drag**
   - Read: `06` (Editing in the grid), `12`.
@@ -472,6 +486,7 @@ How to read the task lines:
   - Read: `06` (How surprises are prevented), `07` (first paragraph), `edge/timetable` (Versions and drafts), `edge/developer-rules`.
   - Build: the journal record (one per class or group and subject per year) created or closed at publish, without cells; notices to affected teachers through 0.9; the "changed" mark for a week; withdraw before the start date.
   - Done when: publishing a load with a new subject creates exactly one journal and removing it closes that journal.
+  - From 3.4a (pull request #99): `04`, Teacher and staff record, Academic, "Classes taught, filled from the teaching load", is read from the published load; a vacancy that "held a load" is closed and kept (`04`, Vacancy) once 5.5 publishes it.
   - From 2.1 (pull request #52, decision 4): `edge/calculation`, "'Rating exam' is switched off, or a subject becomes attendance only, in week 5": "These switches are stored per quarter. They are free before the quarter's first lesson." The journal stores the rating exam switch and the journal type per quarter; until now they are one school-wide value on `subjects`.
 
 - [ ] **5.6a One-day changes**

@@ -28,6 +28,9 @@ import { SubjectsPage } from '@/features/setup/subjects-page';
 import { ClassesPage } from '@/features/classes/classes-page';
 import { GroupPlacementPage } from '@/features/classes/group-placement-page';
 import { GroupsPage } from '@/features/classes/groups-page';
+import { LoadPage } from '@/features/timetable/load-page';
+import { loadSearch } from '@/features/timetable/load-search';
+import { TimetablePage } from '@/features/timetable/timetable-page';
 import { HeadTeachersPage } from '@/features/people/head-teachers-page';
 import { NeverUsedPage } from '@/features/people/never-used-page';
 import { PeoplePage } from '@/features/people/people-page';
@@ -270,6 +273,21 @@ const groupPlacementRoute = createRoute({
   component: guarded('groups', GroupPlacementPage, 'edit'),
 });
 
+/** The entry of the Timetable item (task 3.4a). */
+const timetableRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/timetable',
+  component: guarded('timetable', TimetablePage),
+});
+
+/** The teaching load of a version (task 3.4a). */
+const loadRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/timetable/load',
+  validateSearch: loadSearch,
+  component: guarded('timetable', LoadPage),
+});
+
 /** People (task 2.2a): the entry of the menu item and the staff list. */
 const peopleRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -446,6 +464,8 @@ const routeTree = rootRoute.addChildren([
     classesRoute,
     groupsRoute,
     groupPlacementRoute,
+    timetableRoute,
+    loadRoute,
     peopleRoute,
     staffRoute,
     studentsRoute,

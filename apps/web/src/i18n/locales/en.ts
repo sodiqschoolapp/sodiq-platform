@@ -356,6 +356,41 @@ export const en = {
       'One of the two records has an open release to another branch. Cancel or decline it first, then merge.',
     student_merge_move_scheduled:
       'One of the two records has a class or group move after today. Cancel that move first, then merge.',
+    version_not_draft:
+      'This version is no longer a draft: its load and start date do not change. Start a new draft to change the load.',
+    timetable_year_closed:
+      'The academic year of this version is closed: nothing in it changes. Work in a planned or current year.',
+    version_start_past: 'The start date is before today. Choose today or a later date.',
+    version_start_outside_year:
+      'The start date is outside the academic year. Choose a date inside the year.',
+    version_copy_year:
+      'That version is of another academic year. Copy a version of the same year, or start empty.',
+    load_unit_year:
+      "That class or group is of another academic year than the version. Choose one of the version's year.",
+    load_unit_archived:
+      'That class or group is archived. Choose an active one, or restore it first.',
+    load_group_subject: "A group's row is for the group's own subject. Choose that subject.",
+    load_subject_archived: 'That subject is archived. Choose an active subject.',
+    load_subject_grade:
+      'That subject is not taught in every grade of the class or group. Choose another subject, or add the grade to the subject first.',
+    load_teacher_branch:
+      'That teacher or vacancy does not work in this branch. Choose one of the branch.',
+    load_teacher_status:
+      'That teacher is inactive or has left, or the vacancy is closed, on the start date of the version. Choose another teacher.',
+    load_teacher_subject:
+      'That teacher or vacancy does not have the subject in their profile. Choose another teacher, or add the subject to the profile first.',
+    load_teacher_grade:
+      'That teacher or vacancy has the subject, but not every grade of the class or group. Choose another teacher, or add the grade to the profile first.',
+    load_teacher_language:
+      'That teacher or vacancy does not teach in the language of the class or group, and the subject follows the language rule. Choose another teacher.',
+    load_room_closed: 'That room is closed. Choose another room, or a room type.',
+    load_room_choice: 'Name a room or a room type, not both.',
+    load_row_exists:
+      'This version already has a row for that class and subject, or that group. Open that row to change it.',
+    load_group_no_shared_slot:
+      'The two grades of this group share no lesson slot with the same start and end on any school weekday. Align the day templates of the grades first.',
+    vacancy_has_load:
+      'A teaching load row names this vacancy, so it cannot be closed or deleted. Give that row another teacher first.',
     student_merge_year_closed:
       'The merge would change a row of a closed academic year, which nothing changes. These records cannot be merged.',
     student_merge_grade:
@@ -1055,6 +1090,7 @@ export const en = {
         subjects: 'Subjects and weights',
         classes: 'Classes',
         groups: 'Groups',
+        teachingLoad: 'Teaching load',
       },
       calendarCount_one: '{{count}} entry',
       calendarCount_other: '{{count}} entries',
@@ -2151,6 +2187,7 @@ export const en = {
       exports: 'Exports',
       shows: 'Hidden fields shown',
       classes: 'Classes',
+      timetable: 'Timetable',
     },
     scopes: {
       branch: 'This branch',
@@ -2184,6 +2221,8 @@ export const en = {
       audit_entry: 'Log entry',
       class: 'Class',
       group: 'Group',
+      timetable_version: 'Timetable version',
+      teaching_load_row: 'Teaching load row',
     },
     actions: {
       auth: {
@@ -2406,6 +2445,15 @@ export const en = {
         archive: 'Group archived',
         restore: 'Group restored',
         export: 'Groups exported',
+      },
+      timetable_version: {
+        create: 'Draft timetable version created',
+        edit: 'Draft timetable version changed',
+      },
+      teaching_load: {
+        create: 'Teaching load row added',
+        edit: 'Teaching load row changed',
+        delete: 'Teaching load row deleted',
       },
       audit: {
         entry_shown: 'Hidden values of a log entry shown',
@@ -2716,6 +2764,96 @@ export const en = {
         merged:
           'The parent records {{keptName}} and {{mergedName}} were merged in another branch; the name {{fullName}} stays.',
       },
+    },
+  },
+  timetable: {
+    title: 'Timetable',
+    loadLink: 'Teaching load',
+    load: {
+      title: 'Teaching load',
+      caption: 'Rows of the version',
+      version: 'Version',
+      versionOption: 'Version {{number}}, {{year}}: {{status}}',
+      statuses: {
+        draft: 'Draft',
+        published: 'Published',
+        archived: 'Archived',
+      },
+      startsOn: 'Start date',
+      startsOnText: 'Starts on {{date}}',
+      fromVersion: 'Copied from version {{number}}',
+      newDraft: 'New draft',
+      newDraftTitle: 'New draft',
+      year: 'Academic year',
+      copyFrom: 'Start from',
+      startEmpty: 'Empty',
+      copyOption: 'Copy of version {{number}}',
+      changeStart: 'Change start date',
+      noVersionTitle: 'No draft yet',
+      noVersion: 'A draft holds the teaching load of a year. Start the first draft.',
+      noVersionRead: 'No draft of the timetable yet.',
+      noYear: 'Add a planned or current academic year first.',
+      readOnly: 'Not a draft: read only.',
+      emptyTitle: 'No rows yet',
+      empty:
+        'A row gives a class or group a subject, a teacher and lessons per week. Add the first row.',
+      add: 'Add row',
+      newRow: 'New row',
+      cancel: 'Cancel',
+      columns: {
+        unit: 'Class or group',
+        subject: 'Subject',
+        teacher: 'Teacher',
+        lessons: 'Lessons per week',
+        room: 'Room',
+        double: 'Double lessons',
+        problems: 'Problems',
+      },
+      unit: 'Class or group',
+      chooseUnit: 'Choose a class or group',
+      subject: 'Subject',
+      chooseSubject: 'Choose a subject',
+      teacher: 'Teacher',
+      chooseTeacher: 'Choose a teacher',
+      chooseFirst: 'Choose the class or group and the subject first.',
+      noTeachers: 'No teacher or vacancy of the branch may take this row.',
+      tutorOption: '{{name}} (Tutor)',
+      vacancyOption: '{{name}} (vacancy)',
+      vacancy: 'Vacancy',
+      gone: 'No longer of the branch',
+      lessons: 'Lessons per week',
+      lessonsNote: 'From {{min}} to {{max}}.',
+      room: 'Room',
+      noRoom: 'No special room',
+      roomTypeOption: 'Any {{type}}',
+      doubleLessons: 'Double lessons allowed',
+      yes: 'Yes',
+      no: 'No',
+      none: 'None',
+      withProblems: 'Problems',
+      hasProblems: 'With problems',
+      noProblems: 'Without problems',
+      problems: {
+        load_unit_year: 'Other year',
+        load_unit_archived: 'Archived class or group',
+        load_group_subject: "Not the group's subject",
+        load_subject_archived: 'Archived subject',
+        load_subject_grade: 'Subject not taught in the grade',
+        load_group_no_shared_slot: 'No shared lesson slot',
+        load_teacher_branch: 'Teacher not of the branch',
+        load_teacher_status: 'Teacher out on the start date',
+        load_teacher_subject: 'Subject not in the profile',
+        load_teacher_grade: 'Grade not in the profile',
+        load_teacher_language: 'Language of instruction',
+        load_room_closed: 'Room closed',
+      },
+      leftTitle: 'Rows not copied',
+      dismiss: 'Dismiss',
+      dismissTitle: 'Dismiss the rows not copied?',
+      dismissText: 'They are no longer shown here. The audit log keeps them.',
+      deleteRow: 'Delete row',
+      deleteTitle: 'Delete the row?',
+      deleteText: 'The row leaves the draft. The audit log keeps a copy.',
     },
   },
 };

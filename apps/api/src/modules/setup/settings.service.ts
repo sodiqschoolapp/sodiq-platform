@@ -393,6 +393,21 @@ export class Settings {
               .where('academic_year_id', 'in', yearIds)
               .executeTakeFirstOrThrow();
 
+      // Task 3.4a, decision 14: a version of a planned or current year with a load row.
+      const teachingLoad =
+        yearIds.length === 0
+          ? { count: 0 }
+          : await transaction
+              .selectFrom('teaching_load_rows')
+              .innerJoin(
+                'timetable_versions',
+                'timetable_versions.id',
+                'teaching_load_rows.version_id',
+              )
+              .select(sql<number>`count(*)::int`.as('count'))
+              .where('timetable_versions.academic_year_id', 'in', yearIds)
+              .executeTakeFirstOrThrow();
+
       const undated = years
         .filter(
           (year) =>
@@ -423,6 +438,7 @@ export class Settings {
           }),
           item('classes', classes.count > 0),
           item('groups', groups.count > 0),
+          item('teachingLoad', teachingLoad.count > 0),
         ],
       };
     });

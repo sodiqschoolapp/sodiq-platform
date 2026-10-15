@@ -101,6 +101,8 @@ describe('the settings of a branch', () => {
       'classes',
       // Task 3.2a, decision 14.
       'groups',
+      // Task 3.4a, decision 14: after the groups, before the timetable.
+      'teachingLoad',
     ]);
   });
 });

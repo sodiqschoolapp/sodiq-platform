@@ -1,6 +1,7 @@
 // The timetable rule engine, used by the API, the grid and to re-check the solver's output.
 // Task 1.5 adds the times of a day and the template of a class on a date, task
-// 1.4 the calendar (what a grade has on a date); the
+// 1.4 the calendar (what a grade has on a date), task 3.4a the rules of one
+// teaching load row; the
 // placement rules arrive in task 5.2.
 export {
   dayEndsAfterMidnight,
@@ -41,3 +42,16 @@ export {
   type SharedSlot,
   type TwoGradeDay,
 } from './two-grades.js';
+export {
+  LOAD_PROBLEM_ORDER,
+  loadRowProblems,
+  ROOM_PROBLEMS,
+  takesAsTutor,
+  TEACHER_PROBLEMS,
+  teacherProblems,
+  type LoadProblem,
+  type LoadRowFacts,
+  type LoadSubject,
+  type LoadTeacher,
+  type LoadUnit,
+} from './load.js';

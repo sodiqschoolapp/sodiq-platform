@@ -72,6 +72,8 @@ export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
   },
   // The classes (task 3.1a): the area `classes` of the same name decides who sees it.
   classes: { titleKey: 'menu.classes', to: '/classes', icon: MENU_ICONS.classes },
+  // The timetable (task 3.4a): the area `timetable` of the same name decides who sees it.
+  timetable: { titleKey: 'menu.timetable', to: '/timetable', icon: MENU_ICONS.timetable },
   // The Audit log (task 2.6a): the area `audit_log` of the same name decides who sees it.
   audit_log: { titleKey: 'menu.audit_log', to: '/audit', icon: MENU_ICONS.audit_log },
 };
