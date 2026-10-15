@@ -391,7 +391,8 @@ export function StudentsPage() {
         header: t('people.students.uid'),
         cell: (row) => row.uid,
         sortValue: (row) => row.uid,
-        searchText: (row) => row.uid,
+        // Task 3.3d: a UID of a record merged into this one finds it too.
+        searchText: (row) => [row.uid, ...row.mergedUids].join(' '),
       },
       {
         key: 'name',

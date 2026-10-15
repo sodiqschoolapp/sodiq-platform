@@ -156,6 +156,8 @@ export interface Taken {
   holderId: string | null;
   /** A UID of a student deleted as created twice: reserved for good (task 2.4b-1). */
   released: boolean;
+  /** A UID of a record merged into the holder (task 3.3d, correction 2). */
+  merged?: boolean;
 }
 
 /** A value refused as taken: the field, and the student of this branch who holds it when named. */
@@ -167,7 +169,12 @@ export function takenOf(failure: unknown): Taken | null {
   const field = detail === undefined ? undefined : FIELD_OF_DETAIL[detail.path];
   return field === undefined || detail === undefined
     ? null
-    : { field, holderId: detail.recordId ?? null, released: detail.code === 'uid_released' };
+    : {
+        field,
+        holderId: detail.recordId ?? null,
+        released: detail.code === 'uid_released',
+        ...(detail.code === 'uid_merged' ? { merged: true } : {}),
+      };
 }
 
 /**
@@ -177,14 +184,22 @@ export function takenOf(failure: unknown): Taken | null {
  * branch" otherwise.
  */
 export function takenText(
-  taken: Pick<Taken, 'holderId' | 'released'>,
+  taken: Pick<Taken, 'holderId' | 'released' | 'merged'>,
   holderText: (id: string) => string | null,
 ):
+  | ['people.students.uidMerged', { student: string }]
+  | ['people.students.uidMergedUnknown']
   | ['people.students.takenElsewhere']
   | ['people.students.uidReleased']
   | ['people.students.takenHereUnknown']
   | ['people.students.takenHere', { student: string }] {
   const { holderId } = taken;
+  if (taken.merged === true && holderId !== null) {
+    const kept = holderText(holderId);
+    return kept === null
+      ? ['people.students.uidMergedUnknown']
+      : ['people.students.uidMerged', { student: kept }];
+  }
   if (taken.released) {
     return ['people.students.uidReleased'];
   }

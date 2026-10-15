@@ -31,6 +31,7 @@ const MOSCOW = { id: uid(52), grade: 7, name: 'Moskva' };
 const STUDENT: StudentListItem = {
   id: uid(1),
   uid: '2607001',
+  mergedUids: [],
   firstName: 'Oʻtkir',
   lastName: 'Rahimov',
   paternalName: null,
@@ -85,6 +86,7 @@ const detailOf = (fields: Partial<StudentDetail> = {}): StudentDetail => ({
   branchMove: null,
   lastBranchMove: null,
   canMoveBranch: false,
+  canMerge: false,
   today: '2026-10-10',
   ...fields,
 });

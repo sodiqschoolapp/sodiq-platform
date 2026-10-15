@@ -19,6 +19,7 @@ const PATH = '/people/students';
 const OTKIR: StudentListItem = {
   id: uid(1),
   uid: '2607001',
+  mergedUids: [],
   firstName: 'Oʻtkir',
   lastName: 'Rahimov',
   paternalName: null,
@@ -72,6 +73,7 @@ const DETAIL: StudentDetail = {
   branchMove: null,
   lastBranchMove: null,
   canMoveBranch: false,
+  canMerge: false,
   today: '2026-10-10',
 };
 

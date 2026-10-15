@@ -593,6 +593,7 @@ describe('the students of a class', () => {
   const pupil = (n: number, fields: Partial<StudentListItem> = {}): StudentListItem => ({
     id: uid(950 + n),
     uid: `26071${String(n).padStart(2, '0')}`,
+    mergedUids: [],
     firstName: 'Shahlo',
     lastName: `Yusupova${'a'.repeat(n)}`,
     paternalName: null,

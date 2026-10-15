@@ -29,6 +29,7 @@ const PATH = '/people/students';
 const OTKIR: StudentListItem = {
   id: uid(1),
   uid: '2607001',
+  mergedUids: [],
   firstName: 'Oʻtkir',
   lastName: 'Rahimov',
   paternalName: 'Anvarovich',
@@ -59,6 +60,7 @@ const OTKIR: StudentListItem = {
 const ZARINA: StudentListItem = {
   id: uid(2),
   uid: '2507014',
+  mergedUids: [],
   firstName: 'Zarina',
   lastName: 'Saidova',
   paternalName: null,
@@ -90,6 +92,7 @@ const ZARINA: StudentListItem = {
 const LOLA: StudentListItem = {
   id: uid(3),
   uid: '2607030',
+  mergedUids: [],
   firstName: 'Lola',
   lastName: 'Karimova',
   paternalName: null,
@@ -143,6 +146,7 @@ const detailOf = (row: StudentListItem, fields: Partial<StudentDetail> = {}): St
   branchMove: null,
   lastBranchMove: null,
   canMoveBranch: false,
+  canMerge: false,
   today: '2026-10-10',
   ...fields,
 });
