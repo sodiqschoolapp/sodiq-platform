@@ -796,10 +796,10 @@ How to read the task lines:
   - Build: "Start year" (1.3 built its core: `POST /api/setup/academic-years/:id/start`, planned → current for a branch's first year or once every earlier year is closed; this task adds what the checklist and "Close the year" need around it); the nightly test that runs set-up, publish, entry, calendar change, four closings, year close and rollover with the clock moved through a year.
   - Done when: the simulation passes in CI.
 
-- [ ] **9.6 The handbook in Uzbek and Russian** (owner, 15 October 2026)
-  - Read: `docs/handbook/README.md` and every page, `12` (Language), the Uzbek and Russian texts of the screens.
-  - Build: `docs/handbook/uz/` and `docs/handbook/ru/` with every page in natural Uzbek and Russian, using the words the screens use; the English pages stay the source.
-  - Done when: every English page has both versions with the same headings, rules and cases; the owner corrects the wording afterwards.
+- [ ] **9.6 Role guides, and the handbook in Uzbek and Russian** (owner, 15 October 2026)
+  - Read: `docs/handbook/README.md` (Role guides, Languages) and every page, `02`, `12` (Language), the Uzbek and Russian texts of the screens.
+  - Build: the role guides of `docs/handbook/roles/`, one per role of `02`, as the README says; then `docs/handbook/uz/` and `docs/handbook/ru/` with every reference page and every role guide in natural Uzbek and Russian, using the words the screens use; the English pages stay the source.
+  - Done when: every role of `02` has a guide whose list matches the "Who can use it" tables, each guide links every rule it touches instead of restating it, every English page has both versions with the same headings, rules and cases; the owner corrects the wording afterwards. The builder may split this task.
 
 > **Owner gate.** The start routine stops here until the owner, after the go-live review of every Look first decision and the decided-ahead round for Phase 10, deletes this line.
 
