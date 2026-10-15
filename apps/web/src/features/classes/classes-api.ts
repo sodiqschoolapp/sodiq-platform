@@ -2,6 +2,7 @@ import {
   classDetailSchema,
   classListSchema,
   classMembersSchema,
+  classSeatsSchema,
   classPlacementResultSchema,
   tutorCandidateListSchema,
   type ClassCreate,
@@ -50,6 +51,24 @@ export const tutorCandidatesQuery = (branchId: string | null, enabled: boolean) 
       tutorCandidateListSchema.parse(
         await answerOf(
           api.GET('/api/classes/tutor-candidates', { params: { header: branchHeader() } }),
+        ),
+      ),
+    enabled: branchId !== null && enabled,
+  });
+
+/**
+ * The free seats of the classes a new student can join from a date (task
+ * 3.5b, H24 of issue #105): the first day with no seat for one more student.
+ */
+export const classSeatsQuery = (branchId: string | null, from: string, enabled: boolean) =>
+  queryOptions({
+    queryKey: [...classesKey(branchId), 'seats', from],
+    queryFn: async () =>
+      classSeatsSchema.parse(
+        await answerOf(
+          api.GET('/api/classes/seats', {
+            params: { header: branchHeader(), query: { from } },
+          }),
         ),
       ),
     enabled: branchId !== null && enabled,

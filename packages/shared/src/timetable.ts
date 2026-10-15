@@ -233,6 +233,20 @@ export type LoadTeachersQuery = z.infer<typeof loadTeachersQuerySchema>;
 export const loadTeachersSchema = z.object({
   teachers: z.array(loadTeacherSchema.extend({ tutor: z.boolean() })),
   defaultTeacherId: z.uuid().nullable(),
+  /**
+   * The teachers and vacancies whose profile has the subject but who cannot
+   * take the row, with the first reason (task 3.5b, H30 of issue #105): not
+   * active, not every grade, not the class's language, or teaching another
+   * part of the block (`blockGroup`, that part's group).
+   */
+  excluded: z.array(
+    loadTeacherSchema.extend({
+      reason: z.enum(['status', 'grade', 'language', 'block']),
+      blockGroup: z.string().nullable(),
+    }),
+  ),
+  /** A Tutor subject on a class row whose class has no Tutor in force (H30). */
+  noTutor: z.boolean(),
 });
 
 export type LoadTeachers = z.infer<typeof loadTeachersSchema>;

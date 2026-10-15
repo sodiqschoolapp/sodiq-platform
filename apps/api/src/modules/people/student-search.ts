@@ -16,6 +16,7 @@ import {
   jshshirMatches,
   namesMatch,
   phoneMatches,
+  relativeSearcherOf,
 } from './search-match.js';
 import { statusOfStudentOn, Students } from './students.service.js';
 
@@ -71,6 +72,25 @@ export class StudentSearch {
       // A UID of a record merged into one of the branch finds the kept
       // record (task 3.3d): the merges follow the kept record's branch.
       const merged = await this.students.mergedUidsByStudent(transaction);
+      // H33 of issue #105: a reader of relatives finds a student by the main
+      // phone of a live-linked relative, the relative named on the result.
+      const byRelative = new Map<string, string>();
+      if (relativeSearcherOf(access) !== undefined) {
+        const links = await transaction
+          .selectFrom('student_relatives')
+          .innerJoin('relatives', 'relatives.id', 'student_relatives.relative_id')
+          .select(['student_relatives.student_id', 'relatives.full_name', 'relatives.phone'])
+          .where('student_relatives.branch_id', '=', branchId)
+          .where('student_relatives.unlinked_at', 'is', null)
+          .orderBy('relatives.name_key')
+          .orderBy('relatives.id')
+          .execute();
+        for (const link of links) {
+          if (phoneMatches(typed, link.phone) && !byRelative.has(link.student_id)) {
+            byRelative.set(link.student_id, link.full_name);
+          }
+        }
+      }
       const found = rows
         .filter((row) => studentReaderOf(access, 'students', scope.get(row.id) ?? []) !== undefined)
         .filter(
@@ -82,7 +102,8 @@ export class StudentSearch {
             (identity &&
               (documentMatches(typed, row.document_number) ||
                 jshshirMatches(typed, row.jshshir) ||
-                phoneMatches(typed, row.phone))),
+                phoneMatches(typed, row.phone))) ||
+            byRelative.has(row.id),
         )
         .sort((a, b) => byText(a.name_key, b.name_key) || byText(a.id, b.id));
       const { items, more } = limited(found);
@@ -115,6 +136,7 @@ export class StudentSearch {
             class: current === null ? null : { grade: current.grade, name: current.name },
             status: statuses.get(row.id) ?? null,
             startsOn: row.starts_on,
+            ...(byRelative.has(row.id) ? { relative: byRelative.get(row.id) } : {}),
           };
         }),
         more,

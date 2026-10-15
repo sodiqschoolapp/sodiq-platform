@@ -1,7 +1,10 @@
 import { refuseScheduledMoveRow } from './student-moves.js';
 import { Injectable } from '@nestjs/common';
 import {
+  nextDay,
   schoolDateOf,
+  type ClassSeats,
+  type SchoolDate,
   type ClassMembers as ClassMembersAnswer,
   type ClassPlacement,
   type ClassPlacementResult,
@@ -11,7 +14,12 @@ import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
-import { classesInService, membersPeak, MEMBERSHIP_REFUSALS } from './class-membership-rows.js';
+import {
+  classesInService,
+  fullFrom,
+  membersPeak,
+  MEMBERSHIP_REFUSALS,
+} from './class-membership-rows.js';
 import { CLASS_GROUP_REFUSALS, coverClassRows, lockPlacementGroups } from './class-groups.js';
 import { CLASS_PATH_GROUP_REFUSALS, withdrawGroupRows } from './group-membership-rows.js';
 import {
@@ -43,6 +51,42 @@ export class ClassMembers {
       const found = await this.classOf(transaction, classId);
       refuseOutsideClassScope(access, classId);
       return this.readMembers(transaction, branchOf(access), found);
+    });
+  }
+
+  /**
+   * The free seats of the classes a new student can join from a date (task
+   * 3.5b, H24): for each, the first day on which one more student has no seat.
+   */
+  seats(access: Access, from: SchoolDate): Promise<ClassSeats> {
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const rows = await transaction
+        .selectFrom('classes')
+        .innerJoin('academic_years', 'academic_years.id', 'classes.academic_year_id')
+        .select(['classes.id', 'classes.max_size', 'academic_years.end_date'])
+        .where('classes.branch_id', '=', branchOf(access))
+        .where('classes.archived_at', 'is', null)
+        .where('academic_years.status', '!=', 'closed')
+        .where('academic_years.start_date', '<=', from)
+        .where('academic_years.end_date', '>=', from)
+        .orderBy('classes.id')
+        .execute();
+      const classes = [];
+      for (const row of rows) {
+        classes.push({
+          classId: row.id,
+          maxSize: row.max_size,
+          fullFrom: await fullFrom(
+            transaction,
+            row.id,
+            row.max_size,
+            from,
+            nextDay(row.end_date),
+            1,
+          ),
+        });
+      }
+      return { classes };
     });
   }
 

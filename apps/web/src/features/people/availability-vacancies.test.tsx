@@ -450,6 +450,43 @@ describe('the vacancies', () => {
     await savedRecordPanel(en.people.vacancies.newTitle);
   });
 
+  // Task 3.5b, H31 of issue #105: the Subjects field stays, saying why it is empty.
+  it('keeps the Subjects field with a line and a link when the department has no subjects', async () => {
+    const science = {
+      id: uid(12),
+      names: { uz: 'Tabiiy fanlar', ru: 'Естественные науки', en: 'Natural sciences' },
+      archivedAt: null,
+    };
+    api('academic_vice_principal', {
+      'GET /api/setup/divisions': () =>
+        json({
+          divisions: [{ ...ACADEMIC, departments: [...ACADEMIC.departments, science] }],
+          staffCounts: [],
+        }),
+    });
+    renderApp('/people/vacancies');
+    const add = await screen.findByRole('button', { name: en.people.vacancies.add });
+    await waitFor(() => {
+      expect((add as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(add);
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.vacancies.newTitle }),
+    ).getByRole('form', { name: en.people.vacancies.newTitle });
+    expect(within(form).getByText(en.people.vacancies.chooseDepartmentFirst)).toBeDefined();
+    fireEvent.change(within(form).getByLabelText(en.people.vacancies.department), {
+      target: { value: science.id },
+    });
+    const line = await within(form).findByText((text) =>
+      text.startsWith(en.people.vacancies.noDepartmentSubjects),
+    );
+    expect(
+      within(line)
+        .getByRole('link', { name: en.people.vacancies.openSubjects })
+        .getAttribute('href'),
+    ).toBe('/setup/subjects');
+  });
+
   // Issue #39, hand test of 13 October 2026, finding 21 (task 2.7b-2).
   it('say nothing as a subject is ticked, and on Save ask for a grade under that subject', async () => {
     const calls = api('academic_vice_principal');

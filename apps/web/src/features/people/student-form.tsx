@@ -27,6 +27,7 @@ import {
   Field,
   NumberField,
   SelectField,
+  PhoneField,
 } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
@@ -34,8 +35,9 @@ import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
-import { classesQuery } from '@/features/classes/classes-api';
-import { GroupSeatRefusal } from '@/features/classes/class-members';
+import { classesQuery, classSeatsQuery } from '@/features/classes/classes-api';
+import { schoolDateText } from '@/lib/dates';
+import { GroupSeatRefusal, useClassFullText } from '@/features/classes/class-members';
 import { yearsQuery } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import {
@@ -50,6 +52,8 @@ import {
   SAME_PERSON,
   smsWarning,
   type ExtraPhoneFields,
+  linkingFound,
+  usePhoneLookup,
 } from './relative-form';
 
 /** The fields of the form: one per input. */
@@ -259,10 +263,11 @@ export function StudentForm({
   onPhoneMatch,
   onCancel,
 }: StudentFormProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { branchId } = useView();
   const creating = student === null;
   const [match, setMatch] = useState<Match | null>(null);
+  const lookup = usePhoneLookup(onPhoneMatch);
   // The classes a new student can join (task 3.1b): active, in an open year.
   const classes = useQuery({ ...classesQuery(branchId), enabled: branchId !== null && creating });
   const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null && creating });
@@ -407,8 +412,12 @@ export function StudentForm({
         relatives: [relative],
       };
     },
-    save: async (values) => {
-      if ('uid' in values) {
+    save: async (typedValues) => {
+      if ('uid' in typedValues) {
+        // H26: a relative's phone typed but not yet looked up (Save pressed
+        // before the lookup answered): Save waits for it and links the person
+        // found, with the default "same person" (decision 2).
+        const values = await withHolderFound(typedValues);
         try {
           await onCreate?.(values);
         } catch (error) {
@@ -430,10 +439,23 @@ export function StudentForm({
           throw error;
         }
       } else {
-        await onEdit?.(values);
+        await onEdit?.(typedValues);
       }
     },
   });
+
+  async function withHolderFound(values: StudentCreate): Promise<StudentCreate> {
+    const sent = values.relatives[0];
+    if (sent?.kind !== 'new' || sent.relative.phone === null) {
+      return values;
+    }
+    const phone = sent.relative.phone;
+    const holder = await lookup(phone);
+    if (holder !== null && holder.id !== null) {
+      setMatch({ phone, holder });
+    }
+    return { ...values, relatives: [linkingFound(sent, holder), ...values.relatives.slice(1)] };
+  }
 
   const taken = takenOf(form.failure);
   const refusal = taken === null ? null : t(...takenText(taken, holderText));
@@ -469,6 +491,22 @@ export function StudentForm({
       String(one.grade) === form.bind('grade').value &&
       one.academicYearId === startYear?.id,
   );
+  // H24 of issue #105: a full class is marked in the choice, with the first
+  // day without a seat from the start date; it stays selectable (the server
+  // decides on the date).
+  const seats = useQuery(
+    classSeatsQuery(branchId, startsOn, creating && /^\d{4}-\d{2}-\d{2}$/.test(startsOn)),
+  );
+  const fullText = (schoolClass: { id: string; grade: number; name: string }): string | null => {
+    const day = seats.data?.classes.find((one) => one.classId === schoolClass.id)?.fullFrom;
+    const name = classDisplayName(schoolClass.grade, schoolClass.name);
+    if (day === undefined || day === null) {
+      return null;
+    }
+    return day <= startsOn
+      ? t('classes.seatsFull', { class: name })
+      : t('classes.seatsFullFrom', { class: name, date: schoolDateText(day, i18n.language) });
+  };
   // A choice no longer offered (another grade or start date) falls back to
   // none, so what the field shows is what is sent (.claude/rules/web.md).
   const { value: chosenClass, onChange: chooseClass } = form.bind('classId');
@@ -481,9 +519,11 @@ export function StudentForm({
   const scholarshipType = form.bind('scholarshipType').value;
   const coverage = form.bind('scholarshipCoverage').value;
 
+  // H24: a full class named with its first day without a seat.
+  const classFullText = useClassFullText(form.failure);
   return (
     <>
-      <RecordForm form={form} label={label} onCancel={onCancel}>
+      <RecordForm form={form} failureText={classFullText} label={label} onCancel={onCancel}>
         {creating && (
           <Field label={t('people.students.uid')} inputMode="numeric" {...bind('uid')} />
         )}
@@ -534,15 +574,33 @@ export function StudentForm({
                   option(
                     one.id,
                     t('classes.classYear', {
-                      class: classDisplayName(one.grade, one.name),
+                      class: fullText(one) ?? classDisplayName(one.grade, one.name),
                       year: one.yearName,
                     }),
                   ),
                 ),
               ]}
               {...bind('classId')}
+              note={(() => {
+                const chosen = offeredClasses.find((one) => one.id === chosenClass);
+                return chosen === undefined ? undefined : (fullText(chosen) ?? undefined);
+              })()}
             />
           ))}
+        {creating && seats.isError && (
+          <p className="text-sm text-muted-foreground">
+            {t('classes.seatsFailed')}{' '}
+            <button
+              type="button"
+              className="font-semibold text-link underline-offset-4 hover:underline"
+              onClick={() => {
+                void seats.refetch();
+              }}
+            >
+              {t('problems.retry')}
+            </button>
+          </p>
+        )}
         {/* Task 3.2c: the subject of the class without a group with a free seat. */}
         {creating && <GroupSeatRefusal error={form.failure} />}
         <SelectField
@@ -561,12 +619,7 @@ export function StudentForm({
           {...bind('documentNumber')}
         />
         <Field label={t('people.students.jshshir')} inputMode="numeric" {...bind('jshshir')} />
-        <Field
-          label={t('people.students.phone')}
-          type="tel"
-          autoComplete="off"
-          {...bind('phone')}
-        />
+        <PhoneField label={t('people.students.phone')} {...bind('phone')} />
         <Field
           label={t('people.students.email')}
           type="email"
@@ -635,7 +688,7 @@ export function StudentForm({
               if (phone === null || onPhoneMatch === undefined || phone === match?.phone) {
                 return;
               }
-              void onPhoneMatch(phone)
+              void lookup(phone)
                 .then((holder) => {
                   setMatch(holder === null || holder.id === null ? null : { phone, holder });
                 })
@@ -699,12 +752,15 @@ function RelativeStep({
         note={noPhone ? t('people.relatives.noPhoneMain') : undefined}
       />
       {!noPhone && (
-        <Field
+        <PhoneField
           label={t('people.relatives.phone')}
-          type="tel"
-          autoComplete="off"
           {...phone}
           note={smsWarning(phone.value) ? t('people.relatives.noSms') : undefined}
+          // The lookup starts once a whole number is typed (H26), and again on leaving.
+          onChange={(event) => {
+            phone.onChange(event);
+            onPhoneDone(event.target.value);
+          }}
           onBlur={() => {
             onPhoneDone(phone.value);
           }}

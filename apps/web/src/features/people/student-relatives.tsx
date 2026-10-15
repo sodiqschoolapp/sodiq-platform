@@ -19,7 +19,7 @@ import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
-import { CHECKED, CheckboxField, Field, SelectField } from '@/components/field';
+import { CHECKED, CheckboxField, Field, PhoneField, SelectField } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
@@ -39,6 +39,8 @@ import {
   SAME_PERSON,
   smsWarning,
   type ExtraPhoneFields,
+  linkingFound,
+  usePhoneLookup,
 } from './relative-form';
 import { SECTION_TITLE } from '@/components/ui/control';
 import type { PanelEditing } from '@/components/list/use-panel-editing';
@@ -515,6 +517,16 @@ function AddRelative({
     const parsed = relativePhoneSchema.safeParse(typed);
     return parsed.success ? parsed.data : null;
   };
+  const lookup = usePhoneLookup(phoneMatch);
+  const lookUp = (typedPhone: string) => {
+    const typed = storedPhone(typedPhone);
+    if (typed === null || typed === match?.phone) {
+      return;
+    }
+    void lookup(typed).then((holder) => {
+      setMatch(holder === null || holder.id === null ? null : { phone: typed, holder });
+    });
+  };
   const form = useRecordForm<AddField, RelativeLinkInput>({
     schema: ADD_SCHEMA,
     initial: {
@@ -573,7 +585,21 @@ function AddRelative({
             ...link,
           };
     },
-    save: async (input) => {
+    save: async (typedInput) => {
+      // H26: Save waits for the lookup of the phone it sends and links the person found.
+      const found =
+        typedInput.kind === 'new' && typedInput.relative.phone !== null
+          ? await lookup(typedInput.relative.phone)
+          : null;
+      if (
+        found !== null &&
+        found.id !== null &&
+        typedInput.kind === 'new' &&
+        typedInput.relative.phone !== null
+      ) {
+        setMatch({ phone: typedInput.relative.phone, holder: found });
+      }
+      const input = linkingFound(typedInput, found);
       try {
         await add.mutateAsync(input);
       } catch (error) {
@@ -616,24 +642,17 @@ function AddRelative({
           }
         />
         {!noPhone && (
-          <Field
+          <PhoneField
             label={t('people.relatives.phone')}
-            type="tel"
-            autoComplete="off"
             {...phone}
             note={smsWarning(phone.value) ? t('people.relatives.noSms') : undefined}
+            // The lookup starts once a whole number is typed (H26), and again on leaving.
+            onChange={(event) => {
+              phone.onChange(event);
+              lookUp(event.target.value);
+            }}
             onBlur={() => {
-              const typed = storedPhone(phone.value);
-              if (typed === null || typed === match?.phone) {
-                return;
-              }
-              void phoneMatch(typed)
-                .then((holder) => {
-                  setMatch(holder === null || holder.id === null ? null : { phone: typed, holder });
-                })
-                .catch(() => {
-                  setMatch(null);
-                });
+              lookUp(phone.value);
             }}
           />
         )}

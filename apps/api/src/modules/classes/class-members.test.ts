@@ -3,6 +3,7 @@ import {
   BRANCH_HEADER,
   classDetailSchema,
   classMembersSchema,
+  classSeatsSchema,
   studentDetailSchema,
   studentListSchema,
   studentNoClassSchema,
@@ -305,8 +306,31 @@ describe('class membership', () => {
       placed(await place(oxford, [await student({ startsOn: '2026-11-02' })], '2026-11-02'));
       const response = await place(oxford, [await student()], '2026-10-12');
       refusedWith(response, 409, 'class_full');
+      // Task 3.5b, H24: the class and the first day without a seat for the one student.
       expect(detailsOf(response)).toEqual([
-        expect.objectContaining({ code: 'class_full', freeSeats: 0 }),
+        expect.objectContaining({
+          code: 'class_full',
+          freeSeats: 0,
+          classId: oxford,
+          fullFrom: '2026-11-02',
+          students: 1,
+        }),
+      ]);
+    });
+
+    // Task 3.5b, H24 of issue #105: the refusal is true for several students too.
+    it('names the first day with fewer free seats than the students placed', async () => {
+      const oxford = await schoolClass({ size: 2 });
+      const response = await place(oxford, [await student(), await student(), await student()]);
+      refusedWith(response, 409, 'class_full');
+      expect(detailsOf(response)).toEqual([
+        expect.objectContaining({
+          code: 'class_full',
+          freeSeats: 2,
+          classId: oxford,
+          fullFrom: '2026-10-12',
+          students: 3,
+        }),
       ]);
     });
 
@@ -594,6 +618,66 @@ describe('class membership', () => {
         );
       }
       expect(await rowsOf()).toEqual(before);
+    });
+  });
+
+  // Task 3.5b, H24 of issue #105: the free seats the Add student form marks.
+  describe('the seats of the classes a new student can join', () => {
+    const seats = async (from: string, cookie = t.vicePrincipal, branch = '') => {
+      const response = await t.get(`/api/classes/seats?from=${from}`, branch || t.north, cookie);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      return classSeatsSchema.parse(response.body).classes;
+    };
+    const seatOf = async (classId: string, from: string) =>
+      (await seats(from)).find((one) => one.classId === classId);
+
+    it('names the first day with no seat, a scheduled join and a scheduled leaving counted', async () => {
+      const filling = await schoolClass({ size: 2 });
+      placed(await place(filling, [await student()], '2026-10-12'));
+      placed(await place(filling, [await student({ startsOn: '2026-11-02' })], '2026-11-02'));
+      expect(await seatOf(filling, '2026-10-12')).toEqual({
+        classId: filling,
+        maxSize: 2,
+        fullFrom: '2026-11-02',
+      });
+
+      const freeing = await schoolClass({ size: 1 });
+      const going = await student();
+      placed(await place(freeing, [going], '2026-10-12'));
+      await leave(await readStudent(going.id), '2026-12-31');
+      expect((await seatOf(freeing, '2026-10-12'))?.fullFrom).toBe('2026-10-12');
+      expect((await seatOf(freeing, '2027-01-01'))?.fullFrom).toBeNull();
+
+      const empty = await schoolClass({ size: 3 });
+      expect((await seatOf(empty, '2026-10-12'))?.fullFrom).toBeNull();
+    });
+
+    it('lists no class of another branch, no archived class and none of another year', async () => {
+      const southClass = await schoolClass({ branch: t.south, year: southYear });
+      const archived = await schoolClass();
+      await t.database.migrator
+        .updateTable('classes')
+        .set({ archived_at: new Date('2026-10-01T09:00:00+05:00') })
+        .where('id', '=', archived)
+        .execute();
+      const listed = (await seats('2026-10-12')).map((one) => one.classId);
+      expect(listed).not.toContain(southClass);
+      expect(listed).not.toContain(archived);
+      expect(await seats('2027-07-01')).toEqual([]);
+    });
+
+    it('is for the roles that add a student, and refuses a date that is not one', async () => {
+      await seats('2026-10-12', t.admin);
+      refusedWith(
+        await t.get('/api/classes/seats?from=2026-10-12', t.north, t.principal),
+        403,
+        'permission_denied',
+      );
+      refusedWith(
+        await t.get('/api/classes/seats?from=12.10.2026', t.north),
+        400,
+        'validation_failed',
+      );
     });
   });
 

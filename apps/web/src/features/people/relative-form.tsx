@@ -8,11 +8,13 @@ import {
   smsCapable,
   type RelativeDetail,
   type RelativeHolder,
+  type RelativeLinkInput,
   type RelativeRecord,
 } from '@sodiq/shared';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
-import { CHECKED, CheckboxField, Field, SelectField } from '@/components/field';
+import { CHECKED, CheckboxField, Field, PhoneField, SelectField } from '@/components/field';
 import { CloseIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { RecordForm } from '@/components/form/record-form';
@@ -41,6 +43,62 @@ export interface ExtraPhoneFields<Name extends string> {
 }
 
 const EXTRA_SLOTS: typeof RELATIVE_EXTRA_PHONES_MAX = 3;
+
+/**
+ * The lookups of a relative's phone, kept by phone (task 3.5b, H26 of issue
+ * #105): the field starts one as a whole number is typed, and a Save waits for
+ * the one of the phone it sends. A failed lookup answers null, so it never
+ * holds a Save (the server's `relative_phone_exists` stays the guard), and is
+ * asked again next time.
+ */
+export function usePhoneLookup(
+  ask: ((phone: string) => Promise<RelativeHolder | null>) | undefined,
+): (phone: string) => Promise<RelativeHolder | null> {
+  const asked = useRef(new Map<string, Promise<RelativeHolder | null>>());
+  return (phone) => {
+    if (ask === undefined) {
+      return Promise.resolve(null);
+    }
+    const before = asked.current.get(phone);
+    if (before !== undefined) {
+      return before;
+    }
+    const answer = ask(phone).catch(() => {
+      asked.current.delete(phone);
+      return null;
+    });
+    asked.current.set(phone, answer);
+    return answer;
+  };
+}
+
+/**
+ * A new relative whose phone the lookup finds is that person (H26, decision 2:
+ * the default "same person" of `edge/close-relatives`, row 2), linked as typed.
+ */
+export function linkingFound(
+  input: RelativeLinkInput,
+  holder: RelativeHolder | null,
+): RelativeLinkInput {
+  if (
+    input.kind !== 'new' ||
+    input.relative.phone === null ||
+    holder === null ||
+    holder.id === null
+  ) {
+    return input;
+  }
+  const { relationship, mainContact, portalAccess, receivesNotices } = input;
+  return {
+    kind: 'existing',
+    relativeId: holder.id,
+    phone: input.relative.phone,
+    relationship,
+    mainContact,
+    portalAccess,
+    receivesNotices,
+  };
+}
 
 /** An extra phone not typed yet: the country code, as on the main phone. */
 const EMPTY_PHONE = `${DEFAULT_PHONE_PREFIX} `;
@@ -143,15 +201,11 @@ export function ExtraPhonesField({
       <legend className="mb-1.5 text-sm font-medium">{t('people.relatives.extraPhones')}</legend>
       {phones.slice(0, shown).map((phone, index) => (
         <div key={phone.name} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-          <Field
+          <PhoneField
             label={t('people.relatives.extraPhone', { n: index + 1 })}
-            type="tel"
-            autoComplete="off"
             {...phone}
             note={smsWarning(phone.value) ? t('people.relatives.noSms') : undefined}
-            error={
-              phone.error ?? (twice(index) ? t('people.relatives.extraPhoneTwice') : undefined)
-            }
+            otherError={twice(index) ? t('people.relatives.extraPhoneTwice') : undefined}
           />
           <Button
             type="button"
@@ -261,10 +315,8 @@ export function OwnerChoice({
             {...previousUnknown}
           />
           {previousUnknown.value !== CHECKED && (
-            <Field
+            <PhoneField
               label={t('people.relatives.previousPhone', { name: found.fullName })}
-              type="tel"
-              autoComplete="off"
               {...previousPhone}
             />
           )}
@@ -341,17 +393,14 @@ export function RelativeForm({
       />
       <CheckboxField label={t('people.relatives.noPhone')} {...form.bind('noPhone')} />
       {!noPhone && (
-        <Field
+        <PhoneField
           label={t('people.relatives.phone')}
-          type="tel"
-          autoComplete="off"
           {...phone}
           note={smsWarning(phone.value) ? t('people.relatives.noSms') : undefined}
-          error={
-            phone.error ??
-            (holder === null
+          otherError={
+            holder === null
               ? undefined
-              : t('people.relatives.takenBy', { name: holder.fullName, count: holder.students }))
+              : t('people.relatives.takenBy', { name: holder.fullName, count: holder.students })
           }
         />
       )}

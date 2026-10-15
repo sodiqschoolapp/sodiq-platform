@@ -22,7 +22,14 @@ import { GroupForm, sharedLanguage } from './group-form';
 import { GroupMembers } from './group-members';
 import { SharedSlots } from './group-slots';
 import { groupTeacherText } from './group-teacher';
-import { archiveGroup, editGroup, groupQuery, invalidateGroups, restoreGroup } from './groups-api';
+import {
+  archiveGroup,
+  editGroup,
+  groupMembersQuery,
+  groupQuery,
+  invalidateGroups,
+  restoreGroup,
+} from './groups-api';
 
 interface GroupPanelProps {
   row: SchoolGroup;
@@ -74,6 +81,17 @@ export function GroupPanel({
       }
     },
   });
+  // H23 of issue #105, as on the class panel: the members and those a Tutor
+  // reader does not see (`othersCount`) are the rows the archive guard counts.
+  const members = useQuery({
+    ...groupMembersQuery(branchId, row.id),
+    enabled: branchId !== null && canArchive,
+  });
+  const holding =
+    members.data === undefined
+      ? 0
+      : new Set(members.data.members.map((member) => member.studentId)).size +
+        members.data.othersCount;
   const archive = useMutation({
     mutationFn: (change: { restore: boolean; confirmMixedLanguage: boolean }) =>
       change.restore ? restoreGroup(row.id, change.confirmMixedLanguage) : archiveGroup(row.id),
@@ -220,7 +238,7 @@ export function GroupPanel({
             !group.archived && (
               <Button
                 variant="destructive"
-                disabled={archive.isPending}
+                disabled={archive.isPending || holding > 0}
                 onClick={() => {
                   void askArchive();
                 }}
@@ -228,6 +246,12 @@ export function GroupPanel({
                 {t('groups.archiveGroup')}
               </Button>
             )
+          }
+          note={
+            canArchive &&
+            !group.archived &&
+            holding > 0 &&
+            t('groups.archiveHasStudents', { count: holding })
           }
           error={archive.error ?? changed}
           saved={panel.saved}

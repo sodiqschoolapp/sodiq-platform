@@ -341,3 +341,37 @@ export async function membersPeak(
   `.execute(transaction);
   return found.rows[0]?.peak ?? 0;
 }
+
+/**
+ * The first day of `[from, until)` (`until` null: to the end) on which a
+ * class has fewer free seats than `students`, or null (task 3.5b, H24 of
+ * issue #105). Read with the database's own count (`class_members_peak`, as
+ * `membersPeak` and the guard) on the days the count can rise: `from` and
+ * each start of a membership row of the class inside the range.
+ */
+export async function fullFrom(
+  transaction: Transaction,
+  classId: string,
+  maxSize: number,
+  from: SchoolDate,
+  until: SchoolDate | null,
+  students: number,
+): Promise<SchoolDate | null> {
+  const found = await sql<{ day: string }>`
+    select to_char(day, 'YYYY-MM-DD') as day
+    from (
+      select ${from}::date as day
+      union
+      select valid_from
+      from class_memberships
+      where class_id = ${classId}::uuid
+        and valid_from > ${from}::date
+        and valid_from < valid_until
+        and (${until}::date is null or valid_from < ${until}::date)
+    ) as candidates
+    where class_members_peak(${classId}::uuid, day, day + 1) > ${maxSize - students}
+    order by day
+    limit 1
+  `.execute(transaction);
+  return found.rows[0]?.day ?? null;
+}

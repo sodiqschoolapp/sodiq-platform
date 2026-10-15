@@ -65,7 +65,10 @@ describe('staff records', () => {
 
   it('takes a phone with its country code and drops spaces, hyphens and brackets', () => {
     expect(staffPhoneSchema.parse('+998 (90) 123-45-67')).toBe('+998901234567');
-    expect(staffPhoneSchema.safeParse('901234567').success).toBe(false);
+    // Nine digits alone are an Uzbek number since task 3.5b (H25, decision 7); "+998" needs exactly nine.
+    expect(staffPhoneSchema.parse('901234567')).toBe('+998901234567');
+    expect(staffPhoneSchema.safeParse('+99890123456').success).toBe(false);
+    expect(staffPhoneSchema.safeParse('+998 ').success).toBe(false);
     expect(staffPhoneSchema.safeParse('+99890').success).toBe(false);
   });
 

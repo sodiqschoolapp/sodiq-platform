@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { phoneLeftEmpty, storedPhone } from './phones.js';
 import { schoolDateSchema } from './academic-year.js';
 import { branchIdSchema } from './branches.js';
 
@@ -62,7 +63,7 @@ export const BRANCH_PHONE_FORMAT = /^\+998[0-9]{9}$/;
 
 export const branchPhoneSchema = z
   .string()
-  .transform((typed) => typed.replace(/[\s()-]/g, ''))
+  .transform((typed) => (phoneLeftEmpty(typed) ? '' : storedPhone(typed)))
   .transform((digits) => (digits === '' ? null : digits))
   .pipe(z.string().regex(BRANCH_PHONE_FORMAT).nullable())
   .nullable();

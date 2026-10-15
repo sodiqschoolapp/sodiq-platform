@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Select } from '@/components/ui/select';
 import { isRole } from './view';
+import { useSwitchBranch } from './use-switch-branch';
 import { useView } from './use-view';
 
 /**
@@ -85,7 +86,8 @@ export function RoleSwitcher() {
  */
 export function BranchSwitcher() {
   const { t } = useTranslation();
-  const { branches, branchId, chooseBranch } = useView();
+  const { branches, branchId } = useView();
+  const switchTo = useSwitchBranch();
   if (branchId === null) {
     return null;
   }
@@ -105,7 +107,7 @@ export function BranchSwitcher() {
         className="max-w-48 min-w-0"
         value={branchId}
         onChange={(event) => {
-          chooseBranch(event.target.value);
+          void switchTo(event.target.value);
         }}
       >
         {branches.map((branch) => (

@@ -605,6 +605,10 @@ export const uz: Texts<'one' | 'other'> = {
     noMatch: 'Hech narsa topilmadi. Boshqa soʻz bilan urinib koʻring.',
     students: 'Oʻquvchilar',
     staff: 'Xodimlar',
+    relatives: 'Ota-onalar',
+    relativeOf: 'Qarindoshi: {{name}}',
+    relativeStudents_one: 'Bu yerda {{count}} ta oʻquvchi',
+    relativeStudents_other: 'Bu yerda {{count}} ta oʻquvchi',
     classes: 'Sinflar',
     groups: 'Guruhlar',
     searching: 'Qidirilmoqda…',
@@ -666,7 +670,9 @@ export const uz: Texts<'one' | 'other'> = {
     edit: 'Tahrirlash',
     cancel: 'Bekor qilish',
     // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
-    phoneFormat: 'Telefonni +998 71 123 45 67 koʻrinishida kiriting.',
+    phoneFormat: 'Telefon: +998 va 9 raqam, masalan +998 71 123 45 67.',
+    phoneFormatAny:
+      'Telefon: +998 va 9 raqam, masalan +998 90 123 45 67. Boshqa davlat raqami + bilan boshlanadi.',
     add: 'Qoʻshish',
     addChoice: '«{{label}}»ga nima qoʻshishni tanlang',
     moveUp: '{{name}}ni ({{place}}-oʻrin) yuqoriga surish',
@@ -1694,8 +1700,22 @@ export const uz: Texts<'one' | 'other'> = {
         carried_other:
           'Qoʻshiladigan yozuvning {{count}} ta qatori qoladigan yozuvga toʻliq oʻtkaziladi.',
         filled: 'Qoʻshiladigan yozuvdan toʻldiriladi',
-        differing: 'Qoʻshiladigan yozuvda farq qiladi (qoladigan yozuvdagi qiymat saqlanadi)',
-        differs: '{{field}}: {{merged}}',
+        differing: 'Farq qiladigan qiymatlar',
+        differs:
+          '{{field}}: qoladigan yozuvda — {{kept}}; qoʻshiladigan yozuvda — {{merged}}. Qoladi: {{result}}.',
+        valueFields: {
+          startsOn: 'Boshlanish sanasi',
+          grade: 'Sinf darajasi',
+          scholarship: 'Stipendiya',
+          contracts: 'Shartnomalar',
+          relatives: 'Qarindoshlar',
+        },
+        allKept: 'hammasi',
+        noValue: '—',
+        contractText: '{{number}}, {{date}}',
+        relativeText: '{{name}} ({{relationship}})',
+        alreadyLinked:
+          '{{name}} ({{relationship}}): qoladigan yozuvga allaqachon bogʻlangan; u bogʻlanish qoladi',
         refused: 'Bu yozuvlarni birlashtirib boʻlmaydi.',
         refusedDay: 'Tegishli birinchi kun: {{date}}',
         reason: 'Sabab',
@@ -1920,6 +1940,10 @@ export const uz: Texts<'one' | 'other'> = {
       name: 'Nomi',
       department: 'Kafedra',
       subjects: 'Fanlar',
+      noDepartmentSubjects:
+        'Bu kafedrada hali fan yoʻq. Fanlarni Maktab sozlamalari → Fanlar da qoʻshing.',
+      chooseDepartmentFirst: 'Avval kafedrani tanlang.',
+      openSubjects: 'Fanlarni ochish',
       recordTitle: 'Vakansiya',
       statusTitle: 'Holat',
       statuses: { open: 'Ochiq', closed: 'Yopilgan' },
@@ -2573,6 +2597,9 @@ export const uz: Texts<'one' | 'other'> = {
     archiveClass: 'Arxivlash',
     restoreClass: 'Sinfni tiklash',
     archiveTitle: 'Bu sinf arxivlansinmi?',
+    archiveHasStudents_one: 'Sinfda {{count}} ta oʻquvchi bor. Avval uni boshqa sinfga koʻchiring.',
+    archiveHasStudents_other:
+      'Sinfda {{count}} ta oʻquvchi bor. Avval ularni boshqa sinfga koʻchiring.',
     archiveText:
       'Uning tyutorlari hozir yakunlanadi, rejalashtirilganlari bekor qilinadi. Tiklash ularni qaytarmaydi.',
     restoreTitle: 'Bu sinf tiklansinmi?',
@@ -2586,7 +2613,9 @@ export const uz: Texts<'one' | 'other'> = {
     setActing: 'Vaqtinchalik tyutor tayinlash',
     person: 'Shaxs',
     choosePerson: 'Shaxsni tanlang',
-    noCandidates: 'Bu filialda hech kimda tyutor roli yoʻq.',
+    noCandidates:
+      'Avval xodimga Tyutor rolini bering (rollarni Super Admin beradi): Odamlar → Xodimlar → xodim → Hisob va rollar.',
+    openStaff: 'Xodimlarni ochish',
     from: 'Dan',
     until: 'Gacha',
     endOn: 'Yakunlash sanasi',
@@ -2629,6 +2658,15 @@ export const uz: Texts<'one' | 'other'> = {
     placeTitle_one: 'Sinfga joylashtirish: {{n}} ta oʻquvchi',
     placeTitle_other: 'Sinfga joylashtirish: {{n}} ta oʻquvchi',
     classYear: '{{class}} · {{year}}',
+    seatsFull: '{{class}} — toʻla',
+    seatsFullFrom: '{{class}} — {{date}}dan boʻsh oʻrin yoʻq',
+    seatsFailed: 'Sinflardagi boʻsh oʻrinlarni oʻqib boʻlmadi.',
+    fullFrom:
+      '{{class}} sinfida {{date}}dan boʻsh oʻrin yoʻq. Boshqa sinfni tanlang yoki sinf sigʻimini oshiring.',
+    fullFromUnnamed:
+      'Sinfda {{date}}dan boʻsh oʻrin yoʻq. Boshqa sinfni tanlang yoki sinf sigʻimini oshiring.',
+    fullFromSeveral: '{{class}} sinfida {{date}}dan {{students}} ta oʻquvchiga joy yetmaydi.',
+    fullFromSeveralUnnamed: 'Sinfda {{date}}dan {{students}} ta oʻquvchiga joy yetmaydi.',
     endCauses: { ended: 'Yakunlangan', role: 'Rol yakunlangan', archive: 'Sinf arxivlangan' },
     groupsLink: 'Guruhlar',
     mixedGroupsTitle: 'Bu guruhlarning tili saqlansinmi?',
@@ -2701,6 +2739,10 @@ export const uz: Texts<'one' | 'other'> = {
     archiveGroup: 'Arxivlash',
     restoreGroup: 'Guruhni tiklash',
     archiveTitle: 'Bu guruh arxivlansinmi?',
+    archiveHasStudents_one:
+      'Guruhda {{count}} ta oʻquvchi bor. Avval uni boshqa guruhga koʻchiring.',
+    archiveHasStudents_other:
+      'Guruhda {{count}} ta oʻquvchi bor. Avval ularni boshqa guruhga koʻchiring.',
     archiveText: 'U tarixda qoladi va uni tiklash mumkin.',
     restoreTitle: 'Bu guruh tiklansinmi?',
     restoreText: 'Uning sinflari va fani qayta tekshiriladi.',
@@ -2904,6 +2946,16 @@ export const uz: Texts<'one' | 'other'> = {
       chooseTeacher: 'Oʻqituvchini tanlang',
       chooseFirst: 'Avval sinf yoki guruhni va fanni tanlang.',
       noTeachers: 'Filialning hech bir oʻqituvchisi yoki vakansiyasi bu qatorni ola olmaydi.',
+      noSubjectTeacher:
+        '{{subject}} filialning hech bir oʻqituvchisi yoki vakansiyasi profilida yoʻq: Odamlar → Xodimlar → Fanlar.',
+      noTutorTeacher:
+        '{{subject}} ni sinf tyutori yoki shu fani bor oʻqituvchi oladi; sinfda tyutor yoʻq: Sinflar → sinf → Tyutor berish.',
+      whyStatus: '{{teacher}}: faol emas.',
+      whyGrade: '{{teacher}}: {{grades}}-sinfni oʻqitmaydi.',
+      whyLanguage: '{{teacher}}: {{language}} dars bermaydi.',
+      whyLanguageUnnamed: '{{teacher}}: sinflar tilida dars bermaydi.',
+      whyBlock: '{{teacher}}: shu blokdagi {{group}} guruhida dars beradi.',
+      openStaff: 'Xodimlarni ochish',
       tutorOption: '{{name}} (tyutor)',
       vacancyOption: '{{name}} (vakansiya)',
       vacancy: 'Vakansiya',

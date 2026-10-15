@@ -236,6 +236,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: the hand-test fixes of forms, refusals and messages (task 3.5b)
+
+Plan approved on pull request #116 with correction 1; decisions 1 to 11 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Changing a scheduled class move with the same class left and the same target does not ask the language question again; the classes are compared, not their languages. Proposed `/spec-change` of `edge/students-classes-groups`, row "A transfer or a leaving is set for a future date": "Changing only the date of a scheduled transfer, with the same class left and the same target, does not ask again about a different language of instruction." | Decision 1; H27 |
+| **Look first.** A Save pressed before the relative's phone lookup answered waits for it and links the person found with the default "same person"; a failed lookup does not hold the Save, and the server's `relative_phone_exists` stays the guard | Decision 2; H26; `edge/close-relatives`, row 2 |
+| **Look first.** Ctrl+K finds relatives by name and main phone, and a student by a live-linked relative's main phone, for the readers of `relatives` in the branch of the request (Super Admin, Principal, Academic Vice Principal); extra phones are not searched; the Parents list's phone search is unchanged | Decision 3; H33; `edge/people-roles-accounts`, the Ctrl+K row; L157 |
+| **Look first.** An Uzbek phone is "+998" and exactly nine digits (a number of another country "+" and 7 to 15 digits); nine digits alone are Uzbek, "00" is "+", spaces, dashes, brackets and dots are dropped, and a number pasted after the prefilled "+998 " is read; a bare "+998" is an empty field. A stored Uzbek number of another length is refused with the format text at its next edit | Decision 7, confirmed as a changed decision (pull request #53 decision 11, task 2.5a decision 9); H25 |
+| The seats of the Add student choice come from `GET /api/classes/seats` (`students` `create`); a full class stays selectable with its mark; `fullFrom` is the first day of the stay's days (`[from, until)`) with fewer free seats than the students placed, read with `class_members_peak`; the class move checks seats before its write | Decision 4 and correction 1; H24 |
+| Archive is off from the members answer (current and planned), the rows the archive guard counts; while it loads or fails the server's refusal stays | Decision 5; H23 |
+| One Give Tutor text for every role that may open it, saying the Super Admin gives roles, with a link to Staff for a role that may open it | Decision 6; H22 |
+| The teaching load gives the first reason of each teacher or vacancy with the subject (not active, a grade, the language, another part of the block), a Tutor subject on a class with no Tutor its own line, and the subject in nobody's profile otherwise | Decision 8; H30 |
+| The merge preview lists the start date, the grade and the scholarship (the later life's), the contracts (all kept) and the relatives (stays, added, already linked) beside the personal fields; the digest covers them | Decision 9; H29 |
+| A branch switch asks `useLeave()` first, then removes `open` from the address of any page, then chooses the branch | Decision 10; H32 |
+| The handbook pages for people, classes and the teaching load are written by task 3.7 from its "From 3.5b" line | Decision 11 |
+| Built: a relative found in Ctrl+K shows the main phone and the number of the branch's students linked; the children themselves are listed under Students by the same typed phone (the spec's "lists the relative's children") | H33; permission review of the build, should-fix 2 |
+| Built: the refusal of several students for a full class names the class, the day and how many students, not a number of free seats (the fewest over the range could belong to another day) | H24; spec review of the build, should-fix 6 |
+| Built: the Ctrl+K line of a child found by a relative's phone reads uz "Qarindoshi: <name>", ru "Родственник: <name>", en "Relative: <name>" (any relationship, not only a parent) | H33; spec review of the build, should-fix 7 |
+
 ## 15 October 2026: the hand-test fixes of wording and small screens (task 3.5a)
 
 Plan approved on pull request #113 with corrections 1 and 2; decisions 1 to 13 confirmed there, decision 10 changed by correction 1. Flagged on issue #42.

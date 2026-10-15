@@ -190,9 +190,13 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const student = detail.data;
   const allowed = student === undefined ? null : statusActions(student);
   // A change of the status takes its button away: the panel shows Overview,
-  // where the status heading is, and the focus goes to that heading.
+  // where the status heading is, and the focus goes to that heading. An action
+  // started on the History tab stays there, the list read again in place, and
+  // the focus goes to the list (task 3.5b, H28 of issue #105).
+  // Only a choice of the person shows History (it is never the default tab).
+  const focusAfter = () => (tab === 'history' ? 'history' : 'status');
   const statusChanged = async (answer: unknown) => {
-    setTab('overview');
+    setTab((before) => (before === 'history' ? 'history' : 'overview'));
     // A cancel or an undo names the classes it could not give back (task 3.1b, decision 1).
     const read = studentDetailSchema.safeParse(answer);
     setNotRestored(read.success ? (read.data.classesNotRestored ?? []) : []);
@@ -206,7 +210,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     name,
     async (answer) => {
       await statusChanged(answer);
-      panel.point('status');
+      panel.point(focusAfter());
     },
     reread,
   );
@@ -216,7 +220,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     name,
     async (answer) => {
       await statusChanged(answer);
-      panel.point('status');
+      panel.point(focusAfter());
     },
     reread,
   );
@@ -226,7 +230,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     name,
     async (answer) => {
       await statusChanged(answer);
-      panel.point('status');
+      panel.point(focusAfter());
     },
     reread,
   );
@@ -345,7 +349,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     const now = queryClient.getQueryData<StudentDetail>(studentDetailQuery(branchId, id).queryKey);
     if (now !== undefined && !statusActions(now)[key]) {
       setStaleClosed(true);
-      panel.stop({ key, focus: 'status' });
+      panel.stop({ key, focus: focusAfter() });
     }
   };
   /** The props every status form shares; a save closes it with "Saved.". */
@@ -354,7 +358,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     label: name,
     onChanged: async (answer: unknown) => {
       // Closed first: the re-read takes the form's action away.
-      panel.stop({ saved: true, key, focus: 'status' });
+      panel.stop({ saved: true, key, focus: focusAfter() });
       await statusChanged(answer);
     },
     onStale: staleFor(key),
@@ -460,7 +464,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const moveProps = (key: string) => ({
     student,
     onChanged: async (answer: unknown) => {
-      panel.stop({ saved: true, key, focus: 'status' });
+      panel.stop({ saved: true, key, focus: focusAfter() });
       await statusChanged(answer);
     },
     onStale: async () => {

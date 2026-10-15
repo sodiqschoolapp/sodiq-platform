@@ -328,6 +328,29 @@ export const classMembersSchema = z.object({
   today: schoolDateSchema,
 });
 
+/** The date the free seats of the Add student form are read from (task 3.5b, H24 of issue #105). */
+export const classSeatsQuerySchema = z.object({ from: schoolDateSchema });
+
+export type ClassSeatsQuery = z.infer<typeof classSeatsQuerySchema>;
+
+/**
+ * The classes a new student can join on a date (not archived, the year open
+ * and holding the date), each with the first day from that date on with no
+ * free seat for one more student, scheduled joins and leaves counted, or
+ * `null` (`edge/students-classes-groups`, "A class is full").
+ */
+export const classSeatsSchema = z.object({
+  classes: z.array(
+    z.object({
+      classId: z.uuid(),
+      maxSize: z.int(),
+      fullFrom: schoolDateSchema.nullable(),
+    }),
+  ),
+});
+
+export type ClassSeats = z.infer<typeof classSeatsSchema>;
+
 export type ClassMembers = z.infer<typeof classMembersSchema>;
 
 /**

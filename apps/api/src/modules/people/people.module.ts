@@ -30,6 +30,7 @@ import { Staff } from './staff.service.js';
 import { StudentExports } from './student-exports.service.js';
 import { StudentPhotosController } from './student-photos.controller.js';
 import { StudentPhotos } from './student-photos.service.js';
+import { RelativeSearch } from './relative-search.js';
 import { StudentSearch } from './student-search.js';
 import { StudentStatusesController } from './student-statuses.controller.js';
 import {
@@ -98,6 +99,7 @@ import { Vacancies } from './vacancies.service.js';
     RelativeWrites,
     Relatives,
     StudentSearch,
+    RelativeSearch,
     StaffSearch,
     {
       provide: PHOTO_STORE,

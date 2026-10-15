@@ -110,6 +110,30 @@ const PREVIEW: StudentMergePreview = {
   carried: 2,
   filled: ['address'],
   differing: [{ field: 'sex', kept: 'male', merged: 'female' }],
+  // Task 3.5b, H29: the values beside the personal fields.
+  values: {
+    later: 'kept',
+    startsOn: { kept: '2026-09-02', merged: '2026-09-10', result: '2026-09-02' },
+    grade: { kept: 7, merged: 7 },
+    scholarship: {
+      kept: { type: 'none', coverage: null, amount: null },
+      merged: { type: 'none', coverage: null, amount: null },
+    },
+    contracts: [
+      { side: 'kept', number: 'SQ-2026/001', signedOn: '2026-08-20' },
+      { side: 'merged', number: 'SQ-2026/044', signedOn: '2026-09-01' },
+    ],
+    relatives: [
+      { side: 'kept', fullName: 'Rahimova Dilfuza', relationship: 'mother', fate: 'stays' },
+      { side: 'merged', fullName: 'Rahimov Anvar', relationship: 'father', fate: 'added' },
+      {
+        side: 'merged',
+        fullName: 'Rahimova Dilfuza',
+        relationship: 'mother',
+        fate: 'already_linked',
+      },
+    ],
+  },
   refusal: null,
   digest: 'a'.repeat(64),
 };
@@ -192,11 +216,35 @@ describe('the merge of two student records', () => {
           .replace('{{from}}', schoolDateText('2026-09-10', 'en')),
       ),
     ).toBeDefined();
-    expect(
-      within(form).getByText(
-        texts.differs.replace('{{field}}', texts.fields.sex).replace('{{merged}}', 'Female'),
+    // Task 3.5b, H29 of issue #105: each value of both records and the one kept.
+    const differing = within(form).getByRole('heading', { name: texts.differing }).parentElement;
+    const lines = [...(differing?.querySelectorAll('li') ?? [])].map((one) => one.textContent);
+    const line = (field: string, kept: string, merged: string, result: string) =>
+      texts.differs
+        .replace('{{field}}', field)
+        .replace('{{kept}}', kept)
+        .replace('{{merged}}', merged)
+        .replace('{{result}}', result);
+    const day = (date: string) => schoolDateText(date, 'en');
+    expect(lines).toEqual([
+      line(texts.fields.sex, 'Male', 'Female', 'Male'),
+      line(texts.valueFields.startsOn, day('2026-09-02'), day('2026-09-10'), day('2026-09-02')),
+      line(
+        texts.valueFields.contracts,
+        `SQ-2026/001 of ${day('2026-08-20')}`,
+        `SQ-2026/044 of ${day('2026-09-01')}`,
+        texts.allKept,
       ),
-    ).toBeDefined();
+      line(
+        texts.valueFields.relatives,
+        'Rahimova Dilfuza (Mother)',
+        'Rahimov Anvar (Father), Rahimova Dilfuza (Mother)',
+        'Rahimova Dilfuza (Mother), Rahimov Anvar (Father)',
+      ),
+      texts.alreadyLinked
+        .replace('{{name}}', 'Rahimova Dilfuza')
+        .replace('{{relationship}}', 'Mother'),
+    ]);
     fireEvent.change(within(form).getByLabelText(texts.reason), {
       target: { value: 'Created twice by mistake' },
     });

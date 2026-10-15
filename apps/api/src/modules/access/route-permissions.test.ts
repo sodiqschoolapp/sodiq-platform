@@ -410,6 +410,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // Task 3.1a: classes and their Tutors; the Principal exports (decision 5).
   'GET /api/classes': { branch: 'request', roles: CLASS_VIEWERS },
   'GET /api/classes/tutor-candidates': { branch: 'request', roles: CLASS_EDITORS },
+  'GET /api/classes/seats': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/classes/export': { branch: 'request', roles: SETUP_VIEWERS },
   'POST /api/classes': { branch: 'request', roles: CLASS_EDITORS },
   'GET /api/classes/:id': { branch: 'request', roles: CLASS_VIEWERS },
@@ -428,6 +429,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // of its record route; the scope is decided in the route (people/search.test.ts,
   // classes/search.test.ts).
   'GET /api/search/students': { branch: 'request', roles: STUDENT_VIEWERS },
+  'GET /api/search/relatives': { branch: 'request', roles: SETUP_VIEWERS },
   'GET /api/search/staff': { branch: 'request', roles: STAFF_VIEWERS },
   'GET /api/search/classes': { branch: 'request', roles: CLASS_VIEWERS },
   'GET /api/search/groups': { branch: 'request', roles: CLASS_VIEWERS },

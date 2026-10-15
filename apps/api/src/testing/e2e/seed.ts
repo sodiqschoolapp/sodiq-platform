@@ -3189,6 +3189,113 @@ try {
   seeded.handTestUz = { login: handTestUz.login, password: handTestUz.firstPassword };
   seeded.handTestRu = { login: handTestRu.login, password: handTestRu.firstPassword };
 
+  // Task 3.5b (issue #105, Part C): one Academic Vice Principal per browser
+  // test. 7 Yale is full (H24); the mother of a student of 7 Oxford has a
+  // known phone (H26, H33); the switch account works in a second branch
+  // (H32). All names and phones are invented.
+  const formsBranch = await insertBranch(migrator, 'Hand test 3.5b branch');
+  const secondBranch = await insertBranch(migrator, 'Hand test 3.5b second branch');
+  const handForms = await create('Shahzoda', 'Yoqubova');
+  const handSwitch = await create('Temur', 'Nazarov');
+  const handSearch = await create('Laylo', 'Hamroyeva');
+  for (const [account, branchId] of [
+    [handForms, formsBranch],
+    [handSwitch, formsBranch],
+    [handSwitch, secondBranch],
+    [handSearch, formsBranch],
+  ] as const) {
+    await transactions.run([branchId], (transaction) =>
+      assignments.give(transaction, {
+        accountId: account.id,
+        role: 'academic_vice_principal',
+        branchId,
+        givenBy: null,
+      }),
+    );
+  }
+  await migrator.transaction().execute(async (transaction) => {
+    const classIds = new Map<string, string>();
+    for (const branchId of [formsBranch, secondBranch]) {
+      const year = await transaction
+        .insertInto('academic_years')
+        .values({
+          branch_id: branchId,
+          start_date: startDate,
+          end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('quarters')
+        .values(
+          [1, 2, 3, 4].map((number) => ({
+            branch_id: branchId,
+            academic_year_id: year.id,
+            number,
+          })),
+        )
+        .execute();
+      const names = branchId === formsBranch ? ['Oxford', 'Yale'] : ['Cambridge'];
+      for (const name of names) {
+        const written = await transaction
+          .insertInto('classes')
+          .values({
+            branch_id: branchId,
+            academic_year_id: year.id,
+            grade: 7,
+            name,
+            language: 'uz',
+            max_size: name === 'Yale' ? 1 : 24,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        classIds.set(name, written.id);
+      }
+    }
+    const pupils = [
+      {
+        uid: '9999811',
+        first: 'Sevinch',
+        last: 'Qodirova',
+        parent: 'Qodirova Dilbar',
+        klass: 'Oxford',
+        phone: '+998935553311',
+      },
+      {
+        uid: '9999812',
+        first: 'Akmal',
+        last: 'Tursunov',
+        parent: 'Tursunova Zulfiya',
+        klass: 'Yale',
+        phone: '+998935553312',
+      },
+    ];
+    for (const pupil of pupils) {
+      const id = await studentInClass(transaction, {
+        branch: formsBranch,
+        classId: classIds.get(pupil.klass) ?? null,
+        uid: pupil.uid,
+        first: pupil.first,
+        last: pupil.last,
+        createdBy: handForms.id,
+        phone: pupil.phone,
+      });
+      const linked = await transaction
+        .selectFrom('student_relatives')
+        .select('relative_id')
+        .where('student_id', '=', id)
+        .executeTakeFirstOrThrow();
+      await transaction
+        .updateTable('relatives')
+        .set({ full_name: pupil.parent, name_key: relativeNameKey(pupil.parent) })
+        .where('id', '=', linked.relative_id)
+        .execute();
+    }
+  });
+  seeded.handTest35bForms = { login: handForms.login, password: handForms.firstPassword };
+  seeded.handTest35bSwitch = { login: handSwitch.login, password: handSwitch.firstPassword };
+  seeded.handTest35bSearch = { login: handSearch.login, password: handSearch.firstPassword };
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')

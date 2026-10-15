@@ -541,6 +541,51 @@ export class Timetable {
         (teacher) =>
           teacherProblems(unit.unit, subject, teacher).length === 0 && !otherParts.has(teacher.id),
       );
+      // H30 of issue #105: why each teacher or vacancy with the subject cannot
+      // take the row, the first reason of the order above.
+      const blockGroups = [...new Set([...otherParts.values()].filter((one) => one !== null))];
+      const groupNames =
+        blockGroups.length === 0
+          ? []
+          : await transaction
+              .selectFrom('groups')
+              .select(['id', 'name'])
+              .where('id', 'in', blockGroups)
+              .execute();
+      const excluded = [...all.values()].flatMap((teacher) => {
+        const problems = teacherProblems(unit.unit, subject, teacher);
+        if (problems.includes('load_teacher_subject')) {
+          return [];
+        }
+        const reason = problems.includes('load_teacher_status')
+          ? ('status' as const)
+          : problems.includes('load_teacher_grade')
+            ? ('grade' as const)
+            : problems.includes('load_teacher_language')
+              ? ('language' as const)
+              : otherParts.has(teacher.id)
+                ? ('block' as const)
+                : null;
+        if (reason === null) {
+          return [];
+        }
+        const groupId = otherParts.get(teacher.id) ?? null;
+        return [
+          {
+            id: teacher.id,
+            kind: teacher.kind,
+            name: teacher.name,
+            reason,
+            blockGroup:
+              reason === 'block'
+                ? (groupNames.find((one) => groupId !== null && one.id === groupId)?.name ?? null)
+                : null,
+          },
+        ];
+      });
+      excluded.sort(
+        (a, b) => (a.name ?? '').localeCompare(b.name ?? '') || a.id.localeCompare(b.id),
+      );
       const tutors = unit.unit.tutorStaffIds;
       const rank = (teacherId: string) => {
         const at = tutors.indexOf(teacherId);
@@ -563,6 +608,8 @@ export class Timetable {
         })),
         defaultTeacherId:
           preselect !== null && fit.some((teacher) => teacher.id === preselect) ? preselect : null,
+        excluded,
+        noTutor: subject.tutorSubject && unit.unit.kind === 'class' && tutors.length === 0,
       };
     });
   }
@@ -1041,9 +1088,9 @@ export class Timetable {
     versionId: string,
     groupId: string | null,
     subjectId: string,
-  ): Promise<Set<string>> {
+  ): Promise<Map<string, string | null>> {
     if (groupId === null) {
-      return new Set();
+      return new Map();
     }
     const versionRows = await this.rowsOf(transaction, versionId);
     const group = groupId.toLowerCase();
@@ -1072,10 +1119,11 @@ export class Timetable {
     });
     const mixed =
       held?.mixed_block ?? (halves.length > 0 && halves.every((part) => part.mixed_block));
-    return new Set(
+    // Each teacher of another part of the block, with the group of that part.
+    return new Map(
       others
         .filter((part) => !(mixed && part.mixed_block && halves.includes(part)))
-        .map((part) => part.teacher_id),
+        .map((part) => [part.teacher_id, part.group_id]),
     );
   }
 

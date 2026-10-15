@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { phoneLeftEmpty } from './phones.js';
 import { schoolDateSchema } from './academic-year.js';
 import { personNameSchema } from './accounts.js';
 import { classNotRestoredSchema, studentClassSchema } from './classes.js';
@@ -220,7 +221,7 @@ const optionalEmailSchema = z
 /** A phone with its country code (as staff), empty means none. */
 const optionalPhoneSchema = z
   .string()
-  .transform((typed) => typed.replace(/[\s()-]/g, ''))
+  .transform((typed) => (phoneLeftEmpty(typed) ? '' : typed.replace(/[\s().-]/g, '')))
   .transform((text) => (text === '' ? null : text))
   .pipe(staffPhoneSchema.nullable())
   .nullable();

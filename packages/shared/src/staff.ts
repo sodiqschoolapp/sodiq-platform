@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PHONE_FORMAT, storedPhone } from './phones.js';
 import { schoolDateSchema } from './academic-year.js';
 import { firstPasswordSlipSchema } from './accounts.js';
 import { roleSchema, type Role } from './roles.js';
@@ -113,13 +114,14 @@ const optionalNameSchema = z
   .nullable();
 
 /**
- * A phone with its country code: spaces, hyphens and brackets are dropped,
- * then a plus and 7 to 15 digits (decided on pull request #53, decision 11).
+ * A phone with its country code, read by `storedPhone` (task 3.5b, H25): an
+ * Uzbek number is "+998" and nine digits, another country's "+" and 7 to 15
+ * digits (pull request #53, decision 11, narrowed for Uzbek numbers).
  */
 export const staffPhoneSchema = z
   .string()
-  .transform((typed) => typed.replace(/[\s()-]/g, ''))
-  .pipe(z.string().regex(/^\+[0-9]{7,15}$/));
+  .transform(storedPhone)
+  .pipe(z.string().regex(PHONE_FORMAT));
 
 const optionalEmailSchema = z
   .string()

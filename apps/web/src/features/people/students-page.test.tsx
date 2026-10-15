@@ -14,7 +14,16 @@ import { schoolDateText } from '@/lib/dates';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
 import { savedRecordPanel } from '@/testing/new-record';
-import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import {
+  fakeApi,
+  json,
+  NORTH,
+  refusal,
+  renderApp,
+  sessionOf,
+  SOUTH,
+  type Handler,
+} from '@/testing/render-app';
 import {
   actionsAreLast,
   edit,
@@ -241,7 +250,7 @@ const CLASS_CHOICE: Record<string, (body: unknown) => Response> = {
 
 function openList(
   role: Role,
-  extra: Record<string, (body: unknown) => Response> = {},
+  extra: Record<string, Handler> = {},
   language: 'en' | 'ru' = 'en',
   detail: Partial<StudentDetail> = {},
 ) {
@@ -555,7 +564,7 @@ describe('the profile of a student', () => {
 });
 
 describe('adding a student', () => {
-  async function fillAndSave(classId?: string) {
+  async function fillAndSave(classId?: string, phones: { relative?: string; own?: string } = {}) {
     fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
     // In the side panel beside the list (task 2.7c-2a), not above it.
     const form = within(
@@ -574,9 +583,12 @@ describe('adding a student', () => {
     type(en.people.students.contractNumber, 'SQ-2026/099');
     type(en.people.students.contractSignedOn, '2026-08-20');
     // Task 2.5a: the relative, typed phone first.
-    type(en.people.relatives.phone, '+998 90 111 22 33');
+    type(en.people.relatives.phone, phones.relative ?? '+998 90 111 22 33');
     type(en.people.relatives.fullNameField, 'Dilfuza Rahimova');
     type(en.people.relatives.relationship, 'mother');
+    if (phones.own !== undefined) {
+      type(en.people.students.phone, phones.own);
+    }
     if (classId !== undefined) {
       type(en.people.students.class, classId);
     }
@@ -610,6 +622,89 @@ describe('adding a student', () => {
         en.people.students.setTextNamed.replace('{{grade}}', '7').replace('{{set}}', '2607'),
       ),
     ).toBeDefined();
+  });
+
+  // Task 3.5b, H25 of issue #105: a number pasted after the prefilled "+998 ".
+  it('takes a whole number pasted after the prefilled +998 in the relative and the own phone', async () => {
+    const calls = openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/students': () => json(detailOf({ ...OTKIR, id: uid(9) }), 201),
+      [`GET /api/people/students/${uid(9)}`]: () => json(detailOf({ ...OTKIR, id: uid(9) })),
+    });
+    renderApp(PATH);
+    await fillAndSave(undefined, { relative: '+998 +998901234501', own: '+998 (90) 765-43-21' });
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/students')).toBe(true);
+    });
+    const body = calls.find((call) => call.route === 'POST /api/people/students')?.body;
+    expect(body).toMatchObject({
+      phone: '+998907654321',
+      relatives: [{ kind: 'new', relative: { phone: '+998901234501' } }],
+    });
+  });
+
+  it('says the phone format on a number too short, and sends nothing', async () => {
+    const calls = openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+    });
+    renderApp(PATH);
+    const form = await fillAndSave(undefined, { relative: '+998 90 123 45' });
+    const phone = within(form).getByLabelText(en.people.relatives.phone);
+    expect(phone.getAttribute('aria-invalid')).toBe('true');
+    expect(
+      document.getElementById(phone.getAttribute('aria-describedby')?.split(' ').at(-1) ?? '')
+        ?.textContent,
+    ).toBe(en.form.phoneFormatAny);
+    expect(calls.some((call) => call.route === 'POST /api/people/students')).toBe(false);
+  });
+
+  // Task 3.5b, H26 of issue #105: Save pressed before the lookup answered.
+  it('waits for a lookup that has not answered and links the person it finds', async () => {
+    let answer: (response: Response) => void = () => undefined;
+    const late = new Promise<Response>((resolve) => {
+      answer = resolve;
+    });
+    const calls = openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/relatives/phone-match': () => late,
+      'POST /api/people/students': () => json(detailOf({ ...OTKIR, id: uid(9) }), 201),
+      [`GET /api/people/students/${uid(9)}`]: () => json(detailOf({ ...OTKIR, id: uid(9) })),
+    });
+    renderApp(PATH);
+    await fillAndSave();
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/relatives/phone-match')).toBe(
+        true,
+      );
+    });
+    expect(calls.some((call) => call.route === 'POST /api/people/students')).toBe(false);
+    answer(json({ holder: { id: uid(70), fullName: 'Rahimova Dilfuza', students: 1 } }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/students')).toBe(true);
+    });
+    const creates = calls.filter((call) => call.route === 'POST /api/people/students');
+    expect(creates).toHaveLength(1);
+    expect(creates[0]?.body).toMatchObject({
+      relatives: [{ kind: 'existing', relativeId: uid(70), phone: '+998901112233' }],
+    });
+  });
+
+  it('sends a new relative once when the lookup fails', async () => {
+    const calls = openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/relatives/phone-match': () => refusal('internal_error', 500),
+      'POST /api/people/students': () => json(detailOf({ ...OTKIR, id: uid(9) }), 201),
+      [`GET /api/people/students/${uid(9)}`]: () => json(detailOf({ ...OTKIR, id: uid(9) })),
+    });
+    renderApp(PATH);
+    await fillAndSave();
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/students')).toBe(true);
+    });
+    const creates = calls.filter((call) => call.route === 'POST /api/people/students');
+    expect(creates).toHaveLength(1);
+    expect(creates[0]?.body).toMatchObject({ relatives: [{ kind: 'new' }] });
   });
 
   // Task 3.1b, decision 2: the class of a new student, of the grade chosen.
@@ -664,6 +759,140 @@ describe('adding a student', () => {
     await waitFor(() => {
       expect(classField.querySelectorAll('option')).toHaveLength(1);
     });
+  });
+
+  // Task 3.5b, H24 of issue #105: a full class is marked in the choice.
+  it('marks a class full from the start date, or from a later day, and keeps it selectable', async () => {
+    const twin = schoolClass(53, { name: 'Harvard' });
+    openList('academic_vice_principal', {
+      'GET /api/classes': () => json({ classes: [...CLASSES, twin] }),
+      'GET /api/classes/seats': () =>
+        json({
+          classes: [
+            { classId: uid(50), maxSize: 25, fullFrom: '2026-09-02' },
+            { classId: twin.id, maxSize: 25, fullFrom: '2026-10-21' },
+          ],
+        }),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.students.newTitle }),
+    ).getByRole('form', { name: en.people.students.newTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2026-09-02');
+    const classField = await within(form).findByLabelText<HTMLSelectElement>(
+      en.people.students.class,
+    );
+    const later = en.classes.seatsFullFrom
+      .replace('{{class}}', '7 Harvard')
+      .replace('{{date}}', schoolDateText('2026-10-21', 'en'));
+    await waitFor(() => {
+      expect([...classField.querySelectorAll('option')].map((one) => one.textContent)).toEqual([
+        en.people.students.noClassYet,
+        `${en.classes.seatsFull.replace('{{class}}', '7 Oxford')} · 2026–2027`,
+        `${later} · 2026–2027`,
+      ]);
+    });
+    type(en.people.students.class, uid(50));
+    expect(classField.value).toBe(uid(50));
+    expect(
+      within(form).getByText(en.classes.seatsFull.replace('{{class}}', '7 Oxford')),
+    ).toBeDefined();
+  });
+
+  it('names the full class and its first day without a seat in the refusal', async () => {
+    openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/students': () =>
+        Response.json(
+          {
+            error: {
+              code: 'class_full',
+              message: 'x',
+              requestId: 'r',
+              details: [
+                {
+                  path: 'students',
+                  code: 'class_full',
+                  message: 'x',
+                  freeSeats: 0,
+                  classId: uid(50),
+                  fullFrom: '2026-10-21',
+                  students: 1,
+                },
+              ],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    renderApp(PATH);
+    const form = await fillAndSave(uid(50));
+    expect((await within(form).findByRole('alert')).textContent).toBe(
+      en.classes.fullFrom
+        .replace('{{class}}', '7 Oxford')
+        .replace('{{date}}', schoolDateText('2026-10-21', 'en')),
+    );
+  });
+
+  const fullRefusal = (classId: string, students: number) => () =>
+    Response.json(
+      {
+        error: {
+          code: 'class_full',
+          message: 'x',
+          requestId: 'r',
+          details: [
+            {
+              path: 'students',
+              code: 'class_full',
+              message: 'x',
+              freeSeats: 0,
+              classId,
+              fullFrom: '2026-10-21',
+              students,
+            },
+          ],
+        },
+      },
+      { status: 409 },
+    );
+
+  it('says the full class without its name when the list does not hold it, and reads the list again', async () => {
+    const calls = openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/students': fullRefusal(uid(99), 1),
+    });
+    renderApp(PATH);
+    const form = await fillAndSave(uid(50));
+    expect((await within(form).findByRole('alert')).textContent).toBe(
+      en.classes.fullFromUnnamed.replace('{{date}}', schoolDateText('2026-10-21', 'en')),
+    );
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === 'GET /api/classes').length).toBeGreaterThan(1);
+    });
+  });
+
+  it('says how many students a full class lacks seats for', async () => {
+    openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/students': fullRefusal(uid(50), 3),
+    });
+    renderApp(PATH);
+    const form = await fillAndSave(uid(50));
+    expect((await within(form).findByRole('alert')).textContent).toBe(
+      en.classes.fullFromSeveral
+        .replace('{{class}}', '7 Oxford')
+        .replace('{{students}}', '3')
+        .replace('{{date}}', schoolDateText('2026-10-21', 'en')),
+    );
   });
 
   // Owner's answer to finding 27 (task 2.7b-1, decision 3): a list of names

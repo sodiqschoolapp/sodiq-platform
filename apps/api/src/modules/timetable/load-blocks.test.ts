@@ -390,6 +390,23 @@ describe('splits, groups and weekly totals of the teaching load', () => {
         .teachers.map((one) => one.id);
       expect(offered).toContain(free);
       expect(offered).not.toContain(taken);
+      // Task 3.5b, H30: the reason names the group the teacher already teaches in the block.
+      const answer = loadTeachersSchema.parse(
+        (
+          await get(
+            `/api/timetable/versions/${version.id}/load/teachers?groupId=${b}&subjectId=${subject}`,
+          ).expect(200)
+        ).body,
+      );
+      const groupName = await t.database.migrator
+        .selectFrom('groups')
+        .select('name')
+        .where('id', '=', a)
+        .executeTakeFirstOrThrow();
+      expect(answer.excluded.find((one) => one.id === taken)).toMatchObject({
+        reason: 'block',
+        blockGroup: groupName.name,
+      });
       // The row of the group itself does not leave its own teacher out.
       const own = loadTeachersSchema
         .parse(

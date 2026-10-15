@@ -2660,6 +2660,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/search/relatives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PeopleSearchController_findRelatives"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/classes": {
         parameters: {
             query?: never;
@@ -2684,6 +2700,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["ClassesController_candidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/classes/seats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ClassesController_seats"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3164,6 +3196,10 @@ export interface components {
                     expected?: string;
                     day?: string;
                     freeSeats?: number;
+                    /** Format: uuid */
+                    classId?: string;
+                    fullFrom?: string;
+                    students?: number;
                     /** Format: uuid */
                     subjectId?: string;
                     load?: {
@@ -3924,6 +3960,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -4044,6 +4084,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -4278,6 +4322,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -4381,6 +4429,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -4475,6 +4527,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -4581,6 +4637,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -4683,6 +4743,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -4782,6 +4846,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -4887,6 +4955,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -4983,6 +5055,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -5090,6 +5166,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -5189,6 +5269,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -5290,6 +5374,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -5388,6 +5476,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -5488,6 +5580,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -5581,6 +5677,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -5673,6 +5773,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -5776,6 +5880,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -5893,6 +6001,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -5989,6 +6101,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -6108,6 +6224,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -6220,6 +6340,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -6335,6 +6459,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -6431,6 +6559,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -6548,6 +6680,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -6653,6 +6789,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -6760,6 +6900,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -6863,6 +7007,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -6968,6 +7116,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -7062,6 +7214,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -7155,6 +7311,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -7258,6 +7418,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -7368,6 +7532,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -7481,6 +7649,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -7583,6 +7755,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -7698,6 +7874,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -7808,6 +7988,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -7911,6 +8095,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -8021,6 +8209,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -8128,6 +8320,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -8239,6 +8435,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -8340,6 +8540,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -8443,6 +8647,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -8540,6 +8748,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -8663,6 +8875,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -8780,6 +8996,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -8902,6 +9122,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -9028,6 +9252,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -9143,6 +9371,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -9260,6 +9492,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -9361,6 +9597,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -9474,6 +9714,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -9581,6 +9825,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -9682,6 +9930,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -9854,6 +10106,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -9961,6 +10217,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -10084,6 +10344,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -10274,6 +10538,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -10399,6 +10667,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -10505,6 +10777,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -10610,6 +10886,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -10724,6 +11004,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -10814,6 +11098,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -10911,6 +11199,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -11012,6 +11304,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -11108,6 +11404,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -11212,6 +11512,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -11315,6 +11619,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -11407,6 +11715,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -11497,6 +11809,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -11596,6 +11912,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -11713,6 +12033,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -11856,6 +12180,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -11952,6 +12280,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -12097,6 +12429,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -12221,6 +12557,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -12336,6 +12676,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -12453,6 +12797,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -12561,6 +12909,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -12679,6 +13031,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -12792,6 +13148,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -12920,6 +13280,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -13121,6 +13485,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -13217,6 +13585,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -13385,6 +13757,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -13588,6 +13964,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -13699,6 +14079,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -13879,6 +14263,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -14054,6 +14442,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -14240,6 +14632,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -14329,6 +14725,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -14468,6 +14868,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -14567,6 +14971,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -14654,6 +15062,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -14792,6 +15204,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -14943,6 +15359,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -15088,6 +15508,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -15236,6 +15660,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -15319,6 +15747,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -15407,6 +15839,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -15530,6 +15966,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -15660,6 +16100,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -15783,6 +16227,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -15876,6 +16324,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -15968,6 +16420,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -16067,6 +16523,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -16182,6 +16642,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -16268,6 +16732,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -16442,6 +16910,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -16525,6 +16997,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -16734,6 +17210,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -16868,6 +17348,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -16971,6 +17455,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -17100,6 +17588,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -17196,6 +17688,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -17310,6 +17806,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -17441,6 +17941,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -17554,6 +18058,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -17669,6 +18177,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -17752,6 +18264,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -17917,6 +18433,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -18362,6 +18882,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -18447,6 +18971,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -18544,6 +19072,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -18650,6 +19182,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -19004,6 +19540,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -19397,6 +19937,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -19759,6 +20303,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -19854,6 +20402,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -20218,6 +20770,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -20577,6 +21133,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -20938,6 +21498,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -21311,6 +21875,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -21676,6 +22244,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -21766,6 +22338,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -22132,6 +22708,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -22497,6 +23077,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -22856,6 +23440,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -23217,6 +23805,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -23583,6 +24175,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -23946,6 +24542,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -24303,6 +24903,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -24664,6 +25268,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -24865,6 +25473,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -25230,6 +25842,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -25588,6 +26204,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -25677,6 +26297,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -25784,6 +26408,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -25885,6 +26513,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -26254,6 +26886,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -26367,6 +27003,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -26512,6 +27152,54 @@ export interface operations {
                             kept: string;
                             merged: string;
                         }[];
+                        values: {
+                            /** @enum {string} */
+                            later: "kept" | "merged";
+                            startsOn: {
+                                /** Format: date */
+                                kept: string;
+                                /** Format: date */
+                                merged: string;
+                                /** Format: date */
+                                result: string | null;
+                            };
+                            grade: {
+                                kept: number;
+                                merged: number;
+                            };
+                            scholarship: {
+                                kept: {
+                                    /** @enum {string} */
+                                    type: "none" | "merit" | "financial_aid" | "gift";
+                                    /** @enum {string|null} */
+                                    coverage: "full" | "partial" | null;
+                                    amount: number | null;
+                                };
+                                merged: {
+                                    /** @enum {string} */
+                                    type: "none" | "merit" | "financial_aid" | "gift";
+                                    /** @enum {string|null} */
+                                    coverage: "full" | "partial" | null;
+                                    amount: number | null;
+                                };
+                            };
+                            contracts: {
+                                /** @enum {string} */
+                                side: "kept" | "merged";
+                                number: string;
+                                /** Format: date */
+                                signedOn: string;
+                            }[];
+                            relatives: {
+                                /** @enum {string} */
+                                side: "kept" | "merged";
+                                fullName: string;
+                                /** @enum {string} */
+                                relationship: "father" | "mother" | "grandfather" | "grandmother" | "uncle" | "aunt" | "brother" | "sister" | "guardian" | "other";
+                                /** @enum {string} */
+                                fate: "stays" | "added" | "already_linked";
+                            }[];
+                        };
                         refusal: {
                             code: string;
                             /** Format: date */
@@ -26546,6 +27234,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -26916,6 +27608,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -27002,6 +27698,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -27092,6 +27792,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -27175,6 +27879,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -27285,6 +27993,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -27370,6 +28082,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -27467,6 +28183,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -27584,6 +28304,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -27717,6 +28441,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -27847,6 +28575,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -27971,6 +28703,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -28054,6 +28790,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -28143,6 +28883,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -28247,6 +28991,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -28400,6 +29148,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -28515,6 +29267,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -28626,6 +29382,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -28871,6 +29631,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -29127,6 +29891,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -29309,6 +30077,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -29382,6 +30154,7 @@ export interface operations {
                             status: "active" | "inactive" | "graduated" | null;
                             /** Format: date */
                             startsOn: string;
+                            relative?: string;
                         }[];
                         more: boolean;
                         /** Format: date */
@@ -29414,6 +30187,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -29511,6 +30288,109 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
+                                subjectId?: string;
+                                load?: {
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    versionNumber: number;
+                                    versionStartsOn: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    teacher: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string | null;
+                                        vacancy: boolean;
+                                    };
+                                };
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    PeopleSearchController_findRelatives: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            fullName: string;
+                            phone: string | null;
+                            students: number;
+                        }[];
+                        more: boolean;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_move_loads" | "department_move_start_outside" | "staff_changed" | "subject_changed" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "own_record_exists" | "own_link_status" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "uid_set_mismatch" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "same_person_taken" | "same_person_held_elsewhere" | "same_person_elsewhere" | "same_person_vacancy" | "merge_marks_differ" | "class_year_closed" | "class_needs_year" | "class_changed" | "class_archived" | "room_closed" | "tutor_language" | "tutor_language_held" | "class_tutor_taken" | "tutor_not_tutor" | "tutor_outside_role" | "tutor_date_past" | "tutor_ended" | "tutor_ends_by_then" | "class_language_tutor" | "role_tutor_taken" | "role_tutor_language" | "student_has_class" | "student_not_active_on" | "class_grade_differs" | "class_full" | "membership_outside_year" | "membership_before_start" | "membership_in_force" | "membership_not_planned" | "student_needs_class" | "student_grade_class" | "class_has_members" | "class_grade_members" | "class_size_below_members" | "academic_year_has_members" | "group_year_closed" | "group_needs_year" | "group_changed" | "group_archived" | "group_class_year" | "group_grades" | "group_subject_grade" | "group_subject_archived" | "group_language" | "group_language_needed" | "group_mixed_language" | "class_grade_groups" | "class_in_groups" | "class_language_mixes_groups" | "subject_grade_groups" | "subject_has_groups" | "group_restore_class" | "group_restore_subject" | "student_has_group" | "student_not_in_group_class" | "group_full" | "group_membership_outside_year" | "group_membership_in_force" | "group_membership_not_planned" | "group_has_members" | "group_size_below_members" | "group_class_has_members" | "group_membership_in_class" | "placement_no_seat" | "class_group_no_seat" | "class_group_missing" | "move_in_past" | "move_not_scheduled" | "move_not_undoable" | "move_scheduled" | "move_before_later" | "move_no_membership" | "move_same_target" | "class_language_differs" | "return_language_differs" | "return_outside_year" | "branch_move_same_branch" | "branch_move_open" | "branch_move_closed" | "branch_move_not_yet" | "branch_move_language_differs" | "branch_move_group" | "branch_move_outside_year" | "branch_move_year_closed" | "status_scheduled" | "before_branch_move" | "student_merge_same" | "student_merge_not_found" | "student_merge_overlap" | "student_merge_release_open" | "student_merge_move_scheduled" | "student_merge_year_closed" | "student_merge_grade" | "group_transfer_subject" | "version_not_draft" | "timetable_year_closed" | "version_start_past" | "version_start_outside_year" | "version_copy_year" | "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_room_closed" | "load_room_choice" | "load_row_exists" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_group_gaps" | "vacancy_has_load" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                expected?: string;
+                                day?: string;
+                                freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -29664,6 +30544,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -29854,6 +30738,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -29962,6 +30850,108 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
+                                subjectId?: string;
+                                load?: {
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    versionNumber: number;
+                                    versionStartsOn: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    teacher: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string | null;
+                                        vacancy: boolean;
+                                    };
+                                };
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    ClassesController_seats: {
+        parameters: {
+            query: {
+                from: string;
+            };
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        classes: {
+                            /** Format: uuid */
+                            classId: string;
+                            maxSize: number;
+                            /** Format: date */
+                            fullFrom: string | null;
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_move_loads" | "department_move_start_outside" | "staff_changed" | "subject_changed" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "own_record_exists" | "own_link_status" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "uid_set_mismatch" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "same_person_taken" | "same_person_held_elsewhere" | "same_person_elsewhere" | "same_person_vacancy" | "merge_marks_differ" | "class_year_closed" | "class_needs_year" | "class_changed" | "class_archived" | "room_closed" | "tutor_language" | "tutor_language_held" | "class_tutor_taken" | "tutor_not_tutor" | "tutor_outside_role" | "tutor_date_past" | "tutor_ended" | "tutor_ends_by_then" | "class_language_tutor" | "role_tutor_taken" | "role_tutor_language" | "student_has_class" | "student_not_active_on" | "class_grade_differs" | "class_full" | "membership_outside_year" | "membership_before_start" | "membership_in_force" | "membership_not_planned" | "student_needs_class" | "student_grade_class" | "class_has_members" | "class_grade_members" | "class_size_below_members" | "academic_year_has_members" | "group_year_closed" | "group_needs_year" | "group_changed" | "group_archived" | "group_class_year" | "group_grades" | "group_subject_grade" | "group_subject_archived" | "group_language" | "group_language_needed" | "group_mixed_language" | "class_grade_groups" | "class_in_groups" | "class_language_mixes_groups" | "subject_grade_groups" | "subject_has_groups" | "group_restore_class" | "group_restore_subject" | "student_has_group" | "student_not_in_group_class" | "group_full" | "group_membership_outside_year" | "group_membership_in_force" | "group_membership_not_planned" | "group_has_members" | "group_size_below_members" | "group_class_has_members" | "group_membership_in_class" | "placement_no_seat" | "class_group_no_seat" | "class_group_missing" | "move_in_past" | "move_not_scheduled" | "move_not_undoable" | "move_scheduled" | "move_before_later" | "move_no_membership" | "move_same_target" | "class_language_differs" | "return_language_differs" | "return_outside_year" | "branch_move_same_branch" | "branch_move_open" | "branch_move_closed" | "branch_move_not_yet" | "branch_move_language_differs" | "branch_move_group" | "branch_move_outside_year" | "branch_move_year_closed" | "status_scheduled" | "before_branch_move" | "student_merge_same" | "student_merge_not_found" | "student_merge_overlap" | "student_merge_release_open" | "student_merge_move_scheduled" | "student_merge_year_closed" | "student_merge_grade" | "group_transfer_subject" | "version_not_draft" | "timetable_year_closed" | "version_start_past" | "version_start_outside_year" | "version_copy_year" | "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_room_closed" | "load_room_choice" | "load_row_exists" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_group_gaps" | "vacancy_has_load" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                expected?: string;
+                                day?: string;
+                                freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -30058,6 +31048,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -30235,6 +31229,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -30428,6 +31426,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -30605,6 +31607,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -30781,6 +31787,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -30972,6 +31982,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -31157,6 +32171,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -31262,6 +32280,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -31389,6 +32411,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -31495,6 +32521,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -31626,6 +32656,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -31786,6 +32820,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -31886,6 +32924,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -32009,6 +33051,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -32110,6 +33156,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -32206,6 +33256,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -32351,6 +33405,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -32510,6 +33568,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -32654,6 +33716,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -32807,6 +33873,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -32920,6 +33990,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -33046,6 +34120,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -33160,6 +34238,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -33276,6 +34358,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -33370,6 +34456,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -33469,6 +34559,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -33577,6 +34671,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -33696,6 +34794,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -33810,6 +34912,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -34015,6 +35121,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -34169,6 +35279,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -34281,6 +35395,10 @@ export interface operations {
                                 day?: string;
                                 freeSeats?: number;
                                 /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
                                     /** Format: uuid */
@@ -34353,6 +35471,17 @@ export interface operations {
                         }[];
                         /** Format: uuid */
                         defaultTeacherId: string | null;
+                        excluded: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "person" | "vacancy";
+                            name: string | null;
+                            /** @enum {string} */
+                            reason: "status" | "grade" | "language" | "block";
+                            blockGroup: string | null;
+                        }[];
+                        noTutor: boolean;
                     };
                 };
             };
@@ -34381,6 +35510,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -34466,6 +35599,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {
@@ -34614,6 +35751,10 @@ export interface operations {
                                 expected?: string;
                                 day?: string;
                                 freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
                                 /** Format: uuid */
                                 subjectId?: string;
                                 load?: {

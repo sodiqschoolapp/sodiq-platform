@@ -1,11 +1,14 @@
 import {
   INSTRUCTION_LANGUAGES,
+  PERMISSIONS,
+  permits,
   vacancyRecordSchema,
   type DivisionList,
   type Subject,
   type VacancyDetail,
   type VacancyRecord,
 } from '@sodiq/shared';
+import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import {
   CheckboxGroupField,
@@ -18,6 +21,7 @@ import {
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
+import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { asFormSchema, isGradesField, subjectsFieldOf } from './form-schema';
 
@@ -57,6 +61,7 @@ export function VacancyForm({
   onCancel?: () => void;
 }) {
   const { t, i18n } = useTranslation();
+  const { role } = useView();
   const language = i18n.language;
   const academic = divisions.divisions.find((division) => division.builtIn);
   const departments = (academic?.departments ?? []).filter(
@@ -123,7 +128,7 @@ export function VacancyForm({
         ]}
         {...form.bind('departmentId')}
       />
-      {offered.length > 0 && (
+      {offered.length > 0 ? (
         <CheckboxGroupField
           label={t('people.vacancies.subjects')}
           options={offered.map((subject) => ({
@@ -132,6 +137,26 @@ export function VacancyForm({
           }))}
           {...form.bind('subjects')}
         />
+      ) : (
+        // H31 of issue #105: the field stays and says why it offers nothing.
+        <div className="grid gap-1.5">
+          <p className="text-sm font-medium">{t('people.vacancies.subjects')}</p>
+          <p className="text-sm text-muted-foreground">
+            {department === ''
+              ? t('people.vacancies.chooseDepartmentFirst')
+              : t('people.vacancies.noDepartmentSubjects')}{' '}
+            {department !== '' &&
+              role !== null &&
+              permits(PERMISSIONS, role, 'subjects', 'view') && (
+                <Link
+                  to="/setup/subjects"
+                  className="font-semibold text-link underline-offset-4 hover:underline"
+                >
+                  {t('people.vacancies.openSubjects')}
+                </Link>
+              )}
+          </p>
+        </div>
       )}
       {offered
         .filter((subject) => chosen.includes(subject.id))

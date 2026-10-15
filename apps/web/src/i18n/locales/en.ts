@@ -597,6 +597,10 @@ export const en = {
     noMatch: 'Nothing matches. Try other words.',
     students: 'Students',
     staff: 'Staff',
+    relatives: 'Parents',
+    relativeOf: 'Relative: {{name}}',
+    relativeStudents_one: '{{count}} student here',
+    relativeStudents_other: '{{count}} students here',
     classes: 'Classes',
     groups: 'Groups',
     searching: 'Searching…',
@@ -656,7 +660,9 @@ export const en = {
     edit: 'Edit',
     cancel: 'Cancel',
     // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
-    phoneFormat: 'Enter the phone as +998 71 123 45 67.',
+    phoneFormat: 'Phone: +998 and 9 digits, for example +998 71 123 45 67.',
+    phoneFormatAny:
+      'Phone: +998 and 9 digits, for example +998 90 123 45 67. A number of another country starts with +.',
     add: 'Add',
     addChoice: 'Choose what to add to {{label}}',
     moveUp: 'Move {{name}} (place {{place}}) up',
@@ -1681,8 +1687,22 @@ export const en = {
         carried_other:
           '{{count}} rows of the merged record are carried whole to the record that stays.',
         filled: 'Filled from the merged record',
-        differing: 'Different on the merged record (the value of the record that stays is kept)',
-        differs: '{{field}}: {{merged}}',
+        differing: 'Values that differ',
+        differs:
+          '{{field}}: the record that stays — {{kept}}; the merged record — {{merged}}. Kept: {{result}}.',
+        valueFields: {
+          startsOn: 'Start date',
+          grade: 'Grade',
+          scholarship: 'Scholarship',
+          contracts: 'Contracts',
+          relatives: 'Relatives',
+        },
+        allKept: 'all of them',
+        noValue: '—',
+        contractText: '{{number}} of {{date}}',
+        relativeText: '{{name}} ({{relationship}})',
+        alreadyLinked:
+          '{{name}} ({{relationship}}): already linked to the record that stays; that link stays',
         refused: 'These records cannot be merged.',
         refusedDay: 'First day concerned: {{date}}',
         reason: 'Reason',
@@ -1906,6 +1926,10 @@ export const en = {
       name: 'Name',
       department: 'Department',
       subjects: 'Subjects',
+      noDepartmentSubjects:
+        'This department has no subjects yet. Add them in School setup → Subjects.',
+      chooseDepartmentFirst: 'Choose a department first.',
+      openSubjects: 'Open Subjects',
       recordTitle: 'Vacancy',
       statusTitle: 'Status',
       statuses: { open: 'Open', closed: 'Closed' },
@@ -2557,6 +2581,9 @@ export const en = {
     archiveClass: 'Archive class',
     restoreClass: 'Restore class',
     archiveTitle: 'Archive this class?',
+    archiveHasStudents_one:
+      'The class has {{count}} student. Move the student to another class first.',
+    archiveHasStudents_other: 'The class has {{count}} students. Move them to another class first.',
     archiveText:
       'Its Tutors end now and the planned ones are withdrawn. A restore gives none back.',
     restoreTitle: 'Restore this class?',
@@ -2570,7 +2597,9 @@ export const en = {
     setActing: 'Set acting Tutor',
     person: 'Person',
     choosePerson: 'Choose a person',
-    noCandidates: 'Nobody holds the Tutor role in this branch.',
+    noCandidates:
+      'First give a staff member the Tutor role (the Super Admin gives roles): People → Staff → the staff member → Account and roles.',
+    openStaff: 'Open Staff',
     from: 'From',
     until: 'Until',
     endOn: 'Ends on',
@@ -2612,6 +2641,15 @@ export const en = {
     placeTitle_one: 'Put {{n}} student into a class',
     placeTitle_other: 'Put {{n}} students into a class',
     classYear: '{{class}} · {{year}}',
+    seatsFull: '{{class}} — full',
+    seatsFullFrom: '{{class}} — no free seat from {{date}}',
+    seatsFailed: 'The free seats of the classes could not be read.',
+    fullFrom:
+      '{{class}} has no free seat from {{date}}. Choose another class or raise its maximum.',
+    fullFromUnnamed:
+      'The class has no free seat from {{date}}. Choose another class or raise its maximum.',
+    fullFromSeveral: '{{class}} lacks seats for {{students}} students from {{date}}.',
+    fullFromSeveralUnnamed: 'The class lacks seats for {{students}} students from {{date}}.',
     endCauses: { ended: 'Ended', role: 'Role ended', archive: 'Class archived' },
     groupsLink: 'Groups',
     mixedGroupsTitle: 'Keep the language of these groups?',
@@ -2685,6 +2723,9 @@ export const en = {
     archiveGroup: 'Archive group',
     restoreGroup: 'Restore group',
     archiveTitle: 'Archive this group?',
+    archiveHasStudents_one:
+      'The group has {{count}} student. Move the student to another group first.',
+    archiveHasStudents_other: 'The group has {{count}} students. Move them to another group first.',
     archiveText: 'It stays in the history and can be restored.',
     restoreTitle: 'Restore this group?',
     restoreText: 'It is checked again against its classes and subject.',
@@ -2883,6 +2924,16 @@ export const en = {
       chooseTeacher: 'Choose a teacher',
       chooseFirst: 'Choose the class or group and the subject first.',
       noTeachers: 'No teacher or vacancy of the branch may take this row.',
+      noSubjectTeacher:
+        '{{subject}} is in no profile of a teacher or vacancy of the branch: People → Staff → Subjects.',
+      noTutorTeacher:
+        "{{subject}} is taught by the class's Tutor or a teacher with the subject; the class has no Tutor: Classes → the class → Give Tutor.",
+      whyStatus: '{{teacher}}: not active.',
+      whyGrade: '{{teacher}}: does not teach grade {{grades}}.',
+      whyLanguage: '{{teacher}}: does not teach in {{language}}.',
+      whyLanguageUnnamed: '{{teacher}}: does not teach in the language of the classes.',
+      whyBlock: '{{teacher}}: teaches {{group}} in the same block.',
+      openStaff: 'Open Staff',
       tutorOption: '{{name}} (Tutor)',
       vacancyOption: '{{name}} (vacancy)',
       vacancy: 'Vacancy',

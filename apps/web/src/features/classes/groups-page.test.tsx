@@ -446,6 +446,44 @@ describe('a group in the side panel', () => {
     });
   });
 
+  // Task 3.5b, H23 of issue #105: the refusal up front.
+  it('switches Archive off with the reason while the group has students, those a reader does not see counted', async () => {
+    await openList({
+      extra: {
+        [`GET /api/groups/${M1.id}/members`]: () =>
+          json({
+            members: [
+              {
+                id: uid(830),
+                studentId: uid(930),
+                uid: '2607001',
+                firstName: 'Malika',
+                lastName: 'Karimova',
+                class: { id: OXFORD.id, grade: 7, name: 'Oxford' },
+                from: '2026-09-02',
+                until: '2027-06-01',
+                state: 'planned',
+                review: false,
+              },
+            ],
+            othersCount: 1,
+            freeToday: 10,
+            freeLeast: 10,
+            today: '2026-10-14',
+          }),
+      },
+    });
+    fireEvent.click(screen.getByText('7-M-1', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: '7-M-1' });
+    expect(
+      await within(panel).findByText(en.groups.archiveHasStudents_other.replace('{{count}}', '2')),
+    ).toBeDefined();
+    expect(
+      within(panel).getByRole<HTMLButtonElement>('button', { name: en.groups.archiveGroup })
+        .disabled,
+    ).toBe(true);
+  });
+
   // Code round 1 of the review, finding 1: a restore that brings the group back
   // mixing languages asks the warning of the form, naming the classes.
   it('asks the mixed-language warning before restoring a group whose classes now differ', async () => {

@@ -343,7 +343,14 @@ export {
   type Weekday,
 } from './setup.js';
 export { gradeRanges } from './grades.js';
-export { phoneDigits, phoneText } from './phones.js';
+export {
+  PHONE_FORMAT,
+  phoneDigits,
+  phoneLeftEmpty,
+  phoneText,
+  storedPhone,
+  typedPhoneText,
+} from './phones.js';
 export { listName, searchWords } from './names.js';
 export {
   CALENDAR_ENTRY_KINDS,
@@ -838,6 +845,10 @@ export {
   type ClassMember,
   type ClassMemberParams,
   type ClassMembers,
+  classSeatsQuerySchema,
+  classSeatsSchema,
+  type ClassSeats,
+  type ClassSeatsQuery,
   type ClassMemberState,
   type ClassNotRestored,
   type ClassPlacement,
@@ -956,6 +967,8 @@ export {
   limited,
   SEARCH_LIMIT,
   SEARCH_QUERY_MAX_LENGTH,
+  relativeFoundSchema,
+  relativeSearchSchema,
   searchQuerySchema,
   staffFoundSchema,
   staffSearchSchema,
@@ -965,6 +978,8 @@ export {
   type ClassSearch,
   type GroupFound,
   type GroupSearch,
+  type RelativeFound,
+  type RelativeSearch,
   type SearchQuery,
   type StaffFound,
   type StaffSearch,

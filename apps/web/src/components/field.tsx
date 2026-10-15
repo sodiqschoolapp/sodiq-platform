@@ -2,6 +2,13 @@ import { cn } from 'cn';
 import { ArrowDownwardIcon, ArrowUpwardIcon, CloseIcon } from '@/components/icons';
 import { useId, useState, type ComponentProps, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  BRANCH_PHONE_FORMAT,
+  PHONE_FORMAT,
+  phoneLeftEmpty,
+  storedPhone,
+  typedPhoneText,
+} from '@sodiq/shared';
 import { Button } from '@/components/ui/button';
 import { CHECKBOX, CHECKBOX_TARGET } from '@/components/ui/control';
 import { Input } from '@/components/ui/input';
@@ -117,6 +124,65 @@ export function Field({ label, error, note, large = false, className, ...input }
  */
 export function DateField(props: Omit<FieldProps, 'type'>) {
   return <Field {...props} type="date" />;
+}
+
+type PhoneFieldProps = Omit<FieldProps, 'type' | 'value' | 'onChange'> & {
+  value: string;
+  onChange: (event: { target: { value: string } }) => void;
+  /** The branch phone: an Uzbek number only, so its text names no other country. */
+  uzbekOnly?: boolean;
+  /** Another refusal of a well-formed number (a phone held, given twice), shown when the format is right. */
+  otherError?: string | undefined;
+};
+
+/**
+ * A phone field (task 3.5b, H25 of issue #105). It takes a number written in
+ * any way `storedPhone` reads (with or without "+998", spaces, dashes,
+ * brackets, pasted after the prefilled "+998 "), shows it grouped once the
+ * field is left ("+998 90 123 45 01"), and a refused value gets the format
+ * text; a field left at the bare "+998" says to fill it in, as an empty one.
+ */
+export function PhoneField({
+  uzbekOnly = false,
+  otherError,
+  error,
+  value,
+  onBlur,
+  onChange,
+  ...field
+}: PhoneFieldProps) {
+  const { t } = useTranslation();
+  // The format text only when the format is wrong; any other refusal of a
+  // well-formed number (the earlier owner's phone equal to the new one) keeps
+  // its own message (spec review of the build, must-fix 3).
+  const wellFormed = (uzbekOnly ? BRANCH_PHONE_FORMAT : PHONE_FORMAT).test(storedPhone(value));
+  const shown =
+    error === undefined
+      ? otherError
+      : phoneLeftEmpty(value)
+        ? t('form.required')
+        : wellFormed
+          ? error
+          : uzbekOnly
+            ? t('form.phoneFormat')
+            : t('form.phoneFormatAny');
+  return (
+    <Field
+      {...field}
+      type="tel"
+      autoComplete="off"
+      value={value}
+      error={shown}
+      onChange={onChange}
+      onBlur={(event) => {
+        const grouped = typedPhoneText(value);
+        if (grouped !== value) {
+          onChange({ target: { value: grouped } });
+        }
+        onBlur?.(event);
+      }}
+    />
+  );
 }
 
 /**

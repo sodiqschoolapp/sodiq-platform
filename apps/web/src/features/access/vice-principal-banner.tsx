@@ -1,6 +1,5 @@
 import { branchesWithoutViceSchema } from '@sodiq/shared';
 import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
@@ -9,7 +8,7 @@ import { FailureAlert } from '@/components/failure-alert';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FOCUS_RING } from '@/components/ui/control';
 import { sessionQuery } from '@/features/auth/session';
-import { useView } from './use-view';
+import { useSwitchBranch } from './use-switch-branch';
 
 export const BRANCHES_WITHOUT_VICE_KEY = ['access', 'branches-without-vice-principal'] as const;
 
@@ -36,8 +35,7 @@ export const invalidateBranchesWithoutVice = (queryClient: QueryClient): Promise
  */
 export function BranchesWithoutViceBanner() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { chooseBranch } = useView();
+  const switchBranch = useSwitchBranch();
   const { data: session } = useQuery(sessionQuery);
   const isSuperAdmin =
     session?.assignments.some((assignment) => assignment.role === 'super_admin') ?? false;
@@ -63,8 +61,7 @@ export function BranchesWithoutViceBanner() {
               type="button"
               className={`font-semibold underline underline-offset-4 ${FOCUS_RING}`}
               onClick={() => {
-                chooseBranch(branch.id);
-                void navigate({ to: '/people/staff' });
+                void switchBranch(branch.id, '/people/staff');
               }}
             >
               {branch.name}

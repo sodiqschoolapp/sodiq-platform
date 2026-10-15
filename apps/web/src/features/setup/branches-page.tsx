@@ -10,7 +10,7 @@ import { type Column, type ListSearch } from '@/components/list/list-state';
 import { useNewRecord } from '@/components/list/use-new-record';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { useView } from '@/features/access/use-view';
+import { useSwitchBranch } from '@/features/access/use-switch-branch';
 import { invalidateBranchesWithoutVice } from '@/features/access/vice-principal-banner';
 import { refreshSession } from '@/features/auth/session';
 import { weekdayName } from '@/lib/dates';
@@ -30,7 +30,7 @@ export function BranchesPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const search = useSearch({ from: '/app/setup/branches' });
-  const { chooseBranch } = useView();
+  const switchBranch = useSwitchBranch();
   const queryClient = useQueryClient();
   const newRecord = useNewRecord();
   const branches = useQuery(branchesQuery());
@@ -50,8 +50,7 @@ export function BranchesPage() {
 
   /** The branch becomes the current branch of the tab, and its Branch page opens. */
   const openBranch = (id: string): void => {
-    chooseBranch(id);
-    void navigate({ to: '/setup/branch' });
+    void switchBranch(id, '/setup/branch');
   };
 
   const columns = useMemo(

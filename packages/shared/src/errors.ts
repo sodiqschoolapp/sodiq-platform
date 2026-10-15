@@ -593,6 +593,17 @@ export const errorDetailSchema = z.object({
     .optional(),
   /** The fewest free seats of a class or group on any date of the placement, on a `class_full` (task 3.1b) or a `group_full` (task 3.2b). */
   freeSeats: z.int().optional(),
+  /**
+   * On a `class_full` from a check before the write (task 3.5b, H24 of issue
+   * #105): the class, the first day it has fewer free seats than the students
+   * placed, and how many students were placed.
+   */
+  classId: z.uuid().optional(),
+  fullFrom: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  students: z.int().min(1).optional(),
   /** The subject without a group with a free seat, on a `class_group_no_seat` (task 3.2c). */
   subjectId: z.uuid().optional(),
   /**

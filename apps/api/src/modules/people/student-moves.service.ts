@@ -19,11 +19,16 @@ import { inGroupScope } from '../access/group-scope.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { CLASS_GROUP_REFUSALS, coverClassRows, lockClassGroups } from '../classes/class-groups.js';
-import { MEMBERSHIP_REFUSALS, classesInService } from '../classes/class-membership-rows.js';
+import {
+  MEMBERSHIP_REFUSALS,
+  classesInService,
+  membersPeak,
+} from '../classes/class-membership-rows.js';
 import {
   lockPlacementStudents,
   readPlacementClass,
   type PlacementStudent,
+  classFull,
 } from '../classes/class-placement.js';
 import {
   CLASS_PATH_GROUP_REFUSALS,
@@ -170,6 +175,9 @@ export class StudentMoves {
               toClassId: input.toClassId,
               from: input.from,
               confirmLanguage: input.confirmLanguage,
+              // H27 of issue #105: the question was answered when this move
+              // was saved, for these two classes; it is not asked again.
+              answeredFor: { fromClassId: move.fromClassId, toClassId: move.toClassId },
             },
             requestId,
           );
@@ -373,7 +381,13 @@ export class StudentMoves {
     access: Access,
     student: PlacementStudent,
     today: SchoolDate,
-    input: { toClassId: string; from: SchoolDate; confirmLanguage?: boolean | undefined },
+    input: {
+      toClassId: string;
+      from: SchoolDate;
+      confirmLanguage?: boolean | undefined;
+      /** The two classes of the saved move a change replaces (H27). */
+      answeredFor?: { fromClassId: string | null; toClassId: string | null };
+    },
     requestId: string,
   ): Promise<Moved> {
     const branchId = branchOf(access);
@@ -424,7 +438,11 @@ export class StudentMoves {
       throw new ApiException('membership_outside_year', 409);
     }
     const languageDiffers = left.language !== joined.language;
-    if (languageDiffers && input.confirmLanguage !== true) {
+    // H27 (decision 1 of task 3.5b): the classes are compared, not their languages.
+    const answered =
+      input.answeredFor?.fromClassId?.toLowerCase() === held.classId.toLowerCase() &&
+      input.answeredFor.toClassId?.toLowerCase() === target.id.toLowerCase();
+    if (languageDiffers && input.confirmLanguage !== true && !answered) {
       throw new ApiException('class_language_differs', 409);
     }
     const end = placementEnd(student.statuses, student.startsOn, from, target.ownUntil);
@@ -449,6 +467,13 @@ export class StudentMoves {
     );
     for (const row of cut) {
       await this.cutClassRow(transaction, row, later(row.validFrom, from), moveId);
+    }
+    // H24 of issue #105: the seats of the target over the days the row holds,
+    // checked before the write so the refusal names the class and the first
+    // full day (the guard of 0045 still checks under its locks).
+    const peak = await membersPeak(transaction, target.id, from, end.until);
+    if (peak >= target.maxSize) {
+      throw await classFull(transaction, target, from, end.until, 1, 'toClassId');
     }
     const written = await transaction
       .insertInto('class_memberships')

@@ -182,7 +182,15 @@ async function openPage(
     ...Object.fromEntries(
       versions.map((one) => [
         `GET /api/timetable/versions/${one.id}/load/teachers`,
-        () => json(options.teachers?.('') ?? { teachers: [], defaultTeacherId: null }),
+        () =>
+          json(
+            options.teachers?.('') ?? {
+              teachers: [],
+              defaultTeacherId: null,
+              excluded: [],
+              noTutor: false,
+            },
+          ),
       ]),
     ),
     ...options.extra,
@@ -340,7 +348,12 @@ describe('the teaching load page', () => {
 
   it('adds a row with a teacher the server offers', async () => {
     const calls = await openPage({
-      teachers: () => ({ teachers: [{ ...TEACHER, tutor: false }], defaultTeacherId: null }),
+      teachers: () => ({
+        teachers: [{ ...TEACHER, tutor: false }],
+        defaultTeacherId: null,
+        excluded: [],
+        noTutor: false,
+      }),
       extra: {
         [`POST /api/timetable/versions/${version(1).id}/load`]: () => json(row(1), 201),
       },
@@ -389,6 +402,8 @@ describe('the teaching load page', () => {
           { ...TEACHER, tutor: false },
         ],
         defaultTeacherId: TUTOR.id,
+        excluded: [],
+        noTutor: false,
       }),
     });
     const form = await openNewRow();
@@ -403,9 +418,67 @@ describe('the teaching load page', () => {
     expect(teacher.options[1]?.textContent).toBe('Nazarova Lola (Tutor)');
   });
 
+  // Task 3.5b, H30 of issue #105: why no teacher can take the row.
+  it("names a subject in nobody's profile with a link to Staff", async () => {
+    await openPage({
+      teachers: () => ({ teachers: [], defaultTeacherId: null, excluded: [], noTutor: false }),
+    });
+    const form = await openNewRow();
+    type(within(form).getByLabelText(en.timetable.load.unit), `class:${OXFORD.id}`);
+    type(within(form).getByLabelText(en.timetable.load.subject), MATHS.id);
+    const line = await within(form).findByText((text) =>
+      text.startsWith(en.timetable.load.noSubjectTeacher.replace('{{subject}}', MATHS.names.en)),
+    );
+    expect(within(line).getByRole('link', { name: en.timetable.load.openStaff })).toBeDefined();
+  });
+
+  it('gives the reason of each teacher with the subject who cannot take the row', async () => {
+    await openPage({
+      teachers: () => ({
+        teachers: [],
+        defaultTeacherId: null,
+        excluded: [
+          { ...TEACHER, reason: 'grade', blockGroup: null },
+          {
+            ...TUTOR,
+            kind: 'vacancy',
+            name: 'English vacancy 1',
+            reason: 'block',
+            blockGroup: '7-E-1',
+          },
+        ],
+        noTutor: false,
+      }),
+    });
+    const form = await openNewRow();
+    type(within(form).getByLabelText(en.timetable.load.unit), `class:${OXFORD.id}`);
+    type(within(form).getByLabelText(en.timetable.load.subject), MATHS.id);
+    const items = await waitFor(() => {
+      const found = [...form.querySelectorAll('li')].map((one) => one.textContent);
+      expect(found).toHaveLength(2);
+      return found;
+    });
+    expect(items).toEqual([
+      en.timetable.load.whyGrade
+        .replace('{{teacher}}', 'Karimova Aziza')
+        .replace('{{grades}}', '7'),
+      en.timetable.load.whyBlock
+        .replace(
+          '{{teacher}}',
+          en.timetable.load.vacancyOption.replace('{{name}}', 'English vacancy 1'),
+        )
+        .replace('{{group}}', '7-E-1'),
+    ]);
+  });
+
   it('says what the refusal of the server means', async () => {
     await openPage({
-      teachers: () => ({ teachers: [{ ...TEACHER, tutor: false }], defaultTeacherId: null }),
+      teachers: () => ({
+        teachers: [{ ...TEACHER, tutor: false }],
+        defaultTeacherId: null,
+        excluded: [],
+        noTutor: false,
+      }),
       extra: {
         [`POST /api/timetable/versions/${version(1).id}/load`]: () =>
           refusal('load_teacher_grade', 409),
@@ -561,7 +634,12 @@ describe('the teaching load page: splits, groups and weekly totals', () => {
 
   it('marks a split as a mixed block, with the lessons written to every part', async () => {
     const calls = await openPage({
-      teachers: () => ({ teachers: [{ ...TEACHER, tutor: false }], defaultTeacherId: null }),
+      teachers: () => ({
+        teachers: [{ ...TEACHER, tutor: false }],
+        defaultTeacherId: null,
+        excluded: [],
+        noTutor: false,
+      }),
       extra: {
         'GET /api/groups': () => json({ groups: [HALF] }),
         [`POST /api/timetable/versions/${version(1).id}/load`]: () => json(groupRow(1, HALF), 201),
@@ -633,7 +711,12 @@ describe('the teaching load page: splits, groups and weekly totals', () => {
     };
     const marked = groupRow(1, across, { mixedBlock: true, problems: ['load_mixed_not_split'] });
     const calls = await openPage({
-      teachers: () => ({ teachers: [{ ...TEACHER, tutor: false }], defaultTeacherId: null }),
+      teachers: () => ({
+        teachers: [{ ...TEACHER, tutor: false }],
+        defaultTeacherId: null,
+        excluded: [],
+        noTutor: false,
+      }),
       load: { rows: [marked] },
       extra: {
         'GET /api/groups': () => json({ groups: [across] }),

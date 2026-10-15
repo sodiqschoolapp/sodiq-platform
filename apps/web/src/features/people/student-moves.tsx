@@ -29,6 +29,7 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { SECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
+import { useClassFullText } from '@/features/classes/class-members';
 import { classesQuery } from '@/features/classes/classes-api';
 import { groupsQuery } from '@/features/classes/groups-api';
 import { schoolDateText } from '@/lib/dates';
@@ -210,6 +211,8 @@ export function ClassMoveForm({
   });
   const title =
     move === null ? t('people.students.moves.moveClass') : t('people.students.moves.changeTitle');
+  // H24: a full class named with its first day without a seat.
+  const classFullText = useClassFullText(form.failure);
   return (
     <section className="grid gap-3">
       <h3 className={SECTION_TITLE}>{title}</h3>
@@ -223,7 +226,7 @@ export function ClassMoveForm({
       ) : classes.data === undefined ? (
         <LoadingOutline />
       ) : (
-        <RecordForm form={form} label={title} onCancel={onCancel}>
+        <RecordForm form={form} failureText={classFullText} label={title} onCancel={onCancel}>
           <SelectField
             label={t('people.students.moves.toClass')}
             options={[{ value: '', label: t('people.students.choose') }, ...options]}
@@ -549,7 +552,13 @@ export function HistoryTab({
     return <LoadingOutline />;
   }
   return (
-    <section className="grid gap-3" aria-label={t('people.students.moves.historyLabel')}>
+    <section
+      className="grid gap-3"
+      aria-label={t('people.students.moves.historyLabel')}
+      // H28: an action started here comes back to the tab with the focus here.
+      tabIndex={-1}
+      data-opens="history"
+    >
       <ol className="grid gap-3 text-sm">
         {history.data.lines.map((line, index) => {
           const from =

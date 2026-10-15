@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
+import { relationshipSchema } from './relatives.js';
 import {
+  scholarshipCoverageSchema,
+  scholarshipTypeSchema,
   studentDetailSchema,
   studentGradeSchema,
   studentStatusSchema,
@@ -85,6 +88,13 @@ export const studentMergeRowSchema = z.object({
 
 export type StudentMergeRow = z.infer<typeof studentMergeRowSchema>;
 
+/** A scholarship as a merge preview shows it (task 3.5b, H29). */
+export const mergeScholarshipSchema = z.object({
+  type: scholarshipTypeSchema,
+  coverage: scholarshipCoverageSchema.nullable(),
+  amount: z.int().nullable(),
+});
+
 /** The personal fields the merge compares (decision 7). */
 export const STUDENT_MERGE_FIELDS = [
   'firstName',
@@ -131,6 +141,39 @@ export const studentMergePreviewSchema = z.object({
       merged: z.string(),
     }),
   ),
+  /**
+   * What the merge does with the values beside the personal fields (task
+   * 3.5b, H29 of issue #105), each of both records and the one kept: the
+   * start date (the first day of the joined life), the grade and the
+   * scholarship (the later life's record, `later`), the contracts (all kept,
+   * a dated list) and the relatives (each one's link: kept, added to the
+   * record that stays, or already linked to it).
+   */
+  values: z.object({
+    later: z.enum(['kept', 'merged']),
+    startsOn: z.object({
+      kept: schoolDateSchema,
+      merged: schoolDateSchema,
+      result: schoolDateSchema.nullable(),
+    }),
+    grade: z.object({ kept: studentGradeSchema, merged: studentGradeSchema }),
+    scholarship: z.object({ kept: mergeScholarshipSchema, merged: mergeScholarshipSchema }),
+    contracts: z.array(
+      z.object({
+        side: z.enum(['kept', 'merged']),
+        number: z.string(),
+        signedOn: schoolDateSchema,
+      }),
+    ),
+    relatives: z.array(
+      z.object({
+        side: z.enum(['kept', 'merged']),
+        fullName: z.string(),
+        relationship: relationshipSchema,
+        fate: z.enum(['stays', 'added', 'already_linked']),
+      }),
+    ),
+  }),
   refusal: z.object({ code: z.string(), day: schoolDateSchema.nullable() }).nullable(),
   digest: z.string(),
 });

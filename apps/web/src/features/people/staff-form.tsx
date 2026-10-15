@@ -19,6 +19,7 @@ import {
   listValues,
   NumberField,
   SelectField,
+  PhoneField,
 } from '@/components/field';
 import { wholeNumber, type FormIssue, type FormSchema } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
@@ -247,7 +248,7 @@ export function StaffForm({
         ]}
         {...bind('educationLevel')}
       />
-      <Field label={t('people.staff.phone')} type="tel" autoComplete="off" {...bind('phone')} />
+      <PhoneField label={t('people.staff.phone')} {...bind('phone')} />
       <Field
         label={t('people.staff.email')}
         type="email"

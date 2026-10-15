@@ -290,7 +290,13 @@ test('every page of Phases 0 to 2 is drawn with the design system in light, dark
       : page.getByRole('button', { name: row, exact: true }).first().click());
     const panel = page.getByRole('complementary');
     await panel.getByRole('button', { name: opener, exact: true }).click();
-    await expect(panel.getByRole('form').first()).toBeVisible();
+    // Task 3.5b, H22: with nobody holding the Tutor role, Give Tutor says what to do instead of a form.
+    await expect(
+      panel
+        .getByRole('form')
+        .first()
+        .or(panel.getByText(en.classes.noCandidates, { exact: true })),
+    ).toBeVisible();
     await checkPage(page, `${name}-edit`);
   }
   // Task 2.7c-2b-2b: the forms of the student's Relatives tab, each opened in

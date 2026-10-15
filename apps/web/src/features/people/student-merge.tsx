@@ -210,24 +210,132 @@ function PreviewOf({ preview, branchId }: { preview: StudentMergePreview; branch
               {preview.filled.map((field) => t(`people.students.merge.fields.${field}`)).join(', ')}
             </p>
           )}
-          {preview.differing.length > 0 && (
-            <section className="grid gap-1 text-sm">
-              <h4 className={SUBSECTION_TITLE}>{t('people.students.merge.differing')}</h4>
-              <ul className="grid gap-1">
-                {preview.differing.map((one) => (
-                  <li key={one.field}>
-                    {t('people.students.merge.differs', {
-                      field: t(`people.students.merge.fields.${one.field}`),
-                      merged: mergeValueText(t, i18n.language, one.field, one.merged),
-                    })}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+          <DifferingValues preview={preview} />
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * The values that differ between the two records and the one kept (task
+ * 3.5b, H29 of issue #105): the personal fields, the start date, the grade,
+ * the scholarship, the contracts and the relatives, each of the record that
+ * stays and of the merged record, and what the merge keeps.
+ */
+function DifferingValues({ preview }: { preview: StudentMergePreview }) {
+  const { t, i18n } = useTranslation();
+  const date = (day: string) => schoolDateText(day, i18n.language);
+  const { values } = preview;
+  const rows: { key: string; text: string }[] = [];
+  const row = (key: string, field: string, kept: string, merged: string, result: string) => {
+    rows.push({ key, text: t('people.students.merge.differs', { field, kept, merged, result }) });
+  };
+  for (const one of preview.differing) {
+    const kept = mergeValueText(t, i18n.language, one.field, one.kept);
+    row(
+      one.field,
+      t(`people.students.merge.fields.${one.field}`),
+      kept,
+      mergeValueText(t, i18n.language, one.field, one.merged),
+      kept,
+    );
+  }
+  const fieldName = (key: 'startsOn' | 'grade' | 'scholarship' | 'contracts' | 'relatives') =>
+    t(`people.students.merge.valueFields.${key}`);
+  if (values.startsOn.kept !== values.startsOn.merged && values.startsOn.result !== null) {
+    row(
+      'startsOn',
+      fieldName('startsOn'),
+      date(values.startsOn.kept),
+      date(values.startsOn.merged),
+      date(values.startsOn.result),
+    );
+  }
+  const later = <T,>(pair: { kept: T; merged: T }): T =>
+    values.later === 'merged' ? pair.merged : pair.kept;
+  if (values.grade.kept !== values.grade.merged) {
+    const grade = (n: number) => t('setup.subjects.grade', { grade: n });
+    row(
+      'grade',
+      fieldName('grade'),
+      grade(values.grade.kept),
+      grade(values.grade.merged),
+      grade(later(values.grade)),
+    );
+  }
+  const scholarship = (one: StudentMergePreview['values']['scholarship']['kept']) =>
+    [
+      t(`people.students.scholarshipTypes.${one.type}`),
+      ...(one.coverage === null ? [] : [t(`people.students.scholarshipCoverages.${one.coverage}`)]),
+      ...(one.amount === null ? [] : [new Intl.NumberFormat(i18n.language).format(one.amount)]),
+    ].join(', ');
+  const scholarshipKept = scholarship(values.scholarship.kept);
+  const scholarshipMerged = scholarship(values.scholarship.merged);
+  if (scholarshipKept !== scholarshipMerged) {
+    row(
+      'scholarship',
+      fieldName('scholarship'),
+      scholarshipKept,
+      scholarshipMerged,
+      scholarship(later(values.scholarship)),
+    );
+  }
+  const listOf = (texts: readonly string[]) =>
+    texts.length === 0 ? t('people.students.merge.noValue') : texts.join(', ');
+  const contractsOf = (side: 'kept' | 'merged') =>
+    values.contracts
+      .filter((one) => one.side === side)
+      .map((one) =>
+        t('people.students.merge.contractText', { number: one.number, date: date(one.signedOn) }),
+      );
+  if (contractsOf('merged').length > 0) {
+    row(
+      'contracts',
+      fieldName('contracts'),
+      listOf(contractsOf('kept')),
+      listOf(contractsOf('merged')),
+      t('people.students.merge.allKept'),
+    );
+  }
+  const relativeText = (one: StudentMergePreview['values']['relatives'][number]) =>
+    t('people.students.merge.relativeText', {
+      name: one.fullName,
+      relationship: t(`people.relatives.relationships.${one.relationship}`),
+    });
+  const relativesOf = (side: 'kept' | 'merged') =>
+    values.relatives.filter((one) => one.side === side);
+  const added = relativesOf('merged').filter((one) => one.fate === 'added');
+  if (added.length > 0) {
+    row(
+      'relatives',
+      fieldName('relatives'),
+      listOf(relativesOf('kept').map(relativeText)),
+      listOf(relativesOf('merged').map(relativeText)),
+      listOf([...relativesOf('kept'), ...added].map(relativeText)),
+    );
+  }
+  const already = relativesOf('merged').filter((one) => one.fate === 'already_linked');
+  if (rows.length === 0 && already.length === 0) {
+    return null;
+  }
+  return (
+    <section className="grid gap-1 text-sm">
+      <h4 className={SUBSECTION_TITLE}>{t('people.students.merge.differing')}</h4>
+      <ul className="grid gap-1">
+        {rows.map((one) => (
+          <li key={one.key}>{one.text}</li>
+        ))}
+        {already.map((one) => (
+          <li key={`already-${one.fullName}-${one.relationship}`}>
+            {t('people.students.merge.alreadyLinked', {
+              name: one.fullName,
+              relationship: t(`people.relatives.relationships.${one.relationship}`),
+            })}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
