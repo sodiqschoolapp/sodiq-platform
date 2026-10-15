@@ -213,6 +213,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: quarter and year results (task 4.2)
+
+Plan approved on pull request #103 with corrections 1 to 3; decisions 1 to 7 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The quarter attendance average leaves out lessons not yet marked and extra lessons with "counts for attendance" off | Decision 1; `07` rule 4; `edge/calculation`, "An extra Saturday lesson"; as 4.1 decisions 2 and 7 |
+| **Look first.** `provisional` only while the quarter is open and a weighted part has no data; "exempt" and "not held" rating exams are left out without it; in a closed quarter `leftOut` is the "part left out" marker | Decision 2; `07` rule 8; `edge/calculation`, "A part has a weight but no data" |
+| **Look first.** "Exempt on exam day, pending" is passed as no rating entry | Decision 3; `edge/calculation`, "A student is exempt on the exam day" |
+| **Look first.** Works of an exempt lesson, the homeworks checked there included, are left out; a number there throws | Decision 4; `07`, Effect on totals |
+| **Look first.** `no_result` when no part has data; a number on attendance alone (its flag is 4.3) | Decision 5; `edge/calculation` |
+| **Look first.** The year result is the mean of the exact quarter results that are numbers, of exactly four quarters, "based on n of 4"; Exempt, Not assessed, No result, not in the system and not official are left out | Decision 6; `edge/calculation`, the year row; `edge/academic-year` |
+| **Look first.** The Settings test of the locale band texts is replaced by one against `GRADE_BANDS`; the two tests with the literal values stay | Decision 7; build plan 4.2 |
+| `@sodiq/calc` is a workspace dependency of `apps/web`; `forceRerunTriggers` names its sources | Decision 8 |
+| Reference journals in `packages/calc/reference-journals/`, JSON with exact figures, parsed with `bigint` only | Decision 12, correction 1 |
+| `yearResult` refuses a quarter result outside 0 to 100 | Correction 3 |
+
 ## 15 October 2026: exact fractions and the lesson score (task 4.1)
 
 Plan approved on pull request #102 with corrections 1 and 2; decisions 1 to 7 marked Look first and confirmed there, decision 14 changed by correction 2. Flagged on issue #42.
