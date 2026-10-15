@@ -13,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { lockDepartmentMoves } from './department-moves.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 /** A start date after the kit's today (Saturday 10 October 2026) and inside the year. */
@@ -148,6 +149,44 @@ describe('the department move against the load', () => {
     detailsOf(response)
       .filter((detail) => detail.path.startsWith('load.'))
       .map((detail) => detail.path.slice('load.'.length));
+
+  /** Runs `work` in a transaction of the application that stays open until released. */
+  async function holdOpen(work: (transaction: Transaction) => Promise<void>) {
+    let release: () => void = () => undefined;
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let ready: () => void = () => undefined;
+    const isReady = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const done = t.app
+      .get(Transactions)
+      .run([t.north], async (transaction) => {
+        await work(transaction);
+        ready();
+        await released;
+      })
+      .catch((error: unknown) => error);
+    await Promise.race([isReady, done]);
+    return { release, done };
+  }
+
+  async function waitingForALock(): Promise<number> {
+    const found = await sql<{ waiting: number }>`
+      select count(distinct l.pid)::int as waiting
+      from pg_locks l join pg_stat_activity a on a.pid = l.pid
+      where a.datname = current_database() and not l.granted
+    `.execute(t.database.migrator);
+    return found.rows[0]?.waiting ?? 0;
+  }
+
+  const untilWaiting = async () => {
+    for (let tries = 0; tries < 200 && (await waitingForALock()) === 0; tries += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(await waitingForALock()).toBeGreaterThan(0);
+  };
 
   beforeAll(async () => {
     t = await dayTemplatesKit();
@@ -662,44 +701,6 @@ describe('the department move against the load', () => {
   // without a row lock; a change of the department that lands between that
   // read and the row lock was not ordered, in either direction.
   describe('a department changed between the read and the lock', () => {
-    /** Runs `work` in a transaction of the application that stays open until released. */
-    async function holdOpen(work: (transaction: Transaction) => Promise<void>) {
-      let release: () => void = () => undefined;
-      const released = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      let ready: () => void = () => undefined;
-      const isReady = new Promise<void>((resolve) => {
-        ready = resolve;
-      });
-      const done = t.app
-        .get(Transactions)
-        .run([t.north], async (transaction) => {
-          await work(transaction);
-          ready();
-          await released;
-        })
-        .catch((error: unknown) => error);
-      await Promise.race([isReady, done]);
-      return { release, done };
-    }
-
-    async function waitingForALock(): Promise<number> {
-      const found = await sql<{ waiting: number }>`
-        select count(distinct l.pid)::int as waiting
-        from pg_locks l join pg_stat_activity a on a.pid = l.pid
-        where a.datname = current_database() and not l.granted
-      `.execute(t.database.migrator);
-      return found.rows[0]?.waiting ?? 0;
-    }
-
-    const untilWaiting = async () => {
-      for (let tries = 0; tries < 200 && (await waitingForALock()) === 0; tries += 1) {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      }
-      expect(await waitingForALock()).toBeGreaterThan(0);
-    };
-
     /** A teacher with no subjects and no rows, whose department the held side changes. */
     async function bareTeacher(): Promise<string> {
       return (await load.teacher(t.north)).staffId;
@@ -775,6 +776,413 @@ describe('the department move against the load', () => {
         expect(await held.done).toBeUndefined();
         refusedWith(await sent, 409, 'subject_changed');
       }
+    });
+  });
+
+  // Decision 6 and correction 3: a load write and a move at the same moment
+  // never both pass. Each pair in both orders; the real route runs on the
+  // side whose order is proved, the held side writes what its route writes.
+  describe('at the same moment', () => {
+    const rowBody = (fields: object) => ({
+      classId: null,
+      groupId: null,
+      lessonsPerWeek: 2,
+      roomId: null,
+      roomType: null,
+      doubleLessons: false,
+      ...fields,
+    });
+
+    const createRow = (version: string, fields: object) =>
+      t.post(`/api/timetable/versions/${version}/load`, t.north, rowBody(fields), t.vicePrincipal);
+
+    /** A Tutor subject, a class of grade 7 and its Tutor, with a draft of the North. */
+    async function tutorCase(): Promise<{
+      subject: string;
+      classId: string;
+      tutor: string;
+      version: string;
+    }> {
+      const subject = await load.tutorSubject({ grades: [7] });
+      const classId = await load.classes.schoolClass(t.north, year, { grade: 7 });
+      const { staffId, accountId } = await load.teacher(t.north);
+      await load.tutorOf(t.north, classId, accountId);
+      const version = await load.version(t.north, year, { startsOn: STARTS_ON });
+      return { subject, classId, tutor: staffId, version };
+    }
+
+    /** A held subject move: the lock of moves, the subject FOR UPDATE, its department written. */
+    const heldSubjectMove = (subject: string, department: string) =>
+      holdOpen(async (transaction) => {
+        await lockDepartmentMoves(transaction);
+        await transaction
+          .selectFrom('subjects')
+          .select('id')
+          .where('id', '=', subject)
+          .forUpdate()
+          .execute();
+        await transaction
+          .updateTable('subjects')
+          .set({ department_id: department, department_since: MOVE_ON })
+          .where('id', '=', subject)
+          .execute();
+      });
+
+    const moveSubject = async (subject: string, department: string) =>
+      put(
+        `/api/setup/subjects/${subject}`,
+        subjectBody(await subjectAnswer(subject), {
+          departmentId: department,
+          departmentStartsOn: MOVE_ON,
+        }),
+      );
+
+    describe('a teacher move and a load create naming the teacher', () => {
+      // The profile rule stands on both sides (04: "a teacher's subjects come
+      // from one department"): the move passes and the create is refused in
+      // either order; the person's lock orders them.
+      it('the create waits for a move in flight and is refused', async () => {
+        const subject = await load.classes.subject({ grades: [7] });
+        const classId = await load.classes.schoolClass(t.north, year, { grade: 7 });
+        const { staffId } = await load.teacher(t.north);
+        const version = await load.version(t.north, year, { startsOn: STARTS_ON });
+        const held = await holdOpen(async (transaction) => {
+          await lockDepartmentMoves(transaction);
+          await transaction
+            .selectFrom('staff')
+            .select('id')
+            .where('id', '=', staffId)
+            .forUpdate()
+            .execute();
+          await transaction
+            .updateTable('staff_divisions')
+            .set({ department_id: national, department_since: MOVE_ON })
+            .where('staff_id', '=', staffId)
+            .where('division_id', '=', academic)
+            .execute();
+        });
+        const sent = createRow(version, { classId, subjectId: subject, teacherId: staffId }).then(
+          (response) => response,
+        );
+        await untilWaiting();
+        held.release();
+        expect(await held.done).toBeUndefined();
+        refusedWith(await sent, 409, 'load_teacher_subject');
+      });
+
+      it('the move waits for a create in flight, which is refused, and passes', async () => {
+        const subject = await load.classes.subject({ grades: [7] });
+        const classId = await load.classes.schoolClass(t.north, year, { grade: 7 });
+        const { staffId } = await load.teacher(t.north);
+        const version = await load.version(t.north, year, { startsOn: STARTS_ON });
+        const staff = await detail(staffId);
+        let heldWrite: string | undefined;
+        const held = await holdOpen(async (transaction) => {
+          // What the create does: the teacher FOR KEY SHARE, then the row,
+          // which the trigger of 0055 refuses (no profile row); under a
+          // savepoint, so the lock stays while the move is sent.
+          await transaction
+            .selectFrom('staff')
+            .select('id')
+            .where('id', '=', staffId)
+            .forKeyShare()
+            .execute();
+          await sql`savepoint create_row`.execute(transaction);
+          try {
+            await transaction
+              .insertInto('teaching_load_rows')
+              .values({
+                branch_id: t.north,
+                version_id: version,
+                class_id: classId,
+                subject_id: subject,
+                teacher_id: staffId,
+                lessons_per_week: 2,
+              })
+              .execute();
+            heldWrite = 'written';
+          } catch (error) {
+            heldWrite = (error as { constraint?: string }).constraint;
+            await sql`rollback to savepoint create_row`.execute(transaction);
+          }
+        });
+        expect(heldWrite).toBe('load_teacher_subject');
+        const sent = put(
+          `/api/people/staff/${staffId}`,
+          staffBody(staff, { divisions: toDepartment(national), departmentStartsOn: MOVE_ON }),
+        ).then((response) => response);
+        await untilWaiting();
+        held.release();
+        expect(await held.done).toBeUndefined();
+        const moved = await sent;
+        expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      });
+    });
+
+    describe('a Tutor subject leaving the Tutors department', () => {
+      it('and a Tutor row create: a create sent during the move is refused', async () => {
+        const { subject, classId, tutor, version } = await tutorCase();
+        const held = await heldSubjectMove(subject, national);
+        const sent = createRow(version, { classId, subjectId: subject, teacherId: tutor }).then(
+          (response) => response,
+        );
+        await untilWaiting();
+        held.release();
+        expect(await held.done).toBeUndefined();
+        refusedWith(await sent, 409, 'load_teacher_subject');
+      });
+
+      it('and a Tutor row create: a move sent during the create is refused', async () => {
+        const { subject, classId, tutor, version } = await tutorCase();
+        const held = await holdOpen(async (transaction) => {
+          await transaction
+            .selectFrom('subjects')
+            .select('id')
+            .where('id', '=', subject)
+            .forKeyShare()
+            .execute();
+          await transaction
+            .insertInto('teaching_load_rows')
+            .values({
+              branch_id: t.north,
+              version_id: version,
+              class_id: classId,
+              subject_id: subject,
+              teacher_id: tutor,
+              lessons_per_week: 2,
+            })
+            .execute();
+        });
+        const sent = moveSubject(subject, national);
+        await untilWaiting();
+        held.release();
+        expect(await held.done).toBeUndefined();
+        refusedWith(await sent, 409, 'department_move_loads');
+      });
+
+      /** A row of the Tutor subject taken by a teacher of the Tutors department who is not the Tutor. */
+      async function rowOfAnother(): Promise<{
+        subject: string;
+        tutor: string;
+        version: string;
+        row: string;
+      }> {
+        const tutorCaseRows = await tutorCase();
+        const { staffId } = await load.teacher(t.north);
+        await t.database.migrator
+          .updateTable('staff_divisions')
+          .set({ department_id: tutors })
+          .where('staff_id', '=', staffId)
+          .execute();
+        await load.profile(staffId, [{ subject: tutorCaseRows.subject, grades: [7] }]);
+        const row = await load.row({
+          branch_id: t.north,
+          version_id: tutorCaseRows.version,
+          class_id: tutorCaseRows.classId,
+          subject_id: tutorCaseRows.subject,
+          teacher_id: staffId,
+        });
+        // Out of the profiles, so that only the loads decide the move.
+        await t.database.migrator
+          .deleteFrom('staff_subjects')
+          .where('staff_id', '=', staffId)
+          .execute();
+        return { ...tutorCaseRows, row };
+      }
+
+      const editBody = (teacherId: string) => ({
+        teacherId,
+        lessonsPerWeek: 2,
+        roomId: null,
+        roomType: null,
+        doubleLessons: false,
+      });
+
+      it('and the teacher edit of a row to the Tutor: an edit sent during the move is refused', async () => {
+        const { subject, tutor, version, row } = await rowOfAnother();
+        const held = await heldSubjectMove(subject, national);
+        const sent = t
+          .patch(
+            `/api/timetable/versions/${version}/load/${row}`,
+            t.north,
+            editBody(tutor),
+            t.vicePrincipal,
+          )
+          .then((response) => response);
+        await untilWaiting();
+        held.release();
+        expect(await held.done).toBeUndefined();
+        refusedWith(await sent, 409, 'load_teacher_subject');
+      });
+
+      it('and the teacher edit of a row to the Tutor: a move sent during the edit is refused', async () => {
+        const { subject, tutor, row } = await rowOfAnother();
+        // The other teacher's row would already refuse the move: it is
+        // removed, and the edit's row stands alone.
+        const held = await holdOpen(async (transaction) => {
+          await transaction
+            .selectFrom('subjects')
+            .select('id')
+            .where('id', '=', subject)
+            .forKeyShare()
+            .execute();
+          await transaction
+            .updateTable('teaching_load_rows')
+            .set({ teacher_id: tutor })
+            .where('id', '=', row)
+            .execute();
+        });
+        const sent = moveSubject(subject, national);
+        await untilWaiting();
+        held.release();
+        expect(await held.done).toBeUndefined();
+        const refused = await sent;
+        refusedWith(refused, 409, 'department_move_loads');
+        expect(listed(refused)).toEqual([row]);
+      });
+
+      it('and a copy: a copy sent during the move leaves the Tutor row', async () => {
+        const { subject, classId, tutor, version } = await tutorCase();
+        const source = await load.row({
+          branch_id: t.north,
+          version_id: version,
+          class_id: classId,
+          subject_id: subject,
+          teacher_id: tutor,
+        });
+        const held = await heldSubjectMove(subject, national);
+        const sent = t
+          .post(
+            '/api/timetable/versions',
+            t.north,
+            { academicYearId: year, startsOn: STARTS_ON, copyFrom: version },
+            t.vicePrincipal,
+          )
+          .then((response) => response);
+        await untilWaiting();
+        held.release();
+        expect(await held.done).toBeUndefined();
+        const copied = await sent;
+        expect(copied.status, JSON.stringify(copied.body)).toBe(201);
+        const copy = (copied.body as { id: string }).id;
+        const stored = await t.database.migrator
+          .selectFrom('timetable_versions')
+          .select('left_rows')
+          .where('id', '=', copy)
+          .executeTakeFirstOrThrow();
+        expect(stored.left_rows).toMatchObject([
+          { sourceRowId: source, problems: ['load_teacher_subject'] },
+        ]);
+      });
+
+      it('and a copy: a move sent during the copy is refused by the copied row too', async () => {
+        const { subject, classId, tutor, version } = await tutorCase();
+        await load.row({
+          branch_id: t.north,
+          version_id: version,
+          class_id: classId,
+          subject_id: subject,
+          teacher_id: tutor,
+        });
+        // The source's row is moved out of the way: the copy's own row decides.
+        await t.database.migrator
+          .updateTable('timetable_versions')
+          .set({ status: 'archived' })
+          .where('id', '=', version)
+          .execute();
+        const held = await holdOpen(async (transaction) => {
+          await transaction
+            .selectFrom('subjects')
+            .select('id')
+            .where('id', '=', subject)
+            .forKeyShare()
+            .execute();
+          const copy = await transaction
+            .insertInto('timetable_versions')
+            .values({
+              branch_id: t.north,
+              academic_year_id: year,
+              number: 900,
+              starts_on: STARTS_ON,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await transaction
+            .insertInto('teaching_load_rows')
+            .values({
+              branch_id: t.north,
+              version_id: copy.id,
+              class_id: classId,
+              subject_id: subject,
+              teacher_id: tutor,
+              lessons_per_week: 2,
+            })
+            .execute();
+        });
+        const sent = moveSubject(subject, national);
+        await untilWaiting();
+        held.release();
+        expect(await held.done).toBeUndefined();
+        refusedWith(await sent, 409, 'department_move_loads');
+      });
+    });
+
+    describe('two moves on one stale row (the lock of department moves)', () => {
+      /** A row of a STEAM subject whose teacher has moved to National, out of the profiles. */
+      async function staleRow(): Promise<{ teacher: string; subject: string; row: string }> {
+        const { teacher, subject, row } = await steamRow();
+        await t.database.migrator
+          .deleteFrom('staff_subjects')
+          .where('staff_id', '=', teacher)
+          .execute();
+        await t.database.migrator
+          .updateTable('staff_divisions')
+          .set({ department_id: national })
+          .where('staff_id', '=', teacher)
+          .execute();
+        return { teacher, subject, row };
+      }
+
+      it('a subject move sent during a teacher move sees the teacher’s new department', async () => {
+        const { teacher, subject, row } = await staleRow();
+        const held = await holdOpen(async (transaction) => {
+          await lockDepartmentMoves(transaction);
+          await transaction
+            .selectFrom('staff')
+            .select('id')
+            .where('id', '=', teacher)
+            .forUpdate()
+            .execute();
+          await transaction
+            .updateTable('staff_divisions')
+            .set({ department_id: steam, department_since: MOVE_ON })
+            .where('staff_id', '=', teacher)
+            .execute();
+        });
+        const sent = moveSubject(subject, national);
+        await untilWaiting();
+        held.release();
+        expect(await held.done).toBeUndefined();
+        const refused = await sent;
+        refusedWith(refused, 409, 'department_move_loads');
+        expect(listed(refused)).toEqual([row]);
+      });
+
+      it('a teacher move sent during a subject move sees the subject’s new department', async () => {
+        const { teacher, subject, row } = await staleRow();
+        const staff = await detail(teacher);
+        const held = await heldSubjectMove(subject, national);
+        const sent = put(
+          `/api/people/staff/${teacher}`,
+          staffBody(staff, { divisions: toDepartment(steam), departmentStartsOn: MOVE_ON }),
+        ).then((response) => response);
+        await untilWaiting();
+        held.release();
+        expect(await held.done).toBeUndefined();
+        const refused = await sent;
+        refusedWith(refused, 409, 'department_move_loads');
+        expect(listed(refused)).toEqual([row]);
+      });
     });
   });
 });
