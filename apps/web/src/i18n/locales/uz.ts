@@ -2940,6 +2940,16 @@ export const uz: Texts<'one' | 'other'> = {
       chooseTeacher: 'Oʻqituvchini tanlang',
       chooseFirst: 'Avval sinf yoki guruhni va fanni tanlang.',
       noTeachers: 'Filialning hech bir oʻqituvchisi yoki vakansiyasi bu qatorni ola olmaydi.',
+      noSubjectTeacher:
+        '{{subject}} filialning hech bir oʻqituvchisi yoki vakansiyasi profilida yoʻq: Odamlar → Xodimlar → Fanlar.',
+      noTutorTeacher:
+        '{{subject}} ni sinf tyutori yoki shu fani bor oʻqituvchi oladi; sinfda tyutor yoʻq: Sinflar → sinf → Tyutor berish.',
+      whyStatus: '{{teacher}}: faol emas.',
+      whyGrade: '{{teacher}}: {{grades}}-sinfni oʻqitmaydi.',
+      whyLanguage: '{{teacher}}: {{language}} dars bermaydi.',
+      whyLanguageUnnamed: '{{teacher}}: sinflar tilida dars bermaydi.',
+      whyBlock: '{{teacher}}: shu blokdagi {{group}} guruhida dars beradi.',
+      openStaff: 'Xodimlarni ochish',
       tutorOption: '{{name}} (tyutor)',
       vacancyOption: '{{name}} (vakansiya)',
       vacancy: 'Vakansiya',

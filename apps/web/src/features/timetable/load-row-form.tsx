@@ -1,12 +1,16 @@
 import {
   classDisplayName,
   LOAD_LESSONS_MAX,
+  PERMISSIONS,
+  permits,
   loadRowEditSchema,
   loadRowRecordSchema,
   ROOM_TYPES,
+  type InstructionLanguage,
   type LoadRow,
   type LoadRowEdit,
   type LoadRowRecord,
+  type LoadTeachers,
   type Room,
   type SchoolClass,
   type SchoolGroup,
@@ -14,6 +18,7 @@ import {
   type TimetableVersion,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CHECKED, CheckboxField, NumberField, SelectField } from '@/components/field';
@@ -281,7 +286,16 @@ export function LoadRowForm({
           }}
         />
       ) : teachers.data !== undefined && teacherOptions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('timetable.load.noTeachers')}</p>
+        <NoTeacherReasons
+          answer={teachers.data}
+          subjectName={(() => {
+            const chosen = subjects.find((one) => one.id === subjectId);
+            return chosen === undefined ? null : nameOf(chosen.names, i18n.language);
+          })()}
+          grades={unitGrades}
+          language={schoolClass?.language ?? group?.language ?? null}
+          teacherName={(one) => teacherName({ ...one, tutor: false })}
+        />
       ) : (
         <SelectField
           label={t('timetable.load.teacher')}
@@ -331,5 +345,76 @@ export function LoadRowForm({
         />
       )}
     </RecordForm>
+  );
+}
+
+/**
+ * Why no teacher or vacancy can take the row (task 3.5b, H30 of issue #105):
+ * the subject in nobody's profile (with a link to Staff for a role that may
+ * open it), a Tutor subject on a class with no Tutor, or each one with the
+ * subject and the first reason it cannot.
+ */
+function NoTeacherReasons({
+  answer,
+  subjectName,
+  grades,
+  language,
+  teacherName,
+}: {
+  answer: LoadTeachers;
+  subjectName: string | null;
+  grades: readonly number[];
+  language: InstructionLanguage | null;
+  teacherName: (one: { kind: string; name: string | null }) => string;
+}) {
+  const { t } = useTranslation();
+  const { role } = useView();
+  if (subjectName === null) {
+    return <p className="text-sm text-muted-foreground">{t('timetable.load.noTeachers')}</p>;
+  }
+  if (answer.excluded.length === 0) {
+    return (
+      <p className="text-sm">
+        {answer.noTutor
+          ? t('timetable.load.noTutorTeacher', { subject: subjectName })
+          : t('timetable.load.noSubjectTeacher', { subject: subjectName })}{' '}
+        {!answer.noTutor && role !== null && permits(PERMISSIONS, role, 'staff', 'view') && (
+          <Link
+            to="/people/staff"
+            className="font-semibold text-link underline-offset-4 hover:underline"
+          >
+            {t('timetable.load.openStaff')}
+          </Link>
+        )}
+      </p>
+    );
+  }
+  const reasonOf = (one: LoadTeachers['excluded'][number]) => {
+    const teacher = teacherName(one);
+    switch (one.reason) {
+      case 'status':
+        return t('timetable.load.whyStatus', { teacher });
+      case 'grade':
+        return t('timetable.load.whyGrade', { teacher, grades: grades.join(', ') });
+      case 'language':
+        return language === null
+          ? t('timetable.load.whyLanguageUnnamed', { teacher })
+          : t('timetable.load.whyLanguage', {
+              teacher,
+              language: t(`classes.inLanguage.${language}`),
+            });
+      case 'block':
+        return t('timetable.load.whyBlock', { teacher, group: one.blockGroup ?? '—' });
+    }
+  };
+  return (
+    <div className="grid gap-1 text-sm">
+      <p className="text-muted-foreground">{t('timetable.load.noTeachers')}</p>
+      <ul className="grid gap-1">
+        {answer.excluded.map((one) => (
+          <li key={one.id}>{reasonOf(one)}</li>
+        ))}
+      </ul>
+    </div>
   );
 }

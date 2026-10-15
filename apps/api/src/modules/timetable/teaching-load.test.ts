@@ -1049,6 +1049,48 @@ describe('draft versions and the teaching load', () => {
       expect(offered.teachers.map((one) => one.id).sort()).toEqual(accepted.sort());
     });
 
+    // Task 3.5b, H30 of issue #105: why each one with the subject cannot take the row.
+    it('names the reason of each teacher with the subject who cannot take the row', async () => {
+      const version = await draft();
+      const own = await fitting();
+      const noGrade = await load.teacher(t.north, { subjects: [{ subject, grades: [8] }] });
+      const noLanguage = await load.teacher(t.north, {
+        languages: ['ru'],
+        subjects: [{ subject, grades: [7] }],
+      });
+      const out = await load.teacher(t.north, { subjects: [{ subject, grades: [7] }] });
+      await load.status(out.staffId, 'left', '2026-10-11');
+      const otherSubject = await load.classes.subject({ grades: [7] });
+      const noSubject = await load.teacher(t.north, {
+        subjects: [{ subject: otherSubject, grades: [7] }],
+      });
+      const offered = loadTeachersSchema.parse(
+        (
+          await get(
+            `/api/timetable/versions/${version.id}/load/teachers?classId=${own.classId}&subjectId=${subject}`,
+          ).expect(200)
+        ).body,
+      );
+      const reasons = new Map(offered.excluded.map((one) => [one.id, one.reason]));
+      expect(reasons.get(noGrade.staffId)).toBe('grade');
+      expect(reasons.get(noLanguage.staffId)).toBe('language');
+      expect(reasons.get(out.staffId)).toBe('status');
+      expect(reasons.has(noSubject.staffId)).toBe(false);
+      expect(reasons.has(own.teacher)).toBe(false);
+      expect(offered.noTutor).toBe(false);
+      // A Tutor subject on a class with no Tutor says so.
+      const tutorSubject = await load.tutorSubject({ grades: [7] });
+      const lonely = await load.classes.schoolClass(t.north, year, { grade: 7 });
+      const none = loadTeachersSchema.parse(
+        (
+          await get(
+            `/api/timetable/versions/${version.id}/load/teachers?classId=${lonely}&subjectId=${tutorSubject}`,
+          ).expect(200)
+        ).body,
+      );
+      expect(none).toMatchObject({ teachers: [], noTutor: true });
+    });
+
     it('puts the Tutor of the class first, marked, and preselects them for a Tutor subject only', async () => {
       const version = await draft();
       const tutorSubject = await load.tutorSubject({ grades: [7] });

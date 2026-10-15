@@ -3061,6 +3061,16 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       chooseTeacher: 'Выберите учителя',
       chooseFirst: 'Сначала выберите класс или группу и предмет.',
       noTeachers: 'Ни один учитель или вакансия филиала не может взять эту строку.',
+      noSubjectTeacher:
+        '{{subject}} нет в профиле ни одного учителя или вакансии филиала: Люди → Сотрудники → Предметы.',
+      noTutorTeacher:
+        '{{subject}} ведёт тьютор класса или учитель с этим предметом; у класса нет тьютора: Классы → класс → Назначить тьютора.',
+      whyStatus: '{{teacher}}: не активен.',
+      whyGrade: '{{teacher}}: не преподаёт в {{grades}} классе.',
+      whyLanguage: '{{teacher}}: не преподаёт на {{language}}.',
+      whyLanguageUnnamed: '{{teacher}}: не преподаёт на языке классов.',
+      whyBlock: '{{teacher}}: ведёт {{group}} в том же блоке.',
+      openStaff: 'Открыть сотрудников',
       tutorOption: '{{name}} (тьютор)',
       vacancyOption: '{{name}} (вакансия)',
       vacancy: 'Вакансия',

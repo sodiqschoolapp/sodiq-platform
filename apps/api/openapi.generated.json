@@ -166784,11 +166784,61 @@
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "excluded": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "person",
+                              "vacancy"
+                            ]
+                          },
+                          "name": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "enum": [
+                              "status",
+                              "grade",
+                              "language",
+                              "block"
+                            ]
+                          },
+                          "blockGroup": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "name",
+                          "reason",
+                          "blockGroup"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "noTutor": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
                     "teachers",
-                    "defaultTeacherId"
+                    "defaultTeacherId",
+                    "excluded",
+                    "noTutor"
                   ],
                   "additionalProperties": false
                 }

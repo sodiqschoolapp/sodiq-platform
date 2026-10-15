@@ -35355,6 +35355,17 @@ export interface operations {
                         }[];
                         /** Format: uuid */
                         defaultTeacherId: string | null;
+                        excluded: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "person" | "vacancy";
+                            name: string | null;
+                            /** @enum {string} */
+                            reason: "status" | "grade" | "language" | "block";
+                            blockGroup: string | null;
+                        }[];
+                        noTutor: boolean;
                     };
                 };
             };

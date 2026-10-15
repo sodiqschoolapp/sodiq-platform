@@ -2918,6 +2918,16 @@ export const en = {
       chooseTeacher: 'Choose a teacher',
       chooseFirst: 'Choose the class or group and the subject first.',
       noTeachers: 'No teacher or vacancy of the branch may take this row.',
+      noSubjectTeacher:
+        '{{subject}} is in no profile of a teacher or vacancy of the branch: People → Staff → Subjects.',
+      noTutorTeacher:
+        "{{subject}} is taught by the class's Tutor or a teacher with the subject; the class has no Tutor: Classes → the class → Give Tutor.",
+      whyStatus: '{{teacher}}: not active.',
+      whyGrade: '{{teacher}}: does not teach grade {{grades}}.',
+      whyLanguage: '{{teacher}}: does not teach in {{language}}.',
+      whyLanguageUnnamed: '{{teacher}}: does not teach in the language of the classes.',
+      whyBlock: '{{teacher}}: teaches {{group}} in the same block.',
+      openStaff: 'Open Staff',
       tutorOption: '{{name}} (Tutor)',
       vacancyOption: '{{name}} (vacancy)',
       vacancy: 'Vacancy',
